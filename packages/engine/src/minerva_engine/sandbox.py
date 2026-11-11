@@ -105,6 +105,8 @@ class Sandbox:
                 return SandboxResult(Outcome.KILLED)
             if kind == "ok":
                 return SandboxResult(Outcome.OK, value)
+            if value in ("MemoryError", "RecursionError"):
+                return SandboxResult(Outcome.KILLED)  # hit a resource limit, not a bug
             return SandboxResult(Outcome.ERROR)
         finally:
             parent.close()

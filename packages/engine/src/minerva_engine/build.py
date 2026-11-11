@@ -114,14 +114,16 @@ class Builder:
     # -- compound ----------------------------------------------------------------------
     def power(self, base: sp.Expr, exponent: sp.Expr) -> sp.Expr:
         # Reject explosive numeric powers *before* SymPy evaluates them.
-        if base.is_Number and exponent.is_Number:
-            if abs(exponent) > self.limits.max_pow_exponent:
-                raise LimitError("exponent too large")
-            if base.is_Integer and abs(base) > 1:
-                # Bound the digit count of the result without computing it.
-                digits = abs(int(exponent)) * len(str(abs(int(base)))) if exponent.is_Integer else 0
-                if digits > 10_000:
-                    raise LimitError("result of power would be too large")
+        if exponent.is_Number and abs(exponent) > self.limits.max_pow_exponent:
+            raise LimitError("exponent too large")  # also stops expansion bombs like (x+1)**10**7
+        # Bound the digit count of an integer power without computing it.
+        if (
+            base.is_Integer
+            and exponent.is_Integer
+            and abs(base) > 1
+            and abs(int(exponent)) * len(str(abs(int(base)))) > 10_000
+        ):
+            raise LimitError("result of power would be too large")
         return sp.Pow(base, exponent)
 
     def function(self, name: str, args: Iterable[sp.Expr]) -> sp.Expr:
@@ -131,6 +133,9 @@ class Builder:
         argv = list(args)
         if len(argv) != 1:
             raise ParseError(f"{name} takes exactly one argument")
+        # SymPy evaluates factorial/gamma of integers eagerly; bound the work up front.
+        if canonical in {"factorial", "gamma"} and argv[0].is_Integer and argv[0] > 3000:
+            raise LimitError("argument too large")
         return FUNCTIONS[canonical](argv[0])
 
     def log_base(self, argument: sp.Expr, base: sp.Expr) -> sp.Expr:

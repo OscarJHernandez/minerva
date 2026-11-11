@@ -72,3 +72,9 @@ def test_contradictory_assumptions_are_a_clear_error(engine: Engine) -> None:
     result = run(engine, "x + 1", "text", x=["positive", "negative"])
     assert result.status is Status.PARSE_ERROR
     assert "contradict" in result.message
+
+
+def test_expansion_bomb_is_rejected_before_computation(engine: Engine) -> None:
+    result = run(engine, "(x+1)**9999999", "text")
+    assert result.status is Status.RESOURCE_LIMIT
+    assert result.result_latex is None

@@ -22,7 +22,7 @@ def make_settings(**over: object) -> Settings:
         "compute_rate_per_minute": 1000,
     }
     base.update(over)
-    return Settings(**base)  # type: ignore[arg-type]
+    return Settings(_env_file=None, **base)  # type: ignore[arg-type]  # hermetic: ignore .env
 
 
 def build_app(**over: object):  # type: ignore[no-untyped-def]

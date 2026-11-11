@@ -101,7 +101,19 @@ def test_text_parser_accepts_math() -> None:
     assert parse_text("log(8, 2)") == 3
 
 
-@pytest.mark.parametrize("source", ["9**9**9", "10**100000", "2**(2**(2**5))", "9" * 200])
+@pytest.mark.parametrize(
+    "source",
+    [
+        "9**9**9",
+        "10**100000",
+        "2**(2**(2**5))",
+        "9" * 200,
+        "(x+1)**9999999",
+        "x**100000",
+        "factorial(10**6)",
+        "gamma(500000)",
+    ],
+)
 def test_numeric_explosions_rejected_before_evaluation(source: str) -> None:
     with pytest.raises(LimitError):
         parse_text(source)

@@ -102,12 +102,20 @@ def test_cross_origin_post_rejected(client: TestClient) -> None:
 def test_production_refuses_placeholder_secret() -> None:
     import pytest
     from minerva_api.settings import Settings
+    from pydantic import SecretStr
 
-    with pytest.raises(RuntimeError):
-        Settings(env="production", cookie_secure=True).validate_for_runtime()
+    placeholder = SecretStr("change-me-generate-a-random-value")
     with pytest.raises(RuntimeError):
         Settings(
+            _env_file=None, env="production", cookie_secure=True, session_secret=placeholder
+        ).validate_for_runtime()
+    with pytest.raises(RuntimeError):  # strong secret but insecure cookies
+        Settings(
+            _env_file=None,
             env="production",
             cookie_secure=False,
-            session_secret="x" * 40,  # type: ignore[arg-type]
+            session_secret=SecretStr("x" * 40),
         ).validate_for_runtime()
+    Settings(
+        _env_file=None, env="production", cookie_secure=True, session_secret=SecretStr("x" * 40)
+    ).validate_for_runtime()  # a proper production configuration is accepted
