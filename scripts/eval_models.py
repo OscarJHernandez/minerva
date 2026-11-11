@@ -151,11 +151,16 @@ CASES = [
         {"find_identities", "simplify"},
     ),
     Case(
-        "unsupported-solve",
-        r"Solve $x^3 + x^2 + x + 1 = 0$ and give me the roots.",
-        forbid=set(),
-        final_matches=REFUSAL,
-        max_unchecked=2,
+        "solve-quintic",
+        r"Solve $x^5 - x - 1 = 0$. Is there a closed formula for the roots?",
+        {"solve_polynomial"},
+        final_matches=re.compile(r"radical|closed|formula|Galois|Abel|numeric", re.I),
+    ),
+    Case(
+        "solve-reducible",
+        r"Solve $x^3 + x^2 + x + 1 = 0$.",
+        {"solve_polynomial"},
+        max_unchecked=3,
     ),
     Case(
         "unsupported-derivative",
@@ -259,7 +264,13 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
 
 
 async def evaluate(
-    base_url: str, model: str, ctx: ToolContext, timeout: float, think: bool, strip: bool
+    base_url: str,
+    model: str,
+    ctx: ToolContext,
+    timeout: float,
+    think: bool,
+    strip: bool,
+    parallel: int = 1,
 ) -> list[Outcome]:
     llm = OllamaClient(base_url, model, timeout_seconds=timeout, think=think, strip_thinking=strip)
     limits = AgentLimits(max_steps=6, max_seconds=timeout * 2)
@@ -270,15 +281,19 @@ async def evaluate(
     except LLMError as exc:
         print(f"  {model}: cannot use ({exc})", file=sys.stderr)
         return []
-    outcomes = []
-    for case in CASES:
-        outcome = await run_case(llm, ctx, case, limits)
+    gate = asyncio.Semaphore(max(1, parallel))
+
+    async def one(case: Case) -> Outcome:
+        async with gate:
+            outcome = await run_case(llm, ctx, case, limits)
         mark = "pass" if outcome.passed else "FAIL"
         print(
             f"  {model:<22} {case.id:<30} {mark} {outcome.seconds:5.1f}s {'; '.join(outcome.notes)}",
             flush=True,
         )
-        outcomes.append(outcome)
+        return outcome
+
+    outcomes = list(await asyncio.gather(*[one(c) for c in CASES]))
     return outcomes
 
 
@@ -325,16 +340,24 @@ async def main() -> None:
     parser.add_argument("--timeout", type=float, default=180.0, help="seconds per model call")
     parser.add_argument("--think", action="store_true", help="let reasoning models think first")
     parser.add_argument("--strip-thinking", action="store_true", help="drop leaked reasoning")
+    parser.add_argument("--cases", help="comma-separated case ids to run (default: all)")
+    parser.add_argument("--parallel", type=int, default=1, help="cases run at once per model")
     parser.add_argument("--out", help="write a markdown report to this path")
     args = parser.parse_args()
 
+    if args.cases:
+        wanted = {c.strip() for c in args.cases.split(",")}
+        unknown = wanted - {c.id for c in CASES}
+        if unknown:
+            parser.error(f"unknown case ids: {sorted(unknown)}")
+        CASES[:] = [c for c in CASES if c.id in wanted]
     ctx = ToolContext(engine=Engine(Limits(timeout_seconds=30)), kb=KnowledgeBase.load())
     ctx.engine.warm_up()
     results: dict[str, list[Outcome]] = {}
     for model in [m.strip() for m in args.models.split(",") if m.strip()]:
         print(f"== {model}", flush=True)
         results[model] = await evaluate(
-            args.base_url, model, ctx, args.timeout, args.think, args.strip_thinking
+            args.base_url, model, ctx, args.timeout, args.think, args.strip_thinking, args.parallel
         )
     text = report(results)
     if args.out:

@@ -1,0 +1,26 @@
+# User-level systemd unit: an Ollama server just for Minerva, so loading a model here never evicts
+# someone else's model (the system Ollama keeps one model loaded at a time). It holds its own model
+# slot and sees only the models linked into its own store (symlinks to the system Ollama's files, so
+# no extra disk). Installed by scripts/setup-ollama-instance.sh, which replaces __PORT__.
+# Listens on loopback only: reach it with an SSH tunnel, or change OLLAMA_HOST in
+# ~/.config/minerva/ollama.env (the system Ollama on 11434 is already open to the LAN).
+[Unit]
+Description=Ollama for Minerva only (own model slot, models linked from the system Ollama's files)
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=HOME=%h
+Environment=OLLAMA_HOST=127.0.0.1:__PORT__
+Environment=OLLAMA_MODELS=%h/.local/share/minerva/ollama-models
+Environment=OLLAMA_MAX_LOADED_MODELS=1
+Environment=OLLAMA_NUM_PARALLEL=2
+Environment=OLLAMA_KEEP_ALIVE=1h
+# Optional overrides, one NAME=value per line.
+EnvironmentFile=-%h/.config/minerva/ollama.env
+ExecStart=/usr/bin/env ollama serve
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
