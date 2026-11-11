@@ -1,7 +1,6 @@
 """Regression tests for ordinary symbolic simplification through the sandboxed engine."""
 
 import pytest
-
 from minerva_engine import Engine, ExpressionInput, Status
 
 
@@ -64,8 +63,6 @@ def test_resource_limit_is_reported_not_guessed(engine: Engine) -> None:
     from minerva_engine import Limits
 
     quick = Engine(Limits(timeout_seconds=2))
-    result = quick.simplify(
-        ExpressionInput(input="(x+1)**9000*(y+1)**9000 - 1", format="text")
-    )
+    result = quick.simplify(ExpressionInput(input="(x+1)**9000*(y+1)**9000 - 1", format="text"))
     assert result.status is Status.RESOURCE_LIMIT
     assert result.result_latex is None

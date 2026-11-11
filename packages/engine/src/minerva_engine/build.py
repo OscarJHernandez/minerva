@@ -39,6 +39,7 @@ FUNCTIONS: dict[str, Callable[[sp.Expr], sp.Expr]] = {
     "log": sp.log,
     "abs": sp.Abs,
     "gamma": sp.gamma,
+    "factorial": sp.factorial,
 }
 
 # Aliases accepted by the text parser.
@@ -54,7 +55,7 @@ TEXT_FUNCTION_ALIASES: dict[str, str] = {
 }
 
 # Constants available by name in text; in LaTeX they come from commands.
-CONSTANTS: dict[str, sp.Expr] = {"pi": sp.pi, "E": sp.E, "I": sp.I}
+CONSTANTS: dict[str, sp.Expr] = {"pi": sp.pi, "E": sp.E, "I": sp.I, "oo": sp.oo}
 RESERVED_NAMES = (
     frozenset(FUNCTIONS)
     | frozenset(TEXT_FUNCTION_ALIASES)

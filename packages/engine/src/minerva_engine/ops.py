@@ -12,6 +12,7 @@ from typing import Any
 import sympy as sp
 
 from .errors import LimitError, MinervaMathError, ParseError
+from .features import expression_features
 from .latexparse import parse_latex
 from .models import (
     Applicability,
@@ -91,6 +92,23 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     ).model_dump(mode="json")
 
 
+# --- features --------------------------------------------------------------------------
+def op_features(payload: dict[str, Any]) -> dict[str, Any]:
+    limits = Limits(**payload["limits"])
+    data = ExpressionInput(**payload["expression"])
+    try:
+        expr = parse_expression(data, limits)
+    except MinervaMathError as exc:
+        status, message = _failure(exc)
+        return {"status": status.value, "message": message, "features": [], "input_latex": None}
+    return {
+        "status": Status.OK.value,
+        "message": "",
+        "features": sorted(expression_features(expr)),
+        "input_latex": sp.latex(expr),
+    }
+
+
 # --- identities -------------------------------------------------------------------------
 def _pattern_parts(rule: Rule) -> tuple[sp.Expr, sp.Expr, dict[str, sp.Wild]]:
     wilds = {name: sp.Wild(name) for name in rule.variables}
@@ -115,6 +133,25 @@ def _unmet(
     return unmet
 
 
+def _introduces_roots(bindings: dict[sp.Basic, sp.Basic], expr: sp.Expr) -> bool:
+    """True if a match only works by binding variables to roots absent from `expr`.
+
+    SymPy's matcher can solve `a**2 - b**2 = x + y` with `a = sqrt(y)`, `b = sqrt(-x)`.
+    That rewrite is valid but is not what a reader means by "this identity applies", so
+    matches that invent fractional powers are discarded.
+    """
+    for value in bindings.values():
+        for node in sp.preorder_traversal(value):
+            if (
+                isinstance(node, sp.Pow)
+                and node.exp.is_Rational
+                and not node.exp.is_Integer
+                and not expr.has(node)
+            ):
+                return True
+    return False
+
+
 def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
     """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
     lhs, rhs, wilds = _pattern_parts(rule)
@@ -131,7 +168,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
         if not isinstance(node, sp.Expr):
             continue
         bindings = node.match(pattern)
-        if bindings is None:
+        if bindings is None or _introduces_roots(bindings, expr):
             continue
         unmet = _unmet(rule, bindings, wilds)
         matched_latex = sp.latex(node)
@@ -242,5 +279,6 @@ def verify_rule(rule: Rule) -> Verification:
 OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
     "identities": op_identities,
+    "features": op_features,
     "tensor_canonicalize": op_tensor_canonicalize,
 }

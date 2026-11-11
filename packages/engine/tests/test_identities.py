@@ -1,5 +1,4 @@
 import pytest
-
 from minerva_engine import (
     Applicability,
     Engine,
@@ -83,3 +82,13 @@ def test_rule_with_undeclared_variable_is_rejected(engine: Engine) -> None:
 @pytest.mark.parametrize("expr", [r"\sin^2(2x)+\cos^2(2x)", r"\sin^2 (y z)+\cos^2 (y z)"])
 def test_pattern_variable_binds_to_compound_arguments(engine: Engine, expr: str) -> None:
     assert apply(engine, expr, [PYTH])["trig.pythagorean"].rewritten_latex == "1"
+
+
+def test_matches_that_invent_roots_are_discarded(engine: Engine) -> None:
+    diff_squares = Rule(
+        id="alg.dos", lhs="a**2 - b**2", rhs="(a - b)*(a + b)", variables=["a", "b"]
+    )
+    out = apply(engine, "x + y", [diff_squares])
+    assert out["alg.dos"].applicability is Applicability.NO_MATCH
+    out = apply(engine, "x^2 - y^2", [diff_squares])
+    assert out["alg.dos"].applicability is Applicability.APPLICABLE

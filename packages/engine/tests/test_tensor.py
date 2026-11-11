@@ -1,7 +1,6 @@
 """Tensor canonicalization: only the monoterm-symmetry subset SymPy supports."""
 
 import pytest
-
 from minerva_engine import Engine, Status, TensorInput
 
 SPECS = {

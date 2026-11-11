@@ -1,6 +1,5 @@
 import pytest
 import sympy as sp
-
 from minerva_engine import LimitError, MinervaMathError, ParseError, parse_latex, parse_text
 
 x, y = sp.symbols("x y")

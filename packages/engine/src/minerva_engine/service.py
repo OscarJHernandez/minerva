@@ -70,3 +70,12 @@ class Engine:
         result = TensorResult(**outcome.value)
         result.duration_ms = ms
         return result
+
+    def features(self, expression: ExpressionInput) -> tuple[Status, str, list[str], str | None]:
+        """Structural features of the expression (parsed inside the sandbox)."""
+        outcome, _ = self._run("features", {"expression": expression.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return status, message, [], None
+        v = outcome.value
+        return Status(v["status"]), v["message"], list(v["features"]), v["input_latex"]
