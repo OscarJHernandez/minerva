@@ -61,15 +61,18 @@ export interface SolveReport {
 /**
  * Formulas only. from_tool: appears in a tool result or handbook entry of this conversation.
  * checked: an equation the model wrote that Minerva tested numerically and found true.
+ * conditional: false in general but true under extra assumptions (see `note`).
  * contradicted: an equation the model wrote that Minerva tested and found false.
  * unchecked: written by the model; Minerva could not check it.
  */
-export type FormulaStatus = "from_tool" | "checked" | "contradicted" | "unchecked";
+export type FormulaStatus = "from_tool" | "checked" | "conditional" | "contradicted" | "unchecked";
 
 export interface Segment {
   type: "text" | "math" | "display_math";
   value: string;
   status: FormulaStatus | null;
+  /** For conditional claims: what must hold, e.g. "false in general, but holds if x is positive". */
+  note?: string | null;
 }
 
 export type Card =

@@ -19,6 +19,10 @@ describe("RichText", () => {
           seg("math", "y^2", "unchecked"),
           seg("math", "a=b", "checked"),
           seg("math", "1=2", "contradicted"),
+          {
+            ...seg("math", "q", "conditional"),
+            note: "false in general, but holds if x is positive",
+          },
           seg("display_math", "z", "unchecked"),
         ]}
       />,
@@ -26,6 +30,7 @@ describe("RichText", () => {
     expect(screen.getAllByText("unchecked")).toHaveLength(1);
     expect(screen.getByText("checked")).toBeInTheDocument();
     expect(screen.getByText("contradicted")).toBeInTheDocument();
+    expect(screen.getByText("conditional")).toBeInTheDocument();
     expect(screen.getByText(/Not verified by Minerva/)).toBeInTheDocument();
     expect(container.querySelectorAll('[data-status="from_tool"]')).toHaveLength(1);
     expect(container.querySelectorAll('[data-status="contradicted"]')).toHaveLength(1);

@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from typing import Literal
 
+import sympy as sp
 from pydantic import BaseModel
 
 from .errors import MinervaMathError
@@ -19,7 +20,7 @@ from .latexparse import parse_latex
 from .models import Limits
 from .verify import verify_equal
 
-ClaimStatus = Literal["holds", "fails", "unverified", "not_an_equation", "unparsed"]
+ClaimStatus = Literal["holds", "conditional", "fails", "unverified", "not_an_equation", "unparsed"]
 
 _TRAILER = re.compile(r"\\q?quad\b.*$|\\text\{[^}]*\}.*$|,\s*(?:for|if|where|when)\b.*$", re.DOTALL)
 
@@ -62,15 +63,40 @@ def check_claim(latex: str, assumptions: dict[str, list[str]], limits: Limits) -
         parsed = [parse_latex(side, assumptions, limits) for side in sides]
     except MinervaMathError as exc:
         return ClaimCheck(status="unparsed", detail=str(exc))
+    outcome, detail = _compare(parsed)
+    if outcome == "holds":
+        return ClaimCheck(status="holds", detail=detail)
+    if outcome == "fails":
+        # A claim that is false for complex symbols may be the usual real-variable statement whose
+        # condition is written in the prose, not in the formula. Try the weakest natural assumptions.
+        symbols = sorted({s.name for p in parsed for s in p.free_symbols} - set(assumptions))
+        for label in ("real", "positive"):
+            if not symbols:
+                break
+            relaxed = {**{name: [label] for name in symbols}, **assumptions}
+            try:
+                retry = [parse_latex(side, relaxed, limits) for side in sides]
+            except MinervaMathError:
+                break
+            if _compare(retry)[0] == "holds":
+                names = ", ".join(symbols)
+                verb = "is" if len(symbols) == 1 else "are"
+                return ClaimCheck(
+                    status="conditional",
+                    detail=f"false in general, but holds if {names} {verb} {label}",
+                )
+        return ClaimCheck(status="fails", detail=detail)
+    return ClaimCheck(status="unverified", detail=detail)
+
+
+def _compare(parsed: list[sp.Expr]) -> tuple[str, str]:
     checked = agreed = 0
     for other in parsed[1:]:
         verification = verify_equal(parsed[0], other, symbolic=False)
         checked += verification.numeric_points_checked
         agreed += verification.numeric_points_agreed
         if verification.numeric_points_checked < 4:
-            return ClaimCheck(status="unverified", detail="too few valid sample points")
+            return "unverified", "too few valid sample points"
     if agreed == checked:
-        return ClaimCheck(status="holds", detail=f"{agreed}/{checked} sample points agree")
-    return ClaimCheck(
-        status="fails", detail=f"{checked - agreed} of {checked} sample points disagree"
-    )
+        return "holds", f"{agreed}/{checked} sample points agree"
+    return "fails", f"{checked - agreed} of {checked} sample points disagree"

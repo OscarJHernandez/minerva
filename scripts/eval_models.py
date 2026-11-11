@@ -162,6 +162,13 @@ CASES = [
         max_unchecked=3,
     ),
     Case(
+        "lagrangian-kepler",
+        r"Find the equations of motion and the conserved quantities of the Lagrangian "
+        r"$\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}$ in the coordinates r and theta.",
+        {"analyze_lagrangian"},
+        args_check=lambda t, a: {"r", "theta"} <= {str(c) for c in a.get("coordinates", [])},
+    ),
+    Case(
         "unsupported-derivative",
         r"Differentiate $x^3 \sin x$.",
         forbid=set(),

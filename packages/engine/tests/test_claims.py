@@ -32,7 +32,9 @@ def test_true_equation_holds_and_false_one_fails() -> None:
 
 def test_claims_depend_on_assumptions() -> None:
     claim = r"\sqrt{x^2} = x"
-    assert check_claim(claim, {}, L).status == "fails"  # false for complex x
+    assert (
+        check_claim(claim, {}, L).status == "conditional"
+    )  # false for complex x, true for positive x
     assert check_claim(claim, {"x": ["positive"]}, L).status == "holds"
     assert check_claim(claim, {"x": ["negative"]}, L).status == "fails"
 
@@ -53,3 +55,13 @@ def test_engine_batch_runs_in_the_sandbox() -> None:
     results = engine.check_claims([r"x+x = 2x", r"x+x = 3x", "y"], {})
     assert [r.status for r in results] == ["holds", "fails", "not_an_equation"]
     assert engine.check_claims([]) == []
+
+
+def test_claims_true_only_for_real_or_positive_symbols_are_conditional_not_false() -> None:
+    real = check_claim(r"\sqrt{x^2} = |x|", {}, L)
+    assert real.status == "conditional" and "real" in real.detail
+    positive = check_claim(r"\sqrt{x^2} = x", {}, L)
+    assert positive.status == "conditional" and "positive" in positive.detail
+    assert check_claim(r"(x+1)^2 = x^2 + 1", {}, L).status == "fails"  # false under any assumption
+    assert check_claim(r"\sqrt{x^2} = x", {"x": ["positive"]}, L).status == "holds"
+    assert check_claim(r"\sqrt{x^2} = -x", {"x": ["positive"]}, L).status == "fails"

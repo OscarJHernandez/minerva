@@ -149,5 +149,8 @@ async def check_model_claims(blocks: list[Block], ctx: ToolContext, trace: list[
     for segment, result in zip(pending, results, strict=True):
         if result.status == "holds":
             segment.status = "checked"
+        elif result.status == "conditional":
+            segment.status = "conditional"
+            segment.note = result.detail
         elif result.status == "fails":
             segment.status = "contradicted"

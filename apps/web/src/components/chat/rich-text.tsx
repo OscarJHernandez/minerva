@@ -20,6 +20,14 @@ const MARKS: Record<
     box: "border-ok/40 bg-ok-soft/40",
     tone: "text-ok",
   },
+  conditional: {
+    label: "conditional",
+    title:
+      "Written by the language model. Minerva tested this equation: it is not true in general, but it holds under an extra assumption (see the note).",
+    underline: "border-b border-dashed border-warn",
+    box: "border-warn/50 bg-warn-soft/40",
+    tone: "text-warn",
+  },
   contradicted: {
     label: "contradicted",
     title:
@@ -105,9 +113,11 @@ export function RichText({ segments }: { segments: Segment[] }) {
               <div className={`pb-1 text-xs ${mark.tone}`} title={mark.title}>
                 {s.status === "checked"
                   ? "Written by the model; checked numerically by Minerva"
-                  : s.status === "contradicted"
-                    ? "Written by the model; Minerva's check says this is false"
-                    : "Not verified by Minerva (written by the model)"}
+                  : s.status === "conditional"
+                    ? `Written by the model; ${s.note ?? "true only under extra assumptions"}`
+                    : s.status === "contradicted"
+                      ? "Written by the model; Minerva's check says this is false"
+                      : "Not verified by Minerva (written by the model)"}
               </div>
             )}
           </div>

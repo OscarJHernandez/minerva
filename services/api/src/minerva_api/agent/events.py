@@ -14,9 +14,13 @@ class Segment(BaseModel):
     value: str
     # Formulas only. "from_tool": appears in a tool result or handbook entry of this conversation.
     # "checked": an equation the model wrote that Minerva tested numerically and found true.
+    # "conditional": false in general but true under extra assumptions (the condition is in `note`).
     # "contradicted": an equation the model wrote that Minerva tested and found false.
     # "unchecked": written by the model, and Minerva could not check it.
-    status: Literal["from_tool", "checked", "contradicted", "unchecked"] | None = None
+    status: Literal["from_tool", "checked", "conditional", "contradicted", "unchecked"] | None = (
+        None
+    )
+    note: str | None = None  # e.g. "false in general, but holds if x is positive"
 
 
 class Card(BaseModel):

@@ -239,10 +239,11 @@ def test_claims_inherit_the_assumptions_the_model_declared(ctx: ToolContext) -> 
     msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
     claim = next(s for s in segments_of(msg) if s["type"] == "math")
     assert claim["status"] == "checked"
-    # the same claim without the declaration is false for complex x
+    # without the declaration it is false for complex x but true for positive x: marked conditional
     llm2 = FakeLLM([[Chunk(text=r"Always $\sqrt{x^2} = x$.")]])
     msg2 = final(collect(llm2, ctx, [{"role": "user", "content": "q"}]))
-    assert next(s for s in segments_of(msg2) if s["type"] == "math")["status"] == "contradicted"
+    claim2 = next(s for s in segments_of(msg2) if s["type"] == "math")
+    assert claim2["status"] == "conditional" and "positive" in claim2["note"]
 
 
 def test_solve_tool_returns_a_report_card_and_retrieves_methods(ctx: ToolContext) -> None:
@@ -278,3 +279,17 @@ def test_lagrangian_tool_returns_equations_constants_and_methods(ctx: ToolContex
     assert "conserved (cyclic, verified on the equations of motion)" in out.for_model
     bad = execute("analyze_lagrangian", {"lagrangian": "x", "coordinates": []}, ctx)
     assert bad.card.type == "error"
+
+
+def test_bare_equations_become_formula_segments() -> None:
+    from minerva_api.agent.segments import split_segments
+
+    segs = split_segments("So x^3 + x^2 + x + 1 = 0 has the root x = -1. Then y = 2.", set())
+    math = [s.value for s in segs if s.type == "math"]
+    assert math == ["x^3 + x^2 + x + 1 = 0", "x = -1", "y = 2"]
+    assert all(s.status == "unchecked" for s in segs if s.type == "math")
+    # prose with an equals sign is left alone; markdown emphasis stays outside
+    prose = split_segments("The value is equal to the number of items = many words here.", set())
+    assert [s.type for s in prose] == ["text"]
+    bold = split_segments("**x = 2** is the answer", set())
+    assert [s.value for s in bold if s.type == "math"] == ["x = 2"]
