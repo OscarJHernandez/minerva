@@ -100,11 +100,12 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      # Node first: the stock self-hosted runner image has no `node`, and pnpm's installer needs it.
+      # No `cache: pnpm`: runner pods are ephemeral, so the cache never survives to the next job.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
-          cache: pnpm
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
@@ -171,11 +172,12 @@ jobs:
         run: |
           uv export --frozen --no-hashes --no-emit-workspace > "$RUNNER_TEMP/requirements.txt"
           uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      # Node first: the stock self-hosted runner image has no `node`, and pnpm's installer needs it.
+      # No `cache: pnpm`: runner pods are ephemeral, so the cache never survives to the next job.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
-          cache: pnpm
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - name: JavaScript dependencies (high and above)
         run: pnpm install --frozen-lockfile --ignore-scripts && pnpm audit --audit-level high
       - name: Secret scan
