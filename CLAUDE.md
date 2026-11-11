@@ -1,9 +1,11 @@
 # Minerva
 
 Open-source mathematical computing assistant: verified symbolic computation (SymPy) plus a
-citable, machine-checked handbook of mathematical identities and physical equations. It is a
-calculator and reference, not a tutoring app and not a chat UI. An LLM is optional and never
-decides correctness.
+citable, machine-checked handbook of mathematical identities and physical equations. The main
+interface is a conversation with an agent that works through problems using those tools; it is not
+a tutoring app. The language model plans, asks, searches and explains: **it never computes and never
+decides correctness**. Every result shown as fact comes from a sandboxed tool or a handbook entry.
+Without a model configured (`MINERVA_LLM_MODE=off`) the workbench and handbook still work.
 
 Everything committed here is public. Read "Security and open-source rules" before committing.
 
@@ -11,11 +13,12 @@ Everything committed here is public. Read "Security and open-source rules" befor
 
 ```
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
-apps/web/             Authenticated app: workspace, handbook browser, login. Next.js 16 + Tailwind 4
+apps/web/             Authenticated app: chat (home), workbench (/workbench), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
 packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
-services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference
+services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
+  agent/              LLM client (Ollama), tool registry, agent loop, formula marking, scripted test model
 deploy/               Dockerfiles and Helm chart. No secrets, no hostnames
 docs/                 architecture, licensing, roadmap, security/publication notes
 .claude/skills/       Project skills (math-regression, oss-publication-review)
@@ -36,6 +39,8 @@ uv run pytest                             # all Python tests (SQLite). MINERVA_T
 uv run ruff check . && uv run ruff format --check .
 uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
+uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
+MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
 
 pnpm install                              # JS workspace
 pnpm lint && pnpm typecheck && pnpm test  # eslint, tsc, vitest
@@ -47,6 +52,18 @@ cd services/api && uv run alembic upgrade head      # migrations (MINERVA_DATABA
 ```
 
 Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects).
+
+## The agent (services/api/src/minerva_api/agent/)
+
+- The model only calls tools (`agent/tools.py`); tools are pure, sandboxed and side-effect free. A tool returns a
+  `Card` (rendered by the UI from the tool's own output) and a compact `for_model` text. Add new capabilities as tools,
+  never as free-form model output.
+- After each turn, formulas in the model's prose are compared with formulas present in this conversation's tool results;
+  anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
+- `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
+  `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
+- `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
+- Conversations are user data: private per account, never logged.
 
 ## Mathematical correctness (non-negotiable)
 

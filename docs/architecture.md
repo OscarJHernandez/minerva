@@ -46,12 +46,26 @@ one most likely to be wrong.
   Retrieval only **proposes**; the engine decides.
 - `identities.find_identities` orchestrates: features (sandbox) → candidates (FTS5) → apply (sandbox).
 
-## C. Optional LLM
+## C. The conversational agent (`services/api/src/minerva_api/agent/`)
 
-Not implemented. Design: an `LLMClient` interface configured by `MINERVA_LLM_BASE_URL` /
-`MINERVA_LLM_MODEL` (Ollama-compatible endpoint; unset means the feature is off). The model may
-suggest candidate entries by id and explain results; it never computes, never decides applicability and
-never writes results. Every suggestion goes through the same engine checks as retrieval candidates.
+The main interface is a chat. The language model plans, asks clarifying questions, searches the handbook
+and explains; it never computes and never decides correctness.
+
+- **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
+  that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
+  model, until it answers. A step cap and a time cap end runaway loops.
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `find_identities`, `tensor_canonicalize`. Each is a
+  pure computation. A tool returns a `Card` that the interface renders from the tool's own output, plus a compact
+  text for the model. Bad or unknown calls become an error result the model can read, never an exception.
+- **Honesty** (`segments.py`): after each turn, every formula in the model's prose is compared with the formulas
+  that tool results and handbook entries of the conversation contain. Others are shown as *unchecked*.
+- **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
+  (prose and cards) and the tool trace so later turns have the same context.
+- **Models:** `MINERVA_LLM_MODE` is `off`, `ollama` (your own host: `MINERVA_LLM_BASE_URL`, `MINERVA_LLM_MODEL`) or
+  `scripted` (deterministic stand-in for tests and UI work, development only). `scripts/eval_models.py` measures a
+  model's tool-calling and honesty through the real loop; results in `docs/model-evaluation.md`.
+- **Transport:** `POST /v1/chat/conversations/{id}/messages` streams server-sent events (`text`, `tool_call`, `card`,
+  `message`, `error`, `done`).
 
 ## API (`services/api`)
 
