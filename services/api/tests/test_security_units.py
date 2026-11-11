@@ -1,6 +1,8 @@
 import time
 
+import pytest
 from fastapi.testclient import TestClient
+from minerva_api import security
 from minerva_api.security import RateLimiter
 
 from .conftest import PASSWORD, build_app
@@ -14,13 +16,18 @@ def test_rate_limiter_blocks_then_recovers() -> None:
     assert rl.allow("k", 3, 0.2)
 
 
-def test_rate_limiter_evicts_idle_keys() -> None:
+def test_rate_limiter_evicts_idle_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A fake clock keeps this independent of machine speed: with real time, a slow runner let part of the
+    # loop age past the window, evicted some keys mid-loop and left the size exactly at the bound.
+    now = [1000.0]
+    monkeypatch.setattr(security.time, "monotonic", lambda: now[0])
     rl = RateLimiter()
     for i in range(10_050):
-        rl.allow(f"ip-{i}", 5, 0.05)
-    time.sleep(0.1)
-    rl.allow("trigger", 5, 0.05)  # over the size bound: idle keys are dropped
-    assert len(rl._events) < 100
+        rl.allow(f"ip-{i}", 5, 60.0)
+    assert len(rl._events) == 10_050  # nothing is idle yet, so nothing is dropped
+    now[0] += 61.0
+    rl.allow("trigger", 5, 60.0)  # over the size bound: keys idle for a full window are dropped
+    assert list(rl._events) == ["trigger"]
 
 
 def test_forwarded_header_is_ignored_unless_configured() -> None:
