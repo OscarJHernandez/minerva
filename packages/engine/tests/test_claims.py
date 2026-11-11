@@ -65,3 +65,12 @@ def test_claims_true_only_for_real_or_positive_symbols_are_conditional_not_false
     assert check_claim(r"(x+1)^2 = x^2 + 1", {}, L).status == "fails"  # false under any assumption
     assert check_claim(r"\sqrt{x^2} = x", {"x": ["positive"]}, L).status == "holds"
     assert check_claim(r"\sqrt{x^2} = -x", {"x": ["positive"]}, L).status == "fails"
+
+
+def test_claims_reading_e_i_as_constants_and_equations_to_solve() -> None:
+    assert check_claim(r"e^{i a} = \cos a + i \sin a", {}, L).status == "holds"
+    assert check_claim(r"x = -1", {}, L).status == "unverified"
+    assert check_claim(r"x^3 + x^2 + x + 1 = 0", {}, L).status == "unverified"
+    assert check_claim(r"\sin^2 x + \cos^2 x = 1", {}, L).status == "holds"
+    assert check_claim(r"2 + 2 = 5", {}, L).status == "fails"
+    assert check_claim(r"\sin x = \cos x", {}, L).status == "fails"

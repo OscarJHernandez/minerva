@@ -67,6 +67,29 @@ def check_claim(latex: str, assumptions: dict[str, list[str]], limits: Limits) -
     if outcome == "holds":
         return ClaimCheck(status="holds", detail=detail)
     if outcome == "fails":
+        # Prose uses e and i for Euler's number and the imaginary unit; the parser keeps them as plain
+        # symbols (see CLAUDE.md). Give the claim the benefit of that reading, and say so.
+        used = {s.name for p in parsed for s in p.free_symbols}
+        if used & {"e", "i"}:
+            swap = {
+                s: (sp.E if s.name == "e" else sp.I)
+                for p in parsed
+                for s in p.free_symbols
+                if s.name in ("e", "i")
+            }
+            if _compare([p.subs(swap) for p in parsed])[0] == "holds":
+                return ClaimCheck(
+                    status="holds",
+                    detail="holds reading e as Euler's number and i as the imaginary unit",
+                )
+        # `expression = value` is usually an equation to solve (a root, an equation of motion), not an
+        # identity, so being false at generic points does not contradict it.
+        if len(parsed) == 2:
+            free = [bool(p.free_symbols) for p in parsed]
+            if free[0] != free[1]:
+                return ClaimCheck(
+                    status="unverified", detail="an equation to solve, not an identity; not checked"
+                )
         # A claim that is false for complex symbols may be the usual real-variable statement whose
         # condition is written in the prose, not in the formula. Try the weakest natural assumptions.
         symbols = sorted({s.name for p in parsed for s in p.free_symbols} - set(assumptions))
