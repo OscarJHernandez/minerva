@@ -1,0 +1,26 @@
+[project]
+name = "minerva-api"
+version = "0.1.0"
+description = "Minerva HTTP API (FastAPI)"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+  "minerva-engine",
+  "minerva-knowledge",
+  "fastapi>=0.162,<1",
+  "uvicorn[standard]>=0.54",
+  "pydantic>=2.14,<3",
+  "pydantic-settings>=2.6",
+  "sqlalchemy>=2.1,<3",
+  "alembic>=1.20",
+  "psycopg[binary]>=3.3",
+  "argon2-cffi>=23.1",
+  "structlog>=24.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/minerva_api"]

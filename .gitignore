@@ -1,0 +1,61 @@
+# Secrets and local configuration (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+kubeconfig*
+*.kubeconfig
+.kube/
+*secret*.yaml
+*secret*.yml
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+credentials*.json
+
+# Generated knowledge artifacts and databases
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+packages/knowledge/build/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+playwright-report/
+test-results/
+
+# Editors, OS, local tooling
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.claude/settings.local.json
+.claude/worktrees/
+
+# Local data
+data/
+*.log
