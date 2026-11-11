@@ -71,6 +71,7 @@
   title: Classical mechanics
   sections:
     - {id: dynamics, title: Dynamics and oscillations}
+    - {id: variational, title: Variational principles and conservation laws}
 - id: physics.electromagnetism
   book: physics
   title: Electromagnetism

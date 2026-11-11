@@ -47,6 +47,19 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif "lagrangian" in lower and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            async for c in self._say(
+                "I will derive the equations of motion and look for symmetries. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "analyze_lagrangian", {"lagrangian": latex, "coordinates": names or ["x"]}
+                    )
+                ]
+            )
         elif "solve" in lower and latex:
             async for c in self._say("I will solve the equation and check the roots. "):
                 yield c
@@ -117,6 +130,11 @@ class ScriptedLLM:
                 )
             else:
                 text = "No handbook identity applies to this expression."
+        elif tool == "analyze_lagrangian":
+            text = (
+                "The card lists the equations of motion, the accelerations, and the constants of motion "
+                "that Minerva verified on those equations, and says which symmetries it did not search for."
+            )
         elif tool == "solve_polynomial":
             text = (
                 "The card shows the factorisation, whether a formula in radicals exists, the verified roots "

@@ -279,6 +279,12 @@ class _Parser:
             return _GREEK_NAME.get(tok.text, tok.text)
         raise ParseError("unsupported subscript")
 
+    def _frac_argument(self) -> sp.Expr:
+        """A braced group, or one token as in TeX (`\\frac12` is one half)."""
+        if self.cur.kind == "op" and self.cur.text == "{":
+            return self._braced()
+        return self.script()
+
     def _braced(self) -> sp.Expr:
         self.expect_op("{")
         value = self.expr()
@@ -295,13 +301,15 @@ class _Parser:
             return sp.I
         if name in {"mathrm", "operatorname"}:
             return self._mathrm(name)
+        if name in {"dot", "ddot"}:
+            return self._time_derivative(name)
         if name in _GREEK:
             return self._symbol_with_subscript_name(_GREEK_NAME.get(name, name))
         if name == "Gamma":
             return self._apply("gamma", None)
         if name == "frac" or name in {"dfrac", "tfrac"}:
-            num = self._braced()
-            den = self._braced()
+            num = self._frac_argument()
+            den = self._frac_argument()
             return self.b.divide(num, den)
         if name == "sqrt":
             index: sp.Expr | None = None
@@ -316,6 +324,20 @@ class _Parser:
         if name in {"int", "sum", "prod", "lim", "partial", "nabla", "infty", "frac"}:
             raise ParseError(f"\\{name} is not supported in this operation")
         raise ParseError(f"unsupported LaTeX command \\{name}")
+
+    def _time_derivative(self, name: str) -> sp.Expr:
+        """`\\dot{q}` and `\\ddot{q}` are the symbols `q_dot` and `q_ddot` (velocity, acceleration)."""
+        if self.accept_op("{"):
+            inner = self.expr()
+            self.expect_op("}")
+        else:
+            inner = self.atom()
+        if not isinstance(inner, sp.Symbol):
+            raise ParseError(f"\\{name} applies to a single symbol")
+        base = inner.name
+        if self.accept_op("_"):  # \\dot{\\theta}_1 is the velocity of theta_1
+            base = f"{base}_{self._subscript_text()}"
+        return self.b.symbol(f"{base}_{'dot' if name == 'dot' else 'ddot'}")
 
     def _symbol_with_subscript_name(self, name: str) -> sp.Expr:
         return self._symbol_with_subscript(name)

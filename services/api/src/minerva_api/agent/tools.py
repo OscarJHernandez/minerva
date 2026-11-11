@@ -77,6 +77,20 @@ class SolveArgs(BaseModel):
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class LagrangianArgs(BaseModel):
+    lagrangian: str = Field(
+        max_length=MAX_INPUT,
+        description=r"L(q, qdot, t) in LaTeX, using \dot{q} for velocities, e.g. \frac12 m\dot{x}^2 - \frac12 k x^2",
+    )
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=8,
+        description="Names of the generalised coordinates, e.g. ['r', 'theta']",
+    )
+    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
 class SearchArgs(BaseModel):
     query: str = Field(max_length=200, description="Words describing the formula or method")
     chapter: str | None = Field(default=None, max_length=64)
@@ -219,6 +233,49 @@ def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known)
 
 
+def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.analyze_lagrangian(
+        args.lagrangian, args.coordinates, args.time, args.assumptions
+    )
+    methods = (
+        ctx.kb.search(SearchQuery(features=report.features, chapter="physics.mechanics", limit=8))
+        if report.features
+        else []
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="analyze_lagrangian",
+        type="lagrangian",
+        title="Lagrangian",
+        data={"report": report.model_dump(mode="json"), "methods": method_data},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    for e in report.equations:
+        lines.append(f"equation of motion ({e.coordinate}): ${e.latex}$")
+        known.append(e.latex)
+    for m in report.momenta:
+        lines.append(f"momentum: ${m.latex}$")
+        known.append(m.latex)
+    for a in report.accelerations:
+        lines.append(f"acceleration: ${a.latex}$")
+        known.append(a.latex)
+    for c in report.conserved:
+        flag = "verified on the equations of motion" if c.verified else "NOT verified"
+        lines.append(f"conserved ({c.kind}, {flag}): {c.name}: ${c.expression_latex}$; {c.reason}")
+        known.append(c.expression_latex)
+    lines.extend(f"tested, not found: {t}" for t in report.tested)
+    lines.extend(f"note: {n}" for n in report.notes)
+    if method_data:
+        lines.append(
+            "handbook methods: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data)
+    return ToolOutput(card, "\n".join(lines), known)
+
+
 def _entry_card_data(ctx: ToolContext, entry_ids: list[str]) -> list[dict[str, Any]]:
     out = []
     for entry_id in entry_ids:
@@ -312,6 +369,14 @@ TOOLS: dict[str, Tool] = {
             "roots, and suggests handbook methods. Not for non-polynomial equations.",
             SolveArgs,
             run_solve,
+        ),
+        Tool(
+            "analyze_lagrangian",
+            "Given a Lagrangian and its generalised coordinates, derive the Euler-Lagrange equations, "
+            "conjugate momenta and accelerations, and find verified constants of motion (cyclic "
+            "coordinates, energy, rotations). States which symmetries were not searched for.",
+            LagrangianArgs,
+            run_lagrangian,
         ),
         Tool(
             "find_identities",

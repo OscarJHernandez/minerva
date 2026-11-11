@@ -30,6 +30,10 @@ const EXAMPLES = [
   { title: "Look up a formula", text: "What is the Gaussian integral formula?" },
   { title: "Be careful with roots", text: "Simplify $\\sqrt{x^2}$" },
   {
+    title: "Equations of motion",
+    text: "Find the equations of motion and conserved quantities of the Lagrangian $\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}$",
+  },
+  {
     title: "Solve an equation",
     text: "Solve $x^5 - x - 1 = 0$ and tell me if there is a closed formula",
   },
@@ -42,6 +46,7 @@ const TOOL_LABEL: Record<string, string> = {
   get_entry: "Reading a handbook entry",
   tensor_canonicalize: "Canonicalizing the tensor expression",
   solve_polynomial: "Solving and verifying the roots",
+  analyze_lagrangian: "Deriving equations of motion and checking symmetries",
 };
 
 type PendingItem = { kind: "text"; text: string } | { kind: "card"; card: Card };

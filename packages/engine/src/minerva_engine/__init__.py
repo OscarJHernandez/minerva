@@ -2,6 +2,7 @@
 
 from .claims import ClaimCheck, check_claim, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
+from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
 from .models import (
     Applicability,
@@ -29,6 +30,7 @@ __all__ = [
     "Engine",
     "ExpressionInput",
     "IdentitiesResult",
+    "LagrangianReport",
     "LimitError",
     "Limits",
     "MinervaMathError",

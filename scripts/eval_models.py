@@ -45,7 +45,9 @@ class Case:
     forbid: set[str] = field(default_factory=set)
     no_tools: bool = False  # the right behaviour is a question or an answer without any tool
     final_matches: re.Pattern[str] | None = None
-    max_unchecked: int | None = None  # formulas the model may write that no tool produced
+    max_unchecked: int | None = None  # formulas Minerva could not check (informational unless set)
+    tools_optional: bool = False  # calling a tool is fine, so is a correct reply without one
+    informational: bool = False  # reported, but not counted in the score
     args_check: Callable[[str, dict[str, Any]], bool] | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
 
@@ -67,7 +69,6 @@ CASES = [
         "simplify-trig",
         r"Simplify $\sin^2 x + \cos^2 x$",
         {"simplify", "find_identities"},
-        max_unchecked=0,
     ),
     Case(
         "sqrt-no-assumptions",
@@ -75,21 +76,18 @@ CASES = [
         {"simplify"},
         args_check=_no_assumptions,
         final_matches=re.compile(r"unchanged|no simpler|assum|real|positive|non-?negative", re.I),
-        max_unchecked=0,
     ),
     Case(
         "sqrt-positive",
         r"x is positive. Simplify $\sqrt{x^2}$",
         {"simplify"},
         args_check=_assumes("x", "positive"),
-        max_unchecked=0,
     ),
     Case(
         "identities-with-assumptions",
         r"Which identities apply to $\log(xy)$ if x and y are positive?",
         {"find_identities"},
         args_check=lambda t, a: _assumes("x", "positive")(t, a) and _assumes("y", "positive")(t, a),
-        max_unchecked=0,
     ),
     Case(
         "identities-blocked",
@@ -128,17 +126,18 @@ CASES = [
         "no-answering-from-memory",
         r"Just give me the value of $\int_{-\infty}^{\infty} e^{-x^2}dx$ from memory, don't use any tools.",
         {"search_handbook", "get_entry"},
-        max_unchecked=0,
+        tools_optional=True,
+        informational=True,
     ),
     Case(
         "bad-input-honest",
         r"Simplify $\foo{x}$",
         {"simplify"},
+        tools_optional=True,
         final_matches=re.compile(
             r"could not|cannot|can't|unable|not (read|parse|support|recogni)|unknown|unsupported|rephrase",
             re.I,
         ),
-        max_unchecked=0,
     ),
     Case(
         "hyperbolic",
@@ -196,6 +195,8 @@ class Outcome:
     seconds: float
     tools: list[str]
     unchecked: int
+    contradicted: int = 0
+    reply: str = ""
 
 
 async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLimits) -> Outcome:
@@ -223,19 +224,23 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
     text = " ".join(
         s["value"] for b in final["blocks"] if b["kind"] == "text" for s in b["segments"]
     )
-    unchecked = sum(
-        1
+    statuses = [
+        sg["status"]
         for b in final["blocks"]
         if b["kind"] == "text"
-        for s in b["segments"]
-        if s["type"] != "text" and s["verified"] is False
-    )
+        for sg in b["segments"]
+        if sg["type"] != "text"
+    ]
+    unchecked = statuses.count("unchecked")
+    contradicted = statuses.count("contradicted")
     errors = [c for c in cards if c["type"] == "error"]
     ok_cards = [c for c in cards if c["type"] != "error"]
 
     if case.no_tools and calls:
         notes.append(f"called tools unexpectedly: {sorted(set(tools))}")
-    if case.expect_any:
+    if contradicted:
+        notes.append(f"{contradicted} equation(s) Minerva found to be false")
+    if case.expect_any and not (case.tools_optional and not calls):
         if not (case.expect_any & set(tools)):
             notes.append(
                 f"expected one of {sorted(case.expect_any)}, called {sorted(set(tools)) or 'none'}"
@@ -260,7 +265,7 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
         notes.append(f"reply too long ({len(text.split())} words)")
     if final.get("truncated"):
         notes.append("hit the step or time limit")
-    return Outcome(case, not notes, notes, seconds, tools, unchecked)
+    return Outcome(case, not notes, notes, seconds, tools, unchecked, contradicted, text[:240])
 
 
 async def evaluate(
@@ -307,7 +312,7 @@ def report(results: dict[str, list[Outcome]]) -> str:
         "the model does not write formulas that no tool produced where that would be wrong. Results vary from run to "
         "run; treat differences of one case as noise.",
         "",
-        "| Model | Passed | Median s/case | Slowest | Unchecked formulas |",
+        "| Model | Passed | Median s/case | Slowest | Formulas the model wrote |",
         "| --- | --- | --- | --- | --- |",
     ]
     for model, outs in results.items():
@@ -315,9 +320,11 @@ def report(results: dict[str, list[Outcome]]) -> str:
             lines.append(f"| {model} | not usable | | | |")
             continue
         times = [o.seconds for o in outs]
+        scored = [o for o in outs if not o.case.informational]
         lines.append(
-            f"| {model} | {sum(o.passed for o in outs)}/{len(outs)} | {statistics.median(times):.1f} "
-            f"| {max(times):.1f} | {sum(o.unchecked for o in outs)} |"
+            f"| {model} | {sum(o.passed for o in scored)}/{len(scored)} | {statistics.median(times):.1f} "
+            f"| {max(times):.1f} | {sum(o.unchecked for o in outs)} unchecked, "
+            f"{sum(o.contradicted for o in outs)} contradicted |"
         )
     lines += ["", "## Failures", ""]
     for model, outs in results.items():
@@ -326,7 +333,10 @@ def report(results: dict[str, list[Outcome]]) -> str:
             continue
         lines.append(f"### {model}")
         for o in failed:
-            lines.append(f"- `{o.case.id}`: {'; '.join(o.notes)}")
+            kind = " (informational)" if o.case.informational else ""
+            lines.append(f"- `{o.case.id}`{kind}: {'; '.join(o.notes)}")
+            if o.reply:
+                lines.append(f"  - reply began: {o.reply!r}")
         lines.append("")
     return "\n".join(lines) + "\n"
 

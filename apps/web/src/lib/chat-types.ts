@@ -1,5 +1,35 @@
 import type { EntrySummary, IdentitiesResult, SimplifyResult, Status } from "./types";
 
+export interface LagrangianReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  parameters: string[];
+  time_dependent: boolean;
+  equations: { coordinate: string; latex: string }[];
+  momenta: { coordinate: string; latex: string }[];
+  accelerations: { coordinate: string; latex: string }[];
+  conserved: {
+    name: string;
+    kind: "cyclic" | "energy" | "rotation";
+    expression_latex: string;
+    reason: string;
+    verified: boolean;
+    verification: {
+      symbolic_zero: boolean;
+      numeric_points_checked: number;
+      numeric_points_agreed: number;
+      passed: boolean;
+      note: string;
+    } | null;
+  }[];
+  tested: string[];
+  features: string[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
 export interface SolveReport {
   status: Status;
   equation_latex: string | null;
@@ -72,6 +102,13 @@ export type Card =
       type: "solve";
       title: string;
       data: { report: SolveReport; methods: EntrySummary[] };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "lagrangian";
+      title: string;
+      data: { report: LagrangianReport; methods: EntrySummary[] };
     }
   | { id: string; tool: string; type: "error"; title: string; data: { message: string } };
 

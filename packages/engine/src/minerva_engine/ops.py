@@ -108,6 +108,20 @@ def op_solve(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- lagrangian ------------------------------------------------------------------------
+def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
+    from .lagrangian import analyze_lagrangian
+
+    report = analyze_lagrangian(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- claims written by the language model --------------------------------------------
 def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
@@ -331,5 +345,6 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "features": op_features,
     "check_claims": op_check_claims,
     "solve": op_solve,
+    "lagrangian": op_lagrangian,
     "tensor_canonicalize": op_tensor_canonicalize,
 }

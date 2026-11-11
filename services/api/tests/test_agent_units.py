@@ -165,6 +165,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
+        "analyze_lagrangian",
     }
     for tool in TOOLS.values():
         assert tool.schema()["function"]["parameters"]["type"] == "object"
@@ -257,3 +258,23 @@ def test_solve_tool_returns_a_report_card_and_retrieves_methods(ctx: ToolContext
     bad = execute("solve_polynomial", {"equation": r"\sin x = x"}, ctx)
     assert bad.card.data["report"]["status"] == "unsupported"
     assert "method.poly.newton" in [m["id"] for m in bad.card.data["methods"]]
+
+
+def test_lagrangian_tool_returns_equations_constants_and_methods(ctx: ToolContext) -> None:
+    out = execute(
+        "analyze_lagrangian",
+        {
+            "lagrangian": r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}",
+            "coordinates": ["r", "theta"],
+        },
+        ctx,
+    )
+    assert out.card.type == "lagrangian"
+    report = out.card.data["report"]
+    assert report["status"] == "ok" and len(report["equations"]) == 2
+    assert {c["kind"] for c in report["conserved"]} == {"cyclic", "energy"}
+    ids = [m["id"] for m in out.card.data["methods"]]
+    assert "method.mech.euler_lagrange" in ids and "method.mech.cyclic_coordinate" in ids
+    assert "conserved (cyclic, verified on the equations of motion)" in out.for_model
+    bad = execute("analyze_lagrangian", {"lagrangian": "x", "coordinates": []}, ctx)
+    assert bad.card.type == "error"

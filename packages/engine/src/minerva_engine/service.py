@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from .claims import ClaimCheck
+from .lagrangian import LagrangianReport
 from .models import (
     ExpressionInput,
     IdentitiesResult,
@@ -115,5 +116,29 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return SolveReport(status=status, message=message, duration_ms=ms)
         report = SolveReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def analyze_lagrangian(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+    ) -> LagrangianReport:
+        """Equations of motion and verified constants of motion of a Lagrangian (LaTeX), sandboxed."""
+        outcome, ms = self._run(
+            "lagrangian",
+            {
+                "lagrangian": lagrangian,
+                "coordinates": coordinates,
+                "time": time,
+                "assumptions": assumptions or {},
+            },
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return LagrangianReport(status=status, message=message, duration_ms=ms)
+        report = LagrangianReport(**outcome.value)
         report.duration_ms = ms
         return report
