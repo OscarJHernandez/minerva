@@ -1,5 +1,5 @@
-import { Workspace } from "@/components/workspace";
+import { ChatApp } from "@/components/chat/chat-app";
 
 export default function Page() {
-  return <Workspace />;
+  return <ChatApp />;
 }

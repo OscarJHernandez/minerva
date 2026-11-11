@@ -21,7 +21,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(target);
   }
 
-  if (pathname === "/" && !request.cookies.has(SESSION_COOKIE)) {
+  if (
+    (pathname === "/" || pathname.startsWith("/workbench")) &&
+    !request.cookies.has(SESSION_COOKIE)
+  ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

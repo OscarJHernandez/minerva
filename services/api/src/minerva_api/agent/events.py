@@ -36,9 +36,16 @@ class TraceStep(BaseModel):
     for_model: str
 
 
+class Block(BaseModel):
+    """One item of an assistant turn, in the order it happened: prose, or a tool result card."""
+
+    kind: Literal["text", "card"]
+    segments: list[Segment] = Field(default_factory=list)  # kind == "text"
+    card: Card | None = None  # kind == "card"
+
+
 class AssistantMessage(BaseModel):
     text: str  # raw model text, used as conversation history
-    segments: list[Segment]
-    cards: list[Card]
+    blocks: list[Block]
     trace: list[TraceStep]
     truncated: bool = False  # the step or time limit ended the turn early

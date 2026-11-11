@@ -25,7 +25,7 @@ describe("IdentitiesPanel", () => {
     );
     expect(screen.getByRole("heading", { name: /Applicable/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Needs assumptions/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Related, not applicable/ })).toBeInTheDocument();
+    expect(screen.getByText(/Related, not applicable/)).toBeInTheDocument(); // collapsed group
     expect(screen.getByText(/Rewritten expression, verified/)).toBeInTheDocument();
     expect(screen.getByText(/not applied: these conditions cannot be shown/)).toBeInTheDocument();
     const items = screen.getAllByRole("listitem");

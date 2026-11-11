@@ -67,7 +67,14 @@ class Calculation(Base):
 
 def make_engine(url: str) -> Engine:
     if url.startswith("sqlite"):
-        return create_engine(url, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+        if ":memory:" in url:
+            # One shared connection keeps the in-memory database alive; used by tests, which issue
+            # requests one at a time.
+            return create_engine(
+                url, connect_args={"check_same_thread": False}, poolclass=StaticPool
+            )
+        # A file database gets a normal pool: sharing one connection across threads corrupts requests.
+        return create_engine(url, connect_args={"check_same_thread": False})
     return create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=5)
 
 

@@ -41,7 +41,7 @@ export function UserMenu() {
       <span className="hidden text-muted sm:inline">{user.email}</span>
       <button
         type="button"
-        className="rounded border border-rule px-2.5 py-1 hover:bg-sunk"
+        className="shrink-0 whitespace-nowrap rounded border border-rule px-2 py-1 text-[13px] hover:bg-sunk sm:px-2.5 sm:text-sm"
         onClick={async () => {
           await api.logout().catch(() => undefined);
           setUser(null);

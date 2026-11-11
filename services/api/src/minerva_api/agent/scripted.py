@@ -47,6 +47,13 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif "solve" in lower:
+            async for c in self._say(
+                "I cannot solve equations yet; that tool is not available. I can look for related "
+                "methods in the handbook. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("search_handbook", {"query": "polynomial roots"})])
         elif "identit" in lower or "split" in lower:
             args: dict[str, Any] = {"latex": latex or "\\log(xy)"}
             if "positive" in lower or not latex:
@@ -66,13 +73,6 @@ class ScriptedLLM:
             async for c in self._say("Let me search the handbook. "):
                 yield c
             yield Chunk(tool_calls=[ToolCall("search_handbook", {"query": user[:100]})])
-        elif "solve" in lower:
-            async for c in self._say(
-                "I cannot solve equations yet; that tool is not available. I can look for related "
-                "methods in the handbook. "
-            ):
-                yield c
-            yield Chunk(tool_calls=[ToolCall("search_handbook", {"query": "polynomial roots"})])
         else:
             async for c in self._say(
                 "What would you like to do with it: simplify an expression, look for applicable "
@@ -86,19 +86,21 @@ class ScriptedLLM:
         content = str(messages[-1]["content"])
         if tool == "simplify":
             result = re.search(r"result=\$([^$]*)\$", content)
-            status = re.search(r"status=(\w+)", content)
-            if status and status.group(1) == "ok" and result:
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok" and result:
                 text = (
                     f"**What I understood:** you want a simpler form.\n\n**Result:** $${result.group(1)}$$\n\n"
                     "Minerva verified it numerically and symbolically (details in the card). "
                     "Do you want me to look for the identities behind it?"
                 )
-            else:
+            elif status == "unchanged":
                 text = (
-                    "Nothing simpler was found, or the result could not be verified, so I am "
-                    "not showing a rewrite. If some symbols are known to be positive or real, tell me "
-                    "and I will try again with those assumptions."
+                    "Nothing simpler was found, so the expression is returned unchanged. If some "
+                    "symbols are known to be positive or real, tell me and I will try again."
                 )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
         elif tool == "find_identities":
             applicable = [ln for ln in content.splitlines() if ": applicable" in ln]
             blocked = [ln for ln in content.splitlines() if "conditions_not_satisfied" in ln]

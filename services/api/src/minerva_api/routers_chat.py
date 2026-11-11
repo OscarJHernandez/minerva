@@ -154,6 +154,12 @@ def _history(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], set[str
     return out, known
 
 
+def _title(text: str) -> str:
+    """First words of the first message. Formulas keep their `$`, so the list can typeset them."""
+    short = re.sub(r"\s+", " ", text).strip()[:60]
+    return short[: short.rfind("$")] if short.count("$") % 2 else short
+
+
 def _sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -189,9 +195,7 @@ async def send_message(
     history.append({"role": "user", "content": body.content})
 
     if not previous:
-        conversation.title = (
-            re.sub(r"\s+", " ", body.content.replace("$", "")).strip()[:60] or conversation.title
-        )
+        conversation.title = _title(body.content) or conversation.title
     db.add(
         ChatMessage(conversation_id=conversation.id, role="user", content={"text": body.content})
     )

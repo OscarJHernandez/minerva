@@ -21,7 +21,7 @@ export default async function ReferencePage({
   ] as const;
 
   return (
-    <div className="pt-8">
+    <div className="pb-16 pt-8">
       <h1 className="font-serif text-3xl">Reference</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         A growing handbook of identities, tables and physical equations. Each entry shows how it was

@@ -29,7 +29,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <div className="mx-auto mt-16 max-w-sm">
+    <div className="mx-auto mt-16 max-w-sm pb-16">
       <h1 className="font-serif text-3xl">{isRegister ? "Create an account" : "Log in"}</h1>
       <p className="mt-2 text-sm text-muted">
         {isRegister

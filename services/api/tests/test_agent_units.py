@@ -59,11 +59,19 @@ def final(events: list[dict[str, Any]]) -> dict[str, Any]:
     return next(e["data"] for e in events if e["event"] == "message")
 
 
+def cards_of(message: dict[str, Any]) -> list[dict[str, Any]]:
+    return [b["card"] for b in message["blocks"] if b["kind"] == "card"]
+
+
+def segments_of(message: dict[str, Any]) -> list[dict[str, Any]]:
+    return [s for b in message["blocks"] if b["kind"] == "text" for s in b["segments"]]
+
+
 def test_text_only_answer_has_no_cards(ctx: ToolContext) -> None:
     llm = FakeLLM([[Chunk(text="Which variables are positive?")]])
     events = collect(llm, ctx, [{"role": "user", "content": "help"}])
     msg = final(events)
-    assert msg["cards"] == [] and msg["text"] == "Which variables are positive?"
+    assert cards_of(msg) == [] and msg["text"] == "Which variables are positive?"
     assert [e["event"] for e in events] == ["text", "message"]
 
 
@@ -76,9 +84,9 @@ def test_tool_result_is_a_card_and_formula_is_verified(ctx: ToolContext) -> None
     )
     events = collect(llm, ctx, [{"role": "user", "content": "simplify"}])
     msg = final(events)
-    assert msg["cards"][0]["type"] == "simplify"
-    assert msg["cards"][0]["data"]["status"] == "ok"
-    math = [s for s in msg["segments"] if s["type"] == "math"]
+    assert cards_of(msg)[0]["type"] == "simplify"
+    assert cards_of(msg)[0]["data"]["status"] == "ok"
+    math = [s for s in segments_of(msg) if s["type"] == "math"]
     assert math and math[0]["verified"] is True
     # the model saw the tool's compact result, not the raw card
     assert any(m["role"] == "tool" and "result=$x + 1$" in m["content"] for m in llm.seen[1])
@@ -87,7 +95,7 @@ def test_tool_result_is_a_card_and_formula_is_verified(ctx: ToolContext) -> None
 def test_formula_not_from_a_tool_is_marked_unverified(ctx: ToolContext) -> None:
     llm = FakeLLM([[Chunk(text=r"It equals $\frac{\sqrt{\pi}}{2}$ and also $$x^2+1$$.")]])
     msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
-    formulas = [s for s in msg["segments"] if s["type"] != "text"]
+    formulas = [s for s in segments_of(msg) if s["type"] != "text"]
     assert len(formulas) == 2 and all(s["verified"] is False for s in formulas)
 
 
@@ -98,7 +106,7 @@ def test_step_cap_stops_a_looping_model(ctx: ToolContext) -> None:
         collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_steps=3))
     )
     assert msg["truncated"] is True
-    assert len(msg["cards"]) == 3
+    assert len(cards_of(msg)) == 3
     assert "limit" in msg["text"]
 
 
@@ -127,7 +135,7 @@ def test_unknown_tool_and_bad_arguments_become_errors_the_model_can_read(ctx: To
         ]
     )
     msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
-    assert [c["type"] for c in msg["cards"]] == ["error"] * 4
+    assert [c["type"] for c in cards_of(msg)] == ["error"] * 4
     tool_msgs = [m["content"] for m in llm.seen[1] if m["role"] == "tool"]
     assert tool_msgs[0].startswith("error: unknown tool")
     assert all(t.startswith("error:") for t in tool_msgs)
@@ -184,3 +192,17 @@ def test_segments_parse_all_math_delimiters() -> None:
 
 def test_normalize_ignores_spacing_and_size_commands() -> None:
     assert normalize(r"\left( a + b \right)^{2}") == normalize("(a+b)^2")
+
+
+def test_prose_and_cards_keep_the_order_they_happened_in(ctx: ToolContext) -> None:
+    llm = FakeLLM(
+        [
+            [
+                Chunk(text="Let me check. "),
+                Chunk(tool_calls=[ToolCall("simplify", {"latex": "x+x"})]),
+            ],
+            [Chunk(text="Done: $2x$.")],
+        ]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
+    assert [b["kind"] for b in msg["blocks"]] == ["text", "card", "text"]

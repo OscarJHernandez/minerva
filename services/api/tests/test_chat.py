@@ -7,6 +7,14 @@ from fastapi.testclient import TestClient
 from .conftest import PASSWORD, build_app, register
 
 
+def cards_of(message: dict) -> list[dict]:  # type: ignore[type-arg]
+    return [b["card"] for b in message["blocks"] if b["kind"] == "card"]
+
+
+def segments_of(message: dict) -> list[dict]:  # type: ignore[type-arg]
+    return [s for b in message["blocks"] if b["kind"] == "text" for s in b["segments"]]
+
+
 def sse(client: TestClient, conversation_id: str, content: str) -> list[tuple[str, dict]]:  # type: ignore[type-arg]
     events: list[tuple[str, dict]] = []  # type: ignore[type-arg]
     with client.stream(
@@ -56,9 +64,9 @@ def test_streamed_turn_with_a_tool_card_and_verified_formula(
     assert names[0] == "text" and "tool_call" in names and "card" in names
     assert names[-2:] == ["message", "done"]
     message = next(d for e, d in events if e == "message")
-    assert message["cards"][0]["type"] == "simplify"
-    assert message["cards"][0]["data"]["result_text"] == "x + 1"
-    formulas = [s for s in message["segments"] if s["type"] == "display_math"]
+    assert cards_of(message)[0]["type"] == "simplify"
+    assert cards_of(message)[0]["data"]["result_text"] == "x + 1"
+    formulas = [s for s in segments_of(message) if s["type"] == "display_math"]
     assert formulas and formulas[0]["value"] == "x + 1" and formulas[0]["verified"] is True
     detail = client.get(f"/v1/chat/conversations/{cid}").json()
     assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
@@ -69,8 +77,8 @@ def test_model_written_formula_is_marked_unchecked(chat_client: tuple[TestClient
     client, cid = chat_client
     events = sse(client, cid, "just tell me the answer without tools")
     message = next(d for e, d in events if e == "message")
-    assert message["cards"] == []
-    formulas = [s for s in message["segments"] if s["type"] == "math"]
+    assert cards_of(message) == []
+    formulas = [s for s in segments_of(message) if s["type"] == "math"]
     assert formulas and all(s["verified"] is False for s in formulas)
 
 

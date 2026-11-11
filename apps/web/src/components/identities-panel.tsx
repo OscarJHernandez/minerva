@@ -5,21 +5,45 @@ import type { IdentitiesResult, IdentityMatch } from "@/lib/types";
 import { EntryCard } from "./entry-card";
 import { StatusPill } from "./result-panel";
 
-function Group({ title, hint, items }: { title: string; hint: string; items: IdentityMatch[] }) {
+function Group({
+  title,
+  hint,
+  items,
+  collapsed = false,
+}: {
+  title: string;
+  hint: string;
+  items: IdentityMatch[];
+  collapsed?: boolean;
+}) {
   if (items.length === 0) return null;
+  const body = (
+    <div className="space-y-3">
+      {items.map((m) => (
+        <EntryCard key={m.entry.id} entry={m.entry}>
+          <Detail match={m} />
+        </EntryCard>
+      ))}
+    </div>
+  );
+  if (collapsed) {
+    return (
+      <details className="mt-5">
+        <summary className="cursor-pointer text-sm font-medium">
+          {title} <span className="font-normal text-muted">({items.length}): show</span>
+        </summary>
+        <p className="mb-2 mt-1 text-xs text-muted">{hint}</p>
+        {body}
+      </details>
+    );
+  }
   return (
     <div className="mt-5">
       <h3 className="text-sm font-medium">
         {title} <span className="font-normal text-muted">({items.length})</span>
       </h3>
       <p className="mb-2 text-xs text-muted">{hint}</p>
-      <div className="space-y-3">
-        {items.map((m) => (
-          <EntryCard key={m.entry.id} entry={m.entry}>
-            <Detail match={m} />
-          </EntryCard>
-        ))}
-      </div>
+      {body}
     </div>
   );
 }
@@ -116,6 +140,7 @@ export function IdentitiesPanel({ result }: { result: IdentitiesResult }) {
         title="Related, not applicable"
         hint="Structurally similar entries that do not occur in this expression."
         items={related}
+        collapsed
       />
     </section>
   );

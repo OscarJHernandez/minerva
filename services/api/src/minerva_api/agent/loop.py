@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
 
-from .events import AssistantMessage, Card, TraceStep
+from .events import AssistantMessage, Block, Card, TraceStep
 from .llm import LLMClient, LLMError
 from .prompts import SYSTEM_PROMPT
 from .segments import split_segments
@@ -36,7 +36,7 @@ async def run_agent(
     started = time.monotonic()
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
     outputs: list[ToolOutput] = []
-    cards: list[Card] = []
+    order: list[str | Card] = []  # prose and cards in the order they happened
     trace: list[TraceStep] = []
     full_text: list[str] = []
     truncated = False
@@ -56,6 +56,7 @@ async def run_agent(
             text = "".join(step_text)
             if text:
                 full_text.append(text)
+                order.append(text)
             if not calls:
                 break
             messages.append(
@@ -76,7 +77,7 @@ async def run_agent(
                 output = await run_in_threadpool(execute, call.name, call.arguments, ctx)
                 output.card.id = call_id
                 outputs.append(output)
-                cards.append(output.card)
+                order.append(output.card)
                 trace.append(
                     TraceStep(
                         id=call_id,
@@ -103,8 +104,12 @@ async def run_agent(
     known = known_formulas(outputs) | (prior_known or set())
     final = AssistantMessage(
         text=raw,
-        segments=split_segments(raw, known),
-        cards=cards,
+        blocks=[
+            Block(kind="card", card=item)
+            if isinstance(item, Card)
+            else Block(kind="text", segments=split_segments(item, known))
+            for item in order
+        ],
         trace=trace,
         truncated=truncated,
     )

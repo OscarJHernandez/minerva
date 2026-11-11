@@ -19,7 +19,7 @@ export default async function EntryPage({ params }: { params: Params }) {
   if (!entry) notFound();
 
   return (
-    <article className="mx-auto max-w-3xl pt-8">
+    <article className="mx-auto max-w-3xl pb-16 pt-8">
       <Link
         href={`/reference?chapter=${entry.chapter}`}
         className="text-sm text-accent hover:underline"

@@ -113,7 +113,7 @@ export function Workspace() {
   }
 
   return (
-    <div className="grid gap-8 pt-8 lg:grid-cols-[1fr_17rem]">
+    <div className="grid gap-8 pb-16 pt-8 lg:grid-cols-[1fr_17rem]">
       <div className="min-w-0 space-y-6">
         <MathInput value={latex} onChange={setLatex} onSubmit={() => run("simplify")} />
 
