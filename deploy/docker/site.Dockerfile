@@ -16,7 +16,7 @@ ARG NEXT_PUBLIC_REPO_URL=https://github.com/OscarJHernandez/minerva
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL NEXT_PUBLIC_REPO_URL=$NEXT_PUBLIC_REPO_URL
 RUN pnpm --filter @minerva/site build
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 COPY deploy/docker/site.nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/site/out /usr/share/nginx/html
 EXPOSE 8080
