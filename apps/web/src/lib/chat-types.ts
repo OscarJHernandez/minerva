@@ -1,4 +1,32 @@
-import type { EntrySummary, IdentitiesResult, SimplifyResult } from "./types";
+import type { EntrySummary, IdentitiesResult, SimplifyResult, Status } from "./types";
+
+export interface SolveReport {
+  status: Status;
+  equation_latex: string | null;
+  variable: string | null;
+  degree: number | null;
+  symbolic_coefficients: boolean;
+  factors: {
+    factor_latex: string;
+    multiplicity: number;
+    degree: number;
+    radicals: "yes" | "no" | "undetermined";
+    radicals_reason: string;
+    exact_roots_latex: string[];
+  }[];
+  roots: { numeric: string; real: boolean; multiplicity: number; exact_latex: string | null }[];
+  verification: {
+    roots_substituted_back: boolean;
+    max_residual: string;
+    count_matches_degree: boolean;
+    vieta_holds: boolean;
+    exact_roots_match_numeric: boolean | null;
+  } | null;
+  features: string[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
 
 /**
  * Formulas only. from_tool: appears in a tool result or handbook entry of this conversation.
@@ -37,6 +65,13 @@ export type Card =
         result_latex: string | null;
         message: string;
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "solve";
+      title: string;
+      data: { report: SolveReport; methods: EntrySummary[] };
     }
   | { id: string; tool: string; type: "error"; title: string; data: { message: string } };
 

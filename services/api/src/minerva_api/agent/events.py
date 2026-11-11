@@ -24,7 +24,7 @@ class Card(BaseModel):
 
     id: str
     tool: str
-    type: Literal["simplify", "identities", "entries", "entry", "tensor", "error"]
+    type: Literal["simplify", "identities", "entries", "entry", "tensor", "solve", "error"]
     title: str
     data: dict[str, Any] = Field(default_factory=dict)
 

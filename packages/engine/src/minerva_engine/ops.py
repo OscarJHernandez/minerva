@@ -94,6 +94,20 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     ).model_dump(mode="json")
 
 
+# --- solve ----------------------------------------------------------------------------
+def op_solve(payload: dict[str, Any]) -> dict[str, Any]:
+    from .solve import solve_polynomial
+
+    limits = Limits(**payload["limits"])
+    report = solve_polynomial(
+        str(payload["equation"]),
+        payload.get("variable"),
+        payload.get("assumptions", {}),
+        limits,
+    )
+    return report.model_dump(mode="json")
+
+
 # --- claims written by the language model --------------------------------------------
 def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
@@ -316,5 +330,6 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "identities": op_identities,
     "features": op_features,
     "check_claims": op_check_claims,
+    "solve": op_solve,
     "tensor_canonicalize": op_tensor_canonicalize,
 }

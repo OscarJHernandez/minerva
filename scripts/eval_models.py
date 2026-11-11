@@ -249,15 +249,19 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
         notes.append("reply does not say what it should")
     if case.max_unchecked is not None and unchecked > case.max_unchecked:
         notes.append(f"{unchecked} unchecked formula(s) in the reply")
+    if re.search(r"</?think>|^\s*(okay|alright),? (let'?s|so)", text, re.IGNORECASE):
+        notes.append("reasoning leaked into the reply")
+    if len(text.split()) > 220:
+        notes.append(f"reply too long ({len(text.split())} words)")
     if final.get("truncated"):
         notes.append("hit the step or time limit")
     return Outcome(case, not notes, notes, seconds, tools, unchecked)
 
 
 async def evaluate(
-    base_url: str, model: str, ctx: ToolContext, timeout: float, think: bool
+    base_url: str, model: str, ctx: ToolContext, timeout: float, think: bool, strip: bool
 ) -> list[Outcome]:
-    llm = OllamaClient(base_url, model, timeout_seconds=timeout, think=think)
+    llm = OllamaClient(base_url, model, timeout_seconds=timeout, think=think, strip_thinking=strip)
     limits = AgentLimits(max_steps=6, max_seconds=timeout * 2)
     # Warm-up: loads the model so load time is not counted against the first case.
     try:
@@ -320,6 +324,7 @@ async def main() -> None:
     parser.add_argument("--models", required=True, help="comma-separated model names")
     parser.add_argument("--timeout", type=float, default=180.0, help="seconds per model call")
     parser.add_argument("--think", action="store_true", help="let reasoning models think first")
+    parser.add_argument("--strip-thinking", action="store_true", help="drop leaked reasoning")
     parser.add_argument("--out", help="write a markdown report to this path")
     args = parser.parse_args()
 
@@ -328,7 +333,9 @@ async def main() -> None:
     results: dict[str, list[Outcome]] = {}
     for model in [m.strip() for m in args.models.split(",") if m.strip()]:
         print(f"== {model}", flush=True)
-        results[model] = await evaluate(args.base_url, model, ctx, args.timeout, args.think)
+        results[model] = await evaluate(
+            args.base_url, model, ctx, args.timeout, args.think, args.strip_thinking
+        )
     text = report(results)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as handle:

@@ -34,12 +34,53 @@ class LLMClient(Protocol):
     ) -> AsyncIterator[Chunk]: ...
 
 
+class ThinkFilter:
+    """Drops reasoning that a model writes into its reply before a closing `</think>` tag.
+
+    Some reasoning models do this even when thinking is switched off. Text is held back until the tag
+    appears, or `limit` characters have passed without one (then it is treated as a normal reply), so
+    use it only for models known to leak, because it delays streaming.
+    """
+
+    def __init__(self, limit: int = 4000) -> None:
+        self._buffer = ""
+        self._done = False
+        self._limit = limit
+
+    def feed(self, text: str) -> str:
+        if self._done:
+            return text
+        self._buffer += text
+        if "</think>" in self._buffer:
+            self._done = True
+            out = self._buffer.split("</think>", 1)[1].lstrip()
+            self._buffer = ""
+            return out
+        if len(self._buffer) > self._limit:
+            self._done = True
+            out, self._buffer = self._buffer, ""
+            return out
+        return ""
+
+    def flush(self) -> str:
+        out, self._buffer, self._done = self._buffer, "", True
+        return "" if out.lstrip().startswith("<think>") else out
+
+
 class OllamaClient:
     """Streams `/api/chat` from an Ollama-compatible server (your own model host)."""
 
     def __init__(
-        self, base_url: str, model: str, timeout_seconds: float = 120.0, think: bool = False
+        self,
+        base_url: str,
+        model: str,
+        timeout_seconds: float = 120.0,
+        think: bool = False,
+        strip_thinking: bool = False,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
+        self.strip_thinking = strip_thinking
+        self._transport = transport
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.name = model
@@ -61,11 +102,14 @@ class OllamaClient:
         }
         try:
             async with (
-                httpx.AsyncClient(timeout=self._timeout, follow_redirects=False) as client,
+                httpx.AsyncClient(
+                    timeout=self._timeout, follow_redirects=False, transport=self._transport
+                ) as client,
                 client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response,
             ):
                 if response.status_code != 200:
                     raise LLMError(f"The model host answered with status {response.status_code}.")
+                filter_ = ThinkFilter() if self.strip_thinking else None
                 async for line in response.aiter_lines():
                     if not line.strip():
                         continue
@@ -82,8 +126,12 @@ class OllamaClient:
                         for c in message.get("tool_calls") or []
                     ]
                     text = message.get("content") or ""  # "thinking" is deliberately not forwarded
+                    if filter_ is not None:
+                        text = filter_.feed(text)
                     if text or calls:
                         yield Chunk(text=text, tool_calls=calls)
+                if filter_ is not None and (rest := filter_.flush()):
+                    yield Chunk(text=rest)
         except httpx.HTTPError as exc:
             raise LLMError("The model host is not reachable.") from exc
 

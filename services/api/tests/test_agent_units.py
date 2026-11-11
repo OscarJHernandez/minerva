@@ -164,6 +164,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "simplify",
         "find_identities",
         "tensor_canonicalize",
+        "solve_polynomial",
     }
     for tool in TOOLS.values():
         assert tool.schema()["function"]["parameters"]["type"] == "object"
@@ -241,3 +242,18 @@ def test_claims_inherit_the_assumptions_the_model_declared(ctx: ToolContext) -> 
     llm2 = FakeLLM([[Chunk(text=r"Always $\sqrt{x^2} = x$.")]])
     msg2 = final(collect(llm2, ctx, [{"role": "user", "content": "q"}]))
     assert next(s for s in segments_of(msg2) if s["type"] == "math")["status"] == "contradicted"
+
+
+def test_solve_tool_returns_a_report_card_and_retrieves_methods(ctx: ToolContext) -> None:
+    out = execute("solve_polynomial", {"equation": "x^5-x-1=0"}, ctx)
+    assert out.card.type == "solve"
+    report = out.card.data["report"]
+    assert report["status"] == "ok" and len(report["roots"]) == 5
+    ids = [m["id"] for m in out.card.data["methods"]]
+    assert "method.poly.abel_ruffini" in ids and "method.poly.newton" in ids
+    assert "radicals=no" in out.for_model and "method.poly.galois_criterion" in out.for_model
+    quad = execute("solve_polynomial", {"equation": "ax^2+bx+c=0", "variable": "x"}, ctx)
+    assert "method.poly.quadratic_formula" in [m["id"] for m in quad.card.data["methods"]]
+    bad = execute("solve_polynomial", {"equation": r"\sin x = x"}, ctx)
+    assert bad.card.data["report"]["status"] == "unsupported"
+    assert "method.poly.newton" in [m["id"] for m in bad.card.data["methods"]]

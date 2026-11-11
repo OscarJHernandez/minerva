@@ -6,6 +6,12 @@
   summary: Factorisation and expansion identities.
   sections:
     - {id: factoring, title: Factoring and expanding}
+- id: math.methods
+  book: mathematics
+  title: Solution methods
+  summary: Standard methods and theorems for solving equations, with the conditions under which they apply.
+  sections:
+    - {id: polynomial, title: Polynomial equations}
 - id: math.exp_log
   book: mathematics
   title: Exponentials and logarithms

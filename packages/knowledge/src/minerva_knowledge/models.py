@@ -22,6 +22,7 @@ EntryKind = Literal[
     "equation",
     "constant",
     "theorem",
+    "method",
 ]
 
 # How an entry is checked by the test suite and the build:
@@ -99,6 +100,18 @@ class SeriesCheck(BaseModel):
     params: dict[str, ParamRange] = Field(default_factory=dict)
 
 
+class RootFormulaCheck(BaseModel):
+    """A closed-form root formula: substituting each root into the polynomial must give zero."""
+
+    kind: Literal["root_formula"] = "root_formula"
+    polynomial: str
+    variable: str
+    roots: list[str]
+    index: str | None = None  # symbol used for branches such as k = 0, 1, 2
+    index_values: list[int] = Field(default_factory=lambda: [0])
+    params: dict[str, ParamRange] = Field(default_factory=dict)
+
+
 class TensorCheck(BaseModel):
     kind: Literal["tensor"] = "tensor"
     input: str
@@ -118,6 +131,7 @@ Check = Annotated[
     | AntiderivativeCheck
     | IntegralCheck
     | SeriesCheck
+    | RootFormulaCheck
     | TensorCheck
     | EquationCheck,
     Field(discriminator="kind"),
@@ -146,6 +160,8 @@ class Entry(BaseModel):
     rule: Rule | None = None
     check: Check | None = None
     symbols: list[SymbolDoc] = Field(default_factory=list)
+    # Problem features this method applies to (e.g. `poly:degree:5`); used to retrieve methods for a problem.
+    applies_to: list[str] = Field(default_factory=list)
     constant: ConstantValue | None = None
     notes: str = ""
 
@@ -173,7 +189,14 @@ class Entry(BaseModel):
             raise ValueError("entries without a rule need statement_latex")
         expected = {
             "symbolic": ("rule", "derivative", "antiderivative"),
-            "numeric": ("rule", "derivative", "antiderivative", "integral", "series"),
+            "numeric": (
+                "rule",
+                "derivative",
+                "antiderivative",
+                "integral",
+                "series",
+                "root_formula",
+            ),
             "structural": ("tensor",),
             "dimensional": ("equation",),
         }[v]
@@ -209,6 +232,7 @@ __all__ = [
     "IntegralCheck",
     "ParamRange",
     "Reference",
+    "RootFormulaCheck",
     "Rule",
     "RuleCondition",
     "Section",

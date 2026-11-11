@@ -20,6 +20,7 @@ from .models import (
 )
 from .ops import apply_rule, parse_expression, verify_rule
 from .service import Engine
+from .solve import SolveReport
 from .textparse import parse_text
 
 __all__ = [
@@ -36,6 +37,7 @@ __all__ = [
     "RuleApplication",
     "RuleCondition",
     "SimplifyResult",
+    "SolveReport",
     "Status",
     "TensorInput",
     "TensorResult",

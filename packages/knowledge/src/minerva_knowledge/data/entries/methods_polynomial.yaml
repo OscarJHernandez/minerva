@@ -1,0 +1,119 @@
+- id: method.poly.quadratic_formula
+  title: Quadratic formula
+  kind: method
+  chapter: math.methods
+  section: polynomial
+  verification: numeric
+  applies_to: ["poly:degree:2", "poly:quadratic"]
+  validity: "a ≠ 0. Real roots exactly when b² − 4ac ≥ 0; otherwise a complex-conjugate pair for real coefficients."
+  statement_latex: 'ax^2+bx+c=0 \;\Longrightarrow\; x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}'
+  check:
+    kind: root_formula
+    polynomial: "a*x**2 + b*x + c"
+    variable: x
+    roots: ["(-b + sqrt(b**2 - 4*a*c))/(2*a)", "(-b - sqrt(b**2 - 4*a*c))/(2*a)"]
+    params: {a: {min: 0.5, max: 2.0}, b: {min: -3.0, max: 3.0}, c: {min: -3.0, max: 3.0}}
+  keywords: [quadratic, discriminant, roots, polynomial, solve]
+- id: method.poly.trigonometric_cubic
+  title: Trigonometric solution of a cubic with three real roots
+  kind: method
+  chapter: math.methods
+  section: polynomial
+  verification: numeric
+  applies_to: ["poly:degree:3", "poly:casus-irreducibilis"]
+  validity: "Depressed cubic t³ + pt + q = 0 with 4p³ + 27q² < 0 (three distinct real roots); k = 0, 1, 2."
+  statement_latex: 't_k = 2\sqrt{-\tfrac{p}{3}}\cos\!\left(\tfrac13\arccos\!\left(\tfrac{3q}{2p}\sqrt{-\tfrac{3}{p}}\right)-\tfrac{2\pi k}{3}\right)'
+  notes: "Avoids the complex intermediate numbers of Cardano's formula (casus irreducibilis). Any cubic reduces to this form by x = t − b/(3a)."
+  check:
+    kind: root_formula
+    polynomial: "t**3 + p*t + q"
+    variable: t
+    index: k
+    index_values: [0, 1, 2]
+    roots: ["2*sqrt(-p/3)*cos(acos((3*q/(2*p))*sqrt(-3/p))/3 - 2*pi*k/3)"]
+    params: {p: {min: -3.0, max: -1.0}, q: {min: -0.3, max: 0.3}}
+  reference: {source: DLMF, locator: "§1.11(iii)", url: "https://dlmf.nist.gov/1.11"}
+  keywords: [cubic, trigonometric, three real roots, casus irreducibilis, cardano]
+- id: method.poly.cardano
+  title: Cardano's formula for the cubic
+  kind: method
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly:degree:3", "poly:general-formula-exists"]
+  validity: "Depressed cubic t³ + pt + q = 0; cube roots chosen so that uv = −p/3. May pass through complex numbers even when all roots are real."
+  statement_latex: 't = u + v,\quad u^3,v^3 = -\frac{q}{2}\pm\sqrt{\frac{q^2}{4}+\frac{p^3}{27}},\quad uv=-\frac{p}{3}'
+  keywords: [cardano, cubic, depressed cubic, radicals, solve]
+- id: method.poly.ferrari
+  title: Ferrari's method for the quartic
+  kind: method
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly:degree:4", "poly:general-formula-exists"]
+  validity: "Reduce to a depressed quartic, solve a resolvent cubic, then two quadratics."
+  statement_latex: 'x^4+px^2+qx+r=0 \;\to\; \text{resolvent cubic } m^3+pm^2+\left(\tfrac{p^2}{4}-r\right)m-\tfrac{q^2}{8}=0'
+  keywords: [ferrari, quartic, resolvent cubic, radicals, solve]
+- id: method.poly.abel_ruffini
+  title: Abel–Ruffini theorem
+  kind: theorem
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly:no-general-formula", "poly:not-solvable-by-radicals", "poly:degree:5", "poly:degree:6", "poly:degree:7"]
+  validity: "General polynomial equations of degree five or higher over the rationals."
+  statement_latex: '\text{No general formula in radicals exists for polynomial equations of degree}\ge 5'
+  notes: "Specific equations of degree five or higher may still be solvable by radicals (see the Galois criterion); the theorem says no formula works for all of them."
+  keywords: [abel, ruffini, quintic, radicals, impossibility, solve]
+- id: method.poly.galois_criterion
+  title: Galois's criterion for solvability by radicals
+  kind: theorem
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly:degree:5", "poly:degree:6", "poly:not-solvable-by-radicals", "poly:numeric-roots"]
+  validity: "Irreducible polynomial over the rationals."
+  statement_latex: '\text{The roots of } f \text{ are expressible by radicals} \iff \operatorname{Gal}(f) \text{ is a solvable group}'
+  notes: "For degree 5 the Galois group of an irreducible polynomial is a transitive subgroup of S5; S5 and A5 are not solvable."
+  keywords: [galois, solvable group, radicals, quintic, criterion]
+- id: method.poly.rational_root_theorem
+  title: Rational root theorem
+  kind: theorem
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly", "poly:numeric-roots"]
+  validity: "Polynomial with integer coefficients a_n x^n + … + a_0, a_0 a_n ≠ 0."
+  statement_latex: '\tfrac{p}{q}\text{ in lowest terms is a root} \;\Longrightarrow\; p \mid a_0 \ \text{and}\ q \mid a_n'
+  keywords: [rational root, integer coefficients, factor, candidates]
+- id: method.poly.vieta
+  title: Vieta's relations
+  kind: theorem
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly", "poly:numeric-roots"]
+  validity: "Polynomial a_n x^n + a_{n−1} x^{n−1} + … + a_0 with roots x_1, …, x_n counted with multiplicity."
+  statement_latex: 'x_1+\dots+x_n=-\frac{a_{n-1}}{a_n},\qquad x_1x_2\cdots x_n=(-1)^n\frac{a_0}{a_n}'
+  notes: "Minerva uses the first and last relation to verify the roots it reports."
+  keywords: [vieta, sum of roots, product of roots, coefficients]
+- id: method.poly.newton
+  title: Newton's method for roots
+  kind: method
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly:no-general-formula", "poly:not-solvable-by-radicals", "poly:numeric-roots", "solve:not-polynomial"]
+  validity: "Differentiable f with f'(x_n) ≠ 0 near the root; converges quadratically from a close enough start. For all roots of a polynomial use the companion matrix or Durand–Kerner instead."
+  statement_latex: 'x_{n+1}=x_n-\frac{f(x_n)}{f^{\prime}(x_n)}'
+  keywords: [newton, raphson, numerical, root finding, iteration]
+- id: method.poly.companion_matrix
+  title: Roots as eigenvalues of the companion matrix
+  kind: method
+  chapter: math.methods
+  section: polynomial
+  verification: stated
+  applies_to: ["poly:no-general-formula", "poly:not-solvable-by-radicals", "poly:numeric-roots"]
+  validity: "Any polynomial with nonzero leading coefficient; accuracy depends on conditioning."
+  statement_latex: 'C=\begin{pmatrix}0&&&-c_0\\1&0&&-c_1\\&\ddots&&\vdots\\&&1&-c_{n-1}\end{pmatrix},\quad \det(xI-C)=x^n+c_{n-1}x^{n-1}+\dots+c_0'
+  keywords: [companion matrix, eigenvalues, numerical, all roots]

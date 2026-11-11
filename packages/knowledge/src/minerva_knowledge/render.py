@@ -19,10 +19,11 @@ def statement_latex(entry: Entry) -> str:
 
 
 def rule_features(entry: Entry) -> set[str]:
-    """Structural features of a rule's left-hand side (empty for non-rule entries)."""
-    if entry.rule is None:
-        return set()
-    return expression_features(parse_text(entry.rule.lhs))
+    """Features an entry is retrieved by: its rule's left-hand side structure plus `applies_to`."""
+    features = set(entry.applies_to)
+    if entry.rule is not None:
+        features |= expression_features(parse_text(entry.rule.lhs))
+    return features
 
 
 def feature_token(feature: str) -> str:

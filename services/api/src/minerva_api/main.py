@@ -33,6 +33,7 @@ def _make_llm(settings: Settings) -> LLMClient | None:
             settings.llm_model,
             settings.llm_timeout_seconds,
             think=settings.llm_think,
+            strip_thinking=settings.llm_strip_thinking,
         )
     if settings.llm_mode == "scripted":
         return ScriptedLLM()

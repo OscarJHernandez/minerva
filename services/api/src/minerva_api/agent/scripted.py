@@ -47,13 +47,16 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif "solve" in lower and latex:
+            async for c in self._say("I will solve the equation and check the roots. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("solve_polynomial", {"equation": latex})])
         elif "solve" in lower:
             async for c in self._say(
-                "I cannot solve equations yet; that tool is not available. I can look for related "
-                "methods in the handbook. "
+                "Which equation should I solve? Write it with an equals sign, for example "
+                "$x^3+x^2+x+1=0$. "
             ):
                 yield c
-            yield Chunk(tool_calls=[ToolCall("search_handbook", {"query": "polynomial roots"})])
         elif "identit" in lower or "split" in lower:
             args: dict[str, Any] = {"latex": latex or "\\log(xy)"}
             if "positive" in lower or not latex:
@@ -114,6 +117,11 @@ class ScriptedLLM:
                 )
             else:
                 text = "No handbook identity applies to this expression."
+        elif tool == "solve_polynomial":
+            text = (
+                "The card shows the factorisation, whether a formula in radicals exists, the verified roots "
+                "and the handbook methods that apply."
+            )
         elif tool in ("search_handbook", "get_entry"):
             text = "These are the closest handbook entries; the cards show each statement and how it was verified."
         else:

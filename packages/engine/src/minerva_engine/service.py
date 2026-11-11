@@ -17,6 +17,7 @@ from .models import (
     TensorResult,
 )
 from .sandbox import Outcome, Sandbox, SandboxResult
+from .solve import SolveReport
 
 
 class Engine:
@@ -99,3 +100,20 @@ class Engine:
                 ClaimCheck(status="unverified", detail="check did not complete") for _ in formulas
             ]
         return [ClaimCheck(**r) for r in outcome.value["results"]]
+
+    def solve(
+        self,
+        equation: str,
+        variable: str | None = None,
+        assumptions: dict[str, list[str]] | None = None,
+    ) -> SolveReport:
+        """Solve a polynomial equation `lhs = rhs` (LaTeX) in the sandbox."""
+        outcome, ms = self._run(
+            "solve", {"equation": equation, "variable": variable, "assumptions": assumptions or {}}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return SolveReport(status=status, message=message, duration_ms=ms)
+        report = SolveReport(**outcome.value)
+        report.duration_ms = ms
+        return report

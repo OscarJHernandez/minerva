@@ -29,6 +29,10 @@ const EXAMPLES = [
   },
   { title: "Look up a formula", text: "What is the Gaussian integral formula?" },
   { title: "Be careful with roots", text: "Simplify $\\sqrt{x^2}$" },
+  {
+    title: "Solve an equation",
+    text: "Solve $x^5 - x - 1 = 0$ and tell me if there is a closed formula",
+  },
 ];
 
 const TOOL_LABEL: Record<string, string> = {
@@ -37,6 +41,7 @@ const TOOL_LABEL: Record<string, string> = {
   search_handbook: "Searching the handbook",
   get_entry: "Reading a handbook entry",
   tensor_canonicalize: "Canonicalizing the tensor expression",
+  solve_polynomial: "Solving and verifying the roots",
 };
 
 type PendingItem = { kind: "text"; text: string } | { kind: "card"; card: Card };

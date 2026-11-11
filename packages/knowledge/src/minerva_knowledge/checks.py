@@ -26,6 +26,7 @@ from .models import (
     EquationCheck,
     IntegralCheck,
     ParamRange,
+    RootFormulaCheck,
     SeriesCheck,
     TensorCheck,
 )
@@ -124,6 +125,30 @@ def _check_series(entry: Entry, c: SeriesCheck) -> CheckReport:
     return CheckReport(entry.id, "series", True, f"{len(points)} parameter points agree")
 
 
+def _check_root_formula(entry: Entry, c: RootFormulaCheck) -> CheckReport:
+    mpmath.mp.dps = 30
+    x = sp.Symbol(c.variable)
+    names = [sp.Symbol(n) for n in c.params]
+    k = sp.Symbol(c.index) if c.index else None
+    poly = sp.lambdify([x, *names], parse_text(c.polynomial), "mpmath")
+    args = ([k] if k is not None else []) + names
+    formulas = [sp.lambdify(args, parse_text(r), "mpmath") for r in c.roots]
+    count = 0
+    for point in _param_grid(c.params):
+        values = [mpmath.mpf(point[n]) for n in c.params]
+        for formula in formulas:
+            for index in c.index_values if k is not None else [0]:
+                root = formula(*([index] if k is not None else []), *values)
+                residual = abs(poly(root, *values))
+                scale = max(1.0, float(abs(root)) ** 3)
+                count += 1
+                if float(residual) > 1e-15 * scale:
+                    return CheckReport(
+                        entry.id, "root_formula", False, f"residual {residual} at {point}"
+                    )
+    return CheckReport(entry.id, "root_formula", True, f"{count} root evaluations give p(root) = 0")
+
+
 def _check_tensor(entry: Entry, c: TensorCheck) -> CheckReport:
     data = TensorInput(input=c.input, tensors=c.tensors)
     _, canonical = canonicalize(data)
@@ -169,6 +194,8 @@ def run_check(entry: Entry) -> CheckReport:
         return _check_integral(entry, c)
     if isinstance(c, SeriesCheck):
         return _check_series(entry, c)
+    if isinstance(c, RootFormulaCheck):
+        return _check_root_formula(entry, c)
     if isinstance(c, TensorCheck):
         return _check_tensor(entry, c)
     if isinstance(c, EquationCheck):

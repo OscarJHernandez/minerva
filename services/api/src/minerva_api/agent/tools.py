@@ -66,6 +66,17 @@ class TensorArgs(BaseModel):
     dimension: int = Field(default=4, ge=1, le=64)
 
 
+class SolveArgs(BaseModel):
+    equation: str = Field(
+        max_length=MAX_INPUT,
+        description="A polynomial equation in LaTeX with one = sign, e.g. x^3+x^2+x+1=0",
+    )
+    variable: str | None = Field(
+        default=None, max_length=32, description="The unknown, if the equation has several symbols"
+    )
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
 class SearchArgs(BaseModel):
     query: str = Field(max_length=200, description="Words describing the formula or method")
     chapter: str | None = Field(default=None, max_length=64)
@@ -163,6 +174,51 @@ def run_tensor(args: TensorArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, [result.result_latex] if result.result_latex else [])
 
 
+def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.solve(args.equation, args.variable, args.assumptions)
+    methods = (
+        ctx.kb.search(SearchQuery(features=report.features, chapter="math.methods", limit=6))
+        if report.features
+        else []
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="solve_polynomial",
+        type="solve",
+        title="Solve",
+        data={"report": report.model_dump(mode="json"), "methods": method_data},
+    )
+    lines = [f"status={report.status.value}; equation=${report.equation_latex}$; {report.message}"]
+    known: list[str] = [report.equation_latex] if report.equation_latex else []
+    for f in report.factors:
+        exact = ", ".join(f"${r}$" for r in f.exact_roots_latex)
+        lines.append(
+            f"- factor ${f.factor_latex}$ (degree {f.degree}, multiplicity {f.multiplicity}): "
+            f"radicals={f.radicals} ({f.radicals_reason})"
+            + (f"; exact roots: {exact}" if exact else "")
+        )
+        known.append(f.factor_latex)
+        known.extend(f.exact_roots_latex)
+    if report.roots:
+        shown = ", ".join(r.numeric + (" (real)" if r.real else "") for r in report.roots[:8])
+        lines.append(f"numerical roots: {shown}")
+    if report.verification:
+        v = report.verification
+        lines.append(
+            f"verified: substitution={v.roots_substituted_back}, count={v.count_matches_degree}, "
+            f"vieta={v.vieta_holds}"
+        )
+    lines.extend(f"note: {n}" for n in report.notes)
+    if method_data:
+        lines.append(
+            "handbook methods: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data)
+    return ToolOutput(card, "\n".join(lines), known)
+
+
 def _entry_card_data(ctx: ToolContext, entry_ids: list[str]) -> list[dict[str, Any]]:
     out = []
     for entry_id in entry_ids:
@@ -248,6 +304,14 @@ TOOLS: dict[str, Tool] = {
             "Simplify an expression with SymPy and verify the result numerically and symbolically. Reports 'unchanged' if nothing simpler exists.",
             SimplifyArgs,
             run_simplify,
+        ),
+        Tool(
+            "solve_polynomial",
+            "Solve a polynomial equation: factors it, says whether a formula in radicals exists "
+            "(Galois criterion, Abel-Ruffini), gives exact roots where possible and verified numerical "
+            "roots, and suggests handbook methods. Not for non-polynomial equations.",
+            SolveArgs,
+            run_solve,
         ),
         Tool(
             "find_identities",

@@ -2,6 +2,7 @@ import { Math } from "@minerva/ui/math";
 import type { Card } from "@/lib/chat-types";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
+import { SolveCard } from "./solve-card";
 import { ResultPanel, StatusPill } from "../result-panel";
 import type { Status } from "@/lib/types";
 
@@ -30,6 +31,8 @@ export function CardView({ card }: { card: Card }) {
       );
     case "entry":
       return <EntryCard entry={card.data} />;
+    case "solve":
+      return <SolveCard report={card.data.report} methods={card.data.methods} />;
     case "tensor":
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>
