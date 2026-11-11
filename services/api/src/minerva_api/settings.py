@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,8 +33,15 @@ class Settings(BaseSettings):
     compute_rate_per_minute: int = 60
     auth_rate_per_minute: int = 10
 
-    llm_base_url: str = ""  # reserved for the optional LLM feature; unused in this milestone
+    # Chat agent. "off": chat disabled. "scripted": deterministic stand-in (tests, UI development).
+    # "ollama": your own Ollama-compatible host given by llm_base_url / llm_model.
+    llm_mode: Literal["off", "scripted", "ollama"] = "off"
+    llm_base_url: str = ""
     llm_model: str = ""
+    llm_timeout_seconds: float = Field(default=120.0, gt=0, le=900)
+    agent_max_steps: int = Field(default=6, ge=1, le=12)
+    agent_max_seconds: float = Field(default=180.0, gt=0, le=900)
+    chat_rate_per_minute: int = 20
 
     @field_validator("allowed_origins")
     @classmethod
@@ -46,6 +54,12 @@ class Settings(BaseSettings):
 
     def validate_for_runtime(self) -> None:
         """Refuse to start in production with placeholder or weak secrets."""
+        if self.llm_mode == "ollama" and not (self.llm_base_url and self.llm_model):
+            raise RuntimeError(
+                "MINERVA_LLM_MODE=ollama needs MINERVA_LLM_BASE_URL and MINERVA_LLM_MODEL"
+            )
+        if self.llm_mode == "scripted" and self.env.lower() != "development":
+            raise RuntimeError("the scripted stand-in model is for development only")
         if self.env.lower() == "development":
             return
         secret = self.session_secret.get_secret_value()

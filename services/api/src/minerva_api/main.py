@@ -15,13 +15,23 @@ from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 from sqlalchemy import text
 
-from . import routers_auth, routers_compute, routers_history, routers_reference
+from . import routers_auth, routers_chat, routers_compute, routers_history, routers_reference
+from .agent.llm import LLMClient, OllamaClient
+from .agent.scripted import ScriptedLLM
 from .db import Base, make_engine, make_session_factory
 from .logging import configure_logging, get_logger
 from .security import RateLimiter
 from .settings import Settings, get_settings
 
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _make_llm(settings: Settings) -> LLMClient | None:
+    if settings.llm_mode == "ollama":
+        return OllamaClient(settings.llm_base_url, settings.llm_model, settings.llm_timeout_seconds)
+    if settings.llm_mode == "scripted":
+        return ScriptedLLM()
+    return None
 
 
 def create_app(settings: Settings | None = None, *, create_tables: bool = False) -> FastAPI:
@@ -46,6 +56,7 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
                 max_concurrency=settings.compute_max_concurrency,
             )
         )
+        app.state.llm = _make_llm(settings)
         await run_in_threadpool(app.state.engine.warm_up)
         log.info("startup", status="ready")
         yield
@@ -100,7 +111,13 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
             return JSONResponse({"status": "unavailable"}, status_code=503)
         return JSONResponse({"status": "ready"})
 
-    for module in (routers_auth, routers_compute, routers_history, routers_reference):
+    for module in (
+        routers_auth,
+        routers_compute,
+        routers_history,
+        routers_reference,
+        routers_chat,
+    ):
         app.include_router(module.router)
     return app
 
