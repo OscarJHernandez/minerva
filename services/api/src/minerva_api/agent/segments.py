@@ -44,7 +44,7 @@ def split_segments(text: str, known: set[str]) -> list[Segment]:
             Segment(
                 type="display_math" if display else "math",
                 value=body,
-                verified=normalize(body) in known,
+                status="from_tool" if normalize(body) in known else "unchecked",
             )
         )
         position = match.end()

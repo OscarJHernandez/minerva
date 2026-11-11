@@ -12,9 +12,11 @@ class Segment(BaseModel):
 
     type: Literal["text", "math", "display_math"]
     value: str
-    # For formulas only: True when the formula appears in a tool result or handbook entry of this
-    # conversation, i.e. Minerva itself produced or contains it. False means "model-written, unchecked".
-    verified: bool | None = None
+    # Formulas only. "from_tool": appears in a tool result or handbook entry of this conversation.
+    # "checked": an equation the model wrote that Minerva tested numerically and found true.
+    # "contradicted": an equation the model wrote that Minerva tested and found false.
+    # "unchecked": written by the model, and Minerva could not check it.
+    status: Literal["from_tool", "checked", "contradicted", "unchecked"] | None = None
 
 
 class Card(BaseModel):

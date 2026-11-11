@@ -3,31 +3,32 @@ import { describe, expect, it } from "vitest";
 import type { Segment } from "@/lib/chat-types";
 import { RichText } from "./rich-text";
 
-const seg = (type: Segment["type"], value: string, verified: boolean | null = null): Segment => ({
+const seg = (type: Segment["type"], value: string, status: Segment["status"] = null): Segment => ({
   type,
   value,
-  verified,
+  status,
 });
 
 describe("RichText", () => {
-  it("marks formulas the model wrote on its own, and only those", () => {
+  it("shows what Minerva could and could not vouch for in the model's formulas", () => {
     const { container } = render(
       <RichText
         segments={[
           seg("text", "See "),
-          seg("math", "x+1", true),
-          seg("text", " and "),
-          seg("math", "y^2", false),
-          seg("display_math", "z", false),
+          seg("math", "x+1", "from_tool"),
+          seg("math", "y^2", "unchecked"),
+          seg("math", "a=b", "checked"),
+          seg("math", "1=2", "contradicted"),
+          seg("display_math", "z", "unchecked"),
         ]}
       />,
     );
     expect(screen.getAllByText("unchecked")).toHaveLength(1);
+    expect(screen.getByText("checked")).toBeInTheDocument();
+    expect(screen.getByText("contradicted")).toBeInTheDocument();
     expect(screen.getByText(/Not verified by Minerva/)).toBeInTheDocument();
-    const verified = container.querySelectorAll('[data-verified="true"]');
-    const unchecked = container.querySelectorAll('[data-verified="false"]');
-    expect(verified).toHaveLength(1);
-    expect(unchecked).toHaveLength(2);
+    expect(container.querySelectorAll('[data-status="from_tool"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-status="contradicted"]')).toHaveLength(1);
   });
 
   it("renders bold and code but no other markup, and never raw HTML", () => {

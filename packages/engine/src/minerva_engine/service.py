@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from .claims import ClaimCheck
 from .models import (
     ExpressionInput,
     IdentitiesResult,
@@ -83,3 +84,18 @@ class Engine:
             return status, message, [], None
         v = outcome.value
         return Status(v["status"]), v["message"], list(v["features"]), v["input_latex"]
+
+    def check_claims(
+        self, formulas: list[str], assumptions: dict[str, list[str]] | None = None
+    ) -> list[ClaimCheck]:
+        """Numerically test equations written by the model. Failures leave claims unchecked."""
+        if not formulas:
+            return []
+        outcome, _ = self._run(
+            "check_claims", {"formulas": formulas, "assumptions": assumptions or {}}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            return [
+                ClaimCheck(status="unverified", detail="check did not complete") for _ in formulas
+            ]
+        return [ClaimCheck(**r) for r in outcome.value["results"]]

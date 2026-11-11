@@ -28,7 +28,12 @@ UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 def _make_llm(settings: Settings) -> LLMClient | None:
     if settings.llm_mode == "ollama":
-        return OllamaClient(settings.llm_base_url, settings.llm_model, settings.llm_timeout_seconds)
+        return OllamaClient(
+            settings.llm_base_url,
+            settings.llm_model,
+            settings.llm_timeout_seconds,
+            think=settings.llm_think,
+        )
     if settings.llm_mode == "scripted":
         return ScriptedLLM()
     return None

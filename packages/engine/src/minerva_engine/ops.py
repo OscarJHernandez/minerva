@@ -12,6 +12,7 @@ from typing import Any
 
 import sympy as sp
 
+from .claims import ClaimCheck, check_claim
 from .errors import LimitError, MinervaMathError, ParseError
 from .features import expression_features
 from .latexparse import parse_latex
@@ -91,6 +92,21 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
         verification=verification,
         message="Simplified with SymPy and verified.",
     ).model_dump(mode="json")
+
+
+# --- claims written by the language model --------------------------------------------
+def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
+    limits = Limits(**payload["limits"])
+    assumptions: dict[str, list[str]] = payload.get("assumptions", {})
+    results: list[dict[str, Any]] = []
+    for latex in payload["formulas"]:
+        try:
+            results.append(check_claim(str(latex), assumptions, limits).model_dump())
+        except Exception:
+            results.append(
+                ClaimCheck(status="unparsed", detail="could not be checked").model_dump()
+            )
+    return {"results": results}
 
 
 # --- features --------------------------------------------------------------------------
@@ -299,5 +315,6 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
     "identities": op_identities,
     "features": op_features,
+    "check_claims": op_check_claims,
     "tensor_canonicalize": op_tensor_canonicalize,
 }

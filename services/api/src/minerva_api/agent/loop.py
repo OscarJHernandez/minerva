@@ -102,15 +102,52 @@ async def run_agent(
             raw + "\n\n" if raw else ""
         ) + "I stopped here because I reached the step or time limit for one answer."
     known = known_formulas(outputs) | (prior_known or set())
+    blocks = [
+        Block(kind="card", card=item)
+        if isinstance(item, Card)
+        else Block(kind="text", segments=split_segments(item, known))
+        for item in order
+    ]
+    await check_model_claims(blocks, ctx, trace)
     final = AssistantMessage(
         text=raw,
-        blocks=[
-            Block(kind="card", card=item)
-            if isinstance(item, Card)
-            else Block(kind="text", segments=split_segments(item, known))
-            for item in order
-        ],
+        blocks=blocks,
         trace=trace,
         truncated=truncated,
     )
     yield {"event": "message", "data": final.model_dump(mode="json")}
+
+
+MAX_CLAIMS = 12
+
+
+async def check_model_claims(blocks: list[Block], ctx: ToolContext, trace: list[TraceStep]) -> None:
+    """Test the equations the model wrote itself; mark them checked, contradicted or unchecked.
+
+    Assumptions the model declared in its own tool calls apply to its claims too (an equation about
+    a positive x is checked for positive x).
+    """
+    pending = [
+        s
+        for b in blocks
+        if b.kind == "text"
+        for s in b.segments
+        if s.type != "text" and s.status == "unchecked" and len(s.value) <= 500
+    ][:MAX_CLAIMS]
+    if not pending:
+        return
+    assumptions: dict[str, list[str]] = {}
+    for step in trace:
+        declared = step.arguments.get("assumptions")
+        if isinstance(declared, dict):
+            for name, items in declared.items():
+                if isinstance(items, list):
+                    assumptions[str(name)] = [str(i) for i in items]
+    results = await run_in_threadpool(
+        ctx.engine.check_claims, [s.value for s in pending], assumptions
+    )
+    for segment, result in zip(pending, results, strict=True):
+        if result.status == "holds":
+            segment.status = "checked"
+        elif result.status == "fails":
+            segment.status = "contradicted"

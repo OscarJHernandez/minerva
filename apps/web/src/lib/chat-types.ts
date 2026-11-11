@@ -1,10 +1,17 @@
 import type { EntrySummary, IdentitiesResult, SimplifyResult } from "./types";
 
+/**
+ * Formulas only. from_tool: appears in a tool result or handbook entry of this conversation.
+ * checked: an equation the model wrote that Minerva tested numerically and found true.
+ * contradicted: an equation the model wrote that Minerva tested and found false.
+ * unchecked: written by the model; Minerva could not check it.
+ */
+export type FormulaStatus = "from_tool" | "checked" | "contradicted" | "unchecked";
+
 export interface Segment {
   type: "text" | "math" | "display_math";
   value: string;
-  /** Formulas only: true if it appears in a tool result or handbook entry of this conversation. */
-  verified: boolean | null;
+  status: FormulaStatus | null;
 }
 
 export type Card =

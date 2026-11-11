@@ -37,10 +37,15 @@ class LLMClient(Protocol):
 class OllamaClient:
     """Streams `/api/chat` from an Ollama-compatible server (your own model host)."""
 
-    def __init__(self, base_url: str, model: str, timeout_seconds: float = 120.0) -> None:
+    def __init__(
+        self, base_url: str, model: str, timeout_seconds: float = 120.0, think: bool = False
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.name = model
+        # Reasoning models spend tens of seconds "thinking" before every reply. For a chat that mostly
+        # chooses tools, answers are faster without it; set think=True to measure whether it helps.
+        self.think = think
         self._timeout = httpx.Timeout(timeout_seconds, connect=10.0)
 
     async def chat(
@@ -51,6 +56,7 @@ class OllamaClient:
             "messages": list(messages),
             "tools": list(tools),
             "stream": True,
+            "think": self.think,
             "options": {"temperature": 0.2},
         }
         try:

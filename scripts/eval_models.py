@@ -254,8 +254,10 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
     return Outcome(case, not notes, notes, seconds, tools, unchecked)
 
 
-async def evaluate(base_url: str, model: str, ctx: ToolContext, timeout: float) -> list[Outcome]:
-    llm = OllamaClient(base_url, model, timeout_seconds=timeout)
+async def evaluate(
+    base_url: str, model: str, ctx: ToolContext, timeout: float, think: bool
+) -> list[Outcome]:
+    llm = OllamaClient(base_url, model, timeout_seconds=timeout, think=think)
     limits = AgentLimits(max_steps=6, max_seconds=timeout * 2)
     # Warm-up: loads the model so load time is not counted against the first case.
     try:
@@ -317,6 +319,7 @@ async def main() -> None:
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--models", required=True, help="comma-separated model names")
     parser.add_argument("--timeout", type=float, default=180.0, help="seconds per model call")
+    parser.add_argument("--think", action="store_true", help="let reasoning models think first")
     parser.add_argument("--out", help="write a markdown report to this path")
     args = parser.parse_args()
 
@@ -325,7 +328,7 @@ async def main() -> None:
     results: dict[str, list[Outcome]] = {}
     for model in [m.strip() for m in args.models.split(",") if m.strip()]:
         print(f"== {model}", flush=True)
-        results[model] = await evaluate(args.base_url, model, ctx, args.timeout)
+        results[model] = await evaluate(args.base_url, model, ctx, args.timeout, args.think)
     text = report(results)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as handle:

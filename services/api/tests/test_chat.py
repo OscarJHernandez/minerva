@@ -67,7 +67,7 @@ def test_streamed_turn_with_a_tool_card_and_verified_formula(
     assert cards_of(message)[0]["type"] == "simplify"
     assert cards_of(message)[0]["data"]["result_text"] == "x + 1"
     formulas = [s for s in segments_of(message) if s["type"] == "display_math"]
-    assert formulas and formulas[0]["value"] == "x + 1" and formulas[0]["verified"] is True
+    assert formulas and formulas[0]["value"] == "x + 1" and formulas[0]["status"] == "from_tool"
     detail = client.get(f"/v1/chat/conversations/{cid}").json()
     assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
     assert detail["title"].startswith("simplify")
@@ -79,7 +79,7 @@ def test_model_written_formula_is_marked_unchecked(chat_client: tuple[TestClient
     message = next(d for e, d in events if e == "message")
     assert cards_of(message) == []
     formulas = [s for s in segments_of(message) if s["type"] == "math"]
-    assert formulas and all(s["verified"] is False for s in formulas)
+    assert formulas and all(s["status"] == "unchecked" for s in formulas)
 
 
 def test_identities_conversation_and_followup_history(chat_client: tuple[TestClient, str]) -> None:

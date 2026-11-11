@@ -1,5 +1,6 @@
 """Minerva symbolic computation engine."""
 
+from .claims import ClaimCheck, check_claim, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
 from .latexparse import parse_latex
 from .models import (
@@ -23,6 +24,7 @@ from .textparse import parse_text
 
 __all__ = [
     "Applicability",
+    "ClaimCheck",
     "Engine",
     "ExpressionInput",
     "IdentitiesResult",
@@ -40,8 +42,10 @@ __all__ = [
     "TensorSpec",
     "Verification",
     "apply_rule",
+    "check_claim",
     "parse_expression",
     "parse_latex",
     "parse_text",
+    "split_equation",
     "verify_rule",
 ]

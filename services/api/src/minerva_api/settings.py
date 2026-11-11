@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_model: str = ""
     llm_timeout_seconds: float = Field(default=120.0, gt=0, le=900)
+    llm_think: bool = False  # let reasoning models think before replying (slower)
     agent_max_steps: int = Field(default=6, ge=1, le=12)
     agent_max_seconds: float = Field(default=180.0, gt=0, le=900)
     chat_rate_per_minute: int = 20

@@ -1,8 +1,42 @@
 import { Math } from "@minerva/ui/math";
-import type { Segment } from "@/lib/chat-types";
+import type { FormulaStatus, Segment } from "@/lib/chat-types";
 
-const UNCHECKED_TITLE =
-  "Written by the language model. Minerva did not produce or check this formula; it does not appear in any tool result or handbook entry of this conversation.";
+const MARKS: Record<
+  FormulaStatus,
+  { label: string | null; title: string; underline: string; box: string; tone: string }
+> = {
+  from_tool: {
+    label: null,
+    title: "Matches a formula from a tool result or the handbook",
+    underline: "",
+    box: "border-rule bg-raised",
+    tone: "",
+  },
+  checked: {
+    label: "checked",
+    title:
+      "Written by the language model. Minerva tested this equation numerically at sample points and it held. Conditions written beside it are not tested.",
+    underline: "border-b border-dotted border-ok",
+    box: "border-ok/40 bg-ok-soft/40",
+    tone: "text-ok",
+  },
+  contradicted: {
+    label: "contradicted",
+    title:
+      "Written by the language model. Minerva tested this equation numerically and it is false (at the stated assumptions, or for complex values if none were declared).",
+    underline: "border-b border-solid border-bad",
+    box: "border-bad/50 bg-bad-soft/50",
+    tone: "text-bad",
+  },
+  unchecked: {
+    label: "unchecked",
+    title:
+      "Written by the language model. Minerva did not produce this formula and could not check it.",
+    underline: "border-b border-dotted border-warn",
+    box: "border-warn/50 bg-warn-soft/40",
+    tone: "text-warn",
+  },
+};
 
 /** `**bold**`, `` `code` `` and line breaks: the only markup the assistant may use. */
 function inline(text: string, keyPrefix: string): React.ReactNode[] {
@@ -44,20 +78,18 @@ export function RichText({ segments }: { segments: Segment[] }) {
             </span>
           );
         }
-        const unchecked = s.verified === false;
+        const mark = MARKS[s.status ?? "unchecked"];
         if (s.type === "math") {
           return (
             <span
               key={i}
-              title={
-                unchecked ? UNCHECKED_TITLE : "Matches a formula from a tool result or the handbook"
-              }
-              data-verified={s.verified ? "true" : "false"}
-              className={unchecked ? "border-b border-dotted border-warn" : undefined}
+              title={mark.title}
+              data-status={s.status}
+              className={mark.underline || undefined}
             >
               <Math latex={s.value} />
-              {unchecked && (
-                <sup className="ml-0.5 text-[10px] font-medium text-warn">unchecked</sup>
+              {mark.label && (
+                <sup className={`ml-0.5 text-[10px] font-medium ${mark.tone}`}>{mark.label}</sup>
               )}
             </span>
           );
@@ -65,15 +97,17 @@ export function RichText({ segments }: { segments: Segment[] }) {
         return (
           <div
             key={i}
-            data-verified={s.verified ? "true" : "false"}
-            className={`my-2 rounded-md border px-3 py-1 ${
-              unchecked ? "border-warn/50 bg-warn-soft/40" : "border-rule bg-raised"
-            }`}
+            data-status={s.status}
+            className={`my-2 rounded-md border px-3 py-1 ${mark.box}`}
           >
             <Math latex={s.value} display />
-            {unchecked && (
-              <div className="pb-1 text-xs text-warn" title={UNCHECKED_TITLE}>
-                Not verified by Minerva (written by the model)
+            {mark.label && (
+              <div className={`pb-1 text-xs ${mark.tone}`} title={mark.title}>
+                {s.status === "checked"
+                  ? "Written by the model; checked numerically by Minerva"
+                  : s.status === "contradicted"
+                    ? "Written by the model; Minerva's check says this is false"
+                    : "Not verified by Minerva (written by the model)"}
               </div>
             )}
           </div>
