@@ -1,0 +1,39 @@
+/* Shared design tokens. Restrained palette: warm paper, ink, one accent. */
+:root {
+  color-scheme: light dark;
+  --paper: #faf9f6;
+  --paper-raised: #ffffff;
+  --paper-sunk: #f2f0ea;
+  --ink: #1a1b20;
+  --ink-muted: #5b5d68;
+  --rule: #e3e0d8;
+  --accent: #2c3e9b;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8ebf8;
+  --ok: #2c6a3f;
+  --ok-soft: #e3f1e7;
+  --warn: #8a5a00;
+  --warn-soft: #fbf0d9;
+  --bad: #a3342e;
+  --bad-soft: #f9e5e3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131419;
+    --paper-raised: #1a1c23;
+    --paper-sunk: #0f1015;
+    --ink: #ecebe6;
+    --ink-muted: #a2a4b0;
+    --rule: #2b2d36;
+    --accent: #93a3ff;
+    --accent-ink: #11131c;
+    --accent-soft: #232842;
+    --ok: #7cc795;
+    --ok-soft: #17291f;
+    --warn: #e2b863;
+    --warn-soft: #2c2412;
+    --bad: #ef8b84;
+    --bad-soft: #301917;
+  }
+}

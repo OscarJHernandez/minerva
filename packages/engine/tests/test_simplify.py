@@ -66,3 +66,9 @@ def test_resource_limit_is_reported_not_guessed(engine: Engine) -> None:
     result = quick.simplify(ExpressionInput(input="(x+1)**9000*(y+1)**9000 - 1", format="text"))
     assert result.status is Status.RESOURCE_LIMIT
     assert result.result_latex is None
+
+
+def test_contradictory_assumptions_are_a_clear_error(engine: Engine) -> None:
+    result = run(engine, "x + 1", "text", x=["positive", "negative"])
+    assert result.status is Status.PARSE_ERROR
+    assert "contradict" in result.message

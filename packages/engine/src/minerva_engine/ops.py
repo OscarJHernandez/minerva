@@ -133,19 +133,22 @@ def _unmet(
     return unmet
 
 
-def _introduces_roots(bindings: dict[sp.Basic, sp.Basic], expr: sp.Expr) -> bool:
-    """True if a match only works by binding variables to roots absent from `expr`.
+def _invents_structure(bindings: dict[sp.Basic, sp.Basic], expr: sp.Expr) -> bool:
+    """True if a match only works by binding variables to structure absent from `expr`.
 
-    SymPy's matcher can solve `a**2 - b**2 = x + y` with `a = sqrt(y)`, `b = sqrt(-x)`.
-    That rewrite is valid but is not what a reader means by "this identity applies", so
-    matches that invent fractional powers are discarded.
+    SymPy's matcher can solve `a**2 - b**2 = x + y` with `a = sqrt(y)`, `b = sqrt(-x)`, or
+    `log(a/b) = log(x*y)` with `b = 1/y`, or `a**2 - b**2 = x**2 + y**2` with `b = I*y`.
+    Those rewrites can be valid but are not what a reader means by "this identity applies",
+    so matches that invent roots, reciprocals or the imaginary unit are discarded. A
+    reciprocal or root that is already in the expression is of course allowed.
     """
     for value in bindings.values():
         for node in sp.preorder_traversal(value):
+            if node == sp.I and not expr.has(sp.I):
+                return True
             if (
                 isinstance(node, sp.Pow)
-                and node.exp.is_Rational
-                and not node.exp.is_Integer
+                and not (node.exp.is_Integer and node.exp.is_positive)
                 and not expr.has(node)
             ):
                 return True
@@ -168,8 +171,11 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
         if not isinstance(node, sp.Expr):
             continue
         bindings = node.match(pattern)
-        if bindings is None or _introduces_roots(bindings, expr):
+        if bindings is None or _invents_structure(bindings, expr):
             continue
+        instantiated = replacement.xreplace(bindings)
+        if instantiated == node:
+            continue  # the rewrite would be a no-op (e.g. a**1), not a real application
         unmet = _unmet(rule, bindings, wilds)
         matched_latex = sp.latex(node)
         if unmet:
@@ -182,7 +188,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
                 "from the declared assumptions, so the rule is not applied.",
             )
             continue
-        rewritten = expr.xreplace({node: replacement.xreplace(bindings)})
+        rewritten = expr.xreplace({node: instantiated})
         if rewritten == expr:
             continue
         verification = verify_equal(expr, rewritten)

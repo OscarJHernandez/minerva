@@ -92,3 +92,42 @@ def test_matches_that_invent_roots_are_discarded(engine: Engine) -> None:
     assert out["alg.dos"].applicability is Applicability.NO_MATCH
     out = apply(engine, "x^2 - y^2", [diff_squares])
     assert out["alg.dos"].applicability is Applicability.APPLICABLE
+
+
+def test_trivial_instantiations_are_not_reported(engine: Engine) -> None:
+    power = Rule(
+        id="log.power",
+        lhs="log(a**b)",
+        rhs="b*log(a)",
+        variables=["a", "b"],
+        conditions=[
+            RuleCondition(variable="a", assumption="positive"),
+            RuleCondition(variable="b", assumption="real"),
+        ],
+    )
+    out = apply(engine, r"\log(xy)", [power], x=["positive"], y=["positive"])
+    assert out["log.power"].applicability is Applicability.NO_MATCH  # would be a=xy, b=1
+    out = apply(engine, r"\log(x^3)", [power], x=["positive"])
+    assert out["log.power"].applicability is Applicability.APPLICABLE
+
+
+def test_verification_catches_a_rule_missing_its_conditions(engine: Engine) -> None:
+    # log(x^3) = 3 log(x) is false for complex x; a rule that forgets its conditions is
+    # still stopped by the numeric verification and never shown as a result.
+    sloppy = Rule(id="log.power.sloppy", lhs="log(a**b)", rhs="b*log(a)", variables=["a", "b"])
+    out = apply(engine, r"\log(x^3)", [sloppy])
+    assert out["log.power.sloppy"].applicability is Applicability.NOT_VERIFIED
+    assert out["log.power.sloppy"].rewritten_latex is None
+
+
+def test_matches_that_invent_reciprocals_or_imaginary_units_are_discarded(engine: Engine) -> None:
+    quotient = Rule(id="log.q", lhs="log(a/b)", rhs="log(a) - log(b)", variables=["a", "b"])
+    out = apply(engine, r"\log(xy)", [quotient])
+    assert out["log.q"].applicability is Applicability.NO_MATCH  # would need b = 1/y
+    out = apply(engine, r"\log(\frac{x}{y})", [quotient])
+    assert out["log.q"].rewritten_latex is not None or out["log.q"].applicability in (
+        Applicability.NOT_VERIFIED,
+        Applicability.APPLICABLE,
+    )
+    dos = Rule(id="dos", lhs="a**2 - b**2", rhs="(a - b)*(a + b)", variables=["a", "b"])
+    assert apply(engine, "x^2 + y^2", [dos])["dos"].applicability is Applicability.NO_MATCH

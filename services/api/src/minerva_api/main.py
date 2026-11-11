@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
@@ -45,6 +46,7 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
                 max_concurrency=settings.compute_max_concurrency,
             )
         )
+        await run_in_threadpool(app.state.engine.warm_up)
         log.info("startup", status="ready")
         yield
         db_engine.dispose()

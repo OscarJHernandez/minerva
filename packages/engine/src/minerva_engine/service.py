@@ -40,6 +40,10 @@ class Engine:
             return Status.RESOURCE_LIMIT, "The server is busy; try again shortly."
         return Status.INTERNAL_ERROR, "The computation failed unexpectedly."
 
+    def warm_up(self) -> None:
+        """Start the sandbox's fork server and import SymPy so the first request is fast."""
+        self.features(ExpressionInput(input="x", format="text"))
+
     def simplify(self, expression: ExpressionInput) -> SimplifyResult:
         outcome, ms = self._run("simplify", {"expression": expression.model_dump()})
         if outcome.outcome is not Outcome.OK or outcome.value is None:

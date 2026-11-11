@@ -1,0 +1,22 @@
+{
+  "name": "@minerva/ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./theme.css": "./src/theme.css",
+    "./math": "./src/math.tsx"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "katex": "0.19.1"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.7",
+    "@types/react": "^19.0.0",
+    "typescript": "6.0.3"
+  }
+}

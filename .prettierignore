@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.venv
+uv.lock
+pnpm-lock.yaml
+*.md
+packages/knowledge/src/minerva_knowledge/data
+services
+.github
+deploy

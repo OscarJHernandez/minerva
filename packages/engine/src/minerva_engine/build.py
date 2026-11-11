@@ -105,7 +105,10 @@ class Builder:
         if name in RESERVED_NAMES:
             raise ParseError(f"{name!r} is a reserved function or constant name")
         if name not in self.symbols:
-            self.symbols[name] = sp.Symbol(name, **self._assumptions.get(name, {}))
+            try:
+                self.symbols[name] = sp.Symbol(name, **self._assumptions.get(name, {}))
+            except ValueError as exc:  # sympy's InconsistentAssumptions is a ValueError
+                raise ParseError(f"the assumptions for {name!r} contradict each other") from exc
         return self.symbols[name]
 
     # -- compound ----------------------------------------------------------------------
