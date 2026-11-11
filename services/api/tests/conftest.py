@@ -14,7 +14,8 @@ PASSWORD = "correct horse battery"
 def make_settings(**over: object) -> Settings:
     base: dict[str, object] = {
         "env": "development",
-        "database_url": os.environ.get("MINERVA_TEST_DATABASE_URL") or "sqlite+pysqlite:///:memory:",
+        "database_url": os.environ.get("MINERVA_TEST_DATABASE_URL")
+        or "sqlite+pysqlite:///:memory:",
         "session_secret": SecretStr("test-secret-value-test-secret-value!"),
         "compute_timeout_seconds": 30.0,
         "compute_max_concurrency": 2,
