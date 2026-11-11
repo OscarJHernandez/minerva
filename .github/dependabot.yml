@@ -1,16 +1,49 @@
+# Keep routine updates to roughly one grouped pull request per ecosystem per month.
+# Major versions arrive as separate pull requests so each breaking change is reviewed on its own.
+# Security updates ignore the schedule, the PR limit and cooldown, and open immediately.
 version: 2
 updates:
   - package-ecosystem: uv
     directory: /
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 3
+    cooldown: { default-days: 7, semver-major-days: 30 }
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
   - package-ecosystem: npm
     directory: /
-    schedule: { interval: weekly }
-    open-pull-requests-limit: 5
+    schedule: { interval: monthly }
+    open-pull-requests-limit: 3
+    cooldown: { default-days: 7, semver-major-days: 30 }
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # Follows the Node runtime, not the latest major.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
+    cooldown: { default-days: 7, semver-major-days: 30 }
+    groups:
+      actions:
+        patterns: ["*"]
   - package-ecosystem: docker
     directory: /deploy/docker
     schedule: { interval: monthly }
+    cooldown: { default-days: 7, semver-major-days: 30 }
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # Python 3.13 is pinned project-wide (uv, mypy, AGENTS.md); change it deliberately.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Move between Node LTS lines by hand.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
