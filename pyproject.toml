@@ -42,7 +42,7 @@ ignore = ["E501"]
 "**/tests/**" = ["S101", "S105", "S106", "S311"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages", "services"]
+testpaths = ["packages", "services", "scripts"]
 addopts = "-q"
 
 [tool.mypy]

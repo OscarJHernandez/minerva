@@ -2,7 +2,7 @@
 
 ## Before making the repository public
 
-Run the `oss-publication-review` skill (`.claude/skills/oss-publication-review/SKILL.md`). In short:
+Run the `oss-publication-review` skill (`.agents/skills/oss-publication-review/SKILL.md`). In short:
 
 1. Audit tracked files and **full git history** for secrets (`gitleaks detect --redact`), `.env` files,
    kubeconfigs, tokens, private hostnames or IPs, personal data, and large generated artifacts.

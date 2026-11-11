@@ -57,4 +57,4 @@ Add tests next to the change:
 - [ ] No `eval` / `exec` / `sympify` / `parse_expr` on user input.
 - [ ] New operations run through `Engine` (sandbox) and are registered in `ops.OPERATIONS`.
 - [ ] Tests assert the explicit status for failure cases.
-- [ ] Docs updated if behaviour or conventions changed (`CLAUDE.md`, `docs/architecture.md`).
+- [ ] Docs updated if behaviour or conventions changed (`AGENTS.md`, `docs/architecture.md`).

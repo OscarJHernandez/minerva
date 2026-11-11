@@ -1,0 +1,28 @@
+name: Handbook entry request or correction
+description: Propose a new identity or physical equation, or correct an existing entry
+labels: [handbook]
+body:
+  - type: input
+    id: entry
+    attributes:
+      label: Entry id (for corrections) or chapter (for new entries)
+  - type: textarea
+    id: formula
+    attributes:
+      label: Formula in LaTeX, written in your own words
+    validations: { required: true }
+  - type: textarea
+    id: conditions
+    attributes:
+      label: Validity conditions
+      description: For example a, b > 0. State them explicitly.
+  - type: input
+    id: source
+    attributes:
+      label: Source by locator only
+      description: For example DLMF 4.21. Do not paste text, tables or figures.
+  - type: dropdown
+    id: verification
+    attributes:
+      label: How can it be checked?
+      options: [symbolic, numeric, structural, dimensional, stated (cannot be checked)]

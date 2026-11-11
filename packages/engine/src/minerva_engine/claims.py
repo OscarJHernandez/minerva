@@ -68,7 +68,7 @@ def check_claim(latex: str, assumptions: dict[str, list[str]], limits: Limits) -
         return ClaimCheck(status="holds", detail=detail)
     if outcome == "fails":
         # Prose uses e and i for Euler's number and the imaginary unit; the parser keeps them as plain
-        # symbols (see CLAUDE.md). Give the claim the benefit of that reading, and say so.
+        # symbols (see AGENTS.md). Give the claim the benefit of that reading, and say so.
         used = {s.name for p in parsed for s in p.free_symbols}
         if used & {"e", "i"}:
             swap = {

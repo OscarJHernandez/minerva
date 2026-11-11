@@ -1,0 +1,29 @@
+name: Incorrect or unverified result
+description: Minerva returned a wrong result, or a wrong status (for example ok where it should be not_verified)
+labels: [correctness]
+body:
+  - type: markdown
+    attributes:
+      value: Mathematical correctness bugs are the highest priority. Thank you for the precise report.
+  - type: textarea
+    id: input
+    attributes:
+      label: Input (LaTeX or text syntax) and operation
+    validations: { required: true }
+  - type: textarea
+    id: assumptions
+    attributes:
+      label: Declared assumptions
+      description: For example x positive, n integer. Symbols are complex unless declared.
+  - type: input
+    id: actual
+    attributes:
+      label: Result and status shown by Minerva
+      description: Status is one of ok, unchanged, not_verified, unsupported, parse_error, resource_limit.
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result, with how you checked it
+      description: A numeric check at sample points or a citation by locator (for example DLMF 4.21). Do not paste book passages.
+    validations: { required: true }

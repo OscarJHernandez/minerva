@@ -1,0 +1,4 @@
+rules:
+  # `./.github/workflows/ci.yml` is the documented way to call a reusable workflow from the same repository.
+  self-repository:
+    disable: true

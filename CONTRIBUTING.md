@@ -9,11 +9,15 @@ See the README for `uv sync`, `pnpm install` and the commands to run tests. Pyth
 
 ## Before you open a pull request
 
+`make check` runs everything below (and `make help` lists the other shortcuts). `uvx pre-commit install`
+adds optional git hooks (ruff, prettier, gitleaks).
+
 ```bash
 uv run ruff check . && uv run ruff format --check .
 uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run pytest
 uv run python -m minerva_knowledge verify
+uv run python scripts/check_agent_files.py
 pnpm lint && pnpm typecheck && pnpm test
 ```
 
@@ -49,6 +53,13 @@ a licence discussion first (see `docs/licensing.md`). Explain why a new dependen
 
 Never include secrets, personal data or infrastructure details in issues, commits or logs. Report
 vulnerabilities privately (see SECURITY.md).
+
+## Working with coding agents
+
+Agent rules live in `AGENTS.md` (Claude Code reads it through `CLAUDE.md`), with task-specific skills in
+`.agents/skills/`. Agents follow the same rules as people: nothing is pushed or opened as a pull request
+without a human's instruction, and agent-authored pull requests say so at the top and start as drafts.
+See `docs/agentic-development.md`.
 
 ## Conduct
 

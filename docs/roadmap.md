@@ -57,3 +57,15 @@ Ordering favours correctness infrastructure before breadth.
 - Shared rate limiting, account deletion/export, email verification and password reset.
 - Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`); observability.
 - Playwright end-to-end tests in CI; accessibility audit of the math editor.
+
+## Agentic CI (deferred, needs an LLM API budget)
+
+Patterns seen in other open source agentic repositories (see `agentic-development.md`). None runs until
+there is budget for an API key; each needs a repository secret and a read-only token.
+
+- Claude review of pull requests from this repository's branches, on a GitHub-hosted runner. Never for
+  forks, never with write permissions on the repository contents.
+- `@claude` mentions restricted to maintainers; issue triage on open that only adds labels.
+- Weekly skills audit that opens a pull request when `AGENTS.md` or a skill drifts from the code.
+- An evaluation that asks models what `AGENTS.md` teaches and fails a pull request that lowers the score.
+- CodeQL for Python, JavaScript and Actions once the repository is public.
