@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build context: repository root. Public URLs are baked into the static export at build time.
-FROM node:24-slim AS build
+FROM node:25-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
 RUN corepack enable
 WORKDIR /repo
