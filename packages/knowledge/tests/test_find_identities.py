@@ -57,3 +57,11 @@ def test_parse_error_is_explicit(kb: KnowledgeBase, engine: Engine) -> None:
     resp, _ = run(kb, engine, r"\badcommand")
     assert resp.status is Status.PARSE_ERROR
     assert resp.matches == []
+
+
+def test_default_candidate_pool_is_everything_that_shares_a_feature(kb: KnowledgeBase) -> None:
+    feats = {"f:sin", "f:cos", "op:square"}
+    default_pool = {e.id for e in kb.candidate_rules(feats)}
+    everything = {e.id for e in kb.candidate_rules(feats, limit=200)}
+    assert default_pool == everything  # a small cap would silently drop applicable rules
+    assert "trig.pythagorean" in default_pool

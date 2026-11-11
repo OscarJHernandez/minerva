@@ -48,6 +48,7 @@ spec:
             - { name: MINERVA_COOKIE_SECURE, value: "true" }
             - name: MINERVA_ALLOWED_ORIGINS
               value: {{ if .Values.hosts.app }}{{ printf "https://%s" .Values.hosts.app | quote }}{{ else }}""{{ end }}
+            - { name: MINERVA_TRUSTED_IP_HEADER, value: {{ .Values.api.trustedIpHeader | quote }} }
             - { name: MINERVA_ALLOW_REGISTRATION, value: {{ .Values.api.allowRegistration | quote }} }
             - { name: MINERVA_COMPUTE_TIMEOUT_SECONDS, value: {{ .Values.api.compute.timeoutSeconds | quote }} }
             - { name: MINERVA_COMPUTE_MEMORY_MB, value: {{ .Values.api.compute.memoryMb | quote }} }

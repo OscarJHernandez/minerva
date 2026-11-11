@@ -1,0 +1,56 @@
+- id: thermo.ideal_gas
+  title: Ideal gas law
+  kind: equation
+  chapter: physics.thermodynamics
+  section: gases
+  verification: dimensional
+  statement_latex: 'P V = n R T'
+  validity: "Ideal (dilute) gas."
+  check:
+    kind: equation
+    lhs: "P*V"
+    rhs: "n*R*T"
+    units: {P: "kg/(m*s**2)", V: "m**3", n: mol, R: "kg*m**2/(s**2*mol*K)", T: K}
+  symbols:
+    - {name: P, meaning: pressure, unit: "kg/(m*s**2)"}
+    - {name: V, meaning: volume, unit: "m**3"}
+    - {name: n, meaning: amount of substance, unit: mol}
+    - {name: R, meaning: molar gas constant, unit: "kg*m**2/(s**2*mol*K)"}
+    - {name: T, meaning: thermodynamic temperature, unit: K}
+  keywords: [ideal gas, pressure, volume, temperature]
+- id: thermo.boltzmann_entropy
+  title: Boltzmann entropy
+  kind: equation
+  chapter: physics.thermodynamics
+  section: gases
+  verification: dimensional
+  statement_latex: 'S = k_B \ln W'
+  validity: "Microcanonical ensemble; W is the number of accessible microstates."
+  check:
+    kind: equation
+    lhs: "S"
+    rhs: "kB*log(W)"
+    units: {S: "kg*m**2/(s**2*K)", kB: "kg*m**2/(s**2*K)", W: "1"}
+  symbols:
+    - {name: S, meaning: entropy, unit: "kg*m**2/(s**2*K)"}
+    - {name: kB, meaning: Boltzmann constant, unit: "kg*m**2/(s**2*K)"}
+    - {name: W, meaning: number of microstates, unit: "1"}
+  keywords: [entropy, boltzmann, statistical mechanics, microstates]
+- id: thermo.stefan_boltzmann
+  title: Stefan–Boltzmann law
+  kind: equation
+  chapter: physics.thermodynamics
+  section: gases
+  verification: dimensional
+  statement_latex: 'j^{\star} = \sigma T^4'
+  validity: "Ideal black body; j* is the radiated power per unit area."
+  check:
+    kind: equation
+    lhs: "j"
+    rhs: "sigma*T**4"
+    units: {j: "kg/s**3", sigma: "kg/(s**3*K**4)", T: K}
+  symbols:
+    - {name: j, meaning: radiant exitance, unit: "kg/s**3"}
+    - {name: sigma, meaning: Stefan–Boltzmann constant, unit: "kg/(s**3*K**4)"}
+    - {name: T, meaning: temperature, unit: K}
+  keywords: [black body, radiation, stefan, boltzmann]

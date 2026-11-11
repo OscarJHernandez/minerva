@@ -65,7 +65,7 @@ def find_identities(
     engine: Engine,
     expression: ExpressionInput,
     text: str = "",
-    limit: int = 25,
+    limit: int = 100,
 ) -> FindIdentitiesResponse:
     """Retrieval proposes candidates; only the engine decides what is applicable."""
     status, message, features, input_latex = engine.features(expression)

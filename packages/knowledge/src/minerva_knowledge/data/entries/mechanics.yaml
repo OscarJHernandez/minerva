@@ -1,0 +1,75 @@
+- id: mech.newton_second
+  title: Newton's second law
+  kind: equation
+  chapter: physics.mechanics
+  section: dynamics
+  verification: dimensional
+  statement_latex: 'F = m\,a'
+  validity: "Constant mass, non-relativistic speeds; magnitude form."
+  check: {kind: equation, lhs: "F", rhs: "m*a", units: {F: "kg*m/s**2", m: "kg", a: "m/s**2"}}
+  symbols:
+    - {name: F, meaning: net force, unit: "kg*m/s**2"}
+    - {name: m, meaning: mass, unit: kg}
+    - {name: a, meaning: acceleration, unit: "m/s**2"}
+  keywords: [newton, force, mass, acceleration]
+- id: mech.kinetic_energy
+  title: Kinetic energy
+  kind: equation
+  chapter: physics.mechanics
+  section: dynamics
+  verification: dimensional
+  statement_latex: 'T = \tfrac12 m v^2'
+  validity: "Non-relativistic speeds."
+  check: {kind: equation, lhs: "T", rhs: "m*v**2/2", units: {T: "kg*m**2/s**2", m: "kg", v: "m/s"}}
+  symbols:
+    - {name: T, meaning: kinetic energy, unit: "kg*m**2/s**2"}
+    - {name: m, meaning: mass, unit: kg}
+    - {name: v, meaning: speed, unit: "m/s"}
+  keywords: [kinetic energy, mass, speed]
+- id: mech.gravitation
+  title: Newtonian gravitation
+  kind: equation
+  chapter: physics.mechanics
+  section: dynamics
+  verification: dimensional
+  statement_latex: 'F = \frac{G\,m_1 m_2}{r^2}'
+  validity: "Point masses (or spherically symmetric bodies); weak fields."
+  check:
+    kind: equation
+    lhs: "F"
+    rhs: "G*m1*m2/r**2"
+    units: {F: "kg*m/s**2", G: "m**3/(kg*s**2)", m1: kg, m2: kg, r: m}
+  symbols:
+    - {name: F, meaning: attractive force magnitude, unit: "kg*m/s**2"}
+    - {name: G, meaning: gravitational constant, unit: "m**3/(kg*s**2)"}
+    - {name: m1, meaning: first mass, unit: kg}
+    - {name: m2, meaning: second mass, unit: kg}
+    - {name: r, meaning: separation, unit: m}
+  keywords: [gravity, newton, inverse square]
+- id: mech.pendulum_period
+  title: Small-angle pendulum period
+  kind: equation
+  chapter: physics.mechanics
+  section: dynamics
+  verification: dimensional
+  statement_latex: 'T = 2\pi\sqrt{\frac{L}{g}}'
+  validity: "Small oscillation amplitude, point-mass pendulum."
+  check: {kind: equation, lhs: "T", rhs: "2*pi*sqrt(L/g)", units: {T: s, L: m, g: "m/s**2"}}
+  symbols:
+    - {name: T, meaning: period, unit: s}
+    - {name: L, meaning: pendulum length, unit: m}
+    - {name: g, meaning: gravitational acceleration, unit: "m/s**2"}
+  keywords: [pendulum, period, oscillation]
+- id: mech.oscillator_frequency
+  title: Harmonic oscillator angular frequency
+  kind: equation
+  chapter: physics.mechanics
+  section: dynamics
+  verification: dimensional
+  statement_latex: '\omega = \sqrt{\frac{k}{m}}'
+  check: {kind: equation, lhs: "omega", rhs: "sqrt(k/m)", units: {omega: "1/s", k: "kg/s**2", m: kg}}
+  symbols:
+    - {name: omega, meaning: angular frequency, unit: "1/s"}
+    - {name: k, meaning: spring constant, unit: "kg/s**2"}
+    - {name: m, meaning: mass, unit: kg}
+  keywords: [harmonic oscillator, spring, frequency]

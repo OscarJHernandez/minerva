@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     compute_max_concurrency: int = Field(default=4, ge=1, le=64)
     max_input_chars: int = Field(default=2000, ge=10, le=20000)
 
+    # Header carrying the real client IP, set by a proxy you control (e.g. cf-connecting-ip behind
+    # Cloudflare). Empty means: use the socket peer. Never trust a header that clients can set.
+    trusted_ip_header: str = ""
     compute_rate_per_minute: int = 60
     auth_rate_per_minute: int = 10
 

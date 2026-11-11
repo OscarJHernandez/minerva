@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { apiTarget } from "./lib/api-target";
 
 const SESSION_COOKIE = "minerva_session";
 const API_URL = () => process.env.MINERVA_API_URL ?? "http://localhost:8100";
@@ -15,8 +16,9 @@ export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (pathname.startsWith("/api/")) {
-    if (!pathname.startsWith("/api/v1/")) return new NextResponse(null, { status: 404 });
-    return NextResponse.rewrite(new URL(`${pathname.slice(4)}${search}`, API_URL()));
+    const target = apiTarget(pathname, search, API_URL());
+    if (!target) return new NextResponse(null, { status: 404 });
+    return NextResponse.rewrite(target);
   }
 
   if (pathname === "/" && !request.cookies.has(SESSION_COOKIE)) {

@@ -40,6 +40,13 @@ class Reference(BaseModel):
     locator: str | None = None
     url: str | None = None
 
+    @field_validator("url")
+    @classmethod
+    def _http_only(cls, value: str | None) -> str | None:
+        if value is not None and not value.startswith(("https://", "http://")):
+            raise ValueError("reference url must be http(s)")
+        return value
+
 
 class SymbolDoc(BaseModel):
     name: str
@@ -158,8 +165,10 @@ class Entry(BaseModel):
             if not self.statement_latex:
                 raise ValueError("a `stated` entry needs statement_latex")
             return self
-        if self.rule is None and self.check is None and self.constant is None:
-            raise ValueError("a checked entry needs a `rule`, a `check` or a `constant`")
+        if self.rule is None and self.check is None:
+            raise ValueError("a checked entry needs a `rule` or a `check`")
+        if self.rule is not None and self.rule.id != self.id:
+            raise ValueError("rule.id must equal the entry id")
         if self.rule is None and not self.statement_latex:
             raise ValueError("entries without a rule need statement_latex")
         expected = {
@@ -169,8 +178,6 @@ class Entry(BaseModel):
             "dimensional": ("equation",),
         }[v]
         source = "rule" if self.rule is not None else (self.check.kind if self.check else "")
-        if self.constant is not None and self.rule is None and self.check is None:
-            return self
         if source not in expected:
             raise ValueError(f"verification {v!r} does not match content {source!r}")
         return self

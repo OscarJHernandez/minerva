@@ -4,3 +4,5 @@
 requireDigests: true
 cloudflared:
   enabled: true
+api:
+  trustedIpHeader: cf-connecting-ip   # traffic arrives through the Cloudflare tunnel

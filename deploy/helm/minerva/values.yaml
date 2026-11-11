@@ -15,6 +15,9 @@ placement:                   # node names to keep pods off (cluster specific; pa
 api:
   image: { repository: ghcr.io/oscarjhernandez/minerva-api, tag: "", digest: "" }
   allowRegistration: true
+  # Header with the real client IP, set by a proxy you control (Cloudflare sets cf-connecting-ip).
+  # Empty = use the socket peer, which behind the web proxy is one shared address.
+  trustedIpHeader: ""
   compute: { timeoutSeconds: 10, memoryMb: 1024, maxConcurrency: 4 }
   resources:
     requests: { cpu: 250m, memory: 512Mi }

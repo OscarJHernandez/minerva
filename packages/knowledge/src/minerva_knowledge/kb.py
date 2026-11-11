@@ -164,7 +164,7 @@ class KnowledgeBase:
         return [e for h in self.retriever.search(query) if (e := self.get(h.entry_id))]
 
     def candidate_rules(
-        self, features: Collection[str], text: str = "", limit: int = 25
+        self, features: Collection[str], text: str = "", limit: int = 100
     ) -> list[Entry]:
         """Rule entries whose left-hand side shares structure with the expression."""
         if not features and not text.strip():

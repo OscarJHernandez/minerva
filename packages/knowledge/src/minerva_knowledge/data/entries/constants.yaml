@@ -1,0 +1,70 @@
+- id: const.c
+  title: Speed of light in vacuum
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: 'c = 299\,792\,458\ \mathrm{m\,s^{-1}}'
+  constant: {value: "299792458", unit: "m/s"}
+  reference: {source: "SI Brochure, 9th edition (2019)", locator: "Table 1"}
+  keywords: [light, speed, relativity, exact]
+- id: const.h
+  title: Planck constant
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: 'h = 6.626\,070\,15\times10^{-34}\ \mathrm{J\,s}'
+  constant: {value: "6.62607015e-34", unit: "J s"}
+  reference: {source: "SI Brochure, 9th edition (2019)", locator: "Table 1"}
+  keywords: [planck, quantum, action, exact]
+- id: const.hbar
+  title: Reduced Planck constant
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: '\hbar = \frac{h}{2\pi} = 1.054\,571\,817\ldots\times10^{-34}\ \mathrm{J\,s}'
+  constant: {value: "1.054571817e-34", unit: "J s"}
+  notes: "Derived from the exact value of h; digits truncated, not rounded."
+  keywords: [hbar, planck, reduced, quantum]
+- id: const.e
+  title: Elementary charge
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: 'e = 1.602\,176\,634\times10^{-19}\ \mathrm{C}'
+  constant: {value: "1.602176634e-19", unit: "C"}
+  reference: {source: "SI Brochure, 9th edition (2019)", locator: "Table 1"}
+  keywords: [electron, charge, elementary, exact]
+- id: const.k_b
+  title: Boltzmann constant
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: 'k_B = 1.380\,649\times10^{-23}\ \mathrm{J\,K^{-1}}'
+  constant: {value: "1.380649e-23", unit: "J/K"}
+  reference: {source: "SI Brochure, 9th edition (2019)", locator: "Table 1"}
+  keywords: [boltzmann, entropy, temperature, exact]
+- id: const.n_a
+  title: Avogadro constant
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: 'N_A = 6.022\,140\,76\times10^{23}\ \mathrm{mol^{-1}}'
+  constant: {value: "6.02214076e23", unit: "1/mol"}
+  reference: {source: "SI Brochure, 9th edition (2019)", locator: "Table 1"}
+  keywords: [avogadro, mole, exact]
+- id: const.g_newton
+  title: Newtonian constant of gravitation
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: 'G = 6.674\,30(15)\times10^{-11}\ \mathrm{m^3\,kg^{-1}\,s^{-2}}'
+  constant: {value: "6.67430e-11", uncertainty: "1.5e-15", unit: "m^3/(kg s^2)"}
+  reference: {source: "CODATA recommended values", locator: "Newtonian constant of gravitation"}
+  keywords: [gravitation, newton, G]

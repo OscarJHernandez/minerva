@@ -1,0 +1,34 @@
+- id: special.gamma_recurrence
+  title: Gamma function recurrence
+  kind: identity
+  chapter: math.special_functions
+  section: gamma
+  verification: symbolic
+  validity: "Away from the poles of Γ."
+  rule: {id: special.gamma_recurrence, lhs: "gamma(a + 1)", rhs: "a*gamma(a)", variables: [a]}
+  reference: {source: DLMF, locator: "§5.5", url: "https://dlmf.nist.gov/5.5"}
+  keywords: [gamma, recurrence, factorial, functional equation]
+- id: special.gamma_reflection
+  title: Gamma reflection formula
+  kind: identity
+  chapter: math.special_functions
+  section: gamma
+  verification: symbolic
+  validity: "a not an integer."
+  rule: {id: special.gamma_reflection, lhs: "gamma(a)*gamma(1 - a)", rhs: "pi/sin(pi*a)", variables: [a]}
+  reference: {source: DLMF, locator: "§5.5", url: "https://dlmf.nist.gov/5.5"}
+  keywords: [gamma, reflection, euler, sine]
+- id: special.gamma_duplication
+  title: Gamma duplication formula
+  kind: identity
+  chapter: math.special_functions
+  section: gamma
+  verification: symbolic
+  validity: "Away from the poles of Γ."
+  rule:
+    id: special.gamma_duplication
+    lhs: "gamma(a)*gamma(a + 1/2)"
+    rhs: "2**(1 - 2*a)*sqrt(pi)*gamma(2*a)"
+    variables: [a]
+  reference: {source: DLMF, locator: "§5.5", url: "https://dlmf.nist.gov/5.5"}
+  keywords: [gamma, duplication, legendre]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 ALLOWED_ASSUMPTIONS: frozenset[str] = frozenset(
     {
@@ -99,6 +99,13 @@ class Rule(BaseModel):
     variables: list[str]
     conditions: list[RuleCondition] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def _conditions_use_declared_variables(self) -> Rule:
+        unknown = {c.variable for c in self.conditions} - set(self.variables)
+        if unknown:
+            raise ValueError(f"conditions refer to undeclared variable(s) {sorted(unknown)}")
+        return self
+
 
 class Applicability(StrEnum):
     APPLICABLE = "applicable"  # matched, conditions proven, rewrite verified
@@ -143,11 +150,6 @@ class TensorSpec(BaseModel):
 
     rank: int = Field(ge=1, le=6)
     symmetry: Literal["none", "symmetric", "antisymmetric", "riemann"] = "none"
-
-    @field_validator("symmetry")
-    @classmethod
-    def _riemann_rank(cls, value: str) -> str:
-        return value
 
 
 class TensorInput(BaseModel):

@@ -62,16 +62,20 @@ def current_user(request: Request, db: DbDep, settings: SettingsDep) -> User:
         db.delete(row)
         db.commit()
         raise unauthorized
-    return row.user
+    user = row.user
+    # End the transaction now: a compute request can run for seconds and must not pin a pooled
+    # connection meanwhile (attributes stay loaded: expire_on_commit is off).
+    db.commit()
+    return user
 
 
 UserDep = Annotated[User, Depends(current_user)]
 
 
 def client_key(request: Request) -> str:
-    # Behind Cloudflare/ingress the real client is in a forwarded header; deployments must
-    # only trust it from their own proxy. Locally this falls back to the socket peer.
-    forwarded = request.headers.get("cf-connecting-ip") or request.headers.get("x-forwarded-for")
+    """Rate-limit key. A forwarded-IP header is used only if the deployment names one it trusts."""
+    header = request.app.state.settings.trusted_ip_header
+    forwarded = request.headers.get(header) if header else None
     if forwarded:
         return forwarded.split(",")[0].strip()[:64]
     return request.client.host if request.client else "unknown"

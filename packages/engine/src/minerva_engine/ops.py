@@ -6,6 +6,7 @@ boundary. `service.Engine` is the typed entry point; call these directly only in
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -191,7 +192,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
         rewritten = expr.xreplace({node: instantiated})
         if rewritten == expr:
             continue
-        verification = verify_equal(expr, rewritten)
+        verification = verify_equal(expr, rewritten, symbolic=False)
         if not verification.passed:
             return RuleApplication(
                 rule_id=rule.id,
@@ -228,7 +229,19 @@ def op_identities(payload: dict[str, Any]) -> dict[str, Any]:
         return IdentitiesResult(status=status, message=message).model_dump(mode="json")
 
     applications: list[RuleApplication] = []
+    # One sandbox timeout covers every rule. Stop early and say so, instead of letting one slow
+    # rule turn the whole request into `resource_limit` with no partial results.
+    deadline = time.monotonic() + 0.7 * limits.timeout_seconds
     for rule in rules:
+        if time.monotonic() > deadline:
+            applications.append(
+                RuleApplication(
+                    rule_id=rule.id,
+                    applicability=Applicability.NO_MATCH,
+                    message="Skipped: the time budget for this request was used up.",
+                )
+            )
+            continue
         try:
             applications.append(apply_rule(expr, rule))
         except MinervaMathError as exc:

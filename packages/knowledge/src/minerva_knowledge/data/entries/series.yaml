@@ -1,0 +1,74 @@
+- id: series.exp
+  title: Exponential series
+  kind: series
+  chapter: math.series
+  section: power
+  verification: numeric
+  validity: "All x."
+  statement_latex: 'e^{x} = \sum_{n=0}^{\infty}\frac{x^n}{n!}'
+  check: {kind: series, term: "x**n/factorial(n)", index: n, lower: 0, upper: "oo", result: "exp(x)", params: {x: {min: -3.0, max: 3.0}}}
+  reference: {source: DLMF, locator: "§4.6", url: "https://dlmf.nist.gov/4.6"}
+  keywords: [exponential, maclaurin, taylor, series]
+- id: series.sin
+  title: Sine series
+  kind: series
+  chapter: math.series
+  section: power
+  verification: numeric
+  validity: "All x."
+  statement_latex: '\sin x = \sum_{n=0}^{\infty}\frac{(-1)^n x^{2n+1}}{(2n+1)!}'
+  check: {kind: series, term: "(-1)**n*x**(2*n + 1)/factorial(2*n + 1)", index: n, lower: 0, upper: "oo", result: "sin(x)", params: {x: {min: -3.0, max: 3.0}}}
+  reference: {source: DLMF, locator: "§4.19", url: "https://dlmf.nist.gov/4.19"}
+  keywords: [sine, maclaurin, taylor, series]
+- id: series.cos
+  title: Cosine series
+  kind: series
+  chapter: math.series
+  section: power
+  verification: numeric
+  validity: "All x."
+  statement_latex: '\cos x = \sum_{n=0}^{\infty}\frac{(-1)^n x^{2n}}{(2n)!}'
+  check: {kind: series, term: "(-1)**n*x**(2*n)/factorial(2*n)", index: n, lower: 0, upper: "oo", result: "cos(x)", params: {x: {min: -3.0, max: 3.0}}}
+  reference: {source: DLMF, locator: "§4.19", url: "https://dlmf.nist.gov/4.19"}
+  keywords: [cosine, maclaurin, taylor, series]
+- id: series.geometric
+  title: Geometric series
+  kind: series
+  chapter: math.series
+  section: power
+  verification: numeric
+  validity: "|x| < 1."
+  statement_latex: '\sum_{n=0}^{\infty}x^n = \frac{1}{1-x}'
+  check: {kind: series, term: "x**n", index: n, lower: 0, upper: "oo", result: "1/(1 - x)", params: {x: {min: -0.9, max: 0.9}}}
+  keywords: [geometric, series, convergence]
+- id: series.log1p
+  title: Logarithm series
+  kind: series
+  chapter: math.series
+  section: power
+  verification: numeric
+  validity: "|x| < 1."
+  statement_latex: '\ln(1+x) = \sum_{n=1}^{\infty}\frac{(-1)^{n+1}x^n}{n}'
+  check: {kind: series, term: "(-1)**(n + 1)*x**n/n", index: n, lower: 1, upper: "oo", result: "log(1 + x)", params: {x: {min: -0.9, max: 0.9}}}
+  reference: {source: DLMF, locator: "§4.6", url: "https://dlmf.nist.gov/4.6"}
+  keywords: [logarithm, maclaurin, series]
+- id: series.arctan
+  title: Inverse tangent series
+  kind: series
+  chapter: math.series
+  section: power
+  verification: numeric
+  validity: "|x| ≤ 1 (checked here for |x| ≤ 0.9)."
+  statement_latex: '\arctan x = \sum_{n=0}^{\infty}\frac{(-1)^n x^{2n+1}}{2n+1}'
+  check: {kind: series, term: "(-1)**n*x**(2*n + 1)/(2*n + 1)", index: n, lower: 0, upper: "oo", result: "arctan(x)", params: {x: {min: -0.9, max: 0.9}}}
+  reference: {source: DLMF, locator: "§4.19", url: "https://dlmf.nist.gov/4.19"}
+  keywords: [arctangent, maclaurin, series]
+- id: series.basel
+  title: Basel problem
+  kind: series
+  chapter: math.series
+  section: numeric
+  verification: numeric
+  statement_latex: '\sum_{n=1}^{\infty}\frac{1}{n^2} = \frac{\pi^2}{6}'
+  check: {kind: series, term: "1/n**2", index: n, lower: 1, upper: "oo", result: "pi**2/6"}
+  keywords: [basel, zeta, euler, series]

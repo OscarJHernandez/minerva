@@ -1,0 +1,119 @@
+- id: deriv.tan
+  title: Derivative of the tangent
+  kind: derivative
+  chapter: math.derivatives
+  section: elementary
+  verification: symbolic
+  statement_latex: '\frac{d}{dx}\tan x = \sec^2 x'
+  check: {kind: derivative, function: "tan(x)", variable: x, result: "1/cos(x)**2"}
+  reference: {source: DLMF, locator: "§4.20", url: "https://dlmf.nist.gov/4.20"}
+  keywords: [derivative, tangent, secant]
+- id: deriv.arcsin
+  title: Derivative of the inverse sine
+  kind: derivative
+  chapter: math.derivatives
+  section: elementary
+  verification: symbolic
+  validity: "|x| < 1."
+  statement_latex: '\frac{d}{dx}\arcsin x = \frac{1}{\sqrt{1-x^2}}'
+  check: {kind: derivative, function: "arcsin(x)", variable: x, result: "1/sqrt(1 - x**2)"}
+  reference: {source: DLMF, locator: "§4.23", url: "https://dlmf.nist.gov/4.23"}
+  keywords: [derivative, arcsine, inverse sine]
+- id: deriv.arctan
+  title: Derivative of the inverse tangent
+  kind: derivative
+  chapter: math.derivatives
+  section: elementary
+  verification: symbolic
+  statement_latex: '\frac{d}{dx}\arctan x = \frac{1}{1+x^2}'
+  check: {kind: derivative, function: "arctan(x)", variable: x, result: "1/(1 + x**2)"}
+  reference: {source: DLMF, locator: "§4.23", url: "https://dlmf.nist.gov/4.23"}
+  keywords: [derivative, arctangent, inverse tangent]
+- id: deriv.sinh
+  title: Derivative of the hyperbolic sine
+  kind: derivative
+  chapter: math.derivatives
+  section: elementary
+  verification: symbolic
+  statement_latex: '\frac{d}{dx}\sinh x = \cosh x'
+  check: {kind: derivative, function: "sinh(x)", variable: x, result: "cosh(x)"}
+  reference: {source: DLMF, locator: "§4.34", url: "https://dlmf.nist.gov/4.34"}
+  keywords: [derivative, sinh, cosh]
+- id: deriv.log
+  title: Derivative of the logarithm
+  kind: derivative
+  chapter: math.derivatives
+  section: elementary
+  verification: symbolic
+  statement_latex: '\frac{d}{dx}\ln x = \frac{1}{x}'
+  check: {kind: derivative, function: "log(x)", variable: x, result: "1/x"}
+  reference: {source: DLMF, locator: "§4.7", url: "https://dlmf.nist.gov/4.7"}
+  keywords: [derivative, logarithm]
+- id: deriv.power
+  title: Power rule
+  kind: derivative
+  chapter: math.derivatives
+  section: elementary
+  verification: symbolic
+  validity: "x ≠ 0 (x > 0 for non-integer n)."
+  statement_latex: '\frac{d}{dx}x^n = n\,x^{n-1}'
+  check: {kind: derivative, function: "x**n", variable: x, result: "n*x**(n - 1)"}
+  keywords: [derivative, power rule]
+- id: antideriv.arctan
+  title: Antiderivative of 1/(1+x²)
+  kind: integral
+  chapter: math.integrals
+  section: indefinite
+  verification: symbolic
+  statement_latex: '\int\frac{dx}{1+x^2} = \arctan x + C'
+  check: {kind: antiderivative, integrand: "1/(1 + x**2)", antiderivative: "arctan(x)", variable: x}
+  reference: {source: DLMF, locator: "§4.26", url: "https://dlmf.nist.gov/4.26"}
+  keywords: [integral, arctangent, rational]
+- id: antideriv.arcsin
+  title: Antiderivative of 1/√(1−x²)
+  kind: integral
+  chapter: math.integrals
+  section: indefinite
+  verification: symbolic
+  validity: "|x| < 1."
+  statement_latex: '\int\frac{dx}{\sqrt{1-x^2}} = \arcsin x + C'
+  check: {kind: antiderivative, integrand: "1/sqrt(1 - x**2)", antiderivative: "arcsin(x)", variable: x}
+  reference: {source: DLMF, locator: "§4.26", url: "https://dlmf.nist.gov/4.26"}
+  keywords: [integral, arcsine, radical]
+- id: antideriv.sec2
+  title: Antiderivative of sec²
+  kind: integral
+  chapter: math.integrals
+  section: indefinite
+  verification: symbolic
+  statement_latex: '\int\sec^2 x\,dx = \tan x + C'
+  check: {kind: antiderivative, integrand: "1/cos(x)**2", antiderivative: "tan(x)", variable: x}
+  reference: {source: DLMF, locator: "§4.26", url: "https://dlmf.nist.gov/4.26"}
+  keywords: [integral, secant, tangent]
+- id: antideriv.x_exp
+  title: Antiderivative of x·eˣ
+  kind: integral
+  chapter: math.integrals
+  section: indefinite
+  verification: symbolic
+  statement_latex: '\int x\,e^{x}\,dx = (x-1)\,e^{x} + C'
+  check: {kind: antiderivative, integrand: "x*exp(x)", antiderivative: "(x - 1)*exp(x)", variable: x}
+  keywords: [integral, integration by parts, exponential]
+- id: antideriv.log
+  title: Antiderivative of the logarithm
+  kind: integral
+  chapter: math.integrals
+  section: indefinite
+  verification: symbolic
+  statement_latex: '\int \ln x\,dx = x\ln x - x + C'
+  check: {kind: antiderivative, integrand: "log(x)", antiderivative: "x*log(x) - x", variable: x}
+  keywords: [integral, logarithm, integration by parts]
+- id: antideriv.sin_squared
+  title: Antiderivative of sin²
+  kind: integral
+  chapter: math.integrals
+  section: indefinite
+  verification: symbolic
+  statement_latex: '\int \sin^2 x\,dx = \frac{x}{2} - \frac{\sin 2x}{4} + C'
+  check: {kind: antiderivative, integrand: "sin(x)**2", antiderivative: "x/2 - sin(2*x)/4", variable: x}
+  keywords: [integral, sine, square, power reduction]

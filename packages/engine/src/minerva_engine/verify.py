@@ -79,12 +79,19 @@ def numeric_check(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int,
     return checked, agreed
 
 
-def verify_equal(original: sp.Expr, candidate: sp.Expr) -> Verification:
+def verify_equal(original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True) -> Verification:
+    """Numeric agreement is what decides `passed`; the symbolic zero test is extra evidence.
+
+    Pass `symbolic=False` where many verifications share one time budget (rule application):
+    `sp.simplify(a - b)` can be slower than everything else together.
+    """
     checked, agreed = numeric_check(original, candidate)
-    try:
-        symbolic_zero = sp.simplify(original - candidate) == 0
-    except Exception:
-        symbolic_zero = False
+    symbolic_zero = False
+    if symbolic:
+        try:
+            symbolic_zero = sp.simplify(original - candidate) == 0
+        except Exception:
+            symbolic_zero = False
     passed = checked >= MIN_VALID_POINTS and agreed == checked
     if checked < MIN_VALID_POINTS:
         note = "too few valid sample points to verify numerically"

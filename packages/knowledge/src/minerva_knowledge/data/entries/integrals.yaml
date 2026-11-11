@@ -1,0 +1,115 @@
+- id: int.gaussian
+  title: Gaussian integral
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  validity: "a > 0."
+  statement_latex: '\int_{-\infty}^{\infty} e^{-a x^2}\,dx = \sqrt{\frac{\pi}{a}}'
+  check:
+    kind: integral
+    integrand: "exp(-a*x**2)"
+    variable: x
+    lower: "-oo"
+    upper: "oo"
+    result: "sqrt(pi/a)"
+    params: {a: {min: 0.5, max: 3.0}}
+  keywords: [gaussian, integral, normal distribution, error function]
+- id: int.exp_decay
+  title: Exponential decay integral
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  validity: "a > 0."
+  statement_latex: '\int_0^\infty e^{-a x}\,dx = \frac{1}{a}'
+  check: {kind: integral, integrand: "exp(-a*x)", variable: x, lower: "0", upper: "oo", result: "1/a", params: {a: {min: 0.5, max: 3.0}}}
+  keywords: [exponential, laplace, integral]
+- id: int.laplace_cos
+  title: Laplace transform of the cosine
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  validity: "a > 0, b real."
+  statement_latex: '\int_0^\infty e^{-a x}\cos(bx)\,dx = \frac{a}{a^2+b^2}'
+  check:
+    kind: integral
+    integrand: "exp(-a*x)*cos(b*x)"
+    variable: x
+    lower: "0"
+    upper: "oo"
+    result: "a/(a**2 + b**2)"
+    params: {a: {min: 0.5, max: 3.0}, b: {min: -3.0, max: 3.0}}
+  keywords: [laplace, cosine, integral, transform]
+- id: int.laplace_sin
+  title: Laplace transform of the sine
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  validity: "a > 0, b real."
+  statement_latex: '\int_0^\infty e^{-a x}\sin(bx)\,dx = \frac{b}{a^2+b^2}'
+  check:
+    kind: integral
+    integrand: "exp(-a*x)*sin(b*x)"
+    variable: x
+    lower: "0"
+    upper: "oo"
+    result: "b/(a**2 + b**2)"
+    params: {a: {min: 0.5, max: 3.0}, b: {min: -3.0, max: 3.0}}
+  keywords: [laplace, sine, integral, transform]
+- id: int.lorentzian
+  title: Lorentzian integral
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  statement_latex: '\int_{-\infty}^{\infty}\frac{dx}{1+x^2} = \pi'
+  check: {kind: integral, integrand: "1/(1 + x**2)", variable: x, lower: "-oo", upper: "oo", result: "pi"}
+  keywords: [lorentzian, cauchy, integral, arctangent]
+- id: int.gamma_function
+  title: Euler integral for the Gamma function
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  validity: "s > 0."
+  statement_latex: '\int_0^\infty x^{s-1}e^{-x}\,dx = \Gamma(s)'
+  check:
+    kind: integral
+    integrand: "x**(s - 1)*exp(-x)"
+    variable: x
+    lower: "0"
+    upper: "oo"
+    result: "gamma(s)"
+    params: {s: {min: 1.0, max: 4.0}}
+  reference: {source: DLMF, locator: "§5.2", url: "https://dlmf.nist.gov/5.2"}
+  keywords: [gamma, euler integral, factorial]
+- id: int.beta_function
+  title: Euler integral for the Beta function
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  validity: "a, b > 0 (checked here for a, b ≥ 1)."
+  statement_latex: '\int_0^1 x^{a-1}(1-x)^{b-1}\,dx = \frac{\Gamma(a)\Gamma(b)}{\Gamma(a+b)}'
+  check:
+    kind: integral
+    integrand: "x**(a - 1)*(1 - x)**(b - 1)"
+    variable: x
+    lower: "0"
+    upper: "1"
+    result: "gamma(a)*gamma(b)/gamma(a + b)"
+    params: {a: {min: 1.0, max: 4.0}, b: {min: 1.0, max: 4.0}}
+  reference: {source: DLMF, locator: "§5.12", url: "https://dlmf.nist.gov/5.12"}
+  keywords: [beta function, euler integral, gamma]
+- id: int.sin_squared_quarter
+  title: Integral of sin² over a quarter period
+  kind: integral
+  chapter: math.integrals
+  section: definite
+  verification: numeric
+  statement_latex: '\int_0^{\pi/2}\sin^2 x\,dx = \frac{\pi}{4}'
+  check: {kind: integral, integrand: "sin(x)**2", variable: x, lower: "0", upper: "pi/2", result: "pi/4"}
+  keywords: [sine, square, integral, wallis]

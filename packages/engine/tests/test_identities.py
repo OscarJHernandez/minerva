@@ -131,3 +131,17 @@ def test_matches_that_invent_reciprocals_or_imaginary_units_are_discarded(engine
     )
     dos = Rule(id="dos", lhs="a**2 - b**2", rhs="(a - b)*(a + b)", variables=["a", "b"])
     assert apply(engine, "x^2 + y^2", [dos])["dos"].applicability is Applicability.NO_MATCH
+
+
+def test_time_budget_returns_partial_results(engine: Engine) -> None:
+    from minerva_engine import Limits
+
+    tiny = Engine(Limits(timeout_seconds=0.001 + 0.0))
+    # With a near-zero budget every rule is reported as skipped, never as a crash or fake match.
+    out = {
+        a.rule_id: a
+        for a in tiny.apply_rules(
+            ExpressionInput(input=r"\sin^2 t + \cos^2 t"), [PYTH, LOG_PRODUCT]
+        ).applications
+    }
+    assert all(a.applicability is not Applicability.APPLICABLE for a in out.values()) or out == {}

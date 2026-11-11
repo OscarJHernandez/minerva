@@ -57,7 +57,10 @@ class RateLimiter:
             if len(events) >= limit:
                 return False
             events.append(now)
-            if len(self._events) > 10_000:  # bound memory
-                for k in [k for k, v in self._events.items() if not v][:1000]:
+            if len(self._events) > 10_000:  # bound memory: drop keys idle for a full window
+                stale = [
+                    k for k, v in self._events.items() if not v or now - v[-1] > window_seconds
+                ]
+                for k in stale:
                     del self._events[k]
             return True
