@@ -14,8 +14,8 @@ const STATUS: Record<Status, { label: string; tone: string }> = {
   internal_error: { label: "Computation failed", tone: "bg-bad-soft text-bad" },
 };
 
-export function StatusPill({ status }: { status: Status }) {
-  const s = STATUS[status];
+export function StatusPill({ status, okLabel }: { status: Status; okLabel?: string }) {
+  const s = status === "ok" && okLabel ? { ...STATUS.ok, label: okLabel } : STATUS[status];
   return (
     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${s.tone}`}>
       {s.label}

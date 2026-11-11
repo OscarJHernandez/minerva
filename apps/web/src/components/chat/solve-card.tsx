@@ -17,7 +17,7 @@ export function SolveCard({ report, methods }: { report: SolveReport; methods: E
     <section className="rounded-lg border border-rule bg-raised p-5" aria-label="Solve">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-serif text-xl">Solve</h3>
-        <StatusPill status={report.status} />
+        <StatusPill status={report.status} okLabel="Solved and verified" />
       </div>
       {report.equation_latex && <Math latex={report.equation_latex} display />}
       <p className="text-sm text-muted">{report.message}</p>
