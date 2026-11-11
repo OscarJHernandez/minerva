@@ -1,0 +1,125 @@
+name: CI
+
+# Trusted code (branches of this repository, and main via the Deploy workflow) runs on the self-hosted `minerva-runners`
+# scale set, which provides a PostgreSQL sidecar on 127.0.0.1:5432 and a rootless BuildKit sidecar.
+# Pull requests from forks run the same checks on GitHub-hosted runners, with SQLite instead of
+# PostgreSQL and without any secret or image build, so untrusted code never reaches the cluster.
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  python:
+    name: Python (lint, types, tests, handbook)
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    timeout-minutes: 20
+    env:
+      # Empty on forks: the tests then use SQLite.
+      MINERVA_TEST_DATABASE_URL: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && '' || 'postgresql+psycopg://postgres@127.0.0.1:5432/postgres' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy packages/engine/src packages/knowledge/src services/api/src
+      - name: Verify every handbook entry at its declared level
+        run: uv run python -m minerva_knowledge verify
+      - name: Migrations apply and match the models (PostgreSQL)
+        if: env.MINERVA_TEST_DATABASE_URL != ''
+        working-directory: services/api
+        run: |
+          export MINERVA_DATABASE_URL="$MINERVA_TEST_DATABASE_URL"
+          uv run alembic upgrade head
+          uv run alembic check
+      - run: uv run pytest
+
+  web:
+    name: Web (lint, types, tests, build)
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          MINERVA_API_URL: http://localhost:8100
+
+  chart:
+    name: Helm chart
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.3.1
+      - name: Lint and render the production overlay (fake digests)
+        run: |
+          D=sha256:$(printf 'a%.0s' {1..64})
+          SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
+          helm lint deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}"
+          helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" > /dev/null
+      - name: Missing digests must be refused in production
+        run: |
+          if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml > /dev/null 2>&1; then
+            echo "::error::requireDigests did not reject a release without image digests"; exit 1
+          fi
+      - run: bash -n scripts/build-image.sh
+
+  images:
+    name: Build images (not pushed)
+    # Only trusted code: needs the BuildKit sidecar of the self-hosted runner.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: minerva-runners
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - run: bash scripts/build-image.sh deploy/docker/api.Dockerfile ghcr.io/oscarjhernandez/minerva-api:ci no-push
+      - run: bash scripts/build-image.sh deploy/docker/web.Dockerfile ghcr.io/oscarjhernandez/minerva-web:ci no-push
+      - run: bash scripts/build-image.sh deploy/docker/site.Dockerfile ghcr.io/oscarjhernandez/minerva-site:ci no-push
+
+  security:
+    name: Dependency audit and secret scan
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+      - name: Python dependencies (pip-audit)
+        run: |
+          uv export --frozen --no-hashes --no-emit-workspace > "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: JavaScript dependencies (high and above)
+        run: pnpm install --frozen-lockfile --ignore-scripts && pnpm audit --audit-level high
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: "false"

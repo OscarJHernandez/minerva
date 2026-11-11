@@ -1,0 +1,38 @@
+{{- if .Values.cloudflared.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-cloudflared
+  labels:
+    {{- include "minerva.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "minerva.selector" (dict "root" . "component" "cloudflared") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "minerva.selector" (dict "root" . "component" "cloudflared") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- include "minerva.affinity" (dict "ctx" . "stateful" false) | nindent 6 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "minerva.podSecurity" . | nindent 6 }}
+      containers:
+        - name: cloudflared
+          image: {{ .Values.cloudflared.image }}
+          args: ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "run"]
+          {{- include "minerva.containerSecurity" . | nindent 10 }}
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom: { secretKeyRef: { name: {{ .Values.cloudflared.tokenSecret }}, key: {{ .Values.cloudflared.tokenKey }} } }
+            - { name: TUNNEL_TRANSPORT_PROTOCOL, value: http2 }
+          # Public hostnames are routed in the Cloudflare infrastructure repository:
+          #   site host -> http://{{ .Release.Name }}-site.{{ .Release.Namespace }}.svc.cluster.local:80
+          #   app host  -> http://{{ .Release.Name }}-web.{{ .Release.Namespace }}.svc.cluster.local:80
+          livenessProbe: { httpGet: { path: /ready, port: 2000 }, periodSeconds: 20 }
+          resources: {{ toYaml .Values.cloudflared.resources | nindent 12 }}
+{{- end }}

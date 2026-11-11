@@ -1,0 +1,50 @@
+# Defaults are generic. Deployment-specific settings (hostnames, node placement, pull secrets) are
+# supplied at deploy time (--set / extra values file / repository variables), never committed.
+requireDigests: false        # production overlay turns this on: images are deployed by digest
+imagePullSecrets: []         # e.g. [{ name: ghcr-pull }] when the images are private
+existingSecret: minerva-secrets   # keys: postgres-password, session-secret (created by hand)
+
+hosts:                       # public hostnames, used for CORS/origin checks and documentation comments
+  site: ""
+  app: ""
+
+placement:                   # node names to keep pods off (cluster specific; pass via extra values)
+  statelessAvoidNodes: []
+  statefulAvoidNodes: []
+
+api:
+  image: { repository: ghcr.io/oscarjhernandez/minerva-api, tag: "", digest: "" }
+  allowRegistration: true
+  compute: { timeoutSeconds: 10, memoryMb: 1024, maxConcurrency: 4 }
+  resources:
+    requests: { cpu: 250m, memory: 512Mi }
+    limits: { memory: 2Gi }
+
+web:
+  image: { repository: ghcr.io/oscarjhernandez/minerva-web, tag: "", digest: "" }
+  resources:
+    requests: { cpu: 100m, memory: 192Mi }
+    limits: { memory: 512Mi }
+
+site:
+  image: { repository: ghcr.io/oscarjhernandez/minerva-site, tag: "", digest: "" }
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+
+postgres:
+  image: postgres:17-alpine
+  storage: 5Gi
+  storageClass: ""
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
+
+cloudflared:                 # one tunnel pod; routing lives in the Cloudflare infrastructure repository
+  enabled: false
+  image: cloudflare/cloudflared:2026.10.6
+  tokenSecret: cloudflared-token
+  tokenKey: token
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 100m, memory: 128Mi }

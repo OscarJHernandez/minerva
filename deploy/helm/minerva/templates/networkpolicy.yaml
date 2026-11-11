@@ -1,0 +1,70 @@
+# Default-deny ingress for Minerva pods, then allow only what is needed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-deny
+  labels:
+    {{- include "minerva.labels" . | nindent 4 }}
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: minerva, app.kubernetes.io/instance: {{ .Release.Name }} } }
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    {{- include "minerva.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "minerva.selector" (dict "root" . "component" "postgres") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "minerva.selector" (dict "root" . "component" "api") | nindent 14 }}
+      ports: [{ port: 5432 }]
+---
+# The API is reachable only from the web app's proxy (and `helm test`); it is never exposed directly.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "minerva.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "minerva.selector" (dict "root" . "component" "api") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "minerva.selector" (dict "root" . "component" "web") | nindent 14 }}
+        - podSelector: { matchLabels: { minerva/role: helm-test } }
+      ports: [{ port: 8100 }]
+---
+{{- range $c, $port := dict "web" 3000 "site" 8080 }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $.Release.Name }}-{{ $c }}
+  labels:
+    {{- include "minerva.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "minerva.selector" (dict "root" $ "component" $c) | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "minerva.selector" (dict "root" $ "component" "cloudflared") | nindent 14 }}
+        - podSelector: { matchLabels: { minerva/role: helm-test } }
+      ports: [{ port: {{ $port }} }]
+---
+{{- end }}

@@ -252,9 +252,6 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
     devDependencies:
-      '@playwright/test':
-        specifier: 1.65.0
-        version: 1.65.0
       '@tailwindcss/postcss':
         specifier: 4.3.5
         version: 4.3.5
@@ -3242,6 +3239,7 @@ snapshots:
   '@playwright/test@1.65.0':
     dependencies:
       playwright: 1.65.0
+    optional: true
 
   '@rolldown/binding-android-arm-eabi@1.2.18':
     optional: true
@@ -4863,11 +4861,13 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  playwright-core@1.65.0: {}
+  playwright-core@1.65.0:
+    optional: true
 
   playwright@1.65.0:
     dependencies:
       playwright-core: 1.65.0
+    optional: true
 
   possible-typed-array-names@1.1.0: {}
 
