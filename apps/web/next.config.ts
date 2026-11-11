@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const config: NextConfig = {
   output: "standalone",
+  // Monorepo: trace dependencies from the repository root so the standalone build is complete.
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@minerva/ui"],

@@ -3,7 +3,9 @@
   "private": true,
   "description": "Minerva monorepo root (JavaScript workspace). Python lives in a uv workspace, see pyproject.toml.",
   "license": "Apache-2.0",
-  "engines": { "node": ">=20.19" },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
@@ -13,5 +15,6 @@
   },
   "devDependencies": {
     "prettier": "^3.6.2"
-  }
+  },
+  "packageManager": "pnpm@12.15.0"
 }
