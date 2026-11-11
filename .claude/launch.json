@@ -4,7 +4,16 @@
     {
       "name": "minerva-api",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "--directory", "services/api", "uvicorn", "minerva_api.main:app_from_env", "--factory", "--port", "8100"],
+      "runtimeArgs": [
+        "run",
+        "--directory",
+        "services/api",
+        "uvicorn",
+        "minerva_api.main:app_from_env",
+        "--factory",
+        "--port",
+        "8100"
+      ],
       "port": 8100
     },
     {
