@@ -1,0 +1,56 @@
+- id: rel.mass_energy
+  title: Mass–energy equivalence
+  kind: equation
+  chapter: physics.relativity
+  section: special
+  verification: dimensional
+  statement_latex: 'E = m c^2'
+  validity: "Rest energy of a body of mass m."
+  check: {kind: equation, lhs: "En", rhs: "m*c**2", units: {En: "kg*m**2/s**2", m: kg, c: "m/s"}}
+  symbols:
+    - {name: En, meaning: rest energy, unit: "kg*m**2/s**2"}
+    - {name: m, meaning: mass, unit: kg}
+    - {name: c, meaning: speed of light, unit: "m/s"}
+  keywords: [einstein, mass, energy, rest energy]
+- id: rel.energy_momentum
+  title: Relativistic energy–momentum relation
+  kind: equation
+  chapter: physics.relativity
+  section: special
+  verification: dimensional
+  statement_latex: 'E^2 = (pc)^2 + (mc^2)^2'
+  check:
+    kind: equation
+    lhs: "En**2"
+    rhs: "(p*c)**2 + (m*c**2)**2"
+    units: {En: "kg*m**2/s**2", p: "kg*m/s", m: kg, c: "m/s"}
+  symbols:
+    - {name: En, meaning: total energy, unit: "kg*m**2/s**2"}
+    - {name: p, meaning: momentum magnitude, unit: "kg*m/s"}
+    - {name: m, meaning: rest mass, unit: kg}
+    - {name: c, meaning: speed of light, unit: "m/s"}
+  keywords: [energy, momentum, dispersion, mass shell]
+- id: rel.time_dilation
+  title: Time dilation
+  kind: equation
+  chapter: physics.relativity
+  section: special
+  verification: dimensional
+  statement_latex: 't = \frac{t_0}{\sqrt{1 - v^2/c^2}}'
+  validity: "|v| < c."
+  check: {kind: equation, lhs: "t", rhs: "t0/sqrt(1 - v**2/c**2)", units: {t: s, t0: s, v: "m/s", c: "m/s"}}
+  symbols:
+    - {name: t, meaning: dilated time interval, unit: s}
+    - {name: t0, meaning: proper time interval, unit: s}
+    - {name: v, meaning: relative speed, unit: "m/s"}
+    - {name: c, meaning: speed of light, unit: "m/s"}
+  keywords: [time dilation, lorentz factor, special relativity]
+- id: rel.einstein_field
+  title: Einstein field equations
+  kind: equation
+  chapter: physics.relativity
+  section: special
+  verification: stated
+  statement_latex: 'G_{\mu\nu} + \Lambda g_{\mu\nu} = \frac{8\pi G}{c^4}\,T_{\mu\nu}'
+  notes: "Recorded as stated; tensor field equations are beyond the current checkers."
+  keywords: [einstein, field equations, general relativity, curvature, stress-energy]

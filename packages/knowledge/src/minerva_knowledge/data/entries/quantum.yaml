@@ -1,0 +1,44 @@
+- id: qm.de_broglie
+  title: de Broglie relation
+  kind: equation
+  chapter: physics.quantum
+  section: basics
+  verification: dimensional
+  statement_latex: '\lambda = \frac{h}{p}'
+  check: {kind: equation, lhs: "lam", rhs: "h/p", units: {lam: m, h: "kg*m**2/s", p: "kg*m/s"}}
+  symbols:
+    - {name: lam, meaning: wavelength, unit: m}
+    - {name: h, meaning: Planck constant, unit: "kg*m**2/s"}
+    - {name: p, meaning: momentum, unit: "kg*m/s"}
+  keywords: [de broglie, wavelength, momentum, wave-particle duality]
+- id: qm.planck_einstein
+  title: Planck–Einstein relation
+  kind: equation
+  chapter: physics.quantum
+  section: basics
+  verification: dimensional
+  statement_latex: 'E = h\nu'
+  check: {kind: equation, lhs: "En", rhs: "h*nu", units: {En: "kg*m**2/s**2", h: "kg*m**2/s", nu: "1/s"}}
+  symbols:
+    - {name: En, meaning: photon energy, unit: "kg*m**2/s**2"}
+    - {name: h, meaning: Planck constant, unit: "kg*m**2/s"}
+    - {name: nu, meaning: frequency, unit: "1/s"}
+  keywords: [planck, einstein, photon, energy, frequency]
+- id: qm.schrodinger_1d
+  title: Time-independent Schrödinger equation (one dimension)
+  kind: equation
+  chapter: physics.quantum
+  section: basics
+  verification: stated
+  statement_latex: '-\frac{\hbar^2}{2m}\frac{d^2\psi}{dx^2} + V(x)\,\psi = E\,\psi'
+  validity: "Non-relativistic single particle."
+  notes: "Recorded as stated; derivatives are not yet supported by the dimensional checker."
+  keywords: [schrodinger, wave function, eigenvalue, hamiltonian]
+- id: qm.heisenberg
+  title: Heisenberg uncertainty relation
+  kind: theorem
+  chapter: physics.quantum
+  section: basics
+  verification: stated
+  statement_latex: '\Delta x\,\Delta p \ge \frac{\hbar}{2}'
+  keywords: [heisenberg, uncertainty, position, momentum]

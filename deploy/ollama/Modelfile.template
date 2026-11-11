@@ -1,0 +1,13 @@
+# A dedicated Ollama model for Minerva: the chosen base model with fixed generation settings.
+# Weights are shared with the base model (no extra disk). The system prompt is NOT set here: the app
+# sends its own, versioned in services/api/src/minerva_api/agent/prompts.py.
+# Create it with scripts/create-ollama-model.sh (it substitutes __BASE__).
+FROM __BASE__
+
+# Low temperature: tool arguments and short explanations, not creative writing.
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+# Enough room for the system prompt, tool schemas (~2.5k tokens), history and tool results.
+PARAMETER num_ctx 16384
+# Cap the length of one model call. Answers should be short; the interface shows results as cards.
+PARAMETER num_predict 1200

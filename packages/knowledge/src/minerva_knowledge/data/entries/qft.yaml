@@ -1,0 +1,18 @@
+- id: qft.klein_gordon
+  title: Klein–Gordon equation
+  kind: equation
+  chapter: physics.qft
+  section: free_fields
+  verification: stated
+  statement_latex: '\left(\partial_\mu\partial^\mu + m^2\right)\phi(x) = 0'
+  validity: "Free scalar field, natural units (ħ = c = 1)."
+  keywords: [klein-gordon, scalar field, free field, wave equation]
+- id: qft.dirac
+  title: Dirac equation
+  kind: equation
+  chapter: physics.qft
+  section: free_fields
+  verification: stated
+  statement_latex: '\left(i\gamma^\mu\partial_\mu - m\right)\psi(x) = 0'
+  validity: "Free spin-1/2 field, natural units (ħ = c = 1)."
+  keywords: [dirac, spinor, fermion, gamma matrices]

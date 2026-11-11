@@ -1,0 +1,10 @@
+# Review is requested from the owners of the matching paths. Last matching pattern wins.
+*                       @OscarJHernandez
+/.github/               @OscarJHernandez
+/deploy/                @OscarJHernandez
+/AGENTS.md              @OscarJHernandez
+/CLAUDE.md              @OscarJHernandez
+/.agents/               @OscarJHernandez
+/.claude/               @OscarJHernandez
+/packages/engine/       @OscarJHernandez
+/docs/licensing.md      @OscarJHernandez

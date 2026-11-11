@@ -1,0 +1,57 @@
+[project]
+name = "minerva-workspace"
+version = "0.0.0"
+description = "Minerva monorepo root (Python workspace)"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/engine", "packages/knowledge", "services/api"]
+
+[tool.uv.sources]
+minerva-engine = { workspace = true }
+minerva-knowledge = { workspace = true }
+minerva-api = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=9",
+  "pytest-cov>=6",
+  "httpx>=0.28",
+  "ruff>=0.17",
+  "mypy>=2.4",
+  "types-pyyaml",
+  "minerva-engine",
+  "minerva-knowledge",
+  "minerva-api",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
+# Long string literals and docstrings are left to the author; `ruff format` wraps all code.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106", "S311"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "services", "scripts"]
+addopts = "-q"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+mypy_path = ["packages/engine/src", "packages/knowledge/src", "services/api/src"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["sympy.*", "mpmath.*", "argon2.*"]
+ignore_missing_imports = true

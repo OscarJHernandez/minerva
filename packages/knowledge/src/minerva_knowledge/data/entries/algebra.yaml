@@ -1,0 +1,36 @@
+- id: alg.difference_of_squares
+  title: Difference of squares
+  kind: identity
+  chapter: math.algebra
+  section: factoring
+  verification: symbolic
+  rule: {id: alg.difference_of_squares, lhs: "a**2 - b**2", rhs: "(a - b)*(a + b)", variables: [a, b]}
+  tags: [factoring]
+  keywords: [factor, difference, squares, factorisation]
+- id: alg.binomial_square
+  title: Square of a sum
+  kind: identity
+  chapter: math.algebra
+  section: factoring
+  verification: symbolic
+  rule: {id: alg.binomial_square, lhs: "(a + b)**2", rhs: "a**2 + 2*a*b + b**2", variables: [a, b]}
+  tags: [expansion]
+  keywords: [expand, binomial, square, sum]
+- id: alg.sum_of_cubes
+  title: Sum of cubes
+  kind: identity
+  chapter: math.algebra
+  section: factoring
+  verification: symbolic
+  rule: {id: alg.sum_of_cubes, lhs: "a**3 + b**3", rhs: "(a + b)*(a**2 - a*b + b**2)", variables: [a, b]}
+  tags: [factoring]
+  keywords: [factor, cubes, sum]
+- id: alg.difference_of_cubes
+  title: Difference of cubes
+  kind: identity
+  chapter: math.algebra
+  section: factoring
+  verification: symbolic
+  rule: {id: alg.difference_of_cubes, lhs: "a**3 - b**3", rhs: "(a - b)*(a**2 + a*b + b**2)", variables: [a, b]}
+  tags: [factoring]
+  keywords: [factor, cubes, difference]

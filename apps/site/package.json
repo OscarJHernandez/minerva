@@ -1,0 +1,32 @@
+{
+  "name": "@minerva/site",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/newsreader": "^5.2.10",
+    "@minerva/ui": "workspace:*",
+    "katex": "0.19.1",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "^20.19.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "10.14.0",
+    "eslint-config-next": "16.4.6",
+    "postcss": "^8.5.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "6.0.3"
+  }
+}

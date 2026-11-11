@@ -1,0 +1,162 @@
+- id: trig.pythagorean
+  title: Pythagorean identity
+  kind: identity
+  chapter: math.trigonometry
+  section: pythagorean
+  verification: symbolic
+  validity: "All complex a."
+  rule: {id: trig.pythagorean, lhs: "sin(a)**2 + cos(a)**2", rhs: "1", variables: [a]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  tags: [trigonometry]
+  keywords: [sine, cosine, square, unity, pythagoras]
+- id: trig.tan_secant
+  title: Tangent and secant
+  kind: identity
+  chapter: math.trigonometry
+  section: pythagorean
+  verification: symbolic
+  validity: "Where cos a ≠ 0."
+  rule: {id: trig.tan_secant, lhs: "1 + tan(a)**2", rhs: "sec(a)**2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [tangent, secant, square]
+- id: trig.cot_cosecant
+  title: Cotangent and cosecant
+  kind: identity
+  chapter: math.trigonometry
+  section: pythagorean
+  verification: symbolic
+  validity: "Where sin a ≠ 0."
+  rule: {id: trig.cot_cosecant, lhs: "1 + cot(a)**2", rhs: "csc(a)**2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [cotangent, cosecant, square]
+- id: trig.tan_ratio
+  title: Tangent as a ratio
+  kind: identity
+  chapter: math.trigonometry
+  section: pythagorean
+  verification: symbolic
+  validity: "Where cos a ≠ 0."
+  rule: {id: trig.tan_ratio, lhs: "tan(a)", rhs: "sin(a)/cos(a)", variables: [a]}
+  keywords: [tangent, sine, cosine, ratio, rewrite]
+- id: trig.sum_sin
+  title: Sine of a sum
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.sum_sin, lhs: "sin(a + b)", rhs: "sin(a)*cos(b) + cos(a)*sin(b)", variables: [a, b]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [sine, addition, angle sum, difference]
+- id: trig.sum_cos
+  title: Cosine of a sum
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.sum_cos, lhs: "cos(a + b)", rhs: "cos(a)*cos(b) - sin(a)*sin(b)", variables: [a, b]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [cosine, addition, angle sum, difference]
+- id: trig.sum_tan
+  title: Tangent of a sum
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  validity: "Where all tangents are defined and tan a tan b ≠ 1."
+  rule:
+    id: trig.sum_tan
+    lhs: "tan(a + b)"
+    rhs: "(tan(a) + tan(b))/(1 - tan(a)*tan(b))"
+    variables: [a, b]
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [tangent, addition, angle sum]
+- id: trig.double_sin
+  title: Double-angle sine
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.double_sin, lhs: "sin(2*a)", rhs: "2*sin(a)*cos(a)", variables: [a]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [sine, double angle]
+- id: trig.double_cos
+  title: Double-angle cosine
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.double_cos, lhs: "cos(2*a)", rhs: "cos(a)**2 - sin(a)**2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.21", url: "https://dlmf.nist.gov/4.21"}
+  keywords: [cosine, double angle]
+- id: trig.double_cos_cos
+  title: Double-angle cosine in cosines
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.double_cos_cos, lhs: "cos(2*a)", rhs: "2*cos(a)**2 - 1", variables: [a]}
+  keywords: [cosine, double angle]
+- id: trig.double_cos_sin
+  title: Double-angle cosine in sines
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.double_cos_sin, lhs: "cos(2*a)", rhs: "1 - 2*sin(a)**2", variables: [a]}
+  keywords: [cosine, double angle]
+- id: trig.power_reduction_sin
+  title: Power reduction for sine squared
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.power_reduction_sin, lhs: "sin(a)**2", rhs: "(1 - cos(2*a))/2", variables: [a]}
+  keywords: [sine, square, power reduction, half angle, integrate]
+- id: trig.power_reduction_cos
+  title: Power reduction for cosine squared
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule: {id: trig.power_reduction_cos, lhs: "cos(a)**2", rhs: "(1 + cos(2*a))/2", variables: [a]}
+  keywords: [cosine, square, power reduction, half angle, integrate]
+- id: trig.product_to_sum
+  title: Product of sine and cosine
+  kind: identity
+  chapter: math.trigonometry
+  section: angle
+  verification: symbolic
+  rule:
+    id: trig.product_to_sum
+    lhs: "sin(a)*cos(b)"
+    rhs: "(sin(a + b) + sin(a - b))/2"
+    variables: [a, b]
+  keywords: [product, sum, sine, cosine]
+- id: trig.euler
+  title: Euler's formula
+  kind: identity
+  chapter: math.trigonometry
+  section: exponential
+  verification: symbolic
+  validity: "All complex a."
+  rule: {id: trig.euler, lhs: "exp(I*a)", rhs: "cos(a) + I*sin(a)", variables: [a]}
+  reference: {source: DLMF, locator: "§4.14", url: "https://dlmf.nist.gov/4.14"}
+  keywords: [euler, exponential, complex, cosine, sine]
+- id: trig.cos_exp
+  title: Cosine in exponentials
+  kind: identity
+  chapter: math.trigonometry
+  section: exponential
+  verification: symbolic
+  rule: {id: trig.cos_exp, lhs: "cos(a)", rhs: "(exp(I*a) + exp(-I*a))/2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.14", url: "https://dlmf.nist.gov/4.14"}
+  keywords: [cosine, exponential, complex, alternative representation]
+- id: trig.sin_exp
+  title: Sine in exponentials
+  kind: identity
+  chapter: math.trigonometry
+  section: exponential
+  verification: numeric
+  rule: {id: trig.sin_exp, lhs: "sin(a)", rhs: "(exp(I*a) - exp(-I*a))/(2*I)", variables: [a]}
+  reference: {source: DLMF, locator: "§4.14", url: "https://dlmf.nist.gov/4.14"}
+  keywords: [sine, exponential, complex, alternative representation]

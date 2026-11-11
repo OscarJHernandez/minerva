@@ -1,0 +1,105 @@
+# Table of contents of the Minerva handbook. A chapter marked `planned` is part of the
+# intended outline but has no entries yet; the UI hides planned chapters.
+- id: math.algebra
+  book: mathematics
+  title: Algebra
+  summary: Factorisation and expansion identities.
+  sections:
+    - {id: factoring, title: Factoring and expanding}
+- id: math.methods
+  book: mathematics
+  title: Solution methods
+  summary: Standard methods and theorems for solving equations, with the conditions under which they apply.
+  sections:
+    - {id: polynomial, title: Polynomial equations}
+- id: math.exp_log
+  book: mathematics
+  title: Exponentials and logarithms
+  sections:
+    - {id: logarithm, title: Logarithms}
+    - {id: radicals, title: Radicals and absolute values}
+- id: math.trigonometry
+  book: mathematics
+  title: Trigonometric functions
+  sections:
+    - {id: pythagorean, title: Pythagorean identities}
+    - {id: angle, title: Sum, double-angle and half-angle formulas}
+    - {id: exponential, title: Relations to the exponential}
+- id: math.hyperbolic
+  book: mathematics
+  title: Hyperbolic functions
+  sections:
+    - {id: identities, title: Identities}
+- id: math.derivatives
+  book: mathematics
+  title: Derivatives
+  sections:
+    - {id: elementary, title: Elementary functions}
+- id: math.integrals
+  book: mathematics
+  title: Integrals
+  sections:
+    - {id: indefinite, title: Indefinite integrals}
+    - {id: definite, title: Definite integrals}
+- id: math.series
+  book: mathematics
+  title: Series
+  sections:
+    - {id: power, title: Power series}
+    - {id: numeric, title: Numerical series}
+- id: math.special_functions
+  book: mathematics
+  title: Special functions
+  sections:
+    - {id: gamma, title: Gamma function}
+- id: math.tensors
+  book: mathematics
+  title: Tensor calculus
+  summary: Index symmetries and contractions.
+  sections:
+    - {id: symmetries, title: Index symmetries}
+    - {id: riemann, title: Riemann tensor symmetries}
+- {id: math.transforms, book: mathematics, title: Integral transforms, planned: true}
+- {id: math.linear_algebra, book: mathematics, title: Linear algebra, planned: true}
+- {id: math.vector_calculus, book: mathematics, title: Vector calculus, planned: true}
+- {id: math.differential_equations, book: mathematics, title: Differential equations, planned: true}
+- {id: math.probability, book: mathematics, title: Probability and statistics, planned: true}
+- {id: math.group_theory, book: mathematics, title: Group theory, planned: true}
+- {id: math.differential_geometry, book: mathematics, title: Differential geometry, planned: true}
+- id: physics.mechanics
+  book: physics
+  title: Classical mechanics
+  sections:
+    - {id: dynamics, title: Dynamics and oscillations}
+    - {id: variational, title: Variational principles and conservation laws}
+- id: physics.electromagnetism
+  book: physics
+  title: Electromagnetism
+  sections:
+    - {id: forces, title: Forces}
+- id: physics.thermodynamics
+  book: physics
+  title: Thermodynamics and statistical mechanics
+  sections:
+    - {id: gases, title: Gases and entropy}
+- id: physics.quantum
+  book: physics
+  title: Quantum mechanics
+  sections:
+    - {id: basics, title: Fundamental relations}
+- id: physics.relativity
+  book: physics
+  title: Special and general relativity
+  sections:
+    - {id: special, title: Special relativity}
+- id: physics.qft
+  book: physics
+  title: Quantum field theory
+  summary: Equations are recorded as stated; they are not machine-checked yet.
+  sections:
+    - {id: free_fields, title: Free field equations}
+- id: physics.constants
+  book: physics
+  title: Physical constants
+  sections:
+    - {id: si, title: SI defining constants and G}

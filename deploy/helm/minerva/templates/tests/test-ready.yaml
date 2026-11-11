@@ -1,0 +1,49 @@
+# `helm test minerva`: proves every part is up and that the right things are (not) exposed.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-test
+  labels:
+    minerva/role: helm-test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  {{- include "minerva.affinity" (dict "ctx" . "stateful" false) | nindent 2 }}
+  securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
+  containers:
+    - name: check
+      image: busybox:1.37
+      securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+      command:
+        - sh
+        - -ec
+        - |
+          try() { for i in 1 2 3 4 5; do "$@" && return 0; sleep 3; done; return 1; }
+          status() {
+            for i in 1 2 3 4 5; do
+              code=$(wget -S -q -O /dev/null "$1" 2>&1 | grep -oE 'HTTP/[0-9.]+ [0-9]+' | tail -1 | cut -d' ' -f2)
+              [ -n "$code" ] && { echo "$code"; return; }
+              sleep 3
+            done
+          }
+          site=http://{{ .Release.Name }}-site
+          web=http://{{ .Release.Name }}-web
+          api=http://{{ .Release.Name }}-api:8100
+
+          try wget -q -O- "$site/healthz"
+          try wget -q -O- "$site/" | grep -q "checks its own work"
+          try wget -q -O- "$api/healthz"
+          try wget -q -O- "$api/readyz"            # database reachable
+          try wget -q -O- "$web/login" >/dev/null
+          try wget -q -O- "$web/api/v1/reference/toc" | grep -q "math.trigonometry"
+
+          # Signed-out requests get 401 from the API through the web proxy, never data.
+          [ "$(status $web/api/v1/auth/me)" = 401 ] || { echo "auth/me without a session must be 401"; exit 1; }
+          [ "$(status $web/api/v1/history)" = 401 ] || { echo "history without a session must be 401"; exit 1; }
+          # The proxy forwards only /api/v1/*.
+          [ "$(status $web/api/healthz)" = 404 ] || { echo "web must not proxy anything but /api/v1"; exit 1; }
+          # The static site serves no API.
+          [ "$(status $site/api/v1/auth/me)" = 404 ] || { echo "site must not serve /api"; exit 1; }

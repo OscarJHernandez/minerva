@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make check*)",
+      "Bash(make handbook)",
+      "Bash(make fmt)",
+      "Bash(uv run pytest*)",
+      "Bash(uv run ruff*)",
+      "Bash(uv run mypy*)",
+      "Bash(uv run python -m minerva_knowledge verify*)",
+      "Bash(uv run python scripts/check_agent_files.py*)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm test*)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm --filter * test*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)"
+    ],
+    "deny": ["Bash(git push*)", "Bash(gh pr merge*)", "Bash(gh repo edit*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.py) uv run --no-sync ruff format \"$f\" >&2; uv run --no-sync ruff check --fix --unfixable=F401 \"$f\" >&2 || exit 2;; *.ts|*.tsx|*.mts|*.mjs|*.css|*.json|*.yml|*.yaml) pnpm exec prettier --write --ignore-unknown \"$f\" >&2;; esac; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+# Production overlay. Generic on purpose: hostnames, node placement and pull secrets are not stored in this
+# public repository. The deploy workflow passes them (hosts via --set, the rest via the optional
+# HELM_EXTRA_VALUES repository variable). Always pass BOTH files, never --reuse-values.
+requireDigests: true
+cloudflared:
+  enabled: true
+api:
+  trustedIpHeader: cf-connecting-ip   # traffic arrives through the Cloudflare tunnel

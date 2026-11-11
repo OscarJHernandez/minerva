@@ -1,0 +1,63 @@
+- id: tensor.symmetric_antisymmetric
+  title: Symmetric–antisymmetric contraction vanishes
+  kind: symmetry
+  chapter: math.tensors
+  section: symmetries
+  verification: structural
+  statement_latex: 'S_{ab}A^{ab} = 0 \quad (S_{ab}=S_{ba},\; A_{ab}=-A_{ba})'
+  check:
+    kind: tensor
+    input: "S(a,b)*A(-a,-b)"
+    tensors: {S: {rank: 2, symmetry: symmetric}, A: {rank: 2, symmetry: antisymmetric}}
+    expected: "0"
+  keywords: [tensor, symmetric, antisymmetric, contraction, trace]
+- id: tensor.riemann_antisymmetry
+  title: Riemann tensor antisymmetry in the first pair
+  kind: symmetry
+  chapter: math.tensors
+  section: riemann
+  verification: structural
+  statement_latex: 'R_{abcd} = -R_{bacd}'
+  check:
+    kind: tensor
+    input: "R(a,b,c,d) + R(b,a,c,d)"
+    tensors: {R: {rank: 4, symmetry: riemann}}
+    expected: "0"
+  keywords: [riemann, curvature, antisymmetry, tensor]
+- id: tensor.riemann_pair_exchange
+  title: Riemann tensor pair exchange symmetry
+  kind: symmetry
+  chapter: math.tensors
+  section: riemann
+  verification: structural
+  statement_latex: 'R_{abcd} = R_{cdab}'
+  check:
+    kind: tensor
+    input: "R(a,b,c,d) - R(c,d,a,b)"
+    tensors: {R: {rank: 4, symmetry: riemann}}
+    expected: "0"
+  keywords: [riemann, curvature, pair exchange, tensor]
+- id: tensor.riemann_trace_first_pair
+  title: Trace over the first pair of Riemann indices vanishes
+  kind: symmetry
+  chapter: math.tensors
+  section: riemann
+  verification: structural
+  statement_latex: 'R^{a}{}_{abc} = 0'
+  check:
+    kind: tensor
+    input: "R(a,-a,b,c)"
+    tensors: {R: {rank: 4, symmetry: riemann}}
+    expected: "0"
+  keywords: [riemann, trace, contraction, tensor]
+- id: tensor.first_bianchi
+  title: First Bianchi identity
+  kind: theorem
+  chapter: math.tensors
+  section: riemann
+  verification: stated
+  statement_latex: 'R_{a[bcd]} = 0 \;\Longleftrightarrow\; R_{abcd} + R_{acdb} + R_{adbc} = 0'
+  validity: "Torsion-free connection."
+  notes: "Multi-term identity: recorded from the literature but not applied or machine-checked by Minerva's current tensor backend."
+  reference: {source: "Standard differential geometry texts", locator: "Riemann curvature tensor"}
+  keywords: [bianchi, riemann, cyclic identity, curvature]

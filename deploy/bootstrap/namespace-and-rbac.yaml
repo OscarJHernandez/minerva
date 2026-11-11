@@ -1,0 +1,61 @@
+# One-time bootstrap, applied by the cluster admin (not by CI):
+#   kubectl apply -f deploy/bootstrap/namespace-and-rbac.yaml
+# Creates the namespace and a namespace-scoped deployer identity for the deploy workflow.
+# Re-apply by hand whenever this file changes: CI does not apply it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minerva
+  labels:
+    app.kubernetes.io/part-of: minerva
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: minerva-deployer
+  namespace: minerva
+---
+# Long-lived token for the deployer ServiceAccount. Its kubeconfig is stored only as a GitHub
+# environment secret (KUBE_CONFIG_B64); never commit it.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minerva-deployer-token
+  namespace: minerva
+  annotations:
+    kubernetes.io/service-account.name: minerva-deployer
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: minerva-deployer
+  namespace: minerva
+rules:
+  # Helm stores release state in Secrets in the release namespace.
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps", "services", "serviceaccounts", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: minerva-deployer
+  namespace: minerva
+subjects:
+  - kind: ServiceAccount
+    name: minerva-deployer
+    namespace: minerva
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: minerva-deployer

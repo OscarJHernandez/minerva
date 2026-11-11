@@ -1,0 +1,71 @@
+# Local development stack. Copy .env.example to .env first: `cp .env.example .env`.
+# Nothing here is production configuration; deployment lives in deploy/helm.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-minerva}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env}
+      POSTGRES_DB: ${POSTGRES_DB:-minerva}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-minerva}"]
+      interval: 5s
+      retries: 10
+    # Not published on the host: only the api container talks to the database.
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/api.Dockerfile
+    environment:
+      MINERVA_ENV: ${MINERVA_ENV:-development}
+      MINERVA_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-minerva}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-minerva}
+      MINERVA_SESSION_SECRET: ${MINERVA_SESSION_SECRET:?copy .env.example to .env}
+      MINERVA_COOKIE_SECURE: ${MINERVA_COOKIE_SECURE:-false}
+      MINERVA_ALLOWED_ORIGINS: ${MINERVA_ALLOWED_ORIGINS:-http://localhost:3000}
+      MINERVA_COMPUTE_TIMEOUT_SECONDS: ${MINERVA_COMPUTE_TIMEOUT_SECONDS:-10}
+      MINERVA_COMPUTE_MEMORY_MB: ${MINERVA_COMPUTE_MEMORY_MB:-1024}
+      MINERVA_COMPUTE_MAX_CONCURRENCY: ${MINERVA_COMPUTE_MAX_CONCURRENCY:-4}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8100:8100"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2g
+    pids_limit: 256
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/docker/web.Dockerfile
+    environment:
+      MINERVA_API_URL: http://api:8100
+    depends_on: [api]
+    ports:
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  site:
+    build:
+      context: .
+      dockerfile: deploy/docker/site.Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports:
+      - "127.0.0.1:3001:8080"
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  pgdata:

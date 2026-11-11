@@ -1,0 +1,88 @@
+- id: log.product
+  title: Logarithm of a product
+  kind: identity
+  chapter: math.exp_log
+  section: logarithm
+  verification: symbolic
+  validity: "Both factors positive."
+  rule:
+    id: log.product
+    lhs: "log(a*b)"
+    rhs: "log(a) + log(b)"
+    variables: [a, b]
+    conditions: [{variable: a, assumption: positive}, {variable: b, assumption: positive}]
+  reference: {source: DLMF, locator: "§4.8", url: "https://dlmf.nist.gov/4.8"}
+  keywords: [logarithm, product, split, expand]
+- id: log.quotient
+  title: Logarithm of a quotient
+  kind: identity
+  chapter: math.exp_log
+  section: logarithm
+  verification: symbolic
+  validity: "Both arguments positive."
+  rule:
+    id: log.quotient
+    lhs: "log(a/b)"
+    rhs: "log(a) - log(b)"
+    variables: [a, b]
+    conditions: [{variable: a, assumption: positive}, {variable: b, assumption: positive}]
+  reference: {source: DLMF, locator: "§4.8", url: "https://dlmf.nist.gov/4.8"}
+  keywords: [logarithm, quotient, ratio, split]
+- id: log.power
+  title: Logarithm of a power
+  kind: identity
+  chapter: math.exp_log
+  section: logarithm
+  verification: symbolic
+  validity: "Base positive, exponent real."
+  rule:
+    id: log.power
+    lhs: "log(a**b)"
+    rhs: "b*log(a)"
+    variables: [a, b]
+    conditions: [{variable: a, assumption: positive}, {variable: b, assumption: real}]
+  reference: {source: DLMF, locator: "§4.8", url: "https://dlmf.nist.gov/4.8"}
+  keywords: [logarithm, power, exponent]
+- id: log.of_exp
+  title: Logarithm of an exponential
+  kind: identity
+  chapter: math.exp_log
+  section: logarithm
+  verification: symbolic
+  validity: "Argument real (for complex arguments log(exp(z)) differs from z by multiples of 2πi)."
+  rule:
+    id: log.of_exp
+    lhs: "log(exp(a))"
+    rhs: "a"
+    variables: [a]
+    conditions: [{variable: a, assumption: real}]
+  reference: {source: DLMF, locator: "§4.8", url: "https://dlmf.nist.gov/4.8"}
+  keywords: [logarithm, exponential, inverse, cancel]
+- id: radical.sqrt_square_abs
+  title: Square root of a square (real)
+  kind: identity
+  chapter: math.exp_log
+  section: radicals
+  verification: symbolic
+  validity: "a real."
+  rule:
+    id: radical.sqrt_square_abs
+    lhs: "sqrt(a**2)"
+    rhs: "abs(a)"
+    variables: [a]
+    conditions: [{variable: a, assumption: real}]
+  keywords: [square root, absolute value, radical]
+- id: radical.sqrt_square_nonneg
+  title: Square root of a square (non-negative)
+  kind: identity
+  chapter: math.exp_log
+  section: radicals
+  verification: symbolic
+  validity: "a non-negative."
+  rule:
+    id: radical.sqrt_square_nonneg
+    lhs: "sqrt(a**2)"
+    rhs: "a"
+    variables: [a]
+    conditions: [{variable: a, assumption: nonnegative}]
+  keywords: [square root, radical, simplify]

@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "minerva-api",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--directory",
+        "services/api",
+        "uvicorn",
+        "minerva_api.main:app_from_env",
+        "--factory",
+        "--port",
+        "8100"
+      ],
+      "port": 8100
+    },
+    {
+      "name": "minerva-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@minerva/web", "dev"],
+      "port": 3000
+    }
+  ]
+}

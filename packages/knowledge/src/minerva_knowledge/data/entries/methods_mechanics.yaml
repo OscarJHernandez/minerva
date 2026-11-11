@@ -1,0 +1,65 @@
+- id: method.mech.euler_lagrange
+  title: Euler–Lagrange equations
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian"]
+  validity: "Lagrangian L(q, q̇, t) with generalised coordinates q_i; holonomic constraints already eliminated."
+  statement_latex: '\frac{d}{dt}\frac{\partial L}{\partial \dot q_i}-\frac{\partial L}{\partial q_i}=0'
+  notes: "Minerva evaluates this symbolically with the total time derivative acting on q, q̇ and t."
+  keywords: [euler lagrange, equations of motion, lagrangian, variational, action]
+- id: method.mech.cyclic_coordinate
+  title: Cyclic coordinate and conserved momentum
+  kind: theorem
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:cyclic"]
+  validity: "A coordinate q_i that does not appear in L (only its velocity does)."
+  statement_latex: '\frac{\partial L}{\partial q_i}=0 \;\Longrightarrow\; p_i=\frac{\partial L}{\partial \dot q_i}\ \text{is conserved}'
+  notes: "A cyclic coordinate lets the order of the system be reduced by two (Routh reduction)."
+  keywords: [cyclic, ignorable coordinate, conjugate momentum, conserved, routh]
+- id: method.mech.energy_function
+  title: Energy function (Jacobi integral)
+  kind: theorem
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:time-independent"]
+  validity: "L without explicit time dependence. h equals the total energy T + V when the kinetic energy is quadratic in the velocities and V does not depend on them."
+  statement_latex: 'h=\sum_i \dot q_i\frac{\partial L}{\partial \dot q_i}-L,\qquad \frac{\partial L}{\partial t}=0\;\Longrightarrow\;\frac{dh}{dt}=0'
+  keywords: [energy, jacobi integral, hamiltonian, time translation, conserved]
+- id: method.mech.noether
+  title: Noether's theorem
+  kind: theorem
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:rotation", "lagrangian:cyclic", "lagrangian:time-independent", "lagrangian:no-symmetry-found"]
+  validity: "A continuous transformation q_i → q_i + ε ξ_i(q, t) with δL = dF/dt."
+  statement_latex: '\delta L=\frac{dF}{dt}\;\Longrightarrow\;Q=\sum_i p_i\,\xi_i-F\ \text{is conserved}'
+  notes: "Minerva searches cyclic coordinates, time translation and rotations of coordinate pairs (F = 0). Symmetries needing F ≠ 0 (such as Galilean boosts) and hidden symmetries (such as the Runge–Lenz vector) are not searched for."
+  keywords: [noether, symmetry, conservation law, angular momentum, momentum]
+- id: method.mech.legendre_hamiltonian
+  title: Legendre transform to the Hamiltonian
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian", "ode:second-order"]
+  validity: "Invertible mass matrix ∂²L/∂q̇_i∂q̇_j (non-degenerate Lagrangian)."
+  statement_latex: 'p_i=\frac{\partial L}{\partial\dot q_i},\quad H=\sum_i p_i\dot q_i-L,\quad \dot q_i=\frac{\partial H}{\partial p_i},\ \dot p_i=-\frac{\partial H}{\partial q_i}'
+  notes: "Hamilton's equations are first order and preserve phase-space volume; symplectic integrators exploit this for long simulations."
+  keywords: [hamiltonian, legendre transform, phase space, canonical, hamilton equations]
+- id: method.mech.reduction
+  title: Order reduction with conserved quantities
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:cyclic", "lagrangian:rotation", "lagrangian:time-independent"]
+  validity: "Independent conserved quantities; each can be used to eliminate one variable."
+  statement_latex: 'n\ \text{degrees of freedom},\ k\ \text{independent conserved quantities}\;\Rightarrow\;\text{phase-space dimension } 2n-k\text{ (before eliminating time)}'
+  notes: "With n independent integrals in involution the system is integrable by quadratures (Liouville). One degree of freedom with conserved energy reduces to a single quadrature."
+  keywords: [reduction, quadrature, integrable, liouville, conserved quantities, kepler]

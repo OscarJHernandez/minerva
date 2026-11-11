@@ -1,0 +1,139 @@
+name: Deploy
+
+# Publishes images and upgrades the Helm release on the homelab cluster. It only runs for code that has
+# landed on main (so pull-request code never reaches the production environment secret) and only when the
+# repository variable DEPLOY_ENABLED is "true", which is set once the cluster side exists (see
+# deploy/README.md). Until then CI still runs on every push.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never interrupt a rollout that is mid-flight
+
+env:
+  REGISTRY: ghcr.io/oscarjhernandez
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Build and publish ${{ matrix.name }}
+    needs: ci
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: minerva-runners
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: minerva-api
+            dockerfile: deploy/docker/api.Dockerfile
+          - name: minerva-web
+            dockerfile: deploy/docker/web.Dockerfile
+          - name: minerva-site
+            dockerfile: deploy/docker/site.Dockerfile
+    outputs:
+      api: ${{ steps.digests.outputs.api }}
+      web: ${{ steps.digests.outputs.web }}
+      site: ${{ steps.digests.outputs.site }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Build and push to GHCR
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CACHE_REF: ${{ env.REGISTRY }}/${{ matrix.name }}:buildcache
+          DIGEST_FILE: ${{ runner.temp }}/digest.txt
+          SITE_URL: ${{ vars.SITE_URL }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          ARGS=()
+          if [ "${{ matrix.name }}" = minerva-site ]; then
+            ARGS+=(--build-arg "NEXT_PUBLIC_APP_URL=${APP_URL:?set the APP_URL repository variable}")
+            ARGS+=(--build-arg "NEXT_PUBLIC_REPO_URL=https://github.com/${GITHUB_REPOSITORY}")
+          fi
+          bash scripts/build-image.sh "${{ matrix.dockerfile }}" "${REGISTRY}/${{ matrix.name }}:sha-${GITHUB_SHA}" push "${ARGS[@]}"
+          echo "${{ matrix.name }}=$(cat "$DIGEST_FILE")" > "$RUNNER_TEMP/out.txt"
+      - name: Record digest
+        id: digests
+        run: |
+          key="${{ matrix.name }}"; key="${key#minerva-}"
+          echo "${key}=$(cut -d= -f2 "$RUNNER_TEMP/out.txt")" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to the homelab cluster
+    needs: publish
+    runs-on: minerva-runners
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        with:
+          version: v4.3.1
+      - name: Configure namespace-scoped kubeconfig
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+        run: |
+          if [ -z "$KUBE_CONFIG_B64" ]; then
+            echo "::error::KUBE_CONFIG_B64 is not set on the 'production' environment (see deploy/README.md)."
+            exit 1
+          fi
+          umask 077
+          echo "$KUBE_CONFIG_B64" | base64 -d > "$RUNNER_TEMP/kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
+      - name: Show current release (rollback reference)
+        run: helm history minerva -n minerva --max 5 || echo "No previous release (first install)."
+      - name: helm upgrade (rolls back on failure)
+        env:
+          API_DIGEST: ${{ needs.publish.outputs.api }}
+          WEB_DIGEST: ${{ needs.publish.outputs.web }}
+          SITE_DIGEST: ${{ needs.publish.outputs.site }}
+          SITE_HOST: ${{ vars.SITE_HOST }}
+          APP_HOST: ${{ vars.APP_HOST }}
+          # Cluster-specific values (node placement, pull secrets) live in a repository variable,
+          # not in this public repository.
+          HELM_EXTRA_VALUES: ${{ vars.HELM_EXTRA_VALUES }}
+        run: |
+          ARGS=()
+          if [ -n "$HELM_EXTRA_VALUES" ]; then
+            printf '%s\n' "$HELM_EXTRA_VALUES" > "$RUNNER_TEMP/extra-values.yaml"
+            ARGS+=(-f "$RUNNER_TEMP/extra-values.yaml")
+          fi
+          helm upgrade --install minerva deploy/helm/minerva \
+            --namespace minerva \
+            -f deploy/helm/minerva/values-production.yaml \
+            ${ARGS[@]+"${ARGS[@]}"} \
+            --set api.image.digest="$API_DIGEST" \
+            --set web.image.digest="$WEB_DIGEST" \
+            --set site.image.digest="$SITE_DIGEST" \
+            --set hosts.app="${APP_HOST:?set the APP_HOST repository variable}" \
+            --set hosts.site="${SITE_HOST:?set the SITE_HOST repository variable}" \
+            --rollback-on-failure --wait --timeout 8m --history-max 10
+      - name: Verify release
+        run: |
+          if ! helm test minerva -n minerva --timeout 3m --logs; then
+            echo "::error::Post-deploy test failed; rolling back to the previous revision."
+            REVISIONS=$(helm history minerva -n minerva -o json | grep -o '"revision"' | wc -l)
+            if [ "${REVISIONS:-0}" -gt 1 ]; then
+              helm rollback minerva -n minerva --wait --timeout 5m || true
+            else
+              echo "::warning::First release: no previous revision to roll back to."
+            fi
+            exit 1
+          fi

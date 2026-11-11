@@ -1,0 +1,19 @@
+name: Bug report
+description: Something in Minerva does not work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Do not include passwords, tokens, personal data or private hostnames.
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit

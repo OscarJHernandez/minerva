@@ -1,0 +1,81 @@
+- id: hyp.pythagorean
+  title: Hyperbolic Pythagorean identity
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.pythagorean, lhs: "cosh(a)**2 - sinh(a)**2", rhs: "1", variables: [a]}
+  reference: {source: DLMF, locator: "§4.35", url: "https://dlmf.nist.gov/4.35"}
+  keywords: [hyperbolic, cosh, sinh, square]
+- id: hyp.double_sinh
+  title: Double-angle hyperbolic sine
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.double_sinh, lhs: "sinh(2*a)", rhs: "2*sinh(a)*cosh(a)", variables: [a]}
+  reference: {source: DLMF, locator: "§4.35", url: "https://dlmf.nist.gov/4.35"}
+  keywords: [hyperbolic, sinh, double angle]
+- id: hyp.double_cosh
+  title: Double-angle hyperbolic cosine
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.double_cosh, lhs: "cosh(2*a)", rhs: "cosh(a)**2 + sinh(a)**2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.35", url: "https://dlmf.nist.gov/4.35"}
+  keywords: [hyperbolic, cosh, double angle]
+- id: hyp.sum_sinh
+  title: Hyperbolic sine of a sum
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.sum_sinh, lhs: "sinh(a + b)", rhs: "sinh(a)*cosh(b) + cosh(a)*sinh(b)", variables: [a, b]}
+  reference: {source: DLMF, locator: "§4.35", url: "https://dlmf.nist.gov/4.35"}
+  keywords: [hyperbolic, sinh, addition]
+- id: hyp.sum_cosh
+  title: Hyperbolic cosine of a sum
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.sum_cosh, lhs: "cosh(a + b)", rhs: "cosh(a)*cosh(b) + sinh(a)*sinh(b)", variables: [a, b]}
+  reference: {source: DLMF, locator: "§4.35", url: "https://dlmf.nist.gov/4.35"}
+  keywords: [hyperbolic, cosh, addition]
+- id: hyp.sinh_exp
+  title: Hyperbolic sine in exponentials
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.sinh_exp, lhs: "sinh(a)", rhs: "(exp(a) - exp(-a))/2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.28", url: "https://dlmf.nist.gov/4.28"}
+  keywords: [hyperbolic, sinh, exponential, alternative representation]
+- id: hyp.cosh_exp
+  title: Hyperbolic cosine in exponentials
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.cosh_exp, lhs: "cosh(a)", rhs: "(exp(a) + exp(-a))/2", variables: [a]}
+  reference: {source: DLMF, locator: "§4.28", url: "https://dlmf.nist.gov/4.28"}
+  keywords: [hyperbolic, cosh, exponential, alternative representation]
+- id: hyp.tanh_ratio
+  title: Hyperbolic tangent as a ratio
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  rule: {id: hyp.tanh_ratio, lhs: "tanh(a)", rhs: "sinh(a)/cosh(a)", variables: [a]}
+  keywords: [hyperbolic, tanh, ratio]
+- id: hyp.cosh_cos
+  title: Hyperbolic cosine and cosine
+  kind: identity
+  chapter: math.hyperbolic
+  section: identities
+  verification: symbolic
+  validity: "All complex a."
+  rule: {id: hyp.cosh_cos, lhs: "cosh(a)", rhs: "cos(I*a)", variables: [a]}
+  reference: {source: DLMF, locator: "§4.28", url: "https://dlmf.nist.gov/4.28"}
+  keywords: [hyperbolic, cosh, cosine, complex argument]

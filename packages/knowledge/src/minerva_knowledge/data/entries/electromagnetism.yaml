@@ -1,0 +1,40 @@
+- id: em.coulomb
+  title: Coulomb's law
+  kind: equation
+  chapter: physics.electromagnetism
+  section: forces
+  verification: dimensional
+  statement_latex: 'F = \frac{q_1 q_2}{4\pi\varepsilon_0 r^2}'
+  validity: "Point charges at rest in vacuum; SI units."
+  check:
+    kind: equation
+    lhs: "F"
+    rhs: "q1*q2/(4*pi*epsilon0*r**2)"
+    units: {F: "kg*m/s**2", q1: "A*s", q2: "A*s", epsilon0: "A**2*s**4/(kg*m**3)", r: m}
+  symbols:
+    - {name: F, meaning: force magnitude, unit: "kg*m/s**2"}
+    - {name: q1, meaning: first charge, unit: "A*s"}
+    - {name: q2, meaning: second charge, unit: "A*s"}
+    - {name: epsilon0, meaning: vacuum permittivity, unit: "A**2*s**4/(kg*m**3)"}
+    - {name: r, meaning: separation, unit: m}
+  keywords: [coulomb, electrostatics, charge, force]
+- id: em.lorentz_force
+  title: Lorentz force (collinear magnitude form)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: forces
+  verification: dimensional
+  statement_latex: 'F = q\,(E + v B)'
+  validity: "Magnitude form for E, v and B chosen so that the terms are collinear; the vector law is F = q(E + v × B)."
+  check:
+    kind: equation
+    lhs: "F"
+    rhs: "q*(Ef + v*B)"
+    units: {F: "kg*m/s**2", q: "A*s", Ef: "kg*m/(A*s**3)", v: "m/s", B: "kg/(A*s**2)"}
+  symbols:
+    - {name: F, meaning: force, unit: "kg*m/s**2"}
+    - {name: q, meaning: charge, unit: "A*s"}
+    - {name: Ef, meaning: electric field, unit: "kg*m/(A*s**3)"}
+    - {name: v, meaning: speed, unit: "m/s"}
+    - {name: B, meaning: magnetic flux density, unit: "kg/(A*s**2)"}
+  keywords: [lorentz, electromagnetic force, field, charge]
