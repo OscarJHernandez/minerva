@@ -2,7 +2,7 @@
 # Build context: repository root. Public URLs are baked into the static export at build time.
 FROM node:25-slim AS build
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
-RUN corepack enable
+RUN npm install --global pnpm@12.15.0
 WORKDIR /repo
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json apps/web/package.json
