@@ -122,6 +122,38 @@ def test_message_validation_and_rate_limit() -> None:
         assert 429 in codes
 
 
+def test_assistant_message_stores_a_debug_record(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    with client.stream(
+        "POST",
+        f"/v1/chat/conversations/{cid}/messages",
+        json={"content": r"simplify $\frac{x^2-1}{x-1}$"},
+    ) as response:
+        request_id = response.headers["x-request-id"]
+        response.read()
+    stored = client.get(f"/v1/chat/conversations/{cid}").json()["messages"][-1]["content"]
+    debug = stored["debug"]
+    assert debug["request_id"] == request_id
+    assert debug["model"] == "scripted" and debug["mode"] == "scripted"
+    assert debug["api_version"] and len(debug["prompt_sha"]) == 12
+    assert len(debug["llm_calls"]) >= 2
+    assert stored["trace"][0]["name"] == "simplify" and stored["trace"][0]["status"] == "ok"
+
+
+def test_messages_stored_before_debug_existed_still_work() -> None:
+    from minerva_api.routers_chat import _history
+
+    class Row:
+        role = "assistant"
+        content = {  # noqa: RUF012
+            "text": "ok",
+            "trace": [{"id": "a", "name": "simplify", "arguments": {}, "for_model": "r=$x$"}],
+        }
+
+    history, known = _history([Row()])  # type: ignore[list-item]
+    assert history[1]["content"] == "r=$x$" and "x" in known
+
+
 def test_chat_logs_contain_no_message_content(capsys) -> None:  # type: ignore[no-untyped-def]
     marker = "zzCHATMARKERzz"
     app = build_app(llm_mode="scripted")
@@ -131,6 +163,7 @@ def test_chat_logs_contain_no_message_content(capsys) -> None:  # type: ignore[n
         sse(c, cid, f"simplify ${marker}$ + {marker}")
     out = capsys.readouterr().out
     assert "chat_turn" in out and marker not in out and PASSWORD not in out
+    assert '"tool_calls": 1' in out and '"steps"' in out
 
 
 def test_scripted_model_is_refused_outside_development() -> None:

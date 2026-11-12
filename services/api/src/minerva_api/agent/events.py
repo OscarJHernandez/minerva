@@ -42,6 +42,9 @@ class TraceStep(BaseModel):
     name: str
     arguments: dict[str, Any]
     for_model: str
+    # Debugging aids, absent on messages stored before they existed.
+    duration_ms: int | None = None
+    status: str | None = None  # the tool's own status (`ok`, `parse_error`, ...) or `error`
 
 
 class Block(BaseModel):
@@ -52,8 +55,41 @@ class Block(BaseModel):
     card: Card | None = None  # kind == "card"
 
 
+class LLMCallDebug(BaseModel):
+    """One request to the model within a turn. Sizes only, never content."""
+
+    ms: int
+    text_chars: int
+    tool_calls: int
+
+
+class ClaimDebug(BaseModel):
+    """How an equation the model wrote itself was tested, and why it ended up with its mark."""
+
+    value: str
+    status: str  # holds | conditional | fails | unverified
+    detail: str = ""
+
+
+class TurnDebug(BaseModel):
+    """Everything needed to reproduce a turn, shown only when the user switches debug mode on."""
+
+    request_id: str = ""
+    api_version: str = ""
+    mode: str = ""
+    model: str = ""
+    prompt_sha: str = ""  # system prompt + tool schemas; changes when either is edited
+    max_steps: int = 0
+    max_seconds: float = 0
+    duration_ms: int = 0
+    llm_calls: list[LLMCallDebug] = Field(default_factory=list)
+    claims: list[ClaimDebug] = Field(default_factory=list)
+    error: str | None = None
+
+
 class AssistantMessage(BaseModel):
     text: str  # raw model text, used as conversation history
     blocks: list[Block]
     trace: list[TraceStep]
     truncated: bool = False  # the step or time limit ended the turn early
+    debug: TurnDebug | None = None

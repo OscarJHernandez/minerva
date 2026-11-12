@@ -82,6 +82,7 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         request_id = uuid.uuid4().hex
+        request.state.request_id = request_id
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(request_id=request_id)
         origin = request.headers.get("origin")

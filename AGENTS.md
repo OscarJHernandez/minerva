@@ -53,6 +53,7 @@ uv run python -m minerva_knowledge verify # check every handbook entry at its de
 uv run python -m minerva_knowledge benchmark          # hand-written expression -> identity cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
+uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
 MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
 
 pnpm install                              # JS workspace
@@ -77,6 +78,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
 - Conversations are user data: private per account, never logged.
+- Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
+  copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.
+  The data comes from `AssistantMessage.trace/debug` stored with the message. The server log gets counters and
+  `request_id` only, never content.
 
 ## Mathematical correctness (non-negotiable)
 
@@ -142,6 +147,7 @@ skill before changing that area. See `.agents/skills/README.md` before writing a
 | Skill | Use for |
 | --- | --- |
 | [`math-regression`](.agents/skills/math-regression/SKILL.md) | Any change to engine operations, parsers, tensors, handbook entries or compute endpoints. |
+| [`chat-trace-triage`](.agents/skills/chat-trace-triage/SKILL.md) | A pasted chat debug report, or a chat answer that looks wrong: replay the tool calls, classify, pin with a test. |
 | [`verify-change`](.agents/skills/verify-change/SKILL.md) | Before saying work is done: which checks to run for which paths, in order. |
 | [`ui-check`](.agents/skills/ui-check/SKILL.md) | Any change to `apps/` or `packages/ui`: browser check in light and dark at phone width. |
 | [`add-dependency`](.agents/skills/add-dependency/SKILL.md) | Adding or upgrading a Python or JavaScript dependency (licence, lockfile, audit). |

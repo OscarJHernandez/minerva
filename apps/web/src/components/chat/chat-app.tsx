@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { chatApi, sendMessage } from "@/lib/chat-api";
+import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
+import { useDebugMode } from "@/lib/debug-mode";
 import { parseInlineMath } from "@/lib/inline-math";
 import type {
   AssistantContent,
@@ -17,6 +19,7 @@ import type {
 } from "@/lib/chat-types";
 import { CardView } from "./card-view";
 import { Composer } from "./composer";
+import { CopyButton } from "./debug-panel";
 import { ConversationList } from "./conversation-list";
 import { MessageView } from "./message-view";
 import { RichText } from "./rich-text";
@@ -66,6 +69,8 @@ export function ChatApp() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
+  const [debugOn, setDebugOn] = useDebugMode();
+  const [lastError, setLastError] = useState<LastError | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -97,6 +102,7 @@ export function ChatApp() {
 
   async function open(id: string) {
     setError(null);
+    setLastError(null);
     setListOpen(false);
     try {
       const detail = await chatApi.get(id);
@@ -114,6 +120,7 @@ export function ChatApp() {
     setMessages([]);
     setPending(null);
     setError(null);
+    setLastError(null);
     setListOpen(false);
   }
 
@@ -130,6 +137,7 @@ export function ChatApp() {
 
   async function send(text: string) {
     setError(null);
+    setLastError(null);
     try {
       let id = activeId;
       if (!id) {
@@ -180,6 +188,7 @@ export function ChatApp() {
             setPending(null);
           } else if (event.event === "error") {
             setError(event.data.message);
+            setLastError(event.data);
             setPending(null);
           }
         },
@@ -196,6 +205,7 @@ export function ChatApp() {
   }
 
   const busy = pending !== null;
+  const title = conversations.find((c) => c.id === activeId)?.title ?? "";
 
   if (status && !status.enabled) {
     return (
@@ -263,8 +273,16 @@ export function ChatApp() {
             <EmptyState onPick={send} disabled={busy || !status} />
           ) : (
             <div className="mx-auto max-w-3xl space-y-6">
-              {messages.map((m) => (
-                <MessageView key={m.id} message={m} />
+              {messages.map((m, i) => (
+                <MessageView
+                  key={m.id}
+                  message={m}
+                  getReport={
+                    debugOn && m.role === "assistant"
+                      ? () => buildTurnReport({ title, status }, messages, i)
+                      : undefined
+                  }
+                />
               ))}
               {pending && <PendingView pending={pending} />}
               {error && (
@@ -289,6 +307,22 @@ export function ChatApp() {
             onSend={send}
             onStop={() => abortRef.current?.abort()}
           />
+          <div className="flex items-center gap-4 py-1 text-xs text-muted">
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={debugOn}
+                onChange={(e) => setDebugOn(e.target.checked)}
+              />
+              Debug mode
+            </label>
+            {debugOn && (
+              <CopyButton
+                label="Copy debug report"
+                getText={() => buildDebugReport({ title, messages, status, lastError })}
+              />
+            )}
+          </div>
         </div>
       </section>
     </div>

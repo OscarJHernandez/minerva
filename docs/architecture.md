@@ -71,6 +71,13 @@ and explains; it never computes and never decides correctness.
   that tool results and handbook entries of the conversation contain. Others are shown as *unchecked*.
 - **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
   (prose and cards) and the tool trace so later turns have the same context.
+- **Debug report:** each stored assistant message carries `trace` (tool name, the arguments the model sent, the text it
+  read back, tool status and duration) and `debug` (`request_id`, model, mode, a fingerprint of the system prompt and
+  tool schemas, per-call timings, and how each equation the model wrote was tested). With "Debug mode" on, the chat
+  shows this and copies a Markdown report ending in a JSON block; `scripts/replay_trace.py` re-runs the recorded tool
+  calls, and the `chat-trace-triage` skill says how to classify the result. This is shown only to the account that owns
+  the conversation. The server log still holds no content: `chat_turn` adds `steps`, `tool_calls` and `tool_errors`
+  counts, and the `request_id` in the report matches the `X-Request-ID` response header.
 - **Models:** `MINERVA_LLM_MODE` is `off`, `ollama` (your own host: `MINERVA_LLM_BASE_URL`, `MINERVA_LLM_MODEL`) or
   `scripted` (deterministic stand-in for tests and UI work, development only). `scripts/eval_models.py` measures a
   model's tool-calling and honesty through the real loop; results in `docs/model-evaluation.md`.
