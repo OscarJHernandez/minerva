@@ -3,6 +3,7 @@ import type {
   SeriesResult,
   EntrySummary,
   IdentitiesResult,
+  IntegrateResult,
   SimplifyResult,
   Status,
 } from "./types";
@@ -303,6 +304,7 @@ export type Card =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
   | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
+  | { id: string; tool: string; type: "integrate"; title: string; data: IntegrateResult }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {
       id: string;

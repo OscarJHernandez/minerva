@@ -7,6 +7,7 @@ const DOT: Record<string, string> = {
   ok: "bg-ok",
   unchanged: "bg-muted",
   parse_error: "bg-bad",
+  conditions_not_satisfied: "bg-warn",
   internal_error: "bg-bad",
 };
 
@@ -14,6 +15,7 @@ const OPERATION_LABEL: Record<string, string> = {
   simplify: "Simplify",
   differentiate: "Differentiate",
   series: "Series",
+  integrate: "Integrate",
   identities: "Identities",
 };
 

@@ -4,6 +4,7 @@ export type Status =
   | "ok"
   | "unchanged"
   | "not_verified"
+  | "conditions_not_satisfied"
   | "unsupported"
   | "parse_error"
   | "resource_limit"
@@ -111,6 +112,41 @@ export interface SeriesResult {
   duration_ms: number;
   calculation_id?: string | null;
 }
+export interface IntegrateResult {
+  status: Status;
+  input_latex: string | null;
+  variable: string | null;
+  definite: boolean;
+  lower_latex: string | null;
+  upper_latex: string | null;
+  numeric: string | null;
+  conditions_latex: string[];
+  quadrature: {
+    method: string;
+    points_checked: number;
+    points_agreed: number;
+    passed: boolean;
+    note: string;
+  } | null;
+  notation_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  verification: {
+    method: string;
+    directions: ("real" | "imaginary")[];
+    steps_checked: number;
+    branches_checked: number;
+    points_checked: number;
+    points_agreed: number;
+    passed: boolean;
+    symbolic_zero: boolean | null;
+    note: string;
+  } | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+}
 
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
@@ -165,7 +201,7 @@ export interface IdentitiesResult {
 
 export interface HistoryItem {
   id: string;
-  operation: "simplify" | "identities" | "differentiate" | "series";
+  operation: "simplify" | "identities" | "differentiate" | "series" | "integrate";
   input: string;
   format: "latex" | "text";
   assumptions: Assumptions;

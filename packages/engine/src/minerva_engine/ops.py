@@ -135,6 +135,20 @@ def op_series(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+# --- integrate -------------------------------------------------------------------------
+def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
+    from .integrate import integrate
+
+    result = integrate(
+        ExpressionInput(**payload["expression"]),
+        str(payload["variable"]),
+        Limits(**payload["limits"]),
+        lower=payload.get("lower"),
+        upper=payload.get("upper"),
+    )
+    return result.model_dump(mode="json")
+
+
 # --- lagrangian ------------------------------------------------------------------------
 def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     from .lagrangian import analyze_lagrangian
@@ -507,6 +521,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "solve": op_solve,
     "differentiate": op_differentiate,
     "series": op_series,
+    "integrate": op_integrate,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
     "perturbation_solve": op_perturbation_solve,

@@ -91,6 +91,26 @@ class SeriesArgs(SimplifyArgs):
     )
 
 
+class IntegrateArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT, description="The integrand, in LaTeX, e.g. x\\cos x (no \\int or dx)"
+    )
+    variable: str = Field(
+        min_length=1, max_length=32, description="The variable of integration, e.g. x"
+    )
+    lower: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Lower bound of a definite integral: a real number such as 0 or \\pi, or -oo "
+        "for minus infinity. Give both bounds or neither.",
+    )
+    upper: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Upper bound of a definite integral: a real number, or oo for infinity.",
+    )
+
+
 class IdentitiesArgs(SimplifyArgs):
     query: str = Field(default="", max_length=200, description="Optional extra search words")
 
@@ -331,6 +351,45 @@ def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
     )
     known = [x for x in (result.input_latex, result.result_latex) if x]
     known += [t.coefficient_latex for t in result.terms]
+    return ToolOutput(card, text, known, result.status.value)
+
+
+def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.integrate(_expr(args), args.variable, args.lower, args.upper)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="integrate",
+        type="integrate",
+        title="Integrate",
+        data=result.model_dump(mode="json"),
+    )
+    v = result.verification
+    text = (
+        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        + (
+            f"{'value' if result.definite else 'antiderivative'}=${result.result_latex}$; "
+            if result.result_latex
+            else ""
+        )
+        + (f"approx={result.numeric}; " if result.numeric else "")
+        + (
+            f"verified: numeric derivative {v.points_agreed}/{v.points_checked} "
+            f"({'+'.join(v.directions)} direction, {v.branches_checked} case(s)); "
+            if v and v.passed
+            else ""
+        )
+        + (
+            f"verified: quadrature {q.points_agreed}/{q.points_checked} points; "
+            if (q := result.quadrature) and q.passed
+            else ""
+        )
+        + "".join(f"condition: ${c}$; " for c in result.conditions_latex)
+        + result.message
+        + "".join(f" note: {n}" for n in result.notes)
+    )
+    known = [
+        x for x in (result.input_latex, result.notation_latex, result.result_latex) if x
+    ] + result.conditions_latex
     return ToolOutput(card, text, known, result.status.value)
 
 
@@ -870,6 +929,17 @@ TOOLS: dict[str, Tool] = {
             "asymptotic series). For an approximation to a physical system, expand its equations of motion, not the answer.",
             SeriesArgs,
             run_series,
+        ),
+        Tool(
+            "integrate",
+            "Integrate an expression in one variable. Without bounds: an antiderivative, shown only "
+            "if an independent numerical derivative of it matches the integrand. With both bounds "
+            "(numbers, or oo / -oo): a definite integral, shown only if independent numerical "
+            "quadrature agrees at sampled parameter values. Reports 'conditions_not_satisfied' "
+            "when convergence needs assumptions that were not declared (ask the user), and "
+            "'unsupported' when no closed form is found (that does not prove none exists).",
+            IntegrateArgs,
+            run_integrate,
         ),
         Tool(
             "solve_polynomial",

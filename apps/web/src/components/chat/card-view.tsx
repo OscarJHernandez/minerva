@@ -4,6 +4,7 @@ import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
 import { SeriesPanel } from "../series-panel";
+import { IntegralPanel } from "../integral-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { ExpansionCard } from "./expansion-card";
 import { LagrangianCard } from "./lagrangian-card";
@@ -23,6 +24,8 @@ export function CardView({ card }: { card: Card }) {
       return <DerivativePanel result={card.data} />;
     case "series":
       return <SeriesPanel result={card.data} />;
+    case "integrate":
+      return <IntegralPanel result={card.data} />;
     case "identities":
       return <IdentitiesPanel result={card.data} />;
     case "entries":

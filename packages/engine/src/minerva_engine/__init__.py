@@ -9,6 +9,7 @@ from .differentiate import (
 )
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
+from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
 from .models import (
@@ -58,6 +59,8 @@ __all__ = [
     "ExpressionInput",
     "FormulaReading",
     "IdentitiesResult",
+    "IntegrateResult",
+    "IntegrateVerification",
     "LagrangianReport",
     "LimitError",
     "Limits",
@@ -66,6 +69,7 @@ __all__ = [
     "MotionRequest",
     "ParseError",
     "PerturbationReport",
+    "QuadratureVerification",
     "QuantitySpec",
     "Rule",
     "RuleApplication",

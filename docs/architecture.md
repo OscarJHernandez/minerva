@@ -32,6 +32,17 @@ one most likely to be wrong.
     variable that may be complex, imaginary) directions. A pole, branch point, logarithm or `|x|` is
     `unsupported`; a failed leg is `not_verified` and shows no formula. The measured-error table is a
     measurement at a few distances for expressions with no other symbols, not a bound.
+  - `integrate` (`integrate.py`): `sympy.integrate` proposes an antiderivative; it is accepted only if a
+    40-digit numerical derivative of it (real and, for a complex variable, imaginary direction) agrees with
+    the integrand at assumption-respecting points. `Piecewise` results are checked branch by branch
+    (equality cases are substituted into both sides; a case that cannot be sampled gives `not_verified`).
+    A leftover `Integral` is `unsupported` ("no closed form found; this does not prove none exists").
+    `simplify(F' - f) == 0` is reported separately as extra evidence. With both bounds (numbers, `oo`,
+    `-oo`) it computes a definite integral instead and verifies it by independent adaptive quadrature
+    (mpmath, 30 digits) at sampled parameter values, not by the fundamental theorem, which fails for a pole
+    inside the interval. A quadrature with a large error estimate, or a non-finite or huge integrand on an
+    interior grid, never counts as agreement; SymPy's convergence conditions that the declared assumptions
+    do not imply give `conditions_not_satisfied`; divergent or undefined results show no value.
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -134,7 +145,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `series`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `analyze_lagrangian`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
@@ -170,7 +181,7 @@ and explains; it never computes and never decides correctness.
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
-limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,differentiate,series,identities,tensor/canonicalize}`,
+limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,differentiate,integrate,series,identities,tensor/canonicalize}`,
 `/v1/reference/*` (public, read-only), `/v1/history`. History rows contain user mathematics and are
 private to the account. Logging uses an allow-list of fields (no inputs, emails or tokens).
 

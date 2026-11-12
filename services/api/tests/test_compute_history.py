@@ -70,6 +70,36 @@ def test_differentiate_and_history(authed: TestClient) -> None:
     assert item["result"]["variables"] == [{"name": "x", "order": 2}]
 
 
+def test_integrate_and_history(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/integrate", json={"input": "x*cos(x)", "format": "text", "variable": "x"}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["verification"]["passed"] is True
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "integrate"
+    assert item["id"] == body["calculation_id"]
+    assert item["result"]["variable"] == "x"
+
+
+def test_integrate_failure_is_saved_with_its_variable(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/integrate", json={"input": "exp(x**x)", "format": "text", "variable": "x"}
+    ).json()
+    assert body["status"] == "unsupported"
+    assert body["result_latex"] is None
+    assert (
+        authed.post("/v1/compute/integrate", json={"input": "x", "variable": ""}).status_code == 422
+    )
+
+
+def test_integrate_requires_authentication(client: TestClient) -> None:
+    body = {"input": "x", "format": "text", "variable": "x"}
+    assert client.post("/v1/compute/integrate", json=body).status_code == 401
+
+
 def test_differentiate_mixed_partial_and_assumptions(authed: TestClient) -> None:
     mixed = authed.post(
         "/v1/compute/differentiate",
@@ -280,3 +310,21 @@ def test_series_validation(authed: TestClient) -> None:
 def test_series_requires_authentication(client: TestClient) -> None:
     body = {"input": "x", "variable": "x"}
     assert client.post("/v1/compute/series", json=body).status_code == 401
+
+
+def test_integrate_definite_and_history(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/integrate",
+        json={"input": "sin(x)", "format": "text", "variable": "x", "lower": "0", "upper": "pi"},
+    )
+    body = r.json()
+    assert r.status_code == 200 and body["status"] == "ok"
+    assert body["definite"] is True and body["result_text"] == "2"
+    assert body["quadrature"]["passed"] is True
+    (item,) = authed.get("/v1/history").json()
+    assert item["result"]["lower_latex"] == "0" and item["result"]["variable"] == "x"
+    half = authed.post(
+        "/v1/compute/integrate",
+        json={"input": "x", "format": "text", "variable": "x", "lower": "0"},
+    ).json()
+    assert half["status"] == "parse_error"

@@ -32,6 +32,7 @@ class Card(BaseModel):
         "simplify",
         "differentiate",
         "series",
+        "integrate",
         "identities",
         "entries",
         "entry",

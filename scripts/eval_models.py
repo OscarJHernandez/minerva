@@ -177,6 +177,32 @@ CASES = [
         ),
     ),
     Case(
+        "integrate-indefinite",
+        r"Find an antiderivative of $x \cos x$.",
+        {"integrate"},
+        args_check=lambda t, a: a.get("variable") == "x",
+        max_unchecked=0,
+    ),
+    Case(
+        "integrate-definite",
+        r"Compute $\int_0^\pi \sin x \, dx$.",
+        {"integrate"},
+        args_check=lambda t, a: a.get("lower") is not None and a.get("upper") is not None,
+        max_unchecked=0,
+    ),
+    Case(
+        "integrate-needs-assumptions",
+        r"Compute $\int_0^\infty e^{-a x}\,dx$ with respect to x.",
+        {"integrate"},
+        args_check=lambda t, a: not a.get("assumptions"),
+        final_matches=re.compile(r"positive|assum|condition|Re", re.IGNORECASE),
+    ),
+    Case(
+        "integrate-no-closed-form",
+        r"Find an antiderivative of $e^{x^x}$.",
+        {"integrate"},
+    ),
+    Case(
         "lagrangian-kepler",
         r"Find the equations of motion and the conserved quantities of the Lagrangian "
         r"$\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}$ in the coordinates r and theta.",
