@@ -50,6 +50,18 @@ def test_conditional_rule_applies_when_conditions_provable(engine: Engine) -> No
     assert "\\log{\\left(x \\right)}" in app.rewritten_latex
 
 
+def test_rewritten_text_is_readable_and_only_set_when_applied(engine: Engine) -> None:
+    from minerva_engine import parse_text
+
+    applied = apply(engine, r"\log(xy)", [LOG_PRODUCT], x=["positive"], y=["positive"])[
+        "log.product"
+    ]
+    assert applied.rewritten_text is not None
+    assert parse_text(applied.rewritten_text) == parse_text("log(x) + log(y)")
+    blocked = apply(engine, r"\log(xy)", [LOG_PRODUCT])["log.product"]
+    assert blocked.rewritten_text is None
+
+
 def test_partial_assumptions_still_blocked(engine: Engine) -> None:
     out = apply(engine, r"\log(xy)", [LOG_PRODUCT], x=["positive"])
     assert out["log.product"].applicability is Applicability.CONDITIONS_NOT_SATISFIED
@@ -200,3 +212,21 @@ def test_pattern_with_a_plain_variable_may_still_bind_fractions(engine: Engine) 
 def test_a_rewrite_found_by_halving_was_true_but_is_no_longer_offered(engine: Engine) -> None:
     """The halved rewrite is mathematically valid, so the rule itself is not wrong: only the match."""
     assert verify_rule(DOUBLE_SIN).passed
+
+
+DOUBLE_TAN = Rule(
+    id="trig.double_tan", lhs="tan(2*a)", rhs="2*tan(a)/(1 - tan(a)**2)", variables=["a"]
+)
+
+
+def test_a_rewrite_that_introduces_a_denominator_reports_where_it_is_valid(engine: Engine) -> None:
+    app = apply(engine, r"\tan(2x)", [DOUBLE_TAN])["trig.double_tan"]
+    assert app.applicability is Applicability.APPLICABLE
+    assert app.restrictions_complete
+    assert any("tan" in r and r"\neq" in r for r in app.restrictions_latex)
+    assert "valid only where" in app.message
+
+
+def test_a_rewrite_that_changes_no_domain_has_no_restrictions(engine: Engine) -> None:
+    app = apply(engine, r"\sin^2 t + \cos^2 t + z", [PYTH])["trig.pythagorean"]
+    assert app.restrictions_latex == []

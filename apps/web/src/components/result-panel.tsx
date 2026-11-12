@@ -2,7 +2,7 @@
 
 import { Math } from "@minerva/ui/math";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type {
   BlockedMove,
   EntrySummary,
@@ -15,14 +15,14 @@ import type {
 import { VerificationBadge } from "./verification-badge";
 
 const GOAL: Record<SimplifyGoal, { heading: string; done: string }> = {
-  simplify: { heading: "Simplify", done: "Simplified and verified" },
-  expand: { heading: "Expand", done: "Expanded and verified" },
-  factor: { heading: "Factor", done: "Factored and verified" },
-  rewrite: { heading: "Rewrite", done: "Rewritten and verified" },
+  simplify: { heading: "Simplify", done: "Simplified" },
+  expand: { heading: "Expand", done: "Expanded" },
+  factor: { heading: "Factor", done: "Factored" },
+  rewrite: { heading: "Rewrite", done: "Rewritten" },
 };
 
 const STATUS: Record<Status, { label: string; tone: string }> = {
-  ok: { label: "Simplified and verified", tone: "bg-ok-soft text-ok" },
+  ok: { label: "Simplified", tone: "bg-ok-soft text-ok" },
   unchanged: { label: "No simpler form found", tone: "bg-sunk text-muted" },
   not_verified: { label: "Could not verify a result", tone: "bg-warn-soft text-warn" },
   conditions_not_satisfied: { label: "Conditions not satisfied", tone: "bg-warn-soft text-warn" },
@@ -38,6 +38,35 @@ export function StatusPill({ status, okLabel }: { status: Status; okLabel?: stri
     <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${s.tone}`}>
       {s.label}
     </span>
+  );
+}
+
+/** Where the result is valid when it excludes points the input did not (a cancelled singularity). */
+export function Restrictions({
+  latex,
+  complete,
+}: {
+  latex: string[] | undefined;
+  complete: boolean;
+}) {
+  if (!complete) {
+    return (
+      <p className="mt-3 text-sm text-warn">
+        Where this result is valid could not be determined. Do not assume it holds at poles.
+      </p>
+    );
+  }
+  if (!latex || latex.length === 0) return null;
+  return (
+    <div className="mt-3 text-sm" data-testid="restrictions">
+      <span className="text-muted">Valid only for </span>
+      {latex.map((item, index) => (
+        <span key={item}>
+          {index > 0 && ", "}
+          <Math latex={item} />
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -178,20 +207,25 @@ function NotApplied({ result }: { result: SimplifyResult }) {
 }
 
 export function ResultPanel({ result }: { result: SimplifyResult }) {
+  const headingId = useId();
   const [copied, setCopied] = useState(false);
   const v = result.verification;
   const shown = result.status === "ok" || result.status === "unchanged";
 
   return (
-    <section
-      aria-labelledby="result-heading"
-      className="rounded-lg border border-rule bg-raised p-5"
-    >
+    <section aria-labelledby={headingId} className="rounded-lg border border-rule bg-raised p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="result-heading" className="font-serif text-xl">
+        <h2 id={headingId} className="font-serif text-xl">
           {GOAL[result.goal ?? "simplify"].heading}
         </h2>
-        <StatusPill status={result.status} okLabel={GOAL[result.goal ?? "simplify"].done} />
+        <StatusPill
+          status={result.status}
+          okLabel={
+            v?.symbolic_zero
+              ? `${GOAL[result.goal ?? "simplify"].done} and proved equal`
+              : `${GOAL[result.goal ?? "simplify"].done}, numerically checked`
+          }
+        />
       </div>
 
       {result.input_latex && (
@@ -221,6 +255,10 @@ export function ResultPanel({ result }: { result: SimplifyResult }) {
         </div>
       )}
 
+      <Restrictions
+        latex={result.restrictions_latex}
+        complete={result.restrictions_complete ?? true}
+      />
       <p className="mt-3 text-sm text-muted">{result.message}</p>
 
       {result.status === "ok" && <Steps result={result} />}

@@ -6,9 +6,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
-from .db import Calculation
+from .db import Calculation, Derivation
 from .deps import DbDep, UserDep
 from .schemas import HistoryItem
 
@@ -25,6 +25,8 @@ def _item(row: Calculation) -> HistoryItem:
         status=row.status,
         result=row.result,
         created_at=row.created_at,
+        derivation_id=row.derivation_id,
+        parent_id=row.parent_id,
     )
 
 
@@ -53,6 +55,12 @@ def get_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> His
 
 @router.delete("/{calculation_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> Response:
+    # Steps that continued this one keep their place but lose the link (SQLite does not cascade).
+    db.execute(
+        update(Calculation)
+        .where(Calculation.parent_id == calculation_id, Calculation.user_id == user.id)
+        .values(parent_id=None)
+    )
     result = db.execute(
         delete(Calculation).where(Calculation.id == calculation_id, Calculation.user_id == user.id)
     )
@@ -65,5 +73,6 @@ def delete_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 def clear_history(user: UserDep, db: DbDep) -> Response:
     db.execute(delete(Calculation).where(Calculation.user_id == user.id))
+    db.execute(delete(Derivation).where(Derivation.user_id == user.id))
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

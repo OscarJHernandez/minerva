@@ -115,6 +115,8 @@ function renderNodes(nodes: Node[], prefix: string): ReactNode[] {
 const BULLET = /^\s*[*-]\s+/;
 
 function Formula({ seg }: { seg: Segment }) {
+  // `null`: written by the user or still streaming. Minerva has made no claim about it.
+  if (seg.status === null) return <Math latex={seg.value} />;
   const status = seg.status ?? "unchecked";
   const mark = MARKS[status];
   // A lone symbol names something; it asserts nothing, so there is nothing to verify or flag.
@@ -136,7 +138,7 @@ function Formula({ seg }: { seg: Segment }) {
 }
 
 function DisplayFormula({ seg }: { seg: Segment }) {
-  const mark = MARKS[seg.status ?? "unchecked"];
+  const mark = MARKS[seg.status ?? "from_tool"];
   return (
     <div data-status={seg.status} className={`my-2 rounded-md border px-3 py-1 ${mark.box}`}>
       <Math latex={seg.value} display />

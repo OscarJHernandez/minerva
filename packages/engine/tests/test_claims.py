@@ -25,9 +25,9 @@ L = Limits()
 
 
 def test_true_equation_holds_and_false_one_fails() -> None:
-    assert check_claim(r"\frac{x^2-1}{x-1} = x+1", {}, L).status == "holds"
     assert check_claim(r"\sin^2 x + \cos^2 x = 1", {}, L).status == "holds"
-    assert check_claim(r"(x+1)^2 = x^2 + 1", {}, L).status == "fails"
+    assert check_claim(r"\sin^2 x + \cos^2 x = 2", {}, L).status == "fails"  # false for every x
+    assert check_claim(r"(x+1)^2 = x^2 + 1", {}, L).status == "not_identity"
 
 
 def test_claims_depend_on_assumptions() -> None:
@@ -36,7 +36,7 @@ def test_claims_depend_on_assumptions() -> None:
         check_claim(claim, {}, L).status == "conditional"
     )  # false for complex x, true for positive x
     assert check_claim(claim, {"x": ["positive"]}, L).status == "holds"
-    assert check_claim(claim, {"x": ["negative"]}, L).status == "fails"
+    assert check_claim(claim, {"x": ["negative"]}, L).status == "not_identity"
 
 
 def test_chains_and_trailing_conditions() -> None:
@@ -53,7 +53,7 @@ def test_undecidable_inputs_are_reported_not_guessed() -> None:
 def test_engine_batch_runs_in_the_sandbox() -> None:
     engine = Engine(Limits(timeout_seconds=30))
     results = engine.check_claims([r"x+x = 2x", r"x+x = 3x", "y"], {})
-    assert [r.status for r in results] == ["holds", "fails", "not_an_equation"]
+    assert [r.status for r in results] == ["holds", "not_identity", "not_an_equation"]
     assert engine.check_claims([]) == []
 
 
@@ -62,9 +62,9 @@ def test_claims_true_only_for_real_or_positive_symbols_are_conditional_not_false
     assert real.status == "conditional" and "real" in real.detail
     positive = check_claim(r"\sqrt{x^2} = x", {}, L)
     assert positive.status == "conditional" and "positive" in positive.detail
-    assert check_claim(r"(x+1)^2 = x^2 + 1", {}, L).status == "fails"  # false under any assumption
+    assert check_claim(r"(x+1)^2 = x^2 + 1", {}, L).status == "not_identity"
     assert check_claim(r"\sqrt{x^2} = x", {"x": ["positive"]}, L).status == "holds"
-    assert check_claim(r"\sqrt{x^2} = -x", {"x": ["positive"]}, L).status == "fails"
+    assert check_claim(r"\sqrt{x^2} = -x", {"x": ["positive"]}, L).status == "not_identity"
 
 
 def test_claims_reading_e_i_as_constants_and_equations_to_solve() -> None:
@@ -73,7 +73,51 @@ def test_claims_reading_e_i_as_constants_and_equations_to_solve() -> None:
     assert check_claim(r"x^3 + x^2 + x + 1 = 0", {}, L).status == "unverified"
     assert check_claim(r"\sin^2 x + \cos^2 x = 1", {}, L).status == "holds"
     assert check_claim(r"2 + 2 = 5", {}, L).status == "fails"
-    assert check_claim(r"\sin x = \cos x", {}, L).status == "fails"
+    assert check_claim(r"\sin x = \cos x", {}, L).status == "not_identity"
+
+
+def test_removable_singularity_is_conditional_not_holds() -> None:
+    out = check_claim(r"\frac{x^2-1}{x-1} = x+1", {}, L)
+    assert out.status == "conditional" and r"x \neq 1" in out.detail
+    cancelled = check_claim(r"\frac{x-1}{x-1} = 1", {}, L)  # the parser cancels it while reading
+    assert cancelled.status == "conditional" and r"x \neq 1" in cancelled.detail
+    assert check_claim(r"\frac{\sin x}{x} = \frac{\sin x}{x}", {}, L).status == "holds"
+
+
+@pytest.mark.parametrize(
+    "claim",
+    [
+        r"F = m a",  # definition
+        r"L = T - V",
+        r"a = 2t",
+        r"m\ddot{x} = -kx",  # equation of motion
+        r"\ddot{x} = -\omega^2 x",
+        r"m\ddot r = m r\dot\theta^2 - \frac{k}{r^2}",
+        r"x^2 = 3x - 2",  # equation to solve: true for some x
+    ],
+)
+def test_equations_definitions_and_motion_are_never_contradicted(claim: str) -> None:
+    assert check_claim(claim, {}, L).status in ("unverified", "not_identity")
+
+
+@pytest.mark.parametrize(
+    ("claim", "assumptions"),
+    [
+        (r"\ln(\exponentialE^{z}) = z", {}),  # only for |Im z| < pi: not 'holds'
+        (r"\sqrt{(x-4)^2} = 4-x", {"x": ["real"]}),
+        (r"\arctan(\tan(x/3)) = x/3", {"x": ["real"]}),
+        (r"|x-10| = 10-x", {"x": ["real"]}),
+    ],
+)
+def test_branch_and_range_errors_are_not_reported_as_holding(
+    claim: str, assumptions: dict[str, list[str]]
+) -> None:
+    assert check_claim(claim, assumptions, L).status != "holds"
+
+
+def test_declared_real_is_relaxed_to_positive() -> None:
+    out = check_claim(r"\sqrt{x^2} = x", {"x": ["real"]}, L)
+    assert out.status == "conditional" and "positive" in out.detail
 
 
 # --- relations: definitions, coordinate changes, constraints, equations of motion -------------
@@ -93,13 +137,13 @@ def test_relations_are_never_called_false_by_independent_sampling(latex: str) ->
     result = check_claim(latex, {}, L)
     assert result.status == "unverified"
     assert result.kind == "relation"
-    assert "not an identity" in result.detail
+    assert "not tested as an identity" in result.detail
 
 
 def test_identities_are_still_judged_and_say_so() -> None:
     wrong = check_claim(r"(x+1)^2 = x^2 + 1", {}, L)
-    assert (wrong.status, wrong.kind) == ("fails", "identity")
-    assert check_claim(r"\sin x = \cos x", {}, L).status == "fails"
+    assert (wrong.status, wrong.kind) == ("not_identity", "identity")
+    assert check_claim(r"\sin x = \cos x", {}, L).status == "not_identity"
     assert check_claim(r"2 + 2 = 5", {}, L).status == "fails"
     assert check_claim(r"x + x = 2x", {}, L).kind == "identity"
 
@@ -159,7 +203,7 @@ def test_restating_a_definition_is_consistent_with_it() -> None:
 
 def test_a_stale_definition_does_not_rescue_a_false_identity() -> None:
     result = check_claims([r"(x+1)^2 = x^2 + 1"], {}, [r"x = 0"], L)[0]
-    assert (result.status, result.kind, result.given) == ("fails", "identity", [])
+    assert (result.status, result.kind, result.given) == ("not_identity", "identity", [])
 
 
 def test_cyclic_and_unusable_definitions_are_ignored() -> None:

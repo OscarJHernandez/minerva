@@ -6,10 +6,35 @@ import { ResultPanel } from "./result-panel";
 describe("ResultPanel", () => {
   it("shows the verified result and how it was checked", () => {
     render(<ResultPanel result={okSimplify} />);
-    expect(screen.getByText("Simplified and verified")).toBeInTheDocument();
+    expect(screen.getByText("Simplified and proved equal")).toBeInTheDocument();
     expect(screen.getByText(/12 of 12 sample points agree/)).toBeInTheDocument();
     expect(screen.getByText(/Difference simplifies to 0/)).toBeInTheDocument();
     expect(screen.getByLabelText("Result")).toBeInTheDocument();
+  });
+
+  it("does not call numeric-only agreement a proof", () => {
+    const numeric = {
+      ...okSimplify,
+      verification: { ...okSimplify.verification!, symbolic_zero: false },
+    };
+    render(<ResultPanel result={numeric} />);
+    expect(screen.getByText("Simplified, numerically checked")).toBeInTheDocument();
+    expect(screen.queryByText(/proved equal/)).not.toBeInTheDocument();
+    expect(screen.getByText(/No symbolic proof found/)).toBeInTheDocument();
+  });
+
+  it("states where the result is valid when a singularity was cancelled", () => {
+    render(
+      <ResultPanel
+        result={{ ...okSimplify, restrictions_latex: ["x \\neq 1"], restrictions_complete: true }}
+      />,
+    );
+    expect(screen.getByTestId("restrictions")).toHaveTextContent(/Valid only for/);
+  });
+
+  it("says when the restrictions could not be determined", () => {
+    render(<ResultPanel result={{ ...okSimplify, restrictions_complete: false }} />);
+    expect(screen.getByText(/could not be determined/)).toBeInTheDocument();
   });
 
   it("says plainly when nothing simpler was found", () => {
@@ -121,7 +146,7 @@ describe("ResultPanel", () => {
 
   it("labels the other goals", () => {
     render(<ResultPanel result={{ ...chainSimplify, goal: "factor" }} />);
-    expect(screen.getByText("Factored and verified")).toBeInTheDocument();
+    expect(screen.getByText("Factored and proved equal")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Factor" })).toBeInTheDocument();
   });
 });

@@ -7,7 +7,7 @@ import { ApiError } from "@/lib/api";
 import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
-import { parseInlineMath } from "@/lib/inline-math";
+import { splitMath } from "@/lib/inline-math";
 import type {
   AssistantContent,
   Card,
@@ -386,9 +386,10 @@ function PendingView({ pending }: { pending: Pending }) {
     <div className="space-y-3" aria-busy="true">
       {pending.items.map((item, i) =>
         item.kind === "text" ? (
-          <p key={i} className="whitespace-pre-wrap leading-relaxed">
-            {item.text}
-          </p>
+          // Closed formulas render as they arrive; an unfinished one stays text until it closes.
+          <div key={i} className="leading-relaxed">
+            <RichText segments={splitMath(item.text)} />
+          </div>
         ) : (
           <CardView key={item.card.id} card={item.card} />
         ),
@@ -421,7 +422,7 @@ function EmptyState({ onPick, disabled }: { onPick: (t: string) => void; disable
           >
             <div className="text-sm font-medium">{ex.title}</div>
             <div className="mt-1 text-sm text-muted">
-              <RichText segments={parseInlineMath(ex.text)} />
+              <RichText segments={splitMath(ex.text)} />
             </div>
           </button>
         ))}

@@ -6,7 +6,7 @@ import { IntegralPanel } from "./integral-panel";
 describe("IntegralPanel", () => {
   it("shows the verified antiderivative and how it was checked", () => {
     render(<IntegralPanel result={okIntegral} />);
-    expect(screen.getByText("Integrated and verified")).toBeInTheDocument();
+    expect(screen.getByText("Integrated, numerically checked")).toBeInTheDocument();
     expect(screen.getByLabelText("Result")).toBeInTheDocument();
     expect(screen.getByText(/12 of 12 sample points agree/)).toBeInTheDocument();
     expect(screen.getByText(/real and imaginary/)).toBeInTheDocument();

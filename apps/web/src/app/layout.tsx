@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { default: "Minerva", template: "%s · Minerva" },
-  description: "Mathematical computing workspace: verified simplification and a citable handbook.",
+  description: "Mathematical computing workspace: checked simplification and a citable handbook.",
   robots: { index: false, follow: false },
 };
 

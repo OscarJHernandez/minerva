@@ -73,6 +73,16 @@ describe("RichText", () => {
     expect(container.querySelectorAll("sup")).toHaveLength(1);
   });
 
+  it("shows formulas nobody has checked yet (user text, streaming) with no verification mark", () => {
+    const { container } = render(
+      <RichText segments={[seg("math", "y^2 = 4"), seg("display_math", "a = b \\\\ c = d")]} />,
+    );
+    expect(container.querySelectorAll("[data-status]")).toHaveLength(0);
+    expect(container.querySelector('[data-status="unchecked"]')).toBeNull();
+    expect(container.querySelectorAll("sup")).toHaveLength(0);
+    expect(screen.queryByText(/Not verified by Minerva/)).toBeNull();
+  });
+
   it("renders bullet lists, and bold that encloses formulas", () => {
     const { container } = render(
       <RichText

@@ -160,10 +160,11 @@ and explains; it never computes and never decides correctness.
   text for the model. Bad or unknown calls become an error result the model can read, never an exception.
 - **Honesty** (`segments.py`): after each turn, every formula in the model's prose is compared with the formulas
   that tool results and handbook entries of the conversation contain. Others are shown as *unchecked*.
-  Equations the model writes are then tested (`engine/claims.py`): an equation whose sides have the same
-  symbols is tested as an identity and may be marked *contradicted*; one with a symbol on one side only
-  (a definition, coordinate change, constraint or equation of motion) is a relation, which sampling cannot
-  judge, so it stays *unchecked* with a note, unless definitions stated earlier in the conversation decide it
+  Equations the model writes are then tested (`engine/claims.py`): an equation is marked *contradicted*
+  only if its sides differ by a nonzero constant; one that is merely false at generic points stays *unchecked*
+  (it may be an equation to solve). One with a symbol on one side only or a time derivative (a definition,
+  coordinate change, constraint or equation of motion) is a relation, which sampling cannot judge, so it stays
+  *unchecked* with a note, unless definitions stated earlier in the conversation decide it
   by substitution (the note names them).
 - **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
   (prose and cards) and the tool trace so later turns have the same context.
@@ -192,8 +193,13 @@ and explains; it never computes and never decides correctness.
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
 limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,identities,tensor/canonicalize}`,
-`/v1/reference/*` (public, read-only), `/v1/history`. History rows contain user mathematics and are
-private to the account. Logging uses an allow-list of fields (no inputs, emails or tokens).
+`/v1/compute/apply-identity`, `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
+History rows contain user mathematics and are private to the account. A Workbench derivation is a
+`derivations` row plus the calculations saved with its id; each step may name the step it continued
+(`parent_id`). The server never accepts a result from the client: steps are written by the compute
+endpoints, and `apply-identity` recomputes and re-verifies the rewrite from the handbook rule. The
+client continues a step from its `result_text` (text syntax), because engine LaTeX does not always
+read back as the same expression. Logging uses an allow-list of fields (no inputs, emails or tokens).
 
 ## Web (`apps/web`, `apps/site`, `packages/ui`)
 
