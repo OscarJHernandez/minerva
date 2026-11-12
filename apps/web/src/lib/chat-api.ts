@@ -3,6 +3,7 @@ import type {
   ChatStatus,
   ConversationSummary,
   ExtractedFormula,
+  MotionRequest,
   StoredMessage,
   StreamEvent,
 } from "./chat-types";
@@ -26,6 +27,12 @@ export const chatApi = {
   create: () => json<ConversationSummary>("/v1/chat/conversations", { method: "POST", body: "{}" }),
   get: (id: string) =>
     json<ConversationSummary & { messages: StoredMessage[] }>(`/v1/chat/conversations/${id}`),
+  /** Runs the numerical solution with the user's own numbers; the reply is the stored card message. */
+  integrateMotion: (id: string, request: MotionRequest) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/integrate_motion`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
   remove: (id: string) => json<void>(`/v1/chat/conversations/${id}`, { method: "DELETE" }),
 };
 

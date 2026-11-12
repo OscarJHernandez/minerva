@@ -80,6 +80,12 @@
   sections:
     - {id: dynamics, title: Dynamics and oscillations}
     - {id: variational, title: Variational principles and conservation laws}
+- id: physics.methods
+  book: physics
+  title: Methods of theoretical physics
+  summary: Techniques for setting up and checking physical problems, with the conditions under which they apply.
+  sections:
+    - {id: dimensional, title: Dimensional analysis}
 - id: physics.electromagnetism
   book: physics
   title: Electromagnetism

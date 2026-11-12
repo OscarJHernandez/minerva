@@ -26,7 +26,15 @@ from .models import (
     TensorSpec,
     Verification,
 )
+from .motion import MotionReport, MotionRequest, Sweep
 from .ops import apply_rule, parse_expression, verify_rule
+from .pi_groups import (
+    ConstantCandidate,
+    ConstantSuggestion,
+    DimensionalReport,
+    QuantitySpec,
+    UnitsCheckReport,
+)
 from .service import Engine
 from .solve import SolveReport
 from .textparse import parse_text
@@ -34,10 +42,13 @@ from .textparse import parse_text
 __all__ = [
     "Applicability",
     "ClaimCheck",
+    "ConstantCandidate",
+    "ConstantSuggestion",
     "DerivativeStep",
     "DerivativeVerification",
     "DiffVariable",
     "DifferentiateResult",
+    "DimensionalReport",
     "Engine",
     "ExpressionInput",
     "FormulaReading",
@@ -46,16 +57,21 @@ __all__ = [
     "LimitError",
     "Limits",
     "MinervaMathError",
+    "MotionReport",
+    "MotionRequest",
     "ParseError",
+    "QuantitySpec",
     "Rule",
     "RuleApplication",
     "RuleCondition",
     "SimplifyResult",
     "SolveReport",
     "Status",
+    "Sweep",
     "TensorInput",
     "TensorResult",
     "TensorSpec",
+    "UnitsCheckReport",
     "Verification",
     "apply_rule",
     "check_claim",

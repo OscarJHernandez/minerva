@@ -13,6 +13,7 @@ import type {
   Card,
   ChatStatus,
   ConversationSummary,
+  MotionRequest,
   StoredMessage,
   StreamEvent,
   ToolRun,
@@ -22,6 +23,7 @@ import { Composer } from "./composer";
 import { CopyButton } from "./debug-panel";
 import { ConversationList } from "./conversation-list";
 import { MessageView } from "./message-view";
+import { MotionRunnerProvider } from "./motion-runner";
 import { RichText } from "./rich-text";
 
 const EXAMPLES = [
@@ -50,6 +52,7 @@ const TOOL_LABEL: Record<string, string> = {
   tensor_canonicalize: "Canonicalizing the tensor expression",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
+  integrate_motion: "Integrating the equations of motion and verifying the run",
 };
 
 type PendingItem = { kind: "text"; text: string } | { kind: "card"; card: Card };
@@ -204,6 +207,22 @@ export function ChatApp() {
     }
   }
 
+  /** The Lagrangian card's form: runs the numerical solution with the user's own numbers. */
+  const runMotion = useCallback(
+    async (request: MotionRequest) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.integrateMotion(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   const busy = pending !== null;
   const title = conversations.find((c) => c.id === activeId)?.title ?? "";
 
@@ -231,102 +250,104 @@ export function ChatApp() {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
-      <aside className="hidden w-60 shrink-0 py-4 md:block">
-        <ConversationList
-          items={conversations}
-          activeId={activeId}
-          onOpen={open}
-          onNew={startNew}
-          onDelete={remove}
-        />
-      </aside>
+    <MotionRunnerProvider value={{ run: runMotion }}>
+      <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
+        <aside className="hidden w-60 shrink-0 py-4 md:block">
+          <ConversationList
+            items={conversations}
+            activeId={activeId}
+            onOpen={open}
+            onNew={startNew}
+            onDelete={remove}
+          />
+        </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
-        <div className="flex items-center justify-between py-2 md:hidden">
-          <button
-            type="button"
-            onClick={() => setListOpen((o) => !o)}
-            aria-expanded={listOpen}
-            className="rounded border border-rule px-2.5 py-1 text-sm"
-          >
-            Conversations
-          </button>
-          <button type="button" onClick={startNew} className="text-sm text-accent">
-            New
-          </button>
-        </div>
-        {listOpen && (
-          <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
-            <ConversationList
-              items={conversations}
-              activeId={activeId}
-              onOpen={open}
-              onNew={startNew}
-              onDelete={remove}
-            />
+        <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
+          <div className="flex items-center justify-between py-2 md:hidden">
+            <button
+              type="button"
+              onClick={() => setListOpen((o) => !o)}
+              aria-expanded={listOpen}
+              className="rounded border border-rule px-2.5 py-1 text-sm"
+            >
+              Conversations
+            </button>
+            <button type="button" onClick={startNew} className="text-sm text-accent">
+              New
+            </button>
           </div>
-        )}
-
-        <div className="flex-1 overflow-y-auto py-4 pr-1" role="log" aria-live="polite">
-          {messages.length === 0 && !pending ? (
-            <EmptyState onPick={send} disabled={busy || !status} />
-          ) : (
-            <div className="mx-auto max-w-3xl space-y-6">
-              {messages.map((m, i) => (
-                <MessageView
-                  key={m.id}
-                  message={m}
-                  getReport={
-                    debugOn && m.role === "assistant"
-                      ? () => buildTurnReport({ title, status }, messages, i)
-                      : undefined
-                  }
-                />
-              ))}
-              {pending && <PendingView pending={pending} />}
-              {error && (
-                <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                  {error}
-                </p>
-              )}
+          {listOpen && (
+            <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
+              <ConversationList
+                items={conversations}
+                activeId={activeId}
+                onOpen={open}
+                onNew={startNew}
+                onDelete={remove}
+              />
             </div>
           )}
-          <div ref={bottomRef} />
-        </div>
 
-        <div className="mx-auto w-full max-w-3xl">
-          {error && messages.length === 0 && (
-            <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-              {error}
-            </p>
-          )}
-          <Composer
-            disabled={!status}
-            imagesEnabled={status?.images === true}
-            busy={busy}
-            onSend={send}
-            onStop={() => abortRef.current?.abort()}
-          />
-          <div className="flex items-center gap-4 py-1 text-xs text-muted">
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                checked={debugOn}
-                onChange={(e) => setDebugOn(e.target.checked)}
-              />
-              Debug mode
-            </label>
-            {debugOn && (
-              <CopyButton
-                label="Copy debug report"
-                getText={() => buildDebugReport({ title, messages, status, lastError })}
-              />
+          <div className="flex-1 overflow-y-auto py-4 pr-1" role="log" aria-live="polite">
+            {messages.length === 0 && !pending ? (
+              <EmptyState onPick={send} disabled={busy || !status} />
+            ) : (
+              <div className="mx-auto max-w-3xl space-y-6">
+                {messages.map((m, i) => (
+                  <MessageView
+                    key={m.id}
+                    message={m}
+                    getReport={
+                      debugOn && m.role === "assistant"
+                        ? () => buildTurnReport({ title, status }, messages, i)
+                        : undefined
+                    }
+                  />
+                ))}
+                {pending && <PendingView pending={pending} />}
+                {error && (
+                  <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                    {error}
+                  </p>
+                )}
+              </div>
             )}
+            <div ref={bottomRef} />
           </div>
-        </div>
-      </section>
-    </div>
+
+          <div className="mx-auto w-full max-w-3xl">
+            {error && messages.length === 0 && (
+              <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                {error}
+              </p>
+            )}
+            <Composer
+              disabled={!status}
+              imagesEnabled={status?.images === true}
+              busy={busy}
+              onSend={send}
+              onStop={() => abortRef.current?.abort()}
+            />
+            <div className="flex items-center gap-4 py-1 text-xs text-muted">
+              <label className="flex items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={debugOn}
+                  onChange={(e) => setDebugOn(e.target.checked)}
+                />
+                Debug mode
+              </label>
+              {debugOn && (
+                <CopyButton
+                  label="Copy debug report"
+                  getText={() => buildDebugReport({ title, messages, status, lastError })}
+                />
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
+    </MotionRunnerProvider>
   );
 }
 

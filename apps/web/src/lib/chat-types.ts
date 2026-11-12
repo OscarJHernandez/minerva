@@ -12,7 +12,15 @@ export interface LagrangianReport {
   coordinates: string[];
   parameters: string[];
   time_dependent: boolean;
-  equations: { coordinate: string; latex: string }[];
+  equations: {
+    coordinate: string;
+    latex: string;
+    verification: {
+      numeric_points_checked: number;
+      numeric_points_agreed: number;
+      passed: boolean;
+    } | null;
+  }[];
   momenta: { coordinate: string; latex: string }[];
   accelerations: { coordinate: string; latex: string }[];
   conserved: {
@@ -31,6 +39,138 @@ export interface LagrangianReport {
   }[];
   tested: string[];
   features: string[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
+/** What the Lagrangian card sends to the numerical-solution endpoint (the engine's request model). */
+export interface MotionRequest {
+  lagrangian: string;
+  coordinates: string[];
+  time: string;
+  assumptions: Record<string, string[]>;
+  parameters: Record<string, number>;
+  initial_positions: number[];
+  initial_velocities: number[];
+  t_start: number;
+  t_end: number;
+  sweep: { name: string; values: number[] } | null;
+  samples?: number;
+}
+
+export interface MotionVerification {
+  method_difference: number | null;
+  reversal_error: number | null;
+  max_drift: number | null;
+  drift_checked: number;
+  steps: number;
+  passed: boolean;
+  notes: string[];
+}
+
+export interface MotionRun {
+  status: Status;
+  parameter_value: number | null;
+  message: string;
+  /** [coordinate][sample]; empty unless the run was verified. */
+  q: number[][];
+  v: number[][];
+  conserved: {
+    name: string;
+    kind: string;
+    expression_latex: string;
+    values: number[];
+    relative_drift: number;
+  }[];
+  verification: MotionVerification;
+}
+
+export interface MotionReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  accelerations: string[];
+  parameters: Record<string, number>;
+  initial_positions: number[];
+  initial_velocities: number[];
+  t_start: number;
+  t_end: number;
+  sweep_name: string | null;
+  t: number[];
+  runs: MotionRun[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
+export type Closure = "determined" | "up_to_function" | "missing" | "none";
+
+export interface QuantityReading {
+  name: string;
+  latex: string;
+  meaning: string;
+  given: string;
+  dimension_text: string;
+  dimension_latex: string;
+}
+
+export interface DimensionalReport {
+  status: Status;
+  quantities: QuantityReading[];
+  rank: number;
+  target: string | null;
+  repeating: string[];
+  groups: {
+    label: string;
+    latex: string;
+    exponents: Record<string, string>;
+    contains_target: boolean;
+    dimensionless_verified: boolean;
+  }[];
+  closure: Closure | null;
+  relation_latex: string | null;
+  cannot_enter: string[];
+  missing: {
+    target_dimension_text: string;
+    target_dimension_latex: string;
+    unbalanced: string[];
+    missing_dimension_text: string;
+    missing_dimension_latex: string;
+    verified: boolean;
+    explanation: string;
+    suggestions: {
+      ids: string[];
+      latex: string[];
+      closure: Closure;
+      relation_latex: string | null;
+      group_latex: string | null;
+      verified: boolean;
+    }[];
+  } | null;
+  tested: string[];
+  notes: string[];
+  features: string[];
+  message: string;
+  duration_ms: number;
+}
+
+export interface SideReading {
+  latex: string;
+  dimension_text: string;
+  dimension_latex: string;
+}
+
+export interface UnitsCheckReport {
+  status: Status;
+  equation_latex: string | null;
+  consistent: boolean | null;
+  sides: SideReading[];
+  missing_factor_text: string | null;
+  missing_factor_latex: string | null;
+  problem: string | null;
+  problem_terms: SideReading[];
+  quantities: QuantityReading[];
   notes: string[];
   message: string;
   duration_ms: number;
@@ -118,7 +258,32 @@ export type Card =
       tool: string;
       type: "lagrangian";
       title: string;
-      data: { report: LagrangianReport; methods: EntrySummary[] };
+      data: {
+        report: LagrangianReport;
+        methods: EntrySummary[];
+        request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
+      };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "motion";
+      title: string;
+      data: { report: MotionReport; request: MotionRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "dimensional";
+      title: string;
+      data: { report: DimensionalReport; methods: EntrySummary[] };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "units";
+      title: string;
+      data: { report: UnitsCheckReport; methods: EntrySummary[] };
     }
   | { id: string; tool: string; type: "error"; title: string; data: { message: string } };
 

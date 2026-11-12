@@ -15,14 +15,16 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
+from minerva_engine import MotionRequest
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from .agent.events import AssistantMessage, Block, TraceStep
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, run_agent
 from .agent.segments import normalize
-from .agent.tools import ToolContext
+from .agent.tools import ToolContext, execute
 from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
@@ -236,6 +238,62 @@ def delete_conversation(conversation_id: uuid.UUID, user: UserDep, db: DbDep) ->
     db.execute(delete(ChatMessage).where(ChatMessage.conversation_id == row.id))
     db.delete(row)
     db.commit()
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/integrate_motion",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def integrate_motion_directly(
+    conversation_id: uuid.UUID,
+    body: MotionRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Run the numerical solution with the user's own numbers (from the Lagrangian card's form).
+
+    The model is not involved, so it never transcribes the numbers. The result is stored as an assistant
+    message holding the card and the tool call, so later turns see it exactly as if the model had called
+    the tool. Works with the chat model switched off.
+    """
+    if not limiter.allow(f"compute:{user.id}", settings.compute_rate_per_minute):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests; slow down.")
+    conversation = _owned(db, conversation_id, user.id)
+    arguments = body.model_dump(mode="json")
+    started = time.monotonic()
+    output = execute("integrate_motion", arguments, ToolContext(engine=engine, kb=kb))
+    elapsed = int((time.monotonic() - started) * 1000)
+    content = AssistantMessage(
+        text="",
+        blocks=[Block(kind="card", card=output.card)],
+        trace=[
+            TraceStep(
+                id=output.card.id,
+                name="integrate_motion",
+                arguments=arguments,
+                for_model=output.for_model,
+                duration_ms=elapsed,
+                status=output.status,
+            )
+        ],
+    ).model_dump(mode="json")
+    row = ChatMessage(conversation_id=conversation.id, role="assistant", content=content)
+    db.add(row)
+    conversation.updated_at = utcnow()
+    db.commit()
+    log.info(
+        "compute",
+        operation="integrate_motion",
+        status=output.status,
+        duration_ms=elapsed,
+        user_id=str(user.id),
+    )
+    return MessageOut(id=row.id, role=row.role, content=row.content, created_at=row.created_at)
 
 
 def _history(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], set[str]]:

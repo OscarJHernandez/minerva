@@ -98,3 +98,43 @@ def test_engine_runs_the_analysis_in_the_sandbox() -> None:
     engine = Engine(Limits(timeout_seconds=60))
     r = engine.analyze_lagrangian(r"\frac12 m\dot{x}^2 - \frac12 k x^2", ["x"])
     assert r.status is Status.OK and r.duration_ms >= 0 and kinds(r) == ["energy"]
+
+
+def test_every_equation_is_confirmed_by_numerical_differentiation() -> None:
+    r = analyze(r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}", ["r", "theta"])
+    assert r.status is Status.OK and len(r.equations) == 2
+    for e in r.equations:
+        assert e.verification and e.verification.passed
+        assert e.verification.numeric_points_checked >= 4
+        assert e.verification.numeric_points_agreed == e.verification.numeric_points_checked
+
+
+def test_a_wrong_equation_is_rejected_by_the_independent_check() -> None:
+    from minerva_engine.lagrangian import check_equations, derive
+    from minerva_engine.verify import euler_lagrange_check
+
+    d = derive(r"\frac12 m\dot{x}^2 - \frac12 k x^2", ["x"], "t", {}, L)
+    assert all(v.passed for v in check_equations(d))
+    wrong = [d.euler[0] + d.q[0]]  # m x'' + k x + x = 0
+    assert not euler_lagrange_check(d.lagrangian, d.q, d.qd, d.qdd, d.t, wrong)[0].passed
+    sign = [d.euler[0].subs(d.qdd[0], -d.qdd[0])]
+    assert not euler_lagrange_check(d.lagrangian, d.q, d.qd, d.qdd, d.t, sign)[0].passed
+
+
+def test_time_dependent_lagrangian_check_covers_explicit_time() -> None:
+    from minerva_engine.lagrangian import check_equations, derive
+
+    d = derive(r"\frac12 m\dot{x}^2 - \frac12 k x^2 t", ["x"], "t", {}, L)
+    assert all(v.passed for v in check_equations(d))
+
+
+def test_unconfirmed_equations_are_not_shown(monkeypatch: pytest.MonkeyPatch) -> None:
+    from minerva_engine import lagrangian
+    from minerva_engine.models import Verification
+
+    monkeypatch.setattr(
+        lagrangian, "check_equations", lambda d: [Verification(passed=False) for _ in d.q]
+    )
+    r = analyze(r"\frac12 m\dot{x}^2 - \frac12 k x^2", ["x"])
+    assert r.status is Status.NOT_VERIFIED
+    assert r.equations == [] and r.accelerations == [] and r.conserved == []

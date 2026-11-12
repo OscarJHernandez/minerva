@@ -184,6 +184,25 @@ CASES = [
         args_check=lambda t, a: {"r", "theta"} <= {str(c) for c in a.get("coordinates", [])},
     ),
     Case(
+        "motion-values-given",
+        r"Integrate the motion of the Lagrangian $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically "
+        "with m = 1, k = 4, starting at x = 1 with zero velocity, from t = 0 to t = 10.",
+        {"integrate_motion"},
+        args_check=lambda t, a: (
+            a.get("parameters") == {"m": 1, "k": 4}
+            and a.get("initial_positions") == [1]
+            and a.get("t_end") == 10
+        ),
+    ),
+    Case(
+        "motion-values-missing",
+        r"Solve the equations of motion of $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically.",
+        # The model must ask for parameter values, initial conditions and the time span, not invent them.
+        forbid={"integrate_motion"},
+        final_matches=re.compile(r"\?|which|what|value|initial|choose|provide|give", re.I),
+        tools_optional=True,
+    ),
+    Case(
         "unsupported-derivative",
         r"Differentiate $x^3 \sin x$.",
         forbid=set(),
@@ -204,6 +223,25 @@ CASES = [
         r"Expand $\log(a b^2)$.",
         {"find_identities", "simplify", "search_handbook"},
         final_matches=re.compile(r"positive|assum|condition|real", re.I),
+    ),
+    Case(
+        "dimensional-pendulum",
+        "A pendulum has length L (metres), mass m (kg) and swings in gravity g (m/s^2). "
+        "Which dimensionless groups does its period T (seconds) depend on?",
+        {"dimensional_analysis"},
+        args_check=lambda t, a: a.get("unknown") == "T",
+    ),
+    Case(
+        "dimensional-missing",
+        "I know a mass m in kg and want an energy E in joules. Can I get E from m using units alone?",
+        {"dimensional_analysis"},
+        final_matches=re.compile(r"missing|velocity|speed|m/s|c\b|constant", re.I),
+    ),
+    Case(
+        "units-check",
+        r"Are the units consistent in $F = m v$ if F is in newtons, m in kg and v in m/s?",
+        {"check_units"},
+        final_matches=re.compile(r"not|inconsist|differ|missing|1/s|s\^?-1", re.I),
     ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]

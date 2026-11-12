@@ -54,7 +54,13 @@ function cardSummary(card: Card | null | undefined): string[] {
       );
     }
     out.push(`- engine message: ${d.message}`);
-  } else if (card.type === "solve" || card.type === "lagrangian") {
+  } else if (
+    card.type === "solve" ||
+    card.type === "lagrangian" ||
+    card.type === "motion" ||
+    card.type === "dimensional" ||
+    card.type === "units"
+  ) {
     out.push(`- status: ${card.data.report.status}`, `- message: ${card.data.report.message}`);
   } else if (card.type === "error") {
     out.push(`- message: ${card.data.message}`);

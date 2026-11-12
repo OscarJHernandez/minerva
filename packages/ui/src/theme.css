@@ -16,6 +16,13 @@
   --warn-soft: #fbf0d9;
   --bad: #a3342e;
   --bad-soft: #f9e5e3;
+  /* Line colours for charts, distinguishable without relying on hue alone (paired with dashes). */
+  --series-1: #2563a8;
+  --series-2: #c4571a;
+  --series-3: #2f8a5b;
+  --series-4: #9b3f93;
+  --series-5: #8a7a00;
+  --series-6: #b23b4c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,5 +42,11 @@
     --warn-soft: #2c2412;
     --bad: #ef8b84;
     --bad-soft: #301917;
+    --series-1: #7aaef0;
+    --series-2: #f0a064;
+    --series-3: #6fcf9b;
+    --series-4: #d79be0;
+    --series-5: #d9c64f;
+    --series-6: #f08a98;
   }
 }

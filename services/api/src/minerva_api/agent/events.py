@@ -37,6 +37,9 @@ class Card(BaseModel):
         "tensor",
         "solve",
         "lagrangian",
+        "motion",
+        "dimensional",
+        "units",
         "error",
     ]
     title: str

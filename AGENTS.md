@@ -77,6 +77,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
+- `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
+  never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
+  A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
 - Conversations are user data: private per account, never logged.
 - "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
   (`MINERVA_LLM_VISION_MODEL`) proposes LaTeX, the user confirms it, and `Engine.read_formulas` reports how the
@@ -100,6 +103,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Handbook entries declare `verification`: symbolic / numeric / structural / dimensional / stated.
   `stated` entries are literature records, never applied, and must not carry a rule or check.
   Do not label an entry `symbolic` unless the checker finds a symbolic zero.
+- Dimensional analysis (`pi_groups.py`) reasons about dimensions only: a group is shown only if rebuilt and found
+  dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
+  report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.
+  Units are coherent SI only (no conversion).
 - Derivatives (`differentiate.py`) are verified by an independent numerical derivative, one order at a
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a

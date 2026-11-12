@@ -1,0 +1,23 @@
+- id: method.phys.buckingham_pi
+  title: Buckingham Pi theorem
+  kind: theorem
+  chapter: physics.methods
+  section: dimensional
+  verification: stated
+  applies_to: ["dimensional:pi-groups"]
+  validity: "A physical relation among n quantities whose dimensions have rank r over the base dimensions, and which is complete (every relevant quantity is listed) and independent of the choice of units."
+  statement_latex: 'f(q_1,\dots,q_n)=0 \;\Longleftrightarrow\; F(\Pi_1,\dots,\Pi_{n-r})=0,\qquad \Pi_j=\prod_i q_i^{a_{ji}}\ \text{dimensionless}'
+  notes: "The exponent vectors a_j span the null space of the dimension matrix, so there are n − r independent groups. The groups are not unique, and the function F is not determined by dimensions alone."
+  reference: {source: "Buckingham, Physical Review 4 (1914)"}
+  keywords: [dimensional analysis, buckingham, pi groups, dimensionless groups, scaling, similarity]
+- id: method.phys.dimensional_homogeneity
+  title: Dimensional homogeneity
+  kind: method
+  chapter: physics.methods
+  section: dimensional
+  verification: stated
+  applies_to: ["dimensional:pi-groups", "dimensional:missing-quantity", "dimensional:units-check"]
+  validity: "Equations that hold in every system of units."
+  statement_latex: '[A+B]=[A]=[B],\qquad [f(x)]=1\ \text{for}\ f\in\{\sin,\exp,\log,\dots\}\ \text{and}\ [x]=1'
+  notes: "Terms of a sum share one dimension and the argument of a transcendental function is dimensionless. A mismatch shows an equation is wrong as written; a match does not show it is right. If the target's dimension is not a product of powers of the known dimensions, a quantity (often a physical constant) is missing."
+  keywords: [dimensional analysis, homogeneity, units, missing quantity, consistency]

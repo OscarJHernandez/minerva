@@ -15,13 +15,22 @@ Ordering favours correctness infrastructure before breadth.
 1. **Handbook breadth** (see `handbook-outline.md`): transforms (Fourier, Laplace), linear algebra, vector
    calculus, differential equations, probability, group theory; physics chapters in depth. Tooling to import
    entries from openly licensed sources with provenance tracking; per-entry review status.
-2. **More operations in the workspace:** integrals, limits, series, numeric evaluation, each with
+2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
+   `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial
+   conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
+3. **More operations in the workspace:** integrals, limits, series, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
    Derivatives are done (`differentiate`, any order up to 10, mixed partials, every step checked numerically).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
-3. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
+4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
+
+## Dimensional analysis follow-ups
+
+Done: Pi groups, missing-quantity report with handbook constants, equation unit check (chat tools).
+Next: recognise named groups (Reynolds, Froude, Mach) from a handbook table; a workbench form for the same
+analysis without a model; unit conversion and prefixes; searching three or more constants.
 
 ## Advanced tensor algebra and Cadabra integration
 

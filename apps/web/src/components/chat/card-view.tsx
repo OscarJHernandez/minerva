@@ -3,8 +3,11 @@ import type { Card } from "@/lib/chat-types";
 import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
+import { DimensionalCard } from "./dimensional-card";
 import { LagrangianCard } from "./lagrangian-card";
+import { MotionCard } from "./motion-card";
 import { SolveCard } from "./solve-card";
+import { UnitsCard } from "./units-card";
 import { ResultPanel, StatusPill } from "../result-panel";
 import type { Status } from "@/lib/types";
 
@@ -38,7 +41,19 @@ export function CardView({ card }: { card: Card }) {
     case "solve":
       return <SolveCard report={card.data.report} methods={card.data.methods} />;
     case "lagrangian":
-      return <LagrangianCard report={card.data.report} methods={card.data.methods} />;
+      return (
+        <LagrangianCard
+          report={card.data.report}
+          methods={card.data.methods}
+          request={card.data.request}
+        />
+      );
+    case "motion":
+      return <MotionCard report={card.data.report} request={card.data.request} />;
+    case "dimensional":
+      return <DimensionalCard report={card.data.report} methods={card.data.methods} />;
+    case "units":
+      return <UnitsCard report={card.data.report} methods={card.data.methods} />;
     case "tensor":
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>

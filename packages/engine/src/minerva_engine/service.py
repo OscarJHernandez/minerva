@@ -19,6 +19,13 @@ from .models import (
     TensorInput,
     TensorResult,
 )
+from .motion import MotionReport, MotionRequest
+from .pi_groups import (
+    ConstantCandidate,
+    DimensionalReport,
+    QuantitySpec,
+    UnitsCheckReport,
+)
 from .sandbox import Outcome, Sandbox, SandboxResult
 from .solve import SolveReport
 
@@ -168,5 +175,52 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return LagrangianReport(status=status, message=message, duration_ms=ms)
         report = LagrangianReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def dimensional_analysis(
+        self,
+        quantities: list[QuantitySpec],
+        target: str | None = None,
+        repeating: list[str] | None = None,
+        candidates: list[ConstantCandidate] | None = None,
+    ) -> DimensionalReport:
+        """Dimensionless groups, and what is missing for the unknown, in the sandbox."""
+        outcome, ms = self._run(
+            "dimensional_analysis",
+            {
+                "quantities": [q.model_dump() for q in quantities],
+                "target": target,
+                "repeating": repeating or [],
+                "candidates": [c.model_dump() for c in candidates or []],
+            },
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DimensionalReport(status=status, message=message, duration_ms=ms)
+        report = DimensionalReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def check_units(self, equation: str, quantities: list[QuantitySpec]) -> UnitsCheckReport:
+        """Dimensional consistency of an equation (LaTeX) given units of its symbols, sandboxed."""
+        outcome, ms = self._run(
+            "check_units",
+            {"equation": equation, "quantities": [q.model_dump() for q in quantities]},
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return UnitsCheckReport(status=status, message=message, duration_ms=ms)
+        report = UnitsCheckReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def integrate_motion(self, request: MotionRequest) -> MotionReport:
+        """Numerical solution of a Lagrangian system (optionally a one-parameter sweep), verified, sandboxed."""
+        outcome, ms = self._run("integrate_motion", request.model_dump())
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return MotionReport(status=status, message=message, duration_ms=ms)
+        report = MotionReport(**outcome.value)
         report.duration_ms = ms
         return report
