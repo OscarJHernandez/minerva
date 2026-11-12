@@ -44,9 +44,12 @@ capabilities:
     group: math
     where: [workbench, chat, api]
     summary: >-
-      Simplifies an expression with SymPy, then checks the result at random complex sample points and with a
-      symbolic zero test, reported separately. A result that cannot be verified is never shown.
+      Simplifies an expression with SymPy, then checks the result at random complex sample points (a wide
+      region, so branch errors show) and with a symbolic zero test, reported separately. Numeric agreement
+      is labelled as numeric evidence, not as proof. A result that cannot be verified is never shown.
     limits:
+      - When a simplification cancels a factor, the result says where it is valid (`x \neq 1`). Square-root,
+        logarithm and branch-cut domains are not reported this way.
       - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are
         left alone until you say so.
       - If nothing simpler is found, the input is returned unchanged and the status says so.
@@ -60,6 +63,12 @@ capabilities:
         title: Difference of fourth powers
         op: simplify
         input: '\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}'
+      - id: simplify-cancelled-singularity
+        title: Cancelling a factor keeps its restriction
+        note: >-
+          The result is `x + 1`, valid only where `x \neq 1`; the two expressions differ in domain.
+        op: simplify
+        input: '\frac{x^2-1}{x-1}'
       - id: simplify-sqrt-general
         title: Square root of a square, no assumptions
         note: >-

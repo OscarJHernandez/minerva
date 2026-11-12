@@ -34,8 +34,9 @@
         "HTTP API"
       ],
       "needs_model": false,
-      "summary": "Simplifies an expression with SymPy, then checks the result at random complex sample points and with a symbolic zero test, reported separately. A result that cannot be verified is never shown.",
+      "summary": "Simplifies an expression with SymPy, then checks the result at random complex sample points (a wide region, so branch errors show) and with a symbolic zero test, reported separately. Numeric agreement is labelled as numeric evidence, not as proof. A result that cannot be verified is never shown.",
       "limits": [
+        "When a simplification cancels a factor, the result says where it is valid (`x \\neq 1`). Square-root, logarithm and branch-cut domains are not reported this way.",
         "Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.",
         "If nothing simpler is found, the input is returned unchanged and the status says so.",
         "Bare function arguments such as `\\sin 2x` and inverse notation such as `\\sin^{-1}` are rejected as ambiguous."
@@ -60,10 +61,10 @@
             }
           ],
           "checks": [
-            "symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": [
-            "Simplified with SymPy and verified."
+            "Simplified with SymPy and verified (symbolic zero and numeric check)."
           ]
         },
         {
@@ -85,10 +86,36 @@
             }
           ],
           "checks": [
-            "symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": [
-            "Simplified with SymPy and verified."
+            "Simplified with SymPy and verified (symbolic zero and numeric check). The result is valid only where - \\sin{\\left(x \\right)} + \\cos{\\left(x \\right)} \\neq 0, \\sin{\\left(x \\right)} + \\cos{\\left(x \\right)} \\neq 0."
+          ]
+        },
+        {
+          "id": "simplify-cancelled-singularity",
+          "title": "Cancelling a factor keeps its restriction",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\frac{x^2-1}{x-1}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "x + 1"
+            }
+          ],
+          "checks": [
+            "symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "Simplified with SymPy and verified (symbolic zero and numeric check). The result is valid only where x \\neq 1.",
+            "The result is `x + 1`, valid only where `x \\neq 1`; the two expressions differ in domain."
           ]
         },
         {
@@ -493,7 +520,7 @@
             }
           ],
           "checks": [
-            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -516,7 +543,7 @@
             }
           ],
           "checks": [
-            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         }
@@ -651,8 +678,8 @@
             }
           ],
           "checks": [
-            "cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
@@ -696,8 +723,8 @@
             }
           ],
           "checks": [
-            "energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
@@ -783,8 +810,8 @@
             }
           ],
           "checks": [
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.",
@@ -821,8 +848,8 @@
             }
           ],
           "checks": [
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.",

@@ -38,6 +38,29 @@ def _still_excluded(factor: sp.Expr, expr: sp.Expr) -> bool:
     return bool(sp.fraction(quotient)[1] == 1 and quotient != 0)
 
 
+def _undefined_wherever_zero(factor: sp.Expr, after: sp.Expr) -> bool:
+    """True if `after` is undefined at every root of `factor` (so nothing was lost there).
+
+    `1/(1+cos x) + ...` simplifies to `2/sin x`: the factor 1+cos x vanishes only where sin x does.
+    Undecided (several symbols, no roots found) means False: report the restriction.
+    """
+    symbols = list(factor.free_symbols)
+    if len(symbols) != 1:
+        return False
+    symbol = symbols[0]
+    try:
+        roots = sp.solve(factor, symbol)
+    except Exception:
+        return False
+    if not roots or len(roots) > 8:
+        return False
+    for root in roots:
+        value = after.subs(symbol, root)
+        if not value.has(sp.zoo, sp.oo, sp.nan, -sp.oo):
+            return False
+    return True
+
+
 def _describe(factor: sp.Expr) -> list[str]:
     """`x \\neq 1` for a polynomial in one variable with all roots found, else `f \\neq 0`."""
     symbols = list(factor.free_symbols)
@@ -68,7 +91,11 @@ def domain_restrictions(
             for factor in _factors(extra):
                 if factor not in candidates:
                     candidates.append(factor)
-        lost = [f for f in candidates if not _still_excluded(f, after)]
+        lost = [
+            f
+            for f in candidates
+            if not _still_excluded(f, after) and not _undefined_wherever_zero(f, after)
+        ]
         introduced = [f for f in _factors(_denominator(after)) if not _still_excluded(f, before)]
         notes: list[str] = []
         for factor in [*lost, *[f for f in introduced if f not in lost]]:

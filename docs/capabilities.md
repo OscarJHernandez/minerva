@@ -20,10 +20,11 @@ Symbolic computation, with every result verified before it is shown.
 
 *Available in:* workbench, chat, HTTP API.
 
-Simplifies an expression with SymPy, then checks the result at random complex sample points and with a symbolic zero test, reported separately. A result that cannot be verified is never shown.
+Simplifies an expression with SymPy, then checks the result at random complex sample points (a wide region, so branch errors show) and with a symbolic zero test, reported separately. Numeric agreement is labelled as numeric evidence, not as proof. A result that cannot be verified is never shown.
 
 **Limits**
 
+- When a simplification cancels a factor, the result says where it is valid (`x \neq 1`). Square-root, logarithm and branch-cut domains are not reported this way.
 - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.
 - If nothing simpler is found, the input is returned unchanged and the status says so.
 - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
@@ -33,16 +34,25 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Input:** `\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}`
 - **Status:** `ok`
 - **Result:** $\frac{2}{\sin{\left(x \right)}}$
-- **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
-- Simplified with SymPy and verified.
+- **Check:** symbolic zero test passed; numeric check agreed at 20 of 20 points
+- Simplified with SymPy and verified (symbolic zero and numeric check).
 
 #### Difference of fourth powers
 
 - **Input:** `\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}`
 - **Status:** `ok`
 - **Result:** $1$
-- **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
-- Simplified with SymPy and verified.
+- **Check:** symbolic zero test passed; numeric check agreed at 20 of 20 points
+- Simplified with SymPy and verified (symbolic zero and numeric check). The result is valid only where - \sin{\left(x \right)} + \cos{\left(x \right)} \neq 0, \sin{\left(x \right)} + \cos{\left(x \right)} \neq 0.
+
+#### Cancelling a factor keeps its restriction
+
+- **Input:** `\frac{x^2-1}{x-1}`
+- **Status:** `ok`
+- **Result:** $x + 1$
+- **Check:** symbolic zero test passed; numeric check agreed at 20 of 20 points
+- Simplified with SymPy and verified (symbolic zero and numeric check). The result is valid only where x \neq 1.
+- The result is `x + 1`, valid only where `x \neq 1`; the two expressions differ in domain.
 
 #### Square root of a square, no assumptions
 
@@ -266,8 +276,8 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (theta):** $m r \left(r \ddot{\theta} + 2 \dot{r} \dot{\theta}\right) = 0$
 - **Conserved: cyclic:** $p_{\theta} = m r^{2} \dot{\theta}$ — theta is cyclic: L does not depend on it, so dp/dt = dL/dq = 0
 - **Conserved: energy:** $h = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
-- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
 
@@ -280,8 +290,8 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (y):** $\frac{k y}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{y} = 0$
 - **Conserved: energy:** $h = - \frac{k}{\sqrt{x^{2} + y^{2}}} + \frac{m \dot{x}^{2}}{2} + \frac{m \dot{y}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
 - **Conserved: rotation:** $Q = m \left(x \dot{y} - \dot{x} y\right)$ — L is unchanged by rotating (x, y) as Cartesian coordinates, so by Noether's theorem Q = Σ p ξ is conserved
-- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - cyclic coordinates: none (every coordinate appears in L)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
 
@@ -316,8 +326,8 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 - **Status:** `ok`
 - **Constant of motion 1:** $C_{1} = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
 - **Constant of motion 2:** $C_{2} = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.
 - Already known and left out of the count: Momentum conjugate to theta; Energy function.
 - Nothing outside this family was searched; finding none proves nothing beyond it.
@@ -331,8 +341,8 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 - **Status:** `ok`
 - **Constant of motion 1:** $C_{1} = k x y + m \dot{x} \dot{y}$
 - **Constant of motion 2:** $C_{2} = k x^{2} + m \dot{x}^{2}$
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.
 - Already known and left out of the count: Energy function; Rotation symmetry in the (x, y) plane.
 - Nothing outside this family was searched; finding none proves nothing beyond it.
@@ -387,14 +397,14 @@ Retrieval proposes handbook identities that may fit an expression. The engine th
 - **Assumptions:** x positive; y positive
 - **Status:** `applicable`
 - **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
 
 #### Product to sum
 
 - **Input:** `\sin(a)\cos(b)`
 - **Status:** `applicable`
 - **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
 
 ### Citable handbook
 
