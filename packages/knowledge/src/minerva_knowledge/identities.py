@@ -167,6 +167,34 @@ def transform_expression(
     )
 
 
+def simplify_expression(
+    kb: KnowledgeBase,
+    engine: Engine,
+    expression: ExpressionInput,
+    goal: str = "simplify",
+    target: list[str] | None = None,
+    text: str = "",
+) -> TransformResponse:
+    """The workbench and chat entry point: handbook chains first, SymPy's own simplification as a
+    fallback when the chain search itself could not run (a hard resource stop), never silently."""
+    result = transform_expression(kb, engine, expression, goal, target, text)
+    if goal != "simplify" or result.status not in {Status.RESOURCE_LIMIT, Status.INTERNAL_ERROR}:
+        return result
+    plain = engine.simplify(expression)
+    return TransformResponse(
+        status=plain.status,
+        goal="simplify",
+        input_latex=plain.input_latex,
+        result_latex=plain.result_latex,
+        result_text=plain.result_text,
+        verification=plain.verification,
+        search_complete=False,
+        message="The search through handbook identities did not finish, so this is SymPy's "
+        "simplification alone, with no identities cited. " + plain.message,
+        duration_ms=result.duration_ms + plain.duration_ms,
+    )
+
+
 def constant_candidates(kb: KnowledgeBase) -> list[ConstantCandidate]:
     """Handbook constants as candidates for a missing quantity: id, symbol (LaTeX) and SI unit.
 

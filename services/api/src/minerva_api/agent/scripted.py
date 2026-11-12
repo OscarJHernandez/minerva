@@ -223,12 +223,14 @@ class ScriptedLLM:
             async for c in self._say("I will check which handbook identities apply. "):
                 yield c
             yield Chunk(tool_calls=[ToolCall("find_identities", args)])
-        elif "simplif" in lower or latex:
-            async for c in self._say("I will simplify that and verify the result. "):
+        elif "simplif" in lower or "factor" in lower or "expand" in lower or latex:
+            goal = "factor" if "factor" in lower else "expand" if "expand" in lower else "simplify"
+            async for c in self._say(f"I will {goal} that and verify each step. "):
                 yield c
-            yield Chunk(
-                tool_calls=[ToolCall("simplify", {"latex": latex or "\\sin^2 x + \\cos^2 x"})]
-            )
+            args = {"latex": latex or "\\sin^2 x + \\cos^2 x"}
+            if goal != "simplify":
+                args["goal"] = goal
+            yield Chunk(tool_calls=[ToolCall("simplify", args)])
         elif any(
             w in lower for w in ("gaussian", "formula", "integral", "series", "constant", "law")
         ):
@@ -256,9 +258,14 @@ class ScriptedLLM:
                     "Minerva verified it numerically and symbolically (details in the card). "
                     "Do you want me to look for the identities behind it?"
                 )
+            elif status == "conditions_not_satisfied":
+                text = (
+                    "An identity matches, but its conditions are not provable from what you declared, "
+                    "so nothing was applied. The card names the conditions: do they hold?"
+                )
             elif status == "unchanged":
                 text = (
-                    "Nothing simpler was found, so the expression is returned unchanged. If some "
+                    "Nothing better was found, so the expression is returned unchanged. If some "
                     "symbols are known to be positive or real, tell me and I will try again."
                 )
             else:

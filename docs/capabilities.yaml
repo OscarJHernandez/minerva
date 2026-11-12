@@ -10,7 +10,7 @@
 # Per capability: id, title, status (available | planned), group, where (workbench | reference | chat | api), summary, limits,
 # examples. Planned capabilities have no examples. Every example has an `id`, a `title`, an `op` and the
 # fields that op needs:
-#   simplify     input, assumptions
+#   simplify     input, assumptions, goal (simplify | expand | factor | rewrite), target [function names]
 #   differentiate input, variables [{name, order}], assumptions
 #   series       input, variable, point, order, assumptions
 #   identities   input, assumptions, show [rule ids to display]
@@ -44,12 +44,22 @@ capabilities:
     group: math
     where: [workbench, chat, api]
     summary: >-
-      Simplifies an expression with SymPy, then checks the result at random complex sample points and with a
-      symbolic zero test, reported separately. A result that cannot be verified is never shown.
+      Searches a short chain of rewrites toward a goal (simplify, expand, factor, or rewrite in given functions):
+      handbook identities, each at every place it matches and read in either direction, plus SymPy's own moves.
+      Every step is checked at random complex sample points and, separately, with a symbolic zero test; the steps
+      and the identities used are shown. A result that cannot be verified is never shown.
     limits:
+      - Numerical agreement at sample points is evidence, not proof; only a passed symbolic zero test means SymPy
+        also reduced the difference to zero. Both are reported for every step.
+      - Steps are equalities where both sides are defined. Removable singularities and branch choices outside
+        the declared assumptions are not tracked.
+      - The search is bounded (at most 4 rewrites in a row, a few alternatives per step, a time budget). "Nothing
+        better was found" does not show that no better form exists.
+      - An identity that matches but whose conditions are not provable from your assumptions is reported with the
+        unmet conditions and never applied.
       - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are
         left alone until you say so.
-      - If nothing simpler is found, the input is returned unchanged and the status says so.
+      - If nothing better is found, the input is returned unchanged and the status says so.
       - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
     examples:
       - id: simplify-trig-quotients
@@ -86,6 +96,48 @@ capabilities:
         op: simplify
         input: "(x^a)^b"
         assumptions: { x: [positive], a: [real] }
+      - id: simplify-chain
+        title: Two identities in a row
+        note: >-
+          The Pythagorean identity turns sin^2 + cos^2 into 1, and then 1 + tan^2 = sec^2. Neither identity alone
+          reaches the result; each step is verified before the next is tried.
+        op: simplify
+        input: '\sin^2 x + \cos^2 x + \tan^2 x'
+      - id: simplify-chain-nested
+        title: An identity inside a larger expression
+        op: simplify
+        input: '\log(\sin^2 t + \cos^2 t + y)'
+      - id: simplify-chain-blocked
+        title: Matches, but its conditions are not provable
+        note: >-
+          Combining logarithms needs both arguments positive. Nothing is applied and the input comes back.
+        op: simplify
+        input: '\log x + \log y'
+      - id: simplify-chain-unlocked
+        title: The same, with x and y declared positive
+        op: simplify
+        input: '\log x + \log y'
+        assumptions: { x: [positive], y: [positive] }
+      - id: simplify-goal-expand
+        title: Expand a multiple angle
+        op: simplify
+        input: '\sin(3x)'
+        goal: expand
+      - id: simplify-goal-factor
+        title: Factor a difference of fourth powers
+        op: simplify
+        input: 'x^4 - y^4'
+        goal: factor
+      - id: simplify-goal-rewrite
+        title: Rewrite in terms of sine and cosine
+        op: simplify
+        input: '\tan x \cos x'
+        goal: rewrite
+        target: [sin, cos]
+      - id: simplify-nothing-better
+        title: Nothing to improve
+        op: simplify
+        input: '\sin x'
       - id: simplify-ambiguous
         title: Ambiguous input is refused
         op: simplify
