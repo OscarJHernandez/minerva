@@ -89,6 +89,14 @@ jobs:
       - name: Agent files and skills are consistent
         run: uv run python scripts/check_agent_files.py
       - run: uv run pytest
+      - name: The API starts with production dependencies only (no dev tools)
+        # The image installs `--no-dev`; a dependency declared only as a dev tool passes every test and then
+        # crashes the container at import time.
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/prod-venv
+        run: |
+          uv sync --frozen --no-dev --no-editable --package minerva-api
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -c "import minerva_api.main"
 
   web:
     name: Web (lint, types, tests, build)
