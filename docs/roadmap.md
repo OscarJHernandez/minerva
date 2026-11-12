@@ -20,8 +20,10 @@ Ordering favours correctness infrastructure before breadth.
    conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
 3. **More operations in the workspace:** integrals, limits, series, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
-   Antiderivatives are done (`integrate`: candidate from SymPy, accepted only if a numerical derivative of it
-   matches the integrand). Next: definite integrals with independent quadrature and convergence conditions.
+   Antiderivatives and definite integrals are done (`integrate`: candidate from SymPy; antiderivatives are
+   accepted only if a numerical derivative matches, definite values only if independent quadrature agrees).
+   Next: improper integrals with interior singularities (split at the pole), integrals with several
+   variables, and the workbench handbook link ("this is entry int.gaussian").
    Derivatives are done (`differentiate`, any order up to 10, mixed partials, every step checked numerically).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).

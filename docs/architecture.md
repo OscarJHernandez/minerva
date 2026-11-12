@@ -28,7 +28,12 @@ one most likely to be wrong.
     the integrand at assumption-respecting points. `Piecewise` results are checked branch by branch
     (equality cases are substituted into both sides; a case that cannot be sampled gives `not_verified`).
     A leftover `Integral` is `unsupported` ("no closed form found; this does not prove none exists").
-    `simplify(F' - f) == 0` is reported separately as extra evidence. Indefinite integrals only.
+    `simplify(F' - f) == 0` is reported separately as extra evidence. With both bounds (numbers, `oo`,
+    `-oo`) it computes a definite integral instead and verifies it by independent adaptive quadrature
+    (mpmath, 30 digits) at sampled parameter values, not by the fundamental theorem, which fails for a pole
+    inside the interval. A quadrature with a large error estimate, or a non-finite or huge integrand on an
+    interior grid, never counts as agreement; SymPy's convergence conditions that the declared assumptions
+    do not imply give `conditions_not_satisfied`; divergent or undefined results show no value.
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
