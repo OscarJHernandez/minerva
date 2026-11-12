@@ -1,6 +1,7 @@
 """Agent loop, tools and segment marking, with a deterministic fake model."""
 
 import asyncio
+import dataclasses
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
@@ -828,3 +829,128 @@ def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> No
         ctx,
     )
     assert ok.status == "ok"
+
+
+# --- bounds and failures ------------------------------------------------------------------------
+def test_total_tool_calls_are_capped_whatever_the_steps(ctx: ToolContext) -> None:
+    many = [Chunk(tool_calls=[ToolCall("search_handbook", {"query": "gaussian"})] * 3)]
+    llm = FakeLLM([many], repeat_last=True)
+    limits = AgentLimits(max_steps=6, max_tool_calls=4)
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}], limits=limits))
+    assert msg["truncated"] is True and "limit" in msg["text"]
+    assert len(cards_of(msg)) == 4
+    assert len(llm.seen) == 2  # the cap ends the turn: no further model call
+    refused = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"][4:]
+    assert all("not run" in r for r in refused)
+
+
+def test_a_tool_that_raises_becomes_an_error_card_not_a_broken_stream(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import minerva_api.agent.loop as loop_module
+
+    def boom(*_: Any) -> Any:
+        raise RuntimeError("secret expression x**2")
+
+    monkeypatch.setattr(loop_module, "execute", boom)
+    llm = FakeLLM(
+        [[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])], [Chunk(text="Sorry.")]]
+    )
+    events = collect(llm, ctx, [{"role": "user", "content": "q"}])
+    msg = final(events)
+    assert [c["type"] for c in cards_of(msg)] == ["error"]
+    assert "secret" not in str(msg)  # the cause is never shown or kept
+
+
+def test_execute_hides_the_cause_of_an_unexpected_tool_failure(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from minerva_api.agent import tools as tools_module
+
+    def boom(*_: Any) -> Any:
+        raise RuntimeError("secret expression")
+
+    broken = dataclasses.replace(tools_module.TOOLS["simplify"], run=boom)
+    monkeypatch.setitem(tools_module.TOOLS, "simplify", broken)
+    out = execute("simplify", {"latex": "x"}, ctx)
+    assert out.card.type == "error" and "secret" not in out.for_model
+
+
+def test_a_resource_limit_in_a_tool_is_reported_to_the_model(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from minerva_engine import SimplifyResult, Status
+
+    monkeypatch.setattr(
+        ctx.engine,
+        "simplify",
+        lambda _e: SimplifyResult(status=Status.RESOURCE_LIMIT, message="took too long"),
+    )
+    llm = FakeLLM(
+        [[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])], [Chunk(text="It timed out.")]]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
+    assert msg["trace"][0]["status"] == "resource_limit"
+    assert "resource_limit" in next(m["content"] for m in llm.seen[1] if m["role"] == "tool")
+
+
+class SlowLLM(FakeLLM):
+    """Streams a first chunk and then stalls, like a model host that keeps the connection open."""
+
+    async def chat(
+        self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
+    ) -> AsyncIterator[Chunk]:
+        yield Chunk(text="Let me think. ")
+        await asyncio.sleep(30)
+        yield Chunk(text="never reached")
+
+
+def test_a_stalled_model_is_cut_off_at_the_deadline_and_keeps_the_partial_answer(
+    ctx: ToolContext,
+) -> None:
+    started = asyncio.new_event_loop().time()
+    msg = final(
+        collect(
+            SlowLLM(), ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=0.3)
+        )
+    )
+    assert msg["truncated"] is True
+    assert "Let me think." in msg["text"] and "never reached" not in msg["text"]
+    assert msg["debug"]["duration_ms"] < 10_000
+    assert started >= 0
+
+
+def test_a_slow_tool_does_not_hold_the_turn_past_its_deadline(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+
+    import minerva_api.agent.loop as loop_module
+
+    monkeypatch.setattr(loop_module, "execute", lambda *_: time.sleep(2.5))
+    llm = FakeLLM([[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])]], repeat_last=True)
+    msg = final(
+        collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=0.2))
+    )
+    assert msg["truncated"] is True
+    assert [c["type"] for c in cards_of(msg)] == ["error"]
+
+
+def test_an_unexpected_model_client_error_is_an_error_event(ctx: ToolContext) -> None:
+    class Broken(FakeLLM):
+        async def chat(
+            self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
+        ) -> AsyncIterator[Chunk]:
+            raise ValueError("secret prompt text")
+            yield Chunk()
+
+    events = collect(Broken(), ctx, [{"role": "user", "content": "q"}])
+    assert [e["event"] for e in events] == ["error"]
+    assert "secret" not in str(events)
+
+
+def test_a_hallucinated_formula_is_never_marked_as_checked(ctx: ToolContext) -> None:
+    text = r"Known result: $\int_0^1 x\,dx = \frac{1}{3}$."  # false, and no tool produced it
+    msg = final(collect(FakeLLM([[Chunk(text=text)]]), ctx, [{"role": "user", "content": "q"}]))
+    claim = next(s for s in segments_of(msg) if s["type"] != "text")
+    assert claim["status"] in ("unchecked", "contradicted")

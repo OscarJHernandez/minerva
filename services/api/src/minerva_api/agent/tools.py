@@ -1140,6 +1140,8 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
         return tool.run(args, ctx)
     except ValidationError as exc:
         return _error(name, f"invalid arguments: {exc.errors()[0]['msg']}")
+    except Exception:  # a bug in one tool must not end the turn; the text is fixed, never the cause
+        return _error(name, "the tool failed unexpectedly")
 
 
 def known_formulas(outputs: list[ToolOutput]) -> set[str]:

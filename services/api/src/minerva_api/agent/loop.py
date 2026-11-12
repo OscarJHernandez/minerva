@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
@@ -24,13 +25,14 @@ from .events import (
 from .llm import LLMClient, LLMError
 from .prompts import SYSTEM_PROMPT
 from .segments import split_segments
-from .tools import ToolContext, ToolOutput, execute, known_formulas, schemas
+from .tools import ToolContext, ToolOutput, _error, execute, known_formulas, schemas
 
 
 @dataclass
 class AgentLimits:
     max_steps: int = 6
     max_seconds: float = 180.0
+    max_tool_calls: int = 12  # across the whole turn, whatever the steps
 
 
 @dataclass
@@ -81,19 +83,33 @@ async def run_agent(
         max_seconds=limits.max_seconds,
     )
 
+    def remaining() -> float:
+        return limits.max_seconds - (time.monotonic() - started)
+
+    tool_calls_made = 0
     try:
         for _ in range(limits.max_steps):
-            if time.monotonic() - started > limits.max_seconds:
+            if remaining() <= 0:
                 truncated = True
                 break
             step_text: list[str] = []
             calls = []
             call_started = time.monotonic()
-            async for chunk in llm.chat(messages, schemas()):
-                if chunk.text:
-                    step_text.append(chunk.text)
-                    yield {"event": "text", "data": {"delta": chunk.text}}
-                calls.extend(chunk.tool_calls)
+            try:
+                # The model host's own timeout is per read: a stream that keeps trickling is cut here.
+                async with asyncio.timeout(remaining()):
+                    async for chunk in llm.chat(messages, schemas()):
+                        if chunk.text:
+                            step_text.append(chunk.text)
+                            yield {"event": "text", "data": {"delta": chunk.text}}
+                        calls.extend(chunk.tool_calls)
+            except TimeoutError:
+                truncated = True
+                debug.error = "the model did not finish within the time limit"
+                if step_text:
+                    full_text.append("".join(step_text))
+                    order.append("".join(step_text))
+                break
             text = "".join(step_text)
             debug.llm_calls.append(
                 LLMCallDebug(ms=_ms(call_started), text_chars=len(text), tool_calls=len(calls))
@@ -113,13 +129,34 @@ async def run_agent(
                 }
             )
             for call in calls:
+                if tool_calls_made >= limits.max_tool_calls or remaining() <= 0:
+                    truncated = True
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_name": call.name,
+                            "content": "error: not run, the limit on tool calls or time for "
+                            "one answer was reached",
+                        }
+                    )
+                    continue
+                tool_calls_made += 1
                 call_id = uuid.uuid4().hex[:8]
                 yield {
                     "event": "tool_call",
                     "data": {"id": call_id, "name": call.name, "arguments": call.arguments},
                 }
                 tool_started = time.monotonic()
-                output = await run_in_threadpool(execute, call.name, call.arguments, ctx)
+                try:
+                    output = await asyncio.wait_for(
+                        run_in_threadpool(execute, call.name, call.arguments, ctx),
+                        timeout=max(remaining(), 1.0),
+                    )
+                except TimeoutError:
+                    output = _tool_failure(call.name, "it did not finish within the time limit")
+                    truncated = True
+                except Exception:
+                    output = _tool_failure(call.name, "it failed unexpectedly")
                 output.card.id = call_id
                 outputs.append(output)
                 order.append(output.card)
@@ -137,15 +174,18 @@ async def run_agent(
                 messages.append(
                     {"role": "tool", "tool_name": call.name, "content": output.for_model}
                 )
+            if truncated:
+                break
         else:
             truncated = True
-    except LLMError as exc:
-        debug.error = str(exc)
+    except (LLMError, Exception) as exc:
+        message = str(exc) if isinstance(exc, LLMError) else "The assistant hit an internal error."
+        debug.error = message
         debug.duration_ms = _ms(started)
         yield {
             "event": "error",
             "data": {
-                "message": str(exc),
+                "message": message,
                 "debug": debug.model_dump(mode="json"),
                 "trace": [t.model_dump(mode="json") for t in trace],
             },
@@ -164,7 +204,7 @@ async def run_agent(
         else Block(kind="text", segments=split_segments(item, known))
         for item in order
     ]
-    debug.claims = await check_model_claims(blocks, ctx, trace)
+    debug.claims = await _check_claims_in_budget(blocks, ctx, trace, remaining())
     debug.duration_ms = _ms(started)
     final = AssistantMessage(
         text=raw,
@@ -177,6 +217,25 @@ async def run_agent(
 
 
 MAX_CLAIMS = 12
+CLAIM_CHECK_MIN_SECONDS = 2.0  # the claim check may run a little past the deadline, never unbounded
+
+
+def _tool_failure(name: str, why: str) -> ToolOutput:
+    # Fixed text: no expression, no exception message (conversations are never logged or leaked).
+    return _error(name, f"the tool could not finish: {why}")
+
+
+async def _check_claims_in_budget(
+    blocks: list[Block], ctx: ToolContext, trace: list[TraceStep], seconds_left: float
+) -> list[ClaimDebug]:
+    """Run the claim check inside what is left of the turn's time; on any failure claims stay unchecked."""
+    try:
+        return await asyncio.wait_for(
+            check_model_claims(blocks, ctx, trace),
+            timeout=max(seconds_left, CLAIM_CHECK_MIN_SECONDS),
+        )
+    except Exception:
+        return []
 
 
 async def check_model_claims(
