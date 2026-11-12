@@ -24,7 +24,14 @@ def expression_features(expr: sp.Basic) -> set[str]:
                 features.add("op:cube")
             elif exponent == sp.Rational(1, 2):
                 features.add("op:sqrt")
-            elif exponent.is_number is False or not exponent.is_Number:
+            elif (
+                exponent.is_number is False
+                or not exponent.is_Number
+                or (exponent.is_Integer and exponent >= 4)
+            ):
+                # Symbolic or non-trivial exponents, and integer powers from 4 up (the cases
+                # above cover 2 and 3). Without this, rules such as a**4 - b**4 have no
+                # features at all and can never be retrieved by structure.
                 features.add("op:power")
         elif isinstance(node, sp.Mul) and any(
             isinstance(a, sp.Pow) and a.exp.is_negative for a in node.args
