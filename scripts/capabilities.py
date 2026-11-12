@@ -292,6 +292,27 @@ def run_entry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[s
     )
 
 
+def run_read_formulas(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    formulas = [str(f) for f in spec["formulas"]]
+    readings = engine.read_formulas(formulas)
+    inputs = [{"label": "Transcribed", "source": f} for f in formulas]
+    outputs: list[dict[str, str]] = []
+    for reading in readings:
+        if reading.status.value == "ok" and reading.read_as:
+            outputs.append({"label": "Read as", "latex": reading.read_as})
+        else:
+            outputs.append({"label": "Not read", "text": reading.message or reading.status.value})
+    status = next((r.status.value for r in readings if r.status.value != "ok"), "ok")
+    return _example(
+        spec,
+        status,
+        inputs,
+        outputs,
+        ["strict parser: the formula is parsed, never simplified or evaluated"],
+        [],
+    )
+
+
 RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
@@ -300,6 +321,7 @@ RUNNERS = {
     "solve": run_solve,
     "lagrangian": run_lagrangian,
     "entry": run_entry,
+    "read_formulas": run_read_formulas,
 }
 
 
@@ -309,6 +331,23 @@ def build() -> dict[str, Any]:
     kb = KnowledgeBase.load()
     seen: set[str] = set()
     capabilities: list[dict[str, Any]] = []
+    groups = [
+        {"id": g["id"], "title": g["title"], "summary": " ".join(g["summary"].split())}
+        for g in spec["groups"]
+    ]
+    group_ids = [g["id"] for g in groups]
+    if len(set(group_ids)) != len(group_ids):
+        raise SystemExit("duplicate group id")
+    for cap in spec["capabilities"]:
+        if cap.get("group") not in group_ids:
+            raise SystemExit(
+                f"{cap['id']}: group must be one of {', '.join(group_ids)} (got {cap.get('group')!r})"
+            )
+    for gid in group_ids:
+        if gid in {c["id"] for c in spec["capabilities"]}:
+            raise SystemExit(f"group id {gid} clashes with a capability id (page anchors)")
+        if not any(c["group"] == gid for c in spec["capabilities"]):
+            raise SystemExit(f"group {gid} has no capability")
     for cap in spec["capabilities"]:
         if cap["id"] in seen:
             raise SystemExit(f"duplicate capability id {cap['id']}")
@@ -326,6 +365,7 @@ def build() -> dict[str, Any]:
                 "id": cap["id"],
                 "title": cap["title"],
                 "status": cap["status"],
+                "group": cap["group"],
                 "where": [WHERE[w] for w in cap.get("where", [])],
                 "needs_model": bool(cap.get("needs_model", False)),
                 "summary": " ".join(cap["summary"].split()),
@@ -335,12 +375,43 @@ def build() -> dict[str, Any]:
         )
     return {
         "handbook_entries": len(kb.entries),
+        "groups": groups,
         "capabilities": capabilities,
     }
 
 
 def _tex(latex: str) -> str:
     return f"${latex}$"
+
+
+def _render_capability(cap: dict[str, Any]) -> list[str]:
+    lines = [f"### {cap['title']}", ""]
+    where = ", ".join(cap["where"])
+    extra = " Needs a model you connect." if cap["needs_model"] else ""
+    lines += [f"*Available in:* {where}.{extra}", "", cap["summary"], ""]
+    if cap["limits"]:
+        lines += ["**Limits**", ""] + [f"- {item}" for item in cap["limits"]] + [""]
+    for ex in cap["examples"]:
+        lines += [f"#### {ex['title']}", ""]
+        for item in ex["input"]:
+            value = f"`{item['source']}`" if "source" in item else item["text"]
+            lines.append(f"- **{item['label']}:** {value}")
+        if ex["assumptions"]:
+            lines.append(f"- **Assumptions:** {ex['assumptions']}")
+        lines.append(f"- **Status:** `{ex['status']}`")
+        for out in ex["outputs"]:
+            parts = []
+            if "latex" in out:
+                parts.append(_tex(out["latex"]))
+            if "text" in out:
+                parts.append(out["text"])
+            lines.append(f"- **{out['label']}:** {' — '.join(parts)}")
+        for check in ex["checks"]:
+            lines.append(f"- **Check:** {check}")
+        for note in ex["notes"]:
+            lines.append(f"- {note}")
+        lines.append("")
+    return lines
 
 
 def render_markdown(data: dict[str, Any]) -> str:
@@ -362,41 +433,22 @@ def render_markdown(data: dict[str, Any]) -> str:
     ]
     available = [c for c in data["capabilities"] if c["status"] == "available"]
     planned = [c for c in data["capabilities"] if c["status"] == "planned"]
-    for cap in available:
-        lines += [f"## {cap['title']}", ""]
-        where = ", ".join(cap["where"])
-        extra = " Needs a model you connect." if cap["needs_model"] else ""
-        lines += [f"*Available in:* {where}.{extra}", "", cap["summary"], ""]
-        if cap["limits"]:
-            lines += ["**Limits**", ""] + [f"- {item}" for item in cap["limits"]] + [""]
-        for ex in cap["examples"]:
-            lines += [f"### {ex['title']}", ""]
-            for item in ex["input"]:
-                value = f"`{item['source']}`" if "source" in item else item["text"]
-                lines.append(f"- **{item['label']}:** {value}")
-            if ex["assumptions"]:
-                lines.append(f"- **Assumptions:** {ex['assumptions']}")
-            lines.append(f"- **Status:** `{ex['status']}`")
-            for out in ex["outputs"]:
-                parts = []
-                if "latex" in out:
-                    parts.append(_tex(out["latex"]))
-                if "text" in out:
-                    parts.append(out["text"])
-                lines.append(f"- **{out['label']}:** {' — '.join(parts)}")
-            for check in ex["checks"]:
-                lines.append(f"- **Check:** {check}")
-            for note in ex["notes"]:
-                lines.append(f"- {note}")
-            lines.append("")
+    for group in data["groups"]:
+        members = [c for c in available if c["group"] == group["id"]]
+        if not members:
+            continue
+        lines += [f"## {group['title']}", "", group["summary"], ""]
+        for cap in members:
+            lines += _render_capability(cap)
     lines += [
         "## Planned",
         "",
         "Not implemented. Listed so that nobody mistakes them for features.",
         "",
     ]
+    titles = {g["id"]: g["title"] for g in data["groups"]}
     for cap in planned:
-        lines.append(f"- **{cap['title']}**: {cap['summary']}")
+        lines.append(f"- **{cap['title']}** ({titles[cap['group']]}): {cap['summary']}")
     lines.append("")
     return "\n".join(lines)
 

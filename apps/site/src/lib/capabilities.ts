@@ -14,22 +14,33 @@ export type Example = {
   checks: string[];
   notes: string[];
 };
+export type Group = { id: string; title: string; summary: string };
 export type Capability = {
   id: string;
   title: string;
   status: "available" | "planned";
+  group: string;
   where: string[];
   needs_model: boolean;
   summary: string;
   limits: string[];
   examples: Example[];
 };
-type CapabilityData = { handbook_entries: number; capabilities: Capability[] };
+type CapabilityData = { handbook_entries: number; groups: Group[]; capabilities: Capability[] };
 
 const data = raw as unknown as CapabilityData;
 
 export const CAPABILITIES = data.capabilities;
 export const HANDBOOK_ENTRIES = data.handbook_entries;
+export const GROUPS = data.groups;
+
+/** Capabilities of one status, grouped in the order of docs/capabilities.yaml; empty groups are left out. */
+export function capabilitiesByGroup(status: Capability["status"]): [Group, Capability[]][] {
+  return GROUPS.map((g): [Group, Capability[]] => [
+    g,
+    CAPABILITIES.filter((c) => c.status === status && c.group === g.id),
+  ]).filter(([, caps]) => caps.length > 0);
+}
 
 /** An example by id. Throws at build time if the record no longer has it. */
 export function example(id: string): Example {

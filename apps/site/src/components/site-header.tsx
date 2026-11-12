@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { APP_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
 
-export function SiteHeader() {
+export function SiteHeader({ wide = false }: { wide?: boolean }) {
   return (
-    <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5 sm:px-8">
+    <header
+      className={`mx-auto flex h-16 ${wide ? "max-w-6xl" : "max-w-5xl"} items-center justify-between px-5 sm:px-8`}
+    >
       <Link href="/" className="font-serif text-2xl italic tracking-tight">
         Minerva
       </Link>

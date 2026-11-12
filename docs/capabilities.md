@@ -12,7 +12,11 @@ so a change in behaviour appears as a diff here. Regenerate with
 **Available in** says which interface exposes a capability: the *workbench* forms, the *handbook pages*,
 the *chat* (needs a model you connect, see [self-hosting.md](self-hosting.md)) or the *HTTP API*.
 
-## Verified simplification
+## Mathematics
+
+Symbolic computation, with every result verified before it is shown.
+
+### Verified simplification
 
 *Available in:* workbench, chat, HTTP API.
 
@@ -24,7 +28,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - If nothing simpler is found, the input is returned unchanged and the status says so.
 - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
 
-### Rational trigonometric expression
+#### Rational trigonometric expression
 
 - **Input:** `\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}`
 - **Status:** `ok`
@@ -32,7 +36,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
 - Simplified with SymPy and verified.
 
-### Difference of fourth powers
+#### Difference of fourth powers
 
 - **Input:** `\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}`
 - **Status:** `ok`
@@ -40,7 +44,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
 - Simplified with SymPy and verified.
 
-### Square root of a square, no assumptions
+#### Square root of a square, no assumptions
 
 - **Input:** `\sqrt{x^2}`
 - **Status:** `unchanged`
@@ -48,7 +52,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified.
 
-### The same, with x declared real
+#### The same, with x declared real
 
 - **Input:** `\sqrt{x^2}`
 - **Assumptions:** x real
@@ -57,7 +61,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - Under the declared assumption the expression is read as |x|.
 
-### Power of a power, no assumptions
+#### Power of a power, no assumptions
 
 - **Input:** `(x^a)^b`
 - **Status:** `unchanged`
@@ -65,7 +69,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is.
 
-### The same, with x positive and a real
+#### The same, with x positive and a real
 
 - **Input:** `(x^a)^b`
 - **Assumptions:** x positive; a real
@@ -74,13 +78,13 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - With x positive and a real the exponents combine, and the expression is read as x^{ab}.
 
-### Ambiguous input is refused
+#### Ambiguous input is refused
 
 - **Input:** `\sin 2x`
 - **Status:** `parse_error`
 - ambiguous argument of \sin: use parentheses
 
-## Verified differentiation
+### Verified differentiation
 
 *Available in:* workbench, chat, HTTP API.
 
@@ -91,7 +95,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - Where no complex derivative exists (`|x|`, real and imaginary parts, conjugates) the answer is "unsupported" unless the variable is declared real.
 - The notation `\frac{d}{dx}` and undefined functions `f(x)` are not accepted in the input yet.
 
-### Product rule
+#### Product rule
 
 - **Input:** `x^3 \sin(x)`
 - **Status:** `ok`
@@ -99,7 +103,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - **Check:** 1 step(s) checked against a numerical derivative; agreed at 12 of 12 points
 - Differentiated with SymPy; every step was verified numerically.
 
-### Third derivative of a Gaussian
+#### Third derivative of a Gaussian
 
 - **Input:** `\exp(-x^2)`
 - **Status:** `ok`
@@ -107,7 +111,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - **Check:** 3 step(s) checked against a numerical derivative; agreed at 36 of 36 points
 - Differentiated with SymPy; every step was verified numerically.
 
-### Mixed partial derivative
+#### Mixed partial derivative
 
 - **Input:** `x^2 y^3`
 - **Status:** `ok`
@@ -115,48 +119,14 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - **Check:** 2 step(s) checked against a numerical derivative; agreed at 24 of 24 points
 - Differentiated with SymPy; every step was verified numerically.
 
-### No complex derivative
+#### No complex derivative
 
 - **Input:** `|x|`
 - **Status:** `unsupported`
 - This expression has no complex derivative with respect to x (for example |z|, re z, im z or conjugates). If the variable is real, declare it real and try again.
 - Declare x real to differentiate |x|.
 
-## Identity search with applicability checks
-
-*Available in:* workbench, chat, HTTP API.
-
-Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern, checks its validity conditions against your declared assumptions, rewrites, and verifies the rewrite.
-
-**Limits**
-
-- An identity whose conditions cannot be proven from your assumptions is reported, with the unmet conditions, and not applied.
-- Matches that only work by inventing roots, reciprocals or the imaginary unit are discarded.
-- Retrieval is keyword and structure based; semantic search is planned.
-
-### The identity is found but not applied
-
-- **Input:** `\log(x y)`
-- **Status:** `conditions_not_satisfied`
-- **Logarithm of a product:** not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)
-- The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
-
-### Applied once x and y are declared positive
-
-- **Input:** `\log(x y)`
-- **Assumptions:** x positive; y positive
-- **Status:** `applicable`
-- **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
-
-### Product to sum
-
-- **Input:** `\sin(a)\cos(b)`
-- **Status:** `applicable`
-- **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
-
-## Polynomial equations
+### Polynomial equations
 
 *Available in:* chat.
 
@@ -166,7 +136,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 
 - Polynomial equations in one variable only; other equations are not solved.
 
-### A cubic that factors
+#### A cubic that factors
 
 - **Equation:** `x^3 + x^2 + x + 1 = 0`
 - **Status:** `ok`
@@ -175,7 +145,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Check:** roots substituted back (largest residual 0); root count equals the degree; Vieta's relations hold
 - Degree 3: 3 roots found and verified by substitution and Vieta's relations.
 
-### A quintic with no formula in radicals
+#### A quintic with no formula in radicals
 
 - **Equation:** `x^5 - x - 1 = 0`
 - **Status:** `ok`
@@ -185,7 +155,56 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Check:** roots substituted back (largest residual 8.87e-31); root count equals the degree; Vieta's relations hold
 - Degree 5: 5 roots found and verified by substitution and Vieta's relations.
 
-## Lagrangian mechanics
+### Tensor canonicalization
+
+*Available in:* HTTP API, chat.
+
+Puts a tensor expression in canonical form using declared index symmetries (symmetric, antisymmetric, Riemann-type), through SymPy's Butler–Portugal algorithm.
+
+**Limits**
+
+- Only symmetries of a single term are applied. Multi-term identities such as the Bianchi identity are out of scope and are not applied.
+- The result is not independently verified; the report says so.
+- There is no workbench form for tensors yet.
+
+#### Symmetric contracted with antisymmetric
+
+- **Input:** `S(a,b)*A(-a,-b)`
+- **Declared:** S: rank 2, symmetric; A: rank 2, antisymmetric
+- **Status:** `ok`
+- **Canonical form:** $0$
+- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+
+#### Riemann tensor contracted with a symmetric pair
+
+- **Input:** `R(a,b,c,d)*S(-a,-b)`
+- **Declared:** R: rank 4, riemann; S: rank 2, symmetric
+- **Status:** `ok`
+- **Canonical form:** $0$
+- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+
+#### Pair exchange symmetry
+
+- **Input:** `R(a,b,c,d) - R(c,d,a,b)`
+- **Declared:** R: rank 4, riemann
+- **Status:** `ok`
+- **Canonical form:** $0$
+- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+
+#### The cyclic sum is left alone
+
+- **Input:** `R(a,b,c,d) + R(a,c,d,b) + R(a,d,b,c)`
+- **Declared:** R: rank 4, riemann
+- **Status:** `ok`
+- **Canonical form:** $-R{}^{acbd} + R{}^{abcd} + R{}^{adbc}$
+- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+- This cyclic sum vanishes by the algebraic Bianchi identity, a multi-term identity that Minerva does not apply, so it is returned in canonical form and not as 0.
+
+## Physics
+
+Mechanics and other physical systems, from a Lagrangian to its conserved quantities.
+
+### Lagrangian mechanics
 
 *Available in:* chat.
 
@@ -195,7 +214,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 
 - Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as the Runge–Lenz vector are not searched for, and the result says so.
 
-### Kepler problem in polar coordinates
+#### Kepler problem in polar coordinates
 
 - **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
 - **Coordinates:** r, theta
@@ -209,7 +228,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for.
 
-### The same problem in Cartesian coordinates
+#### The same problem in Cartesian coordinates
 
 - **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}`
 - **Coordinates:** x, y
@@ -223,7 +242,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - cyclic coordinates: none (every coordinate appears in L)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for.
 
-### Explicit time dependence removes the energy
+#### Explicit time dependence removes the energy
 
 - **Lagrangian:** `\frac12 m\dot{x}^2 - \frac12 k x^2 t`
 - **Coordinates:** x
@@ -233,52 +252,45 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - energy function: not conserved (L depends explicitly on time)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for.
 
-## Tensor canonicalization
+## Handbook and identities
 
-*Available in:* HTTP API, chat.
+A citable, machine-checked collection of identities and equations, and the search over it.
 
-Puts a tensor expression in canonical form using declared index symmetries (symmetric, antisymmetric, Riemann-type), through SymPy's Butler–Portugal algorithm.
+### Identity search with applicability checks
+
+*Available in:* workbench, chat, HTTP API.
+
+Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern, checks its validity conditions against your declared assumptions, rewrites, and verifies the rewrite.
 
 **Limits**
 
-- Only symmetries of a single term are applied. Multi-term identities such as the Bianchi identity are out of scope and are not applied.
-- The result is not independently verified; the report says so.
-- There is no workbench form for tensors yet.
+- An identity whose conditions cannot be proven from your assumptions is reported, with the unmet conditions, and not applied.
+- Matches that only work by inventing roots, reciprocals or the imaginary unit are discarded.
+- Retrieval is keyword and structure based; semantic search is planned.
 
-### Symmetric contracted with antisymmetric
+#### The identity is found but not applied
 
-- **Input:** `S(a,b)*A(-a,-b)`
-- **Declared:** S: rank 2, symmetric; A: rank 2, antisymmetric
-- **Status:** `ok`
-- **Canonical form:** $0$
-- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+- **Input:** `\log(x y)`
+- **Status:** `conditions_not_satisfied`
+- **Logarithm of a product:** not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)
+- The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
 
-### Riemann tensor contracted with a symmetric pair
+#### Applied once x and y are declared positive
 
-- **Input:** `R(a,b,c,d)*S(-a,-b)`
-- **Declared:** R: rank 4, riemann; S: rank 2, symmetric
-- **Status:** `ok`
-- **Canonical form:** $0$
-- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+- **Input:** `\log(x y)`
+- **Assumptions:** x positive; y positive
+- **Status:** `applicable`
+- **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
+- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
 
-### Pair exchange symmetry
+#### Product to sum
 
-- **Input:** `R(a,b,c,d) - R(c,d,a,b)`
-- **Declared:** R: rank 4, riemann
-- **Status:** `ok`
-- **Canonical form:** $0$
-- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
+- **Input:** `\sin(a)\cos(b)`
+- **Status:** `applicable`
+- **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
+- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
 
-### The cyclic sum is left alone
-
-- **Input:** `R(a,b,c,d) + R(a,c,d,b) + R(a,d,b,c)`
-- **Declared:** R: rank 4, riemann
-- **Status:** `ok`
-- **Canonical form:** $-R{}^{acbd} + R{}^{abcd} + R{}^{adbc}$
-- Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
-- This cyclic sum vanishes by the algebraic Bianchi identity, a multi-term identity that Minerva does not apply, so it is returned in canonical form and not as 0.
-
-## Citable handbook
+### Citable handbook
 
 *Available in:* handbook pages, chat, HTTP API.
 
@@ -289,7 +301,7 @@ Handbook entries state identities, integrals, series, special functions and phys
 - Entries recorded from the literature ("stated") carry no rule and are never used to rewrite anything.
 - Coverage is limited and growing; quantum field theory is stated entries only.
 
-### A checked identity with its condition
+#### A checked identity with its condition
 
 - **Entry:** log.product: Logarithm of a product
 - **Status:** `verified`
@@ -298,7 +310,7 @@ Handbook entries state identities, integrals, series, special functions and phys
 - Validity: Both factors positive.
 - Source: DLMF §4.8
 
-### A stated literature record
+#### A stated literature record
 
 - **Entry:** qft.klein_gordon: Klein–Gordon equation
 - **Status:** `stated`
@@ -306,7 +318,11 @@ Handbook entries state identities, integrals, series, special functions and phys
 - **Check:** verification level: stated
 - Validity: Free scalar field, natural units (ħ = c = 1).
 
-## Chat with a model you host
+## Using Minerva
+
+How to reach the tools, through the chat, photos of equations and the workbench.
+
+### Chat with a model you host
 
 *Available in:* chat. Needs a model you connect.
 
@@ -318,12 +334,40 @@ A conversation in which a language model plans, asks and explains, and calls the
 - How well it chooses tools depends on the model, and no model tried so far passes every evaluation case. See docs/model-evaluation.md.
 - Only Ollama-compatible hosts are supported.
 
+### Read formulas from a photo
+
+*Available in:* chat. Needs a model you connect.
+
+Attach a photo or screenshot of an equation in the chat. A vision model you host transcribes it to LaTeX, you confirm or correct the transcription, and Minerva's strict parser shows how it reads each formula before anything is computed. The model only transcribes; it never solves, simplifies or decides anything about the image.
+
+**Limits**
+
+- A transcription can be wrong, which is why you confirm it before it is used. Only what the parser accepts from the confirmed text is passed on to the tools.
+- Ambiguous notation is refused exactly as typed input is, for example `\sin 2x`.
+- Images are never stored or logged, and are limited in size to PNG, JPEG or WebP files.
+- It needs a vision-capable model on the Ollama-compatible host you connect.
+
+#### A transcribed equation, read by the strict parser
+
+- **Transcribed:** `x^2 + 2x + 1 = (x+1)^2`
+- **Status:** `ok`
+- **Read as:** $x^{2} + 2 x + 1 = \left(x + 1\right)^{2}$
+- **Check:** strict parser: the formula is parsed, never simplified or evaluated
+- This is the step after the vision model and your confirmation: the confirmed LaTeX is read by the same parser as typed input, and nothing is simplified.
+
+#### A transcription with ambiguous notation is refused
+
+- **Transcribed:** `\sin 2x`
+- **Status:** `parse_error`
+- **Not read:** ambiguous argument of \sin: use parentheses
+- **Check:** strict parser: the formula is parsed, never simplified or evaluated
+
 ## Planned
 
 Not implemented. Listed so that nobody mistakes them for features.
 
-- **Cadabra integration**: Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
-- **SageManifolds integration**: Differential geometry on explicit manifolds, as an optional backend.
-- **Integrals, limits and series**: In the workbench, with the same verification discipline as derivatives.
-- **Semantic and structural search**: Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
-- **Tensors in the workbench**: Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.
+- **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
+- **SageManifolds integration** (Mathematics): Differential geometry on explicit manifolds, as an optional backend.
+- **Integrals, limits and series** (Mathematics): In the workbench, with the same verification discipline as derivatives.
+- **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
+- **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.
