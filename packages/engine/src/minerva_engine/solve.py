@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from .claims import split_equation
 from .errors import MinervaMathError
 from .latexparse import parse_latex
+from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 
 MAX_DEGREE = 60
@@ -92,7 +93,7 @@ def solve_polynomial(
         rhs = parse_latex(sides[1], assumptions, limits)
     except MinervaMathError as exc:
         return _fail(Status.PARSE_ERROR, str(exc))
-    equation_latex = f"{sp.latex(lhs)} = {sp.latex(rhs)}"
+    equation_latex = f"{to_latex(lhs)} = {to_latex(rhs)}"
     expr = sp.expand(lhs - rhs)
     symbols = sorted(expr.free_symbols, key=lambda s: s.name)
     if variable:
@@ -170,12 +171,12 @@ def _symbolic(
         root = sp.solve(poly.as_expr(), x)[0]
         report.factors = [
             FactorReport(
-                factor_latex=sp.latex(poly.as_expr()),
+                factor_latex=to_latex(poly.as_expr()),
                 multiplicity=1,
                 degree=1,
                 radicals="yes",
                 radicals_reason="linear",
-                exact_roots_latex=[sp.latex(root)],
+                exact_roots_latex=[to_latex(root)],
             )
         ]
         report.message = (
@@ -185,12 +186,12 @@ def _symbolic(
         roots = sp.solve(poly.as_expr(), x)
         report.factors = [
             FactorReport(
-                factor_latex=sp.latex(poly.as_expr()),
+                factor_latex=to_latex(poly.as_expr()),
                 multiplicity=1,
                 degree=2,
                 radicals="yes",
                 radicals_reason="quadratic formula",
-                exact_roots_latex=[sp.latex(r) for r in roots],
+                exact_roots_latex=[to_latex(r) for r in roots],
             )
         ]
         report.message = (
@@ -201,7 +202,7 @@ def _symbolic(
     elif degree in (3, 4):
         report.factors = [
             FactorReport(
-                factor_latex=sp.latex(poly.as_expr()),
+                factor_latex=to_latex(poly.as_expr()),
                 multiplicity=1,
                 degree=degree,
                 radicals="yes",
@@ -218,7 +219,7 @@ def _symbolic(
     else:
         report.factors = [
             FactorReport(
-                factor_latex=sp.latex(poly.as_expr()),
+                factor_latex=to_latex(poly.as_expr()),
                 multiplicity=1,
                 degree=degree,
                 radicals="no",
@@ -277,12 +278,12 @@ def _numeric(report: SolveReport, poly: sp.Poly, x: sp.Symbol) -> SolveReport:
             any_unproduced_formula = True
         report.factors.append(
             FactorReport(
-                factor_latex=sp.latex(factor.as_expr()),
+                factor_latex=to_latex(factor.as_expr()),
                 multiplicity=int(mult),
                 degree=factor.degree(),
                 radicals=radicals,
                 radicals_reason=reason,
-                exact_roots_latex=[sp.latex(r) for r in exact],
+                exact_roots_latex=[to_latex(r) for r in exact],
             )
         )
         exact_all.extend(exact * int(mult))
@@ -302,7 +303,7 @@ def _numeric(report: SolveReport, poly: sp.Poly, x: sp.Symbol) -> SolveReport:
                 numeric=_format(value),
                 real=bool(real),
                 multiplicity=1,
-                exact_latex=sp.latex(match) if match is not None else None,
+                exact_latex=to_latex(match) if match is not None else None,
             )
         )
     report.roots = root_reports

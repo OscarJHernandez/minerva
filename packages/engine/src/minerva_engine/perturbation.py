@@ -43,6 +43,7 @@ import sympy as sp
 from pydantic import BaseModel, ConfigDict, Field
 
 from .expansion import NamedLatex, Refusal, _fresh, _zero_check, prepare
+from .latexprint import to_latex
 from .models import Limits, Status, Verification
 from .motion import MotionRequest, integrate_motion
 from .series import SeriesVerification, _eval, _falls, check_series
@@ -602,7 +603,7 @@ def perturbation_solve(
         return _fail(
             Status.UNSUPPORTED,
             "Cannot show that the unperturbed frequency squared "
-            f"({sp.latex(s0)}) is positive from the declared assumptions, so an oscillation about "
+            f"({to_latex(s0)}) is positive from the declared assumptions, so an oscillation about "
             "this point is not established. Declare the parameters positive, or choose another point.",
             **base,
         )
@@ -651,7 +652,7 @@ def perturbation_solve(
     # Presentation.
     tau, t_sym = sp.Symbol(r"\tau"), sp.Symbol("t")
     omega_sym = sp.Symbol(r"\omega")
-    small_latex = sp.latex(eps_sym)
+    small_latex = to_latex(eps_sym)
     frequency = sum((eps_sym**k * o for k, o in enumerate(solved.omegas)), sp.Integer(0))
     ordered_frequency = sp.Add(
         *[eps_sym**k * o for k, o in enumerate(solved.omegas) if o != 0], evaluate=False
@@ -671,9 +672,9 @@ def perturbation_solve(
             OrderTerms(
                 order=k,
                 frequency_latex=(
-                    rf"\omega_{{{k}}} = {sp.latex(solved.omegas[k])}" if k >= 1 else None
+                    rf"\omega_{{{k}}} = {to_latex(solved.omegas[k])}" if k >= 1 else None
                 ),
-                shape_latex=rf"w_{{{k}}}(\tau) = {sp.latex(shape)}",
+                shape_latex=rf"w_{{{k}}}(\tau) = {to_latex(shape)}",
             )
         )
     shape_terms = []
@@ -690,15 +691,15 @@ def perturbation_solve(
         mode=mode,
         parameters=[s.name for s in d.params if s != eps_sym],
         small_latex=small_latex,
-        amplitude_latex=sp.latex(amp_sym) if amp_sym is not None else None,
-        linear_frequency_latex=rf"\omega_0 = {sp.latex(omega0)}",
-        frequency_latex=rf"\omega = {sp.latex(ordered_frequency, order='none')}",
+        amplitude_latex=to_latex(amp_sym) if amp_sym is not None else None,
+        linear_frequency_latex=rf"\omega_0 = {to_latex(omega0)}",
+        frequency_latex=rf"\omega = {to_latex(ordered_frequency, order='none')}",
         period_ratio_latex=(
-            rf"\frac{{T}}{{T_0}} = {sp.latex(period_poly, order='rev-lex')} + O\left({small_latex}^{{{order + 1}}}\right)"
+            rf"\frac{{T}}{{T_0}} = {to_latex(period_poly, order='rev-lex')} + O\left({small_latex}^{{{order + 1}}}\right)"
             if period_check.passed
             else None
         ),
-        solution_latex=rf"u(t) = {sp.latex(displacement, order='none')} + O\left({small_latex}^{{{order + 1}}}\right),\quad \omega t = \tau",
+        solution_latex=rf"u(t) = {to_latex(displacement, order='none')} + O\left({small_latex}^{{{order + 1}}}\right),\quad \omega t = \tau",
         orders=orders,
         verification=verification,
         **base,
@@ -708,7 +709,7 @@ def perturbation_solve(
     report.notes.append(
         "Initial conditions: the solution starts at rest at displacement "
         + (
-            f"{sp.latex(amp_sym)} from the equilibrium."
+            f"{to_latex(amp_sym)} from the equilibrium."
             if amp_sym is not None
             else f"{small_latex} from the equilibrium (the small parameter is the amplitude)."
         )

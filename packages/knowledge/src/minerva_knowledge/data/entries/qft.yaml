@@ -13,6 +13,6 @@
   chapter: physics.qft
   section: free_fields
   verification: stated
-  statement_latex: '\left(i\gamma^\mu\partial_\mu - m\right)\psi(x) = 0'
+  statement_latex: '\left(\mathrm{i}\gamma^\mu\partial_\mu - m\right)\psi(x) = 0'
   validity: "Free spin-1/2 field, natural units (ħ = c = 1)."
   keywords: [dirac, spinor, fermion, gamma matrices]

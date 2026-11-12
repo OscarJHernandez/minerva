@@ -16,7 +16,7 @@ def test_reducible_cubic_factors_and_gives_exact_roots() -> None:
     assert r.status is Status.OK and r.degree == 3
     assert sorted(f.degree for f in r.factors) == [1, 2]
     exact = {root.exact_latex for root in r.roots}
-    assert exact == {"-1", "i", "- i"}
+    assert exact == {"-1", r"\mathrm{i}", r"- \mathrm{i}"}
     assert [root.real for root in r.roots].count(True) == 1
     v = r.verification
     assert v and v.roots_substituted_back and v.vieta_holds and v.count_matches_degree
