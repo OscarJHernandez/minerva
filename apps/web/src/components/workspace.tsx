@@ -203,7 +203,7 @@ export function Workspace() {
           >
             {busy === "integrate" ? "Integrating…" : "Integrate"}
           </button>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => run("differentiate")}
@@ -228,7 +228,7 @@ export function Workspace() {
                 value={lower}
                 onChange={(e) => setLower(e.target.value)}
                 aria-label="Lower bound of a definite integral (optional)"
-                placeholder="∫ only"
+                placeholder="lower"
                 maxLength={200}
                 className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
               />
@@ -239,7 +239,7 @@ export function Workspace() {
                 value={upper}
                 onChange={(e) => setUpper(e.target.value)}
                 aria-label="Upper bound of a definite integral (optional)"
-                placeholder="oo"
+                placeholder="upper"
                 maxLength={200}
                 className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
               />
