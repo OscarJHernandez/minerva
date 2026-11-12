@@ -4,10 +4,19 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { MAX_DERIVATIVE_ORDER, MAX_SERIES_ORDER } from "@/lib/types";
+import {
+  formatMatrices,
+  formatPairs,
+  parseMatrices,
+  parseNames,
+  parsePairs,
+} from "@/lib/matrix-decl";
 import type {
   Assumptions,
   DifferentiateResult,
   IntegrateResult,
+  MatrixAction,
+  MatrixCalculusResult,
   HistoryItem,
   IdentitiesResult,
   SeriesResult,
@@ -17,6 +26,7 @@ import type {
 import { AssumptionsEditor } from "./assumptions-editor";
 import { DerivativePanel } from "./derivative-panel";
 import { IntegralPanel } from "./integral-panel";
+import { MatrixPanel } from "./matrix-panel";
 import { HistoryList } from "./history-list";
 import { IdentitiesPanel } from "./identities-panel";
 import { MathInput } from "./math-input";
@@ -29,9 +39,10 @@ type Output =
   | { kind: "differentiate"; data: DifferentiateResult }
   | { kind: "series"; data: SeriesResult }
   | { kind: "integrate"; data: IntegrateResult }
+  | { kind: "matrix"; data: MatrixCalculusResult }
   | null;
 
-type Kind = "simplify" | "identities" | "differentiate" | "integrate" | "series";
+type Kind = "simplify" | "identities" | "differentiate" | "integrate" | "series" | "matrix";
 
 const EXAMPLES = [
   { label: "sin² + cos²", latex: "\\sin^2 x + \\cos^2 x" },
@@ -65,6 +76,13 @@ export function Workspace() {
   const [upper, setUpper] = useState("");
   const [goal, setGoal] = useState<SimplifyGoal>("simplify");
   const [target, setTarget] = useState("sin, cos");
+  const [mxText, setMxText] = useState("A 2x2\nB 2x2");
+  const [mxCommuting, setMxCommuting] = useState("");
+  const [mxInvertible, setMxInvertible] = useState("");
+  const [mxAction, setMxAction] = useState<MatrixAction>("simplify");
+  const [mxVariable, setMxVariable] = useState("t");
+  const [mxLower, setMxLower] = useState("");
+  const [mxUpper, setMxUpper] = useState("");
   const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -127,11 +145,46 @@ export function Workspace() {
       );
       return;
     }
+    let matrixRequest: Parameters<typeof api.matrix>[1] | null = null;
+    if (kind === "matrix") {
+      const decls = parseMatrices(mxText);
+      const pairs = parsePairs(mxCommuting);
+      const names = parseNames(mxInvertible);
+      const bad = [decls, pairs, names].find((p) => !p.ok);
+      if (bad && !bad.ok) {
+        setError(bad.error);
+        return;
+      }
+      const needsVariable = mxAction === "differentiate" || mxAction === "integrate";
+      if (needsVariable && !VARIABLE_PATTERN.test(mxVariable)) {
+        setError("Enter the scalar variable to differentiate or integrate by, for example t.");
+        return;
+      }
+      if (mxAction === "integrate" && (mxLower.trim() === "") !== (mxUpper.trim() === "")) {
+        setError("Give both bounds for a definite integral, or leave both empty.");
+        return;
+      }
+      if (decls.ok && pairs.ok && names.ok) {
+        matrixRequest = {
+          matrices: decls.value,
+          commuting: pairs.value,
+          invertible: names.value,
+          action: mxAction,
+          variable: needsVariable ? mxVariable : null,
+          lower: mxAction === "integrate" && mxLower.trim() ? mxLower.trim() : null,
+          upper: mxAction === "integrate" && mxUpper.trim() ? mxUpper.trim() : null,
+        };
+      }
+    }
     setBusy(kind);
     setError(null);
     try {
       const payload = { input: latex, assumptions };
-      if (kind === "simplify") {
+      if (kind === "matrix" && matrixRequest) {
+        const data = await api.matrix(payload, matrixRequest);
+        setOutput({ kind, data });
+        setActiveId(data.calculation_id ?? null);
+      } else if (kind === "simplify") {
         const data = await api.simplify({
           ...payload,
           goal,
@@ -155,7 +208,7 @@ export function Workspace() {
         );
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
-      } else {
+      } else if (kind === "identities") {
         const data = await api.identities(payload);
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
@@ -189,6 +242,21 @@ export function Workspace() {
       if (data.point_requested) setPoint(data.point_requested);
       if (data.order) setSeriesOrder(data.order);
       setOutput({ kind: "series", data });
+      return;
+    }
+    if (item.operation === "matrix_calculus") {
+      const data = item.result as unknown as MatrixCalculusResult;
+      const req = data.request;
+      if (req) {
+        setMxText(formatMatrices(req.matrices));
+        setMxCommuting(formatPairs(req.commuting));
+        setMxInvertible(req.invertible.join(", "));
+        setMxAction(req.action);
+        setMxVariable(req.variable ?? "t");
+        setMxLower(req.lower ?? "");
+        setMxUpper(req.upper ?? "");
+      }
+      setOutput({ kind: "matrix", data });
       return;
     }
     if (item.operation === "integrate") {
@@ -393,6 +461,118 @@ export function Workspace() {
 
         <AssumptionsEditor value={assumptions} onChange={setAssumptions} />
 
+        <details className="rounded-lg border border-rule bg-raised p-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            Matrix calculus{" "}
+            <span className="font-normal text-muted">
+              ordered products of matrix exponentials: simplify, differentiate, integrate
+            </span>
+          </summary>
+          <div className="mt-3 space-y-3 text-sm">
+            <p className="text-muted">
+              Write the expression above with <code>\exp(tA)</code> for exponentials (a bare e is an
+              ordinary symbol). Matrices are constant, never assumed to commute or to be invertible.
+            </p>
+            <label className="block text-xs text-muted">
+              Matrices, one per line: <code>A 2x2</code> or <code>A = [1, 0; 0, 2]</code>
+              <textarea
+                value={mxText}
+                onChange={(e) => setMxText(e.target.value)}
+                aria-label="Matrix declarations"
+                rows={3}
+                maxLength={800}
+                className="mt-1 block w-full rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs text-muted">
+                Commuting pairs (only if you know they commute)
+                <input
+                  value={mxCommuting}
+                  onChange={(e) => setMxCommuting(e.target.value)}
+                  aria-label="Commuting pairs"
+                  placeholder="A~B"
+                  maxLength={200}
+                  className="mt-1 block w-full rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+                />
+              </label>
+              <label className="block text-xs text-muted">
+                Invertible matrices (only if you know they are)
+                <input
+                  value={mxInvertible}
+                  onChange={(e) => setMxInvertible(e.target.value)}
+                  aria-label="Invertible matrices"
+                  placeholder="A, B"
+                  maxLength={200}
+                  className="mt-1 block w-full rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1 text-xs text-muted">
+                action
+                <select
+                  value={mxAction}
+                  onChange={(e) => setMxAction(e.target.value as MatrixAction)}
+                  aria-label="Matrix calculus action"
+                  className="rounded border border-rule bg-raised px-2 py-1.5 text-sm text-ink"
+                >
+                  <option value="simplify">simplify</option>
+                  <option value="evaluate">evaluate (explicit entries)</option>
+                  <option value="differentiate">differentiate</option>
+                  <option value="integrate">integrate</option>
+                </select>
+              </label>
+              {(mxAction === "differentiate" || mxAction === "integrate") && (
+                <label className="flex items-center gap-1 text-xs text-muted">
+                  by
+                  <input
+                    value={mxVariable}
+                    onChange={(e) => setMxVariable(e.target.value.trim())}
+                    aria-label="Scalar variable"
+                    maxLength={32}
+                    className="w-14 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+                  />
+                </label>
+              )}
+              {mxAction === "integrate" && (
+                <>
+                  <label className="flex items-center gap-1 text-xs text-muted">
+                    from
+                    <input
+                      value={mxLower}
+                      onChange={(e) => setMxLower(e.target.value)}
+                      aria-label="Lower bound of the matrix integral (optional)"
+                      placeholder="lower"
+                      maxLength={200}
+                      className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1 text-xs text-muted">
+                    to
+                    <input
+                      value={mxUpper}
+                      onChange={(e) => setMxUpper(e.target.value)}
+                      aria-label="Upper bound of the matrix integral (optional)"
+                      placeholder="upper"
+                      maxLength={200}
+                      className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+                    />
+                  </label>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => run("matrix")}
+                disabled={!latex.trim() || busy !== null}
+                className="rounded border border-accent px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
+              >
+                {busy === "matrix" ? "Working…" : "Run matrix calculus"}
+              </button>
+            </div>
+          </div>
+        </details>
+
         {error && (
           <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
             {error}
@@ -404,6 +584,7 @@ export function Workspace() {
         {output?.kind === "differentiate" && <DerivativePanel result={output.data} />}
         {output?.kind === "series" && <SeriesPanel result={output.data} />}
         {output?.kind === "integrate" && <IntegralPanel result={output.data} />}
+        {output?.kind === "matrix" && <MatrixPanel result={output.data} />}
         {!output && (
           <p className="text-sm text-muted">
             Enter an expression, then simplify it, differentiate it, find an antiderivative, expand

@@ -33,6 +33,11 @@ Ordering favours correctness infrastructure before breadth.
    one coordinate, checked by residual order and against the verified numerical integrator). The card has a form for the
    comparison numbers. Next: multiple scales for damping and driving (needs generalised forces first), and
    several coordinates.
+   Matrix calculus is done for constant matrices (`matrix_calculus`: ordered products of matrix exponentials, the
+   product rule, merging only under declared commutation, closed forms for invertible matrices, Sylvester
+   reduction and block-matrix exponentials for integrals, every result checked on random matrices). Next:
+   time-ordered exponentials and the Magnus expansion, Duhamel integrals for exponents that do not commute with
+   their derivative, matrix-valued functions beyond the exponential, and integrals of sums of such terms as one equation.
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported

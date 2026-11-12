@@ -4,6 +4,7 @@ import type {
   IdentityMatch,
   SeriesResult,
   IntegrateResult,
+  MatrixCalculusResult,
   SimplifyResult,
 } from "@/lib/types";
 
@@ -228,3 +229,59 @@ export function identities(matches: IdentityMatch[]): IdentitiesResult {
     duration_ms: 5,
   };
 }
+
+export const okMatrixIntegral: MatrixCalculusResult = {
+  status: "ok",
+  action: "integrate",
+  input_latex: "\\exp\\left(w A\\right) \\exp\\left(- w B\\right)",
+  structure:
+    "A single term in the matrices A, B, with 2 matrix exponentials, commutation is not assumed for AB.",
+  features: ["matrix:integrate", "matrix:exp", "matrix:noncommuting"],
+  method: "sylvester_reduction",
+  method_title: "Sylvester equation for the integral",
+  result_kind: "explicit",
+  result_latex:
+    "\\left[\\begin{matrix}-1 + e & -1\\\\0 & \\frac{e^{2}}{2} - \\frac{1}{2}\\end{matrix}\\right]",
+  result_entries: [
+    ["-1 + E", "-1"],
+    ["0", "-1/2 + exp(2)/2"],
+  ],
+  equation_latex: "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+  evaluated: true,
+  assumptions_used: ["the Sylvester operator is invertible", "all matrices are constant in w"],
+  steps: [
+    {
+      method: "sylvester_reduction",
+      title: "Integrate F' = aPF + cFQ over the interval",
+      before_latex: null,
+      after_latex: "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+      note: "a Sylvester equation for X = the integral of F",
+    },
+  ],
+  blocked: [],
+  verification: {
+    method: "adaptive quadrature (mpmath) of the integrand against the solved result",
+    points_checked: 4,
+    points_agreed: 4,
+    passed: true,
+    symbolic_zero: true,
+    symbolic_method: "the explicit result substituted into the Sylvester equation",
+    note: "",
+  },
+  notes: [],
+  message: "Evaluated and verified.",
+  duration_ms: 300,
+};
+
+export const matrixRepresentation: MatrixCalculusResult = {
+  ...okMatrixIntegral,
+  method: "block_exponential",
+  method_title: "Block-matrix exponential representation",
+  result_kind: "representation",
+  result_latex:
+    "\\left[\\exp\\left(\\begin{pmatrix} -A & I \\\\ 0 & 0 \\end{pmatrix}\\right)\\right]_{12}",
+  result_entries: null,
+  evaluated: false,
+  notes: ["X is an exact representation, but not an evaluated entrywise result"],
+  message: "Written exactly through a block-matrix exponential and verified.",
+};

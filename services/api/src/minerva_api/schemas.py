@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from minerva_engine import DiffVariable, ExpressionInput
+from minerva_engine import DiffVariable, ExpressionInput, MatrixDecl
+from minerva_engine.matrix.models import MAX_MATRICES, Action
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -51,6 +52,19 @@ class SeriesRequest(ExpressionInput):
     variable: str = Field(min_length=1, max_length=32)
     point: str = Field(default="0", min_length=1, max_length=64)
     order: int = Field(default=6, ge=1, le=12)
+    save: bool = True
+
+
+class MatrixCalculusRequest(ExpressionInput):
+    """An expression in declared matrices (`input` uses `\\exp(tA)` for exponentials)."""
+
+    matrices: list[MatrixDecl] = Field(min_length=1, max_length=MAX_MATRICES)
+    commuting: list[tuple[str, str]] = Field(default_factory=list, max_length=16)
+    invertible: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
+    action: Action = "simplify"
+    variable: str | None = Field(default=None, min_length=1, max_length=32)
+    lower: str | None = Field(default=None, min_length=1, max_length=200)
+    upper: str | None = Field(default=None, min_length=1, max_length=200)
     save: bool = True
 
 

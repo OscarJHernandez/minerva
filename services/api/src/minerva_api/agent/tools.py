@@ -18,6 +18,8 @@ from minerva_engine import (
     DiffVariable,
     Engine,
     ExpressionInput,
+    MatrixCalculusInput,
+    MatrixDecl,
     MotionRequest,
     QuantitySpec,
     TensorInput,
@@ -107,6 +109,44 @@ class SeriesArgs(SimplifyArgs):
         ge=1,
         le=12,
         description="Highest power of (variable - point) kept, 1 to 12. The remainder is O of the next power.",
+    )
+
+
+class MatrixCalculusArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description="Expression in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
+        "(a bare e is an ordinary symbol). Products keep their order; matrices are constant.",
+    )
+    matrices: list[MatrixDecl] = Field(
+        min_length=1,
+        max_length=6,
+        description="Every matrix in the expression: a size (rows, cols) or explicit entries. "
+        "Ask the user for sizes or entries; never invent them.",
+    )
+    action: Literal["evaluate", "simplify", "differentiate", "integrate"] = Field(
+        default="simplify",
+        description="evaluate: explicit matrices only. simplify: merge what is provably mergeable. "
+        "differentiate/integrate need `variable`; integrate may take bounds `lower` and `upper`.",
+    )
+    variable: str | None = Field(
+        default=None, max_length=32, description="Scalar variable of differentiation or integration"
+    )
+    lower: str | None = Field(
+        default=None, max_length=200, description="Lower bound (a scalar expression)"
+    )
+    upper: str | None = Field(
+        default=None, max_length=200, description="Upper bound (a scalar expression)"
+    )
+    commuting: list[tuple[str, str]] = Field(
+        default_factory=list,
+        max_length=16,
+        description="Pairs of matrices the USER says commute. Never add a pair on your own.",
+    )
+    invertible: list[str] = Field(
+        default_factory=list,
+        max_length=6,
+        description="Matrices the USER says are invertible. Never add one on your own.",
     )
 
 
@@ -484,6 +524,97 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
         x for x in (result.input_latex, result.notation_latex, result.result_latex) if x
     ] + result.conditions_latex
     return ToolOutput(card, text, known, result.status.value)
+
+
+def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
+    request = MatrixCalculusInput(
+        expression=_expr(args),
+        matrices=args.matrices,
+        commuting=args.commuting,
+        invertible=args.invertible,
+        action=args.action,
+        variable=args.variable,
+        lower=args.lower,
+        upper=args.upper,
+    )
+    result = ctx.engine.matrix_calculus(request)
+    methods = (
+        ctx.kb.search(SearchQuery(features=result.features, chapter="math.methods", limit=4))
+        if result.features
+        else []
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="matrix_calculus",
+        type="matrix",
+        title="Matrix calculus",
+        data={
+            "result": result.model_dump(mode="json"),
+            "methods": method_data,
+            "request": request.model_dump(mode="json", exclude={"expression"}),
+        },
+    )
+    shown = result.status.value == "ok"
+    head = (
+        f"status={result.status.value}; action={result.action}; input_as_read=${result.input_latex}$; "
+        if result.input_latex
+        else f"status={result.status.value}; action={result.action}; "
+    )
+    if shown:
+        head += f"method={result.method}; kind={result.result_kind}; "
+        head += (
+            "evaluated=yes; "
+            if result.evaluated
+            else "evaluated=NO (do not call this an evaluated result); "
+        )
+        if result.result_latex:
+            head += f"result=${result.result_latex}$; "
+        if result.equation_latex:
+            head += f"equation=${result.equation_latex}$; "
+    v = result.verification
+    if v and shown:
+        head += (
+            f"verified: numeric {v.points_agreed}/{v.points_checked}"
+            + (
+                f", exact series check {'passed' if v.symbolic_zero else 'not run'}"
+                if v.symbolic_zero is not None
+                else ", no exact check was run"
+            )
+            + "; "
+        )
+    lines = [head + result.message]
+    if result.structure:
+        lines.append(f"- structure: {result.structure}")
+    known: list[str] = [
+        x for x in (result.input_latex, result.result_latex, result.equation_latex) if x
+    ]
+    if shown:
+        for s in result.steps[:6]:
+            parts = [f"- step ({s.method}): {s.title}"]
+            if s.before_latex:
+                parts.append(f"${s.before_latex}$")
+                known.append(s.before_latex)
+            if s.after_latex:
+                parts.append(f"-> ${s.after_latex}$")
+                known.append(s.after_latex)
+            if s.note:
+                parts.append(f"({s.note})")
+            lines.append(" ".join(parts))
+        lines.extend(f"- assumption used: {a}" for a in result.assumptions_used)
+    lines.extend(
+        f"- NOT APPLIED ({b.title}): needs {b.needs}" + (f" for ${b.latex}$" if b.latex else "")
+        for b in result.blocked
+    )
+    known.extend(b.latex for b in result.blocked if b.latex)
+    lines.extend(f"- note: {n}" for n in result.notes)
+    if method_data:
+        lines.append(
+            "handbook methods: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data if m.get("statement_latex"))
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 
 def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
@@ -1087,6 +1218,19 @@ TOOLS: dict[str, Tool] = {
             "'unsupported' when no closed form is found (that does not prove none exists).",
             IntegrateArgs,
             run_integrate,
+        ),
+        Tool(
+            "matrix_calculus",
+            "Calculus with noncommuting matrices and their exponentials: evaluate (explicit entries), "
+            "simplify, differentiate, or integrate products such as \\exp(wA)\\exp(-wB) in a scalar variable. "
+            "Declare every matrix (a size, or explicit entries). The method is chosen from the structure "
+            "(ordered product rule, merge only when commutation is declared or visible in the entries, "
+            "closed form for an invertible matrix, Sylvester equation, block-matrix exponential) and the "
+            "result is shown only if independent numerical checks pass. A Sylvester equation or a "
+            "block-matrix representation is NOT an evaluated integral: say so. Matrices are never assumed "
+            "to commute or to be invertible; ask the user before declaring either.",
+            MatrixCalculusArgs,
+            run_matrix_calculus,
         ),
         Tool(
             "solve_polynomial",

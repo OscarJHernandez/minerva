@@ -255,6 +255,91 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - **Status:** `unsupported`
 - The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported.
 
+### Noncommutative matrix calculus
+
+*Available in:* workbench, chat, HTTP API.
+
+Ordered products of matrix exponentials with declared matrices (a size, or explicit entries). Minerva recognises the structure and picks the technique: the ordered product rule, merging exponentials only where commutation is declared or visible in the entries, a closed form for an invertible matrix, a Sylvester equation for integrals of products such as e^(wA) e^(-wB), or a block-matrix exponential. A result is shown only if independent numerical checks agree, and an equation or a representation is never presented as an evaluated integral.
+
+**Limits**
+
+- Matrices are constant; the variable is scalar. No time-ordered exponentials, Magnus expansion or Duhamel integrals.
+- Matrices are never assumed to commute or to be invertible; both must be declared, or be visible in explicit entries.
+- Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4).
+- The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately.
+
+#### An integral of a product of noncommuting exponentials
+
+- **Expression:** `\exp(wA)\exp(-wB)`
+- **Matrix:** `A = [1, 0; 0, 2]`
+- **Matrix:** `B = [0, 1; 0, 0]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}-1 + e & -1\\0 & - \frac{1}{2} + \frac{e^{2}}{2}\end{matrix}\right]$
+- **Verified equation:** $A X - X B = \exp\left(A\right) \exp\left(-B\right) - I$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Sylvester equation for ∫ e^{(at+b)P} C e^{(ct+d)Q} dt (sylvester_reduction).
+- Assumes: the Sylvester operator X -> aPX + cXQ is invertible (its Kronecker determinant is nonzero).
+- Assumes: all matrices are constant in w.
+- Evaluated and verified.
+
+#### The same structure with abstract matrices gives a verified equation, not entries
+
+- **Expression:** `\exp(-(x-y)(y-w)A)\exp(-(w-z)(z-q)B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not an evaluated integral):** $\exp\left(-\left(x y - y^{2}\right) A\right) \left(\exp\left(\left(b x - b y\right) A\right)\left[\exp\left(b\,\begin{pmatrix} -\left(x - y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12} - \exp\left(\left(a x - a y\right) A\right)\left[\exp\left(a\,\begin{pmatrix} -\left(x - y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12}\right) \exp\left(-\left(q z - z^{2}\right) B\right)$
+- **Verified equation:** $\left(x - y\right) A X + \left(q - z\right) X B = \exp\left(-\left(- b + y\right) \left(x - y\right) A\right) \exp\left(-\left(b - z\right) \left(- q + z\right) B\right) - \exp\left(-\left(- a + y\right) \left(x - y\right) A\right) \exp\left(-\left(a - z\right) \left(- q + z\right) B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Block-matrix exponential representation (block_exponential).
+- Assumes: all matrices are constant in w.
+- Written exactly through a block-matrix exponential and verified; it is a representation, not an evaluated result.
+
+#### Derivative of a product keeps the order
+
+- **Expression:** `\exp(tA)\exp(sB)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $A \exp\left(t A\right) \exp\left(s B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Ordered product rule for exponentials (exp_derivative).
+- Assumes: all matrices are constant in t.
+- Transformed and verified.
+
+#### Exponentials of matrices that may not commute are not merged
+
+- **Expression:** `\exp(A)\exp(B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `conditions_not_satisfied`
+- Not applied: Merge exponentials into one needs AB = BA (not declared).
+- Nothing was changed because a step needs a condition that is not established: Merge exponentials into one needs AB = BA (not declared). Declare it if it holds.
+
+#### Merged once commutation is declared
+
+- **Expression:** `\exp(A)\exp(B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $\exp\left(A + B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Merge exponentials of commuting matrices (exp_merge_commuting).
+- Assumes: AB = BA (declared).
+- Transformed and verified.
+
+#### A derivative that needs a time-ordered exponential is declined
+
+- **Expression:** `\exp(t^2 A + t B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `unsupported`
+- The exponent mixes A and B, which do not commute, with coefficients that are not proportional; the derivative then needs the Duhamel integral (or a time-ordered exponential), which is not supported.
+
 ### Polynomial equations
 
 *Available in:* chat.

@@ -1,0 +1,67 @@
+# Methods behind Minerva's matrix calculus. They document and retrieve; the engine holds the logic
+# (packages/engine/src/minerva_engine/matrix/methods.py) and verifies every result itself.
+- id: method.matrix.exp_derivative
+  title: Derivative of a matrix exponential
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:differentiate", "matrix:exp"]
+  validity: "A constant square matrix. For an exponent X(t) that is not a multiple of one constant matrix, the formula needs X to commute with its derivative; otherwise the derivative is a Duhamel integral."
+  statement_latex: '\frac{d}{dt}e^{tA}=Ae^{tA}=e^{tA}A'
+  reference: {source: "N. J. Higham, Functions of Matrices (SIAM, 2008)", locator: "Ch. 10"}
+  keywords: [matrix exponential, derivative, product rule, noncommuting]
+- id: method.matrix.commuting_product
+  title: Product of exponentials of commuting matrices
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:simplify", "matrix:exp", "matrix:noncommuting"]
+  validity: "Square matrices of the same size with AB = BA. Without commutation the identity fails in general, and Minerva never reorders or merges such factors."
+  statement_latex: 'AB=BA\;\Longrightarrow\; e^{A}e^{B}=e^{A+B}=e^{B}e^{A}'
+  reference: {source: "N. J. Higham, Functions of Matrices (SIAM, 2008)", locator: "Ch. 10"}
+  keywords: [matrix exponential, commuting, product, baker campbell hausdorff, noncommuting]
+- id: method.matrix.integral_invertible
+  title: Integral of a matrix exponential with an invertible matrix
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:integrate", "matrix:exp"]
+  validity: "A square, invertible, constant matrix and a scalar a ≠ 0. For a singular matrix use the block-matrix exponential instead."
+  statement_latex: '\int_{s}^{u}e^{(at+b)A}\,dt=(aA)^{-1}\left(e^{(au+b)A}-e^{(as+b)A}\right)'
+  keywords: [matrix exponential, integral, invertible, antiderivative]
+- id: method.matrix.sylvester_integral
+  title: Sylvester equation for an integral of a product of exponentials
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:sylvester-form", "matrix:integrate"]
+  validity: "Constant square matrices P, Q and a constant matrix C of compatible size. The equation holds without any invertibility assumption, but it determines X only if the Sylvester operator is invertible."
+  statement_latex: 'F(t)=e^{tP}Ce^{tQ},\;F^{\prime}=PF+FQ,\;X=\int_a^bF\,dt\;\Longrightarrow\;PX+XQ=F(b)-F(a)'
+  reference: {source: "R. Bhatia and P. Rosenthal, How and why to solve the operator equation AX - XB = Y (Bull. London Math. Soc. 29, 1997)", locator: "pp. 1-21"}
+  keywords: [sylvester equation, integral, matrix exponential, noncommuting, product]
+- id: method.matrix.sylvester_unique
+  title: When the Sylvester operator is invertible
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:sylvester-form"]
+  validity: "Square matrices P and Q. The operator X -> PX + XQ is invertible exactly when no eigenvalue of P is the negative of an eigenvalue of Q. For explicit matrices Minerva decides this through the determinant of the Kronecker form."
+  statement_latex: '\mathcal{S}(X)=PX+XQ\ \text{is invertible}\iff \sigma(P)\cap\sigma(-Q)=\varnothing'
+  reference: {source: "R. Bhatia and P. Rosenthal, How and why to solve the operator equation AX - XB = Y (Bull. London Math. Soc. 29, 1997)", locator: "pp. 1-21"}
+  keywords: [sylvester operator, spectrum, kronecker, unique solution]
+- id: method.matrix.block_exponential
+  title: Integrals of products of exponentials from one block-matrix exponential
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:sylvester-form", "matrix:integrate"]
+  validity: "Constant square matrices P, Q and a constant C of compatible size. No invertibility and no diagonalisability are needed; the result is an exact representation, entries only for explicit matrices."
+  statement_latex: 'K=\begin{pmatrix}-P&C\\0&Q\end{pmatrix}\;\Longrightarrow\;\int_0^{\tau}e^{sP}Ce^{sQ}\,ds=e^{\tau P}\,\big[e^{\tau K}\big]_{12}'
+  reference: {source: "C. F. Van Loan, Computing integrals involving the matrix exponential (IEEE Trans. Automatic Control 23, 1978)", locator: "pp. 395-404"}
+  keywords: [block matrix, van loan, matrix exponential, integral, sylvester]

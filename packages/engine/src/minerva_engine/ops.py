@@ -7,7 +7,7 @@ boundary. `service.Engine` is the typed entry point; call these directly only in
 from __future__ import annotations
 
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,12 +39,14 @@ from .verify import verify_equal
 _REST = "__minerva_rest__"
 
 
-def parse_expression(data: ExpressionInput, limits: Limits) -> sp.Expr:
+def parse_expression(
+    data: ExpressionInput, limits: Limits, noncommutative: Iterable[str] = ()
+) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        return parse_latex(data.input, data.assumptions, limits)
-    return parse_text(data.input, data.assumptions, limits)
+        return parse_latex(data.input, data.assumptions, limits, noncommutative)
+    return parse_text(data.input, data.assumptions, limits, noncommutative)
 
 
 def _failure(exc: MinervaMathError) -> tuple[Status, str]:
@@ -137,6 +139,13 @@ def op_series(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # --- integrate -------------------------------------------------------------------------
+def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
+    from .matrix import MatrixCalculusInput, matrix_calculus
+
+    result = matrix_calculus(MatrixCalculusInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
     from .integrate import integrate
 
@@ -609,6 +618,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "differentiate": op_differentiate,
     "series": op_series,
     "integrate": op_integrate,
+    "matrix_calculus": op_matrix_calculus,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
     "perturbation_solve": op_perturbation_solve,

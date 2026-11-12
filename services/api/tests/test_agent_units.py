@@ -247,6 +247,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "differentiate",
         "series",
         "integrate",
+        "matrix_calculus",
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
@@ -867,3 +868,82 @@ def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> No
         ctx,
     )
     assert ok.status == "ok"
+
+
+REGRESSION_MATRICES = [
+    {"name": "A", "entries": [["1", "0"], ["0", "2"]]},
+    {"name": "B", "entries": [["0", "1"], ["0", "0"]]},
+]
+
+
+def test_matrix_calculus_tool_reports_an_evaluated_integral(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(wA)\exp(-wB)",
+            "matrices": REGRESSION_MATRICES,
+            "action": "integrate",
+            "variable": "w",
+            "lower": "0",
+            "upper": "1",
+        },
+        ctx,
+    )
+    assert out.card.type == "matrix" and out.status == "ok"
+    result = out.card.data["result"]
+    assert result["result_kind"] == "explicit" and result["evaluated"] is True
+    assert result["result_entries"][0][0] in ("-1 + E", "E - 1")
+    assert "evaluated=yes" in out.for_model and "verified: numeric" in out.for_model
+    assert f"result=${result['result_latex']}$" in out.for_model
+    assert result["result_latex"] in out.known_latex
+    assert result["equation_latex"] in out.known_latex
+    assert any(m["id"].startswith("method.matrix.") for m in out.card.data["methods"])
+
+
+def test_matrix_calculus_tool_never_calls_a_reduction_an_evaluation(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(tP)\exp(tQ)",
+            "matrices": [{"name": "P", "rows": 2}, {"name": "Q", "rows": 2}],
+            "action": "integrate",
+            "variable": "t",
+            "lower": "0",
+            "upper": "1",
+        },
+        ctx,
+    )
+    assert out.status == "ok"
+    assert "evaluated=NO" in out.for_model and "evaluated=yes" not in out.for_model
+    assert out.card.data["result"]["evaluated"] is False
+
+
+def test_matrix_calculus_tool_reports_what_was_not_applied(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(A)\exp(B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "simplify",
+        },
+        ctx,
+    )
+    assert out.status == "conditions_not_satisfied"
+    assert "NOT APPLIED" in out.for_model and "result=" not in out.for_model
+    declared = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(A)\exp(B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "commuting": [["A", "B"]],
+        },
+        ctx,
+    )
+    assert declared.status == "ok" and "AB = BA (declared)" in declared.for_model
+
+
+def test_matrix_calculus_tool_rejects_bad_arguments_without_raising(ctx: ToolContext) -> None:
+    out = execute("matrix_calculus", {"latex": "A", "matrices": []}, ctx)
+    assert out.card.type == "error" and out.status == "error"
+    out = execute("matrix_calculus", {"latex": "A", "matrices": [{"name": "A"}]}, ctx)
+    assert out.card.type == "error"

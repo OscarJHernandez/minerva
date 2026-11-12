@@ -13,6 +13,8 @@
 #   simplify     input, assumptions, goal (simplify | expand | factor | rewrite), target [function names]
 #   differentiate input, variables [{name, order}], assumptions
 #   series       input, variable, point, order, assumptions
+#   matrix       input, matrices [{name, rows, cols | entries}], action (evaluate | simplify | differentiate |
+#                integrate), variable, lower, upper, commuting [[A, B]], invertible [names]
 #   identities   input, assumptions, show [rule ids to display]
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
@@ -223,6 +225,82 @@ capabilities:
         variable: x
         point: "0"
         order: 3
+
+  - id: matrix-calculus
+    title: Noncommutative matrix calculus
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Ordered products of matrix exponentials with declared matrices (a size, or explicit entries). Minerva
+      recognises the structure and picks the technique: the ordered product rule, merging exponentials only
+      where commutation is declared or visible in the entries, a closed form for an invertible matrix, a
+      Sylvester equation for integrals of products such as e^(wA) e^(-wB), or a block-matrix exponential. A
+      result is shown only if independent numerical checks agree, and an equation or a representation is never
+      presented as an evaluated integral.
+    limits:
+      - Matrices are constant; the variable is scalar. No time-ordered exponentials, Magnus expansion or Duhamel integrals.
+      - Matrices are never assumed to commute or to be invertible; both must be declared, or be visible in explicit entries.
+      - Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4).
+      - The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately.
+    examples:
+      - id: matrix-integral-explicit
+        title: An integral of a product of noncommuting exponentials
+        op: matrix
+        input: '\exp(wA)\exp(-wB)'
+        matrices:
+          - { name: A, entries: [["1", "0"], ["0", "2"]] }
+          - { name: B, entries: [["0", "1"], ["0", "0"]] }
+        action: integrate
+        variable: w
+        lower: "0"
+        upper: "1"
+      - id: matrix-integral-abstract
+        title: The same structure with abstract matrices gives a verified equation, not entries
+        op: matrix
+        input: '\exp(-(x-y)(y-w)A)\exp(-(w-z)(z-q)B)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        action: integrate
+        variable: w
+        lower: a
+        upper: b
+      - id: matrix-derivative
+        title: Derivative of a product keeps the order
+        op: matrix
+        input: '\exp(tA)\exp(sB)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        action: differentiate
+        variable: t
+      - id: matrix-merge-blocked
+        title: Exponentials of matrices that may not commute are not merged
+        op: matrix
+        input: '\exp(A)\exp(B)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        action: simplify
+      - id: matrix-merge-declared
+        title: Merged once commutation is declared
+        op: matrix
+        input: '\exp(A)\exp(B)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        commuting: [[A, B]]
+        action: simplify
+      - id: matrix-time-ordered
+        title: A derivative that needs a time-ordered exponential is declined
+        op: matrix
+        input: '\exp(t^2 A + t B)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        action: differentiate
+        variable: t
 
   - id: identities
     title: Identity search with applicability checks

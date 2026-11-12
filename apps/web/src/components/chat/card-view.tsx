@@ -5,6 +5,7 @@ import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
 import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
+import { MatrixPanel } from "../matrix-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
@@ -27,6 +28,8 @@ export function CardView({ card }: { card: Card }) {
       return <SeriesPanel result={card.data} />;
     case "integrate":
       return <IntegralPanel result={card.data} />;
+    case "matrix":
+      return <MatrixPanel result={card.data.result} methods={card.data.methods} />;
     case "identities":
       return <IdentitiesPanel result={card.data} />;
     case "entries":

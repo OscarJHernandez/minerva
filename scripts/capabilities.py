@@ -21,6 +21,7 @@ from typing import Any
 import yaml
 from minerva_engine import Engine
 from minerva_engine.differentiate import DiffVariable
+from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
 from minerva_knowledge import KnowledgeBase
 from minerva_knowledge.identities import find_identities, simplify_expression
@@ -401,10 +402,64 @@ def run_read_formulas(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
     )
 
 
+def _matrix_text(m: dict[str, Any]) -> str:
+    if m.get("entries"):
+        return f"{m['name']} = [" + "; ".join(", ".join(row) for row in m["entries"]) + "]"
+    rows = m["rows"]
+    return f"{m['name']}: {rows} by {m.get('cols') or rows}, entries not given"
+
+
+def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    request = MatrixCalculusInput(
+        expression=ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        matrices=spec["matrices"],
+        commuting=[tuple(p) for p in spec.get("commuting", [])],
+        invertible=spec.get("invertible", []),
+        action=spec["action"],
+        variable=spec.get("variable"),
+        lower=spec.get("lower"),
+        upper=spec.get("upper"),
+    )
+    r = engine.matrix_calculus(request)
+    inputs = [{"label": "Expression", "source": spec["input"]}]
+    inputs += [{"label": "Matrix", "source": _matrix_text(m)} for m in spec["matrices"]]
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        heading = {
+            "explicit": "Result",
+            "expression": "Result",
+            "equation": "Equation (not an evaluated integral)",
+            "representation": "Exact representation (not an evaluated integral)",
+        }[r.result_kind or "expression"]
+        if r.result_latex:
+            outputs.append({"label": heading, "latex": r.result_latex})
+        if r.equation_latex:
+            outputs.append({"label": "Verified equation", "latex": r.equation_latex})
+        if r.method:
+            notes.append(f"Method: {r.method_title} ({r.method}).")
+        notes += [f"Assumes: {a}." for a in r.assumptions_used if not a.startswith("scalar")]
+        if r.verification:
+            v = r.verification
+            checks.append(
+                f"numeric check agreed at {v.points_agreed} of {v.points_checked} random samples"
+            )
+            if v.symbolic_zero is not None:
+                checks.append(
+                    "exact check through degree 4: " + ("passed" if v.symbolic_zero else "failed")
+                )
+    for b in r.blocked:
+        notes.append(f"Not applied: {b.title} needs {b.needs}.")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
     "series": run_series,
+    "matrix": run_matrix,
     "identities": run_identities,
     "tensor": run_tensor,
     "solve": run_solve,

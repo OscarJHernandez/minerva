@@ -1,0 +1,90 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { matrixRepresentation, okMatrixIntegral } from "@/test/fixtures";
+import { MatrixPanel } from "./matrix-panel";
+
+describe("MatrixPanel", () => {
+  it("shows the structure, method, assumptions, steps and both checks of an evaluated result", () => {
+    render(<MatrixPanel result={okMatrixIntegral} />);
+    expect(screen.getByText("Evaluated and verified", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText(/commutation is not assumed for AB/)).toBeInTheDocument();
+    expect(screen.getAllByText("sylvester_reduction", { selector: "code" }).length).toBe(2);
+    expect(screen.getByLabelText("Result")).toBeInTheDocument();
+    expect(screen.getByLabelText("Equation")).toBeInTheDocument();
+    expect(screen.getByText(/the Sylvester operator is invertible/)).toBeInTheDocument();
+    expect(screen.getByText(/4 of 4 sample points agree/)).toBeInTheDocument();
+    expect(screen.getByText(/Passed: the explicit result substituted/)).toBeInTheDocument();
+    expect(screen.queryByTestId("not-evaluated")).not.toBeInTheDocument();
+  });
+
+  it("never calls a representation an evaluated integral", () => {
+    render(<MatrixPanel result={matrixRepresentation} />);
+    expect(screen.getByText("Represented exactly, not evaluated")).toBeInTheDocument();
+    expect(screen.getByTestId("not-evaluated")).toHaveTextContent(/was not evaluated/);
+    expect(screen.queryByText("Evaluated and verified")).not.toBeInTheDocument();
+  });
+
+  it("never shows a result for a failure status", () => {
+    for (const status of [
+      "unsupported",
+      "not_verified",
+      "parse_error",
+      "resource_limit",
+      "conditions_not_satisfied",
+    ] as const) {
+      const { unmount } = render(
+        <MatrixPanel
+          result={{
+            ...okMatrixIntegral,
+            status,
+            result_kind: null,
+            result_latex: "SHOULD-NOT-APPEAR",
+            equation_latex: "SHOULD-NOT-APPEAR",
+            verification: null,
+            message: "Explained here.",
+          }}
+        />,
+      );
+      expect(screen.queryByLabelText("Result")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Equation")).not.toBeInTheDocument();
+      expect(screen.queryByText(/SHOULD-NOT-APPEAR/)).not.toBeInTheDocument();
+      expect(screen.getByText("Explained here.")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("lists what was not applied and why", () => {
+    render(
+      <MatrixPanel
+        result={{
+          ...okMatrixIntegral,
+          status: "conditions_not_satisfied",
+          result_kind: null,
+          verification: null,
+          blocked: [
+            {
+              method: "exp_merge_commuting",
+              title: "Merge exponentials into one",
+              needs: "AB = BA (not declared)",
+              latex: "\\exp\\left(A\\right) \\exp\\left(B\\right)",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText(/Not applied/)).toBeInTheDocument();
+    expect(screen.getByText(/AB = BA \(not declared\)/)).toBeInTheDocument();
+  });
+
+  it("says when the exact check was not run", () => {
+    render(
+      <MatrixPanel
+        result={{
+          ...okMatrixIntegral,
+          verification: { ...okMatrixIntegral.verification!, symbolic_zero: null },
+        }}
+      />,
+    );
+    expect(screen.getByText(/Not run \(the numeric check decides\)/)).toBeInTheDocument();
+  });
+});

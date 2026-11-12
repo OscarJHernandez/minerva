@@ -73,9 +73,14 @@ class Builder:
     """Creates symbols (with the user's assumptions) and guarded compound expressions."""
 
     def __init__(
-        self, assumptions: dict[str, list[str]] | None = None, limits: Limits | None = None
+        self,
+        assumptions: dict[str, list[str]] | None = None,
+        limits: Limits | None = None,
+        noncommutative: Iterable[str] = (),
     ) -> None:
         self.limits = limits or Limits()
+        # Names that stand for matrices: their products keep their order (matrix calculus only).
+        self.noncommutative = frozenset(noncommutative)
         self._assumptions: dict[str, dict[str, bool]] = {}
         for name, items in (assumptions or {}).items():
             unknown = set(items) - ALLOWED_ASSUMPTIONS
@@ -105,6 +110,11 @@ class Builder:
         if name in RESERVED_NAMES:
             raise ParseError(f"{name!r} is a reserved function or constant name")
         if name not in self.symbols:
+            if name in self.noncommutative:
+                if self._assumptions.get(name):
+                    raise ParseError(f"{name!r} is a matrix and cannot carry scalar assumptions")
+                self.symbols[name] = sp.Symbol(name, commutative=False)
+                return self.symbols[name]
             try:
                 self.symbols[name] = sp.Symbol(name, **self._assumptions.get(name, {}))
             except ValueError as exc:  # sympy's InconsistentAssumptions is a ValueError

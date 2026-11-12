@@ -4,6 +4,8 @@ import type {
   EntrySummary,
   IdentitiesResult,
   IntegrateResult,
+  MatrixCalculusResult,
+  MatrixRequest,
   SimplifyResult,
   Status,
 } from "./types";
@@ -351,6 +353,13 @@ export type Card =
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
   | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
   | { id: string; tool: string; type: "integrate"; title: string; data: IntegrateResult }
+  | {
+      id: string;
+      tool: string;
+      type: "matrix";
+      title: string;
+      data: { result: MatrixCalculusResult; methods: EntrySummary[]; request: MatrixRequest };
+    }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {
       id: string;

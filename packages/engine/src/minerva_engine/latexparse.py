@@ -17,6 +17,7 @@ Conventions (documented in docs/architecture.md):
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import sympy as sp
@@ -401,11 +402,12 @@ def parse_latex(
     source: str,
     assumptions: dict[str, list[str]] | None = None,
     limits: Limits | None = None,
+    noncommutative: Iterable[str] = (),
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
         raise LimitError("input is too long")
-    builder = Builder(assumptions, limits)
+    builder = Builder(assumptions, limits, noncommutative)
     parser = _Parser(_tokenize(source), builder)
     try:
         expr = parser.parse()
