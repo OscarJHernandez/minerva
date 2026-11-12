@@ -19,6 +19,9 @@ api:
   # Empty = use the socket peer, which behind the web proxy is one shared address.
   trustedIpHeader: ""
   compute: { timeoutSeconds: 10, memoryMb: 1024, maxConcurrency: 4 }
+  # Chat model. "off" disables chat; "ollama" uses your own Ollama-compatible host. The host address is
+  # deployment specific: pass it through extra values (HELM_EXTRA_VALUES), never commit it.
+  llm: { mode: "off", baseUrl: "", model: "", timeoutSeconds: 120, think: false, stripThinking: false }
   resources:
     requests: { cpu: 250m, memory: 512Mi }
     limits: { memory: 2Gi }
