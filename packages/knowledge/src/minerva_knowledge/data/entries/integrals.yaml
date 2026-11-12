@@ -5,7 +5,7 @@
   section: definite
   verification: numeric
   validity: "a > 0."
-  statement_latex: '\int_{-\infty}^{\infty} e^{-a x^2}\,dx = \sqrt{\frac{\pi}{a}}'
+  statement_latex: '\int_{-\infty}^{\infty} \mathrm{e}^{-a x^2}\,dx = \sqrt{\frac{\pi}{a}}'
   check:
     kind: integral
     integrand: "exp(-a*x**2)"
@@ -22,7 +22,7 @@
   section: definite
   verification: numeric
   validity: "a > 0."
-  statement_latex: '\int_0^\infty e^{-a x}\,dx = \frac{1}{a}'
+  statement_latex: '\int_0^\infty \mathrm{e}^{-a x}\,dx = \frac{1}{a}'
   check: {kind: integral, integrand: "exp(-a*x)", variable: x, lower: "0", upper: "oo", result: "1/a", params: {a: {min: 0.5, max: 3.0}}}
   keywords: [exponential, laplace, integral]
 - id: int.laplace_cos
@@ -32,7 +32,7 @@
   section: definite
   verification: numeric
   validity: "a > 0, b real."
-  statement_latex: '\int_0^\infty e^{-a x}\cos(bx)\,dx = \frac{a}{a^2+b^2}'
+  statement_latex: '\int_0^\infty \mathrm{e}^{-a x}\cos(bx)\,dx = \frac{a}{a^2+b^2}'
   check:
     kind: integral
     integrand: "exp(-a*x)*cos(b*x)"
@@ -49,7 +49,7 @@
   section: definite
   verification: numeric
   validity: "a > 0, b real."
-  statement_latex: '\int_0^\infty e^{-a x}\sin(bx)\,dx = \frac{b}{a^2+b^2}'
+  statement_latex: '\int_0^\infty \mathrm{e}^{-a x}\sin(bx)\,dx = \frac{b}{a^2+b^2}'
   check:
     kind: integral
     integrand: "exp(-a*x)*sin(b*x)"
@@ -75,7 +75,7 @@
   section: definite
   verification: numeric
   validity: "s > 0."
-  statement_latex: '\int_0^\infty x^{s-1}e^{-x}\,dx = \Gamma(s)'
+  statement_latex: '\int_0^\infty x^{s-1}\mathrm{e}^{-x}\,dx = \Gamma(s)'
   check:
     kind: integral
     integrand: "x**(s - 1)*exp(-x)"

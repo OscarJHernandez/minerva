@@ -44,6 +44,7 @@ from .dimensions import (
 )
 from .errors import MinervaMathError
 from .latexparse import parse_latex
+from .latexprint import to_latex
 from .models import SYMBOL_NAME_MAX, Limits, Status
 
 MAX_QUANTITIES = 16
@@ -183,7 +184,7 @@ def _atom(display: str) -> str:
 
 def _tex(expr: sp.Expr, displays: list[str]) -> str:
     """LaTeX of an expression built from placeholder symbols, with their display forms put back."""
-    text = sp.latex(expr)
+    text = to_latex(expr)
     return _PLACEHOLDER.sub(lambda m: _atom(displays[_placeholder_index(m.group())]), text)
 
 
@@ -192,7 +193,7 @@ def _placeholder_index(name: str) -> int:
 
 
 def _symbol_latex(name: str) -> str:
-    text = sp.latex(sp.Symbol(name))
+    text = to_latex(sp.Symbol(name))
     return rf"\mathrm{{{text}}}" if re.fullmatch(r"[A-Za-z]{2,}", text) else text
 
 
@@ -611,7 +612,7 @@ def _with_missing(
 # --- public operation: unit check of one equation -----------------------------------------------
 def _side(expr: sp.Expr, d: Dim) -> SideReading:
     return SideReading(
-        latex=sp.latex(expr), dimension_text=dim_text(d), dimension_latex=dim_latex(d)
+        latex=to_latex(expr), dimension_text=dim_text(d), dimension_latex=dim_latex(d)
     )
 
 
@@ -640,7 +641,7 @@ def check_units(
 
     report = UnitsCheckReport(
         status=Status.OK,
-        equation_latex=" = ".join(sp.latex(p) for p in parsed),
+        equation_latex=" = ".join(to_latex(p) for p in parsed),
         quantities=readings,
         notes=[
             "A matching dimension does not prove an equation is correct; a mismatch proves it is "

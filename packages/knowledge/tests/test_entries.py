@@ -72,3 +72,14 @@ def test_dimensional_methods_are_retrieved_by_feature() -> None:
     ]:
         found = {e.id for e in kb.search(SearchQuery(features=[feature], limit=10))}
         assert expected <= found
+
+
+def test_statements_use_the_constant_convention(kb: KnowledgeBase) -> None:
+    r"""`\mathrm{e}`/`\mathrm{i}` are the constants; the parser aliases never appear in displayed text."""
+    import re
+
+    for e in kb.entries:
+        text = kb.statement_latex(e)
+        assert "\\exponentialE" not in text and "\\imaginaryI" not in text, e.id
+        if e.id != "physics.constants.elementary-charge":
+            assert not re.search(r"(?<![\w\\{])e\^", text), f"{e.id}: bare e^ (use \\mathrm{{e}}^)"

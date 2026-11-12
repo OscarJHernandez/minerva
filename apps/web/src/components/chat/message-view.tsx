@@ -1,5 +1,5 @@
 import type { StoredMessage } from "@/lib/chat-types";
-import { parseInlineMath } from "@/lib/inline-math";
+import { splitMath } from "@/lib/inline-math";
 import { CardView } from "./card-view";
 import { DebugPanel } from "./debug-panel";
 import { RichText } from "./rich-text";
@@ -16,7 +16,7 @@ export function MessageView({
     return (
       <div className="flex justify-end">
         <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-accent-soft px-4 py-2.5 text-ink">
-          <RichText segments={parseInlineMath(message.content.text)} />
+          <RichText segments={splitMath(message.content.text)} />
         </div>
       </div>
     );

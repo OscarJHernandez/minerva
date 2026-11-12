@@ -19,7 +19,7 @@ export function IntegralPanel({ result }: { result: IntegrateResult }) {
         <h2 id="integral-heading" className="font-serif text-xl">
           Integrate
         </h2>
-        <StatusPill status={result.status} okLabel="Integrated and verified" />
+        <StatusPill status={result.status} okLabel="Integrated, numerically checked" />
       </div>
 
       {result.input_latex && (

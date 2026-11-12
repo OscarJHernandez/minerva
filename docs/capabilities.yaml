@@ -51,8 +51,9 @@ capabilities:
     limits:
       - Numerical agreement at sample points is evidence, not proof; only a passed symbolic zero test means SymPy
         also reduced the difference to zero. Both are reported for every step.
-      - Steps are equalities where both sides are defined. Removable singularities and branch choices outside
-        the declared assumptions are not tracked.
+      - Steps are equalities where both sides are defined. When the result excludes points the input did not
+        (a cancelled factor), it says where it is valid (`x \neq 1`); square-root, logarithm and branch-cut
+        domains are not reported this way.
       - The search is bounded (at most 4 rewrites in a row, a few alternatives per step, a time budget). "Nothing
         better was found" does not show that no better form exists.
       - An identity that matches but whose conditions are not provable from your assumptions is reported with the
@@ -70,6 +71,12 @@ capabilities:
         title: Difference of fourth powers
         op: simplify
         input: '\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}'
+      - id: simplify-cancelled-singularity
+        title: Cancelling a factor keeps its restriction
+        note: >-
+          The result is `x + 1`, valid only where `x \neq 1`; the two expressions differ in domain.
+        op: simplify
+        input: '\frac{x^2-1}{x-1}'
       - id: simplify-sqrt-general
         title: Square root of a square, no assumptions
         note: >-

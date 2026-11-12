@@ -17,6 +17,7 @@ from .claims import ClaimCheck, check_claim, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
 from .features import expression_features
 from .latexparse import parse_latex
+from .latexprint import to_latex
 from .models import (
     Applicability,
     ExpressionInput,
@@ -32,6 +33,7 @@ from .models import (
     TensorResult,
     Verification,
 )
+from .restrictions import domain_restrictions
 from .tensor import canonicalize
 from .textparse import parse_text
 from .verify import verify_equal
@@ -39,12 +41,14 @@ from .verify import verify_equal
 _REST = "__minerva_rest__"
 
 
-def parse_expression(data: ExpressionInput, limits: Limits) -> sp.Expr:
+def parse_expression(
+    data: ExpressionInput, limits: Limits, denominators: list[sp.Expr] | None = None
+) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        return parse_latex(data.input, data.assumptions, limits)
-    return parse_text(data.input, data.assumptions, limits)
+        return parse_latex(data.input, data.assumptions, limits, denominators)
+    return parse_text(data.input, data.assumptions, limits, denominators)
 
 
 def _failure(exc: MinervaMathError) -> tuple[Status, str]:
@@ -53,25 +57,40 @@ def _failure(exc: MinervaMathError) -> tuple[Status, str]:
     return Status.PARSE_ERROR, str(exc)
 
 
+def _restriction_note(restrictions: list[str], complete: bool) -> str:
+    if not complete:
+        return (
+            " Where the result is valid could not be determined; do not assume it holds at poles."
+        )
+    if restrictions:
+        return " The result is valid only where " + ", ".join(restrictions) + "."
+    return ""
+
+
 # --- simplify ---------------------------------------------------------------------------
 def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
+    denominators: list[sp.Expr] = []
     try:
-        expr = parse_expression(data, limits)
+        expr = parse_expression(data, limits, denominators)
     except MinervaMathError as exc:
         status, message = _failure(exc)
         return SimplifyResult(status=status, message=message).model_dump(mode="json")
 
-    input_latex = sp.latex(expr)
+    input_latex = to_latex(expr)
     result = sp.simplify(expr)
+    restrictions, complete = domain_restrictions(expr, result, denominators)
+    note = _restriction_note(restrictions, complete)
     if result == expr:
         return SimplifyResult(
             status=Status.UNCHANGED,
             input_latex=input_latex,
             result_latex=input_latex,
             result_text=str(expr),
-            message="No simpler form was found. The expression is returned unchanged.",
+            restrictions_latex=restrictions,
+            restrictions_complete=complete,
+            message="No simpler form was found. The expression is returned unchanged." + note,
         ).model_dump(mode="json")
 
     verification = verify_equal(expr, result)
@@ -89,10 +108,20 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     return SimplifyResult(
         status=Status.OK,
         input_latex=input_latex,
-        result_latex=sp.latex(result),
+        result_latex=to_latex(result),
         result_text=str(result),
         verification=verification,
-        message="Simplified with SymPy and verified.",
+        restrictions_latex=restrictions,
+        restrictions_complete=complete,
+        message=(
+            "Simplified with SymPy and verified"
+            + (
+                " (symbolic zero and numeric check)."
+                if verification.symbolic_zero
+                else " numerically."
+            )
+            + note
+        ),
     ).model_dump(mode="json")
 
 
@@ -280,7 +309,7 @@ def op_read_formulas(payload: dict[str, Any]) -> dict[str, Any]:
                 raise LimitError("input is too long")
             sides = split_equation(text) or [text]
             parsed = [parse_latex(side, {}, limits) for side in sides]
-            read_as = " = ".join(sp.latex(p) for p in parsed)
+            read_as = " = ".join(to_latex(p) for p in parsed)
             reading = FormulaReading(status=Status.OK, read_as=read_as)
         except MinervaMathError as exc:
             status, message = _failure(exc)
@@ -304,7 +333,7 @@ def op_features(payload: dict[str, Any]) -> dict[str, Any]:
         "status": Status.OK.value,
         "message": "",
         "features": sorted(expression_features(expr)),
-        "input_latex": sp.latex(expr),
+        "input_latex": to_latex(expr),
     }
 
 
@@ -468,7 +497,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
     """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
     first_blocked: RuleApplication | None = None
     for rewrite in rule_rewrites(expr, rule):
-        matched_latex = sp.latex(rewrite.node)
+        matched_latex = to_latex(rewrite.node)
         if rewrite.unmet:
             first_blocked = first_blocked or RuleApplication(
                 rule_id=rule.id,
@@ -480,6 +509,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             )
             continue
         verification = verify_equal(expr, rewrite.rewritten, symbolic=False)
+        restrictions, complete = domain_restrictions(expr, rewrite.rewritten)
         if not verification.passed:
             return RuleApplication(
                 rule_id=rule.id,
@@ -492,9 +522,12 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             rule_id=rule.id,
             applicability=Applicability.APPLICABLE,
             matched_subexpression_latex=matched_latex,
-            rewritten_latex=sp.latex(rewrite.rewritten),
+            rewritten_latex=to_latex(rewrite.rewritten),
             verification=verification,
-            message="Matched, conditions hold, and the rewrite was verified.",
+            restrictions_latex=restrictions,
+            restrictions_complete=complete,
+            message="Matched, conditions hold, and the rewrite was verified numerically."
+            + _restriction_note(restrictions, complete),
         )
     if first_blocked is not None:
         return first_blocked
@@ -541,7 +574,7 @@ def op_identities(payload: dict[str, Any]) -> dict[str, Any]:
             )
     return IdentitiesResult(
         status=Status.OK,
-        input_latex=sp.latex(expr),
+        input_latex=to_latex(expr),
         applications=applications,
         message="",
     ).model_dump(mode="json")
@@ -560,6 +593,25 @@ def op_transform(payload: dict[str, Any]) -> dict[str, Any]:
         width=int(payload.get("width", 4)),
         depth=int(payload.get("depth", 4)),
     )
+    if result.status in (Status.OK, Status.UNCHANGED) and result.result_text:
+        denominators: list[sp.Expr] = []
+        try:
+            limits = Limits(**payload["limits"])
+            before = parse_expression(
+                ExpressionInput(**payload["expression"]), limits, denominators
+            )
+            after = parse_text(
+                result.result_text, ExpressionInput(**payload["expression"]).assumptions, limits
+            )
+            result.restrictions_latex, result.restrictions_complete = domain_restrictions(
+                before, after, denominators
+            )
+        except Exception:  # undetermined is reported, never dropped
+            result.restrictions_complete = False
+        if not result.restrictions_complete:
+            result.message += _restriction_note([], False)
+        elif result.restrictions_latex:
+            result.message += _restriction_note(result.restrictions_latex, True)
     return result.model_dump(mode="json")
 
 
@@ -577,7 +629,7 @@ def op_tensor_canonicalize(payload: dict[str, Any]) -> dict[str, Any]:
         status=Status.OK if changed else Status.UNCHANGED,
         input_text=str(parsed),
         result_text=str(canonical),
-        result_latex=sp.latex(canonical),
+        result_latex=to_latex(canonical),
         independent_verification=False,
         message=(
             "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm "

@@ -12,18 +12,47 @@ import re
 
 from .events import Segment
 
+# `$` follows the pandoc rule: the opener is not followed by whitespace, the closer is not preceded by
+# whitespace or followed by a digit, so prices such as "$5 to $10" stay text. A bare environment
+# (`\\begin{aligned}...\\end{aligned}`) is a display formula. `apps/web/src/lib/inline-math.ts` mirrors this.
 _MATH = re.compile(
-    r"\$\$(?P<d1>.+?)\$\$|\\\[(?P<d2>.+?)\\\]|\\\((?P<i2>.+?)\\\)|(?<!\\)\$(?P<i1>[^$\n]+?)(?<!\\)\$",
+    r"\$\$(?P<d1>.+?)\$\$"
+    r"|\\\[(?P<d2>.+?)\\\]"
+    r"|\\\((?P<i2>.+?)\\\)"
+    r"|(?P<d3>\\begin\{(?P<env>align\*?|aligned|equation\*?|gather\*?|eqnarray\*?)\}.+?\\end\{(?P=env)\})"
+    r"|(?<![\\$])\$(?!\s|\$)(?P<i1>[^$\n]*?[^$\s\\])\$(?![\d$])",
     re.DOTALL,
 )
-_STRIP = re.compile(r"\\left|\\right|\\,|\;|\\!|\\ |\s+|\{\}")
+# Spacing commands carry no meaning; `\\` (line break) is not one and is kept. Anchored so that
+# `\leftarrow` is not read as `\left` + `arrow`.
+_SPACING = re.compile(
+    r"\\(?:left|right|quad|qquad|thinspace|medspace|thickspace)(?![A-Za-z])|\\[,;:>! ]"
+)
+_ALIASES = (
+    (re.compile(r"\\exponentialE(?![A-Za-z])"), r"\\mathrm{e}"),
+    (re.compile(r"\\imaginaryI(?![A-Za-z])"), r"\\mathrm{i}"),
+)
+_COMMAND_GAP = re.compile(r"(\\[A-Za-z]+)\s+(?=[A-Za-z])")
+_BRACED = re.compile(r"(?<!\\mathrm)\{(\w)\}")
 
 
 def normalize(latex: str) -> str:
-    """Whitespace- and size-command-insensitive form used for comparison."""
-    text = _STRIP.sub("", latex)
-    # Redundant braces around single tokens, e.g. x^{2} versus x^2
-    return re.sub(r"\{(\w)\}", r"\1", text)
+    """Whitespace-, spacing-command- and alias-insensitive form used for comparison.
+
+    `\\exponentialE` and `\\imaginaryI` equal `\\mathrm{e}` and `\\mathrm{i}`; a bare `e` or `i` is a
+    variable and is left alone. A space that ends a command name is kept (`\\in t` is not `\\int`).
+    """
+    text = latex
+    for pattern, replacement in _ALIASES:
+        text = pattern.sub(replacement, text)
+    text = _SPACING.sub(" ", text.replace("\\\\", "\x00")).replace("\x00", "\\\\")
+    text = text.replace("{}", "")
+    text = _COMMAND_GAP.sub("\\1\x01", text)
+    text = re.sub(r"\s+", "", text).replace("\x01", " ")
+    # Redundant braces around single tokens, e.g. x^{2} versus x^2 (repeated: {{x}} is x)
+    while (reduced := _BRACED.sub(r"\1", text)) != text:
+        text = reduced
+    return text
 
 
 _TOKEN = re.compile(r"[\w^+\-*/().{}\\|=<>!,]+")
@@ -115,10 +144,16 @@ def split_segments(text: str, known: set[str]) -> list[Segment]:
     for match in _MATH.finditer(text):
         if match.start() > position:
             segments.extend(_text_segments(text[position : match.start()], known))
-        display = match.group("d1") is not None or match.group("d2") is not None
+        display = any(match.group(n) is not None for n in ("d1", "d2", "d3"))
         body = next(
             g
-            for g in (match.group("d1"), match.group("d2"), match.group("i2"), match.group("i1"))
+            for g in (
+                match.group("d1"),
+                match.group("d2"),
+                match.group("i2"),
+                match.group("d3"),
+                match.group("i1"),
+            )
             if g is not None
         )
         body = body.strip()

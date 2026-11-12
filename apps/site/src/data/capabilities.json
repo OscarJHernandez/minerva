@@ -37,7 +37,7 @@
       "summary": "Searches a short chain of rewrites toward a goal (simplify, expand, factor, or rewrite in given functions): handbook identities, each at every place it matches and read in either direction, plus SymPy's own moves. Every step is checked at random complex sample points and, separately, with a symbolic zero test; the steps and the identities used are shown. A result that cannot be verified is never shown.",
       "limits": [
         "Numerical agreement at sample points is evidence, not proof; only a passed symbolic zero test means SymPy also reduced the difference to zero. Both are reported for every step.",
-        "Steps are equalities where both sides are defined. Removable singularities and branch choices outside the declared assumptions are not tracked.",
+        "Steps are equalities where both sides are defined. When the result excludes points the input did not (a cancelled factor), it says where it is valid (`x \\neq 1`); square-root, logarithm and branch-cut domains are not reported this way.",
         "The search is bounded (at most 4 rewrites in a row, a few alternatives per step, a time budget). \"Nothing better was found\" does not show that no better form exists.",
         "An identity that matches but whose conditions are not provable from your assumptions is reported with the unmet conditions and never applied.",
         "Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.",
@@ -68,8 +68,8 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -104,12 +104,42 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "step 2: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "step 3: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "step 2: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "step 3: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
+        },
+        {
+          "id": "simplify-cancelled-singularity",
+          "title": "Cancelling a factor keeps its restriction",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\frac{x^2-1}{x-1}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "x + 1"
+            },
+            {
+              "label": "Step 1: Difference of squares (alg.difference_of_squares)",
+              "latex": "\\frac{x^{2} - 1}{x - 1} = x + 1"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "The result is `x + 1`, valid only where `x \\neq 1`; the two expressions differ in domain."
+          ]
         },
         {
           "id": "simplify-sqrt-general",
@@ -242,9 +272,9 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "step 2: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "step 2: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": [
             "The Pythagorean identity turns sin^2 + cos^2 into 1, and then 1 + tan^2 = sec^2. Neither identity alone reaches the result; each step is verified before the next is tried."
@@ -273,8 +303,8 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -329,8 +359,8 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -357,8 +387,8 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -385,8 +415,8 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -413,8 +443,8 @@
             }
           ],
           "checks": [
-            "step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points",
-            "end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -518,7 +548,7 @@
           "outputs": [
             {
               "label": "Derivative",
-              "latex": "\\frac{d^{3}}{d x^{3}} e^{- x^{2}} = \\left(- 8 x^{3} + 12 x\\right) e^{- x^{2}}"
+              "latex": "\\frac{d^{3}}{d x^{3}} \\mathrm{e}^{- x^{2}} = \\left(- 8 x^{3} + 12 x\\right) \\mathrm{e}^{- x^{2}}"
             }
           ],
           "checks": [
@@ -747,7 +777,7 @@
             }
           ],
           "checks": [
-            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         },
@@ -770,7 +800,7 @@
             }
           ],
           "checks": [
-            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
           ],
           "notes": []
         }
@@ -809,7 +839,7 @@
             },
             {
               "label": "Roots in radicals",
-              "latex": "-1,\\ - i,\\ i"
+              "latex": "-1,\\ - \\mathrm{i},\\ \\mathrm{i}"
             }
           ],
           "checks": [
@@ -905,8 +935,8 @@
             }
           ],
           "checks": [
-            "cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
@@ -950,8 +980,8 @@
             }
           ],
           "checks": [
-            "energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
@@ -1037,8 +1067,8 @@
             }
           ],
           "checks": [
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.",
@@ -1075,8 +1105,8 @@
             }
           ],
           "checks": [
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
-            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
           ],
           "notes": [
             "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.",

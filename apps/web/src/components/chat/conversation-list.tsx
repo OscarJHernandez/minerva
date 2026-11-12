@@ -1,7 +1,7 @@
 "use client";
 
 import type { ConversationSummary } from "@/lib/chat-types";
-import { parseInlineMath } from "@/lib/inline-math";
+import { splitMath } from "@/lib/inline-math";
 import { RichText } from "./rich-text";
 
 export function ConversationList({
@@ -39,7 +39,7 @@ export function ConversationList({
                   : "text-muted hover:bg-sunk hover:text-ink"
               }`}
             >
-              <RichText segments={parseInlineMath(c.title)} />
+              <RichText segments={splitMath(c.title)} />
             </button>
             <button
               type="button"

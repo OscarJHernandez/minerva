@@ -75,6 +75,9 @@ export interface SimplifyResult {
   result_latex: string | null;
   result_text: string | null;
   verification: Verification | null;
+  /** Points the result excludes that the input did not (e.g. `x \\neq 1`). */
+  restrictions_latex?: string[];
+  restrictions_complete?: boolean;
   message: string;
   duration_ms: number;
   calculation_id?: string | null;
@@ -197,6 +200,8 @@ export interface RuleApplication {
   rewritten_latex: string | null;
   unmet_conditions: RuleCondition[];
   verification: Verification | null;
+  restrictions_latex?: string[];
+  restrictions_complete?: boolean;
   message: string;
 }
 

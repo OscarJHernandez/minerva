@@ -85,6 +85,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
   (`MINERVA_LLM_VISION_MODEL`) proposes LaTeX, the user confirms it, and `Engine.read_formulas` reports how the
   strict parser reads it. Uploaded images are never stored or logged; keep it that way.
+- A turn is bounded: `AgentLimits` caps steps, total tool calls (12) and seconds, enforced during model streaming, between
+  tool calls and around the claim check; a failing or hanging tool becomes an error card with fixed text, never its cause.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
   copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.
   The data comes from `AssistantMessage.trace/debug` stored with the message. The server log gets counters and
@@ -104,6 +106,18 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Handbook entries declare `verification`: symbolic / numeric / structural / dimensional / stated.
   `stated` entries are literature records, never applied, and must not carry a rule or check.
   Do not label an entry `symbolic` unless the checker finds a symbolic zero.
+- Numeric agreement is evidence, not proof. `verify_equal` samples two tranches (ordinary region and a wide one,
+  |x| up to 50, |Im| up to 10, high precision) and counts a point where only one side is a pole as a disagreement;
+  `Verification.symbolic_zero` is the only symbolic evidence. UI and tool text say "proved equal" only with a symbolic
+  zero and otherwise "numerically checked". Do not shrink the wide tranche: `log(exp(z)) = z` and `|x-10| = 10-x` pass
+  the ordinary region alone (`test_verify.py`).
+- Restrictions (`restrictions.py`): simplify and rule application report where the result is valid when a denominator
+  was cancelled or introduced (`restrictions_latex`, e.g. `x \neq 1`), including cancellations the parser performs while
+  reading. The check is syntactic (zeros of denominators); square-root, logarithm and branch-cut domains are not covered
+  and a denominator that cannot be analysed is reported, never dropped (`restrictions_complete`).
+- Claim classification (`claims.py`): `fails` (shown contradicted) only when the sides differ by a nonzero constant.
+  A false identity at generic points is `not_identity` (shown unchecked): Minerva cannot tell it from an equation to
+  solve, a definition or an equation of motion, which are `unverified`. Do not map `not_identity` to contradicted.
 - Dimensional analysis (`pi_groups.py`) reasons about dimensions only: a group is shown only if rebuilt and found
   dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
   report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.
@@ -163,6 +177,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   concurrency cap. Add new operations to `ops.OPERATIONS` and call them via `Engine`.
 - LaTeX conventions: `e` and `i` are plain symbols; `\exponentialE` / `\imaginaryI` / `\pi` are
   constants; `\sin 2x` and `\sin^{-1}` are rejected as ambiguous.
+- LaTeX output has one printer, `minerva_engine.latexprint.to_latex` (never call `sp.latex` directly): constants
+  print as `\mathrm{e}` / `\mathrm{i}` (the parser reads them back as the constants), so a bare `e` or `i` in
+  output is always a symbol. Handbook `statement_latex` follows the same convention (a test enforces it).
+  `\exponentialE` / `\imaginaryI` are input aliases only; KaTeX gets display macros for them. LaTeX that
+  KaTeX cannot render is shown as marked source (`data-math-error`), never as a formula. Chat formulas are split by
+  `agent/segments.py` (server) and `apps/web/src/lib/inline-math.ts` (client): keep their delimiter rules identical.
 - In text syntax `E`, `I`, `pi`, `oo` are reserved constants: never use `E` as a variable name in
   handbook entries (use `En`, `Ef`, ...).
 

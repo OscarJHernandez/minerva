@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from .errors import MinervaMathError
 from .latexparse import parse_latex
+from .latexprint import to_latex
 from .models import Limits, Status, Verification
 from .verify import euler_lagrange_check, numeric_check
 
@@ -105,7 +106,7 @@ class Derivation:
         return len(self.q)
 
     def show(self, expr: sp.Expr) -> str:
-        return str(sp.latex(expr, symbol_names=self.names))
+        return str(to_latex(expr, symbol_names=self.names))
 
     def total_derivative(self, f: sp.Expr) -> sp.Expr:
         """Total time derivative along a motion: q' = qd, qd' = qdd."""
@@ -153,7 +154,7 @@ def derive(
 
     names: dict[sp.Symbol, str] = {}
     for coordinate, velocity, acceleration in zip(q, qd, qdd, strict=True):
-        base = sp.latex(coordinate)
+        base = to_latex(coordinate)
         names[velocity] = rf"\dot{{{base}}}"
         names[acceleration] = rf"\ddot{{{base}}}"
 
@@ -232,7 +233,7 @@ def find_conserved(d: Derivation) -> ConservedSearch:
                     ConservedQuantity(
                         name=f"Momentum conjugate to {coordinates[i]}",
                         kind="cyclic",
-                        expression_latex=f"p_{{{sp.latex(q[i])}}} = {show(p[i])}",
+                        expression_latex=f"p_{{{to_latex(q[i])}}} = {show(p[i])}",
                         reason=f"{coordinates[i]} is cyclic: L does not depend on it, so dp/dt = dL/dq = 0",
                         verified=ok,
                         verification=ver,
@@ -345,7 +346,7 @@ def analyze_lagrangian(
         ],
         momenta=[
             NamedExpression(
-                coordinate=coordinates[i], latex=f"p_{{{sp.latex(q[i])}}} = {show(p[i])}"
+                coordinate=coordinates[i], latex=f"p_{{{to_latex(q[i])}}} = {show(p[i])}"
             )
             for i in range(n)
         ],
