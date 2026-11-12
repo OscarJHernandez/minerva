@@ -31,6 +31,7 @@ class Card(BaseModel):
     type: Literal[
         "simplify",
         "differentiate",
+        "integrate",
         "identities",
         "entries",
         "entry",

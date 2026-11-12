@@ -2,8 +2,38 @@ import type {
   DifferentiateResult,
   IdentitiesResult,
   IdentityMatch,
+  IntegrateResult,
   SimplifyResult,
 } from "@/lib/types";
+
+export const okIntegral: IntegrateResult = {
+  status: "ok",
+  input_latex: "x \\cos{\\left(x \\right)}",
+  variable: "x",
+  definite: false,
+  lower_latex: null,
+  upper_latex: null,
+  numeric: null,
+  conditions_latex: [],
+  quadrature: null,
+  notation_latex: "\\int x \\cos{\\left(x \\right)}\\, dx",
+  result_latex: "x \\sin{\\left(x \\right)} + \\cos{\\left(x \\right)}",
+  result_text: "x*sin(x) + cos(x)",
+  verification: {
+    method: "central finite difference of the antiderivative, 40 digits",
+    directions: ["real", "imaginary"],
+    steps_checked: 1,
+    branches_checked: 1,
+    points_checked: 12,
+    points_agreed: 12,
+    passed: true,
+    symbolic_zero: true,
+    note: "agreed",
+  },
+  notes: ["This is one antiderivative: add an arbitrary constant."],
+  message: "Integrated with SymPy; the antiderivative was verified by a numerical derivative.",
+  duration_ms: 40,
+};
 
 export const okDerivative: DifferentiateResult = {
   status: "ok",

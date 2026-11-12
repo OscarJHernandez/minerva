@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from minerva_engine import (
     DifferentiateResult,
     ExpressionInput,
+    IntegrateResult,
     SimplifyResult,
     TensorInput,
     TensorResult,
@@ -18,7 +19,7 @@ from minerva_knowledge.identities import FindIdentitiesResponse, find_identities
 from .db import Calculation
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .logging import get_logger
-from .schemas import DifferentiateRequest, IdentitiesRequest, SimplifyRequest
+from .schemas import DifferentiateRequest, IdentitiesRequest, IntegrateRequest, SimplifyRequest
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -29,6 +30,10 @@ class SimplifyResponse(SimplifyResult):
 
 
 class DifferentiateResponse(DifferentiateResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class IntegrateResponse(IntegrateResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -117,6 +122,33 @@ def differentiate(
         out.calculation_id = _save(
             db, user, "differentiate", expression, result.status.value, saved
         )
+    return out
+
+
+@router.post("/integrate", response_model=IntegrateResponse)
+def integrate(
+    body: IntegrateRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> IntegrateResponse:
+    _guard(user, limiter, settings, len(body.input))
+    expression = ExpressionInput(**body.model_dump(exclude={"save", "variable", "lower", "upper"}))
+    result = engine.integrate(expression, body.variable, body.lower, body.upper)
+    log.info(
+        "compute",
+        operation="integrate",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    out = IntegrateResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        saved["variable"] = body.variable  # kept even on failure
+        out.calculation_id = _save(db, user, "integrate", expression, result.status.value, saved)
     return out
 
 
