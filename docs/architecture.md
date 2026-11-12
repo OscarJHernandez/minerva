@@ -124,6 +124,13 @@ and explains; it never computes and never decides correctness.
   model's tool-calling and honesty through the real loop; results in `docs/model-evaluation.md`.
 - **Transport:** `POST /v1/chat/conversations/{id}/messages` streams server-sent events (`text`, `tool_call`, `card`,
   `message`, `error`, `done`).
+- **Add image** (`vision.py`, `POST /v1/chat/formula-image`): the composer can read formulas from a picture. The
+  browser shrinks and re-encodes it (dropping EXIF); the API checks size and magic bytes, and a vision model
+  (`MINERVA_LLM_VISION_MODEL`, same Ollama host; empty hides the button) **transcribes** it to LaTeX and nothing
+  more. `Engine.read_formulas` (sandbox) parses each candidate strictly and returns how Minerva reads it, without
+  simplifying. The user confirms or edits in a panel and the formulas enter the draft as `$...$`; from then on they
+  are ordinary user text. The picture is held in memory for the request only: never stored, never logged (the
+  log line has status, duration and user id). Transcription quality depends on the model and is not scored yet.
 
 ## API (`services/api`)
 

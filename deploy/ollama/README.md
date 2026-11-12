@@ -27,6 +27,10 @@ How it is isolated:
 
 Remove it: `systemctl --user disable --now minerva-ollama && rm -r ~/.local/share/minerva/ollama-models`.
 
+Reading formulas from pictures ("Add image" in chat) needs a vision-capable model on the same server. Link it
+with `--models` like the others and set `MINERVA_LLM_VISION_MODEL=<name>` (it may equal `MINERVA_LLM_MODEL` if that
+model accepts images). Leave it empty and the button is hidden. The model only transcribes; the user confirms.
+
 Notes:
 
 - A user service stops when the user has no session unless lingering is enabled (`loginctl enable-linger <user>`, which

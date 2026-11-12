@@ -342,6 +342,18 @@ export interface ChatStatus {
   enabled: boolean;
   mode: string;
   model: string;
+  /** Formulas can be read from a picture ("Add image"). */
+  images?: boolean;
+}
+
+/** One formula transcribed from a picture, and how Minerva's parser reads it. */
+export interface ExtractedFormula {
+  latex: string;
+  /** `ok`, `parse_error` or `resource_limit` */
+  status: string;
+  /** The parsed formula re-rendered as LaTeX; absent when it could not be parsed. */
+  read_as: string | null;
+  message: string;
 }
 
 export interface ToolRun {

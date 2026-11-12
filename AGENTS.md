@@ -81,6 +81,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
 - Conversations are user data: private per account, never logged.
+- "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
+  (`MINERVA_LLM_VISION_MODEL`) proposes LaTeX, the user confirms it, and `Engine.read_formulas` reports how the
+  strict parser reads it. Uploaded images are never stored or logged; keep it that way.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
   copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.
   The data comes from `AssistantMessage.trace/debug` stored with the message. The server log gets counters and

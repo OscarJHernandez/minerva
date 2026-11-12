@@ -13,6 +13,7 @@ from .latexparse import parse_latex
 from .models import (
     Applicability,
     ExpressionInput,
+    FormulaReading,
     IdentitiesResult,
     Limits,
     Rule,
@@ -50,6 +51,7 @@ __all__ = [
     "DimensionalReport",
     "Engine",
     "ExpressionInput",
+    "FormulaReading",
     "IdentitiesResult",
     "LagrangianReport",
     "LimitError",

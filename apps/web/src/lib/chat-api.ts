@@ -2,6 +2,7 @@ import { ApiError, extractDetail } from "./api";
 import type {
   ChatStatus,
   ConversationSummary,
+  ExtractedFormula,
   MotionRequest,
   StoredMessage,
   StreamEvent,
@@ -34,6 +35,19 @@ export const chatApi = {
     }),
   remove: (id: string) => json<void>(`/v1/chat/conversations/${id}`, { method: "DELETE" }),
 };
+
+/** Asks the server to transcribe the formulas in a picture (nothing is stored). */
+export async function readFormulaImage(
+  base64: string,
+  signal?: AbortSignal,
+): Promise<ExtractedFormula[]> {
+  const body = await json<{ formulas: ExtractedFormula[] }>("/v1/chat/formula-image", {
+    method: "POST",
+    body: JSON.stringify({ image: base64 }),
+    signal,
+  });
+  return body.formulas;
+}
 
 /** Sends a message and calls `onEvent` for every streamed event until the reply is complete. */
 export async function sendMessage(
