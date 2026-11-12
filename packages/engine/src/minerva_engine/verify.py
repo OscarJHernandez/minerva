@@ -21,8 +21,23 @@ SAMPLE_ATTEMPTS = 40
 REL_TOL = 1e-9
 
 
-def _sample(symbol: sp.Symbol, rng: random.Random) -> sp.Expr:
-    """A random value consistent with the symbol's assumptions."""
+def _flt(value: float, wide: bool) -> sp.Float:
+    """Wide points carry extra digits: sin(x)**2 + cos(x)**2 at Im x = 10 cancels ~1e9 against 1."""
+    return sp.Float(value, 80) if wide else sp.Float(value)
+
+
+def _sample(
+    symbol: sp.Symbol, rng: random.Random, *, wide: bool = False, spread: int = 1
+) -> sp.Expr:
+    """A random value consistent with the symbol's assumptions.
+
+    `wide=True` draws from a much larger region (|x| up to 50, |Im| up to 10, values just off
+    integers). The ordinary region stays inside the principal branches of log, asin and atan, so
+    identities that only hold there (`log(exp(z)) = z`, `|x-10| = 10-x`) would pass it.
+    """
+    # With k symbols the products of values grow like top**k, and sin(x)**2 + cos(x)**2 at a
+    # large imaginary part cancels to nothing: keep the spread of a point bounded.
+    top = max(4.0, 50.0 ** (1.0 / spread)) if wide else 3.5
     if symbol.is_integer:
         pool = [
             n
@@ -35,49 +50,88 @@ def _sample(symbol: sp.Symbol, rng: random.Random) -> sp.Expr:
         ]
         return sp.Integer(rng.choice(pool))
     if symbol.is_positive:
-        return sp.Float(rng.uniform(0.3, 3.5))
+        return _flt(rng.uniform(0.01 if wide else 0.3, top), wide)
     if symbol.is_negative:
-        return sp.Float(-rng.uniform(0.3, 3.5))
+        return _flt(-rng.uniform(0.01 if wide else 0.3, top), wide)
     if symbol.is_nonnegative:
-        return sp.Float(rng.uniform(0.0, 3.5))
+        return _flt(rng.uniform(0.0, top), wide)
     if symbol.is_nonpositive:
-        return sp.Float(-rng.uniform(0.0, 3.5))
+        return _flt(-rng.uniform(0.0, top), wide)
     if symbol.is_real:
-        return sp.Float(rng.uniform(-3.5, 3.5))
+        if wide and rng.random() < 0.3:  # just off an integer: where cancelled singularities hide
+            return _flt(rng.randint(-12, 12) + rng.choice([-1, 1]) * 1e-3, wide)
+        return _flt(rng.uniform(-top, top), wide)
     # No assumptions: sympy symbols are complex by default, so sample complex numbers.
-    return sp.Float(rng.uniform(-3.0, 3.0)) + sp.I * sp.Float(rng.uniform(-3.0, 3.0))
+    span = max(4.0, 10.0 ** (1.0 / spread)) if wide else 3.0
+    return _flt(rng.uniform(-top, top), wide) + sp.I * _flt(rng.uniform(-span, span), wide)
 
 
-def _evaluate(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | None:
+_POLE = object()  # sentinel: the expression is genuinely undefined here (zoo, oo, nan)
+
+
+def _evaluate_ex(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | object | None:
+    """A complex value, `_POLE` for a genuine pole, or None when evaluation failed or overflowed."""
     try:
         number = expr.xreplace(values).evalf(30)
-        if not number.is_number or number.has(sp.zoo, sp.oo, sp.nan):
+        if number.has(sp.zoo, sp.oo, sp.nan, -sp.oo):
+            return _POLE
+        if not number.is_number:
             return None
         value = complex(number)
-    except (TypeError, ValueError, ZeroDivisionError, OverflowError, AttributeError):
+    except ZeroDivisionError:
+        return _POLE
+    except (TypeError, ValueError, OverflowError, AttributeError):
         return None
     if value != value or abs(value) == float("inf"):
         return None
     return value
 
 
-def numeric_check(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int, int]:
-    """Return (points_checked, points_agreed) over random assumption-respecting points."""
+def _evaluate(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | None:
+    value = _evaluate_ex(expr, values)
+    return None if value is _POLE else value  # type: ignore[return-value]
+
+
+NARROW_POINTS = 12
+WIDE_POINTS = 8
+
+
+def numeric_detail(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int, int, int]:
+    """Return (points_checked, points_agreed, points_skipped).
+
+    Two tranches: the ordinary region and a much wider one. A point where exactly one side is a
+    genuine pole counts as a disagreement (the two expressions have different domains); a point
+    where both are undefined, or evaluation failed, is skipped and counted.
+    """
     symbols = sorted(a.free_symbols | b.free_symbols, key=lambda s: s.name)
     rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
-    checked = agreed = 0
-    for _ in range(SAMPLE_ATTEMPTS):
-        values = {s: _sample(s, rng) for s in symbols}
-        va = _evaluate(a, values)
-        vb = _evaluate(b, values)
-        if va is None or vb is None:
-            continue
-        checked += 1
-        scale = max(1.0, abs(va), abs(vb))
-        if abs(va - vb) <= REL_TOL * scale:
-            agreed += 1
-        if checked >= 12:
-            break
+    checked = agreed = skipped = 0
+    for wide, limit in ((False, NARROW_POINTS), (True, WIDE_POINTS)):
+        got = 0
+        for _ in range(SAMPLE_ATTEMPTS):
+            values = {s: _sample(s, rng, wide=wide, spread=max(1, len(symbols))) for s in symbols}
+            va = _evaluate_ex(a, values)
+            vb = _evaluate_ex(b, values)
+            if (va is _POLE) != (vb is _POLE):
+                checked += 1  # defined on one side only: different domains
+                got += 1
+            elif not isinstance(va, complex) or not isinstance(vb, complex):
+                skipped += 1
+                continue
+            else:
+                checked += 1
+                got += 1
+                scale = max(1.0, abs(va), abs(vb))
+                if abs(va - vb) <= REL_TOL * scale:
+                    agreed += 1
+            if got >= limit:
+                break
+    return checked, agreed, skipped
+
+
+def numeric_check(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int, int]:
+    """Return (points_checked, points_agreed) over random assumption-respecting points."""
+    checked, agreed, _ = numeric_detail(a, b, seed=seed)
     return checked, agreed
 
 
@@ -87,24 +141,27 @@ def verify_equal(original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True
     Pass `symbolic=False` where many verifications share one time budget (rule application):
     `sp.simplify(a - b)` can be slower than everything else together.
     """
-    checked, agreed = numeric_check(original, candidate)
+    checked, agreed, skipped = numeric_detail(original, candidate)
     symbolic_zero = False
     if symbolic:
         try:
             symbolic_zero = sp.simplify(original - candidate) == 0
         except Exception:
             symbolic_zero = False
-    passed = checked >= MIN_VALID_POINTS and agreed == checked
+    passed = checked >= MIN_VALID_POINTS and agreed == checked and skipped <= checked
     if checked < MIN_VALID_POINTS:
         note = "too few valid sample points to verify numerically"
     elif agreed != checked:
         note = "numeric check found a disagreement"
+    elif skipped > checked:
+        note = "too many sample points were undefined to verify numerically"
     else:
         note = "numeric check agreed at all sampled points"
     return Verification(
         symbolic_zero=symbolic_zero,
         numeric_points_checked=checked,
         numeric_points_agreed=agreed,
+        numeric_points_skipped=skipped,
         passed=passed,
         note=note,
     )
