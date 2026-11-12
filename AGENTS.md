@@ -50,6 +50,8 @@ uv run pytest                             # all Python tests (SQLite). MINERVA_T
 uv run ruff check . && uv run ruff format --check .
 uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
+uv run python -m minerva_knowledge benchmark          # hand-written expression -> identity cases (docs/handbook-benchmark.md)
+uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
 

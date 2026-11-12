@@ -3,39 +3,56 @@
 `uv run python -m minerva_knowledge benchmark` runs hand-written expression cases through the real
 identity finder (retrieval, then the sandboxed engine) and reports whether the right identities are
 applicable and the wrong ones are not. Cases live in
-`packages/knowledge/src/minerva_knowledge/data/benchmark/identity_cases.yaml` and are written by a
-person, independently of any generator. The same cases run in the test suite.
+`packages/knowledge/src/minerva_knowledge/data/benchmark/identity_cases.yaml`, separate from the
+generator that adds handbook entries. The same cases run in the test suite.
 
 - `expect`: entries that must be APPLICABLE. `forbid`: entries that must not be.
-- `pending: true`: the handbook is known to lack the identity (or the matcher to reject the spurious
-  one). Pending cases are reported but never fail a run; a pending case that already passes fails the
-  test suite until `pending` is removed, so progress is always locked in.
+- `pending: true`: a known gap (a missing identity, or a spurious match not yet rejected). Pending cases
+  are reported but never fail a run. A pending case that already passes fails the test suite until
+  `pending` is removed, so progress is always locked in.
 
 ## Results
 
-Numbers are from one machine; latency varies, the counts do not.
+The same 45 cases, run on the code before this work (commit `7c9dcee`) and after it. The "before" column
+was produced by exporting that commit and running the final case file against it, so both columns
+measure the same thing.
 
-| Measure | Baseline | After matcher fix |
+| Measure | Before | After |
 | --- | --- | --- |
-| Asserted cases passing | 26 / 26 | 32 / 32 |
-| Expected identities found (asserted cases) | 23 / 23 | 23 / 23 |
-| Pending: expected identities still missing | 13 | 13 |
-| Spurious (forbidden) matches shown | 8 | 0 |
-| Mean applicable matches per input | 2.33 | 1.42 |
-| Latency median / max | 65 ms / 1216 ms | 50 ms / 1199 ms (the max is the first call in a process) |
-| Rules in the handbook | 39 (114 entries) | 39 (114 entries) |
+| Cases passing | 26 / 45 | 45 / 45 |
+| Expected identities found | 25 / 38 | 38 / 38 |
+| Spurious (forbidden) identities shown | 8 | 0 |
+| Mean applicable identities per input | 2.36 | 2.09 |
+| Rules in the handbook | 39 | 69 (144 entries) |
 
-The matcher fix (`_binds_fraction_of_multiple` in `packages/engine/src/minerva_engine/ops.py`) stops a
-rule written as `n*w` (like `sin(2*a)`) from matching by binding `w` to a fraction of the user's term.
-`sin(2x)`, `sin(6x)` and `sin(2x+2y)` still match; `sin(x)`, `sin(3x)`, `sin(x/2)` and
-`sin(x+y)` no longer report the double-angle rule. Inputs such as `sin(2x/3)` are conservatively not
-offered as double angles.
+Latency median was 62 ms after and 120 ms before on this machine; timings are noisy (the first call in a
+process is slow), so the only claim is that nothing got slower in a way the run can see.
 
-Baseline observations that motivated the next changes:
+What changed, in the order it was measured:
 
-- `sin(x)`, `sin(3x)`, `sin(x)sin(y)` and `sin(x/2)` all report the double-angle rule as applicable,
-  because the matcher binds `a = x/2` (or `3x/2`) in `sin(2a)`. The rewrite is true but not what a
-  reader means by "double angle".
-- Triple angle, sum-to-product, `tanh(a+b)`, `(a+b)^3` and similar identities have no entry.
+1. **Benchmark first** (no behaviour change): 26/26 on the cases that existed then, with 13 expected
+   identities missing and 8 spurious matches recorded as pending.
+2. **Matcher fix**: spurious matches 8 to 0, mean applicable matches 2.33 to 1.42 (on that case set). A rule
+   written as `n*w` (like `sin(2*a)`) no longer matches by binding `w` to a fraction of the user's term, so
+   `sin(x)`, `sin(3x)`, `sin(x/2)` and `sin(x+y)` stop reporting the double-angle rule while `sin(2x)`,
+   `sin(6x)` and `sin(2x+2y)` still match. Inputs such as `sin(2x/3)` are conservatively not offered as
+   double angles.
+3. **Retrieval fix** found by the benchmark: integer powers of 4 and above produced no index features,
+   so `a**4 - b**4` could never be retrieved. They now map to `op:power`.
+4. **30 generated entries** (`generate.py`): the 13 missing identities are found. The mean applicable
+   count rises again because more true identities now apply, which is the point, not a regression.
+
+## Limits of this evidence
+
+- 45 cases, written by the same agent that wrote the generator; a maintainer adding cases the agent
+  would not think of is the best next improvement.
+- It measures the identity finder, not the chat agent, and not real user questions.
+- "Found" means the right entry is applicable and verified for that input, not that the user wanted it.
 - Four existing rules cannot fire on their own left-hand side by design (see `NOT_SELF_APPLICABLE` in
-  `packages/knowledge/tests/test_benchmark.py`).
+  `packages/knowledge/tests/test_benchmark.py`): SymPy evaluates `log(exp(a))` and `sqrt(a**2)` itself
+  once the assumption is declared, and `hyp.cosh_cos` needs the imaginary unit, which the matcher discards.
+
+## Adding content
+
+Add benchmark cases first, as `pending` if the entry does not exist, then add the entry (a seed in
+`generate.py` or hand-written YAML) and remove `pending` when the suite tells you to.
