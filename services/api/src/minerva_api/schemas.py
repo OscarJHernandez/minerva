@@ -22,6 +22,8 @@ class UserOut(BaseModel):
 
 class IntegrateRequest(ExpressionInput):
     variable: str = Field(min_length=1, max_length=32)
+    lower: str | None = Field(default=None, min_length=1, max_length=200)
+    upper: str | None = Field(default=None, min_length=1, max_length=200)
     save: bool = True
 
 

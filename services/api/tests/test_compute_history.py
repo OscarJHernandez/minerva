@@ -251,3 +251,21 @@ def test_logs_never_contain_user_input(capsys) -> None:  # type: ignore[no-untyp
     assert marker not in out
     assert PASSWORD not in out
     assert "ada@example.com" not in out
+
+
+def test_integrate_definite_and_history(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/integrate",
+        json={"input": "sin(x)", "format": "text", "variable": "x", "lower": "0", "upper": "pi"},
+    )
+    body = r.json()
+    assert r.status_code == 200 and body["status"] == "ok"
+    assert body["definite"] is True and body["result_text"] == "2"
+    assert body["quadrature"]["passed"] is True
+    (item,) = authed.get("/v1/history").json()
+    assert item["result"]["lower_latex"] == "0" and item["result"]["variable"] == "x"
+    half = authed.post(
+        "/v1/compute/integrate",
+        json={"input": "x", "format": "text", "variable": "x", "lower": "0"},
+    ).json()
+    assert half["status"] == "parse_error"

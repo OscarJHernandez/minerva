@@ -567,3 +567,34 @@ def test_integrate_tool_is_honest_when_there_is_no_closed_form(ctx: ToolContext)
     assert out.card.data["status"] == "unsupported"
     assert out.card.data["result_latex"] is None
     assert "antiderivative=" not in out.for_model
+
+
+def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> None:
+    out = execute(
+        "integrate", {"latex": r"\sin x", "variable": "x", "lower": "0", "upper": r"\pi"}, ctx
+    )
+    assert out.status == "ok"
+    assert out.card.data["definite"] is True
+    assert "value=$2$" in out.for_model and "verified: quadrature" in out.for_model
+    assert out.card.data["quadrature"]["passed"] is True
+
+    blocked = execute(
+        "integrate",
+        {"latex": r"\exponentialE^{-a x}", "variable": "x", "lower": "0", "upper": "oo"},
+        ctx,
+    )
+    assert blocked.status == "conditions_not_satisfied"
+    assert "value=" not in blocked.for_model and "condition: $" in blocked.for_model
+    assert blocked.card.data["result_latex"] is None
+    ok = execute(
+        "integrate",
+        {
+            "latex": r"\exponentialE^{-a x}",
+            "variable": "x",
+            "lower": "0",
+            "upper": "oo",
+            "assumptions": {"a": ["positive"]},
+        },
+        ctx,
+    )
+    assert ok.status == "ok"

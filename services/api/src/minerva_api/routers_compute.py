@@ -135,8 +135,8 @@ def integrate(
     settings: SettingsDep,
 ) -> IntegrateResponse:
     _guard(user, limiter, settings, len(body.input))
-    expression = ExpressionInput(**body.model_dump(exclude={"save", "variable"}))
-    result = engine.integrate(expression, body.variable)
+    expression = ExpressionInput(**body.model_dump(exclude={"save", "variable", "lower", "upper"}))
+    result = engine.integrate(expression, body.variable, body.lower, body.upper)
     log.info(
         "compute",
         operation="integrate",
