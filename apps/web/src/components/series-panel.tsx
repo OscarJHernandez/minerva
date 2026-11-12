@@ -1,12 +1,13 @@
 "use client";
 
 import { Math } from "@minerva/ui/math";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { SeriesResult } from "@/lib/types";
 import { StatusPill } from "./result-panel";
 
 /** A Taylor polynomial, shown only if both independent checks passed. */
 export function SeriesPanel({ result }: { result: SeriesResult }) {
+  const headingId = useId();
   const [copied, setCopied] = useState(false);
   const v = result.verification;
   const shown = result.status === "ok" && result.result_latex !== null;
@@ -18,12 +19,9 @@ export function SeriesPanel({ result }: { result: SeriesResult }) {
       : null;
 
   return (
-    <section
-      aria-labelledby="series-heading"
-      className="rounded-lg border border-rule bg-raised p-5"
-    >
+    <section aria-labelledby={headingId} className="rounded-lg border border-rule bg-raised p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="series-heading" className="font-serif text-xl">
+        <h2 id={headingId} className="font-serif text-xl">
           Series
         </h2>
         <StatusPill status={result.status} okLabel="Expanded and verified" />

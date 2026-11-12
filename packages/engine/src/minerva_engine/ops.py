@@ -441,6 +441,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             applicability=Applicability.APPLICABLE,
             matched_subexpression_latex=matched_latex,
             rewritten_latex=sp.latex(rewritten),
+            rewritten_text=str(rewritten),
             verification=verification,
             message="Matched, conditions hold, and the rewrite was verified.",
         )

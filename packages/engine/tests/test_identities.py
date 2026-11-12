@@ -50,6 +50,18 @@ def test_conditional_rule_applies_when_conditions_provable(engine: Engine) -> No
     assert "\\log{\\left(x \\right)}" in app.rewritten_latex
 
 
+def test_rewritten_text_is_readable_and_only_set_when_applied(engine: Engine) -> None:
+    from minerva_engine import parse_text
+
+    applied = apply(engine, r"\log(xy)", [LOG_PRODUCT], x=["positive"], y=["positive"])[
+        "log.product"
+    ]
+    assert applied.rewritten_text is not None
+    assert parse_text(applied.rewritten_text) == parse_text("log(x) + log(y)")
+    blocked = apply(engine, r"\log(xy)", [LOG_PRODUCT])["log.product"]
+    assert blocked.rewritten_text is None
+
+
 def test_partial_assumptions_still_blocked(engine: Engine) -> None:
     out = apply(engine, r"\log(xy)", [LOG_PRODUCT], x=["positive"])
     assert out["log.product"].applicability is Applicability.CONDITIONS_NOT_SATISFIED

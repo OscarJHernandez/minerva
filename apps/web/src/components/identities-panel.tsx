@@ -5,23 +5,31 @@ import type { IdentitiesResult, IdentityMatch } from "@/lib/types";
 import { EntryCard } from "./entry-card";
 import { StatusPill } from "./result-panel";
 
+interface Apply {
+  /** Rule id being applied right now, if any. */
+  busy: string | null;
+  onApply: (match: IdentityMatch) => void;
+}
+
 function Group({
   title,
   hint,
   items,
   collapsed = false,
+  apply,
 }: {
   title: string;
   hint: string;
   items: IdentityMatch[];
   collapsed?: boolean;
+  apply?: Apply;
 }) {
   if (items.length === 0) return null;
   const body = (
     <div className="space-y-3">
       {items.map((m) => (
         <EntryCard key={m.entry.id} entry={m.entry}>
-          <Detail match={m} />
+          <Detail match={m} apply={apply} />
         </EntryCard>
       ))}
     </div>
@@ -48,7 +56,7 @@ function Group({
   );
 }
 
-function Detail({ match }: { match: IdentityMatch }) {
+function Detail({ match, apply }: { match: IdentityMatch; apply?: Apply }) {
   const a = match.application;
   if (a.applicability === "applicable") {
     return (
@@ -63,6 +71,16 @@ function Detail({ match }: { match: IdentityMatch }) {
             points agree
             {a.verification.symbolic_zero ? "; difference simplifies to 0" : ""}
           </div>
+        )}
+        {apply && (
+          <button
+            type="button"
+            onClick={() => apply.onApply(match)}
+            disabled={apply.busy !== null}
+            className="mt-2 rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink disabled:opacity-50"
+          >
+            {apply.busy === match.entry.id ? "Applying…" : "Apply as next step"}
+          </button>
         )}
       </div>
     );
@@ -97,7 +115,14 @@ function Detail({ match }: { match: IdentityMatch }) {
   return <p className="mt-3 text-sm text-muted">{a.message}</p>;
 }
 
-export function IdentitiesPanel({ result }: { result: IdentitiesResult }) {
+export function IdentitiesPanel({
+  result,
+  apply,
+}: {
+  result: IdentitiesResult;
+  /** When given, applicable matches get an Apply button (the Workbench). Others never do. */
+  apply?: Apply;
+}) {
   const by = (kind: string) => result.matches.filter((m) => m.application.applicability === kind);
   const related = by("no_match");
   const applicable = by("applicable");
@@ -129,6 +154,7 @@ export function IdentitiesPanel({ result }: { result: IdentitiesResult }) {
         title="Applicable"
         hint="Matched, conditions proven from your assumptions, and the rewrite verified."
         items={applicable}
+        apply={apply}
       />
       <Group
         title="Needs assumptions"

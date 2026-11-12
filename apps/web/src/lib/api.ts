@@ -1,5 +1,8 @@
 import type {
+  ApplyIdentityResult,
   Assumptions,
+  Derivation,
+  DerivationSummary,
   DiffVariable,
   DifferentiateResult,
   HistoryItem,
@@ -50,6 +53,12 @@ export function extractDetail(body: unknown, status: number): string {
 export interface ComputeInput {
   input: string;
   assumptions: Assumptions;
+  /** Defaults to LaTeX. The Workbench continues a step from its text form, which re-reads exactly. */
+  format?: "latex" | "text";
+  save?: boolean;
+  /** Save the call as a step of this derivation, optionally continuing from one of its steps. */
+  derivation_id?: string;
+  parent_id?: string;
 }
 
 export const api = {
@@ -65,28 +74,37 @@ export const api = {
   simplify: (c: ComputeInput) =>
     request<SimplifyResult>("/v1/compute/simplify", {
       method: "POST",
-      body: JSON.stringify({ ...c, format: "latex" }),
+      body: JSON.stringify({ format: "latex", ...c }),
     }),
   differentiate: (c: ComputeInput, variables: DiffVariable[]) =>
     request<DifferentiateResult>("/v1/compute/differentiate", {
       method: "POST",
-      body: JSON.stringify({ ...c, variables, format: "latex" }),
+      body: JSON.stringify({ format: "latex", ...c, variables }),
     }),
   series: (c: ComputeInput, variable: string, point: string, order: number) =>
     request<SeriesResult>("/v1/compute/series", {
       method: "POST",
-      body: JSON.stringify({ ...c, variable, point, order, format: "latex" }),
+      body: JSON.stringify({ format: "latex", ...c, variable, point, order }),
     }),
   integrate: (c: ComputeInput, variable: string, bounds?: { lower: string; upper: string }) =>
     request<IntegrateResult>("/v1/compute/integrate", {
       method: "POST",
-      body: JSON.stringify({ ...c, variable, ...bounds, format: "latex" }),
+      body: JSON.stringify({ format: "latex", ...c, variable, ...bounds }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {
       method: "POST",
-      body: JSON.stringify({ ...c, format: "latex" }),
+      body: JSON.stringify({ format: "latex", ...c }),
     }),
+  applyIdentity: (c: ComputeInput, ruleId: string) =>
+    request<ApplyIdentityResult>("/v1/compute/apply-identity", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, rule_id: ruleId }),
+    }),
+  createDerivation: () => request<Derivation>("/v1/derivations", { method: "POST" }),
+  derivations: () => request<DerivationSummary[]>("/v1/derivations"),
+  derivation: (id: string) => request<Derivation>(`/v1/derivations/${id}`),
+  deleteDerivation: (id: string) => request<void>(`/v1/derivations/${id}`, { method: "DELETE" }),
   history: (limit = 50) => request<HistoryItem[]>(`/v1/history?limit=${limit}`),
   deleteHistoryItem: (id: string) => request<void>(`/v1/history/${id}`, { method: "DELETE" }),
   clearHistory: () => request<void>("/v1/history", { method: "DELETE" }),

@@ -523,6 +523,50 @@
       ]
     },
     {
+      "id": "derivations",
+      "title": "Derivations in the workbench",
+      "status": "available",
+      "group": "interfaces",
+      "where": [
+        "workbench",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Builds a derivation step by step without a language model. Each step is an operation (simplify, differentiate, integrate, Taylor polynomial) or a handbook identity applied to the previous result, and is verified and saved to your account with what produced it and the assumptions in force. You can continue from any earlier step.",
+      "limits": [
+        "A step is carried forward as its text form, which the parser reads back exactly. A result the text parser cannot read (for example one using `erf` or `Piecewise`) is shown but cannot be continued.",
+        "An identity is offered only when the engine reports it applicable (conditions proven from your assumptions); applying it recomputes and re-verifies the rewrite on the server. Handbook entries that are only stated are never applied.",
+        "If you edit a carried-forward result, the next step is recorded as a new input, not a continuation."
+      ],
+      "examples": [
+        {
+          "id": "derivation-apply-identity",
+          "title": "Applying a handbook identity as a step",
+          "op": "identities",
+          "status": "applicable",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\log(x y)"
+            }
+          ],
+          "assumptions": "x positive; y positive",
+          "outputs": [
+            {
+              "label": "Logarithm of a product",
+              "latex": "\\log{\\left(x \\right)} + \\log{\\left(y \\right)}"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+          ],
+          "notes": [
+            "In the workbench this is the Apply button next to an applicable identity; it appears only after the assumptions make the identity applicable."
+          ]
+        }
+      ]
+    },
+    {
       "id": "polynomial-solving",
       "title": "Polynomial equations",
       "status": "available",

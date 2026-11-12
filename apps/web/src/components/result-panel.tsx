@@ -1,7 +1,7 @@
 "use client";
 
 import { Math } from "@minerva/ui/math";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { SimplifyResult, Status } from "@/lib/types";
 
 const STATUS: Record<Status, { label: string; tone: string }> = {
@@ -25,17 +25,15 @@ export function StatusPill({ status, okLabel }: { status: Status; okLabel?: stri
 }
 
 export function ResultPanel({ result }: { result: SimplifyResult }) {
+  const headingId = useId();
   const [copied, setCopied] = useState(false);
   const v = result.verification;
   const shown = result.status === "ok" || result.status === "unchanged";
 
   return (
-    <section
-      aria-labelledby="result-heading"
-      className="rounded-lg border border-rule bg-raised p-5"
-    >
+    <section aria-labelledby={headingId} className="rounded-lg border border-rule bg-raised p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="result-heading" className="font-serif text-xl">
+        <h2 id={headingId} className="font-serif text-xl">
           Simplify
         </h2>
         <StatusPill status={result.status} />

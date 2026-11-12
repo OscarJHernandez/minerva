@@ -55,3 +55,68 @@ describe("Composer: add image", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
+
+describe("Composer: multiline editing", () => {
+  function setup() {
+    const onSend = vi.fn();
+    render(<Composer {...props} onSend={onSend} />);
+    return { onSend, area: screen.getByLabelText("Message") as HTMLTextAreaElement };
+  }
+
+  it("starts with room for three lines", () => {
+    const { area } = setup();
+    expect(area.rows).toBe(3);
+    expect(area).toHaveClass("resize-y");
+  });
+
+  it("does not send on Enter, so a new line can be written", () => {
+    const { onSend, area } = setup();
+    fireEvent.change(area, { target: { value: "line one" } });
+    const notPrevented = fireEvent.keyDown(area, { key: "Enter" });
+    expect(notPrevented).toBe(true); // the textarea keeps its default: a new line
+    fireEvent.keyDown(area, { key: "Enter", shiftKey: true });
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Ctrl", { ctrlKey: true }],
+    ["Cmd", { metaKey: true }],
+  ])("sends on %s+Enter, keeping the line breaks, and clears", (_name, mods) => {
+    const { onSend, area } = setup();
+    fireEvent.change(area, { target: { value: "first\nsecond $x^2$" } });
+    fireEvent.keyDown(area, { key: "Enter", ...mods });
+    expect(onSend).toHaveBeenCalledWith("first\nsecond $x^2$");
+    expect(area.value).toBe("");
+  });
+
+  it("does not send an empty message or while busy", () => {
+    const onSend = vi.fn();
+    const { rerender } = render(<Composer {...props} onSend={onSend} />);
+    const area = screen.getByLabelText("Message");
+    fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
+    fireEvent.change(area, { target: { value: "hi" } });
+    rerender(<Composer {...props} onSend={onSend} busy />);
+    fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
+    expect(onSend).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+  });
+
+  it("keeps Send visible and enabled only with text", () => {
+    const { area } = setup();
+    const send = screen.getByRole("button", { name: "Send" });
+    expect(send).toBeDisabled();
+    fireEvent.change(area, { target: { value: "hello" } });
+    expect(send).toBeEnabled();
+  });
+
+  it("grows with the content but never past 40% of the window", () => {
+    const { area } = setup();
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
+    Object.defineProperty(area, "scrollHeight", { value: 900, configurable: true });
+    fireEvent.change(area, { target: { value: "a\nb\nc\nd\ne\nf" } });
+    expect(area.style.height).toBe("320px");
+    Object.defineProperty(area, "scrollHeight", { value: 150, configurable: true });
+    fireEvent.change(area, { target: { value: "a\nb\nc\nd" } });
+    expect(area.style.height).toBe("150px");
+  });
+});
