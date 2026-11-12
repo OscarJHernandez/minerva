@@ -29,6 +29,7 @@ class Status(StrEnum):
     OK = "ok"  # a different expression was found and verified
     UNCHANGED = "unchanged"  # no simpler form was found; the input is returned as is
     NOT_VERIFIED = "not_verified"  # a candidate was produced but could not be verified
+    CONDITIONS_NOT_SATISFIED = "conditions_not_satisfied"  # needs assumptions not declared
     UNSUPPORTED = "unsupported"
     PARSE_ERROR = "parse_error"
     RESOURCE_LIMIT = "resource_limit"

@@ -105,3 +105,112 @@ def test_verifier_refuses_a_case_it_cannot_sample() -> None:
     n = sp.Symbol("n")
     bad = sp.Piecewise((x**2, n > 0), (x, True))
     assert not check_antiderivative(2 * x, x, bad).passed
+
+
+# --- definite integrals ----------------------------------------------------------------------
+def definite(
+    engine: Engine, source: str, lower: str, upper: str, fmt: str = "text", **assumptions: list[str]
+):
+    return engine.integrate(
+        ExpressionInput(input=source, format=fmt, assumptions=assumptions),
+        "x",
+        lower=lower,
+        upper=upper,
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "lower", "upper", "expected"),
+    [
+        ("x**2", "0", "3", "9"),
+        ("sin(x)", "0", "pi", "2"),
+        ("exp(-x)", "0", "oo", "1"),
+        ("1/(1 + x**2)", "-oo", "oo", "pi"),
+        ("1/sqrt(x)", "0", "1", "2"),  # integrable singularity at the end point
+        ("log(x)", "0", "1", "-1"),
+    ],
+)
+def test_known_definite_integrals(engine: Engine, source, lower, upper, expected) -> None:
+    result = definite(engine, source, lower, upper)
+    assert result.status is Status.OK, result.message
+    assert result.definite
+    assert result.quadrature is not None and result.quadrature.passed
+    assert sp.simplify(sp.sympify(result.result_text) - sp.sympify(expected)) == 0
+    assert result.numeric is not None
+
+
+def test_parameters_are_checked_at_sampled_values(engine: Engine) -> None:
+    result = definite(engine, "exp(-a*x**2)", "-oo", "oo", a=["positive"])
+    assert result.status is Status.OK
+    assert result.quadrature is not None and result.quadrature.points_checked >= 4
+    assert result.numeric is None  # has a free parameter
+
+
+def test_convergence_conditions_are_never_assumed(engine: Engine) -> None:
+    result = definite(engine, "exp(-a*x)", "0", "oo")  # a is complex: needs Re(a) > 0
+    assert result.status is Status.CONDITIONS_NOT_SATISFIED
+    assert result.result_latex is None
+    assert result.conditions_latex
+    with_assumption = definite(engine, "exp(-a*x)", "0", "oo", a=["positive"])
+    assert with_assumption.status is Status.OK
+
+
+def test_pole_inside_the_interval_is_never_a_number(engine: Engine) -> None:
+    # The fundamental theorem would give -2 here; the integral diverges.
+    result = definite(engine, "1/x**2", "-1", "1")
+    assert result.status in (Status.UNSUPPORTED, Status.NOT_VERIFIED)
+    assert result.result_latex is None
+    assert result.numeric is None
+
+
+def test_divergent_integrals_show_no_value(engine: Engine) -> None:
+    for source, lower, upper in [("1/x", "0", "1"), ("x", "0", "oo")]:
+        result = definite(engine, source, lower, upper)
+        assert result.status in (Status.UNSUPPORTED, Status.NOT_VERIFIED)
+        assert result.result_latex is None
+
+
+def test_latex_bounds_and_infinity(engine: Engine) -> None:
+    result = definite(engine, r"\exponentialE^{-x}", "0", r"\infty", fmt="latex")
+    assert result.status is Status.OK
+    assert result.lower_latex == "0"
+    result = definite(engine, r"\sin x", "0", r"\pi", fmt="latex")
+    assert result.status is Status.OK
+    assert result.result_text == "2"
+
+
+def test_reversed_bounds_flip_the_sign(engine: Engine) -> None:
+    assert definite(engine, "x", "2", "0").result_text == "-2"
+
+
+def test_bad_bounds_are_explicit(engine: Engine) -> None:
+    assert definite(engine, "x", "a", "1").status is Status.PARSE_ERROR  # symbol, not a number
+    assert definite(engine, "x", "I", "1").status is Status.PARSE_ERROR  # not real
+    assert definite(engine, "x", "0", "1 +* 2").status is Status.PARSE_ERROR
+    half = engine.integrate(ExpressionInput(input="x", format="text"), "x", lower="0")
+    assert half.status is Status.PARSE_ERROR
+
+
+def test_no_closed_form_definite_is_unsupported(engine: Engine) -> None:
+    result = definite(engine, "exp(x**x)", "0", "1")
+    assert result.status in (Status.UNSUPPORTED, Status.NOT_VERIFIED)
+    assert result.result_latex is None
+
+
+def test_quadrature_verifier_rejects_a_wrong_value() -> None:
+    import time
+
+    from minerva_engine.integrate import check_definite
+
+    deadline = time.monotonic() + 20
+    f = sp.sin(x)
+    good = check_definite(f, x, sp.Integer(0), sp.pi, sp.Integer(2), deadline=deadline)
+    assert good.passed
+    bad = check_definite(f, x, sp.Integer(0), sp.pi, sp.Integer(3), deadline=deadline)
+    assert not bad.passed
+    near = check_definite(f, x, sp.Integer(0), sp.pi, sp.Float("2.000001"), deadline=deadline)
+    assert not near.passed
+    pole = check_definite(
+        1 / x**2, x, sp.Integer(-1), sp.Integer(1), sp.Integer(-2), deadline=deadline
+    )
+    assert not pole.passed

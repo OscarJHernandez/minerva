@@ -129,6 +129,8 @@ def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
         ExpressionInput(**payload["expression"]),
         str(payload["variable"]),
         Limits(**payload["limits"]),
+        lower=payload.get("lower"),
+        upper=payload.get("upper"),
     )
     return result.model_dump(mode="json")
 

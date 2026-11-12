@@ -66,9 +66,21 @@ class Engine:
         result.duration_ms = ms
         return result
 
-    def integrate(self, expression: ExpressionInput, variable: str) -> IntegrateResult:
-        """An antiderivative of `expression`, verified by a numerical derivative."""
-        payload = {"expression": expression.model_dump(), "variable": variable}
+    def integrate(
+        self,
+        expression: ExpressionInput,
+        variable: str,
+        lower: str | None = None,
+        upper: str | None = None,
+    ) -> IntegrateResult:
+        """An antiderivative (verified by a numerical derivative) or, with both bounds, a definite
+        integral (verified by independent quadrature)."""
+        payload = {
+            "expression": expression.model_dump(),
+            "variable": variable,
+            "lower": lower,
+            "upper": upper,
+        }
         outcome, ms = self._run("integrate", payload)
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             status, message = self._failure_status(outcome.outcome)

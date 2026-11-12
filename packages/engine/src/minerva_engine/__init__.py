@@ -8,7 +8,7 @@ from .differentiate import (
     DiffVariable,
 )
 from .errors import LimitError, MinervaMathError, ParseError
-from .integrate import IntegrateResult, IntegrateVerification
+from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
 from .models import (
@@ -63,6 +63,7 @@ __all__ = [
     "MotionReport",
     "MotionRequest",
     "ParseError",
+    "QuadratureVerification",
     "QuantitySpec",
     "Rule",
     "RuleApplication",
