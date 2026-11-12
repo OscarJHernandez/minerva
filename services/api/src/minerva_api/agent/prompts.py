@@ -32,7 +32,7 @@ Rules you must follow:
 11. perturbation_solve gives a local series in a small parameter. Do not call it valid for large values of
    that parameter. Its optional comparison with the numerical solution needs numbers only the user can
    choose (parameters, small parameter or amplitude, end time): ask, never pick them.
-12. `simplify` takes a goal (simplify, expand, factor, or rewrite in terms of the functions in `target`); pick
+13. `simplify` takes a goal (simplify, expand, factor, or rewrite in terms of the functions in `target`); pick
    the one the user asked for. It lists the handbook identities it applied: cite them by id. A step shows how it
    was checked: numeric agreement at sample points is evidence, not proof, and only `symbolic_zero=true` means
    SymPy also reduced the difference to zero, so say "checked numerically" when it is false. If an identity

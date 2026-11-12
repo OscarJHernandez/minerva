@@ -22,7 +22,22 @@ one most likely to be wrong.
 - **Operations** (`ops.py`, `service.py`):
   - `simplify`: SymPy `simplify`, then `verify_equal` (numeric sampling that respects assumptions,
     plus a symbolic zero test). Statuses: `ok`, `unchanged`, `not_verified`, `parse_error`,
-    `resource_limit`, `internal_error`.
+    `resource_limit`, `internal_error`. The API and the chat tool no longer call it directly: they call
+    `transform` (below), which includes it as one of its moves.
+  - `transform` (`transform.py`, `Engine.transform`): a bounded search for a chain of rewrites toward a goal
+    (`simplify`: fewest operations; `expand`; `factor`; `rewrite` in a given set of functions). Moves are the
+    handbook rules proposed by retrieval (each at every place it matches, from `ops.rule_rewrites`; read right
+    to left only if the right side binds every variable and is not a bare number or symbol) and SymPy's
+    `simplify`/`expand`/`factor`/`cancel`, labelled as SymPy moves. A move enters the search only after
+    `verify_equal(..., symbolic=False)` agrees at assumption-respecting points; rules whose conditions are not
+    provable are reported (`blocked`), never applied. Beam width 4 (cap 6), depth 4 (cap 6), 8 verifications per
+    state, a visited set, a size cap on intermediate results, a stop after two levels without a better cost, and
+    the 0.7 x timeout budget rule of `op_identities`. Expanding or factoring may not introduce functions other
+    than the input's (and their companions: sin/cos, sinh/cosh). The chain that is reported is re-verified step
+    by step and end to end with the symbolic zero test added, and the two kinds of evidence are reported
+    separately. Statuses: `ok`, `unchanged` (nothing verified is better; says that this does not show that none
+    exists), `conditions_not_satisfied` (the only improving identities are blocked), `unsupported`,
+    `parse_error`, `resource_limit`.
   - `series` (`series.py`): Taylor polynomial about a finite real point, order 1 to 12, from `sympy.series`.
     Shown only if both checks pass, computed from the original function with mpmath at 80 digits at random
     values of every other symbol: (1) the coefficients against a Cauchy-integral estimate (64-node trapezoid
@@ -110,6 +125,11 @@ one most likely to be wrong.
   rule's left-hand side). Semantic or structural-embedding retrievers can implement the same protocol.
   Retrieval only **proposes**; the engine decides.
 - `identities.find_identities` orchestrates: features (sandbox) → candidates (FTS5) → apply (sandbox).
+  `identities.simplify_expression` / `transform_expression` do the same for chains: candidates come from
+  both sides of each rule (`SearchQuery.sides="both"`, an `rhs_features` FTS5 column that ordinary search
+  ignores) plus a second round for the functions those rules can introduce; the engine runs the search and
+  every cited rule is returned with its handbook entry (`entries`). If the search itself is hard-stopped,
+  `simplify_expression` falls back to SymPy's simplification alone and says so.
   The matcher (`engine/ops.py`) discards matches that invent roots, reciprocals or `I`, and matches that
   bind a variable used only as `n*w` (like the `a` in `sin(2*a)`) to a fraction of the input.
 - Generated entries (`generate.py`): `data/entries/generated_*.yaml` are written by
@@ -117,9 +137,10 @@ one most likely to be wrong.
   A candidate is written only if it round-trips through the text parser, validates, is not a duplicate,
   passes its own check (`symbolic` only with a symbolic zero) and the engine applies it to its own
   left-hand side. The test suite fails when the committed files differ from a fresh generation.
-- Benchmark (`benchmark.py`, `data/benchmark/identity_cases.yaml`): hand-written expression →
-  expected/forbidden identities, run with `python -m minerva_knowledge benchmark`; results and limits in
-  `docs/handbook-benchmark.md`.
+- Benchmark (`benchmark.py`, `data/benchmark/identity_cases.yaml`, `transform_cases.yaml`): hand-written
+  expression → expected/forbidden identities, retrieval rank/recall/MRR over the same cases, and multi-step
+  cases (goal, accepted forms, rules that must or must not appear, SymPy-simplify-only baseline), run with
+  `python -m minerva_knowledge benchmark`; results and limits in `docs/handbook-benchmark.md`.
 
 ## C. The conversational agent (`services/api/src/minerva_api/agent/`)
 
@@ -165,7 +186,7 @@ and explains; it never computes and never decides correctness.
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
-limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,differentiate,integrate,series,identities,tensor/canonicalize}`,
+limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,identities,tensor/canonicalize}`,
 `/v1/reference/*` (public, read-only), `/v1/history`. History rows contain user mathematics and are
 private to the account. Logging uses an allow-list of fields (no inputs, emails or tokens).
 

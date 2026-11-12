@@ -269,6 +269,28 @@ CASES = [
         {"check_units"},
         final_matches=re.compile(r"not|inconsist|differ|missing|1/s|s\^?-1", re.I),
     ),
+    # Chains of identities (informational: they measure what simplify gained, not the original 21).
+    Case(
+        "simplify-chain-cites",
+        r"Simplify $\sin^2 x + \cos^2 x + \tan^2 x$ and tell me which handbook identities you used.",
+        {"simplify"},
+        final_matches=re.compile(r"trig\.|pythagorean|tangent and secant", re.I),
+        informational=True,
+    ),
+    Case(
+        "simplify-blocked-condition",
+        r"Simplify $\log x + \log y$.",
+        {"simplify"},
+        final_matches=re.compile(r"positive", re.I),
+        informational=True,
+    ),
+    Case(
+        "simplify-goal-factor",
+        r"Factor $x^4 - y^4$.",
+        {"simplify"},
+        args_check=lambda t, a: a.get("goal") == "factor",
+        informational=True,
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

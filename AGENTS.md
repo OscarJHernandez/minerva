@@ -50,7 +50,7 @@ uv run pytest                             # all Python tests (SQLite). MINERVA_T
 uv run ruff check . && uv run ruff format --check .
 uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
-uv run python -m minerva_knowledge benchmark          # hand-written expression -> identity cases (docs/handbook-benchmark.md)
+uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
@@ -147,6 +147,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   nothing here says "integrable" or names a constant: a name such as Runge–Lenz is for the model to offer, not for the
   result to assert. Time-dependent Lagrangians and non-rational accelerations are `unsupported`, an oversized
   ansatz is `resource_limit`. Do not widen the ansatz silently or report an unverified candidate.
+- Chains of identities (`transform.py`, tool and endpoint `simplify`) are shown only if every step passed the
+  numeric check and the whole chain was re-verified with the symbolic zero test added; the two are reported
+  separately and numerical agreement is never called a proof. A rule whose conditions are not provable from the
+  declared assumptions is reported as `blocked`, never applied, and a SymPy move is labelled as one (it is not a
+  handbook identity). `unchanged` means that nothing verified was found within the bounds, not that nothing
+  exists. Keep the bounds (width, depth, verifications per state, size cap, deadline), the visited set, the
+  right-to-left restriction (`can_reverse`) and the match filters; do not add an unverified shortcut. Chains
+  must not become a way around `_invents_structure`: `rule_rewrites` is the one place that decides what matches.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are
