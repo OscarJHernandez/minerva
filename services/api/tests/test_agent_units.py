@@ -824,3 +824,61 @@ def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> No
         ctx,
     )
     assert ok.status == "ok"
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        (r"a\;b", "ab"),
+        (r"a\quad b\qquad c", "abc"),
+        (r"a\:b\>c\!d", "abcd"),
+        (r"\pi\,r^2", r"\pi r^2"),
+        (r"\exponentialE^{x}", r"\mathrm{e}^{x}"),
+        (r"\imaginaryI x", r"\mathrm{i}x"),
+        ("{{x}}", "x"),
+        (r"\int_0^\infty \mathrm{e}^{-a x}\,dx", r"\int_0^\infty\mathrm{e}^{-ax}\;dx"),
+        (r"\left( a \right) \quad b", "(a)b"),
+    ],
+)
+def test_normalize_treats_these_as_the_same_formula(a: str, b: str) -> None:
+    assert normalize(a) == normalize(b)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("a;b", "ab"),  # a literal semicolon is content
+        (r"\leftarrow", r"\rightarrow"),
+        (r"\leftrightarrow", r"\rightarrow"),
+        (r"\in t", r"\int"),
+        (r"a \\ b", "ab"),  # a line break is not spacing
+        ("e^{x}", r"\mathrm{e}^{x}"),  # a bare e is a variable, not the constant
+        ("i x", r"\mathrm{i}x"),
+        (r"\mathrm{e}", r"\mathrm{i}"),
+    ],
+)
+def test_normalize_keeps_these_apart(a: str, b: str) -> None:
+    assert normalize(a) != normalize(b)
+
+
+def test_normalize_keeps_tensor_indices() -> None:
+    assert normalize(r"R^{\mu}{}_{\nu\rho\sigma}") == r"R^{\mu}_{\nu\rho\sigma}"
+
+
+def test_prices_are_text_and_multiline_display_math_is_found() -> None:
+    segs = split_segments("It costs $5 to $10 in total.", set())
+    assert [s.type for s in segs] == ["text"]
+    text = "A:\n\\[\n x = 1 \\\\\n y = 2\n\\]\nB: \\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned} C: $z$."
+    kinds = [(s.type, s.value) for s in split_segments(text, set()) if s.type != "text"]
+    assert kinds[0][0] == "display_math" and r"\\" in kinds[0][1]
+    assert kinds[1] == ("display_math", "\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}")
+    assert kinds[2] == ("math", "z")
+
+
+def test_a_handbook_formula_matches_whatever_its_spacing() -> None:
+    known = {normalize(r"\int_0^\infty \mathrm{e}^{-a x}\,dx = \frac{1}{a}")}
+    segs = split_segments(
+        r"$$\int_0^\infty \exponentialE^{-ax} dx = \frac{1}{a}$$ and $\int_0^\infty e^{-ax}dx=\frac1a$.",
+        known,
+    )
+    assert [s.status for s in segs if s.type != "text"] == ["from_tool", "unchecked"]
