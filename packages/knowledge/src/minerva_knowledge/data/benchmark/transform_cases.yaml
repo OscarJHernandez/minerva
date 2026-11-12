@@ -1,0 +1,201 @@
+# Hand-written multi-step cases for `transform_expression`. `status`: the expected outcome (default ok);
+# `results`: accepted result forms in text syntax (structural equality, so a different but equal form
+# fails: this measures ranking, not correctness); `expect_rules` must all appear in the chain shown,
+# `forbid_rules` in no chain at all. `pending: true`: reported, never asserted.
+# Written independently of the code under test; the SymPy-only baseline is measured on `goal: simplify`.
+
+# --- chains of two or more identities ---
+- {
+    id: pyth_then_tan_secant,
+    input: '\sin^2 x + \cos^2 x + \tan^2 x',
+    results: ["sec(x)**2"],
+    expect_rules: [trig.pythagorean, trig.tan_secant],
+  }
+- {
+    id: hyperbolic_then_trig,
+    input: '\cosh^2 x - \sinh^2 x + \sin^2 t + \cos^2 t',
+    results: ["2"],
+    expect_rules: [hyp.pythagorean, trig.pythagorean],
+  }
+- {
+    id: pyth_then_tan_ratio,
+    input: '\frac{\sin x}{\cos x} + \sin^2 x + \cos^2 x',
+    results: ["tan(x) + 1"],
+    expect_rules: [trig.pythagorean],
+  }
+
+- {id: sum_formula_reverse, input: '\sin x\cos y + \cos x\sin y', results: ['sin(x + y)'], expect_rules: [trig.sum_sin]}
+- {id: gamma_ratio, input: '\Gamma(x+1)/\Gamma(x)', results: ['x'], expect_rules: [special.gamma_recurrence]}
+- {id: cosh_double_minus_square, input: '\cosh(2x) - \cosh^2 x', results: ['sinh(x)**2'], expect_rules: [hyp.double_cosh]}
+- {id: pyth_and_tan_ratio_mixed, input: '\sin^2 x + \cos^2 x - \tan x\cos x', results: ['1 - sin(x)'],
+   expect_rules: [trig.pythagorean, trig.tan_ratio]}
+
+# --- identities inside nested expressions ---
+- {
+    id: log_of_pyth,
+    input: '\log(\sin^2 t + \cos^2 t + y)',
+    results: ["log(y + 1)"],
+    expect_rules: [trig.pythagorean],
+  }
+- {
+    id: exp_of_hyperbolic,
+    input: '\exp(\cosh^2 u - \sinh^2 u)',
+    results: ["E"],
+    expect_rules: [hyp.pythagorean],
+  }
+- {
+    id: sqrt_of_pyth,
+    input: '\sqrt{\sin^2 s + \cos^2 s + z}',
+    results: ["sqrt(z + 1)"],
+    expect_rules: [trig.pythagorean],
+  }
+
+# --- an identity read right to left ---
+- {
+    id: double_angle_sine_reverse,
+    input: '2\sin x\cos x',
+    results: ["sin(2*x)"],
+    expect_rules: [trig.double_sin],
+  }
+- {
+    id: double_angle_cosine_reverse,
+    input: '1 - 2\sin^2 x',
+    results: ["cos(2*x)"],
+    # trig.double_cos_sin (read backwards) or trig.power_reduction_sin: both are valid one-step chains
+  }
+- {
+    id: double_angle_cosine_difference,
+    input: '\cos^2 x - \sin^2 x',
+    results: ["cos(2*x)"],
+    expect_rules: [trig.double_cos],
+  }
+- {
+    id: log_sum_reverse,
+    input: '\log x + \log y',
+    assumptions: { x: [positive], y: [positive] },
+    results: ["log(x*y)"],
+    expect_rules: [log.product],
+  }
+
+# --- other goals ---
+- {
+    id: expand_double_angle,
+    input: '\sin(2x)',
+    goal: expand,
+    results: ["2*sin(x)*cos(x)"],
+    expect_rules: [trig.double_sin],
+  }
+- {
+    id: expand_triple_angle,
+    input: '\sin(3x)',
+    goal: expand,
+    results: ["-4*sin(x)**3 + 3*sin(x)"],
+    expect_rules: [trig.triple_sin],
+  }
+- {
+    id: expand_cube_of_sum,
+    input: "(x+y)^3",
+    goal: expand,
+    results: ["x**3 + 3*x**2*y + 3*x*y**2 + y**3"],
+    expect_rules: [alg.binomial_cube_sum],
+  }
+- {
+    id: factor_fourth_powers,
+    input: "x^4 - y^4",
+    goal: factor,
+    results: ["(x - y)*(x + y)*(x**2 + y**2)"],
+    expect_rules: [alg.difference_of_fourth_powers],
+  }
+- {
+    id: factor_inside_a_quotient,
+    input: '\frac{x^2 - y^2}{z}',
+    goal: factor,
+    results: ["(x - y)*(x + y)/z"],
+    expect_rules: [alg.difference_of_squares],
+  }
+- {
+    id: factor_sum_of_sines,
+    input: '\sin x + \sin y',
+    goal: factor,
+    results: ["2*sin(x/2 + y/2)*cos(x/2 - y/2)"],
+    expect_rules: [trig.sum_to_product_sin],
+  }
+- {
+    id: rewrite_tan_in_sin_cos,
+    input: '\tan x \cos x',
+    goal: rewrite,
+    target: [sin, cos],
+    results: ["sin(x)"],
+    expect_rules: [trig.tan_ratio],
+  }
+- {
+    id: rewrite_tanh_in_sinh_cosh,
+    input: '\tanh x',
+    goal: rewrite,
+    target: [sinh, cosh],
+    results: ["sinh(x)/cosh(x)"],
+    expect_rules: [hyp.tanh_ratio],
+  }
+- {
+    id: rewrite_cosh_in_exp,
+    input: '\cosh x',
+    goal: rewrite,
+    target: [exp],
+    results: ["(exp(x) + exp(-x))/2"],
+    expect_rules: [hyp.cosh_exp],
+  }
+
+# --- conditions: the identity matches but is not applied ---
+- {
+    id: log_sum_blocked,
+    input: '\log x + \log y',
+    status: conditions_not_satisfied,
+    forbid_rules: [log.product],
+  }
+- {
+    id: log_sum_partly_blocked,
+    input: '\log x + \log y',
+    assumptions: { x: [real] },
+    status: conditions_not_satisfied,
+    forbid_rules: [log.product],
+  }
+- {
+    id: sqrt_square_blocked,
+    input: '\sqrt{x^2}',
+    status: conditions_not_satisfied,
+    forbid_rules: [radical.sqrt_square_abs, radical.sqrt_square_nonneg],
+  }
+
+# --- nothing to do: the input comes back, and nothing is invented ---
+- {
+    id: plain_sine,
+    input: '\sin x',
+    status: unchanged,
+    forbid_rules: [trig.double_sin, trig.sum_sin],
+  }
+- {
+    id: sine_not_expanded_as_half_angle,
+    input: '\sin x',
+    goal: expand,
+    status: unchanged,
+    forbid_rules: [trig.double_sin],
+  }
+- {
+    id: one_is_not_pythagorean,
+    input: "1",
+    status: unchanged,
+    forbid_rules: [trig.pythagorean, hyp.pythagorean],
+  }
+- {
+    id: unrelated_sum,
+    input: "x + y",
+    status: unchanged,
+    forbid_rules: [alg.difference_of_squares, log.product],
+  }
+- { id: sum_of_squares_does_not_factor, input: "x^2 + y^2", goal: factor, status: unchanged }
+- {
+    id: sum_of_sines_not_simplified,
+    input: '\sin x + \sin y',
+    status: unchanged,
+    forbid_rules: [trig.sum_to_product_sin],
+  }

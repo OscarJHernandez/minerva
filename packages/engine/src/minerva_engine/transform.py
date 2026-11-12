@@ -89,6 +89,45 @@ def _unexpanded(expr: sp.Basic) -> int:
     return count
 
 
+def _terms(expr: sp.Expr) -> int:
+    """Top-level terms of the numerator plus those of the denominator: a product has one."""
+    numerator, denominator = sp.fraction(expr)
+    return len(sp.Add.make_args(numerator)) + len(sp.Add.make_args(denominator))
+
+
+def _sums(expr: sp.Basic) -> int:
+    return sum(1 for node in sp.preorder_traversal(expr) if node.is_Add)
+
+
+# Functions that may appear when one of the keys is already there: sin(2x) expands into sin and cos.
+_COMPANIONS = {
+    "sin": {"cos"},
+    "cos": {"sin"},
+    "tan": {"sin", "cos"},
+    "sec": {"sin", "cos"},
+    "csc": {"sin", "cos"},
+    "cot": {"sin", "cos"},
+    "sinh": {"cosh"},
+    "cosh": {"sinh"},
+    "tanh": {"sinh", "cosh"},
+}
+
+
+def _allowed_functions(expr: sp.Basic) -> frozenset[str]:
+    names = set(_function_names(expr))
+    for name in list(names):
+        names |= _COMPANIONS.get(name, set())
+    return frozenset(names)
+
+
+def _function_names(expr: sp.Basic) -> frozenset[str]:
+    return frozenset(
+        node.func.__name__.lower()
+        for node in sp.preorder_traversal(expr)
+        if isinstance(node, sp.Function) and not isinstance(node, sp.Derivative)
+    )
+
+
 def _foreign_functions(expr: sp.Basic, target: frozenset[str]) -> int:
     return sum(
         1
@@ -103,7 +142,7 @@ def _cost_function(goal: str, target: frozenset[str]) -> Callable[[sp.Expr], Cos
     if goal == "expand":
         return lambda e: (_unexpanded(e), _nodes(e))
     if goal == "factor":
-        return lambda e: (len(sp.Add.make_args(e)), _ops(e))
+        return lambda e: (_terms(e), _sums(e))
     if goal == "rewrite":
         return lambda e: (_foreign_functions(e, target), _ops(e))
     return lambda e: (_ops(e), _nodes(e))
@@ -117,6 +156,7 @@ class _Move:
     matched: str | None
     result: sp.Expr
     unmet: tuple[tuple[str, str], ...] = ()
+    binding_cost: int = 0
 
 
 @dataclass(frozen=True)
@@ -133,9 +173,12 @@ class _Candidate:
     cost: Cost = (0, 0)
 
     def rank(self) -> tuple[Cost, int, int]:
-        # Equal cost and length: a chain that cites a handbook identity beats a bare SymPy move.
-        builtin_last = 1 if self.steps and self.steps[-1].move.kind == "builtin" else 0
-        return self.cost, len(self.steps), builtin_last
+        # Equal cost: a chain of handbook identities (which can be cited) beats one that leans on
+        # SymPy's own moves, and shorter beats longer.
+        return self.cost, self.builtin_steps(), len(self.steps)
+
+    def builtin_steps(self) -> int:
+        return sum(1 for s in self.steps if s.move.kind == "builtin")
 
 
 @dataclass
@@ -146,6 +189,7 @@ class _Search:
     cost: Callable[[sp.Expr], Cost]
     max_nodes: int
     deadline: float
+    allowed_functions: frozenset[str] | None = None
     start_cost: Cost = (0, 0)
     tried: int = 0
     discarded: int = 0
@@ -171,7 +215,13 @@ class _Search:
                     ):
                         unmet = tuple((c.variable, c.assumption) for c in rw.unmet)
                         yield _Move(
-                            "rule", rule.id, direction, sp.latex(rw.node), rw.rewritten, unmet
+                            "rule",
+                            rule.id,
+                            direction,
+                            sp.latex(rw.node),
+                            rw.rewritten,
+                            unmet,
+                            rw.binding_cost,
                         )
                 except MinervaMathError:
                     break  # a rule the engine cannot read is skipped, never guessed at
@@ -207,7 +257,7 @@ class _Search:
         )
 
     def expand_state(
-        self, cand: _Candidate, seen: set[sp.Expr], *, with_simplify: bool
+        self, cand: _Candidate, seen: dict[sp.Expr, int], *, with_simplify: bool
     ) -> list[_Candidate]:
         proposals: dict[sp.Expr, _Move] = {}
         for move in self.moves(cand.expr, with_simplify=with_simplify):
@@ -216,10 +266,17 @@ class _Search:
                     self.note_blocked(move)
                 continue
             result = move.result
-            if result == cand.expr or result in seen or result in proposals:
-                continue
+            builtin_steps = cand.builtin_steps() + (move.kind == "builtin")
+            if result == cand.expr or seen.get(result, builtin_steps + 1) <= builtin_steps:
+                continue  # known already, unless this path leans on SymPy less (and can cite more)
+            if result in proposals and proposals[result].binding_cost <= move.binding_cost:
+                continue  # the same result from a rule that needed less work: keep that one
             if _nodes(result) > self.max_nodes:
                 continue
+            if self.allowed_functions is not None and not (
+                _function_names(result) <= self.allowed_functions
+            ):
+                continue  # expanding or factoring must not trade sin for exp or tan
             proposals[result] = move
         ordered = sorted(proposals.items(), key=lambda item: self.cost(item[0]))
         accepted: list[_Candidate] = []
@@ -231,7 +288,7 @@ class _Search:
             if not verification.passed:
                 self.discarded += 1
                 continue
-            seen.add(result)
+            seen[result] = cand.builtin_steps() + (move.kind == "builtin")
             accepted.append(
                 _Candidate(
                     result,
@@ -335,9 +392,10 @@ def transform(
         max_nodes=nodes * SIZE_FACTOR + SIZE_SLACK if goal != "expand" else nodes * 8 + 100,
         deadline=started + 0.7 * limits.timeout_seconds,
         start_cost=cost(expr),
+        allowed_functions=_allowed_functions(expr) if goal in {"expand", "factor"} else None,
     )
     start = _Candidate(expr, (), search.start_cost)
-    seen: set[sp.Expr] = {expr}
+    seen: dict[sp.Expr, int] = {expr: 0}
     pool: list[_Candidate] = []
     beam = [start]
     best_cost = search.start_cost

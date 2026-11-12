@@ -395,6 +395,9 @@ class Rewrite:
     node: sp.Expr
     rewritten: sp.Expr
     unmet: list[RuleCondition]
+    # Operations in what the pattern variables were bound to: when two rules give the same result,
+    # the one that needed no negation or other work in its bindings is the one to cite.
+    binding_cost: int = 0
 
 
 def can_reverse(rule: Rule) -> bool:
@@ -455,7 +458,10 @@ def rule_rewrites(
         rewritten = expr.xreplace({node: instantiated})
         if rewritten == expr and not unmet:
             continue
-        yield Rewrite(node=node, rewritten=rewritten, unmet=unmet)
+        binding_cost = sum(
+            int(sp.count_ops(value)) for key, value in bindings.items() if key != rest
+        )
+        yield Rewrite(node=node, rewritten=rewritten, unmet=unmet, binding_cost=binding_cost)
 
 
 def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
