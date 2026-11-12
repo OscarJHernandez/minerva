@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import sympy as sp
 from minerva_engine import parse_text
 from minerva_engine.features import expression_features
+from minerva_engine.latexprint import to_latex
 
 from .models import Entry
 
@@ -15,7 +15,7 @@ def statement_latex(entry: Entry) -> str:
         return entry.statement_latex
     assert entry.rule is not None  # noqa: S101 - guaranteed by the Entry validator
     lhs, rhs = parse_text(entry.rule.lhs), parse_text(entry.rule.rhs)
-    return f"{sp.latex(lhs)} = {sp.latex(rhs)}"
+    return f"{to_latex(lhs)} = {to_latex(rhs)}"
 
 
 def rule_features(entry: Entry) -> set[str]:
@@ -24,6 +24,13 @@ def rule_features(entry: Entry) -> set[str]:
     if entry.rule is not None:
         features |= expression_features(parse_text(entry.rule.lhs))
     return features
+
+
+def rhs_features(entry: Entry) -> set[str]:
+    """Structure of the rule's right-hand side: what a chain can reach by applying it left to right."""
+    if entry.rule is None:
+        return set()
+    return expression_features(parse_text(entry.rule.rhs))
 
 
 def feature_token(feature: str) -> str:

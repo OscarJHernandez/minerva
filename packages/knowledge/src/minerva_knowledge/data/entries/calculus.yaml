@@ -96,7 +96,7 @@
   chapter: math.integrals
   section: indefinite
   verification: symbolic
-  statement_latex: '\int x\,e^{x}\,dx = (x-1)\,e^{x} + C'
+  statement_latex: '\int x\,\mathrm{e}^{x}\,dx = (x-1)\,\mathrm{e}^{x} + C'
   check: {kind: antiderivative, integrand: "x*exp(x)", antiderivative: "(x - 1)*exp(x)", variable: x}
   keywords: [integral, integration by parts, exponential]
 - id: antideriv.log

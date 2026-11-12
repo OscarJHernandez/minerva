@@ -9,6 +9,7 @@ import type {
   IntegrateResult,
   IdentitiesResult,
   SeriesResult,
+  SimplifyGoal,
   SimplifyResult,
   User,
 } from "./types";
@@ -61,6 +62,11 @@ export interface ComputeInput {
   parent_id?: string;
 }
 
+export interface SimplifyInput extends ComputeInput {
+  goal?: SimplifyGoal;
+  target?: string[];
+}
+
 export const api = {
   me: () => request<User>("/v1/auth/me"),
   login: (email: string, password: string) =>
@@ -71,7 +77,7 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   logout: () => request<void>("/v1/auth/logout", { method: "POST" }),
-  simplify: (c: ComputeInput) =>
+  simplify: (c: SimplifyInput) =>
     request<SimplifyResult>("/v1/compute/simplify", {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c }),

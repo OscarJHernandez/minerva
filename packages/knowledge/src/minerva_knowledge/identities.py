@@ -9,12 +9,14 @@ from minerva_engine import (
     ExpressionInput,
     RuleApplication,
     Status,
+    TransformResult,
     split_equation,
 )
 from pydantic import BaseModel, Field
 
 from .kb import KnowledgeBase
 from .models import Entry, Reference
+from .render import rhs_features, rule_features
 
 _ORDER = {
     Applicability.APPLICABLE: 0,
@@ -104,6 +106,94 @@ def find_identities(
         matches=matches,
         candidates_considered=len(candidates),
         duration_ms=result.duration_ms,
+    )
+
+
+MAX_CHAIN_CANDIDATES = 60
+
+
+class TransformResponse(TransformResult):
+    """A verified chain plus the handbook entry behind every rule it names."""
+
+    entries: dict[str, EntrySummary] = Field(default_factory=dict)
+    candidates_considered: int = 0
+
+
+def chain_candidates(
+    kb: KnowledgeBase, features: list[str], target: list[str], text: str, limit: int
+) -> list[Entry]:
+    """Rules a chain may use: structurally related to the input on either side, then related to
+    what those rules can introduce. Retrieval only proposes; the engine checks every move."""
+    wanted = {*features, *(f"f:{t.lower()}" for t in target)}
+    first = [e for e in kb.candidate_rules(wanted, text, limit, sides="both") if e.rule]
+    found = {e.id: e for e in first}
+    reached: set[str] = set()
+    for entry in first:
+        reached |= rule_features(entry) | rhs_features(entry)
+    # Only the functions a first-round rule can introduce are worth a second round: they are what
+    # lets a chain continue (tan -> sin/cos, then a rule about sin and cos).
+    reached = {f for f in reached if f.startswith("f:")} - wanted
+    if reached:
+        for entry in kb.candidate_rules(reached, "", limit, sides="both"):
+            if entry.rule is not None:
+                found.setdefault(entry.id, entry)
+    return list(found.values())[:limit]
+
+
+def transform_expression(
+    kb: KnowledgeBase,
+    engine: Engine,
+    expression: ExpressionInput,
+    goal: str = "simplify",
+    target: list[str] | None = None,
+    text: str = "",
+    limit: int = MAX_CHAIN_CANDIDATES,
+) -> TransformResponse:
+    """Chains of verified rewrites toward `goal`, using the handbook and SymPy's own moves."""
+    status, message, features, _ = engine.features(expression)
+    if status is not Status.OK:
+        return TransformResponse(status=status, message=message)
+    candidates = chain_candidates(kb, features, target or [], text, limit)
+    rules = [e.rule for e in candidates if e.rule is not None]
+    result = engine.transform(expression, rules, goal, target)
+    by_id = {e.id: e for e in candidates}
+    used = {s.name for s in result.steps if s.kind == "rule"}
+    used |= {s.name for c in result.alternatives for s in c.steps if s.kind == "rule"}
+    used |= {b.rule_id for b in result.blocked}
+    return TransformResponse(
+        **result.model_dump(),
+        entries={i: summarize(kb, by_id[i]) for i in sorted(used) if i in by_id},
+        candidates_considered=len(rules),
+    )
+
+
+def simplify_expression(
+    kb: KnowledgeBase,
+    engine: Engine,
+    expression: ExpressionInput,
+    goal: str = "simplify",
+    target: list[str] | None = None,
+    text: str = "",
+) -> TransformResponse:
+    """The workbench and chat entry point: handbook chains first, SymPy's own simplification as a
+    fallback when the chain search itself could not run (a hard resource stop), never silently."""
+    result = transform_expression(kb, engine, expression, goal, target, text)
+    if goal != "simplify" or result.status not in {Status.RESOURCE_LIMIT, Status.INTERNAL_ERROR}:
+        return result
+    plain = engine.simplify(expression)
+    return TransformResponse(
+        status=plain.status,
+        goal="simplify",
+        input_latex=plain.input_latex,
+        result_latex=plain.result_latex,
+        result_text=plain.result_text,
+        verification=plain.verification,
+        search_complete=False,
+        restrictions_latex=plain.restrictions_latex,
+        restrictions_complete=plain.restrictions_complete,
+        message="The search through handbook identities did not finish, so this is SymPy's "
+        "simplification alone, with no identities cited. " + plain.message,
+        duration_ms=result.duration_ms + plain.duration_ms,
     )
 
 

@@ -3,7 +3,7 @@
 import { Math } from "@minerva/ui/math";
 import type { IdentitiesResult, IdentityMatch } from "@/lib/types";
 import { EntryCard } from "./entry-card";
-import { StatusPill } from "./result-panel";
+import { Restrictions, StatusPill } from "./result-panel";
 
 interface Apply {
   /** Rule id being applied right now, if any. */
@@ -63,8 +63,9 @@ function Detail({ match, apply }: { match: IdentityMatch; apply?: Apply }) {
       <div className="mt-3 rounded bg-ok-soft p-3 text-sm">
         <div className="text-ok">Applied to this part of your expression:</div>
         {a.matched_subexpression_latex && <Math latex={a.matched_subexpression_latex} display />}
-        <div className="text-ok">Rewritten expression, verified:</div>
+        <div className="text-ok">Rewritten expression (numerically checked):</div>
         {a.rewritten_latex && <Math latex={a.rewritten_latex} display />}
+        <Restrictions latex={a.restrictions_latex} complete={a.restrictions_complete ?? true} />
         {a.verification && (
           <div className="text-xs text-muted">
             {a.verification.numeric_points_agreed}/{a.verification.numeric_points_checked} sample
@@ -152,7 +153,7 @@ export function IdentitiesPanel({
       )}
       <Group
         title="Applicable"
-        hint="Matched, conditions proven from your assumptions, and the rewrite verified."
+        hint="Matched, conditions proven from your assumptions, and the rewrite checked numerically."
         items={applicable}
         apply={apply}
       />

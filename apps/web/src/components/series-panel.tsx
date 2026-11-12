@@ -24,7 +24,7 @@ export function SeriesPanel({ result }: { result: SeriesResult }) {
         <h2 id={headingId} className="font-serif text-xl">
           Series
         </h2>
-        <StatusPill status={result.status} okLabel="Expanded and verified" />
+        <StatusPill status={result.status} okLabel="Expanded, numerically checked" />
       </div>
 
       {result.input_latex && (
@@ -50,7 +50,7 @@ export function SeriesPanel({ result }: { result: SeriesResult }) {
             type="button"
             className="mt-1 text-xs text-accent hover:underline"
             onClick={async () => {
-              await navigator.clipboard?.writeText(result.result_latex ?? "");
+              await navigator.clipboard?.writeText(full ?? "");
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}

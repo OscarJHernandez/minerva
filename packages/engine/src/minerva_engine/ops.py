@@ -7,7 +7,8 @@ boundary. `service.Engine` is the typed entry point; call these directly only in
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import Any
 
 import sympy as sp
@@ -16,6 +17,7 @@ from .claims import ClaimCheck, check_claim, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
 from .features import expression_features
 from .latexparse import parse_latex
+from .latexprint import to_latex
 from .models import (
     Applicability,
     ExpressionInput,
@@ -31,6 +33,7 @@ from .models import (
     TensorResult,
     Verification,
 )
+from .restrictions import domain_restrictions
 from .tensor import canonicalize
 from .textparse import parse_text
 from .verify import verify_equal
@@ -38,12 +41,14 @@ from .verify import verify_equal
 _REST = "__minerva_rest__"
 
 
-def parse_expression(data: ExpressionInput, limits: Limits) -> sp.Expr:
+def parse_expression(
+    data: ExpressionInput, limits: Limits, denominators: list[sp.Expr] | None = None
+) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        return parse_latex(data.input, data.assumptions, limits)
-    return parse_text(data.input, data.assumptions, limits)
+        return parse_latex(data.input, data.assumptions, limits, denominators)
+    return parse_text(data.input, data.assumptions, limits, denominators)
 
 
 def _failure(exc: MinervaMathError) -> tuple[Status, str]:
@@ -52,25 +57,40 @@ def _failure(exc: MinervaMathError) -> tuple[Status, str]:
     return Status.PARSE_ERROR, str(exc)
 
 
+def _restriction_note(restrictions: list[str], complete: bool) -> str:
+    if not complete:
+        return (
+            " Where the result is valid could not be determined; do not assume it holds at poles."
+        )
+    if restrictions:
+        return " The result is valid only where " + ", ".join(restrictions) + "."
+    return ""
+
+
 # --- simplify ---------------------------------------------------------------------------
 def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
+    denominators: list[sp.Expr] = []
     try:
-        expr = parse_expression(data, limits)
+        expr = parse_expression(data, limits, denominators)
     except MinervaMathError as exc:
         status, message = _failure(exc)
         return SimplifyResult(status=status, message=message).model_dump(mode="json")
 
-    input_latex = sp.latex(expr)
+    input_latex = to_latex(expr)
     result = sp.simplify(expr)
+    restrictions, complete = domain_restrictions(expr, result, denominators)
+    note = _restriction_note(restrictions, complete)
     if result == expr:
         return SimplifyResult(
             status=Status.UNCHANGED,
             input_latex=input_latex,
             result_latex=input_latex,
             result_text=str(expr),
-            message="No simpler form was found. The expression is returned unchanged.",
+            restrictions_latex=restrictions,
+            restrictions_complete=complete,
+            message="No simpler form was found. The expression is returned unchanged." + note,
         ).model_dump(mode="json")
 
     verification = verify_equal(expr, result)
@@ -88,10 +108,20 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     return SimplifyResult(
         status=Status.OK,
         input_latex=input_latex,
-        result_latex=sp.latex(result),
+        result_latex=to_latex(result),
         result_text=str(result),
         verification=verification,
-        message="Simplified with SymPy and verified.",
+        restrictions_latex=restrictions,
+        restrictions_complete=complete,
+        message=(
+            "Simplified with SymPy and verified"
+            + (
+                " (symbolic zero and numeric check)."
+                if verification.symbolic_zero
+                else " numerically."
+            )
+            + note
+        ),
     ).model_dump(mode="json")
 
 
@@ -279,7 +309,7 @@ def op_read_formulas(payload: dict[str, Any]) -> dict[str, Any]:
                 raise LimitError("input is too long")
             sides = split_equation(text) or [text]
             parsed = [parse_latex(side, {}, limits) for side in sides]
-            read_as = " = ".join(sp.latex(p) for p in parsed)
+            read_as = " = ".join(to_latex(p) for p in parsed)
             reading = FormulaReading(status=Status.OK, read_as=read_as)
         except MinervaMathError as exc:
             status, message = _failure(exc)
@@ -303,7 +333,7 @@ def op_features(payload: dict[str, Any]) -> dict[str, Any]:
         "status": Status.OK.value,
         "message": "",
         "features": sorted(expression_features(expr)),
-        "input_latex": sp.latex(expr),
+        "input_latex": to_latex(expr),
     }
 
 
@@ -387,9 +417,45 @@ def _binds_fraction_of_multiple(
     return False
 
 
-def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
-    """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
+@dataclass(frozen=True)
+class Rewrite:
+    """One place where a rule matches: the matched node, the rewritten expression, unmet conditions."""
+
+    node: sp.Expr
+    rewritten: sp.Expr
+    unmet: list[RuleCondition]
+    # Operations in what the pattern variables were bound to: when two rules give the same result,
+    # the one that needed no negation or other work in its bindings is the one to cite.
+    binding_cost: int = 0
+
+
+def can_reverse(rule: Rule) -> bool:
+    """A rule may also be read right to left only if its right side determines every variable.
+
+    A right side that is a bare number or symbol (`1`, `a`) would match anything, and one that
+    omits a variable (`sin(a)**2 + cos(a)**2 -> 1` read backwards) cannot bind it.
+    """
+    rhs = parse_text(rule.rhs)
+    if rhs.is_Number or rhs.is_Symbol:
+        return False
+    return {s.name for s in rhs.free_symbols} >= set(rule.variables)
+
+
+def rule_rewrites(
+    expr: sp.Expr, rule: Rule, *, reverse: bool = False, strict: bool = False
+) -> Iterator[Rewrite]:
+    """Every place `rule` matches inside `expr`, after the match filters, in tree order.
+
+    Conditions are checked here (`unmet` is empty when they are provable from the declared
+    assumptions) but the rewrite is NOT verified: callers must call `verify_equal` before
+    accepting one. With `reverse=True` the right side is the pattern. With `strict=True` a sum or
+    product pattern matches only a sum or product node: without it `cos(y)**2` "matches"
+    `sin(a)**2 + cos(a)**2` with the leftover term `-sin(y)**2` absorbed by `rest`, which is true but
+    not what a chain of identities should be built from. `find_identities` keeps the lenient default.
+    """
     lhs, rhs, wilds = _pattern_parts(rule)
+    if reverse:
+        lhs, rhs = rhs, lhs
     rest = sp.Wild(_REST)
     if lhs.is_Add:
         pattern, replacement = lhs + rest, rhs + rest
@@ -398,9 +464,12 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
     else:
         pattern, replacement = lhs, rhs
 
-    first_blocked: RuleApplication | None = None
+    seen: set[sp.Basic] = set()
     for node in sp.preorder_traversal(expr):
-        if not isinstance(node, sp.Expr):
+        if not isinstance(node, sp.Expr) or node in seen:
+            continue
+        seen.add(node)
+        if strict and ((lhs.is_Add and not node.is_Add) or (lhs.is_Mul and not node.is_Mul)):
             continue
         bindings = node.match(pattern)
         if (
@@ -409,25 +478,38 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             or _binds_fraction_of_multiple(lhs, wilds, bindings)
         ):
             continue
+        if reverse and any(key != rest and value == 0 for key, value in bindings.items()):
+            continue  # `2 sin x cos x` is not "sin a + sin b" with b = 0: that variable is invented
         instantiated = replacement.xreplace(bindings)
         if instantiated == node:
             continue  # the rewrite would be a no-op (e.g. a**1), not a real application
         unmet = _unmet(rule, bindings, wilds)
-        matched_latex = sp.latex(node)
-        if unmet:
+        rewritten = expr.xreplace({node: instantiated})
+        if rewritten == expr and not unmet:
+            continue
+        binding_cost = sum(
+            int(sp.count_ops(value)) for key, value in bindings.items() if key != rest
+        )
+        yield Rewrite(node=node, rewritten=rewritten, unmet=unmet, binding_cost=binding_cost)
+
+
+def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
+    """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
+    first_blocked: RuleApplication | None = None
+    for rewrite in rule_rewrites(expr, rule):
+        matched_latex = to_latex(rewrite.node)
+        if rewrite.unmet:
             first_blocked = first_blocked or RuleApplication(
                 rule_id=rule.id,
                 applicability=Applicability.CONDITIONS_NOT_SATISFIED,
                 matched_subexpression_latex=matched_latex,
-                unmet_conditions=unmet,
+                unmet_conditions=rewrite.unmet,
                 message="The pattern matches, but the conditions are not provable "
                 "from the declared assumptions, so the rule is not applied.",
             )
             continue
-        rewritten = expr.xreplace({node: instantiated})
-        if rewritten == expr:
-            continue
-        verification = verify_equal(expr, rewritten, symbolic=False)
+        verification = verify_equal(expr, rewrite.rewritten, symbolic=False)
+        restrictions, complete = domain_restrictions(expr, rewrite.rewritten)
         if not verification.passed:
             return RuleApplication(
                 rule_id=rule.id,
@@ -440,10 +522,13 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             rule_id=rule.id,
             applicability=Applicability.APPLICABLE,
             matched_subexpression_latex=matched_latex,
-            rewritten_latex=sp.latex(rewritten),
-            rewritten_text=str(rewritten),
+            rewritten_latex=to_latex(rewrite.rewritten),
+            rewritten_text=str(rewrite.rewritten),
             verification=verification,
-            message="Matched, conditions hold, and the rewrite was verified.",
+            restrictions_latex=restrictions,
+            restrictions_complete=complete,
+            message="Matched, conditions hold, and the rewrite was verified numerically."
+            + _restriction_note(restrictions, complete),
         )
     if first_blocked is not None:
         return first_blocked
@@ -490,10 +575,45 @@ def op_identities(payload: dict[str, Any]) -> dict[str, Any]:
             )
     return IdentitiesResult(
         status=Status.OK,
-        input_latex=sp.latex(expr),
+        input_latex=to_latex(expr),
         applications=applications,
         message="",
     ).model_dump(mode="json")
+
+
+# --- verified chains of rewrites ----------------------------------------------------------
+def op_transform(payload: dict[str, Any]) -> dict[str, Any]:
+    from .transform import transform
+
+    result = transform(
+        ExpressionInput(**payload["expression"]),
+        [Rule(**r) for r in payload["rules"]],
+        str(payload.get("goal", "simplify")),
+        [str(t) for t in payload.get("target", [])],
+        Limits(**payload["limits"]),
+        width=int(payload.get("width", 4)),
+        depth=int(payload.get("depth", 4)),
+    )
+    if result.status in (Status.OK, Status.UNCHANGED) and result.result_text:
+        denominators: list[sp.Expr] = []
+        try:
+            limits = Limits(**payload["limits"])
+            before = parse_expression(
+                ExpressionInput(**payload["expression"]), limits, denominators
+            )
+            after = parse_text(
+                result.result_text, ExpressionInput(**payload["expression"]).assumptions, limits
+            )
+            result.restrictions_latex, result.restrictions_complete = domain_restrictions(
+                before, after, denominators
+            )
+        except Exception:  # undetermined is reported, never dropped
+            result.restrictions_complete = False
+        if not result.restrictions_complete:
+            result.message += _restriction_note([], False)
+        elif result.restrictions_latex:
+            result.message += _restriction_note(result.restrictions_latex, True)
+    return result.model_dump(mode="json")
 
 
 # --- tensor canonicalization -------------------------------------------------------------
@@ -510,7 +630,7 @@ def op_tensor_canonicalize(payload: dict[str, Any]) -> dict[str, Any]:
         status=Status.OK if changed else Status.UNCHANGED,
         input_text=str(parsed),
         result_text=str(canonical),
-        result_latex=sp.latex(canonical),
+        result_latex=to_latex(canonical),
         independent_verification=False,
         message=(
             "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm "
@@ -534,6 +654,7 @@ def verify_rule(rule: Rule) -> Verification:
 OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
     "identities": op_identities,
+    "transform": op_transform,
     "features": op_features,
     "check_claims": op_check_claims,
     "read_formulas": op_read_formulas,

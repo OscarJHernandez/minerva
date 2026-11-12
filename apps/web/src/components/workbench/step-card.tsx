@@ -96,6 +96,13 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
   const assumptions = assumptionsSummary(item.assumptions);
   const verified = verificationSummary(item);
   const message = (item.result as unknown as { message?: string }).message;
+  const extra = item.result as unknown as {
+    restrictions_latex?: string[];
+    restrictions_complete?: boolean;
+  };
+  const restrictions = failed ? [] : (extra.restrictions_latex ?? []);
+  const restrictionsIncomplete = !failed && extra.restrictions_complete === false;
+  const continuing = cont !== null;
   const identity =
     item.operation === "apply_identity" ? (item.result as unknown as ApplyIdentityResult) : null;
 
@@ -140,6 +147,27 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
       )}
       {failed && message && <p className="mt-2 text-sm text-warn">{message}</p>}
 
+      {restrictions.length > 0 && (
+        <p className="mt-1 text-xs text-muted">
+          Excludes points the input allowed:{" "}
+          {restrictions.map((r, i) => (
+            <span key={r}>
+              {i > 0 && ", "}
+              <Math latex={r} />
+            </span>
+          ))}
+        </p>
+      )}
+      {restrictions.length > 0 && continuing && (
+        <p className="text-xs text-muted">
+          A step that continues from this result does not carry these exclusions.
+        </p>
+      )}
+      {restrictionsIncomplete && (
+        <p className="mt-1 text-xs text-warn">
+          The points this step excludes could not all be determined.
+        </p>
+      )}
       {(assumptions || verified) && (
         <p className="mt-1 text-xs text-muted">
           {assumptions

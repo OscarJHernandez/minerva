@@ -20,12 +20,16 @@ Symbolic computation, with every result verified before it is shown.
 
 *Available in:* workbench, chat, HTTP API.
 
-Simplifies an expression with SymPy, then checks the result at random complex sample points and with a symbolic zero test, reported separately. A result that cannot be verified is never shown.
+Searches a short chain of rewrites toward a goal (simplify, expand, factor, or rewrite in given functions): handbook identities, each at every place it matches and read in either direction, plus SymPy's own moves. Every step is checked at random complex sample points and, separately, with a symbolic zero test; the steps and the identities used are shown. A result that cannot be verified is never shown.
 
 **Limits**
 
+- Numerical agreement at sample points is evidence, not proof; only a passed symbolic zero test means SymPy also reduced the difference to zero. Both are reported for every step.
+- Steps are equalities where both sides are defined. When the result excludes points the input did not (a cancelled factor), it says where it is valid (`x \neq 1`); square-root, logarithm and branch-cut domains are not reported this way.
+- The search is bounded (at most 4 rewrites in a row, a few alternatives per step, a time budget). "Nothing better was found" does not show that no better form exists.
+- An identity that matches but whose conditions are not provable from your assumptions is reported with the unmet conditions and never applied.
 - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.
-- If nothing simpler is found, the input is returned unchanged and the status says so.
+- If nothing better is found, the input is returned unchanged and the status says so.
 - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
 
 #### Rational trigonometric expression
@@ -33,23 +37,41 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Input:** `\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}`
 - **Status:** `ok`
 - **Result:** $\frac{2}{\sin{\left(x \right)}}$
-- **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
-- Simplified with SymPy and verified.
+- **Step 1: sympy.simplify:** $\frac{\cos{\left(x \right)} + 1}{\sin{\left(x \right)}} + \frac{\sin{\left(x \right)}}{\cos{\left(x \right)} + 1} = \frac{2}{\sin{\left(x \right)}}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
 
 #### Difference of fourth powers
 
 - **Input:** `\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}`
 - **Status:** `ok`
 - **Result:** $1$
-- **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
-- Simplified with SymPy and verified.
+- **Step 1: Difference of squares (alg.difference_of_squares):** $\frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\sin^{2}{\left(x \right)} - \cos^{2}{\left(x \right)}} = \frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\left(\sin{\left(x \right)} - \cos{\left(x \right)}\right) \left(\sin{\left(x \right)} + \cos{\left(x \right)}\right)}$
+- **Step 2: Difference of fourth powers (alg.difference_of_fourth_powers):** $\frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\left(\sin{\left(x \right)} - \cos{\left(x \right)}\right) \left(\sin{\left(x \right)} + \cos{\left(x \right)}\right)} = \sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)}$
+- **Step 3: Pythagorean identity (trig.pythagorean):** $\sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)} = 1$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** step 2: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** step 3: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### Cancelling a factor keeps its restriction
+
+- **Input:** `\frac{x^2-1}{x-1}`
+- **Status:** `ok`
+- **Result:** $x + 1$
+- **Step 1: Difference of squares (alg.difference_of_squares):** $\frac{x^{2} - 1}{x - 1} = x + 1$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- The result is `x + 1`, valid only where `x \neq 1`; the two expressions differ in domain.
 
 #### Square root of a square, no assumptions
 
 - **Input:** `\sqrt{x^2}`
-- **Status:** `unchanged`
+- **Status:** `conditions_not_satisfied`
 - **Read as:** $\sqrt{x^{2}}$
-- No simpler form was found. The expression is returned unchanged.
+- **Not applied: Square root of a square (real):** radical.sqrt_square_abs matches but needs a real
+- **Not applied: Square root of a square (non-negative):** radical.sqrt_square_nonneg matches but needs a nonnegative
+- Identities that would improve this expression match, but their conditions are not provable from the declared assumptions, so nothing was changed.
 - Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified.
 
 #### The same, with x declared real
@@ -58,7 +80,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Assumptions:** x real
 - **Status:** `unchanged`
 - **Read as:** $\left|{x}\right|$
-- No simpler form was found. The expression is returned unchanged.
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 - Under the declared assumption the expression is read as |x|.
 
 #### Power of a power, no assumptions
@@ -66,7 +88,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Input:** `(x^a)^b`
 - **Status:** `unchanged`
 - **Read as:** $\left(x^{a}\right)^{b}$
-- No simpler form was found. The expression is returned unchanged.
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 - The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is.
 
 #### The same, with x positive and a real
@@ -75,8 +97,82 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Assumptions:** x positive; a real
 - **Status:** `unchanged`
 - **Read as:** $x^{a b}$
-- No simpler form was found. The expression is returned unchanged.
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 - With x positive and a real the exponents combine, and the expression is read as x^{ab}.
+
+#### Two identities in a row
+
+- **Input:** `\sin^2 x + \cos^2 x + \tan^2 x`
+- **Status:** `ok`
+- **Result:** $\sec^{2}{\left(x \right)}$
+- **Step 1: Pythagorean identity (trig.pythagorean):** $\sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)} + \tan^{2}{\left(x \right)} = \tan^{2}{\left(x \right)} + 1$
+- **Step 2: Tangent and secant (trig.tan_secant):** $\tan^{2}{\left(x \right)} + 1 = \sec^{2}{\left(x \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** step 2: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- The Pythagorean identity turns sin^2 + cos^2 into 1, and then 1 + tan^2 = sec^2. Neither identity alone reaches the result; each step is verified before the next is tried.
+
+#### An identity inside a larger expression
+
+- **Input:** `\log(\sin^2 t + \cos^2 t + y)`
+- **Status:** `ok`
+- **Result:** $\log{\left(y + 1 \right)}$
+- **Step 1: Pythagorean identity (trig.pythagorean):** $\log{\left(y + \sin^{2}{\left(t \right)} + \cos^{2}{\left(t \right)} \right)} = \log{\left(y + 1 \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### Matches, but its conditions are not provable
+
+- **Input:** `\log x + \log y`
+- **Status:** `conditions_not_satisfied`
+- **Read as:** $\log{\left(x \right)} + \log{\left(y \right)}$
+- **Not applied: Logarithm of a product:** log.product matches but needs a positive, b positive
+- Identities that would improve this expression match, but their conditions are not provable from the declared assumptions, so nothing was changed.
+- Combining logarithms needs both arguments positive. Nothing is applied and the input comes back.
+
+#### The same, with x and y declared positive
+
+- **Input:** `\log x + \log y`
+- **Assumptions:** x positive; y positive
+- **Status:** `ok`
+- **Result:** $\log{\left(x y \right)}$
+- **Step 1: Logarithm of a product (log.product), read right to left:** $\log{\left(x \right)} + \log{\left(y \right)} = \log{\left(x y \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### Expand a multiple angle
+
+- **Input:** `\sin(3x)`
+- **Status:** `ok`
+- **Result:** $- 4 \sin^{3}{\left(x \right)} + 3 \sin{\left(x \right)}$
+- **Step 1: Triple-angle formula for sine (trig.triple_sin):** $\sin{\left(3 x \right)} = - 4 \sin^{3}{\left(x \right)} + 3 \sin{\left(x \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### Factor a difference of fourth powers
+
+- **Input:** `x^4 - y^4`
+- **Status:** `ok`
+- **Result:** $\left(x - y\right) \left(x + y\right) \left(x^{2} + y^{2}\right)$
+- **Step 1: Difference of fourth powers (alg.difference_of_fourth_powers):** $x^{4} - y^{4} = \left(x - y\right) \left(x + y\right) \left(x^{2} + y^{2}\right)$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### Rewrite in terms of sine and cosine
+
+- **Input:** `\tan x \cos x`
+- **Status:** `ok`
+- **Result:** $\sin{\left(x \right)}$
+- **Step 1: Tangent as a ratio (trig.tan_ratio):** $\cos{\left(x \right)} \tan{\left(x \right)} = \sin{\left(x \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### Nothing to improve
+
+- **Input:** `\sin x`
+- **Status:** `unchanged`
+- **Read as:** $\sin{\left(x \right)}$
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 
 #### Ambiguous input is refused
 
@@ -107,7 +203,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 
 - **Input:** `\exp(-x^2)`
 - **Status:** `ok`
-- **Derivative:** $\frac{d^{3}}{d x^{3}} e^{- x^{2}} = \left(- 8 x^{3} + 12 x\right) e^{- x^{2}}$
+- **Derivative:** $\frac{d^{3}}{d x^{3}} \mathrm{e}^{- x^{2}} = \left(- 8 x^{3} + 12 x\right) \mathrm{e}^{- x^{2}}$
 - **Check:** 3 step(s) checked against a numerical derivative; agreed at 36 of 36 points
 - Differentiated with SymPy; every step was verified numerically.
 
@@ -184,7 +280,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Equation:** `x^3 + x^2 + x + 1 = 0`
 - **Status:** `ok`
 - **Factorization:** $\left(x + 1\right) \cdot \left(x^{2} + 1\right)$
-- **Roots in radicals:** $-1,\ - i,\ i$
+- **Roots in radicals:** $-1,\ - \mathrm{i},\ \mathrm{i}$
 - **Check:** roots substituted back (largest residual 0); root count equals the degree; Vieta's relations hold
 - Degree 3: 3 roots found and verified by substitution and Vieta's relations.
 
@@ -266,8 +362,8 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (theta):** $m r \left(r \ddot{\theta} + 2 \dot{r} \dot{\theta}\right) = 0$
 - **Conserved: cyclic:** $p_{\theta} = m r^{2} \dot{\theta}$ — theta is cyclic: L does not depend on it, so dp/dt = dL/dq = 0
 - **Conserved: energy:** $h = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
-- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
 
@@ -280,8 +376,8 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (y):** $\frac{k y}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{y} = 0$
 - **Conserved: energy:** $h = - \frac{k}{\sqrt{x^{2} + y^{2}}} + \frac{m \dot{x}^{2}}{2} + \frac{m \dot{y}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
 - **Conserved: rotation:** $Q = m \left(x \dot{y} - \dot{x} y\right)$ — L is unchanged by rotating (x, y) as Cartesian coordinates, so by Noether's theorem Q = Σ p ξ is conserved
-- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - cyclic coordinates: none (every coordinate appears in L)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
 
@@ -316,8 +412,8 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 - **Status:** `ok`
 - **Constant of motion 1:** $C_{1} = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
 - **Constant of motion 2:** $C_{2} = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.
 - Already known and left out of the count: Momentum conjugate to theta; Energy function.
 - Nothing outside this family was searched; finding none proves nothing beyond it.
@@ -331,8 +427,8 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 - **Status:** `ok`
 - **Constant of motion 1:** $C_{1} = k x y + m \dot{x} \dot{y}$
 - **Constant of motion 2:** $C_{2} = k x^{2} + m \dot{x}^{2}$
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.
 - Already known and left out of the count: Energy function; Rotation symmetry in the (x, y) plane.
 - Nothing outside this family was searched; finding none proves nothing beyond it.
@@ -387,14 +483,14 @@ Retrieval proposes handbook identities that may fit an expression. The engine th
 - **Assumptions:** x positive; y positive
 - **Status:** `applicable`
 - **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
 
 #### Product to sum
 
 - **Input:** `\sin(a)\cos(b)`
 - **Status:** `applicable`
 - **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
 
 ### Citable handbook
 
@@ -446,7 +542,7 @@ Builds a derivation step by step without a language model. Each step is an opera
 - **Assumptions:** x positive; y positive
 - **Status:** `applicable`
 - **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
 - In the workbench this is the Apply button next to an applicable identity; it appears only after the assumptions make the identity applicable.
 
 ### Chat with a model you host

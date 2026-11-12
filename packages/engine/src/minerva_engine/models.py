@@ -63,6 +63,7 @@ class Verification(BaseModel):
     symbolic_zero: bool = False  # simplify(original - result) == 0
     numeric_points_checked: int = 0
     numeric_points_agreed: int = 0
+    numeric_points_skipped: int = 0  # sample points where both sides were undefined or failed
     passed: bool = False
     note: str = ""
 
@@ -73,6 +74,9 @@ class SimplifyResult(BaseModel):
     result_latex: str | None = None
     result_text: str | None = None
     verification: Verification | None = None
+    # Points the result excludes that the input, as written, did not (and vice versa): `x \\neq 1`.
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True  # False: they could not be determined, see `message`
     message: str = ""
     duration_ms: int = 0
 
@@ -124,6 +128,8 @@ class RuleApplication(BaseModel):
     rewritten_text: str | None = None
     unmet_conditions: list[RuleCondition] = Field(default_factory=list)
     verification: Verification | None = None
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
     message: str = ""
 
 
@@ -131,6 +137,57 @@ class IdentitiesResult(BaseModel):
     status: Status
     input_latex: str | None = None
     applications: list[RuleApplication] = Field(default_factory=list)
+    message: str = ""
+    duration_ms: int = 0
+
+
+TransformGoal = Literal["simplify", "expand", "factor", "rewrite"]
+
+
+class TransformStep(BaseModel):
+    """One rewrite in a chain. `name` is a handbook rule id, or a SymPy move (`sympy.expand`)."""
+
+    kind: Literal["rule", "builtin"]
+    name: str
+    direction: Literal["forward", "reverse"] | None = None  # rules only
+    matched_latex: str | None = None
+    before_latex: str
+    after_latex: str
+    verification: Verification
+
+
+class TransformChain(BaseModel):
+    result_latex: str
+    result_text: str
+    steps: list[TransformStep]
+    verification: Verification  # input -> result, end to end
+
+
+class BlockedMove(BaseModel):
+    """A rule that would improve the objective but whose conditions are not provable. Not applied."""
+
+    rule_id: str
+    direction: Literal["forward", "reverse"]
+    matched_latex: str
+    unmet_conditions: list[RuleCondition]
+
+
+class TransformResult(BaseModel):
+    status: Status
+    goal: TransformGoal = "simplify"
+    input_latex: str | None = None
+    result_latex: str | None = None
+    result_text: str | None = None
+    steps: list[TransformStep] = Field(default_factory=list)
+    verification: Verification | None = None
+    alternatives: list[TransformChain] = Field(default_factory=list)
+    blocked: list[BlockedMove] = Field(default_factory=list)
+    candidates_tried: int = 0
+    discarded_not_verified: int = 0
+    search_complete: bool = True
+    # Points the result excludes that the input, as written, did not: `x \\neq 1`.
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
     message: str = ""
     duration_ms: int = 0
 

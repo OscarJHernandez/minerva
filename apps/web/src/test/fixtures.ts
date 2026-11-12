@@ -98,6 +98,82 @@ export const okSeries: SeriesResult = {
   duration_ms: 40,
 };
 
+export const chainSimplify: SimplifyResult = {
+  status: "ok",
+  goal: "simplify",
+  input_latex: "\\sin^{2}{x} + \\cos^{2}{x} + \\tan^{2}{x}",
+  result_latex: "\\sec^{2}{x}",
+  result_text: "sec(x)**2",
+  verification: {
+    symbolic_zero: true,
+    numeric_points_checked: 12,
+    numeric_points_agreed: 12,
+    passed: true,
+    note: "numeric check agreed at all sampled points",
+  },
+  steps: [
+    {
+      kind: "rule",
+      name: "trig.pythagorean",
+      direction: "forward",
+      matched_latex: "\\sin^{2}{x} + \\cos^{2}{x}",
+      before_latex: "\\sin^{2}{x} + \\cos^{2}{x} + \\tan^{2}{x}",
+      after_latex: "\\tan^{2}{x} + 1",
+      verification: {
+        symbolic_zero: true,
+        numeric_points_checked: 12,
+        numeric_points_agreed: 12,
+        passed: true,
+        note: "",
+      },
+    },
+    {
+      kind: "builtin",
+      name: "sympy.simplify",
+      direction: null,
+      matched_latex: null,
+      before_latex: "\\tan^{2}{x} + 1",
+      after_latex: "\\sec^{2}{x}",
+      verification: {
+        symbolic_zero: false,
+        numeric_points_checked: 12,
+        numeric_points_agreed: 12,
+        passed: true,
+        note: "",
+      },
+    },
+  ],
+  alternatives: [
+    {
+      result_latex: "\\tan^{2}{x} + 1",
+      result_text: "tan(x)**2 + 1",
+      steps: [],
+      verification: {
+        symbolic_zero: true,
+        numeric_points_checked: 12,
+        numeric_points_agreed: 12,
+        passed: true,
+        note: "",
+      },
+    },
+  ],
+  blocked: [],
+  entries: {
+    "trig.pythagorean": {
+      id: "trig.pythagorean",
+      title: "Pythagorean identity",
+      kind: "identity",
+      chapter: "math.trigonometry",
+      statement_latex: "\\sin^2 a + \\cos^2 a = 1",
+      validity: "All complex a.",
+      verification: "symbolic",
+      reference: null,
+    },
+  },
+  message: "2 verified step(s).",
+  duration_ms: 90,
+};
+
 export const okSimplify: SimplifyResult = {
   status: "ok",
   input_latex: "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)}",

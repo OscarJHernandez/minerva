@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 
 from .checks import run_check
 from .loader import load_entries
@@ -11,14 +12,26 @@ from .loader import load_entries
 def _benchmark() -> int:
     from minerva_engine import Engine, Limits
 
-    from .benchmark import format_report, run_benchmark
+    from .benchmark import (
+        format_report,
+        format_retrieval,
+        format_transform_report,
+        run_benchmark,
+        run_retrieval,
+        run_transform_benchmark,
+    )
     from .kb import KnowledgeBase
 
-    report = run_benchmark(
-        KnowledgeBase.load(), Engine(Limits(timeout_seconds=30, max_concurrency=2))
-    )
+    kb = KnowledgeBase.load()
+    engine = Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    report = run_benchmark(kb, engine)
     print(format_report(report))
-    return 1 if report.failures else 0
+    print("\n== retrieval quality ==")
+    print(format_retrieval(run_retrieval(kb, engine)))
+    print("\n== multi-step transformations ==")
+    chains = run_transform_benchmark(kb, engine)
+    print(format_transform_report(chains))
+    return 1 if report.failures or chains.failures else 0
 
 
 def _generate(check: bool) -> int:
@@ -63,6 +76,13 @@ def main(argv: list[str]) -> int:
     stated = 0
     for entry in entries:
         report = run_check(entry)
+        # `symbolic` means a symbolic zero was found, not only numeric agreement.
+        if entry.verification == "symbolic" and report.passed and not report.symbolic_proof:
+            report = replace(
+                report,
+                passed=False,
+                detail="declared symbolic but no symbolic zero: " + report.detail,
+            )
         mark = "ok  " if report.passed else "FAIL"
         if entry.verification == "stated":
             stated += 1

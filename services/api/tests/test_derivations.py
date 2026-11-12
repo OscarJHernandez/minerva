@@ -169,3 +169,28 @@ def test_clear_history_removes_derivations(authed: TestClient) -> None:
     step(authed, "simplify", input="x+x", format="text", derivation_id=d)
     assert authed.delete("/v1/history").status_code == 204
     assert authed.get("/v1/derivations").json() == []
+
+
+def test_apply_identity_reports_the_points_it_excludes(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/apply-identity", json={"input": r"\tan(2x)", "rule_id": "trig.double_tan"}
+    ).json()
+    assert r["status"] == "ok"
+    assert r["restrictions_complete"] is True
+    assert any(r"\neq" in item for item in r["restrictions_latex"])
+
+
+def test_simplify_result_can_be_continued_from_its_text(authed: TestClient) -> None:
+    d = new_derivation(authed)
+    s1 = step(authed, "simplify", input=r"\frac{x^2-1}{x-1}", derivation_id=d)
+    assert s1["status"] == "ok" and s1["result_text"]
+    s2 = step(
+        authed,
+        "differentiate",
+        input=s1["result_text"],
+        format="text",
+        variables=[{"name": "x", "order": 1}],
+        derivation_id=d,
+        parent_id=s1["calculation_id"],
+    )
+    assert s2["status"] == "ok" and s2["result_text"] == "1"

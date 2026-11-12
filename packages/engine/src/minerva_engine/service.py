@@ -21,6 +21,7 @@ from .models import (
     Status,
     TensorInput,
     TensorResult,
+    TransformResult,
 )
 from .motion import MotionReport, MotionRequest
 from .perturbation import CompareRequest, PerturbationReport
@@ -137,6 +138,32 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return IdentitiesResult(status=status, message=message, duration_ms=ms)
         result = IdentitiesResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def transform(
+        self,
+        expression: ExpressionInput,
+        rules: list[Rule],
+        goal: str = "simplify",
+        target: list[str] | None = None,
+        width: int = 4,
+        depth: int = 4,
+    ) -> TransformResult:
+        """A bounded search for a chain of verified rewrites (handbook rules, SymPy moves) toward `goal`."""
+        payload = {
+            "expression": expression.model_dump(),
+            "rules": [r.model_dump() for r in rules],
+            "goal": goal,
+            "target": target or [],
+            "width": width,
+            "depth": depth,
+        }
+        outcome, ms = self._run("transform", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return TransformResult(status=status, message=message, duration_ms=ms)
+        result = TransformResult(**outcome.value)
         result.duration_ms = ms
         return result
 

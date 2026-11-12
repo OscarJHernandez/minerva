@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from .build import Builder
 from .errors import LimitError, MinervaMathError
+from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, _sample
 
@@ -377,9 +378,9 @@ def series(
         return _fail(Status.PARSE_ERROR, str(exc))
 
     base: dict[str, Any] = {
-        "input_latex": sp.latex(expr),
+        "input_latex": to_latex(expr),
         "variable": var.name,
-        "point_latex": sp.latex(x0),
+        "point_latex": to_latex(x0),
         "order": order,
     }
     if x0.free_symbols or x0.is_finite is not True or x0.is_real is not True:
@@ -419,9 +420,9 @@ def series(
         )
         return SeriesResult(
             status=Status.OK,
-            result_latex=sp.latex(expr),
+            result_latex=to_latex(expr),
             result_text=str(expr),
-            terms=[SeriesTerm(power=0, coefficient_latex=sp.latex(expr))],
+            terms=[SeriesTerm(power=0, coefficient_latex=to_latex(expr))],
             verification=verification,
             message="The expression does not depend on the variable.",
             **base,
@@ -469,13 +470,13 @@ def series(
 
     simple = [sp.simplify(c) for c in coefficients]
     terms = [
-        SeriesTerm(power=k, coefficient_latex=sp.latex(c)) for k, c in enumerate(simple) if c != 0
+        SeriesTerm(power=k, coefficient_latex=to_latex(c)) for k, c in enumerate(simple) if c != 0
     ]
     # Shown in ascending powers of (x - point). The distance is a symbol whose name is its own
     # LaTeX, so SymPy does not expand (x - 1) back into x - 1 across terms.
-    distance_latex = sp.latex(var) if x0 == 0 else rf"\left({sp.latex(var - x0)}\right)"
+    distance_latex = to_latex(var) if x0 == 0 else rf"\left({to_latex(var - x0)}\right)"
     distance_symbol = sp.Symbol(distance_latex)
-    shown_latex = sp.latex(
+    shown_latex = to_latex(
         sum((c * distance_symbol**k for k, c in enumerate(simple)), sp.Integer(0)), order="rev-lex"
     )
     shown = sum((c * (var - x0) ** k for k, c in enumerate(simple)), sp.Integer(0))

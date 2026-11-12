@@ -23,7 +23,7 @@ from minerva_engine import Engine
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.models import ExpressionInput, TensorInput
 from minerva_knowledge import KnowledgeBase
-from minerva_knowledge.identities import find_identities
+from minerva_knowledge.identities import find_identities, simplify_expression
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs" / "capabilities.yaml"
@@ -78,25 +78,47 @@ def _example(
 
 
 def run_simplify(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
-    r = engine.simplify(
-        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {})
+    r = simplify_expression(
+        kb,
+        engine,
+        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        spec.get("goal", "simplify"),
+        spec.get("target") or [],
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     if r.status.value == "ok" and r.result_latex:
         outputs.append({"label": "Result", "latex": r.result_latex})
+        for i, step in enumerate(r.steps, start=1):
+            entry = r.entries.get(step.name)
+            how = f"{entry.title} ({step.name})" if entry else step.name
+            if step.direction == "reverse":
+                how += ", read right to left"
+            outputs.append(
+                {"label": f"Step {i}: {how}", "latex": f"{step.before_latex} = {step.after_latex}"}
+            )
+            checks.append(f"step {i}: " + _sample_check(step.verification))
         if r.verification:
-            checks.append(_sample_check(r.verification))
-    elif r.status.value == "unchanged" and r.input_latex:
-        # Nothing simpler exists; under declared assumptions the input may still be read differently.
+            checks.append("end to end: " + _sample_check(r.verification))
+    elif r.status.value in {"unchanged", "conditions_not_satisfied"} and r.input_latex:
+        # Nothing better was found; under declared assumptions the input may still be read differently.
         outputs.append({"label": "Read as", "latex": r.input_latex})
+    for blocked in r.blocked:
+        entry = r.entries.get(blocked.rule_id)
+        needs = ", ".join(f"{c.variable} {c.assumption}" for c in blocked.unmet_conditions)
+        outputs.append(
+            {
+                "label": f"Not applied: {entry.title if entry else blocked.rule_id}",
+                "text": f"{blocked.rule_id} matches but needs {needs}",
+            }
+        )
     return _example(
         spec,
         r.status.value,
         [{"label": "Input", "source": spec["input"]}],
         outputs,
         checks,
-        [r.message] if r.message else [],
+        [r.message] if r.message and r.status.value != "ok" else [],
     )
 
 

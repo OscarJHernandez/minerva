@@ -13,7 +13,6 @@ from minerva_engine import (
     IntegrateResult,
     RuleCondition,
     SeriesResult,
-    SimplifyResult,
     Status,
     TensorInput,
     TensorResult,
@@ -22,7 +21,9 @@ from minerva_engine import (
 from minerva_knowledge.identities import (
     EntrySummary,
     FindIdentitiesResponse,
+    TransformResponse,
     find_identities,
+    simplify_expression,
     summarize,
 )
 from pydantic import BaseModel, Field
@@ -44,7 +45,7 @@ router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
 
 
-class SimplifyResponse(SimplifyResult):
+class SimplifyResponse(TransformResponse):
     calculation_id: uuid.UUID | None = None
 
 
@@ -132,12 +133,13 @@ def simplify(
     user: UserDep,
     db: DbDep,
     engine: EngineDep,
+    kb: KbDep,
     limiter: LimiterDep,
     settings: SettingsDep,
 ) -> SimplifyResponse:
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
-    result = engine.simplify(_expr(body))
+    result = simplify_expression(kb, engine, _expr(body), body.goal, body.target)
     log.info(
         "compute",
         operation="simplify",
@@ -279,6 +281,9 @@ class ApplyIdentityResponse(BaseModel):
     result_text: str | None = None
     unmet_conditions: list[RuleCondition] = Field(default_factory=list)
     verification: Verification | None = None
+    # Points the rewrite excludes that the input, as written, did not (`x \neq 1`).
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
     message: str = ""
     duration_ms: int = 0
     calculation_id: uuid.UUID | None = None
@@ -315,6 +320,8 @@ def apply_identity(
         out.unmet_conditions = application.unmet_conditions
         out.verification = application.verification
         out.message = application.message
+        out.restrictions_latex = application.restrictions_latex
+        out.restrictions_complete = application.restrictions_complete
         if application.applicability is Applicability.APPLICABLE:
             out.result_latex = application.rewritten_latex
             out.result_text = application.rewritten_text
