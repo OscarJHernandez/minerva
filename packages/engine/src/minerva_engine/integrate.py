@@ -38,6 +38,7 @@ from .differentiate import (
     check_derivative,
 )
 from .errors import LimitError, MinervaMathError, ParseError
+from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, SAMPLE_ATTEMPTS, _sample
 
@@ -157,7 +158,7 @@ def check_antiderivative(f: sp.Expr, var: sp.Symbol, candidate: sp.Expr) -> Inte
             else:
                 target, source = f.subs(substitution), expr.subs(substitution)
         if not passed:
-            notes.append(f"the case '{sp.latex(cond)}' cannot be sampled")
+            notes.append(f"the case '{to_latex(cond)}' cannot be sampled")
             break
         verdict = check_derivative(source, var, target)
         checked += verdict.points_checked
@@ -305,8 +306,8 @@ def _definite(
     common = {
         **base,
         "definite": True,
-        "lower_latex": sp.latex(lower),
-        "upper_latex": sp.latex(upper),
+        "lower_latex": to_latex(lower),
+        "upper_latex": to_latex(upper),
         "notation_latex": notation,
     }
     try:
@@ -320,7 +321,7 @@ def _definite(
             Status.CONDITIONS_NOT_SATISFIED,
             "The value exists only under conditions that your assumptions do not imply. Declare "
             "them (for example that a parameter is positive) and try again.",
-            conditions_latex=[sp.latex(c) for c in parts],
+            conditions_latex=[to_latex(c) for c in parts],
             **common,
         )
     if value.has(sp.Integral):
@@ -353,7 +354,7 @@ def _definite(
             numeric = None
     return IntegrateResult(
         status=Status.OK,
-        result_latex=sp.latex(value),
+        result_latex=to_latex(value),
         result_text=str(value),
         numeric=numeric,
         quadrature=check,
@@ -386,7 +387,7 @@ def integrate(
     except MinervaMathError as exc:
         return _fail(Status.PARSE_ERROR, str(exc), variable=variable)
 
-    base = {"input_latex": sp.latex(f), "variable": variable}
+    base: dict[str, object] = {"input_latex": to_latex(f), "variable": variable}
     if symbol.is_integer or symbol.is_rational:
         return _fail(
             Status.UNSUPPORTED,
@@ -400,11 +401,11 @@ def integrate(
             symbol,
             low,
             high,
-            notation=str(sp.latex(sp.Integral(f, (symbol, low, high)))),
+            notation=str(to_latex(sp.Integral(f, (symbol, low, high)))),
             base=base,
             deadline=deadline,
         )
-    notation = str(sp.latex(sp.Integral(f, symbol)))
+    notation = str(to_latex(sp.Integral(f, symbol)))
 
     try:
         candidate = sp.integrate(f, symbol)
@@ -459,7 +460,7 @@ def integrate(
     return IntegrateResult(
         status=Status.OK,
         notation_latex=notation,
-        result_latex=sp.latex(final),
+        result_latex=to_latex(final),
         result_text=str(final),
         verification=verification,
         notes=notes,

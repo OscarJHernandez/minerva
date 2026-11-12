@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import sympy as sp
 from minerva_engine import parse_text
 from minerva_engine.features import expression_features
+from minerva_engine.latexprint import to_latex
 
 from .models import Entry
 
@@ -15,7 +15,7 @@ def statement_latex(entry: Entry) -> str:
         return entry.statement_latex
     assert entry.rule is not None  # noqa: S101 - guaranteed by the Entry validator
     lhs, rhs = parse_text(entry.rule.lhs), parse_text(entry.rule.rhs)
-    return f"{sp.latex(lhs)} = {sp.latex(rhs)}"
+    return f"{to_latex(lhs)} = {to_latex(rhs)}"
 
 
 def rule_features(entry: Entry) -> set[str]:

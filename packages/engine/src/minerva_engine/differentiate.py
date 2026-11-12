@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from .build import Builder
 from .errors import LimitError, MinervaMathError
+from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, REL_TOL, SAMPLE_ATTEMPTS, _sample, verify_equal
 
@@ -175,7 +176,7 @@ def _notation(expr: sp.Expr, variables: list[tuple[sp.Symbol, int]]) -> str | No
         args: list[object] = []
         for symbol, order in variables:
             args.extend([symbol, order])
-        return str(sp.latex(sp.Derivative(expr, *args, evaluate=False)))
+        return str(to_latex(sp.Derivative(expr, *args, evaluate=False)))
     except Exception:  # printing only; the result does not depend on it
         return None
 
@@ -206,7 +207,7 @@ def differentiate(
     except MinervaMathError as exc:
         return _fail(Status.PARSE_ERROR, str(exc), variables=variables, total_order=total)
 
-    input_latex = sp.latex(expr)
+    input_latex = to_latex(expr)
     base = {"input_latex": input_latex, "variables": variables, "total_order": total}
     for symbol, _ in symbols:
         if symbol.is_integer or symbol.is_rational:
@@ -266,7 +267,7 @@ def differentiate(
             current = nxt
             done += 1
             steps.append(
-                DerivativeStep(variable=symbol.name, order_so_far=done, latex=sp.latex(nxt))
+                DerivativeStep(variable=symbol.name, order_so_far=done, latex=to_latex(nxt))
             )
 
     if current.has(sp.DiracDelta, sp.Heaviside):
@@ -285,7 +286,7 @@ def differentiate(
             final = tidy
     if final != current:
         steps[-1] = DerivativeStep(
-            variable=steps[-1].variable, order_so_far=done, latex=sp.latex(final)
+            variable=steps[-1].variable, order_so_far=done, latex=to_latex(final)
         )
 
     verification = DerivativeVerification(
@@ -303,7 +304,7 @@ def differentiate(
     return DifferentiateResult(
         status=Status.OK,
         notation_latex=_notation(expr, symbols),
-        result_latex=sp.latex(final),
+        result_latex=to_latex(final),
         result_text=str(final),
         steps=steps,
         verification=verification,

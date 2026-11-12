@@ -5,7 +5,7 @@
   section: power
   verification: numeric
   validity: "All x."
-  statement_latex: 'e^{x} = \sum_{n=0}^{\infty}\frac{x^n}{n!}'
+  statement_latex: '\mathrm{e}^{x} = \sum_{n=0}^{\infty}\frac{x^n}{n!}'
   check: {kind: series, term: "x**n/factorial(n)", index: n, lower: 0, upper: "oo", result: "exp(x)", params: {x: {min: -3.0, max: 3.0}}}
   reference: {source: DLMF, locator: "§4.6", url: "https://dlmf.nist.gov/4.6"}
   keywords: [exponential, maclaurin, taylor, series]
@@ -80,6 +80,6 @@
   verification: stated
   applies_to: ["series"]
   validity: "f analytic at x0 (complex differentiable on a disc around x0). The disc of convergence reaches the nearest singularity."
-  statement_latex: 'f(x)=\sum_{k=0}^{N}\frac{f^{(k)}(x_0)}{k!}(x-x_0)^k+O\!\left((x-x_0)^{N+1}\right),\qquad \frac{f^{(k)}(x_0)}{k!}=\frac{1}{2\pi i}\oint\frac{f(z)}{(z-x_0)^{k+1}}\,dz'
+  statement_latex: 'f(x)=\sum_{k=0}^{N}\frac{f^{(k)}(x_0)}{k!}(x-x_0)^k+O\!\left((x-x_0)^{N+1}\right),\qquad \frac{f^{(k)}(x_0)}{k!}=\frac{1}{2\pi\mathrm{i}}\oint\frac{f(z)}{(z-x_0)^{k+1}}\,dz'
   notes: "Minerva's series tool checks a candidate polynomial two ways that do not differentiate: the contour-integral form of the coefficients, and the h^(N+1) decay of f(x0+h) minus the polynomial. A pole, branch point or |x| at x0 has no Taylor series and is reported as unsupported."
   keywords: [taylor, maclaurin, series, remainder, cauchy integral, expansion, approximation]

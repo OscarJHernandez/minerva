@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { okSeries } from "@/test/fixtures";
 import { SeriesPanel } from "./series-panel";
 
@@ -12,6 +13,17 @@ describe("SeriesPanel", () => {
     expect(screen.getByText(/agree with a Cauchy-integral estimate/)).toBeInTheDocument();
     expect(screen.getByText(/shrinks at order 4, as claimed/)).toBeInTheDocument();
     expect(screen.getByText(/1 parameter set, real and imaginary directions/)).toBeInTheDocument();
+  });
+
+  it("copies exactly the formula it shows, remainder included", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<SeriesPanel result={okSeries} />);
+    await userEvent.click(screen.getByRole("button", { name: /copy latex/i }));
+    expect(okSeries.remainder_latex).toBeTruthy();
+    expect(writeText).toHaveBeenCalledWith(
+      `${okSeries.result_latex} + ${okSeries.remainder_latex}`,
+    );
   });
 
   it("labels the error table as a measurement, not a bound", () => {

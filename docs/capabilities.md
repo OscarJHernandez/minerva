@@ -117,7 +117,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 
 - **Input:** `\exp(-x^2)`
 - **Status:** `ok`
-- **Derivative:** $\frac{d^{3}}{d x^{3}} e^{- x^{2}} = \left(- 8 x^{3} + 12 x\right) e^{- x^{2}}$
+- **Derivative:** $\frac{d^{3}}{d x^{3}} \mathrm{e}^{- x^{2}} = \left(- 8 x^{3} + 12 x\right) \mathrm{e}^{- x^{2}}$
 - **Check:** 3 step(s) checked against a numerical derivative; agreed at 36 of 36 points
 - Differentiated with SymPy; every step was verified numerically.
 
@@ -194,7 +194,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Equation:** `x^3 + x^2 + x + 1 = 0`
 - **Status:** `ok`
 - **Factorization:** $\left(x + 1\right) \cdot \left(x^{2} + 1\right)$
-- **Roots in radicals:** $-1,\ - i,\ i$
+- **Roots in radicals:** $-1,\ - \mathrm{i},\ \mathrm{i}$
 - **Check:** roots substituted back (largest residual 0); root count equals the degree; Vieta's relations hold
 - Degree 3: 3 roots found and verified by substitution and Vieta's relations.
 

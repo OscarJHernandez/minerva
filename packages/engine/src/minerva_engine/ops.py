@@ -16,6 +16,7 @@ from .claims import ClaimCheck, check_claim, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
 from .features import expression_features
 from .latexparse import parse_latex
+from .latexprint import to_latex
 from .models import (
     Applicability,
     ExpressionInput,
@@ -76,7 +77,7 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
         status, message = _failure(exc)
         return SimplifyResult(status=status, message=message).model_dump(mode="json")
 
-    input_latex = sp.latex(expr)
+    input_latex = to_latex(expr)
     result = sp.simplify(expr)
     restrictions, complete = domain_restrictions(expr, result, denominators)
     note = _restriction_note(restrictions, complete)
@@ -106,7 +107,7 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
     return SimplifyResult(
         status=Status.OK,
         input_latex=input_latex,
-        result_latex=sp.latex(result),
+        result_latex=to_latex(result),
         result_text=str(result),
         verification=verification,
         restrictions_latex=restrictions,
@@ -307,7 +308,7 @@ def op_read_formulas(payload: dict[str, Any]) -> dict[str, Any]:
                 raise LimitError("input is too long")
             sides = split_equation(text) or [text]
             parsed = [parse_latex(side, {}, limits) for side in sides]
-            read_as = " = ".join(sp.latex(p) for p in parsed)
+            read_as = " = ".join(to_latex(p) for p in parsed)
             reading = FormulaReading(status=Status.OK, read_as=read_as)
         except MinervaMathError as exc:
             status, message = _failure(exc)
@@ -331,7 +332,7 @@ def op_features(payload: dict[str, Any]) -> dict[str, Any]:
         "status": Status.OK.value,
         "message": "",
         "features": sorted(expression_features(expr)),
-        "input_latex": sp.latex(expr),
+        "input_latex": to_latex(expr),
     }
 
 
@@ -441,7 +442,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
         if instantiated == node:
             continue  # the rewrite would be a no-op (e.g. a**1), not a real application
         unmet = _unmet(rule, bindings, wilds)
-        matched_latex = sp.latex(node)
+        matched_latex = to_latex(node)
         if unmet:
             first_blocked = first_blocked or RuleApplication(
                 rule_id=rule.id,
@@ -469,7 +470,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             rule_id=rule.id,
             applicability=Applicability.APPLICABLE,
             matched_subexpression_latex=matched_latex,
-            rewritten_latex=sp.latex(rewritten),
+            rewritten_latex=to_latex(rewritten),
             verification=verification,
             restrictions_latex=restrictions,
             restrictions_complete=complete,
@@ -521,7 +522,7 @@ def op_identities(payload: dict[str, Any]) -> dict[str, Any]:
             )
     return IdentitiesResult(
         status=Status.OK,
-        input_latex=sp.latex(expr),
+        input_latex=to_latex(expr),
         applications=applications,
         message="",
     ).model_dump(mode="json")
@@ -541,7 +542,7 @@ def op_tensor_canonicalize(payload: dict[str, Any]) -> dict[str, Any]:
         status=Status.OK if changed else Status.UNCHANGED,
         input_text=str(parsed),
         result_text=str(canonical),
-        result_latex=sp.latex(canonical),
+        result_latex=to_latex(canonical),
         independent_verification=False,
         message=(
             "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm "

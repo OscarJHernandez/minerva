@@ -291,7 +291,7 @@
           "outputs": [
             {
               "label": "Derivative",
-              "latex": "\\frac{d^{3}}{d x^{3}} e^{- x^{2}} = \\left(- 8 x^{3} + 12 x\\right) e^{- x^{2}}"
+              "latex": "\\frac{d^{3}}{d x^{3}} \\mathrm{e}^{- x^{2}} = \\left(- 8 x^{3} + 12 x\\right) \\mathrm{e}^{- x^{2}}"
             }
           ],
           "checks": [
@@ -582,7 +582,7 @@
             },
             {
               "label": "Roots in radicals",
-              "latex": "-1,\\ - i,\\ i"
+              "latex": "-1,\\ - \\mathrm{i},\\ \\mathrm{i}"
             }
           ],
           "checks": [

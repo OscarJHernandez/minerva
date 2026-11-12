@@ -169,6 +169,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   concurrency cap. Add new operations to `ops.OPERATIONS` and call them via `Engine`.
 - LaTeX conventions: `e` and `i` are plain symbols; `\exponentialE` / `\imaginaryI` / `\pi` are
   constants; `\sin 2x` and `\sin^{-1}` are rejected as ambiguous.
+- LaTeX output has one printer, `minerva_engine.latexprint.to_latex` (never call `sp.latex` directly): constants
+  print as `\mathrm{e}` / `\mathrm{i}` (the parser reads them back as the constants), so a bare `e` or `i` in
+  output is always a symbol. Handbook `statement_latex` follows the same convention (a test enforces it).
+  `\exponentialE` / `\imaginaryI` are input aliases only; KaTeX gets display macros for them. LaTeX that
+  KaTeX cannot render is shown as marked source (`data-math-error`), never as a formula. Chat formulas are split by
+  `agent/segments.py` (server) and `apps/web/src/lib/inline-math.ts` (client): keep their delimiter rules identical.
 - In text syntax `E`, `I`, `pi`, `oo` are reserved constants: never use `E` as a variable name in
   handbook entries (use `En`, `Ef`, ...).
 
