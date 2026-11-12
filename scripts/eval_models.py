@@ -59,6 +59,15 @@ def _assumes(name: str, assumption: str) -> Callable[[str, dict[str, Any]], bool
     return check
 
 
+def _args_ok(check: Callable[[str, dict[str, Any]], bool], tool: str, args: dict[str, Any]) -> bool:
+    """A model may send arguments of the wrong shape (a string where an object belongs); that is a
+    failed case, not a crash of the evaluation."""
+    try:
+        return check(tool, args)
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return False
+
+
 def _no_assumptions(tool: str, args: dict[str, Any]) -> bool:
     return not args.get("assumptions")
 
@@ -358,7 +367,7 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
         if case.args_check:
             relevant = [a for n, a in calls if n in case.expect_any]
             if relevant and not any(
-                case.args_check(n, a) for n, a in calls if n in case.expect_any
+                _args_ok(case.args_check, n, a) for n, a in calls if n in case.expect_any
             ):
                 notes.append(f"arguments not as expected: {relevant[0]}")
     for forbidden in case.forbid & set(tools):
