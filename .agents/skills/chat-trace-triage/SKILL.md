@@ -35,6 +35,7 @@ Read in this order and stop at the first that applies.
 | `input as read` is right, `result` is wrong or `unchanged` when it should not be | Engine result | `ops.py`, `simplify`, rules; `math-regression` |
 | status `ok` and verification passes for an input that was misread | Verification gap | Verification checks the result against the *parsed* input, so a misparse verifies perfectly; fix the parse, and say so in the report to the user |
 | Formula marked `unchecked`/`from_tool` unexpectedly, claim check `unparsed` or `unverified` | Formula marking | `agent/segments.py`, `engine/claims.py` |
+| A valid definition, coordinate change or equation of motion marked `contradicted` | Claim checker | `claim check ... [identity]` means it was tested as an identity; `[relation]` should never be `fails` without `given` definitions. `engine/claims.py`, with a regression test in `test_claims.py` |
 | Model prose contradicts the card (a different result, a "verified" claim with no tool) | Model honesty | prompt wording; `scripts/eval_models.py` case |
 | Card data is right, the screen is wrong (clipped, unrendered, overflowing) | UI | `apps/web`, `ui-check` skill |
 | `last turn failed` section, `error` set in debug | Model host or limits | `agent/llm.py`, `settings.py` limits; `request_id` joins the API log line |

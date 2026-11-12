@@ -65,7 +65,8 @@ export function DebugPanel({
         ))}
         {(d?.claims ?? []).map((c, i) => (
           <p key={i} className="break-all">
-            claim {c.status}: <code>{c.value}</code>
+            claim {c.status}
+            {c.kind ? ` (${c.kind})` : ""}: <code>{c.value}</code>
             {c.detail ? ` (${c.detail})` : ""}
           </p>
         ))}

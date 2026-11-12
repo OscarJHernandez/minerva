@@ -36,6 +36,28 @@ describe("RichText", () => {
     expect(container.querySelectorAll('[data-status="contradicted"]')).toHaveLength(1);
   });
 
+  it("says why a relation was not checked and what a contradiction disagrees with", () => {
+    const { container } = render(
+      <RichText
+        segments={[
+          {
+            ...seg("display_math", "\\theta = \\phi + \\omega t", "unchecked"),
+            note: "a definition or relation between quantities, not an identity; not checked",
+          },
+          {
+            ...seg("math", "a = b", "contradicted"),
+            note: "does not agree with c = d (3 of 12 sample points disagree)",
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/Not verified by Minerva.*not an identity/)).toBeInTheDocument();
+    expect(screen.queryByText(/says this is false/)).toBeNull();
+    const titles = [...container.querySelectorAll("[title]")].map((e) => e.getAttribute("title"));
+    expect(titles.some((t) => t?.includes("does not agree with c = d"))).toBe(true);
+    expect(screen.getByText("contradicted")).toBeInTheDocument();
+  });
+
   it("does not flag a lone symbol, but still flags an unchecked equation", () => {
     const { container } = render(
       <RichText

@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from .agent.events import AssistantMessage, Block, TraceStep
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, run_agent
-from .agent.segments import normalize
+from .agent.segments import normalize, split_segments
 from .agent.tools import PerturbationArgs, ToolContext, execute
 from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, utcnow
@@ -378,6 +378,36 @@ def _history(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], set[str
     return out, known
 
 
+MAX_RELATIONS = 60
+
+
+def _claim_context(
+    messages: list[ChatMessage], current: str
+) -> tuple[list[str], dict[str, list[str]]]:
+    """What earlier turns established that the claim checker may use: formulas written in the
+    conversation, in order (the checker keeps only the ones that are definitions, and names them
+    whenever a result depends on one), and the assumptions declared in earlier tool calls."""
+    texts: list[str] = []
+    assumptions: dict[str, list[str]] = {}
+    for m in messages[-HISTORY_MESSAGES:]:
+        texts.append(str(m.content.get("text", "")))
+        if m.role != "user":
+            for step in m.content.get("trace", []):
+                declared = step.get("arguments", {}).get("assumptions")
+                if isinstance(declared, dict):
+                    for name, items in declared.items():
+                        if isinstance(items, list):
+                            assumptions[str(name)] = [str(i) for i in items]
+    texts.append(current)
+    relations = [
+        seg.value
+        for text in texts
+        for seg in split_segments(text, set())
+        if seg.type != "text" and len(seg.value) <= 500
+    ]
+    return relations[-MAX_RELATIONS:], assumptions
+
+
 def _title(text: str) -> str:
     """First words of the first message. Formulas keep their `$`, so the list can typeset them."""
     short = re.sub(r"\s+", " ", text).strip()[:60]
@@ -416,6 +446,7 @@ async def send_message(
         )
     )
     history, prior_known = _history(previous)
+    prior_relations, prior_assumptions = _claim_context(previous, body.content)
     history.append({"role": "user", "content": body.content})
 
     if not previous:
@@ -441,7 +472,14 @@ async def send_message(
         counts = {"steps": 0, "tool_calls": 0, "tool_errors": 0}  # numbers only, never content
         try:
             async for event in run_agent(
-                llm, history, ctx, limits, prior_known=prior_known, info=info
+                llm,
+                history,
+                ctx,
+                limits,
+                prior_known=prior_known,
+                prior_relations=prior_relations,
+                prior_assumptions=prior_assumptions,
+                info=info,
             ):
                 if event["event"] == "message":
                     outcome = "ok"

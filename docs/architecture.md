@@ -160,6 +160,11 @@ and explains; it never computes and never decides correctness.
   text for the model. Bad or unknown calls become an error result the model can read, never an exception.
 - **Honesty** (`segments.py`): after each turn, every formula in the model's prose is compared with the formulas
   that tool results and handbook entries of the conversation contain. Others are shown as *unchecked*.
+  Equations the model writes are then tested (`engine/claims.py`): an equation whose sides have the same
+  symbols is tested as an identity and may be marked *contradicted*; one with a symbol on one side only
+  (a definition, coordinate change, constraint or equation of motion) is a relation, which sampling cannot
+  judge, so it stays *unchecked* with a note, unless definitions stated earlier in the conversation decide it
+  by substitution (the note names them).
 - **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
   (prose and cards) and the tool trace so later turns have the same context.
 - **Debug report:** each stored assistant message carries `trace` (tool name, the arguments the model sent, the text it

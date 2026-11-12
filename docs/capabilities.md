@@ -522,7 +522,7 @@ A conversation in which a language model plans, asks and explains, and calls the
 
 **Limits**
 
-- The model never computes and never decides correctness. Formulas it writes that no tool produced in the conversation are shown as unchecked.
+- The model never computes and never decides correctness. Formulas it writes that no tool produced in the conversation are shown as unchecked. Equations it writes are tested as identities only when every side has the same symbols; definitions, coordinate changes and equations of motion are not identities, stay unchecked, and are never called false by that test.
 - How well it chooses tools depends on the model, and no model tried so far passes every evaluation case. See docs/model-evaluation.md.
 - Only Ollama-compatible hosts are supported.
 

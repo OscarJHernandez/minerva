@@ -64,7 +64,7 @@ Generated 2026-11-11 by `scripts/eval_models.py`. Each prompt runs through the r
 - **qwen3.5:35b** chose the right tool in nearly every case at a median of 8 s. Chosen as the base model.
 - **gemma4:26b** is fastest (3.5 s) but skips tools for tensor and identity questions (the key failure mode for this project).
 - **qwen3.8:27b** is accurate but about 2.3x slower than qwen3.5:35b.
-- Several remaining "found to be false" failures (Kepler equations of motion, tensor, compound-argument identity) still need review: some are real model errors, some are limits of the claim checker (equations that are conditions or equations of motion rather than identities). The count is an upper bound on model mistakes.
+- Several remaining "found to be false" failures (Kepler equations of motion, tensor, compound-argument identity) still need review: some are real model errors, some came from the claim checker treating every equation as an identity (conditions, definitions and equations of motion). The checker no longer does that (relations are left unchecked, never called false), so these counts, taken before the change, are an upper bound on model mistakes and need re-running.
 - Not evaluated here: models outside the six on the dedicated instance; the first six-model run used an older claim checker and is not comparable.
 
 ## Does automatic identity retrieval help the model? (chains of identities, 2026-11-12)

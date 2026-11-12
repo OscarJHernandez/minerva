@@ -59,6 +59,8 @@ async def run_agent(
     limits: AgentLimits | None = None,
     *,
     prior_known: set[str] | None = None,
+    prior_relations: Sequence[str] = (),
+    prior_assumptions: dict[str, list[str]] | None = None,
     info: TurnInfo | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}."""
@@ -164,7 +166,7 @@ async def run_agent(
         else Block(kind="text", segments=split_segments(item, known))
         for item in order
     ]
-    debug.claims = await check_model_claims(blocks, ctx, trace)
+    debug.claims = await check_model_claims(blocks, ctx, trace, prior_relations, prior_assumptions)
     debug.duration_ms = _ms(started)
     final = AssistantMessage(
         text=raw,
@@ -180,12 +182,19 @@ MAX_CLAIMS = 12
 
 
 async def check_model_claims(
-    blocks: list[Block], ctx: ToolContext, trace: list[TraceStep]
+    blocks: list[Block],
+    ctx: ToolContext,
+    trace: list[TraceStep],
+    prior_relations: Sequence[str] = (),
+    prior_assumptions: dict[str, list[str]] | None = None,
 ) -> list[ClaimDebug]:
     """Test the equations the model wrote itself; mark them checked, contradicted or unchecked.
 
     Assumptions the model declared in its own tool calls apply to its claims too (an equation about
-    a positive x is checked for positive x).
+    a positive x is checked for positive x), as do those of earlier turns. An equation with a symbol
+    on one side only is a relation, not an identity: it is never called false by sampling, only
+    checked against definitions stated earlier (`prior_relations`, then the model's own formulas in
+    order), and the result names them.
     """
     pending = [
         s
@@ -196,7 +205,7 @@ async def check_model_claims(
     ][:MAX_CLAIMS]
     if not pending:
         return []
-    assumptions: dict[str, list[str]] = {}
+    assumptions: dict[str, list[str]] = dict(prior_assumptions or {})
     for step in trace:
         declared = step.arguments.get("assumptions")
         if isinstance(declared, dict):
@@ -204,12 +213,18 @@ async def check_model_claims(
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
     results = await run_in_threadpool(
-        ctx.engine.check_claims, [s.value for s in pending], assumptions
+        ctx.engine.check_claims, [s.value for s in pending], assumptions, list(prior_relations)
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):
         report.append(
-            ClaimDebug(value=segment.value, status=str(result.status), detail=result.detail)
+            ClaimDebug(
+                value=segment.value,
+                status=str(result.status),
+                detail=result.detail,
+                kind=result.kind,
+                given=list(result.given),
+            )
         )
         if result.status == "holds":
             segment.status = "checked"
@@ -218,4 +233,7 @@ async def check_model_claims(
             segment.note = result.detail
         elif result.status == "fails":
             segment.status = "contradicted"
+            segment.note = result.detail
+        elif result.kind == "relation":
+            segment.note = result.detail
     return report

@@ -155,6 +155,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   exists. Keep the bounds (width, depth, verifications per state, size cap, deadline), the visited set, the
   right-to-left restriction (`can_reverse`) and the match filters; do not add an unverified shortcut. Chains
   must not become a way around `_invents_structure`: `rule_rewrites` is the one place that decides what matches.
+- Equations the model writes in prose (`claims.py`) are not all identities. If every side has the same free
+  symbols the equation is tested as an identity (independent sampling, complex by default) and may be
+  `contradicted`. If a symbol occurs on one side only (`\theta=\phi+\omega t`, `L=T`, `F=ma`, `x=-1`) it is a
+  *relation*: a definition, coordinate change, constraint or equation to solve. Independent sampling proves
+  nothing about it, so it is never `contradicted` by that test and stays `unchecked` with the reason in `note`.
+  Definitions stated earlier in the conversation (`symbol = expression`, from the user or the model, not
+  verified by Minerva) are substituted into a relation; a result that used them says which (`given`), and a
+  relation that disagrees with them after substitution is reported as disagreeing with those named
+  definitions, not as false. A new definition is never a contradiction, and a stale definition never rescues
+  a false identity. "Could not check" must never be worded as "false".
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

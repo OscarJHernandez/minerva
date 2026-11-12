@@ -470,3 +470,29 @@ def test_scripted_model_searches_for_hidden_constants_of_motion(
     assert card["type"] == "invariants" and len(card["data"]["report"]["found"]) == 2
     assert message["trace"][0]["name"] == "search_invariants"
     assert message["trace"][0]["arguments"]["angles"] == ["theta"]
+
+
+def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
+    from minerva_api.routers_chat import _claim_context
+
+    class Row:
+        def __init__(self, role: str, content: dict[str, object]) -> None:
+            self.role, self.content = role, content
+
+    rows = [
+        Row("user", {"text": r"Let $\theta = \phi + \omega t$."}),
+        Row(
+            "assistant",
+            {
+                "text": "Noted: $m \\ddot x = -kx$.",
+                "trace": [{"arguments": {"assumptions": {"x": ["positive"]}}}, {"arguments": {}}],
+            },
+        ),
+    ]
+    relations, assumptions = _claim_context(rows, r"and $\dot\theta = \dot\phi + \omega$")  # type: ignore[arg-type]
+    assert relations == [
+        r"\theta = \phi + \omega t",
+        r"m \ddot x = -kx",
+        r"\dot\theta = \dot\phi + \omega",
+    ]
+    assert assumptions == {"x": ["positive"]}
