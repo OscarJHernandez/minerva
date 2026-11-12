@@ -200,6 +200,40 @@ def _invents_structure(bindings: dict[sp.Basic, sp.Basic], expr: sp.Expr) -> boo
     return False
 
 
+def _binds_fraction_of_multiple(
+    lhs: sp.Expr, wilds: dict[str, sp.Wild], bindings: dict[sp.Basic, sp.Basic]
+) -> bool:
+    """True if a variable that the rule only uses as `n*w` (integer n >= 2) is bound to a fraction.
+
+    `sin(2*a)` matches `sin(x)` with `a = x/2` and `sin(3*x)` with `a = 3*x/2`. Those rewrites
+    are true, but nobody reading "double angle" means them, and every multiple-angle rule added to
+    the handbook would multiply such matches. Variables that also occur bare in the pattern (the
+    `a` in `sin(a + b)`) are not restricted, and integer multiples (`a = x`, `a = 3*x`,
+    `a = x + y`) still match. Fractional arguments such as `sin(2*x/3)` are conservatively not
+    offered as double angles.
+    """
+    nodes = list(sp.preorder_traversal(lhs))
+    for wild in wilds.values():
+        occurrences = sum(1 for node in nodes if node == wild)
+        multiples = sum(
+            1
+            for node in nodes
+            if node.is_Mul
+            and len(node.args) == 2
+            and node.args[1] == wild
+            and node.args[0].is_Integer
+            and node.args[0] >= 2
+        )
+        value = bindings.get(wild)
+        if value is None or occurrences == 0 or occurrences != multiples:
+            continue
+        for term in sp.Add.make_args(value):
+            coefficient = term.as_coeff_Mul()[0]
+            if coefficient.is_Rational and not coefficient.is_Integer:
+                return True
+    return False
+
+
 def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
     """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
     lhs, rhs, wilds = _pattern_parts(rule)
@@ -216,7 +250,11 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
         if not isinstance(node, sp.Expr):
             continue
         bindings = node.match(pattern)
-        if bindings is None or _invents_structure(bindings, expr):
+        if (
+            bindings is None
+            or _invents_structure(bindings, expr)
+            or _binds_fraction_of_multiple(lhs, wilds, bindings)
+        ):
             continue
         instantiated = replacement.xreplace(bindings)
         if instantiated == node:

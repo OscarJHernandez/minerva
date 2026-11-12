@@ -145,3 +145,58 @@ def test_time_budget_returns_partial_results(engine: Engine) -> None:
         ).applications
     }
     assert all(a.applicability is not Applicability.APPLICABLE for a in out.values()) or out == {}
+
+
+# --- rules whose pattern is an integer multiple of a variable, e.g. sin(2a) ---------------------
+DOUBLE_SIN = Rule(id="trig.double_sin", lhs="sin(2*a)", rhs="2*sin(a)*cos(a)", variables=["a"])
+DOUBLE_COS = Rule(
+    id="trig.double_cos", lhs="cos(2*a)", rhs="cos(a)**2 - sin(a)**2", variables=["a"]
+)
+SUM_SIN = Rule(
+    id="trig.sum_sin", lhs="sin(a + b)", rhs="sin(a)*cos(b) + cos(a)*sin(b)", variables=["a", "b"]
+)
+
+
+@pytest.mark.parametrize("source", [r"\sin(2x)", r"\sin(6x)", r"\sin(2x+2y)", r"\sin(2xy)"])
+def test_integer_multiple_pattern_applies_to_integer_multiples(engine: Engine, source: str) -> None:
+    out = apply(engine, source, [DOUBLE_SIN])
+    app = out["trig.double_sin"]
+    assert app.applicability is Applicability.APPLICABLE
+    assert app.verification.passed  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        r"\sin(x)",  # would need a = x/2
+        r"\sin(3x)",  # would need a = 3x/2
+        r"\sin(x/2)",  # would need a = x/4
+        r"\sin(x+y)",  # would need a = (x+y)/2
+        r"\sin(x)\sin(y)",
+        r"\frac{1}{2}\sin(x)",  # a coefficient elsewhere must not legitimise a = x/2
+    ],
+)
+def test_integer_multiple_pattern_does_not_halve_the_argument(engine: Engine, source: str) -> None:
+    out = apply(engine, source, [DOUBLE_SIN])
+    assert out["trig.double_sin"].applicability is Applicability.NO_MATCH
+    assert out["trig.double_sin"].rewritten_latex is None
+
+
+def test_double_cos_is_also_not_applied_by_halving(engine: Engine) -> None:
+    assert apply(engine, r"\cos(3x)", [DOUBLE_COS])["trig.double_cos"].applicability is (
+        Applicability.NO_MATCH
+    )
+    assert apply(engine, r"\cos(4x)", [DOUBLE_COS])["trig.double_cos"].applicability is (
+        Applicability.APPLICABLE
+    )
+
+
+def test_pattern_with_a_plain_variable_may_still_bind_fractions(engine: Engine) -> None:
+    """Only wildcards that appear solely as n*w are restricted; `a` in sin(a + b) is not."""
+    out = apply(engine, r"\sin(\frac{x}{2} + y)", [SUM_SIN])
+    assert out["trig.sum_sin"].applicability is Applicability.APPLICABLE
+
+
+def test_a_rewrite_found_by_halving_was_true_but_is_no_longer_offered(engine: Engine) -> None:
+    """The halved rewrite is mathematically valid, so the rule itself is not wrong: only the match."""
+    assert verify_rule(DOUBLE_SIN).passed

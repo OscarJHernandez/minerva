@@ -29,14 +29,14 @@
 - {id: gamma_recurrence, input: '\Gamma(x+1)', expect: []}
 
 # --- honesty: nothing should be invented ---
-# (the not_halved cases are pending until the matcher stops binding a = x/2 in sin(2a); see the matcher commit)
+# (sin(2a) must not match sin(x) by binding a = x/2: see _binds_fraction_of_multiple in engine ops.py)
 - {id: unrelated_sum, input: 'x + y', forbid: [trig.double_sin, alg.difference_of_squares, log.product]}
-- {id: plain_sin_not_halved, input: '\sin(x)', forbid: [trig.double_sin], pending: true}
-- {id: sin_triple_not_halved, input: '\sin(3x)', forbid: [trig.double_sin], pending: true}
-- {id: cos_triple_not_halved, input: '\cos(3x)', forbid: [trig.double_cos, trig.double_cos_cos, trig.double_cos_sin], pending: true}
-- {id: sinh_triple_not_halved, input: '\sinh(3x)', forbid: [hyp.double_sinh], pending: true}
-- {id: sin_half_angle_not_quartered, input: '\sin(x/2)', forbid: [trig.double_sin], pending: true}
-- {id: sin_sin_not_double, input: '\sin(x)\sin(y)', forbid: [trig.double_sin], pending: true}
+- {id: plain_sin_not_halved, input: '\sin(x)', forbid: [trig.double_sin]}
+- {id: sin_triple_not_halved, input: '\sin(3x)', forbid: [trig.double_sin]}
+- {id: cos_triple_not_halved, input: '\cos(3x)', forbid: [trig.double_cos, trig.double_cos_cos, trig.double_cos_sin]}
+- {id: sinh_triple_not_halved, input: '\sinh(3x)', forbid: [hyp.double_sinh]}
+- {id: sin_half_angle_not_quartered, input: '\sin(x/2)', forbid: [trig.double_sin]}
+- {id: sin_sin_not_double, input: '\sin(x)\sin(y)', forbid: [trig.double_sin]}
 - {id: sin_double_sum_argument, input: '\sin(2x+2y)', expect: [trig.double_sin]}
 
 # --- not in the handbook yet (pending until the generated families land) ---
