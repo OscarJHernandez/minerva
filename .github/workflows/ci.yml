@@ -140,6 +140,22 @@ jobs:
           if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml > /dev/null 2>&1; then
             echo "::error::requireDigests did not reject a release without image digests"; exit 1
           fi
+      - name: Chat model settings are rendered and validated
+        run: |
+          D=sha256:$(printf 'a%.0s' {1..64})
+          SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
+          OUT=$(helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" \
+            --set api.llm.mode=ollama --set api.llm.baseUrl=http://ollama.example:11440 --set api.llm.model=minerva)
+          echo "$OUT" | grep -q 'MINERVA_LLM_MODE, value: "ollama"' || { echo "::error::MINERVA_LLM_MODE not rendered"; exit 1; }
+          echo "$OUT" | grep -q 'MINERVA_LLM_BASE_URL, value: "http://ollama.example:11440"' || { echo "::error::MINERVA_LLM_BASE_URL not rendered"; exit 1; }
+          if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" \
+            --set api.llm.mode=ollama > /dev/null 2>&1; then
+            echo "::error::ollama mode without baseUrl and model must be refused"; exit 1
+          fi
+          if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" \
+            --set api.llm.mode=scripted > /dev/null 2>&1; then
+            echo "::error::scripted mode must be refused in the chart"; exit 1
+          fi
       - run: bash -n scripts/build-image.sh
 
   images:
