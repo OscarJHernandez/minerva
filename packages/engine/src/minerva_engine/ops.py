@@ -121,6 +121,18 @@ def op_differentiate(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+# --- integrate -------------------------------------------------------------------------
+def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
+    from .integrate import integrate
+
+    result = integrate(
+        ExpressionInput(**payload["expression"]),
+        str(payload["variable"]),
+        Limits(**payload["limits"]),
+    )
+    return result.model_dump(mode="json")
+
+
 # --- lagrangian ------------------------------------------------------------------------
 def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     from .lagrangian import analyze_lagrangian
@@ -456,6 +468,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "read_formulas": op_read_formulas,
     "solve": op_solve,
     "differentiate": op_differentiate,
+    "integrate": op_integrate,
     "lagrangian": op_lagrangian,
     "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,

@@ -7,6 +7,7 @@ from typing import Any
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .integrate import IntegrateResult
 from .lagrangian import LagrangianReport
 from .models import (
     ExpressionInput,
@@ -62,6 +63,17 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return SimplifyResult(status=status, message=message, duration_ms=ms)
         result = SimplifyResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def integrate(self, expression: ExpressionInput, variable: str) -> IntegrateResult:
+        """An antiderivative of `expression`, verified by a numerical derivative."""
+        payload = {"expression": expression.model_dump(), "variable": variable}
+        outcome, ms = self._run("integrate", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return IntegrateResult(status=status, message=message, duration_ms=ms)
+        result = IntegrateResult(**outcome.value)
         result.duration_ms = ms
         return result
 
