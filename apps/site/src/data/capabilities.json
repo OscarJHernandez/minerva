@@ -1,0 +1,861 @@
+{
+  "handbook_entries": 144,
+  "capabilities": [
+    {
+      "id": "simplify",
+      "title": "Verified simplification",
+      "status": "available",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Simplifies an expression with SymPy, then checks the result at random complex sample points and with a symbolic zero test, reported separately. A result that cannot be verified is never shown.",
+      "limits": [
+        "Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.",
+        "If nothing simpler is found, the input is returned unchanged and the status says so.",
+        "Bare function arguments such as `\\sin 2x` and inverse notation such as `\\sin^{-1}` are rejected as ambiguous."
+      ],
+      "examples": [
+        {
+          "id": "simplify-trig-quotients",
+          "title": "Rational trigonometric expression",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\frac{\\sin(x)}{1+\\cos(x)} + \\frac{1+\\cos(x)}{\\sin(x)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\frac{2}{\\sin{\\left(x \\right)}}"
+            }
+          ],
+          "checks": [
+            "symbolic zero test passed; numeric check agreed at 12 of 12 points"
+          ],
+          "notes": [
+            "Simplified with SymPy and verified."
+          ]
+        },
+        {
+          "id": "simplify-fourth-powers",
+          "title": "Difference of fourth powers",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\frac{\\sin^4(x) - \\cos^4(x)}{\\sin^2(x) - \\cos^2(x)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "1"
+            }
+          ],
+          "checks": [
+            "symbolic zero test passed; numeric check agreed at 12 of 12 points"
+          ],
+          "notes": [
+            "Simplified with SymPy and verified."
+          ]
+        },
+        {
+          "id": "simplify-sqrt-general",
+          "title": "Square root of a square, no assumptions",
+          "op": "simplify",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sqrt{x^2}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "\\sqrt{x^{2}}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "No simpler form was found. The expression is returned unchanged.",
+            "Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified."
+          ]
+        },
+        {
+          "id": "simplify-sqrt-real",
+          "title": "The same, with x declared real",
+          "op": "simplify",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sqrt{x^2}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "\\left|{x}\\right|"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "No simpler form was found. The expression is returned unchanged.",
+            "Under the declared assumption the expression is read as |x|."
+          ]
+        },
+        {
+          "id": "simplify-power-general",
+          "title": "Power of a power, no assumptions",
+          "op": "simplify",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Input",
+              "source": "(x^a)^b"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "\\left(x^{a}\\right)^{b}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "No simpler form was found. The expression is returned unchanged.",
+            "The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is."
+          ]
+        },
+        {
+          "id": "simplify-power-positive",
+          "title": "The same, with x positive and a real",
+          "op": "simplify",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Input",
+              "source": "(x^a)^b"
+            }
+          ],
+          "assumptions": "x positive; a real",
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "x^{a b}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "No simpler form was found. The expression is returned unchanged.",
+            "With x positive and a real the exponents combine, and the expression is read as x^{ab}."
+          ]
+        },
+        {
+          "id": "simplify-ambiguous",
+          "title": "Ambiguous input is refused",
+          "op": "simplify",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sin 2x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "ambiguous argument of \\sin: use parentheses"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "differentiate",
+      "title": "Verified differentiation",
+      "status": "available",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Differentiates symbolically with respect to one or more variables, to any order up to 10, mixed partials included. Every step is checked against an independent numerical derivative.",
+      "limits": [
+        "Where no complex derivative exists (`|x|`, real and imaginary parts, conjugates) the answer is \"unsupported\" unless the variable is declared real.",
+        "The notation `\\frac{d}{dx}` and undefined functions `f(x)` are not accepted in the input yet."
+      ],
+      "examples": [
+        {
+          "id": "diff-product",
+          "title": "Product rule",
+          "op": "differentiate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "x^3 \\sin(x)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Derivative",
+              "latex": "\\frac{d}{d x} x^{3} \\sin{\\left(x \\right)} = x^{2} \\left(x \\cos{\\left(x \\right)} + 3 \\sin{\\left(x \\right)}\\right)"
+            }
+          ],
+          "checks": [
+            "1 step(s) checked against a numerical derivative; agreed at 12 of 12 points"
+          ],
+          "notes": [
+            "Differentiated with SymPy; every step was verified numerically."
+          ]
+        },
+        {
+          "id": "diff-third-order",
+          "title": "Third derivative of a Gaussian",
+          "op": "differentiate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\exp(-x^2)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Derivative",
+              "latex": "\\frac{d^{3}}{d x^{3}} e^{- x^{2}} = \\left(- 8 x^{3} + 12 x\\right) e^{- x^{2}}"
+            }
+          ],
+          "checks": [
+            "3 step(s) checked against a numerical derivative; agreed at 36 of 36 points"
+          ],
+          "notes": [
+            "Differentiated with SymPy; every step was verified numerically."
+          ]
+        },
+        {
+          "id": "diff-mixed",
+          "title": "Mixed partial derivative",
+          "op": "differentiate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "x^2 y^3"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Derivative",
+              "latex": "\\frac{\\partial^{2}}{\\partial y\\partial x} x^{2} y^{3} = 6 x y^{2}"
+            }
+          ],
+          "checks": [
+            "2 step(s) checked against a numerical derivative; agreed at 24 of 24 points"
+          ],
+          "notes": [
+            "Differentiated with SymPy; every step was verified numerically."
+          ]
+        },
+        {
+          "id": "diff-abs-complex",
+          "title": "No complex derivative",
+          "op": "differentiate",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Input",
+              "source": "|x|"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "This expression has no complex derivative with respect to x (for example |z|, re z, im z or conjugates). If the variable is real, declare it real and try again.",
+            "Declare x real to differentiate |x|."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "identities",
+      "title": "Identity search with applicability checks",
+      "status": "available",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern, checks its validity conditions against your declared assumptions, rewrites, and verifies the rewrite.",
+      "limits": [
+        "An identity whose conditions cannot be proven from your assumptions is reported, with the unmet conditions, and not applied.",
+        "Matches that only work by inventing roots, reciprocals or the imaginary unit are discarded.",
+        "Retrieval is keyword and structure based; semantic search is planned."
+      ],
+      "examples": [
+        {
+          "id": "identity-log-blocked",
+          "title": "The identity is found but not applied",
+          "op": "identities",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\log(x y)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Logarithm of a product",
+              "text": "not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "The identity matches, but \\log(xy) = \\log x + \\log y needs both factors positive, which is not provable from the declared assumptions."
+          ]
+        },
+        {
+          "id": "identity-log-applicable",
+          "title": "Applied once x and y are declared positive",
+          "op": "identities",
+          "status": "applicable",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\log(x y)"
+            }
+          ],
+          "assumptions": "x positive; y positive",
+          "outputs": [
+            {
+              "label": "Logarithm of a product",
+              "latex": "\\log{\\left(x \\right)} + \\log{\\left(y \\right)}"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "identity-product-to-sum",
+          "title": "Product to sum",
+          "op": "identities",
+          "status": "applicable",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sin(a)\\cos(b)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Product of sine and cosine",
+              "latex": "\\frac{\\sin{\\left(a - b \\right)}}{2} + \\frac{\\sin{\\left(a + b \\right)}}{2}"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 12 of 12 points"
+          ],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "polynomial-solving",
+      "title": "Polynomial equations",
+      "status": "available",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Factors a polynomial equation, says whether a formula in radicals exists (Galois criterion, Abel–Ruffini), gives exact roots where they exist and numerical roots otherwise, and verifies the roots by substitution and Vieta's relations.",
+      "limits": [
+        "Polynomial equations in one variable only; other equations are not solved."
+      ],
+      "examples": [
+        {
+          "id": "solve-cubic",
+          "title": "A cubic that factors",
+          "op": "solve",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "x^3 + x^2 + x + 1 = 0"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Factorization",
+              "latex": "\\left(x + 1\\right) \\cdot \\left(x^{2} + 1\\right)"
+            },
+            {
+              "label": "Roots in radicals",
+              "latex": "-1,\\ - i,\\ i"
+            }
+          ],
+          "checks": [
+            "roots substituted back (largest residual 0); root count equals the degree; Vieta's relations hold"
+          ],
+          "notes": [
+            "Degree 3: 3 roots found and verified by substitution and Vieta's relations."
+          ]
+        },
+        {
+          "id": "solve-quintic",
+          "title": "A quintic with no formula in radicals",
+          "op": "solve",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "x^5 - x - 1 = 0"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Factorization",
+              "latex": "\\left(x^{5} - x - 1\\right)"
+            },
+            {
+              "label": "Formula in radicals",
+              "text": "none: the Galois group (order 120) is not solvable (Galois's criterion)"
+            },
+            {
+              "label": "Numerical roots",
+              "text": "1.167304; -0.764884 - 0.352472 i; -0.764884 + 0.352472 i; 0.181232 - 1.083954 i; 0.181232 + 1.083954 i"
+            }
+          ],
+          "checks": [
+            "roots substituted back (largest residual 8.87e-31); root count equals the degree; Vieta's relations hold"
+          ],
+          "notes": [
+            "Degree 5: 5 roots found and verified by substitution and Vieta's relations."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lagrangian",
+      "title": "Lagrangian mechanics",
+      "status": "available",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. Each constant is verified: its time derivative is zero on the equations of motion.",
+      "limits": [
+        "Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as the Runge–Lenz vector are not searched for, and the result says so."
+      ],
+      "examples": [
+        {
+          "id": "lagrangian-kepler-polar",
+          "title": "Kepler problem in polar coordinates",
+          "op": "lagrangian",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "r, theta"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Equation of motion (r)",
+              "latex": "\\frac{k}{r^{2}} - m r \\dot{\\theta}^{2} + m \\ddot{r} = 0"
+            },
+            {
+              "label": "Equation of motion (theta)",
+              "latex": "m r \\left(r \\ddot{\\theta} + 2 \\dot{r} \\dot{\\theta}\\right) = 0"
+            },
+            {
+              "label": "Conserved: cyclic",
+              "latex": "p_{\\theta} = m r^{2} \\dot{\\theta}",
+              "text": "theta is cyclic: L does not depend on it, so dp/dt = dL/dq = 0"
+            },
+            {
+              "label": "Conserved: energy",
+              "latex": "h = - \\frac{k}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}",
+              "text": "L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved"
+            }
+          ],
+          "checks": [
+            "cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
+            "energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+          ],
+          "notes": [
+            "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+          ]
+        },
+        {
+          "id": "lagrangian-kepler-cartesian",
+          "title": "The same problem in Cartesian coordinates",
+          "op": "lagrangian",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) + \\frac{k}{\\sqrt{x^2+y^2}}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Equation of motion (x)",
+              "latex": "\\frac{k x}{\\left(x^{2} + y^{2}\\right)^{\\frac{3}{2}}} + m \\ddot{x} = 0"
+            },
+            {
+              "label": "Equation of motion (y)",
+              "latex": "\\frac{k y}{\\left(x^{2} + y^{2}\\right)^{\\frac{3}{2}}} + m \\ddot{y} = 0"
+            },
+            {
+              "label": "Conserved: energy",
+              "latex": "h = - \\frac{k}{\\sqrt{x^{2} + y^{2}}} + \\frac{m \\dot{x}^{2}}{2} + \\frac{m \\dot{y}^{2}}{2}",
+              "text": "L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved"
+            },
+            {
+              "label": "Conserved: rotation",
+              "latex": "Q = m \\left(x \\dot{y} - \\dot{x} y\\right)",
+              "text": "L is unchanged by rotating (x, y) as Cartesian coordinates, so by Noether's theorem Q = Σ p ξ is conserved"
+            }
+          ],
+          "checks": [
+            "energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
+            "rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+          ],
+          "notes": [
+            "cyclic coordinates: none (every coordinate appears in L)",
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+          ]
+        },
+        {
+          "id": "lagrangian-time-dependent",
+          "title": "Explicit time dependence removes the energy",
+          "op": "lagrangian",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m\\dot{x}^2 - \\frac12 k x^2 t"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Equation of motion (x)",
+              "latex": "k t x + m \\ddot{x} = 0"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "cyclic coordinates: none (every coordinate appears in L)",
+            "energy function: not conserved (L depends explicitly on time)",
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tensors",
+      "title": "Tensor canonicalization",
+      "status": "available",
+      "where": [
+        "HTTP API",
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Puts a tensor expression in canonical form using declared index symmetries (symmetric, antisymmetric, Riemann-type), through SymPy's Butler–Portugal algorithm.",
+      "limits": [
+        "Only symmetries of a single term are applied. Multi-term identities such as the Bianchi identity are out of scope and are not applied.",
+        "The result is not independently verified; the report says so.",
+        "There is no workbench form for tensors yet."
+      ],
+      "examples": [
+        {
+          "id": "tensor-contraction",
+          "title": "Symmetric contracted with antisymmetric",
+          "op": "tensor",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "S(a,b)*A(-a,-b)"
+            },
+            {
+              "label": "Declared",
+              "text": "S: rank 2, symmetric; A: rank 2, antisymmetric"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Canonical form",
+              "latex": "0"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified."
+          ]
+        },
+        {
+          "id": "tensor-riemann-contraction",
+          "title": "Riemann tensor contracted with a symmetric pair",
+          "op": "tensor",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "R(a,b,c,d)*S(-a,-b)"
+            },
+            {
+              "label": "Declared",
+              "text": "R: rank 4, riemann; S: rank 2, symmetric"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Canonical form",
+              "latex": "0"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified."
+          ]
+        },
+        {
+          "id": "tensor-pair-symmetry",
+          "title": "Pair exchange symmetry",
+          "op": "tensor",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "R(a,b,c,d) - R(c,d,a,b)"
+            },
+            {
+              "label": "Declared",
+              "text": "R: rank 4, riemann"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Canonical form",
+              "latex": "0"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified."
+          ]
+        },
+        {
+          "id": "tensor-bianchi",
+          "title": "The cyclic sum is left alone",
+          "op": "tensor",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "R(a,b,c,d) + R(a,c,d,b) + R(a,d,b,c)"
+            },
+            {
+              "label": "Declared",
+              "text": "R: rank 4, riemann"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Canonical form",
+              "latex": "-R{}^{acbd} + R{}^{abcd} + R{}^{adbc}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.",
+            "This cyclic sum vanishes by the algebraic Bianchi identity, a multi-term identity that Minerva does not apply, so it is returned in canonical form and not as 0."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "handbook",
+      "title": "Citable handbook",
+      "status": "available",
+      "where": [
+        "handbook pages",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Handbook entries state identities, integrals, series, special functions and physical equations in original wording and cite sources by locator only. Each entry is verified at a declared level, or labelled \"stated\" when it is a literature record that is never applied.",
+      "limits": [
+        "Entries recorded from the literature (\"stated\") carry no rule and are never used to rewrite anything.",
+        "Coverage is limited and growing; quantum field theory is stated entries only."
+      ],
+      "examples": [
+        {
+          "id": "entry-log-product",
+          "title": "A checked identity with its condition",
+          "op": "entry",
+          "status": "verified",
+          "input": [
+            {
+              "label": "Entry",
+              "text": "log.product: Logarithm of a product"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Statement",
+              "latex": "\\log{\\left(a b \\right)} = \\log{\\left(a \\right)} + \\log{\\left(b \\right)}"
+            }
+          ],
+          "checks": [
+            "verification level: symbolic"
+          ],
+          "notes": [
+            "Validity: Both factors positive.",
+            "Source: DLMF §4.8"
+          ]
+        },
+        {
+          "id": "entry-klein-gordon",
+          "title": "A stated literature record",
+          "op": "entry",
+          "status": "stated",
+          "input": [
+            {
+              "label": "Entry",
+              "text": "qft.klein_gordon: Klein–Gordon equation"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Statement",
+              "latex": "\\left(\\partial_\\mu\\partial^\\mu + m^2\\right)\\phi(x) = 0"
+            }
+          ],
+          "checks": [
+            "verification level: stated"
+          ],
+          "notes": [
+            "Validity: Free scalar field, natural units (ħ = c = 1)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "Chat with a model you host",
+      "status": "available",
+      "where": [
+        "chat"
+      ],
+      "needs_model": true,
+      "summary": "A conversation in which a language model plans, asks and explains, and calls the tools above. It runs only when you connect a model, such as one served by Ollama; it is off by default.",
+      "limits": [
+        "The model never computes and never decides correctness. Formulas it writes that no tool produced in the conversation are shown as unchecked.",
+        "How well it chooses tools depends on the model, and no model tried so far passes every evaluation case. See docs/model-evaluation.md.",
+        "Only Ollama-compatible hosts are supported."
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadabra",
+      "title": "Cadabra integration",
+      "status": "planned",
+      "where": [],
+      "needs_model": false,
+      "summary": "Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.",
+      "limits": [],
+      "examples": []
+    },
+    {
+      "id": "sagemanifolds",
+      "title": "SageManifolds integration",
+      "status": "planned",
+      "where": [],
+      "needs_model": false,
+      "summary": "Differential geometry on explicit manifolds, as an optional backend.",
+      "limits": [],
+      "examples": []
+    },
+    {
+      "id": "integrals",
+      "title": "Integrals, limits and series",
+      "status": "planned",
+      "where": [],
+      "needs_model": false,
+      "summary": "In the workbench, with the same verification discipline as derivatives.",
+      "limits": [],
+      "examples": []
+    },
+    {
+      "id": "semantic-search",
+      "title": "Semantic and structural search",
+      "status": "planned",
+      "where": [],
+      "needs_model": false,
+      "summary": "Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.",
+      "limits": [],
+      "examples": []
+    },
+    {
+      "id": "tensors-workbench",
+      "title": "Tensors in the workbench",
+      "status": "planned",
+      "where": [],
+      "needs_model": false,
+      "summary": "Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.",
+      "limits": [],
+      "examples": []
+    }
+  ]
+}

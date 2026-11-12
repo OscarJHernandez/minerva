@@ -67,9 +67,13 @@ analysis without a model; unit conversion and prefixes; searching three or more 
 
 ## Optional LLM (Ollama)
 
-- `LLMClient` interface with an Ollama-compatible endpoint configured by environment; feature off by
-  default. Uses: suggest entry ids, explain a verified result in prose, normalise informal input to LaTeX for
-  the user to confirm. Never computes or decides. Evaluate with a fixed prompt set; log nothing user-specific.
+Done: an `LLMClient` with an Ollama-compatible endpoint configured by environment (`MINERVA_LLM_*`, Helm
+`api.llm.*`, docker compose), off by default; a tool-calling agent loop; formulas the model writes that no
+tool produced are marked unchecked; `scripts/eval_models.py` and `docs/model-evaluation.md`. The model never
+computes or decides. See `docs/self-hosting.md`.
+
+Open: other model hosts behind the same interface, normalising informal input to LaTeX for the user to
+confirm, and raising the evaluation pass rate (14 of 21 cases for every model tried so far).
 
 ## Platform
 

@@ -1,216 +1,255 @@
+import Link from "next/link";
 import { Math } from "@minerva/ui/math";
+import { MathLine, StatusBadge } from "@/components/example-view";
+import { Section } from "@/components/section";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { CAPABILITIES, example, inputSource, outputLatex, type Example } from "@/lib/capabilities";
+import { APP_URL, CONTRIBUTING_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL ?? "https://github.com/OscarJHernandez/minerva";
+const primary = "rounded bg-accent px-5 py-2.5 font-medium text-accent-ink hover:opacity-90";
+const secondary = "rounded border border-rule px-5 py-2.5 font-medium hover:bg-sunk";
 
-const EXAMPLES: {
-  title: string;
-  input: string;
-  output: string;
-  note: string;
-  tone: "ok" | "warn";
-  badge: string;
-}[] = [
-  {
-    title: "Simplify, then verify",
-    input: "\\sin^2 x + \\cos^2 x",
-    output: "1",
-    note: "SymPy simplifies; an independent numeric check at 12 random complex points confirms the result before it is shown.",
-    tone: "ok",
-    badge: "Verified",
-  },
-  {
-    title: "Identities state their conditions",
-    input: "\\log(xy)",
-    output: "\\log x + \\log y",
-    note: "Only offered once x and y are declared positive. Without that assumption the rule matches but is not applied, and Minerva says why.",
-    tone: "warn",
-    badge: "Needs x, y > 0",
-  },
-  {
-    title: "Assumptions change the answer",
-    input: "\\sqrt{x^2}",
-    output: "|x|\\ \\ (x\\ \\text{real}),\\qquad x\\ \\ (x \\ge 0)",
-    note: "For a general complex x the expression is returned unchanged, because “x” would be wrong.",
-    tone: "ok",
-    badge: "Assumption-aware",
-  },
-  {
-    title: "Tensor symmetries",
-    input: "S_{ab}A^{ab}",
-    output: "0",
-    note: "Symmetric contracted with antisymmetric, found by Butler–Portugal canonicalization. Only monoterm symmetries are applied; multi-term identities like Bianchi are reported as out of scope.",
-    tone: "ok",
-    badge: "SymPy tensor",
-  },
-];
-
-const AVAILABLE = [
+const WHY = [
   [
-    "Verified simplification",
-    "SymPy results are checked symbolically and numerically; failures are reported, never guessed.",
+    "Open source",
+    "Apache-2.0, developed in the open. Read the engine, rebuild the images, add a handbook entry as a plain YAML file with a verification test, or extend the code itself.",
   ],
   [
-    "Identity search with applicability checks",
-    "Retrieval proposes candidates; the engine matches, checks conditions and verifies each rewrite.",
+    "Runs on your infrastructure",
+    "Self-host with Docker or Kubernetes. Expressions, derivations, history and conversations stay in a database you control, and the optional chat assistant talks only to a model host you configure. For unpublished or sensitive research, that is the difference between using a tool and sending your work to someone else’s server.",
   ],
   [
-    "A citable handbook",
-    "About a hundred entries across algebra, calculus, series, special functions, tensors, mechanics, electromagnetism, thermodynamics, quantum mechanics, relativity and constants.",
-  ],
-  [
-    "Tensor canonicalization",
-    "Index symmetries and contractions through the HTTP API (workspace interface planned).",
-  ],
-  [
-    "An API that stands alone",
-    "Everything the interface does is available over documented HTTP endpoints.",
+    "Mathematics you can check",
+    "A symbolic engine does the computing and checks assumptions. An identity is applied only when its conditions are provable from what you declared. A language model, if you connect one, interprets and suggests; it never verifies, and formulas it writes that no tool produced are marked unchecked.",
   ],
 ];
 
-const PLANNED = [
-  ["Cadabra integration", "Advanced tensor algebra and quantum field theory."],
-  ["SageManifolds integration", "Differential geometry on explicit manifolds."],
-  ["Derivatives, integrals, limits", "In the workspace, with the same verification discipline."],
-  ["Semantic and structural search", "Retrieval beyond keywords, behind the same interface."],
+const STEPS = [
+  ["Parse", "Input is read by strict LaTeX and text parsers. Nothing you type is ever executed."],
+  ["Compute", "SymPy does the algebra in an isolated process with hard time and memory limits."],
   [
-    "Optional local language model",
-    "To suggest and explain, never to compute or to decide correctness.",
+    "Retrieve and check identities",
+    "Search over the handbook proposes candidates. The engine matches each pattern, checks its conditions against your assumptions, and rewrites.",
+  ],
+  [
+    "Verify",
+    "Every result is checked numerically at assumption-respecting sample points and with a symbolic zero test, reported separately. A result that fails is not shown.",
   ],
 ];
 
-function Section({
-  id,
+type Row = { label: string; node: React.ReactNode };
+
+function Card({
   title,
-  children,
+  badge,
+  tone,
+  rows,
+  note,
 }: {
-  id: string;
   title: string;
-  children: React.ReactNode;
+  badge: string;
+  tone: string;
+  rows: Row[];
+  note: string;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-h`} className="border-t border-rule py-16 sm:py-20">
-      <div className="mx-auto max-w-5xl px-5 sm:px-8">
-        <h2 id={`${id}-h`} className="font-serif text-3xl tracking-tight sm:text-4xl">
-          {title}
-        </h2>
-        <div className="mt-8">{children}</div>
+    <article className="min-w-0 rounded-lg border border-rule bg-raised p-5 sm:p-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="font-serif text-xl">{title}</h3>
+        <StatusBadge status={tone} label={badge} />
       </div>
-    </section>
+      <dl className="mt-4 space-y-3">
+        {rows.map((r) => (
+          <div key={r.label}>
+            <dt className="text-xs uppercase tracking-wide text-muted">{r.label}</dt>
+            <dd className="mt-0.5">{r.node}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-4 text-sm text-muted">{note}</p>
+    </article>
   );
 }
 
+const code = (ex: Example) => (
+  <code className="block overflow-x-auto whitespace-pre text-sm">{inputSource(ex)}</code>
+);
+const tex = (latex: string) => <MathLine latex={latex} />;
+const plain = (text: string) => <span className="text-sm text-muted">{text}</span>;
+
 export default function Home() {
+  const kepler = example("lagrangian-kepler-polar");
+  const trig = example("simplify-trig-quotients");
+  const logBlocked = example("identity-log-blocked");
+  const logOk = example("identity-log-applicable");
+  const powerGeneral = example("simplify-power-general");
+  const powerPositive = example("simplify-power-positive");
+  const riemann = example("tensor-riemann-contraction");
+  const bianchi = example("tensor-bianchi");
+
+  const available = CAPABILITIES.filter((c) => c.status === "available");
+  const planned = CAPABILITIES.filter((c) => c.status === "planned");
+
   return (
     <>
-      <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5 sm:px-8">
-        <a href="#top" className="font-serif text-2xl italic tracking-tight">
-          Minerva
-        </a>
-        <nav aria-label="Main" className="flex items-center gap-5 text-sm">
-          <a href="#examples" className="hidden text-muted hover:text-ink sm:inline">
-            Examples
-          </a>
-          <a href="#capabilities" className="hidden text-muted hover:text-ink sm:inline">
-            Capabilities
-          </a>
-          <a href={REPO_URL} className="text-muted hover:text-ink">
-            GitHub
-          </a>
-          <a href={`${APP_URL}/login`} className="text-muted hover:text-ink">
-            Log in
-          </a>
-          <a
-            href={APP_URL}
-            className="rounded bg-accent px-3.5 py-1.5 font-medium text-accent-ink hover:opacity-90"
-          >
-            Launch app
-          </a>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main id="top">
-        <div className="mx-auto max-w-5xl px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24">
+        <div className="mx-auto max-w-5xl px-5 pb-20 pt-14 sm:px-8 sm:pb-28 sm:pt-20">
           <p className="text-sm uppercase tracking-[0.18em] text-muted">
-            Open-source mathematical computing
+            Open source · Self-hostable · Apache-2.0
           </p>
-          <h1 className="mt-4 max-w-3xl font-serif text-5xl leading-[1.05] tracking-tight sm:text-7xl">
-            A calculator that checks its own work.
+          <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-[1.05] tracking-tight sm:text-6xl">
+            An open-source mathematical workbench you can run yourself.
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
-            Minerva combines computer algebra with a handbook of mathematical tables and physical
-            equations. It simplifies expressions, finds the identities that apply to them, and tells
-            you exactly what each one assumes.
+            Explore mathematical identities, simplify symbolic expressions, and verify results under
+            explicit assumptions. Run Minerva on your own infrastructure, optionally with a language
+            model you host, and keep your mathematical work under your control.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <a
-              href={APP_URL}
-              className="rounded bg-accent px-5 py-2.5 font-medium text-accent-ink hover:opacity-90"
-            >
-              Launch the workspace
+            <a href={APP_URL} className={primary}>
+              Try Minerva
             </a>
-            <a
-              href={REPO_URL}
-              className="rounded border border-rule px-5 py-2.5 font-medium hover:bg-sunk"
-            >
-              View source on GitHub
+            <a href={SELF_HOSTING_URL} className={secondary}>
+              Self-host Minerva
             </a>
           </div>
-          <div className="mt-16 rounded-lg border border-rule bg-raised px-6 py-8 text-center text-3xl sm:text-4xl">
-            <Math
-              latex="\sin^2 x + \cos^2 x \;=\; 1"
-              display
-              label="sin squared plus cos squared equals one"
-            />
-          </div>
+          <p className="mt-4 text-sm text-muted">
+            <a href={REPO_URL} className="underline hover:text-ink">
+              View on GitHub
+            </a>
+            {" · "}
+            <Link href="/docs" className="underline hover:text-ink">
+              Read the docs
+            </Link>
+          </p>
+
+          <figure className="mt-14 rounded-lg border border-rule bg-raised px-5 py-7 sm:px-8 sm:py-9">
+            <figcaption className="text-xs uppercase tracking-wide text-muted">
+              The Kepler problem, analysed by Minerva
+            </figcaption>
+            <div className="mt-3 space-y-1 text-xl sm:text-2xl">
+              <div className="overflow-x-auto overflow-y-hidden">
+                <Math
+                  latex={`L = ${inputSource(kepler)}`}
+                  label="Lagrangian of the Kepler problem in polar coordinates"
+                />
+              </div>
+              <div className="overflow-x-auto overflow-y-hidden">
+                <Math latex={outputLatex(kepler, "Conserved: cyclic")} />
+              </div>
+              <div className="overflow-x-auto overflow-y-hidden">
+                <Math latex={outputLatex(kepler, "Conserved: energy")} />
+              </div>
+            </div>
+            <p className="mt-5 max-w-2xl text-sm text-muted">
+              Both conserved quantities are verified: their time derivative is zero on the equations
+              of motion, checked symbolically and numerically. Hidden symmetries, such as the
+              Runge–Lenz vector, are not searched for, and the result says so.
+            </p>
+          </figure>
         </div>
 
-        <Section id="examples" title="What it does, and what it refuses to do">
-          <div className="grid gap-5 md:grid-cols-2">
-            {EXAMPLES.map((ex) => (
-              <article key={ex.title} className="rounded-lg border border-rule bg-raised p-6">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="font-serif text-xl">{ex.title}</h3>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      ex.tone === "ok" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"
-                    }`}
-                  >
-                    {ex.badge}
-                  </span>
-                </div>
-                <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-4 text-xl">
-                  <Math latex={ex.input} />
-                  <Math latex={String.raw`\;\longrightarrow\; ${ex.output}`} />
-                </div>
-                <p className="mt-4 text-sm text-muted">{ex.note}</p>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="principles" title="Correctness first">
+        <Section id="why" title="Why Minerva">
           <div className="grid gap-8 md:grid-cols-3">
-            {[
-              [
-                "Computation is symbolic",
-                "SymPy does the algebra. Minerva wraps it with strict parsers (no eval), isolated processes and hard time and memory limits.",
-              ],
-              [
-                "Knowledge is checked before it is used",
-                "Every handbook entry is verified at a declared level in the test suite. Entries recorded from the literature are labelled “stated” and are never applied.",
-              ],
-              [
-                "Language models never decide",
-                "An optional local model may suggest or explain. Whether an identity applies is decided by the engine, from its conditions.",
-              ],
-            ].map(([t, d]) => (
+            {WHY.map(([t, d]) => (
               <div key={t}>
                 <h3 className="font-serif text-xl">{t}</h3>
                 <p className="mt-2 text-muted">{d}</p>
               </div>
             ))}
           </div>
+          <p className="mt-10 max-w-3xl text-sm text-muted">
+            The hosted instance behind “Try Minerva” is for trying the workbench out. It processes
+            what you enter on its operator’s server, so it does not give the control a deployment of
+            your own does.
+          </p>
+        </Section>
+
+        <Section id="examples" title="What it does, and what it refuses to do">
+          <div className="grid gap-5 md:grid-cols-2">
+            <Card
+              title="Simplify, then verify"
+              badge="Verified"
+              tone="ok"
+              rows={[
+                { label: "Input", node: tex(inputSource(trig)) },
+                { label: "Result", node: tex(outputLatex(trig, "Result")) },
+              ]}
+              note="SymPy simplifies; an independent numeric check at random complex points and a symbolic zero test confirm the result before it is shown."
+            />
+            <Card
+              title="Identities state their conditions"
+              badge="Needs x, y > 0"
+              tone="warn"
+              rows={[
+                { label: "Input", node: tex(inputSource(logBlocked)) },
+                { label: "No assumptions", node: plain(logBlocked.outputs[0]?.text ?? "") },
+                { label: "With x, y positive", node: tex(outputLatex(logOk, "Logarithm")) },
+              ]}
+              note="The handbook identity is found either way. It is applied only once its conditions are provable from the assumptions you declare."
+            />
+            <Card
+              title="Assumptions change the answer"
+              badge="Assumption-aware"
+              tone="ok"
+              rows={[
+                { label: "Input", node: tex(inputSource(powerGeneral)) },
+                {
+                  label: "No assumptions",
+                  node: tex(String.raw`\text{unchanged: }${outputLatex(powerGeneral, "Read as")}`),
+                },
+                { label: "x positive, a real", node: tex(outputLatex(powerPositive, "Read as")) },
+              ]}
+              note="The exponents combine only where that is valid. For a general complex x the expression is left as it is, because the combined form would be wrong."
+            />
+            <Card
+              title="Tensor symmetries"
+              badge="Monoterm only"
+              tone="warn"
+              rows={[
+                { label: "Riemann tensor contracted with a symmetric pair", node: code(riemann) },
+                { label: "Canonical form", node: tex(outputLatex(riemann, "Canonical form")) },
+                { label: "A cyclic sum, left alone", node: code(bianchi) },
+                { label: "Canonical form", node: tex(outputLatex(bianchi, "Canonical form")) },
+              ]}
+              note="Symmetries of a single term are applied, by Butler–Portugal canonicalization. The cyclic sum vanishes by the Bianchi identity, a multi-term identity that is out of scope and reported as such."
+            />
+          </div>
+          <p className="mt-8 text-sm text-muted">
+            Derivatives, polynomial equations, Lagrangian mechanics and the handbook have examples
+            too.{" "}
+            <Link href="/docs" className="underline hover:text-ink">
+              See every capability with its results and limits
+            </Link>
+            .
+          </p>
+        </Section>
+
+        <Section id="how" title="How it works">
+          <ol className="grid gap-8 md:grid-cols-2">
+            {STEPS.map(([t, d], i) => (
+              <li key={t} className="flex gap-4">
+                <span className="font-serif text-3xl leading-none text-muted" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <div>
+                  <h3 className="font-serif text-xl">{t}</h3>
+                  <p className="mt-1 text-muted">{d}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-10 max-w-3xl text-muted">
+            <span className="font-medium text-ink">Optionally, a language model you host.</span>{" "}
+            Connect a model served by Ollama and the chat plans, asks questions and explains,
+            calling the tools above. It never computes and never decides correctness: results come
+            from the engine, and formulas the model writes that no tool produced are marked
+            unchecked. Chat is off until you connect a model, and how well it chooses tools depends
+            on the model.
+          </p>
         </Section>
 
         <Section id="capabilities" title="Capabilities">
@@ -218,10 +257,13 @@ export default function Home() {
             <div>
               <h3 className="text-sm font-medium uppercase tracking-wide text-ok">Available now</h3>
               <dl className="mt-4 space-y-5">
-                {AVAILABLE.map(([t, d]) => (
-                  <div key={t}>
-                    <dt className="font-medium">{t}</dt>
-                    <dd className="text-sm text-muted">{d}</dd>
+                {available.map((c) => (
+                  <div key={c.id}>
+                    <dt className="font-medium">{c.title}</dt>
+                    <dd className="text-sm text-muted">
+                      {c.summary}
+                      {c.needs_model && " Self-hosted; needs a model you connect."}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -229,53 +271,46 @@ export default function Home() {
             <div>
               <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Planned</h3>
               <dl className="mt-4 space-y-5">
-                {PLANNED.map(([t, d]) => (
-                  <div key={t}>
-                    <dt className="font-medium">{t}</dt>
-                    <dd className="text-sm text-muted">{d}</dd>
+                {planned.map((c) => (
+                  <div key={c.id}>
+                    <dt className="font-medium">{c.title}</dt>
+                    <dd className="text-sm text-muted">{c.summary}</dd>
                   </div>
                 ))}
               </dl>
             </div>
           </div>
           <p className="mt-10 max-w-2xl text-sm text-muted">
-            Domains on the roadmap: differential geometry, tensor calculus, quantum field theory and
-            general symbolic mathematics. Minerva is early; this page lists what exists today and
-            keeps the rest labelled as planned.
+            Minerva is early. This list comes from the same record as the{" "}
+            <Link href="/docs" className="underline hover:text-ink">
+              docs
+            </Link>
+            , generated by running the code, and keeps everything not yet built labelled as planned.
           </p>
         </Section>
 
         <Section id="open-source" title="Open source">
           <p className="max-w-2xl text-lg text-muted">
-            Minerva is developed in the open under the Apache License 2.0. Contributions to the
-            handbook are plain YAML files with a verification test, so adding a formula does not
-            require writing code.
+            Minerva is developed in the open under the Apache License 2.0. Build it, run it on your
+            own machines, point it at your own model, and send a pull request. Handbook
+            contributions are plain YAML files with a verification test, so adding a formula does
+            not require writing code.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href={REPO_URL}
-              className="rounded bg-accent px-5 py-2.5 font-medium text-accent-ink hover:opacity-90"
-            >
+            <a href={REPO_URL} className={primary}>
               Repository
             </a>
-            <a
-              href={`${APP_URL}/register`}
-              className="rounded border border-rule px-5 py-2.5 font-medium hover:bg-sunk"
-            >
-              Create an account
+            <a href={SELF_HOSTING_URL} className={secondary}>
+              Self-hosting guide
+            </a>
+            <a href={CONTRIBUTING_URL} className={secondary}>
+              Contributing
             </a>
           </div>
         </Section>
       </main>
 
-      <footer className="border-t border-rule py-10 text-sm text-muted">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 sm:px-8">
-          <span>
-            <span className="font-serif italic">Minerva</span> · Apache-2.0
-          </span>
-          <span>This site stores nothing about you: no cookies, no analytics.</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
