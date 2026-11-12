@@ -73,6 +73,17 @@ def test_streamed_turn_with_a_tool_card_and_verified_formula(
     assert detail["title"].startswith("simplify")
 
 
+def test_differentiate_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Give me the second derivative of $x^5$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "differentiate"
+    assert card["data"]["status"] == "ok"
+    assert card["data"]["result_text"] == "20*x**3"
+    assert card["data"]["verification"]["passed"] is True
+
+
 def test_model_written_formula_is_marked_unchecked(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, "just tell me the answer without tools")

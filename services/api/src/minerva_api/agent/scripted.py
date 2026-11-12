@@ -101,6 +101,19 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif ("differentiat" in lower or "derivative" in lower) and latex:
+            order = 2 if "second" in lower else 1
+            name = "y" if re.search(r"\bwith respect to y\b|\bin y\b", lower) else "x"
+            async for c in self._say("I will differentiate it and check every step. "):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "differentiate",
+                        {"latex": latex, "variables": [{"name": name, "order": order}]},
+                    )
+                ]
+            )
         elif "solve" in lower and latex:
             async for c in self._say("I will solve the equation and check the roots. "):
                 yield c
@@ -158,6 +171,19 @@ class ScriptedLLM:
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "differentiate":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the derivative and each step. Minerva compared every step with "
+                    "an independent numerical derivative at random points."
+                )
+            else:
+                text = (
+                    f"I could not differentiate that ({status}). The card says why; for example "
+                    "|x| needs x declared real."
+                )
         elif tool == "find_identities":
             applicable = [ln for ln in content.splitlines() if ": applicable" in ln]
             blocked = [ln for ln in content.splitlines() if "conditions_not_satisfied" in ln]

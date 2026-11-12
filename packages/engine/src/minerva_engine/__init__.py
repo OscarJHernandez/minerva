@@ -1,6 +1,12 @@
 """Minerva symbolic computation engine."""
 
 from .claims import ClaimCheck, check_claim, split_equation
+from .differentiate import (
+    DerivativeStep,
+    DerivativeVerification,
+    DifferentiateResult,
+    DiffVariable,
+)
 from .errors import LimitError, MinervaMathError, ParseError
 from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
@@ -37,6 +43,10 @@ __all__ = [
     "ClaimCheck",
     "ConstantCandidate",
     "ConstantSuggestion",
+    "DerivativeStep",
+    "DerivativeVerification",
+    "DiffVariable",
+    "DifferentiateResult",
     "DimensionalReport",
     "Engine",
     "ExpressionInput",

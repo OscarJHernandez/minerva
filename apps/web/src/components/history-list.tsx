@@ -10,6 +10,12 @@ const DOT: Record<string, string> = {
   internal_error: "bg-bad",
 };
 
+const OPERATION_LABEL: Record<string, string> = {
+  simplify: "Simplify",
+  differentiate: "Differentiate",
+  identities: "Identities",
+};
+
 export function HistoryList({
   items,
   activeId,
@@ -56,7 +62,7 @@ export function HistoryList({
               >
                 <div className="flex items-center gap-1.5 text-xs text-muted">
                   <span className={`h-1.5 w-1.5 rounded-full ${DOT[item.status] ?? "bg-warn"}`} />
-                  {item.operation === "simplify" ? "Simplify" : "Identities"}
+                  {OPERATION_LABEL[item.operation] ?? "Identities"}
                 </div>
                 <div className="overflow-hidden text-sm">
                   {item.format === "latex" ? (

@@ -1,4 +1,10 @@
-import type { EntrySummary, IdentitiesResult, SimplifyResult, Status } from "./types";
+import type {
+  DifferentiateResult,
+  EntrySummary,
+  IdentitiesResult,
+  SimplifyResult,
+  Status,
+} from "./types";
 
 export interface LagrangianReport {
   status: Status;
@@ -217,6 +223,7 @@ export interface Segment {
 
 export type Card =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
+  | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {
       id: string;

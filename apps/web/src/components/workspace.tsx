@@ -3,8 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
-import type { Assumptions, HistoryItem, IdentitiesResult, SimplifyResult } from "@/lib/types";
+import { MAX_DERIVATIVE_ORDER } from "@/lib/types";
+import type {
+  Assumptions,
+  DifferentiateResult,
+  HistoryItem,
+  IdentitiesResult,
+  SimplifyResult,
+} from "@/lib/types";
 import { AssumptionsEditor } from "./assumptions-editor";
+import { DerivativePanel } from "./derivative-panel";
 import { HistoryList } from "./history-list";
 import { IdentitiesPanel } from "./identities-panel";
 import { MathInput } from "./math-input";
@@ -13,7 +21,10 @@ import { ResultPanel } from "./result-panel";
 type Output =
   | { kind: "simplify"; data: SimplifyResult }
   | { kind: "identities"; data: IdentitiesResult }
+  | { kind: "differentiate"; data: DifferentiateResult }
   | null;
+
+type Kind = "simplify" | "identities" | "differentiate";
 
 const EXAMPLES = [
   { label: "sin² + cos²", latex: "\\sin^2 x + \\cos^2 x" },
@@ -22,12 +33,16 @@ const EXAMPLES = [
   { label: "√(x²)", latex: "\\sqrt{x^2}" },
 ];
 
+const VARIABLE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
+
 export function Workspace() {
   const router = useRouter();
   const [latex, setLatex] = useState("");
   const [assumptions, setAssumptions] = useState<Assumptions>({});
   const [output, setOutput] = useState<Output>(null);
-  const [busy, setBusy] = useState<"simplify" | "identities" | null>(null);
+  const [variable, setVariable] = useState("x");
+  const [order, setOrder] = useState(1);
+  const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -56,14 +71,24 @@ export function Workspace() {
     void refreshHistory();
   }, [refreshHistory]);
 
-  async function run(kind: "simplify" | "identities") {
+  const variableValid = VARIABLE_PATTERN.test(variable);
+
+  async function run(kind: Kind) {
     if (!latex.trim() || busy) return;
+    if (kind === "differentiate" && !variableValid) {
+      setError("Enter the variable to differentiate by, for example x.");
+      return;
+    }
     setBusy(kind);
     setError(null);
     try {
       const payload = { input: latex, assumptions };
       if (kind === "simplify") {
         const data = await api.simplify(payload);
+        setOutput({ kind, data });
+        setActiveId(data.calculation_id ?? null);
+      } else if (kind === "differentiate") {
+        const data = await api.differentiate(payload, [{ name: variable, order }]);
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
       } else {
@@ -84,6 +109,16 @@ export function Workspace() {
     setAssumptions(item.assumptions);
     setActiveId(item.id);
     setError(null);
+    if (item.operation === "differentiate") {
+      const data = item.result as unknown as DifferentiateResult;
+      const first = data.variables?.[0];
+      if (first) {
+        setVariable(first.name);
+        setOrder(first.order);
+      }
+      setOutput({ kind: "differentiate", data });
+      return;
+    }
     setOutput(
       item.operation === "simplify"
         ? { kind: "simplify", data: item.result as SimplifyResult }
@@ -134,6 +169,40 @@ export function Workspace() {
           >
             {busy === "identities" ? "Searching…" : "Find identities"}
           </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => run("differentiate")}
+              disabled={!latex.trim() || busy !== null || !variableValid}
+              className="rounded border border-accent px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
+            >
+              {busy === "differentiate" ? "Differentiating…" : "Differentiate"}
+            </button>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              by
+              <input
+                value={variable}
+                onChange={(e) => setVariable(e.target.value.trim())}
+                aria-label="Variable to differentiate by"
+                maxLength={32}
+                className="w-14 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              order
+              <input
+                type="number"
+                min={1}
+                max={MAX_DERIVATIVE_ORDER}
+                value={order}
+                onChange={(e) =>
+                  setOrder(Math.min(MAX_DERIVATIVE_ORDER, Math.max(1, Number(e.target.value) || 1)))
+                }
+                aria-label="Order of the derivative"
+                className="w-16 rounded border border-rule bg-raised px-2 py-1.5 text-sm text-ink"
+              />
+            </label>
+          </div>
           <span className="ml-2 hidden text-xs text-muted sm:inline">Try:</span>
           {EXAMPLES.map((ex) => (
             <button
@@ -157,10 +226,12 @@ export function Workspace() {
 
         {output?.kind === "simplify" && <ResultPanel result={output.data} />}
         {output?.kind === "identities" && <IdentitiesPanel result={output.data} />}
+        {output?.kind === "differentiate" && <DerivativePanel result={output.data} />}
         {!output && (
           <p className="text-sm text-muted">
-            Enter an expression, then simplify it or look up identities. Results are verified before
-            they are shown; if Minerva cannot verify or simplify something, it says so.
+            Enter an expression, then simplify it, differentiate it or look up identities. Results
+            are verified before they are shown; if Minerva cannot verify or simplify something, it
+            says so.
           </p>
         )}
       </div>

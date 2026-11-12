@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from .claims import ClaimCheck
+from .differentiate import DifferentiateResult, DiffVariable
 from .lagrangian import LagrangianReport
 from .models import (
     ExpressionInput,
@@ -60,6 +61,22 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return SimplifyResult(status=status, message=message, duration_ms=ms)
         result = SimplifyResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def differentiate(
+        self, expression: ExpressionInput, variables: list[DiffVariable]
+    ) -> DifferentiateResult:
+        """Derivative of `expression` (any mix of variables, total order up to 10), each step verified."""
+        payload = {
+            "expression": expression.model_dump(),
+            "variables": [v.model_dump() for v in variables],
+        }
+        outcome, ms = self._run("differentiate", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DifferentiateResult(status=status, message=message, duration_ms=ms)
+        result = DifferentiateResult(**outcome.value)
         result.duration_ms = ms
         return result
 

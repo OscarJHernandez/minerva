@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from minerva_engine import ExpressionInput
+from minerva_engine import DiffVariable, ExpressionInput
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -26,6 +26,11 @@ class IdentitiesRequest(ExpressionInput):
 
 
 class SimplifyRequest(ExpressionInput):
+    save: bool = True
+
+
+class DifferentiateRequest(ExpressionInput):
+    variables: list[DiffVariable] = Field(min_length=1, max_length=4)
     save: bool = True
 
 

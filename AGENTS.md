@@ -104,6 +104,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
   report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.
   Units are coherent SI only (no conversion).
+- Derivatives (`differentiate.py`) are verified by an independent numerical derivative, one order at a
+  time, and along the imaginary direction too for variables not declared real. A derivative with no
+  complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a
+  symbolic fallback or weaken `check_derivative` (its tests include a deliberately wrong candidate).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

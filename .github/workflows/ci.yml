@@ -30,7 +30,7 @@ jobs:
       images: ${{ steps.paths.outputs.images }}
       workflows: ${{ steps.paths.outputs.workflows }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 2
@@ -65,10 +65,10 @@ jobs:
       # strings; `cond && '' || x` would always pick x because '' is falsy in expressions.)
       MINERVA_TEST_DATABASE_URL: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'sqlite+pysqlite:///:memory:' || 'postgresql+psycopg://postgres@127.0.0.1:5432/postgres' }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
       - run: uv sync --frozen
@@ -89,6 +89,14 @@ jobs:
       - name: Agent files and skills are consistent
         run: uv run python scripts/check_agent_files.py
       - run: uv run pytest
+      - name: The API starts with production dependencies only (no dev tools)
+        # The image installs `--no-dev`; a dependency declared only as a dev tool passes every test and then
+        # crashes the container at import time.
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/prod-venv
+        run: |
+          uv sync --frozen --no-dev --no-editable --package minerva-api
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -c "import minerva_api.main"
 
   web:
     name: Web (lint, types, tests, build)
@@ -97,7 +105,7 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       # Node first: the stock self-hosted runner image has no `node`, and pnpm's installer needs it.
@@ -106,7 +114,7 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
@@ -123,10 +131,10 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: v4.3.1
       - name: Lint and render the production overlay (fake digests)
@@ -140,6 +148,22 @@ jobs:
           if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml > /dev/null 2>&1; then
             echo "::error::requireDigests did not reject a release without image digests"; exit 1
           fi
+      - name: Chat model settings are rendered and validated
+        run: |
+          D=sha256:$(printf 'a%.0s' {1..64})
+          SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
+          OUT=$(helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" \
+            --set api.llm.mode=ollama --set api.llm.baseUrl=http://ollama.example:11440 --set api.llm.model=minerva)
+          echo "$OUT" | grep -q 'MINERVA_LLM_MODE, value: "ollama"' || { echo "::error::MINERVA_LLM_MODE not rendered"; exit 1; }
+          echo "$OUT" | grep -q 'MINERVA_LLM_BASE_URL, value: "http://ollama.example:11440"' || { echo "::error::MINERVA_LLM_BASE_URL not rendered"; exit 1; }
+          if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" \
+            --set api.llm.mode=ollama > /dev/null 2>&1; then
+            echo "::error::ollama mode without baseUrl and model must be refused"; exit 1
+          fi
+          if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" \
+            --set api.llm.mode=scripted > /dev/null 2>&1; then
+            echo "::error::scripted mode must be refused in the chart"; exit 1
+          fi
       - run: bash -n scripts/build-image.sh
 
   images:
@@ -150,7 +174,7 @@ jobs:
     runs-on: minerva-runners
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: bash scripts/build-image.sh deploy/docker/api.Dockerfile ghcr.io/oscarjhernandez/minerva-api:ci no-push
@@ -162,11 +186,11 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
       - name: Python dependencies (pip-audit)
@@ -179,11 +203,11 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - name: JavaScript dependencies (high and above)
         run: pnpm install --frozen-lockfile --ignore-scripts && pnpm audit --audit-level high
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
@@ -195,10 +219,10 @@ jobs:
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
       - run: uvx --from actionlint-py actionlint
       - name: Static analysis of workflows (offline, no token needed)
         run: uvx zizmor --offline --config .github/zizmor.yml .github/workflows

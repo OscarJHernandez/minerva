@@ -53,6 +53,16 @@ spec:
             - { name: MINERVA_COMPUTE_TIMEOUT_SECONDS, value: {{ .Values.api.compute.timeoutSeconds | quote }} }
             - { name: MINERVA_COMPUTE_MEMORY_MB, value: {{ .Values.api.compute.memoryMb | quote }} }
             - { name: MINERVA_COMPUTE_MAX_CONCURRENCY, value: {{ .Values.api.compute.maxConcurrency | quote }} }
+            {{- /* Mirrors the startup checks in settings.py; "scripted" is development only and is refused here. */}}
+            {{- $llm := .Values.api.llm }}
+            {{- if not (has $llm.mode (list "off" "ollama")) }}{{ fail (printf "api.llm.mode must be off or ollama, got %q" $llm.mode) }}{{ end }}
+            {{- if eq $llm.mode "ollama" }}{{ $_ := required "api.llm.baseUrl is required when api.llm.mode=ollama" $llm.baseUrl }}{{ $_ := required "api.llm.model is required when api.llm.mode=ollama" $llm.model }}{{ end }}
+            - { name: MINERVA_LLM_MODE, value: {{ $llm.mode | quote }} }
+            - { name: MINERVA_LLM_BASE_URL, value: {{ $llm.baseUrl | quote }} }
+            - { name: MINERVA_LLM_MODEL, value: {{ $llm.model | quote }} }
+            - { name: MINERVA_LLM_TIMEOUT_SECONDS, value: {{ $llm.timeoutSeconds | quote }} }
+            - { name: MINERVA_LLM_THINK, value: {{ $llm.think | quote }} }
+            - { name: MINERVA_LLM_STRIP_THINKING, value: {{ $llm.stripThinking | quote }} }
           readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 10 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 20, failureThreshold: 6 }
           startupProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 3, failureThreshold: 40 }

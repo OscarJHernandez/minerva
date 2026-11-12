@@ -30,6 +30,7 @@ class Card(BaseModel):
     tool: str
     type: Literal[
         "simplify",
+        "differentiate",
         "identities",
         "entries",
         "entry",
