@@ -126,7 +126,7 @@ capabilities:
       - id: simplify-goal-factor
         title: Factor a difference of fourth powers
         op: simplify
-        input: 'x^4 - y^4'
+        input: "x^4 - y^4"
         goal: factor
       - id: simplify-goal-rewrite
         title: Rewrite in terms of sine and cosine
