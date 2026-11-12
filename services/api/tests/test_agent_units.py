@@ -162,6 +162,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "search_handbook",
         "get_entry",
         "simplify",
+        "differentiate",
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
@@ -279,6 +280,74 @@ def test_lagrangian_tool_returns_equations_constants_and_methods(ctx: ToolContex
     assert "conserved (cyclic, verified on the equations of motion)" in out.for_model
     bad = execute("analyze_lagrangian", {"lagrangian": "x", "coordinates": []}, ctx)
     assert bad.card.type == "error"
+
+
+def test_differentiate_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute("differentiate", {"latex": "x^5", "variables": [{"name": "x", "order": 2}]}, ctx)
+    assert out.card.type == "differentiate"
+    assert out.card.data["status"] == "ok"
+    assert out.card.data["result_text"] == "20*x**3"
+    assert "derivative=$20 x^{3}$" in out.for_model
+    assert "verified: 2 step(s)" in out.for_model
+    assert "20 x^{3}" in out.known_latex and "5 x^{4}" in out.known_latex
+
+    mixed = execute(
+        "differentiate", {"latex": "x^2 y^3", "variables": [{"name": "x"}, {"name": "y"}]}, ctx
+    )
+    assert mixed.card.data["result_text"] == "6*x*y**2"
+
+
+def test_differentiate_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) -> None:
+    out = execute("differentiate", {"latex": r"\left|x\right|", "variables": [{"name": "x"}]}, ctx)
+    assert out.card.type == "differentiate"
+    assert out.card.data["status"] == "unsupported"
+    assert out.card.data["result_latex"] is None
+    assert "derivative=" not in out.for_model and "real" in out.for_model
+    real = execute(
+        "differentiate",
+        {
+            "latex": r"\left|x\right|",
+            "variables": [{"name": "x"}],
+            "assumptions": {"x": ["real"]},
+        },
+        ctx,
+    )
+    assert real.card.data["result_text"] == "sign(x)"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"latex": "x", "variables": []},
+        {"latex": "x", "variables": [{"name": "x", "order": 11}]},
+        {"latex": "x", "variables": [{"name": "x", "order": 0}]},
+        {"latex": "x"},
+        {"latex": "x" * 3000, "variables": [{"name": "x"}]},
+    ],
+)
+def test_differentiate_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    out = execute("differentiate", arguments, ctx)
+    assert out.card.type == "error"
+
+
+def test_derivative_in_model_prose_is_checked_against_the_tool(ctx: ToolContext) -> None:
+    llm = FakeLLM(
+        [
+            [
+                Chunk(
+                    tool_calls=[
+                        ToolCall("differentiate", {"latex": "x^5", "variables": [{"name": "x"}]})
+                    ]
+                )
+            ],
+            [Chunk(text=r"The derivative is $5 x^{4}$, not $6 x^{4}$.")],
+        ]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "differentiate"}]))
+    assert cards_of(msg)[0]["type"] == "differentiate"
+    math = [s for s in segments_of(msg) if s["type"] == "math"]
+    assert math[0]["status"] == "from_tool"
+    assert math[1]["status"] == "unchecked"  # a formula the tool never produced
 
 
 def test_bare_equations_become_formula_segments() -> None:

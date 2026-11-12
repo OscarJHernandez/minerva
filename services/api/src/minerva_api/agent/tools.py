@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from minerva_engine import (
+    DiffVariable,
     Engine,
     ExpressionInput,
     TensorInput,
@@ -51,6 +52,19 @@ class SimplifyArgs(BaseModel):
         default_factory=dict,
         description="Properties of symbols: real, positive, negative, nonnegative, nonpositive, "
         'nonzero, integer, rational. Example: {"x": ["positive"]}',
+    )
+
+
+class DifferentiateArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT, description="The expression to differentiate, in LaTeX, e.g. x^x"
+    )
+    variables: list[DiffVariable] = Field(
+        min_length=1,
+        max_length=4,
+        description="Variables to differentiate by, in order, each with an order (1 to 10; total "
+        'at most 10). Example: [{"name": "x", "order": 2}] is the second derivative in x; '
+        '[{"name": "x"}, {"name": "y"}] is the mixed partial in x then y.',
     )
 
 
@@ -140,6 +154,41 @@ def run_simplify(args: SimplifyArgs, ctx: ToolContext) -> ToolOutput:
         + result.message
     )
     known = [x for x in (result.input_latex, result.result_latex) if x]
+    return ToolOutput(card, text, known)
+
+
+def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.differentiate(_expr(args), args.variables)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="differentiate",
+        type="differentiate",
+        title="Differentiate",
+        data=result.model_dump(mode="json"),
+    )
+    v = result.verification
+    text = (
+        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        + (f"derivative=${result.result_latex}$; " if result.result_latex else "")
+        + (
+            f"verified: {v.steps_checked} step(s), numeric {v.points_agreed}/{v.points_checked} "
+            f"({'+'.join(v.directions)} direction); "
+            if v
+            else ""
+        )
+        + result.message
+        + "".join(f" note: {n}" for n in result.notes)
+    )
+    known = [
+        x
+        for x in (
+            result.input_latex,
+            result.notation_latex,
+            result.result_latex,
+            *(s.latex for s in result.steps),
+        )
+        if x
+    ]
     return ToolOutput(card, text, known)
 
 
@@ -361,6 +410,15 @@ TOOLS: dict[str, Tool] = {
             "Simplify an expression with SymPy and verify the result numerically and symbolically. Reports 'unchanged' if nothing simpler exists.",
             SimplifyArgs,
             run_simplify,
+        ),
+        Tool(
+            "differentiate",
+            "Differentiate an expression symbolically with respect to one or more variables, to any "
+            "order up to 10 (mixed partials too). Every step is checked against an independent "
+            "numerical derivative. Reports 'unsupported' where no complex derivative exists (for "
+            "example |x| for a complex x: declare x real).",
+            DifferentiateArgs,
+            run_differentiate,
         ),
         Tool(
             "solve_polynomial",
