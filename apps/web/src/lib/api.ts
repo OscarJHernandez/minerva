@@ -1,4 +1,12 @@
-import type { Assumptions, HistoryItem, IdentitiesResult, SimplifyResult, User } from "./types";
+import type {
+  Assumptions,
+  DiffVariable,
+  DifferentiateResult,
+  HistoryItem,
+  IdentitiesResult,
+  SimplifyResult,
+  User,
+} from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -56,6 +64,11 @@ export const api = {
     request<SimplifyResult>("/v1/compute/simplify", {
       method: "POST",
       body: JSON.stringify({ ...c, format: "latex" }),
+    }),
+  differentiate: (c: ComputeInput, variables: DiffVariable[]) =>
+    request<DifferentiateResult>("/v1/compute/differentiate", {
+      method: "POST",
+      body: JSON.stringify({ ...c, variables, format: "latex" }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {

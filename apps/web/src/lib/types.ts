@@ -51,6 +51,37 @@ export interface SimplifyResult {
   calculation_id?: string | null;
 }
 
+export interface DiffVariable {
+  name: string;
+  order: number;
+}
+
+export const MAX_DERIVATIVE_ORDER = 10;
+
+export interface DifferentiateResult {
+  status: Status;
+  input_latex: string | null;
+  variables: DiffVariable[];
+  total_order: number;
+  notation_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  steps: { variable: string; order_so_far: number; latex: string }[];
+  verification: {
+    method: string;
+    directions: ("real" | "imaginary")[];
+    steps_checked: number;
+    points_checked: number;
+    points_agreed: number;
+    passed: boolean;
+    note: string;
+  } | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+}
+
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
 export interface RuleCondition {
@@ -104,7 +135,7 @@ export interface IdentitiesResult {
 
 export interface HistoryItem {
   id: string;
-  operation: "simplify" | "identities";
+  operation: "simplify" | "identities" | "differentiate";
   input: string;
   format: "latex" | "text";
   assumptions: Assumptions;

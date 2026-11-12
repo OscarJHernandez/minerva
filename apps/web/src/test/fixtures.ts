@@ -1,4 +1,35 @@
-import type { IdentitiesResult, IdentityMatch, SimplifyResult } from "@/lib/types";
+import type {
+  DifferentiateResult,
+  IdentitiesResult,
+  IdentityMatch,
+  SimplifyResult,
+} from "@/lib/types";
+
+export const okDerivative: DifferentiateResult = {
+  status: "ok",
+  input_latex: "x^{5}",
+  variables: [{ name: "x", order: 2 }],
+  total_order: 2,
+  notation_latex: "\\frac{d^{2}}{d x^{2}} x^{5}",
+  result_latex: "20 x^{3}",
+  result_text: "20*x**3",
+  steps: [
+    { variable: "x", order_so_far: 1, latex: "5 x^{4}" },
+    { variable: "x", order_so_far: 2, latex: "20 x^{3}" },
+  ],
+  verification: {
+    method: "central finite difference of the previous expression, 40 digits",
+    directions: ["real", "imaginary"],
+    steps_checked: 2,
+    points_checked: 24,
+    points_agreed: 24,
+    passed: true,
+    note: "every step agreed with a numerical derivative at all sampled points",
+  },
+  notes: [],
+  message: "Differentiated with SymPy; every step was verified numerically.",
+  duration_ms: 30,
+};
 
 export const okSimplify: SimplifyResult = {
   status: "ok",
