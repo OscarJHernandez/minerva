@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { okSimplify } from "@/test/fixtures";
+import { chainSimplify, okSimplify } from "@/test/fixtures";
 import { ResultPanel } from "./result-panel";
 
 describe("ResultPanel", () => {
@@ -71,5 +71,57 @@ describe("ResultPanel", () => {
       />,
     );
     expect(screen.getByText("Resource limit reached")).toBeInTheDocument();
+  });
+
+  it("lists the steps with the identity used and how each was checked", () => {
+    render(<ResultPanel result={chainSimplify} />);
+    const steps = screen.getAllByRole("listitem").filter((li) => li.textContent?.match(/^\d\./));
+    expect(steps).toHaveLength(2);
+    expect(screen.getByText("Pythagorean identity")).toHaveAttribute(
+      "href",
+      "/reference/trig.pythagorean",
+    );
+    // A SymPy move is labelled as such, and a step without a symbolic zero says so.
+    expect(screen.getByText(/SymPy: simplify/)).toBeInTheDocument();
+    expect(screen.getByText(/not a handbook identity/)).toBeInTheDocument();
+    expect(screen.getByText(/no symbolic proof found/)).toBeInTheDocument();
+    expect(screen.getByText(/difference simplifies to 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Other forms/)).toBeInTheDocument();
+  });
+
+  it("shows an identity that matches but is not applied, with its conditions", () => {
+    render(
+      <ResultPanel
+        result={{
+          ...okSimplify,
+          status: "conditions_not_satisfied",
+          verification: null,
+          result_latex: okSimplify.input_latex,
+          blocked: [
+            {
+              rule_id: "log.product",
+              direction: "reverse",
+              matched_latex: "\\log x + \\log y",
+              unmet_conditions: [
+                { variable: "a", assumption: "positive" },
+                { variable: "b", assumption: "positive" },
+              ],
+            },
+          ],
+          message: "Nothing was changed.",
+        }}
+      />,
+    );
+    expect(screen.getByText("Conditions not satisfied")).toBeInTheDocument();
+    expect(screen.getByText(/not applied/)).toBeInTheDocument();
+    expect(screen.getByText("log.product")).toBeInTheDocument();
+    expect(screen.getAllByText(/must be positive/, { selector: "li" })).toHaveLength(2);
+    expect(screen.queryByText("Steps")).not.toBeInTheDocument();
+  });
+
+  it("labels the other goals", () => {
+    render(<ResultPanel result={{ ...chainSimplify, goal: "factor" }} />);
+    expect(screen.getByText("Factored and verified")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Factor" })).toBeInTheDocument();
   });
 });

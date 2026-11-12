@@ -11,6 +11,7 @@ import type {
   HistoryItem,
   IdentitiesResult,
   SeriesResult,
+  SimplifyGoal,
   SimplifyResult,
 } from "@/lib/types";
 import { AssumptionsEditor } from "./assumptions-editor";
@@ -39,6 +40,14 @@ const EXAMPLES = [
   { label: "√(x²)", latex: "\\sqrt{x^2}" },
 ];
 
+const GOALS: { value: SimplifyGoal; label: string }[] = [
+  { value: "simplify", label: "simplify" },
+  { value: "expand", label: "expand" },
+  { value: "factor", label: "factor" },
+  { value: "rewrite", label: "rewrite in terms of" },
+];
+const FUNCTION_NAME = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
+
 // A finite real number as the server reads it in text syntax: 0, -2, 1/2, 0.5, pi.
 const POINT_PATTERN = /^-?(\d+(\.\d+)?(\/\d+)?|pi)$/;
 const VARIABLE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
@@ -54,6 +63,8 @@ export function Workspace() {
   const [seriesOrder, setSeriesOrder] = useState(6);
   const [lower, setLower] = useState("");
   const [upper, setUpper] = useState("");
+  const [goal, setGoal] = useState<SimplifyGoal>("simplify");
+  const [target, setTarget] = useState("sin, cos");
   const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -85,12 +96,25 @@ export function Workspace() {
 
   const variableValid = VARIABLE_PATTERN.test(variable);
   const pointValid = POINT_PATTERN.test(point);
+  const targetNames = target
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const targetValid =
+    goal !== "rewrite" ||
+    (targetNames.length >= 1 &&
+      targetNames.length <= 8 &&
+      targetNames.every((t) => FUNCTION_NAME.test(t)));
 
   async function run(kind: Kind) {
     if (!latex.trim() || busy) return;
     const oneBound = (lower.trim() === "") !== (upper.trim() === "");
     if (kind === "integrate" && oneBound) {
       setError("Give both bounds for a definite integral, or leave both empty.");
+      return;
+    }
+    if (kind === "simplify" && !targetValid) {
+      setError("Name the functions to rewrite in terms of, for example sin, cos.");
       return;
     }
     if ((kind === "differentiate" || kind === "integrate") && !variableValid) {
@@ -108,7 +132,11 @@ export function Workspace() {
     try {
       const payload = { input: latex, assumptions };
       if (kind === "simplify") {
-        const data = await api.simplify(payload);
+        const data = await api.simplify({
+          ...payload,
+          goal,
+          target: goal === "rewrite" ? targetNames : [],
+        });
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
       } else if (kind === "series") {
@@ -171,6 +199,7 @@ export function Workspace() {
       setOutput({ kind: "integrate", data });
       return;
     }
+    if (item.operation === "simplify") setGoal((item.result as SimplifyResult).goal ?? "simplify");
     setOutput(
       item.operation === "simplify"
         ? { kind: "simplify", data: item.result as SimplifyResult }
@@ -208,11 +237,39 @@ export function Workspace() {
           <button
             type="button"
             onClick={() => run("simplify")}
-            disabled={!latex.trim() || busy !== null}
+            disabled={!latex.trim() || busy !== null || !targetValid}
             className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-50"
           >
             {busy === "simplify" ? "Simplifying…" : "Simplify"}
           </button>
+          <label className="flex items-center gap-1 text-xs text-muted">
+            goal
+            <select
+              value={goal}
+              onChange={(e) => setGoal(e.target.value as SimplifyGoal)}
+              aria-label="Goal of the simplification"
+              className="rounded border border-rule bg-raised px-2 py-1.5 text-sm text-ink"
+            >
+              {GOALS.map((g) => (
+                <option key={g.value} value={g.value}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {goal === "rewrite" && (
+            <label className="flex items-center gap-1 text-xs text-muted">
+              functions
+              <input
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                aria-label="Functions to rewrite in terms of, separated by commas"
+                aria-invalid={!targetValid}
+                maxLength={200}
+                className="w-28 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+          )}
           <button
             type="button"
             onClick={() => run("identities")}

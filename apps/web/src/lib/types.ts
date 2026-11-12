@@ -41,6 +41,34 @@ export interface Verification {
   note: string;
 }
 
+export type SimplifyGoal = "simplify" | "expand" | "factor" | "rewrite";
+
+/** One rewrite in a chain: a handbook identity (`kind: "rule"`) or a SymPy move (`"builtin"`). */
+export interface TransformStep {
+  kind: "rule" | "builtin";
+  name: string;
+  direction: "forward" | "reverse" | null;
+  matched_latex: string | null;
+  before_latex: string;
+  after_latex: string;
+  verification: Verification;
+}
+
+export interface TransformChain {
+  result_latex: string;
+  result_text: string;
+  steps: TransformStep[];
+  verification: Verification;
+}
+
+/** An identity that matches but whose conditions are not provable from the assumptions. Not applied. */
+export interface BlockedMove {
+  rule_id: string;
+  direction: "forward" | "reverse";
+  matched_latex: string;
+  unmet_conditions: RuleCondition[];
+}
+
 export interface SimplifyResult {
   status: Status;
   input_latex: string | null;
@@ -50,6 +78,13 @@ export interface SimplifyResult {
   message: string;
   duration_ms: number;
   calculation_id?: string | null;
+  // Present for results computed by the chain search; saved older results have none of these.
+  goal?: SimplifyGoal;
+  steps?: TransformStep[];
+  alternatives?: TransformChain[];
+  blocked?: BlockedMove[];
+  entries?: Record<string, EntrySummary>;
+  search_complete?: boolean;
 }
 
 export interface DiffVariable {
