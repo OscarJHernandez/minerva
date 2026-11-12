@@ -71,10 +71,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ ...c, variables, format: "latex" }),
     }),
-  integrate: (c: ComputeInput, variable: string) =>
+  integrate: (c: ComputeInput, variable: string, bounds?: { lower: string; upper: string }) =>
     request<IntegrateResult>("/v1/compute/integrate", {
       method: "POST",
-      body: JSON.stringify({ ...c, variable, format: "latex" }),
+      body: JSON.stringify({ ...c, variable, ...bounds, format: "latex" }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {

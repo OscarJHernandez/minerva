@@ -4,6 +4,7 @@ export type Status =
   | "ok"
   | "unchanged"
   | "not_verified"
+  | "conditions_not_satisfied"
   | "unsupported"
   | "parse_error"
   | "resource_limit"
@@ -86,6 +87,18 @@ export interface IntegrateResult {
   status: Status;
   input_latex: string | null;
   variable: string | null;
+  definite: boolean;
+  lower_latex: string | null;
+  upper_latex: string | null;
+  numeric: string | null;
+  conditions_latex: string[];
+  quadrature: {
+    method: string;
+    points_checked: number;
+    points_agreed: number;
+    passed: boolean;
+    note: string;
+  } | null;
   notation_latex: string | null;
   result_latex: string | null;
   result_text: string | null;

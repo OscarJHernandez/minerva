@@ -52,4 +52,45 @@ describe("IntegralPanel", () => {
     expect(screen.getByText(/Not established/)).toBeInTheDocument();
     expect(screen.getByText(/over 2 cases/)).toBeInTheDocument();
   });
+
+  it("shows a definite value with its quadrature check and approximation", () => {
+    render(
+      <IntegralPanel
+        result={{
+          ...okIntegral,
+          definite: true,
+          lower_latex: "0",
+          upper_latex: "\\pi",
+          result_latex: "2",
+          numeric: "2.0",
+          verification: null,
+          quadrature: { method: "q", points_checked: 1, points_agreed: 1, passed: true, note: "" },
+        }}
+      />,
+    );
+    expect(screen.getByText("Value")).toBeInTheDocument();
+    expect(screen.getByText(/≈ 2\.0/)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 1 sample agree with independent numerical/)).toBeInTheDocument();
+  });
+
+  it("lists the conditions and shows no value when they are not satisfied", () => {
+    render(
+      <IntegralPanel
+        result={{
+          ...okIntegral,
+          status: "conditions_not_satisfied",
+          definite: true,
+          result_latex: "SHOULD-NOT-APPEAR",
+          numeric: "SHOULD-NOT-APPEAR",
+          conditions_latex: ["a > 0"],
+          verification: null,
+          message: "Declare them.",
+        }}
+      />,
+    );
+    expect(screen.getByText("Conditions not satisfied")).toBeInTheDocument();
+    expect(screen.getByText("Needs")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Result")).not.toBeInTheDocument();
+    expect(screen.queryByText(/SHOULD-NOT-APPEAR/)).not.toBeInTheDocument();
+  });
 });

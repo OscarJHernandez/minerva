@@ -45,6 +45,8 @@ export function Workspace() {
   const [output, setOutput] = useState<Output>(null);
   const [variable, setVariable] = useState("x");
   const [order, setOrder] = useState(1);
+  const [lower, setLower] = useState("");
+  const [upper, setUpper] = useState("");
   const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -78,6 +80,11 @@ export function Workspace() {
 
   async function run(kind: Kind) {
     if (!latex.trim() || busy) return;
+    const oneBound = (lower.trim() === "") !== (upper.trim() === "");
+    if (kind === "integrate" && oneBound) {
+      setError("Give both bounds for a definite integral, or leave both empty.");
+      return;
+    }
     if ((kind === "differentiate" || kind === "integrate") && !variableValid) {
       setError("Enter the variable to differentiate or integrate by, for example x.");
       return;
@@ -95,7 +102,11 @@ export function Workspace() {
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
       } else if (kind === "integrate") {
-        const data = await api.integrate(payload, variable);
+        const data = await api.integrate(
+          payload,
+          variable,
+          lower.trim() ? { lower: lower.trim(), upper: upper.trim() } : undefined,
+        );
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
       } else {
@@ -129,6 +140,8 @@ export function Workspace() {
     if (item.operation === "integrate") {
       const data = item.result as unknown as IntegrateResult;
       if (data.variable) setVariable(data.variable);
+      setLower(data.definite ? (data.lower_latex ?? "") : "");
+      setUpper(data.definite ? (data.upper_latex ?? "") : "");
       setOutput({ kind: "integrate", data });
       return;
     }
@@ -207,6 +220,28 @@ export function Workspace() {
                 aria-label="Variable to differentiate or integrate by"
                 maxLength={32}
                 className="w-14 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              from
+              <input
+                value={lower}
+                onChange={(e) => setLower(e.target.value)}
+                aria-label="Lower bound of a definite integral (optional)"
+                placeholder="∫ only"
+                maxLength={200}
+                className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              to
+              <input
+                value={upper}
+                onChange={(e) => setUpper(e.target.value)}
+                aria-label="Upper bound of a definite integral (optional)"
+                placeholder="oo"
+                maxLength={200}
+                className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
               />
             </label>
             <label className="flex items-center gap-1 text-xs text-muted">

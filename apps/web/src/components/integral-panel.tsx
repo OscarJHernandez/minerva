@@ -38,8 +38,11 @@ export function IntegralPanel({ result }: { result: IntegrateResult }) {
 
       {shown && result.result_latex && (
         <div className="mt-2">
-          <div className="text-xs uppercase tracking-wide text-muted">Antiderivative</div>
+          <div className="text-xs uppercase tracking-wide text-muted">
+            {result.definite ? "Value" : "Antiderivative"}
+          </div>
           <Math latex={result.result_latex} display className="text-2xl" label="Result" />
+          {result.numeric && <p className="text-sm text-muted">≈ {result.numeric}</p>}
           <button
             type="button"
             className="mt-1 text-xs text-accent hover:underline"
@@ -54,12 +57,38 @@ export function IntegralPanel({ result }: { result: IntegrateResult }) {
         </div>
       )}
 
+      {result.conditions_latex.length > 0 && (
+        <div className="mt-2">
+          <div className="text-xs uppercase tracking-wide text-muted">Needs</div>
+          <ul className="space-y-1">
+            {result.conditions_latex.map((c) => (
+              <li key={c}>
+                <Math latex={c} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p className="mt-3 text-sm text-muted">{result.message}</p>
       {result.notes.map((note) => (
         <p key={note} className="mt-1 text-sm text-warn">
           {note}
         </p>
       ))}
+
+      {result.quadrature && (
+        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="text-muted">Quadrature check</dt>
+          <dd>
+            {result.quadrature.points_agreed} of {result.quadrature.points_checked} sample
+            {result.quadrature.points_checked === 1 ? "" : "s"} agree with independent numerical
+            integration
+          </dd>
+          <dt className="text-muted">Computed in</dt>
+          <dd>{result.duration_ms} ms</dd>
+        </dl>
+      )}
 
       {v && (
         <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">

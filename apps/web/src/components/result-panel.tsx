@@ -8,6 +8,7 @@ const STATUS: Record<Status, { label: string; tone: string }> = {
   ok: { label: "Simplified and verified", tone: "bg-ok-soft text-ok" },
   unchanged: { label: "No simpler form found", tone: "bg-sunk text-muted" },
   not_verified: { label: "Could not verify a result", tone: "bg-warn-soft text-warn" },
+  conditions_not_satisfied: { label: "Conditions not satisfied", tone: "bg-warn-soft text-warn" },
   unsupported: { label: "Not supported", tone: "bg-warn-soft text-warn" },
   parse_error: { label: "Could not read the expression", tone: "bg-bad-soft text-bad" },
   resource_limit: { label: "Resource limit reached", tone: "bg-warn-soft text-warn" },
