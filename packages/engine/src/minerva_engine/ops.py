@@ -108,6 +108,18 @@ def op_solve(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- differentiate ---------------------------------------------------------------------
+def op_differentiate(payload: dict[str, Any]) -> dict[str, Any]:
+    from .differentiate import DiffVariable, differentiate
+
+    result = differentiate(
+        ExpressionInput(**payload["expression"]),
+        [DiffVariable(**v) for v in payload["variables"]],
+        Limits(**payload["limits"]),
+    )
+    return result.model_dump(mode="json")
+
+
 # --- lagrangian ------------------------------------------------------------------------
 def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     from .lagrangian import analyze_lagrangian
@@ -345,6 +357,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "features": op_features,
     "check_claims": op_check_claims,
     "solve": op_solve,
+    "differentiate": op_differentiate,
     "lagrangian": op_lagrangian,
     "tensor_canonicalize": op_tensor_canonicalize,
 }
