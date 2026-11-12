@@ -15,6 +15,7 @@ from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
 from .models import (
     Applicability,
+    BlockedMove,
     ExpressionInput,
     FormulaReading,
     IdentitiesResult,
@@ -27,6 +28,9 @@ from .models import (
     TensorInput,
     TensorResult,
     TensorSpec,
+    TransformChain,
+    TransformResult,
+    TransformStep,
     Verification,
 )
 from .motion import MotionReport, MotionRequest, Sweep
@@ -46,6 +50,7 @@ from .textparse import parse_text
 
 __all__ = [
     "Applicability",
+    "BlockedMove",
     "ClaimCheck",
     "CompareRequest",
     "ConstantCandidate",
@@ -86,6 +91,9 @@ __all__ = [
     "TensorInput",
     "TensorResult",
     "TensorSpec",
+    "TransformChain",
+    "TransformResult",
+    "TransformStep",
     "UnitsCheckReport",
     "Verification",
     "apply_rule",

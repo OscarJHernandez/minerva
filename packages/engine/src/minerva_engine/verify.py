@@ -61,7 +61,9 @@ def _evaluate(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | None
     return value
 
 
-def numeric_check(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int, int]:
+def numeric_check(
+    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12
+) -> tuple[int, int]:
     """Return (points_checked, points_agreed) over random assumption-respecting points."""
     symbols = sorted(a.free_symbols | b.free_symbols, key=lambda s: s.name)
     rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
@@ -76,18 +78,24 @@ def numeric_check(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int,
         scale = max(1.0, abs(va), abs(vb))
         if abs(va - vb) <= REL_TOL * scale:
             agreed += 1
-        if checked >= 12:
+        if checked >= max_points:
             break
     return checked, agreed
 
 
-def verify_equal(original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True) -> Verification:
+def verify_equal(
+    original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True, max_points: int = 12
+) -> Verification:
     """Numeric agreement is what decides `passed`; the symbolic zero test is extra evidence.
 
     Pass `symbolic=False` where many verifications share one time budget (rule application):
-    `sp.simplify(a - b)` can be slower than everything else together.
+    `sp.simplify(a - b)` can be slower than everything else together. `max_points` (at least
+    `MIN_VALID_POINTS`) lowers the sample size for the many screening checks of a search; the
+    reported chain is re-verified with the default.
     """
-    checked, agreed = numeric_check(original, candidate)
+    checked, agreed = numeric_check(
+        original, candidate, max_points=max(max_points, MIN_VALID_POINTS)
+    )
     symbolic_zero = False
     if symbolic:
         try:

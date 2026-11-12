@@ -133,6 +133,54 @@ class IdentitiesResult(BaseModel):
     duration_ms: int = 0
 
 
+TransformGoal = Literal["simplify", "expand", "factor", "rewrite"]
+
+
+class TransformStep(BaseModel):
+    """One rewrite in a chain. `name` is a handbook rule id, or a SymPy move (`sympy.expand`)."""
+
+    kind: Literal["rule", "builtin"]
+    name: str
+    direction: Literal["forward", "reverse"] | None = None  # rules only
+    matched_latex: str | None = None
+    before_latex: str
+    after_latex: str
+    verification: Verification
+
+
+class TransformChain(BaseModel):
+    result_latex: str
+    result_text: str
+    steps: list[TransformStep]
+    verification: Verification  # input -> result, end to end
+
+
+class BlockedMove(BaseModel):
+    """A rule that would improve the objective but whose conditions are not provable. Not applied."""
+
+    rule_id: str
+    direction: Literal["forward", "reverse"]
+    matched_latex: str
+    unmet_conditions: list[RuleCondition]
+
+
+class TransformResult(BaseModel):
+    status: Status
+    goal: TransformGoal = "simplify"
+    input_latex: str | None = None
+    result_latex: str | None = None
+    result_text: str | None = None
+    steps: list[TransformStep] = Field(default_factory=list)
+    verification: Verification | None = None
+    alternatives: list[TransformChain] = Field(default_factory=list)
+    blocked: list[BlockedMove] = Field(default_factory=list)
+    candidates_tried: int = 0
+    discarded_not_verified: int = 0
+    search_complete: bool = True
+    message: str = ""
+    duration_ms: int = 0
+
+
 class FormulaReading(BaseModel):
     """How Minerva's strict parser reads one transcribed formula. Nothing is simplified or evaluated."""
 
