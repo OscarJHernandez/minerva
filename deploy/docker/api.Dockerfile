@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build context: repository root.
-FROM python:3.15-slim AS build
+FROM python:3.13-slim AS build
 COPY --from=ghcr.io/astral-sh/uv:0.12.23 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
@@ -10,7 +10,7 @@ COPY services services
 # Non-editable install of the API and its workspace dependencies, without dev tools.
 RUN uv sync --frozen --no-dev --no-editable --package minerva-api
 
-FROM python:3.15-slim AS runtime
+FROM python:3.13-slim AS runtime
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 RUN groupadd --system --gid 10001 minerva \
  && useradd --system --uid 10001 --gid minerva --no-create-home --shell /usr/sbin/nologin minerva
