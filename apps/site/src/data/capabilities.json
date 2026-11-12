@@ -34,11 +34,14 @@
         "HTTP API"
       ],
       "needs_model": false,
-      "summary": "Simplifies an expression with SymPy, then checks the result at random complex sample points (a wide region, so branch errors show) and with a symbolic zero test, reported separately. Numeric agreement is labelled as numeric evidence, not as proof. A result that cannot be verified is never shown.",
+      "summary": "Searches a short chain of rewrites toward a goal (simplify, expand, factor, or rewrite in given functions): handbook identities, each at every place it matches and read in either direction, plus SymPy's own moves. Every step is checked at random complex sample points and, separately, with a symbolic zero test; the steps and the identities used are shown. A result that cannot be verified is never shown.",
       "limits": [
-        "When a simplification cancels a factor, the result says where it is valid (`x \\neq 1`). Square-root, logarithm and branch-cut domains are not reported this way.",
+        "Numerical agreement at sample points is evidence, not proof; only a passed symbolic zero test means SymPy also reduced the difference to zero. Both are reported for every step.",
+        "Steps are equalities where both sides are defined. When the result excludes points the input did not (a cancelled factor), it says where it is valid (`x \\neq 1`); square-root, logarithm and branch-cut domains are not reported this way.",
+        "The search is bounded (at most 4 rewrites in a row, a few alternatives per step, a time budget). \"Nothing better was found\" does not show that no better form exists.",
+        "An identity that matches but whose conditions are not provable from your assumptions is reported with the unmet conditions and never applied.",
         "Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.",
-        "If nothing simpler is found, the input is returned unchanged and the status says so.",
+        "If nothing better is found, the input is returned unchanged and the status says so.",
         "Bare function arguments such as `\\sin 2x` and inverse notation such as `\\sin^{-1}` are rejected as ambiguous."
       ],
       "examples": [
@@ -58,14 +61,17 @@
             {
               "label": "Result",
               "latex": "\\frac{2}{\\sin{\\left(x \\right)}}"
+            },
+            {
+              "label": "Step 1: sympy.simplify",
+              "latex": "\\frac{\\cos{\\left(x \\right)} + 1}{\\sin{\\left(x \\right)}} + \\frac{\\sin{\\left(x \\right)}}{\\cos{\\left(x \\right)} + 1} = \\frac{2}{\\sin{\\left(x \\right)}}"
             }
           ],
           "checks": [
-            "symbolic zero test passed; numeric check agreed at 20 of 20 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
-          "notes": [
-            "Simplified with SymPy and verified (symbolic zero and numeric check)."
-          ]
+          "notes": []
         },
         {
           "id": "simplify-fourth-powers",
@@ -83,14 +89,27 @@
             {
               "label": "Result",
               "latex": "1"
+            },
+            {
+              "label": "Step 1: Difference of squares (alg.difference_of_squares)",
+              "latex": "\\frac{\\sin^{4}{\\left(x \\right)} - \\cos^{4}{\\left(x \\right)}}{\\sin^{2}{\\left(x \\right)} - \\cos^{2}{\\left(x \\right)}} = \\frac{\\sin^{4}{\\left(x \\right)} - \\cos^{4}{\\left(x \\right)}}{\\left(\\sin{\\left(x \\right)} - \\cos{\\left(x \\right)}\\right) \\left(\\sin{\\left(x \\right)} + \\cos{\\left(x \\right)}\\right)}"
+            },
+            {
+              "label": "Step 2: Difference of fourth powers (alg.difference_of_fourth_powers)",
+              "latex": "\\frac{\\sin^{4}{\\left(x \\right)} - \\cos^{4}{\\left(x \\right)}}{\\left(\\sin{\\left(x \\right)} - \\cos{\\left(x \\right)}\\right) \\left(\\sin{\\left(x \\right)} + \\cos{\\left(x \\right)}\\right)} = \\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)}"
+            },
+            {
+              "label": "Step 3: Pythagorean identity (trig.pythagorean)",
+              "latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} = 1"
             }
           ],
           "checks": [
-            "symbolic zero test passed; numeric check agreed at 20 of 20 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "step 2: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "step 3: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
-          "notes": [
-            "Simplified with SymPy and verified (symbolic zero and numeric check). The result is valid only where - \\sin{\\left(x \\right)} + \\cos{\\left(x \\right)} \\neq 0, \\sin{\\left(x \\right)} + \\cos{\\left(x \\right)} \\neq 0."
-          ]
+          "notes": []
         },
         {
           "id": "simplify-cancelled-singularity",
@@ -108,13 +127,17 @@
             {
               "label": "Result",
               "latex": "x + 1"
+            },
+            {
+              "label": "Step 1: Difference of squares (alg.difference_of_squares)",
+              "latex": "\\frac{x^{2} - 1}{x - 1} = x + 1"
             }
           ],
           "checks": [
-            "symbolic zero test passed; numeric check agreed at 20 of 20 points"
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
           ],
           "notes": [
-            "Simplified with SymPy and verified (symbolic zero and numeric check). The result is valid only where x \\neq 1.",
             "The result is `x + 1`, valid only where `x \\neq 1`; the two expressions differ in domain."
           ]
         },
@@ -122,7 +145,7 @@
           "id": "simplify-sqrt-general",
           "title": "Square root of a square, no assumptions",
           "op": "simplify",
-          "status": "unchanged",
+          "status": "conditions_not_satisfied",
           "input": [
             {
               "label": "Input",
@@ -134,11 +157,19 @@
             {
               "label": "Read as",
               "latex": "\\sqrt{x^{2}}"
+            },
+            {
+              "label": "Not applied: Square root of a square (real)",
+              "text": "radical.sqrt_square_abs matches but needs a real"
+            },
+            {
+              "label": "Not applied: Square root of a square (non-negative)",
+              "text": "radical.sqrt_square_nonneg matches but needs a nonnegative"
             }
           ],
           "checks": [],
           "notes": [
-            "No simpler form was found. The expression is returned unchanged.",
+            "Identities that would improve this expression match, but their conditions are not provable from the declared assumptions, so nothing was changed.",
             "Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified."
           ]
         },
@@ -162,7 +193,7 @@
           ],
           "checks": [],
           "notes": [
-            "No simpler form was found. The expression is returned unchanged.",
+            "No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.",
             "Under the declared assumption the expression is read as |x|."
           ]
         },
@@ -186,7 +217,7 @@
           ],
           "checks": [],
           "notes": [
-            "No simpler form was found. The expression is returned unchanged.",
+            "No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.",
             "The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is."
           ]
         },
@@ -210,8 +241,234 @@
           ],
           "checks": [],
           "notes": [
-            "No simpler form was found. The expression is returned unchanged.",
+            "No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.",
             "With x positive and a real the exponents combine, and the expression is read as x^{ab}."
+          ]
+        },
+        {
+          "id": "simplify-chain",
+          "title": "Two identities in a row",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sin^2 x + \\cos^2 x + \\tan^2 x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sec^{2}{\\left(x \\right)}"
+            },
+            {
+              "label": "Step 1: Pythagorean identity (trig.pythagorean)",
+              "latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + \\tan^{2}{\\left(x \\right)} = \\tan^{2}{\\left(x \\right)} + 1"
+            },
+            {
+              "label": "Step 2: Tangent and secant (trig.tan_secant)",
+              "latex": "\\tan^{2}{\\left(x \\right)} + 1 = \\sec^{2}{\\left(x \\right)}"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "step 2: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "The Pythagorean identity turns sin^2 + cos^2 into 1, and then 1 + tan^2 = sec^2. Neither identity alone reaches the result; each step is verified before the next is tried."
+          ]
+        },
+        {
+          "id": "simplify-chain-nested",
+          "title": "An identity inside a larger expression",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\log(\\sin^2 t + \\cos^2 t + y)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\log{\\left(y + 1 \\right)}"
+            },
+            {
+              "label": "Step 1: Pythagorean identity (trig.pythagorean)",
+              "latex": "\\log{\\left(y + \\sin^{2}{\\left(t \\right)} + \\cos^{2}{\\left(t \\right)} \\right)} = \\log{\\left(y + 1 \\right)}"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "simplify-chain-blocked",
+          "title": "Matches, but its conditions are not provable",
+          "op": "simplify",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\log x + \\log y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "\\log{\\left(x \\right)} + \\log{\\left(y \\right)}"
+            },
+            {
+              "label": "Not applied: Logarithm of a product",
+              "text": "log.product matches but needs a positive, b positive"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Identities that would improve this expression match, but their conditions are not provable from the declared assumptions, so nothing was changed.",
+            "Combining logarithms needs both arguments positive. Nothing is applied and the input comes back."
+          ]
+        },
+        {
+          "id": "simplify-chain-unlocked",
+          "title": "The same, with x and y declared positive",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\log x + \\log y"
+            }
+          ],
+          "assumptions": "x positive; y positive",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\log{\\left(x y \\right)}"
+            },
+            {
+              "label": "Step 1: Logarithm of a product (log.product), read right to left",
+              "latex": "\\log{\\left(x \\right)} + \\log{\\left(y \\right)} = \\log{\\left(x y \\right)}"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "simplify-goal-expand",
+          "title": "Expand a multiple angle",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sin(3x)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "- 4 \\sin^{3}{\\left(x \\right)} + 3 \\sin{\\left(x \\right)}"
+            },
+            {
+              "label": "Step 1: Triple-angle formula for sine (trig.triple_sin)",
+              "latex": "\\sin{\\left(3 x \\right)} = - 4 \\sin^{3}{\\left(x \\right)} + 3 \\sin{\\left(x \\right)}"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "simplify-goal-factor",
+          "title": "Factor a difference of fourth powers",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "x^4 - y^4"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\left(x - y\\right) \\left(x + y\\right) \\left(x^{2} + y^{2}\\right)"
+            },
+            {
+              "label": "Step 1: Difference of fourth powers (alg.difference_of_fourth_powers)",
+              "latex": "x^{4} - y^{4} = \\left(x - y\\right) \\left(x + y\\right) \\left(x^{2} + y^{2}\\right)"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "simplify-goal-rewrite",
+          "title": "Rewrite in terms of sine and cosine",
+          "op": "simplify",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\tan x \\cos x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sin{\\left(x \\right)}"
+            },
+            {
+              "label": "Step 1: Tangent as a ratio (trig.tan_ratio)",
+              "latex": "\\cos{\\left(x \\right)} \\tan{\\left(x \\right)} = \\sin{\\left(x \\right)}"
+            }
+          ],
+          "checks": [
+            "step 1: symbolic zero test passed; numeric check agreed at 20 of 20 points",
+            "end to end: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "simplify-nothing-better",
+          "title": "Nothing to improve",
+          "op": "simplify",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\sin x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "\\sin{\\left(x \\right)}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists."
           ]
         },
         {

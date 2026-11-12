@@ -11,7 +11,7 @@ import json
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from minerva_engine import (
     CompareRequest,
@@ -24,7 +24,13 @@ from minerva_engine import (
     TensorSpec,
 )
 from minerva_knowledge import KnowledgeBase, SearchQuery
-from minerva_knowledge.identities import constant_candidates, find_identities, summarize
+from minerva_knowledge.identities import (
+    TransformResponse,
+    constant_candidates,
+    find_identities,
+    simplify_expression,
+    summarize,
+)
 from pydantic import BaseModel, Field, ValidationError
 
 from .events import Card
@@ -56,6 +62,19 @@ class SimplifyArgs(BaseModel):
         default_factory=dict,
         description="Properties of symbols: real, positive, negative, nonnegative, nonpositive, "
         'nonzero, integer, rational. Example: {"x": ["positive"]}',
+    )
+
+
+class SimplifyToolArgs(SimplifyArgs):
+    goal: Literal["simplify", "expand", "factor", "rewrite"] = Field(
+        default="simplify",
+        description="What the result should be: simplify (fewest operations), expand, factor, or "
+        "rewrite (in terms of the functions listed in `target`).",
+    )
+    target: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description='Only for goal "rewrite": function names to express the result in, e.g. ["sin", "cos"].',
     )
 
 
@@ -282,8 +301,47 @@ def _error(tool: str, message: str) -> ToolOutput:
 
 
 # --- tool implementations ----------------------------------------------------------------------
-def run_simplify(args: SimplifyArgs, ctx: ToolContext) -> ToolOutput:
-    result = ctx.engine.simplify(_expr(args))
+MAX_STEPS_FOR_MODEL = 6
+
+
+def _chain_lines(result: TransformResponse) -> tuple[list[str], list[str]]:
+    """What the model may quote about a chain: each step's identity, forms and evidence."""
+    lines: list[str] = []
+    known: list[str] = []
+    for i, step in enumerate(result.steps[:MAX_STEPS_FOR_MODEL], start=1):
+        v = step.verification
+        evidence = (
+            f"checked numerically at {v.numeric_points_agreed}/{v.numeric_points_checked} "
+            f"points; symbolic_zero={v.symbolic_zero}"
+        )
+        entry = result.entries.get(step.name)
+        if step.kind == "rule" and entry is not None:
+            how = f"{step.name} ({entry.title}, read {step.direction}); statement=${entry.statement_latex}$"
+            known.append(entry.statement_latex)
+        else:
+            how = f"{step.name} (a SymPy move, not a handbook identity)"
+        lines.append(
+            f"- step {i}: {how}; ${step.before_latex}$ -> ${step.after_latex}$; {evidence}"
+        )
+        known += [step.before_latex, step.after_latex]
+    for b in result.blocked:
+        entry = result.entries.get(b.rule_id)
+        needs = ", ".join(f"{c.variable} {c.assumption}" for c in b.unmet_conditions)
+        lines.append(
+            f"- NOT APPLIED, conditions not provable from the declared assumptions: {b.rule_id} "
+            f"matches ${b.matched_latex}$ but needs: {needs}. Ask whether they hold; this is not a result"
+            + (f"; statement=${entry.statement_latex}$" if entry else "")
+        )
+        if entry:
+            known.append(entry.statement_latex)
+    for alt in result.alternatives:
+        lines.append(f"- other form: ${alt.result_latex}$ ({len(alt.steps)} steps)")
+        known.append(alt.result_latex)
+    return lines, known
+
+
+def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
+    result = simplify_expression(ctx.kb, ctx.engine, _expr(args), args.goal, args.target)
     card = Card(
         id=uuid.uuid4().hex[:8],
         tool="simplify",
@@ -292,11 +350,16 @@ def run_simplify(args: SimplifyArgs, ctx: ToolContext) -> ToolOutput:
         data=result.model_dump(mode="json"),
     )
     v = result.verification
-    text = (
-        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
-        f"result=${result.result_latex}$; "
+    head = (
+        f"status={result.status.value}; goal={args.goal}; input_as_read=${result.input_latex}$; "
         + (
-            f"checked: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
+            f"result=${result.result_latex}$; "
+            if result.status.value == "ok"
+            else "result=none (the input is unchanged: no rewrite was applied, so there is no "
+            "simplified form to report); "
+        )
+        + (
+            f"end to end: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
             f"symbolic_zero={v.symbolic_zero} "
             f"({'symbolic and numeric evidence' if v.symbolic_zero else 'numeric evidence only, not a proof'}); "
             + (
@@ -309,8 +372,9 @@ def run_simplify(args: SimplifyArgs, ctx: ToolContext) -> ToolOutput:
         )
         + result.message
     )
-    known = [x for x in (result.input_latex, result.result_latex) if x]
-    return ToolOutput(card, text, known, result.status.value)
+    lines, known_steps = _chain_lines(result)
+    known = [x for x in (result.input_latex, result.result_latex) if x] + known_steps
+    return ToolOutput(card, "\n".join([head, *lines]), known, result.status.value)
 
 
 def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
@@ -995,8 +1059,12 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "simplify",
-            "Simplify an expression with SymPy and verify the result numerically and symbolically. Reports 'unchanged' if nothing simpler exists.",
-            SimplifyArgs,
+            "Simplify, expand, factor or rewrite an expression. Searches chains of handbook identities and "
+            "SymPy moves toward the goal and verifies every step; the result lists the identities used "
+            "(quote them by id), what was checked numerically versus symbolically, and identities that "
+            "match but whose conditions are not provable from the declared assumptions (nothing is applied "
+            "then). Reports 'unchanged' if nothing better was found, which does not show that none exists.",
+            SimplifyToolArgs,
             run_simplify,
         ),
         Tool(

@@ -96,7 +96,9 @@ NARROW_POINTS = 12
 WIDE_POINTS = 8
 
 
-def numeric_detail(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int, int, int]:
+def numeric_detail(
+    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12
+) -> tuple[int, int, int]:
     """Return (points_checked, points_agreed, points_skipped).
 
     Two tranches: the ordinary region and a much wider one. A point where exactly one side is a
@@ -106,7 +108,11 @@ def numeric_detail(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int
     symbols = sorted(a.free_symbols | b.free_symbols, key=lambda s: s.name)
     rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
     checked = agreed = skipped = 0
-    for wide, limit in ((False, NARROW_POINTS), (True, WIDE_POINTS)):
+    if max_points >= NARROW_POINTS:
+        tranches = ((False, NARROW_POINTS), (True, WIDE_POINTS))
+    else:  # a screening check: split the smaller budget between both regions
+        tranches = ((False, (max_points + 1) // 2), (True, max_points // 2))
+    for wide, limit in tranches:
         got = 0
         for _ in range(SAMPLE_ATTEMPTS):
             values = {s: _sample(s, rng, wide=wide, spread=max(1, len(symbols))) for s in symbols}
@@ -129,19 +135,27 @@ def numeric_detail(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int
     return checked, agreed, skipped
 
 
-def numeric_check(a: sp.Expr, b: sp.Expr, *, seed: int = 20260101) -> tuple[int, int]:
+def numeric_check(
+    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12
+) -> tuple[int, int]:
     """Return (points_checked, points_agreed) over random assumption-respecting points."""
-    checked, agreed, _ = numeric_detail(a, b, seed=seed)
+    checked, agreed, _ = numeric_detail(a, b, seed=seed, max_points=max_points)
     return checked, agreed
 
 
-def verify_equal(original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True) -> Verification:
+def verify_equal(
+    original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True, max_points: int = 12
+) -> Verification:
     """Numeric agreement is what decides `passed`; the symbolic zero test is extra evidence.
 
     Pass `symbolic=False` where many verifications share one time budget (rule application):
-    `sp.simplify(a - b)` can be slower than everything else together.
+    `sp.simplify(a - b)` can be slower than everything else together. `max_points` (at least
+    `MIN_VALID_POINTS`) lowers the sample size for the many screening checks of a search; the
+    reported chain is re-verified with the default.
     """
-    checked, agreed, skipped = numeric_detail(original, candidate)
+    checked, agreed, skipped = numeric_detail(
+        original, candidate, max_points=max(max_points, MIN_VALID_POINTS)
+    )
     symbolic_zero = False
     if symbolic:
         try:

@@ -26,6 +26,13 @@ def rule_features(entry: Entry) -> set[str]:
     return features
 
 
+def rhs_features(entry: Entry) -> set[str]:
+    """Structure of the rule's right-hand side: what a chain can reach by applying it left to right."""
+    if entry.rule is None:
+        return set()
+    return expression_features(parse_text(entry.rule.rhs))
+
+
 def feature_token(feature: str) -> str:
     """FTS5-safe token for a feature, e.g. `f:sin` -> `featfsin`."""
     return "feat" + feature.replace(":", "").replace("_", "")

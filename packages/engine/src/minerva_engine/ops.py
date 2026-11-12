@@ -7,7 +7,8 @@ boundary. `service.Engine` is the typed entry point; call these directly only in
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import Any
 
 import sympy as sp
@@ -416,9 +417,45 @@ def _binds_fraction_of_multiple(
     return False
 
 
-def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
-    """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
+@dataclass(frozen=True)
+class Rewrite:
+    """One place where a rule matches: the matched node, the rewritten expression, unmet conditions."""
+
+    node: sp.Expr
+    rewritten: sp.Expr
+    unmet: list[RuleCondition]
+    # Operations in what the pattern variables were bound to: when two rules give the same result,
+    # the one that needed no negation or other work in its bindings is the one to cite.
+    binding_cost: int = 0
+
+
+def can_reverse(rule: Rule) -> bool:
+    """A rule may also be read right to left only if its right side determines every variable.
+
+    A right side that is a bare number or symbol (`1`, `a`) would match anything, and one that
+    omits a variable (`sin(a)**2 + cos(a)**2 -> 1` read backwards) cannot bind it.
+    """
+    rhs = parse_text(rule.rhs)
+    if rhs.is_Number or rhs.is_Symbol:
+        return False
+    return {s.name for s in rhs.free_symbols} >= set(rule.variables)
+
+
+def rule_rewrites(
+    expr: sp.Expr, rule: Rule, *, reverse: bool = False, strict: bool = False
+) -> Iterator[Rewrite]:
+    """Every place `rule` matches inside `expr`, after the match filters, in tree order.
+
+    Conditions are checked here (`unmet` is empty when they are provable from the declared
+    assumptions) but the rewrite is NOT verified: callers must call `verify_equal` before
+    accepting one. With `reverse=True` the right side is the pattern. With `strict=True` a sum or
+    product pattern matches only a sum or product node: without it `cos(y)**2` "matches"
+    `sin(a)**2 + cos(a)**2` with the leftover term `-sin(y)**2` absorbed by `rest`, which is true but
+    not what a chain of identities should be built from. `find_identities` keeps the lenient default.
+    """
     lhs, rhs, wilds = _pattern_parts(rule)
+    if reverse:
+        lhs, rhs = rhs, lhs
     rest = sp.Wild(_REST)
     if lhs.is_Add:
         pattern, replacement = lhs + rest, rhs + rest
@@ -427,9 +464,12 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
     else:
         pattern, replacement = lhs, rhs
 
-    first_blocked: RuleApplication | None = None
+    seen: set[sp.Basic] = set()
     for node in sp.preorder_traversal(expr):
-        if not isinstance(node, sp.Expr):
+        if not isinstance(node, sp.Expr) or node in seen:
+            continue
+        seen.add(node)
+        if strict and ((lhs.is_Add and not node.is_Add) or (lhs.is_Mul and not node.is_Mul)):
             continue
         bindings = node.match(pattern)
         if (
@@ -438,26 +478,38 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             or _binds_fraction_of_multiple(lhs, wilds, bindings)
         ):
             continue
+        if reverse and any(key != rest and value == 0 for key, value in bindings.items()):
+            continue  # `2 sin x cos x` is not "sin a + sin b" with b = 0: that variable is invented
         instantiated = replacement.xreplace(bindings)
         if instantiated == node:
             continue  # the rewrite would be a no-op (e.g. a**1), not a real application
         unmet = _unmet(rule, bindings, wilds)
-        matched_latex = to_latex(node)
-        if unmet:
+        rewritten = expr.xreplace({node: instantiated})
+        if rewritten == expr and not unmet:
+            continue
+        binding_cost = sum(
+            int(sp.count_ops(value)) for key, value in bindings.items() if key != rest
+        )
+        yield Rewrite(node=node, rewritten=rewritten, unmet=unmet, binding_cost=binding_cost)
+
+
+def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
+    """Find where `rule` matches inside `expr`, check its conditions, apply, verify."""
+    first_blocked: RuleApplication | None = None
+    for rewrite in rule_rewrites(expr, rule):
+        matched_latex = to_latex(rewrite.node)
+        if rewrite.unmet:
             first_blocked = first_blocked or RuleApplication(
                 rule_id=rule.id,
                 applicability=Applicability.CONDITIONS_NOT_SATISFIED,
                 matched_subexpression_latex=matched_latex,
-                unmet_conditions=unmet,
+                unmet_conditions=rewrite.unmet,
                 message="The pattern matches, but the conditions are not provable "
                 "from the declared assumptions, so the rule is not applied.",
             )
             continue
-        rewritten = expr.xreplace({node: instantiated})
-        if rewritten == expr:
-            continue
-        verification = verify_equal(expr, rewritten, symbolic=False)
-        restrictions, complete = domain_restrictions(expr, rewritten)
+        verification = verify_equal(expr, rewrite.rewritten, symbolic=False)
+        restrictions, complete = domain_restrictions(expr, rewrite.rewritten)
         if not verification.passed:
             return RuleApplication(
                 rule_id=rule.id,
@@ -470,7 +522,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             rule_id=rule.id,
             applicability=Applicability.APPLICABLE,
             matched_subexpression_latex=matched_latex,
-            rewritten_latex=to_latex(rewritten),
+            rewritten_latex=to_latex(rewrite.rewritten),
             verification=verification,
             restrictions_latex=restrictions,
             restrictions_complete=complete,
@@ -528,6 +580,41 @@ def op_identities(payload: dict[str, Any]) -> dict[str, Any]:
     ).model_dump(mode="json")
 
 
+# --- verified chains of rewrites ----------------------------------------------------------
+def op_transform(payload: dict[str, Any]) -> dict[str, Any]:
+    from .transform import transform
+
+    result = transform(
+        ExpressionInput(**payload["expression"]),
+        [Rule(**r) for r in payload["rules"]],
+        str(payload.get("goal", "simplify")),
+        [str(t) for t in payload.get("target", [])],
+        Limits(**payload["limits"]),
+        width=int(payload.get("width", 4)),
+        depth=int(payload.get("depth", 4)),
+    )
+    if result.status in (Status.OK, Status.UNCHANGED) and result.result_text:
+        denominators: list[sp.Expr] = []
+        try:
+            limits = Limits(**payload["limits"])
+            before = parse_expression(
+                ExpressionInput(**payload["expression"]), limits, denominators
+            )
+            after = parse_text(
+                result.result_text, ExpressionInput(**payload["expression"]).assumptions, limits
+            )
+            result.restrictions_latex, result.restrictions_complete = domain_restrictions(
+                before, after, denominators
+            )
+        except Exception:  # undetermined is reported, never dropped
+            result.restrictions_complete = False
+        if not result.restrictions_complete:
+            result.message += _restriction_note([], False)
+        elif result.restrictions_latex:
+            result.message += _restriction_note(result.restrictions_latex, True)
+    return result.model_dump(mode="json")
+
+
 # --- tensor canonicalization -------------------------------------------------------------
 def op_tensor_canonicalize(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
@@ -566,6 +653,7 @@ def verify_rule(rule: Rule) -> Verification:
 OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
     "identities": op_identities,
+    "transform": op_transform,
     "features": op_features,
     "check_claims": op_check_claims,
     "read_formulas": op_read_formulas,

@@ -38,4 +38,9 @@ Rules you must follow:
    (true only for some values), a definition, or an equation of motion. Do not write an equation to
    solve, a definition or an equation of motion as if it were an identity. A restriction a tool reports
    ("valid only where x != 1") is part of the result: always repeat it with the result.
+13. `simplify` takes a goal (simplify, expand, factor, or rewrite in terms of the functions in `target`); pick
+   the one the user asked for. It lists the handbook identities it applied: cite them by id. A step shows how it
+   was checked: numeric agreement at sample points is evidence, not proof, and only `symbolic_zero=true` means
+   SymPy also reduced the difference to zero, so say "checked numerically" when it is false. If an identity
+   "matches but is not applied", name the conditions it needs and ask whether they hold; do not apply it yourself.
 """

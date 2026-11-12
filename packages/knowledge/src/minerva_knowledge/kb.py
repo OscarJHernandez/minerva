@@ -8,13 +8,13 @@ import threading
 from collections import defaultdict
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel
 
 from .loader import load_chapters, load_entries
 from .models import Chapter, Entry
-from .render import feature_token, rule_features, search_text, statement_latex
+from .render import feature_token, rhs_features, rule_features, search_text, statement_latex
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 
@@ -32,6 +32,9 @@ class SearchQuery:
     chapter: str | None = None
     rules_only: bool = False
     limit: int = 20
+    # Which side of a rule the features must come from: "lhs" (the rule fits the expression as
+    # written) or "both" (a chain may also read the rule right to left).
+    sides: Literal["lhs", "both"] = "lhs"
 
 
 class Retriever(Protocol):
@@ -57,21 +60,30 @@ class Fts5Retriever:
               verification TEXT NOT NULL, has_rule INTEGER NOT NULL
             );
             CREATE VIRTUAL TABLE entries_fts USING fts5(
-              id UNINDEXED, title, keywords, tags, body, features,
+              id UNINDEXED, title, keywords, tags, body, features, rhs_features,
               tokenize = 'porter unicode61'
             );
             """
         )
         for e in entries:
             feats = " ".join(feature_token(f) for f in sorted(rule_features(e)))
+            rhs_feats = " ".join(feature_token(f) for f in sorted(rhs_features(e)))
             self._db.execute(
                 "INSERT INTO entries VALUES (?,?,?,?,?)",
                 (e.id, e.kind, e.chapter, e.verification, 1 if e.rule else 0),
             )
             self._db.execute(
-                "INSERT INTO entries_fts(id, title, keywords, tags, body, features) "
-                "VALUES (?,?,?,?,?,?)",
-                (e.id, e.title, " ".join(e.keywords), " ".join(e.tags), search_text(e), feats),
+                "INSERT INTO entries_fts(id, title, keywords, tags, body, features, rhs_features) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (
+                    e.id,
+                    e.title,
+                    " ".join(e.keywords),
+                    " ".join(e.tags),
+                    search_text(e),
+                    feats,
+                    rhs_feats,
+                ),
             )
         self._db.commit()
 
@@ -83,7 +95,8 @@ class Fts5Retriever:
             clauses.append("(" + " OR ".join(f'"{w}"' for w in words) + ")")
         feats = [feature_token(f) for f in sorted(set(query.features))][:24]
         if feats:
-            clauses.append("features : (" + " OR ".join(f'"{t}"' for t in feats) + ")")
+            columns = "{features rhs_features}" if query.sides == "both" else "features"
+            clauses.append(columns + " : (" + " OR ".join(f'"{t}"' for t in feats) + ")")
         return " OR ".join(clauses) if clauses else None
 
     def search(self, query: SearchQuery) -> list[Hit]:
@@ -110,7 +123,7 @@ class Fts5Retriever:
                 ).fetchall()
             else:
                 rows = self._db.execute(
-                    "SELECT f.id, bm25(entries_fts, 0.0, 6.0, 4.0, 2.0, 1.0, 3.0) AS score "
+                    "SELECT f.id, bm25(entries_fts, 0.0, 6.0, 4.0, 2.0, 1.0, 3.0, 1.0) AS score "
                     "FROM entries_fts f JOIN entries e ON e.id = f.id "
                     "WHERE entries_fts MATCH ?" + extra + " ORDER BY score, f.id LIMIT ?",
                     [match, *args, limit],
@@ -164,9 +177,16 @@ class KnowledgeBase:
         return [e for h in self.retriever.search(query) if (e := self.get(h.entry_id))]
 
     def candidate_rules(
-        self, features: Collection[str], text: str = "", limit: int = 100
+        self,
+        features: Collection[str],
+        text: str = "",
+        limit: int = 100,
+        sides: Literal["lhs", "both"] = "lhs",
     ) -> list[Entry]:
-        """Rule entries whose left-hand side shares structure with the expression."""
+        """Rule entries whose left-hand side (or, with `sides="both"`, either side) shares structure
+        with the expression."""
         if not features and not text.strip():
             return []
-        return self.search(SearchQuery(text=text, features=features, rules_only=True, limit=limit))
+        return self.search(
+            SearchQuery(text=text, features=features, rules_only=True, limit=limit, sides=sides)
+        )
