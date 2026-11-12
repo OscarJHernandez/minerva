@@ -328,7 +328,7 @@
           "outputs": [
             {
               "label": "Logarithm of a product",
-              "text": "not applied; conditions not provable: a positive, b positive"
+              "text": "not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)"
             }
           ],
           "checks": [],

@@ -152,7 +152,7 @@ def run_identities(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
             outputs.append(
                 {
                     "label": m.entry.title,
-                    "text": f"not applied; conditions not provable: {needs}"
+                    "text": f"not applied; not provable from the declared assumptions: {needs} (the pattern's variables)"
                     if needs
                     else app.message,
                 }

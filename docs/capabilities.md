@@ -138,7 +138,7 @@ Retrieval proposes handbook identities that may fit an expression. The engine th
 
 - **Input:** `\log(x y)`
 - **Status:** `conditions_not_satisfied`
-- **Logarithm of a product:** not applied; conditions not provable: a positive, b positive
+- **Logarithm of a product:** not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)
 - The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
 
 ### Applied once x and y are declared positive
