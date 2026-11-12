@@ -194,6 +194,49 @@ def test_tool_error_is_recorded_in_the_trace(ctx: ToolContext) -> None:
     assert msg["trace"][0]["status"] == "error"
 
 
+def test_simplify_tool_lists_the_identities_it_used_and_how_each_step_was_checked(
+    ctx: ToolContext,
+) -> None:
+    out = execute("simplify", {"latex": r"\sin^2 x + \cos^2 x + \tan^2 x"}, ctx)
+    assert out.status == "ok"
+    lines = [line for line in out.for_model.splitlines() if line.startswith("- step")]
+    assert len(lines) == 2
+    assert "trig.pythagorean" in lines[0] and "trig.tan_secant" in lines[1]
+    assert all("symbolic_zero=" in line and "numerically" in line for line in lines)
+    assert out.for_model.startswith("status=ok; goal=simplify;")
+    # The statements the model was given are known formulas, so quoting them is not "unchecked".
+    statements = {e["statement_latex"] for e in out.card.data["entries"].values()}
+    assert statements and statements <= set(out.known_latex)
+    assert out.card.type == "simplify"
+
+
+def test_simplify_tool_reports_a_blocked_identity_and_applies_nothing(ctx: ToolContext) -> None:
+    out = execute("simplify", {"latex": r"\log x + \log y"}, ctx)
+    assert out.status == "conditions_not_satisfied"
+    assert "NOT APPLIED" in out.for_model and "log.product" in out.for_model
+    assert "result=none" in out.for_model  # nothing to quote as a result
+    assert "a positive" in out.for_model and "b positive" in out.for_model
+    assert not [line for line in out.for_model.splitlines() if line.startswith("- step")]
+    ok = execute(
+        "simplify",
+        {"latex": r"\log x + \log y", "assumptions": {"x": ["positive"], "y": ["positive"]}},
+        ctx,
+    )
+    assert ok.status == "ok" and "log.product" in ok.for_model
+
+
+def test_simplify_tool_takes_a_goal_and_the_other_tools_do_not(ctx: ToolContext) -> None:
+    from minerva_api.agent.tools import TOOLS
+
+    simplify = TOOLS["simplify"].schema()["function"]["parameters"]["properties"]
+    assert set(simplify) >= {"latex", "assumptions", "goal", "target"}
+    assert "goal" not in TOOLS["differentiate"].schema()["function"]["parameters"]["properties"]
+    out = execute("simplify", {"latex": r"\sin(2x)", "goal": "expand"}, ctx)
+    assert out.status == "ok" and "trig.double_sin" in out.for_model
+    bad = execute("simplify", {"latex": "x", "goal": "integrate"}, ctx)
+    assert bad.status == "error"
+
+
 def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
     from minerva_api.agent.tools import TOOLS
 

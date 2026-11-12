@@ -22,6 +22,51 @@ def test_simplify_and_history(authed: TestClient) -> None:
     assert history[0]["id"] == body["calculation_id"]
 
 
+def test_simplify_reports_the_identities_behind_a_chain(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/simplify", json={"input": r"\sin^2 x + \cos^2 x + \tan^2 x"}
+    ).json()
+    assert body["status"] == "ok"
+    assert [s["name"] for s in body["steps"]] == ["trig.pythagorean", "trig.tan_secant"]
+    assert body["steps"][0]["verification"]["passed"] is True
+    assert body["entries"]["trig.tan_secant"]["title"]
+    assert body["verification"]["numeric_points_checked"] >= 4
+    assert "not a proof" in body["message"]
+
+
+def test_simplify_goal_and_target(authed: TestClient) -> None:
+    expanded = authed.post(
+        "/v1/compute/simplify", json={"input": r"(x+y)^3", "goal": "expand"}
+    ).json()
+    assert expanded["status"] == "ok" and expanded["steps"][0]["name"] == "alg.binomial_cube_sum"
+    rewritten = authed.post(
+        "/v1/compute/simplify",
+        json={"input": r"\tan x\cos x", "goal": "rewrite", "target": ["sin", "cos"]},
+    ).json()
+    assert rewritten["result_text"] == "sin(x)"
+    bad = authed.post("/v1/compute/simplify", json={"input": "x", "goal": "integrate"})
+    assert bad.status_code == 422
+    needs_target = authed.post(
+        "/v1/compute/simplify", json={"input": "x", "goal": "rewrite"}
+    ).json()
+    assert needs_target["status"] == "unsupported"
+
+
+def test_blocked_identity_names_its_conditions_and_assumptions_unlock_it(
+    authed: TestClient,
+) -> None:
+    blocked = authed.post("/v1/compute/simplify", json={"input": r"\log x + \log y"}).json()
+    assert blocked["status"] == "conditions_not_satisfied"
+    assert blocked["steps"] == []
+    unmet = {c["variable"] for c in blocked["blocked"][0]["unmet_conditions"]}
+    assert unmet == {"a", "b"}
+    unlocked = authed.post(
+        "/v1/compute/simplify",
+        json={"input": r"\log x + \log y", "assumptions": {"x": ["positive"], "y": ["positive"]}},
+    ).json()
+    assert unlocked["status"] == "ok" and unlocked["steps"][0]["name"] == "log.product"
+
+
 def test_save_false_is_not_stored(authed: TestClient) -> None:
     authed.post("/v1/compute/simplify", json={"input": "x+1", "format": "text", "save": False})
     assert authed.get("/v1/history").json() == []
@@ -39,7 +84,14 @@ def test_assumption_changes_result(authed: TestClient) -> None:
         "/v1/compute/simplify",
         json={"input": r"\sqrt{x^2}", "assumptions": {"x": ["positive"]}},
     ).json()
-    assert plain["status"] == "unchanged"
+    # Without assumptions the handbook's sqrt(a**2) identities match but are not applied: the
+    # response says so (conditions_not_satisfied) instead of a bare "unchanged", and the input comes back.
+    assert plain["status"] == "conditions_not_satisfied"
+    assert plain["result_latex"] == plain["input_latex"]
+    assert {b["rule_id"] for b in plain["blocked"]} == {
+        "radical.sqrt_square_abs",
+        "radical.sqrt_square_nonneg",
+    }
     assert pos["result_text"] == "x"
 
 

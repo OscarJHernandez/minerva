@@ -66,3 +66,44 @@ Generated 2026-11-11 by `scripts/eval_models.py`. Each prompt runs through the r
 - **qwen3.8:27b** is accurate but about 2.3x slower than qwen3.5:35b.
 - Several remaining "found to be false" failures (Kepler equations of motion, tensor, compound-argument identity) still need review: some are real model errors, some are limits of the claim checker (equations that are conditions or equations of motion rather than identities). The count is an upper bound on model mistakes.
 - Not evaluated here: models outside the six on the dedicated instance; the first six-model run used an older claim checker and is not comparable.
+
+## Does automatic identity retrieval help the model? (chains of identities, 2026-11-12)
+
+`simplify` now searches chains of verified handbook identities by itself (see `docs/handbook-benchmark.md`), and
+returns the identities it used, the evidence for each step and the identities it could not apply. The question
+was whether that improves the cases above. Short answer: **it did not measurably change the existing cases with
+the models available for this run, and one new failure mode showed up.** This is weak evidence, not a result.
+
+What was run: the same `scripts/eval_models.py` (plus three informational chain cases and a fix so that a
+wrongly shaped argument fails a case instead of crashing the run) on the previous commit (`origin/main`) and on
+this branch, against the Ollama models on the development machine: `llama3.1:8b` and `qwen3-vl:8b`. These are
+**not** the models of the table above (`qwen3.5:35b`, `qwen3.8:27b`, `gemma4:26b` are not on this machine), so the
+numbers are not comparable with it. One run per cell; an 8B model flips cases between runs, so a difference of
+two or three cases is noise.
+
+| Run | Before | After | Reading |
+| --- | --- | --- | --- |
+| `llama3.1:8b`, all scored cases | 6 / 32 | 3 / 32 | Noise: most failures are the model sending `assumptions` as a list, which both versions reject (four cases went from pass to fail, one the other way) |
+| `qwen3-vl:8b`, 8 simplify/identity cases that finished on both | 5 / 8 | 5 / 8 | Same cases fail on both: `simplify-rational` (unchecked formulas in the reply), `sqrt-no-assumptions` (passes in some runs), `identity-compound-argument`; `followup-uses-context` also fails on both when it finishes (it picks `search_handbook`) |
+| `qwen3-vl:8b`, new case: cites the identities used | fail (answered from the handbook search) | pass | The result lists the identities, so the model can name them |
+| `qwen3-vl:8b`, new case: asked to factor | fail (no `goal` exists) | pass | `goal` is a tool argument now |
+| `qwen3-vl:8b`, new case: a conditional identity | pass | fail 2 of 3 runs | See below |
+
+The failure mode: for `\log x + \log y` with no assumptions the tool answers `conditions_not_satisfied` and names
+`x` and `y` positive as the missing conditions. In two of three runs the 8B model still wrote "the simplified form
+is \log(xy) ... verified numerically at 12 sample points", which the tool never said. Minerva marks that formula
+as unchecked and the card shows the real status, but the sentence is wrong. The tool text now says `result=none`
+and "NOT APPLIED ... this is not a result" instead of echoing the input as the result; the rerun passed once and
+failed once, so it is mitigated, not fixed. A larger model is the realistic remedy; this is the same class of error as
+the "formulas the model wrote" counts in the table above.
+
+Not measured: the other cases on `qwen3-vl:8b`. Three of the six runs on that model stalled on a case (the model
+server kept generating with no end; the evaluation's per-call timeout restarts with every streamed chunk, so a
+case that never stops is bounded only by the step count), and the run was cut to the cases above. A stalled case
+was re-run on its own and finished normally on both versions, so the stalls were not caused by the change, but
+the table above is a subset. Re-run on the models of the table at the top, on `origin/main` and on this branch,
+before drawing a conclusion:
+
+```bash
+uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
+```

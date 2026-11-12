@@ -60,6 +60,9 @@ analysis without a model; unit conversion and prefixes; searching three or more 
 ## Mathematical RAG
 
 - Structural retrieval: expression-tree and operator-pattern indexes beyond the current feature tokens.
+  Done for chains: rules are also indexed by their right-hand side, and `simplify` searches verified chains of
+  identities toward a goal (`transform.py`). Next: pattern-aware ranking (recall at 1 is 29%), more cases from real use,
+  and the identities a chain needs that the handbook lacks (see the pending flow in `docs/handbook-benchmark.md`).
 - Semantic retrieval behind the `Retriever` protocol (embedding model on local hardware), combined with FTS5.
 - Retrieval quality evaluation set: started (45 identity cases, `docs/handbook-benchmark.md`); grow it with
   cases from real use, and add cases for text search and the chat agent. Never let retrieval affect

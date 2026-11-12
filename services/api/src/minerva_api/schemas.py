@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from minerva_engine import DiffVariable, ExpressionInput
 from pydantic import BaseModel, EmailStr, Field
@@ -33,6 +33,12 @@ class IdentitiesRequest(ExpressionInput):
 
 
 class SimplifyRequest(ExpressionInput):
+    """`goal` ranks the results: simplify (default), expand, factor, or rewrite in terms of `target`."""
+
+    goal: Literal["simplify", "expand", "factor", "rewrite"] = "simplify"
+    target: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
+        default_factory=list, max_length=8
+    )
     save: bool = True
 
 

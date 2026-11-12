@@ -3,7 +3,16 @@
 import pytest
 from minerva_engine import Applicability, Engine, ExpressionInput, Status
 from minerva_knowledge import KnowledgeBase
-from minerva_knowledge.benchmark import Case, load_cases, run_benchmark, run_case
+from minerva_knowledge.benchmark import (
+    Case,
+    load_cases,
+    load_transform_cases,
+    run_benchmark,
+    run_case,
+    run_retrieval,
+    run_transform_benchmark,
+    run_transform_case,
+)
 from minerva_knowledge.identities import find_identities
 
 CASES = load_cases()
@@ -125,3 +134,53 @@ def test_default_candidate_pool_equals_uncapped_pool(kb: KnowledgeBase, engine: 
 def test_each_asserted_case(kb: KnowledgeBase, engine: Engine, case: Case) -> None:
     result = run_case(kb, engine, case)
     assert result.passed, f"missing={result.missing} forbidden_shown={result.forbidden_shown}"
+
+
+# --- retrieval quality and multi-step transformations ---------------------------------------------
+TRANSFORM_CASES = load_transform_cases()
+
+
+def test_retrieval_quality_does_not_regress(kb: KnowledgeBase, engine: Engine) -> None:
+    """Every expected identity is proposed, and nearly all in the first ten. Floors, not targets."""
+    summary = run_retrieval(kb, engine, CASES).summary()
+    assert summary["in_pool"] == 1.0
+    assert summary["recall_at_10"] >= 0.9
+    assert summary["mrr"] >= 0.45
+    assert summary["chain_pool_missing"] == 0  # the chain search is offered every expected rule
+
+
+def test_transform_case_ids_and_references_are_valid(kb: KnowledgeBase) -> None:
+    assert len({c.id for c in TRANSFORM_CASES}) == len(TRANSFORM_CASES)
+    for case in TRANSFORM_CASES:
+        for rule_id in [*case.expect_rules, *case.forbid_rules]:
+            entry = kb.get(rule_id)
+            assert entry is not None and entry.rule is not None, f"{case.id}: {rule_id}"
+        assert case.goal in {"simplify", "expand", "factor", "rewrite"}
+        if case.status == "ok":
+            assert case.results, f"{case.id}: an ok case needs accepted results"
+
+
+def test_transform_benchmark_has_no_failures(kb: KnowledgeBase, engine: Engine) -> None:
+    report = run_transform_benchmark(kb, engine, TRANSFORM_CASES)
+    messages = [
+        f"{r.case.id}: status={r.status} result={r.result_text} missing={r.missing_rules} "
+        f"forbidden={r.forbidden_used}"
+        for r in report.failures
+    ]
+    assert not messages, "\n".join(messages)
+
+
+def test_transform_benchmark_covers_chains_conditions_and_negatives() -> None:
+    statuses = {c.status for c in TRANSFORM_CASES}
+    assert {"ok", "unchanged", "conditions_not_satisfied"} <= statuses
+    assert {c.goal for c in TRANSFORM_CASES} == {"simplify", "expand", "factor", "rewrite"}
+    assert any(
+        len(c.expect_rules) >= 2 for c in TRANSFORM_CASES
+    )  # at least one multi-identity chain
+
+
+def test_pending_transform_cases_are_not_stale(kb: KnowledgeBase, engine: Engine) -> None:
+    stale = [
+        c.id for c in TRANSFORM_CASES if c.pending and run_transform_case(kb, engine, c).passed
+    ]
+    assert not stale, f"remove `pending` from: {stale}"

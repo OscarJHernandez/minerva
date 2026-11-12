@@ -11,11 +11,15 @@ from minerva_engine import (
     ExpressionInput,
     IntegrateResult,
     SeriesResult,
-    SimplifyResult,
     TensorInput,
     TensorResult,
 )
-from minerva_knowledge.identities import FindIdentitiesResponse, find_identities
+from minerva_knowledge.identities import (
+    FindIdentitiesResponse,
+    TransformResponse,
+    find_identities,
+    simplify_expression,
+)
 
 from .db import Calculation
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
@@ -32,7 +36,7 @@ router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
 
 
-class SimplifyResponse(SimplifyResult):
+class SimplifyResponse(TransformResponse):
     calculation_id: uuid.UUID | None = None
 
 
@@ -87,11 +91,18 @@ def simplify(
     user: UserDep,
     db: DbDep,
     engine: EngineDep,
+    kb: KbDep,
     limiter: LimiterDep,
     settings: SettingsDep,
 ) -> SimplifyResponse:
     _guard(user, limiter, settings, len(body.input))
-    result = engine.simplify(ExpressionInput(**body.model_dump(exclude={"save"})))
+    result = simplify_expression(
+        kb,
+        engine,
+        ExpressionInput(**body.model_dump(exclude={"save", "goal", "target"})),
+        body.goal,
+        body.target,
+    )
     log.info(
         "compute",
         operation="simplify",

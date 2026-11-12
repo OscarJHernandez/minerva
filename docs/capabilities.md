@@ -20,12 +20,16 @@ Symbolic computation, with every result verified before it is shown.
 
 *Available in:* workbench, chat, HTTP API.
 
-Simplifies an expression with SymPy, then checks the result at random complex sample points and with a symbolic zero test, reported separately. A result that cannot be verified is never shown.
+Searches a short chain of rewrites toward a goal (simplify, expand, factor, or rewrite in given functions): handbook identities, each at every place it matches and read in either direction, plus SymPy's own moves. Every step is checked at random complex sample points and, separately, with a symbolic zero test; the steps and the identities used are shown. A result that cannot be verified is never shown.
 
 **Limits**
 
+- Numerical agreement at sample points is evidence, not proof; only a passed symbolic zero test means SymPy also reduced the difference to zero. Both are reported for every step.
+- Steps are equalities where both sides are defined. Removable singularities and branch choices outside the declared assumptions are not tracked.
+- The search is bounded (at most 4 rewrites in a row, a few alternatives per step, a time budget). "Nothing better was found" does not show that no better form exists.
+- An identity that matches but whose conditions are not provable from your assumptions is reported with the unmet conditions and never applied.
 - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.
-- If nothing simpler is found, the input is returned unchanged and the status says so.
+- If nothing better is found, the input is returned unchanged and the status says so.
 - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
 
 #### Rational trigonometric expression
@@ -33,23 +37,31 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Input:** `\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}`
 - **Status:** `ok`
 - **Result:** $\frac{2}{\sin{\left(x \right)}}$
-- **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
-- Simplified with SymPy and verified.
+- **Step 1: sympy.simplify:** $\frac{\cos{\left(x \right)} + 1}{\sin{\left(x \right)}} + \frac{\sin{\left(x \right)}}{\cos{\left(x \right)} + 1} = \frac{2}{\sin{\left(x \right)}}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
 
 #### Difference of fourth powers
 
 - **Input:** `\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}`
 - **Status:** `ok`
 - **Result:** $1$
-- **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
-- Simplified with SymPy and verified.
+- **Step 1: Difference of squares (alg.difference_of_squares):** $\frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\sin^{2}{\left(x \right)} - \cos^{2}{\left(x \right)}} = \frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\left(\sin{\left(x \right)} - \cos{\left(x \right)}\right) \left(\sin{\left(x \right)} + \cos{\left(x \right)}\right)}$
+- **Step 2: Difference of fourth powers (alg.difference_of_fourth_powers):** $\frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\left(\sin{\left(x \right)} - \cos{\left(x \right)}\right) \left(\sin{\left(x \right)} + \cos{\left(x \right)}\right)} = \sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)}$
+- **Step 3: Pythagorean identity (trig.pythagorean):** $\sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)} = 1$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** step 2: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** step 3: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
 
 #### Square root of a square, no assumptions
 
 - **Input:** `\sqrt{x^2}`
-- **Status:** `unchanged`
+- **Status:** `conditions_not_satisfied`
 - **Read as:** $\sqrt{x^{2}}$
-- No simpler form was found. The expression is returned unchanged.
+- **Not applied: Square root of a square (real):** radical.sqrt_square_abs matches but needs a real
+- **Not applied: Square root of a square (non-negative):** radical.sqrt_square_nonneg matches but needs a nonnegative
+- Identities that would improve this expression match, but their conditions are not provable from the declared assumptions, so nothing was changed.
 - Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified.
 
 #### The same, with x declared real
@@ -58,7 +70,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Assumptions:** x real
 - **Status:** `unchanged`
 - **Read as:** $\left|{x}\right|$
-- No simpler form was found. The expression is returned unchanged.
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 - Under the declared assumption the expression is read as |x|.
 
 #### Power of a power, no assumptions
@@ -66,7 +78,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Input:** `(x^a)^b`
 - **Status:** `unchanged`
 - **Read as:** $\left(x^{a}\right)^{b}$
-- No simpler form was found. The expression is returned unchanged.
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 - The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is.
 
 #### The same, with x positive and a real
@@ -75,8 +87,82 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Assumptions:** x positive; a real
 - **Status:** `unchanged`
 - **Read as:** $x^{a b}$
-- No simpler form was found. The expression is returned unchanged.
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 - With x positive and a real the exponents combine, and the expression is read as x^{ab}.
+
+#### Two identities in a row
+
+- **Input:** `\sin^2 x + \cos^2 x + \tan^2 x`
+- **Status:** `ok`
+- **Result:** $\sec^{2}{\left(x \right)}$
+- **Step 1: Pythagorean identity (trig.pythagorean):** $\sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)} + \tan^{2}{\left(x \right)} = \tan^{2}{\left(x \right)} + 1$
+- **Step 2: Tangent and secant (trig.tan_secant):** $\tan^{2}{\left(x \right)} + 1 = \sec^{2}{\left(x \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** step 2: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- The Pythagorean identity turns sin^2 + cos^2 into 1, and then 1 + tan^2 = sec^2. Neither identity alone reaches the result; each step is verified before the next is tried.
+
+#### An identity inside a larger expression
+
+- **Input:** `\log(\sin^2 t + \cos^2 t + y)`
+- **Status:** `ok`
+- **Result:** $\log{\left(y + 1 \right)}$
+- **Step 1: Pythagorean identity (trig.pythagorean):** $\log{\left(y + \sin^{2}{\left(t \right)} + \cos^{2}{\left(t \right)} \right)} = \log{\left(y + 1 \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
+
+#### Matches, but its conditions are not provable
+
+- **Input:** `\log x + \log y`
+- **Status:** `conditions_not_satisfied`
+- **Read as:** $\log{\left(x \right)} + \log{\left(y \right)}$
+- **Not applied: Logarithm of a product:** log.product matches but needs a positive, b positive
+- Identities that would improve this expression match, but their conditions are not provable from the declared assumptions, so nothing was changed.
+- Combining logarithms needs both arguments positive. Nothing is applied and the input comes back.
+
+#### The same, with x and y declared positive
+
+- **Input:** `\log x + \log y`
+- **Assumptions:** x positive; y positive
+- **Status:** `ok`
+- **Result:** $\log{\left(x y \right)}$
+- **Step 1: Logarithm of a product (log.product), read right to left:** $\log{\left(x \right)} + \log{\left(y \right)} = \log{\left(x y \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
+
+#### Expand a multiple angle
+
+- **Input:** `\sin(3x)`
+- **Status:** `ok`
+- **Result:** $- 4 \sin^{3}{\left(x \right)} + 3 \sin{\left(x \right)}$
+- **Step 1: Triple-angle formula for sine (trig.triple_sin):** $\sin{\left(3 x \right)} = - 4 \sin^{3}{\left(x \right)} + 3 \sin{\left(x \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
+
+#### Factor a difference of fourth powers
+
+- **Input:** `x^4 - y^4`
+- **Status:** `ok`
+- **Result:** $\left(x - y\right) \left(x + y\right) \left(x^{2} + y^{2}\right)$
+- **Step 1: Difference of fourth powers (alg.difference_of_fourth_powers):** $x^{4} - y^{4} = \left(x - y\right) \left(x + y\right) \left(x^{2} + y^{2}\right)$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
+
+#### Rewrite in terms of sine and cosine
+
+- **Input:** `\tan x \cos x`
+- **Status:** `ok`
+- **Result:** $\sin{\left(x \right)}$
+- **Step 1: Tangent as a ratio (trig.tan_ratio):** $\cos{\left(x \right)} \tan{\left(x \right)} = \sin{\left(x \right)}$
+- **Check:** step 1: symbolic zero test passed; numeric check agreed at 12 of 12 points
+- **Check:** end to end: symbolic zero test passed; numeric check agreed at 12 of 12 points
+
+#### Nothing to improve
+
+- **Input:** `\sin x`
+- **Status:** `unchanged`
+- **Read as:** $\sin{\left(x \right)}$
+- No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 
 #### Ambiguous input is refused
 
