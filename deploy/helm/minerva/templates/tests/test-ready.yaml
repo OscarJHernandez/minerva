@@ -34,7 +34,8 @@ spec:
           api=http://{{ .Release.Name }}-api:8100
 
           try wget -q -O- "$site/healthz"
-          try wget -q -O- "$site/" | grep -q "checks its own work"
+          # A phrase from the page <title>, which changes less often than the visible copy.
+          try wget -q -O- "$site/" | grep -q "mathematical workbench" || { echo "site landing page is missing its title phrase"; exit 1; }
           try wget -q -O- "$api/healthz"
           try wget -q -O- "$api/readyz"            # database reachable
           try wget -q -O- "$web/login" >/dev/null
