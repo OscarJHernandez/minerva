@@ -9,3 +9,4 @@ packages/knowledge/src/minerva_knowledge/data
 services
 .github
 deploy
+apps/site/src/data

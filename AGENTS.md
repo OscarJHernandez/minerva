@@ -52,6 +52,7 @@ uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # hand-written expression -> identity cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
+uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
 MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
@@ -115,7 +116,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - In text syntax `E`, `I`, `pi`, `oo` are reserved constants: never use `E` as a variable name in
   handbook entries (use `En`, `Ef`, ...).
 
-Use the `math-regression` skill when adding or changing any operation or handbook entry.
+Use the `math-regression` skill when adding or changing any operation or handbook entry. A new operation or
+user-visible capability also gets an example in `docs/capabilities.yaml`, then regenerate
+`docs/capabilities.md`; behaviour changes show up as a diff there.
 
 ## Coding standards
 

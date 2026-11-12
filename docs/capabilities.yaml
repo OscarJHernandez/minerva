@@ -1,0 +1,287 @@
+# What Minerva can do today, with examples that are run through the real engine.
+#
+# Hand-written source for docs/capabilities.md and apps/site/src/data/capabilities.json.
+# Regenerate with `uv run python scripts/capabilities.py`; CI fails when the generated files differ
+# (scripts/tests/test_capabilities.py), so a change in behaviour shows up as a diff in the pull request.
+#
+# Per capability: id, title, status (available | planned), where (workbench | chat | api), summary, limits,
+# examples. Planned capabilities have no examples. Every example has an `id`, a `title`, an `op` and the
+# fields that op needs:
+#   simplify     input, assumptions
+#   differentiate input, variables [{name, order}], assumptions
+#   identities   input, assumptions, show [rule ids to display]
+#   tensor       input, tensors {name: {rank, symmetry}}, dimension
+#   solve        equation, variable
+#   lagrangian   input, coordinates
+#   entry        entry [handbook entry id]
+# Inputs are LaTeX (tensor inputs use the text form S(a,b)*A(-a,-b)). Add a refusal example wherever a
+# capability has an obvious limit: what Minerva declines to do is part of what it does.
+
+capabilities:
+  - id: simplify
+    title: Verified simplification
+    status: available
+    where: [workbench, chat, api]
+    summary: >-
+      Simplifies an expression with SymPy, then checks the result at random complex sample points and with a
+      symbolic zero test, reported separately. A result that cannot be verified is never shown.
+    limits:
+      - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are
+        left alone until you say so.
+      - If nothing simpler is found, the input is returned unchanged and the status says so.
+      - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
+    examples:
+      - id: simplify-trig-quotients
+        title: Rational trigonometric expression
+        op: simplify
+        input: '\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}'
+      - id: simplify-fourth-powers
+        title: Difference of fourth powers
+        op: simplify
+        input: '\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}'
+      - id: simplify-sqrt-general
+        title: Square root of a square, no assumptions
+        note: >-
+          Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified.
+        op: simplify
+        input: '\sqrt{x^2}'
+      - id: simplify-sqrt-real
+        title: The same, with x declared real
+        note: >-
+          Under the declared assumption the expression is read as |x|.
+        op: simplify
+        input: '\sqrt{x^2}'
+        assumptions: { x: [real] }
+      - id: simplify-power-general
+        title: Power of a power, no assumptions
+        note: >-
+          The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is.
+        op: simplify
+        input: "(x^a)^b"
+      - id: simplify-power-positive
+        title: The same, with x positive and a real
+        note: >-
+          With x positive and a real the exponents combine, and the expression is read as x^{ab}.
+        op: simplify
+        input: "(x^a)^b"
+        assumptions: { x: [positive], a: [real] }
+      - id: simplify-ambiguous
+        title: Ambiguous input is refused
+        op: simplify
+        input: '\sin 2x'
+
+  - id: differentiate
+    title: Verified differentiation
+    status: available
+    where: [workbench, chat, api]
+    summary: >-
+      Differentiates symbolically with respect to one or more variables, to any order up to 10, mixed partials
+      included. Every step is checked against an independent numerical derivative.
+    limits:
+      - Where no complex derivative exists (`|x|`, real and imaginary parts, conjugates) the answer is
+        "unsupported" unless the variable is declared real.
+      - The notation `\frac{d}{dx}` and undefined functions `f(x)` are not accepted in the input yet.
+    examples:
+      - id: diff-product
+        title: Product rule
+        op: differentiate
+        input: 'x^3 \sin(x)'
+        variables: [{ name: x }]
+      - id: diff-third-order
+        title: Third derivative of a Gaussian
+        op: differentiate
+        input: '\exp(-x^2)'
+        variables: [{ name: x, order: 3 }]
+      - id: diff-mixed
+        title: Mixed partial derivative
+        op: differentiate
+        input: "x^2 y^3"
+        variables: [{ name: x }, { name: y }]
+      - id: diff-abs-complex
+        title: No complex derivative
+        note: >-
+          Declare x real to differentiate |x|.
+        op: differentiate
+        input: "|x|"
+        variables: [{ name: x }]
+
+  - id: identities
+    title: Identity search with applicability checks
+    status: available
+    where: [workbench, chat, api]
+    summary: >-
+      Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern,
+      checks its validity conditions against your declared assumptions, rewrites, and verifies the rewrite.
+    limits:
+      - An identity whose conditions cannot be proven from your assumptions is reported, with the unmet
+        conditions, and not applied.
+      - Matches that only work by inventing roots, reciprocals or the imaginary unit are discarded.
+      - Retrieval is keyword and structure based; semantic search is planned.
+    examples:
+      - id: identity-log-blocked
+        title: The identity is found but not applied
+        note: >-
+          The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
+        op: identities
+        input: '\log(x y)'
+        show: [log.product]
+      - id: identity-log-applicable
+        title: Applied once x and y are declared positive
+        op: identities
+        input: '\log(x y)'
+        assumptions: { x: [positive], y: [positive] }
+        show: [log.product]
+      - id: identity-product-to-sum
+        title: Product to sum
+        op: identities
+        input: '\sin(a)\cos(b)'
+        show: [trig.product_to_sum]
+
+  - id: polynomial-solving
+    title: Polynomial equations
+    status: available
+    where: [chat]
+    summary: >-
+      Factors a polynomial equation, says whether a formula in radicals exists (Galois criterion, Abel–Ruffini),
+      gives exact roots where they exist and numerical roots otherwise, and verifies the roots by substitution
+      and Vieta's relations.
+    limits:
+      - Polynomial equations in one variable only; other equations are not solved.
+    examples:
+      - id: solve-cubic
+        title: A cubic that factors
+        op: solve
+        equation: "x^3 + x^2 + x + 1 = 0"
+        variable: x
+      - id: solve-quintic
+        title: A quintic with no formula in radicals
+        op: solve
+        equation: "x^5 - x - 1 = 0"
+        variable: x
+
+  - id: lagrangian
+    title: Lagrangian mechanics
+    status: available
+    where: [chat]
+    summary: >-
+      From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations,
+      and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs.
+      Each constant is verified: its time derivative is zero on the equations of motion.
+    limits:
+      - Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as
+        the Runge–Lenz vector are not searched for, and the result says so.
+    examples:
+      - id: lagrangian-kepler-polar
+        title: Kepler problem in polar coordinates
+        op: lagrangian
+        input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
+        coordinates: [r, theta]
+      - id: lagrangian-kepler-cartesian
+        title: The same problem in Cartesian coordinates
+        op: lagrangian
+        input: '\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}'
+        coordinates: [x, y]
+      - id: lagrangian-time-dependent
+        title: Explicit time dependence removes the energy
+        op: lagrangian
+        input: '\frac12 m\dot{x}^2 - \frac12 k x^2 t'
+        coordinates: [x]
+
+  - id: tensors
+    title: Tensor canonicalization
+    status: available
+    where: [api, chat]
+    summary: >-
+      Puts a tensor expression in canonical form using declared index symmetries (symmetric, antisymmetric,
+      Riemann-type), through SymPy's Butler–Portugal algorithm.
+    limits:
+      - Only symmetries of a single term are applied. Multi-term identities such as the Bianchi identity are out
+        of scope and are not applied.
+      - The result is not independently verified; the report says so.
+      - There is no workbench form for tensors yet.
+    examples:
+      - id: tensor-contraction
+        title: Symmetric contracted with antisymmetric
+        op: tensor
+        input: "S(a,b)*A(-a,-b)"
+        tensors:
+          S: { rank: 2, symmetry: symmetric }
+          A: { rank: 2, symmetry: antisymmetric }
+      - id: tensor-riemann-contraction
+        title: Riemann tensor contracted with a symmetric pair
+        op: tensor
+        input: "R(a,b,c,d)*S(-a,-b)"
+        tensors:
+          R: { rank: 4, symmetry: riemann }
+          S: { rank: 2, symmetry: symmetric }
+      - id: tensor-pair-symmetry
+        title: Pair exchange symmetry
+        op: tensor
+        input: "R(a,b,c,d) - R(c,d,a,b)"
+        tensors:
+          R: { rank: 4, symmetry: riemann }
+      - id: tensor-bianchi
+        title: The cyclic sum is left alone
+        note: >-
+          This cyclic sum vanishes by the algebraic Bianchi identity, a multi-term identity that Minerva does not apply, so it is returned in canonical form and not as 0.
+        op: tensor
+        input: "R(a,b,c,d) + R(a,c,d,b) + R(a,d,b,c)"
+        tensors:
+          R: { rank: 4, symmetry: riemann }
+
+  - id: handbook
+    title: Citable handbook
+    status: available
+    where: [reference, chat, api]
+    summary: >-
+      Handbook entries state identities, integrals, series, special functions and physical equations in original
+      wording and cite sources by locator only. Each entry is verified at a declared level, or labelled "stated"
+      when it is a literature record that is never applied.
+    limits:
+      - Entries recorded from the literature ("stated") carry no rule and are never used to rewrite anything.
+      - Coverage is limited and growing; quantum field theory is stated entries only.
+    examples:
+      - id: entry-log-product
+        title: A checked identity with its condition
+        op: entry
+        entry: log.product
+      - id: entry-klein-gordon
+        title: A stated literature record
+        op: entry
+        entry: qft.klein_gordon
+
+  - id: chat
+    title: Chat with a model you host
+    status: available
+    where: [chat]
+    needs_model: true
+    summary: >-
+      A conversation in which a language model plans, asks and explains, and calls the tools above. It runs
+      only when you connect a model, such as one served by Ollama; it is off by default.
+    limits:
+      - The model never computes and never decides correctness. Formulas it writes that no tool produced in
+        the conversation are shown as unchecked.
+      - How well it chooses tools depends on the model, and no model tried so far passes every evaluation case.
+        See docs/model-evaluation.md.
+      - Only Ollama-compatible hosts are supported.
+
+  - id: cadabra
+    title: Cadabra integration
+    status: planned
+    summary: Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
+  - id: sagemanifolds
+    title: SageManifolds integration
+    status: planned
+    summary: Differential geometry on explicit manifolds, as an optional backend.
+  - id: integrals
+    title: Integrals, limits and series
+    status: planned
+    summary: In the workbench, with the same verification discipline as derivatives.
+  - id: semantic-search
+    title: Semantic and structural search
+    status: planned
+    summary: Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
+  - id: tensors-workbench
+    title: Tensors in the workbench
+    status: planned
+    summary: Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.
