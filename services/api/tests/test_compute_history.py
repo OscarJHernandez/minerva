@@ -53,6 +53,74 @@ def test_oversized_input_rejected(authed: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_differentiate_and_history(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/differentiate",
+        json={"input": "x**5", "format": "text", "variables": [{"name": "x", "order": 2}]},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["result_text"] == "20*x**3"
+    assert body["verification"]["passed"] is True
+    assert [s["latex"] for s in body["steps"]] == ["5 x^{4}", "20 x^{3}"]
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "differentiate"
+    assert item["id"] == body["calculation_id"]
+    assert item["result"]["variables"] == [{"name": "x", "order": 2}]
+
+
+def test_differentiate_mixed_partial_and_assumptions(authed: TestClient) -> None:
+    mixed = authed.post(
+        "/v1/compute/differentiate",
+        json={
+            "input": "x**2*y**3",
+            "format": "text",
+            "variables": [{"name": "x"}, {"name": "y"}],
+        },
+    ).json()
+    assert mixed["result_text"] == "6*x*y**2"
+    plain = authed.post(
+        "/v1/compute/differentiate",
+        json={"input": "abs(x)", "format": "text", "variables": [{"name": "x"}]},
+    ).json()
+    assert plain["status"] == "unsupported"
+    assert plain["result_latex"] is None
+    real = authed.post(
+        "/v1/compute/differentiate",
+        json={
+            "input": "abs(x)",
+            "format": "text",
+            "assumptions": {"x": ["real"]},
+            "variables": [{"name": "x"}],
+        },
+    ).json()
+    assert real["result_text"] == "sign(x)"
+
+
+def test_differentiate_validation(authed: TestClient) -> None:
+    url = "/v1/compute/differentiate"
+    for variables in ([], [{"name": "x", "order": 11}], [{"name": "x", "order": 0}]):
+        r = authed.post(url, json={"input": "x", "variables": variables})
+        assert r.status_code == 422
+    five = [{"name": n} for n in "abcde"]
+    assert authed.post(url, json={"input": "x", "variables": five}).status_code == 422
+    too_deep = [{"name": "x", "order": 6}, {"name": "y", "order": 5}]
+    body = authed.post(url, json={"input": "x*y", "format": "text", "variables": too_deep}).json()
+    assert body["status"] == "unsupported"
+    assert (
+        authed.post(url, json={"input": "x" * 3000, "variables": [{"name": "x"}]}).status_code
+        == 422
+    )
+    parse = authed.post(url, json={"input": r"\nonsense", "variables": [{"name": "x"}]}).json()
+    assert parse["status"] == "parse_error"
+
+
+def test_differentiate_requires_authentication(client: TestClient) -> None:
+    body = {"input": "x", "variables": [{"name": "x"}]}
+    assert client.post("/v1/compute/differentiate", json=body).status_code == 401
+
+
 def test_identities_endpoint(authed: TestClient) -> None:
     r = authed.post("/v1/compute/identities", json={"input": r"\log(xy)"})
     assert r.status_code == 200
@@ -122,6 +190,10 @@ def test_logs_never_contain_user_input(capsys) -> None:  # type: ignore[no-untyp
     with TestClient(app) as c:
         register(c)
         c.post("/v1/compute/simplify", json={"input": f"{marker} + 1", "format": "text"})
+        c.post(
+            "/v1/compute/differentiate",
+            json={"input": f"{marker} * x", "format": "text", "variables": [{"name": "x"}]},
+        )
         c.post("/v1/auth/login", json={"email": "ada@example.com", "password": PASSWORD})
     out = capsys.readouterr().out
     assert "compute" in out  # something was logged
