@@ -205,6 +205,8 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "tensor_canonicalize",
         "solve_polynomial",
         "analyze_lagrangian",
+        "dimensional_analysis",
+        "check_units",
     }
     for tool in TOOLS.values():
         assert tool.schema()["function"]["parameters"]["type"] == "object"
@@ -343,3 +345,89 @@ def test_bare_equations_become_formula_segments() -> None:
     assert [s.type for s in prose] == ["text"]
     bold = split_segments("**x = 2** is the answer", set())
     assert [s.value for s in bold if s.type == "math"] == ["x = 2"]
+
+
+def test_dimensional_tool_finds_groups_and_marks_them_known(ctx: ToolContext) -> None:
+    out = execute(
+        "dimensional_analysis",
+        {
+            "quantities": [
+                {"name": "T", "kind": "period"},
+                {"name": "L", "kind": "length"},
+                {"name": "g", "kind": "acceleration"},
+                {"name": "m", "unit": "kg"},
+            ],
+            "unknown": "T",
+        },
+        ctx,
+    )
+    assert out.card.type == "dimensional" and out.status == "ok"
+    report = out.card.data["report"]
+    assert report["closure"] == "determined" and report["cannot_enter"] == ["m"]
+    assert r"\Pi_{1}" in out.for_model and "closure=determined" in out.for_model
+    assert r"T = C\,\sqrt{\frac{L}{g}}" in out.for_model
+    assert r"T = C\,\sqrt{\frac{L}{g}}" in out.known_latex
+    ids = [m["id"] for m in out.card.data["methods"]]
+    assert "method.phys.buckingham_pi" in ids
+
+
+def test_dimensional_tool_reports_a_missing_quantity_with_handbook_constants(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "dimensional_analysis",
+        {
+            "quantities": [{"name": "m", "unit": "kg"}, {"name": "E", "unit": "J"}],
+            "unknown": "E",
+        },
+        ctx,
+    )
+    report = out.card.data["report"]
+    assert report["closure"] == "missing" and report["missing"]["verified"]
+    assert [s["ids"] for s in report["missing"]["suggestions"]] == [["const.c"]]
+    assert "MISSING: a quantity with dimension [m s^-1]" in out.for_model
+    assert "adding const.c closes it" in out.for_model
+    assert "method.phys.dimensional_homogeneity" in [m["id"] for m in out.card.data["methods"]]
+
+
+def test_dimensional_tool_errors_are_explicit(ctx: ToolContext) -> None:
+    bad_unit = execute("dimensional_analysis", {"quantities": [{"name": "x", "unit": "cm"}]}, ctx)
+    assert bad_unit.status == "parse_error" and "coherent SI" in bad_unit.for_model
+    both = execute(
+        "dimensional_analysis", {"quantities": [{"name": "x", "unit": "m", "kind": "length"}]}, ctx
+    )
+    assert both.card.type == "error" and "exactly one" in both.for_model
+    assert execute("dimensional_analysis", {"quantities": []}, ctx).card.type == "error"
+
+
+def test_units_tool_reports_missing_factor(ctx: ToolContext) -> None:
+    out = execute(
+        "check_units",
+        {
+            "equation": "W = m c",
+            "quantities": [
+                {"name": "W", "unit": "J"},
+                {"name": "m", "unit": "kg"},
+                {"name": "c", "unit": "m/s"},
+            ],
+        },
+        ctx,
+    )
+    assert out.card.type == "units" and out.status == "ok"
+    assert (
+        "consistent=False" in out.for_model
+        and "missing factor dimension: [m s^-1]" in out.for_model
+    )
+    good = execute(
+        "check_units",
+        {
+            "equation": "F = m a",
+            "quantities": [
+                {"name": "F", "unit": "N"},
+                {"name": "m", "unit": "kg"},
+                {"name": "a", "unit": "m/s^2"},
+            ],
+        },
+        ctx,
+    )
+    assert "consistent=True" in good.for_model

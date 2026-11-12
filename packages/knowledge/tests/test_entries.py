@@ -1,7 +1,7 @@
 """Every knowledge-base entry is verified at the level it declares."""
 
 import pytest
-from minerva_knowledge import KnowledgeBase, load_entries
+from minerva_knowledge import KnowledgeBase, SearchQuery, load_entries
 from minerva_knowledge.checks import run_check
 
 ENTRIES = load_entries()
@@ -44,3 +44,31 @@ def test_references_are_citations_only(kb: KnowledgeBase) -> None:
         if e.reference:
             assert e.reference.source
             assert len(e.reference.locator or "") < 80  # a locator, never quoted text
+
+
+def test_constant_candidates_cover_every_constant_with_a_readable_unit() -> None:
+    from minerva_engine.dimensions import read_unit
+    from minerva_knowledge.identities import constant_candidates
+
+    kb = KnowledgeBase.load()
+    candidates = constant_candidates(kb)
+    constants = [e for e in kb.entries if e.kind == "constant"]
+    assert {c.id for c in candidates} == {e.id for e in constants}
+    by_id = {c.id: c for c in candidates}
+    assert by_id["const.c"].latex == "c" and by_id["const.k_b"].latex == "k_B"
+    assert by_id["const.hbar"].latex == r"\hbar"
+    for c in candidates:
+        read_unit(c.unit)  # every handbook unit is in the vocabulary
+
+
+def test_dimensional_methods_are_retrieved_by_feature() -> None:
+    kb = KnowledgeBase.load()
+    for feature, expected in [
+        (
+            "dimensional:pi-groups",
+            {"method.phys.buckingham_pi", "method.phys.dimensional_homogeneity"},
+        ),
+        ("dimensional:missing-quantity", {"method.phys.dimensional_homogeneity"}),
+    ]:
+        found = {e.id for e in kb.search(SearchQuery(features=[feature], limit=10))}
+        assert expected <= found

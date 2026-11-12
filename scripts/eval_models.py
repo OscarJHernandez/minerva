@@ -190,6 +190,25 @@ CASES = [
         {"find_identities", "simplify", "search_handbook"},
         final_matches=re.compile(r"positive|assum|condition|real", re.I),
     ),
+    Case(
+        "dimensional-pendulum",
+        "A pendulum has length L (metres), mass m (kg) and swings in gravity g (m/s^2). "
+        "Which dimensionless groups does its period T (seconds) depend on?",
+        {"dimensional_analysis"},
+        args_check=lambda t, a: a.get("unknown") == "T",
+    ),
+    Case(
+        "dimensional-missing",
+        "I know a mass m in kg and want an energy E in joules. Can I get E from m using units alone?",
+        {"dimensional_analysis"},
+        final_matches=re.compile(r"missing|velocity|speed|m/s|c\b|constant", re.I),
+    ),
+    Case(
+        "units-check",
+        r"Are the units consistent in $F = m v$ if F is in newtons, m in kg and v in m/s?",
+        {"check_units"},
+        final_matches=re.compile(r"not|inconsist|differ|missing|1/s|s\^?-1", re.I),
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

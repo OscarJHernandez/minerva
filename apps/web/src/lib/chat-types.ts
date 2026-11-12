@@ -30,6 +30,78 @@ export interface LagrangianReport {
   duration_ms: number;
 }
 
+export type Closure = "determined" | "up_to_function" | "missing" | "none";
+
+export interface QuantityReading {
+  name: string;
+  latex: string;
+  meaning: string;
+  given: string;
+  dimension_text: string;
+  dimension_latex: string;
+}
+
+export interface DimensionalReport {
+  status: Status;
+  quantities: QuantityReading[];
+  rank: number;
+  target: string | null;
+  repeating: string[];
+  groups: {
+    label: string;
+    latex: string;
+    exponents: Record<string, string>;
+    contains_target: boolean;
+    dimensionless_verified: boolean;
+  }[];
+  closure: Closure | null;
+  relation_latex: string | null;
+  cannot_enter: string[];
+  missing: {
+    target_dimension_text: string;
+    target_dimension_latex: string;
+    unbalanced: string[];
+    missing_dimension_text: string;
+    missing_dimension_latex: string;
+    verified: boolean;
+    explanation: string;
+    suggestions: {
+      ids: string[];
+      latex: string[];
+      closure: Closure;
+      relation_latex: string | null;
+      group_latex: string | null;
+      verified: boolean;
+    }[];
+  } | null;
+  tested: string[];
+  notes: string[];
+  features: string[];
+  message: string;
+  duration_ms: number;
+}
+
+export interface SideReading {
+  latex: string;
+  dimension_text: string;
+  dimension_latex: string;
+}
+
+export interface UnitsCheckReport {
+  status: Status;
+  equation_latex: string | null;
+  consistent: boolean | null;
+  sides: SideReading[];
+  missing_factor_text: string | null;
+  missing_factor_latex: string | null;
+  problem: string | null;
+  problem_terms: SideReading[];
+  quantities: QuantityReading[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
 export interface SolveReport {
   status: Status;
   equation_latex: string | null;
@@ -112,6 +184,20 @@ export type Card =
       type: "lagrangian";
       title: string;
       data: { report: LagrangianReport; methods: EntrySummary[] };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "dimensional";
+      title: string;
+      data: { report: DimensionalReport; methods: EntrySummary[] };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "units";
+      title: string;
+      data: { report: UnitsCheckReport; methods: EntrySummary[] };
     }
   | { id: string; tool: string; type: "error"; title: string; data: { message: string } };
 

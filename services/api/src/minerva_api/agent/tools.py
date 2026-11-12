@@ -16,11 +16,12 @@ from typing import Any
 from minerva_engine import (
     Engine,
     ExpressionInput,
+    QuantitySpec,
     TensorInput,
     TensorSpec,
 )
 from minerva_knowledge import KnowledgeBase, SearchQuery
-from minerva_knowledge.identities import find_identities, summarize
+from minerva_knowledge.identities import constant_candidates, find_identities, summarize
 from pydantic import BaseModel, Field, ValidationError
 
 from .events import Card
@@ -90,6 +91,38 @@ class LagrangianArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class DimensionalArgs(BaseModel):
+    quantities: list[QuantitySpec] = Field(
+        min_length=1,
+        max_length=16,
+        description="Every quantity of the problem. Each has a name (letters, digits, underscore: "
+        "theta, rho, x_0), exactly one of `unit` (SI base or derived units: kg, m, s, A, K, mol, cd, N, J, "
+        "W, Pa, Hz, C, V, F, ohm, S, Wb, T, H, rad; e.g. 'kg m/s^2') or `kind` (a named quantity such as "
+        "'velocity', 'density', 'dynamic viscosity', 'surface tension'), and optionally `meaning`.",
+    )
+    unknown: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Name of the quantity to find, if there is one. Enables the missing-quantity check.",
+    )
+    repeating: list[str] = Field(
+        default_factory=list,
+        max_length=16,
+        description="Optional: quantities to use as repeating variables (e.g. rho, v, D for pipe flow).",
+    )
+
+
+class UnitsCheckArgs(BaseModel):
+    equation: str = Field(
+        max_length=MAX_INPUT,
+        description="An equation in LaTeX, e.g. F = m a. Symbol names must match `quantities` "
+        "(Greek letters by name: \\theta is `theta`). E is reserved: rename it (W, E_n).",
+    )
+    quantities: list[QuantitySpec] = Field(
+        min_length=1, max_length=16, description="Unit or kind of every symbol in the equation."
+    )
 
 
 class SearchArgs(BaseModel):
@@ -279,6 +312,103 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def run_dimensional(args: DimensionalArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.dimensional_analysis(
+        args.quantities,
+        args.unknown,
+        args.repeating,
+        constant_candidates(ctx.kb) if args.unknown else [],
+    )
+    methods = (
+        ctx.kb.search(SearchQuery(features=report.features, chapter="physics.methods", limit=4))
+        if report.features
+        else []
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="dimensional_analysis",
+        type="dimensional",
+        title="Dimensional analysis",
+        data={"report": report.model_dump(mode="json"), "methods": method_data},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = []
+    if report.quantities:
+        lines.append(
+            "units as read: "
+            + "; ".join(f"{q.name} = [{q.dimension_text}]" for q in report.quantities)
+        )
+    for g in report.groups:
+        lines.append(f"group ${g.label}$ = ${g.latex}$ (dimensionless, verified)")
+        known.append(g.latex)
+    if report.closure:
+        lines.append(f"closure={report.closure}")
+    if report.relation_latex:
+        lines.append(
+            f"relation: ${report.relation_latex}$ (C and f are not determined by dimensions)"
+        )
+        known.append(report.relation_latex)
+    if report.cannot_enter:
+        lines.append("cannot enter by dimensions alone: " + ", ".join(report.cannot_enter))
+    if report.missing:
+        m = report.missing
+        lines.append(
+            f"MISSING: a quantity with dimension [{m.missing_dimension_text}] "
+            f"(unbalanced base units: {', '.join(m.unbalanced)}); {m.explanation}"
+        )
+        for sug in m.suggestions:
+            lines.append(
+                f"- adding {' and '.join(sug.ids)} closes it ({sug.closure}): ${sug.relation_latex}$"
+            )
+            if sug.relation_latex:
+                known.append(sug.relation_latex)
+        if not m.suggestions:
+            lines.append("no single constant or pair of handbook constants closes it")
+    lines.extend(report.tested)
+    lines.extend(f"note: {n}" for n in report.notes)
+    if method_data:
+        lines.append(
+            "handbook methods: "
+            + "; ".join(f"{x['id']} ({x['title']}, {x['verification']})" for x in method_data)
+        )
+        known.extend(x["statement_latex"] for x in method_data)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
+def run_units_check(args: UnitsCheckArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.check_units(args.equation, args.quantities)
+    methods = ctx.kb.search(
+        SearchQuery(features=["dimensional:units-check"], chapter="physics.methods", limit=3)
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="check_units",
+        type="units",
+        title="Unit check",
+        data={"report": report.model_dump(mode="json"), "methods": method_data},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = []
+    if report.equation_latex:
+        lines.append(f"equation_as_read=${report.equation_latex}$")
+        known.append(report.equation_latex)
+    for i, side in enumerate(report.sides, start=1):
+        lines.append(f"part {i}: ${side.latex}$ has dimension [{side.dimension_text}]")
+    if report.consistent is not None:
+        lines.append(f"consistent={report.consistent}")
+    if report.missing_factor_text:
+        lines.append(f"missing factor dimension: [{report.missing_factor_text}]")
+    if report.problem:
+        lines.append(
+            f"problem: {report.problem}"
+            + "".join(f"; ${t.latex}$ is [{t.dimension_text}]" for t in report.problem_terms)
+        )
+    lines.extend(f"note: {n}" for n in report.notes)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
 def _entry_card_data(ctx: ToolContext, entry_ids: list[str]) -> list[dict[str, Any]]:
     out = []
     for entry_id in entry_ids:
@@ -380,6 +510,23 @@ TOOLS: dict[str, Tool] = {
             "coordinates, energy, rotations). States which symmetries were not searched for.",
             LagrangianArgs,
             run_lagrangian,
+        ),
+        Tool(
+            "dimensional_analysis",
+            "Dimensional analysis from the quantities of a problem (each with a unit or kind) and optionally "
+            "the unknown: finds the independent dimensionless groups (Buckingham Pi), says whether the "
+            "unknown is fixed by dimensions alone, and if its units cannot be built from the knowns, "
+            "which dimension is missing and which handbook constants would supply it. Ask the user for "
+            "any unit you are unsure of; never guess groups yourself.",
+            DimensionalArgs,
+            run_dimensional,
+        ),
+        Tool(
+            "check_units",
+            "Check an equation for dimensional consistency given the unit of each symbol: reports whether "
+            "all terms and both sides agree, and the dimension of the factor missing when they do not.",
+            UnitsCheckArgs,
+            run_units_check,
         ),
         Tool(
             "find_identities",

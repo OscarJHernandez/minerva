@@ -29,7 +29,16 @@ class Card(BaseModel):
     id: str
     tool: str
     type: Literal[
-        "simplify", "identities", "entries", "entry", "tensor", "solve", "lagrangian", "error"
+        "simplify",
+        "identities",
+        "entries",
+        "entry",
+        "tensor",
+        "solve",
+        "lagrangian",
+        "dimensional",
+        "units",
+        "error",
     ]
     title: str
     data: dict[str, Any] = Field(default_factory=dict)

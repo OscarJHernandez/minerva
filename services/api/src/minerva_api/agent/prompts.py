@@ -21,6 +21,9 @@ Rules you must follow:
 7. Be brief: at most about 100 words after a tool result. The interface already shows the result, its
    verification and the formula used as a card, so do not restate or re-derive them. Say what the result
    means, what assumptions it relied on, and what to try next. Do not write long step-by-step derivations.
-8. Input to tools is LaTeX: \\frac, \\sqrt, \\sin, ^, _ and so on. `e` and `i` are ordinary symbols;
+8. Dimensional analysis: collect every quantity of the problem with its unit (or kind) and which one is
+   unknown, ask when a unit is unclear, then call dimensional_analysis (or check_units for an equation).
+   Never state dimensionless groups or a missing dimension from memory.
+9. Input to tools is LaTeX: \\frac, \\sqrt, \\sin, ^, _ and so on. `e` and `i` are ordinary symbols;
    use \\exponentialE and \\imaginaryI for the constants.
 """

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from minerva_engine import (
     Applicability,
+    ConstantCandidate,
     Engine,
     ExpressionInput,
     RuleApplication,
     Status,
+    split_equation,
 )
 from pydantic import BaseModel, Field
 
@@ -103,3 +105,22 @@ def find_identities(
         candidates_considered=len(candidates),
         duration_ms=result.duration_ms,
     )
+
+
+def constant_candidates(kb: KnowledgeBase) -> list[ConstantCandidate]:
+    """Handbook constants as candidates for a missing quantity: id, symbol (LaTeX) and SI unit.
+
+    The symbol is the left side of the entry's statement (`c`, `k_B`, `\\hbar`). Entries whose
+    statement has no usable left side are left out. Retrieval proposes; the engine decides.
+    """
+    out: list[ConstantCandidate] = []
+    for entry in kb.entries:
+        if entry.kind != "constant":
+            continue
+        if entry.constant is None or entry.statement_latex is None:
+            continue
+        sides = split_equation(entry.statement_latex)
+        if sides is None or not sides[0]:
+            continue
+        out.append(ConstantCandidate(id=entry.id, latex=sides[0], unit=entry.constant.unit))
+    return out

@@ -20,6 +20,12 @@ Ordering favours correctness infrastructure before breadth.
 3. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
 
+## Dimensional analysis follow-ups
+
+Done: Pi groups, missing-quantity report with handbook constants, equation unit check (chat tools).
+Next: recognise named groups (Reynolds, Froude, Mach) from a handbook table; a workbench form for the same
+analysis without a model; unit conversion and prefixes; searching three or more constants.
+
 ## Advanced tensor algebra and Cadabra integration
 
 - Backend interface hardening: a `SymbolicBackend` protocol with capability discovery.

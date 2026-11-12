@@ -97,6 +97,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Handbook entries declare `verification`: symbolic / numeric / structural / dimensional / stated.
   `stated` entries are literature records, never applied, and must not carry a rule or check.
   Do not label an entry `symbolic` unless the checker finds a symbolic zero.
+- Dimensional analysis (`pi_groups.py`) reasons about dimensions only: a group is shown only if rebuilt and found
+  dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
+  report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.
+  Units are coherent SI only (no conversion).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

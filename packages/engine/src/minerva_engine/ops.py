@@ -122,6 +122,31 @@ def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- dimensional analysis ------------------------------------------------------------------
+def op_dimensional_analysis(payload: dict[str, Any]) -> dict[str, Any]:
+    from .pi_groups import ConstantCandidate, QuantitySpec, analyze_dimensions
+
+    report = analyze_dimensions(
+        [QuantitySpec(**q) for q in payload["quantities"]],
+        payload.get("target"),
+        [str(r) for r in payload.get("repeating", [])],
+        [ConstantCandidate(**c) for c in payload.get("candidates", [])],
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
+def op_check_units(payload: dict[str, Any]) -> dict[str, Any]:
+    from .pi_groups import QuantitySpec, check_units
+
+    report = check_units(
+        str(payload["equation"]),
+        [QuantitySpec(**q) for q in payload["quantities"]],
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- claims written by the language model --------------------------------------------
 def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
@@ -384,5 +409,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "check_claims": op_check_claims,
     "solve": op_solve,
     "lagrangian": op_lagrangian,
+    "dimensional_analysis": op_dimensional_analysis,
+    "check_units": op_check_units,
     "tensor_canonicalize": op_tensor_canonicalize,
 }

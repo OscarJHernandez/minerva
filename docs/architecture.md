@@ -28,7 +28,15 @@ one most likely to be wrong.
     rule's conditions against the declared assumptions, rewrite, and verify the rewrite.
   - `tensor_canonicalize`: `sympy.tensor.tensor` Butler-Portugal canonicalization (monoterm
     symmetries only).
-  - `dimensions.py`: dimensional consistency of physics equations (used by handbook checks).
+  - `dimensions.py`: units as exact exponent vectors over the SI base units (base units, a fixed table of
+    coherent derived units, named quantity kinds; no conversion) and dimensional consistency of equations
+    (used by handbook checks and the `check_units` tool).
+  - `pi_groups.py` (`dimensional_analysis`, `check_units`): dimensionless groups as the null space of the
+    dimension matrix, each re-checked by rebuilding it as an expression and taking its dimension. With an
+    unknown it reports `determined`, `up_to_function` or `missing`; for `missing` it gives the dimension the
+    absent quantity must carry (verified by re-solving with it appended) and the handbook constants, alone or in
+    pairs, that close the gap. It does not determine the function of the groups, dimensionless constants, or
+    whether the list of quantities is complete.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 
@@ -64,7 +72,8 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `find_identities`, `tensor_canonicalize`. Each is a
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+  `check_units`. Each is a
   pure computation. A tool returns a `Card` that the interface renders from the tool's own output, plus a compact
   text for the model. Bad or unknown calls become an error result the model can read, never an exception.
 - **Honesty** (`segments.py`): after each turn, every formula in the model's prose is compared with the formulas

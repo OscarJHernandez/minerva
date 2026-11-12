@@ -47,6 +47,29 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif "dimension" in lower and re.search(r"\w+\s*\[[^\]]+\]", user):
+            # Development stand-in: quantities are written `name [unit]`, the unknown as `unknown name`.
+            quantities = [
+                {"name": n, "unit": u.strip()} for n, u in re.findall(r"(\w+)\s*\[([^\]]+)\]", user)
+            ]
+            found = re.search(r"unknown\s+(\w+)", lower)
+            dim_args: dict[str, Any] = {"quantities": quantities}
+            if found:
+                dim_args["unknown"] = next(
+                    (q["name"] for q in quantities if q["name"].lower() == found.group(1)), None
+                )
+            async for c in self._say("I will find the dimensionless groups and check the units. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("dimensional_analysis", dim_args)])
+        elif "units" in lower and latex and re.search(r"\w+\s*\[[^\]]+\]", user):
+            quantities = [
+                {"name": n, "unit": u.strip()} for n, u in re.findall(r"(\w+)\s*\[([^\]]+)\]", user)
+            ]
+            async for c in self._say("I will check the dimensions of that equation. "):
+                yield c
+            yield Chunk(
+                tool_calls=[ToolCall("check_units", {"equation": latex, "quantities": quantities})]
+            )
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -134,6 +157,16 @@ class ScriptedLLM:
             text = (
                 "The card lists the equations of motion, the accelerations, and the constants of motion "
                 "that Minerva verified on those equations, and says which symmetries it did not search for."
+            )
+        elif tool == "dimensional_analysis":
+            text = (
+                "The card lists how each unit was read, the dimensionless groups (each checked), "
+                "what the dimensions fix about the unknown, and, if its units cannot be built from "
+                "the knowns, the dimension that is missing and which constants would supply it."
+            )
+        elif tool == "check_units":
+            text = (
+                "The card shows the dimension of each side and, if they differ, the missing factor."
             )
         elif tool == "solve_polynomial":
             text = (

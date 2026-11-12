@@ -181,3 +181,21 @@ def test_scripted_model_is_refused_outside_development() -> None:
         ).validate_for_runtime()
     with pytest.raises(RuntimeError, match="needs MINERVA_LLM_BASE_URL"):
         Settings(_env_file=None, llm_mode="ollama").validate_for_runtime()
+
+
+def test_scripted_model_runs_dimensional_analysis_and_a_unit_check(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        "Dimensional analysis: E [J], m [kg], unknown E",
+    )
+    message = next(d for e, d in events if e == "message")
+    card = cards_of(message)[0]
+    assert card["type"] == "dimensional" and card["data"]["report"]["closure"] == "missing"
+    events = sse(client, cid, r"Check the units of $F = m a$: F [N], m [kg], a [m/s^2]")
+    message = next(d for e, d in events if e == "message")
+    card = cards_of(message)[0]
+    assert card["type"] == "units" and card["data"]["report"]["consistent"] is True

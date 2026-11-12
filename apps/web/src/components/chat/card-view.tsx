@@ -2,8 +2,10 @@ import { Math } from "@minerva/ui/math";
 import type { Card } from "@/lib/chat-types";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
+import { DimensionalCard } from "./dimensional-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { SolveCard } from "./solve-card";
+import { UnitsCard } from "./units-card";
 import { ResultPanel, StatusPill } from "../result-panel";
 import type { Status } from "@/lib/types";
 
@@ -36,6 +38,10 @@ export function CardView({ card }: { card: Card }) {
       return <SolveCard report={card.data.report} methods={card.data.methods} />;
     case "lagrangian":
       return <LagrangianCard report={card.data.report} methods={card.data.methods} />;
+    case "dimensional":
+      return <DimensionalCard report={card.data.report} methods={card.data.methods} />;
+    case "units":
+      return <UnitsCard report={card.data.report} methods={card.data.methods} />;
     case "tensor":
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>
