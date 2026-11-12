@@ -328,7 +328,8 @@ def _chain_lines(result: TransformResponse) -> tuple[list[str], list[str]]:
         entry = result.entries.get(b.rule_id)
         needs = ", ".join(f"{c.variable} {c.assumption}" for c in b.unmet_conditions)
         lines.append(
-            f"- not applied: {b.rule_id} matches ${b.matched_latex}$ but needs: {needs}"
+            f"- NOT APPLIED, conditions not provable from the declared assumptions: {b.rule_id} "
+            f"matches ${b.matched_latex}$ but needs: {needs}. Ask whether they hold; this is not a result"
             + (f"; statement=${entry.statement_latex}$" if entry else "")
         )
         if entry:
@@ -351,7 +352,12 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
     v = result.verification
     head = (
         f"status={result.status.value}; goal={args.goal}; input_as_read=${result.input_latex}$; "
-        f"result=${result.result_latex}$; "
+        + (
+            f"result=${result.result_latex}$; "
+            if result.status.value == "ok"
+            else "result=none (the input is unchanged: no rewrite was applied, so there is no "
+            "simplified form to report); "
+        )
         + (
             f"end to end: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
             f"symbolic_zero={v.symbolic_zero}; "

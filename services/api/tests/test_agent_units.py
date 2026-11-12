@@ -213,7 +213,8 @@ def test_simplify_tool_lists_the_identities_it_used_and_how_each_step_was_checke
 def test_simplify_tool_reports_a_blocked_identity_and_applies_nothing(ctx: ToolContext) -> None:
     out = execute("simplify", {"latex": r"\log x + \log y"}, ctx)
     assert out.status == "conditions_not_satisfied"
-    assert "not applied: log.product" in out.for_model
+    assert "NOT APPLIED" in out.for_model and "log.product" in out.for_model
+    assert "result=none" in out.for_model  # nothing to quote as a result
     assert "a positive" in out.for_model and "b positive" in out.for_model
     assert not [line for line in out.for_model.splitlines() if line.startswith("- step")]
     ok = execute(
