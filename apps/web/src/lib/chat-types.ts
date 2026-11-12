@@ -44,6 +44,34 @@ export interface LagrangianReport {
   duration_ms: number;
 }
 
+export interface InvariantReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  angles: string[];
+  degree: number;
+  power_bound: number;
+  harmonics: number;
+  unknowns: number;
+  ansatz: string;
+  known: string[];
+  found: {
+    name: string;
+    expression_latex: string;
+    verified: boolean;
+    verification: {
+      symbolic_zero: boolean;
+      numeric_points_checked: number;
+      numeric_points_agreed: number;
+      passed: boolean;
+    } | null;
+  }[];
+  notes: string[];
+  features: string[];
+  message: string;
+  duration_ms: number;
+}
+
 /** What the Lagrangian card sends to the numerical-solution endpoint (the engine's request model). */
 export interface MotionRequest {
   lagrangian: string;
@@ -263,6 +291,13 @@ export type Card =
         methods: EntrySummary[];
         request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "invariants";
+      title: string;
+      data: { report: InvariantReport };
     }
   | {
       id: string;

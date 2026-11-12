@@ -498,7 +498,7 @@
       "needs_model": false,
       "summary": "From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. Each constant is verified: its time derivative is zero on the equations of motion.",
       "limits": [
-        "Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as the Runge–Lenz vector are not searched for, and the result says so."
+        "Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search for more constants of motion looks for them in a declared family."
       ],
       "examples": [
         {
@@ -543,7 +543,7 @@
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
           ]
         },
         {
@@ -588,7 +588,7 @@
           ],
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
           ]
         },
         {
@@ -617,7 +617,159 @@
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
             "energy function: not conserved (L depends explicitly on time)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "invariants",
+      "title": "Search for hidden constants of motion",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Looks for constants of motion beyond cyclic coordinates, energy and rotations, such as the Runge–Lenz vector of the Kepler problem. It solves exactly for every combination of functions of the coordinates (powers, and cos and sin of coordinates you declare to be angles) times velocity monomials of a chosen degree whose time derivative vanishes on the equations of motion. Only constants that pass the same verification as the others are shown, and the known ones and their products are left out of the count.",
+      "limits": [
+        "It searches one declared family and says which. Finding nothing proves nothing outside that family.",
+        "Time-dependent Lagrangians, accelerations with square roots or other non-rational functions, and more than three coordinates are refused.",
+        "The family is capped (500 unknown coefficients); a bigger one is reported as a resource limit.",
+        "Naming a constant (for example as the Runge–Lenz vector) is a recognition the model may offer, not something the search proves."
+      ],
+      "examples": [
+        {
+          "id": "invariants-kepler-polar",
+          "title": "Kepler problem, with the angle declared",
+          "op": "invariants",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "r, theta"
+            },
+            {
+              "label": "Angles",
+              "text": "theta"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Constant of motion 1",
+              "latex": "C_{1} = - k \\cos{\\left(\\theta \\right)} + m r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Constant of motion 2",
+              "latex": "C_{2} = k \\sin{\\left(\\theta \\right)} - m r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+          ],
+          "notes": [
+            "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.",
+            "Already known and left out of the count: Momentum conjugate to theta; Energy function.",
+            "Nothing outside this family was searched; finding none proves nothing beyond it.",
+            "Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.",
+            "Both components of the Laplace–Runge–Lenz vector appear, up to a constant factor, without being looked up. The angular momentum and energy are known already and are not counted."
+          ]
+        },
+        {
+          "id": "invariants-oscillator",
+          "title": "Isotropic oscillator in the plane",
+          "op": "invariants",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) - \\frac12 k(x^2 + y^2)"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Constant of motion 1",
+              "latex": "C_{1} = k x y + m \\dot{x} \\dot{y}"
+            },
+            {
+              "label": "Constant of motion 2",
+              "latex": "C_{2} = k x^{2} + m \\dot{x}^{2}"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+          ],
+          "notes": [
+            "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.",
+            "Already known and left out of the count: Energy function; Rotation symmetry in the (x, y) plane.",
+            "Nothing outside this family was searched; finding none proves nothing beyond it.",
+            "Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.",
+            "The cross term and the energy of one direction, the components of the Fradkin tensor, beyond the energy and angular momentum."
+          ]
+        },
+        {
+          "id": "invariants-henon-heiles",
+          "title": "Hénon–Heiles, none in this family",
+          "op": "invariants",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12(\\dot{x}^2 + \\dot{y}^2) - \\frac12(x^2 + y^2) - x^2 y + \\frac13 y^3"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "text": "no new constant in the searched family"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.",
+            "Already known and left out of the count: Energy function.",
+            "Nothing outside this family was searched; finding none proves nothing beyond it.",
+            "Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.",
+            "Only the energy is known and nothing else is found. That says nothing about constants outside the searched family."
+          ]
+        },
+        {
+          "id": "invariants-time-dependent",
+          "title": "Explicit time dependence is refused",
+          "op": "invariants",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m\\dot{x}^2 - \\frac12 k t x^2"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The Lagrangian depends explicitly on time; the search covers autonomous systems only."
           ]
         }
       ]

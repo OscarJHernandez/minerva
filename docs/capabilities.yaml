@@ -16,6 +16,7 @@
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates
+#   invariants   input, coordinates, angles, degree, power_bound, harmonics
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
 # Inputs are LaTeX (tensor inputs use the text form S(a,b)*A(-a,-b)). Add a refusal example wherever a
@@ -191,8 +192,9 @@ capabilities:
       and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs.
       Each constant is verified: its time derivative is zero on the equations of motion.
     limits:
-      - Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as
-        the Runge–Lenz vector are not searched for, and the result says so.
+      - Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the
+        result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search
+        for more constants of motion looks for them in a declared family.
     examples:
       - id: lagrangian-kepler-polar
         title: Kepler problem in polar coordinates
@@ -208,6 +210,56 @@ capabilities:
         title: Explicit time dependence removes the energy
         op: lagrangian
         input: '\frac12 m\dot{x}^2 - \frac12 k x^2 t'
+        coordinates: [x]
+
+  - id: invariants
+    title: Search for hidden constants of motion
+    status: available
+    group: physics
+    where: [chat]
+    summary: >-
+      Looks for constants of motion beyond cyclic coordinates, energy and rotations, such as the
+      Runge–Lenz vector of the Kepler problem. It solves exactly for every combination of functions of the
+      coordinates (powers, and cos and sin of coordinates you declare to be angles) times velocity monomials of
+      a chosen degree whose time derivative vanishes on the equations of motion. Only constants that pass the
+      same verification as the others are shown, and the known ones and their products are left out of the count.
+    limits:
+      - It searches one declared family and says which. Finding nothing proves nothing outside that family.
+      - Time-dependent Lagrangians, accelerations with square roots or other non-rational functions, and more
+        than three coordinates are refused.
+      - The family is capped (500 unknown coefficients); a bigger one is reported as a resource limit.
+      - Naming a constant (for example as the Runge–Lenz vector) is a recognition the model may offer, not
+        something the search proves.
+    examples:
+      - id: invariants-kepler-polar
+        title: Kepler problem, with the angle declared
+        note: >-
+          Both components of the Laplace–Runge–Lenz vector appear, up to a constant factor, without being
+          looked up. The angular momentum and energy are known already and are not counted.
+        op: invariants
+        input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
+        coordinates: [r, theta]
+        angles: [theta]
+      - id: invariants-oscillator
+        title: Isotropic oscillator in the plane
+        note: >-
+          The cross term and the energy of one direction, the components of the Fradkin tensor, beyond the
+          energy and angular momentum.
+        op: invariants
+        input: '\frac12 m(\dot{x}^2 + \dot{y}^2) - \frac12 k(x^2 + y^2)'
+        coordinates: [x, y]
+      - id: invariants-henon-heiles
+        title: Hénon–Heiles, none in this family
+        note: >-
+          Only the energy is known and nothing else is found. That says nothing about constants outside the
+          searched family.
+        op: invariants
+        input: '\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3'
+        coordinates: [x, y]
+      - id: invariants-time-dependent
+        title: Explicit time dependence is refused
+        op: invariants
+        input: '\frac12 m\dot{x}^2 - \frac12 k t x^2'
         coordinates: [x]
 
   - id: tensors

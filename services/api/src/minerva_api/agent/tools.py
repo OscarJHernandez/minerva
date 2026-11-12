@@ -108,6 +108,35 @@ class LagrangianArgs(BaseModel):
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class InvariantArgs(BaseModel):
+    lagrangian: str = Field(
+        max_length=MAX_INPUT,
+        description=r"L(q, qdot) in LaTeX, using \dot{q} for velocities. The same Lagrangian as for analyze_lagrangian.",
+    )
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=3,
+        description="Names of the generalised coordinates (at most 3), e.g. ['r', 'theta']",
+    )
+    angles: list[str] = Field(
+        default_factory=list,
+        max_length=3,
+        description="The coordinates that are angles (periodic), e.g. ['theta']. Only those are searched "
+        "with cos and sin; every other coordinate with powers. Say so to the user if you chose them.",
+    )
+    degree: int = Field(
+        default=2, ge=1, le=2, description="Highest degree in the velocities that is searched"
+    )
+    power_bound: int = Field(
+        default=3, ge=0, le=4, description="Powers q^a with |a| at most this are searched"
+    )
+    harmonics: int = Field(
+        default=1, ge=1, le=2, description="Highest harmonic of an angle that is searched"
+    )
+    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
 class MotionArgs(MotionRequest):
     """Arguments of integrate_motion: the engine's own request model (also the JSON schema)."""
 
@@ -383,6 +412,44 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.search_invariants(
+        args.lagrangian,
+        args.coordinates,
+        args.angles,
+        args.degree,
+        args.power_bound,
+        args.harmonics,
+        args.time,
+        args.assumptions,
+    )
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="search_invariants",
+        type="invariants",
+        title="Search for more constants of motion",
+        data={"report": report.model_dump(mode="json")},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    if report.ansatz:
+        lines.append(f"searched: {report.ansatz}")
+    if report.known:
+        lines.append("already known and factored out: " + "; ".join(report.known))
+    for c in report.found:
+        lines.append(
+            f"new constant of motion (verified on the equations of motion): ${c.expression_latex}$"
+        )
+        known.append(c.expression_latex)
+    lines.extend(f"note: {n}" for n in report.notes)
+    if report.found:
+        lines.append(
+            "These are constants in the searched family only. Naming them (for example as the "
+            "Laplace-Runge-Lenz vector) is a recognition you may offer, not something this result proves."
+        )
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
 def _motion_summary(report: Any) -> list[str]:
     lines: list[str] = []
     values = ", ".join(f"{k}={v:g}" for k, v in report.parameters.items()) or "no parameters"
@@ -643,6 +710,17 @@ TOOLS: dict[str, Tool] = {
             "coordinates, energy, rotations). States which symmetries were not searched for.",
             LagrangianArgs,
             run_lagrangian,
+        ),
+        Tool(
+            "search_invariants",
+            "Look for constants of motion of a Lagrangian beyond cyclic coordinates, energy and rotations "
+            "(hidden symmetries such as the Laplace-Runge-Lenz vector): solves exactly for combinations "
+            "of functions of the coordinates times velocity monomials, and shows only those verified on "
+            "the equations of motion. Needs the coordinates and which of them are angles. Reports the "
+            "exact family searched; finding none proves nothing outside it. Not for time-dependent "
+            "Lagrangians or ones with square roots.",
+            InvariantArgs,
+            run_invariants,
         ),
         Tool(
             "integrate_motion",

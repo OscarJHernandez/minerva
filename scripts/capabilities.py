@@ -273,6 +273,45 @@ def run_lagrangian(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     )
 
 
+def run_invariants(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.search_invariants(
+        spec["input"],
+        spec["coordinates"],
+        spec.get("angles", []),
+        spec.get("degree", 2),
+        spec.get("power_bound", 3),
+        spec.get("harmonics", 1),
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        for c in r.found:
+            outputs.append({"label": c.name, "latex": c.expression_latex})
+            if c.verification:
+                v = c.verification
+                checks.append(
+                    "time derivative is zero on the equations of motion "
+                    f"({'symbolic zero' if v.symbolic_zero else 'numeric only'}; "
+                    f"{v.numeric_points_agreed} of {v.numeric_points_checked} points)"
+                )
+        if not r.found:
+            outputs.append({"label": "Result", "text": "no new constant in the searched family"})
+        notes.append(r.ansatz)
+        if r.known:
+            notes.append("Already known and left out of the count: " + "; ".join(r.known) + ".")
+        notes.extend(r.notes)
+    elif r.message:
+        notes.append(r.message)
+    inputs = [
+        {"label": "Lagrangian", "source": spec["input"]},
+        {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
+    ]
+    if spec.get("angles"):
+        inputs.append({"label": "Angles", "text": ", ".join(spec["angles"])})
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 def run_entry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     entry = kb.get(spec["entry"])
     if entry is None:
@@ -320,6 +359,7 @@ RUNNERS = {
     "tensor": run_tensor,
     "solve": run_solve,
     "lagrangian": run_lagrangian,
+    "invariants": run_invariants,
     "entry": run_entry,
     "read_formulas": run_read_formulas,
 }

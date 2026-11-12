@@ -135,6 +135,24 @@ def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- search for constants of motion ---------------------------------------------------
+def op_search_invariants(payload: dict[str, Any]) -> dict[str, Any]:
+    from .invariants import search_invariants
+
+    report = search_invariants(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        [str(a) for a in payload.get("angles", [])],
+        int(payload.get("degree", 2)),
+        int(payload.get("power_bound", 3)),
+        int(payload.get("harmonics", 1)),
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- dimensional analysis ------------------------------------------------------------------
 def op_dimensional_analysis(payload: dict[str, Any]) -> dict[str, Any]:
     from .pi_groups import ConstantCandidate, QuantitySpec, analyze_dimensions
@@ -457,6 +475,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "solve": op_solve,
     "differentiate": op_differentiate,
     "lagrangian": op_lagrangian,
+    "search_invariants": op_search_invariants,
     "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,
     "check_units": op_check_units,

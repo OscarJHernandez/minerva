@@ -112,6 +112,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a
   symbolic fallback or weaken `check_derivative` (its tests include a deliberately wrong candidate).
+- The search for hidden constants of motion (`invariants.py`, tool `search_invariants`) shows a constant only if it
+  is new (known constants and their products in the ansatz are factored out) and its time derivative on the
+  equations of motion is zero symbolically and at random points (`lagrangian.verify_constant`, the same check as for
+  Noether constants). It always states the exact family searched; an empty result proves nothing outside it and
+  nothing here says "integrable" or names a constant: a name such as Runge–Lenz is for the model to offer, not for the
+  result to assert. Time-dependent Lagrangians and non-rational accelerations are `unsupported`, an oversized
+  ansatz is `resource_limit`. Do not widen the ansatz silently or report an unverified candidate.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

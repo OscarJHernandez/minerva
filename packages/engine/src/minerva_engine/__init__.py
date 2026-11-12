@@ -8,6 +8,7 @@ from .differentiate import (
     DiffVariable,
 )
 from .errors import LimitError, MinervaMathError, ParseError
+from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
 from .models import (
@@ -53,6 +54,7 @@ __all__ = [
     "ExpressionInput",
     "FormulaReading",
     "IdentitiesResult",
+    "InvariantReport",
     "LagrangianReport",
     "LimitError",
     "Limits",
