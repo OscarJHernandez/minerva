@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import re
 import time
@@ -11,15 +13,17 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .agent.llm import LLMClient
+from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, run_agent
 from .agent.segments import normalize
 from .agent.tools import ToolContext
+from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .logging import get_logger
@@ -35,6 +39,22 @@ class StatusOut(BaseModel):
     enabled: bool
     mode: str
     model: str
+    images: bool = False  # can formulas be read from a picture ("Add image")
+
+
+class ImageIn(BaseModel):
+    image: str = Field(min_length=1)  # base64 of a PNG, JPEG or WebP
+
+
+class ExtractedFormula(BaseModel):
+    latex: str
+    status: str
+    read_as: str | None = None
+    message: str = ""
+
+
+class ImageFormulas(BaseModel):
+    formulas: list[ExtractedFormula]
 
 
 class ConversationOut(BaseModel):
@@ -66,6 +86,10 @@ def _llm(request: Request) -> LLMClient | None:
     return request.app.state.llm  # type: ignore[no-any-return]
 
 
+def _vision(request: Request) -> FormulaReader | None:
+    return request.app.state.vision  # type: ignore[no-any-return]
+
+
 def _owned(db: Session, conversation_id: uuid.UUID, user_id: uuid.UUID) -> Conversation:
     row = db.scalar(
         select(Conversation).where(
@@ -80,7 +104,92 @@ def _owned(db: Session, conversation_id: uuid.UUID, user_id: uuid.UUID) -> Conve
 @router.get("/status", response_model=StatusOut)
 def chat_status(request: Request, settings: SettingsDep) -> StatusOut:
     llm = _llm(request)
-    return StatusOut(enabled=llm is not None, mode=settings.llm_mode, model=llm.name if llm else "")
+    return StatusOut(
+        enabled=llm is not None,
+        mode=settings.llm_mode,
+        model=llm.name if llm else "",
+        images=llm is not None and _vision(request) is not None,
+    )
+
+
+def _image_kind(data: bytes) -> str | None:
+    """The real type from the first bytes; what the client declared is not trusted."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+@router.post("/formula-image", response_model=ImageFormulas)
+async def read_formula_image(
+    request: Request,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> ImageFormulas:
+    """Transcribe formulas from a picture and show how Minerva's parser reads each one.
+
+    Nothing is stored or logged: the picture lives in memory for this request only, and the reply is
+    a proposal the user confirms before it goes into a message.
+    """
+    reader = _vision(request)
+    if _llm(request) is None or reader is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Reading images is not set up.")
+    if not limiter.allow(f"image:{user.id}", settings.image_rate_per_minute):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many images; slow down.")
+    too_big = HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "The image is too large.")
+    limit = settings.image_max_bytes * 4 // 3 + 1024  # base64 inside a small JSON envelope
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > limit:
+        raise too_big
+    body = bytearray()
+    async for part in request.stream():  # stop reading as soon as the cap is passed
+        body += part
+        if len(body) > limit:
+            raise too_big
+    try:
+        data = base64.b64decode(ImageIn.model_validate_json(bytes(body)).image, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Unreadable image.") from exc
+    if len(data) > settings.image_max_bytes:
+        raise too_big
+    if _image_kind(data) is None:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Use a PNG, JPEG or WebP image."
+        )
+    started = time.monotonic()
+    outcome = "error"
+    try:
+        try:
+            raw = await reader.read(data)
+        except LLMError as exc:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, str(exc)) from exc
+        candidates = clean_candidates(raw, settings.max_input_chars)
+        readings = await run_in_threadpool(engine.read_formulas, candidates)
+        outcome = "ok"
+        return ImageFormulas(
+            formulas=[
+                ExtractedFormula(
+                    latex=latex,
+                    status=reading.status.value,
+                    read_as=reading.read_as,
+                    message=reading.message,
+                )
+                for latex, reading in zip(candidates, readings, strict=True)
+            ]
+        )
+    finally:
+        log.info(
+            "formula_image",
+            operation="read_image",
+            status=outcome,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            user_id=str(user.id),
+        )
 
 
 @router.get("/conversations", response_model=list[ConversationOut])

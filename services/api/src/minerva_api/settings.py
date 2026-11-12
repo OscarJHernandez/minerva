@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     llm_strip_thinking: bool = (
         False  # drop reasoning a model leaks into its reply (delays streaming)
     )
+    # Reading formulas from a picture ("Add image"): a vision-capable model on the same Ollama host
+    # (it may be the chat model if that accepts images). Empty: the feature is off.
+    llm_vision_model: str = ""
+    image_max_bytes: int = Field(default=4_000_000, ge=10_000, le=20_000_000)
+    image_rate_per_minute: int = 6
     agent_max_steps: int = Field(default=6, ge=1, le=12)
     agent_max_seconds: float = Field(default=180.0, gt=0, le=900)
     chat_rate_per_minute: int = 20

@@ -132,6 +132,14 @@ class IdentitiesResult(BaseModel):
     duration_ms: int = 0
 
 
+class FormulaReading(BaseModel):
+    """How Minerva's strict parser reads one transcribed formula. Nothing is simplified or evaluated."""
+
+    status: Status
+    message: str = ""
+    read_as: str | None = None  # the parsed sides re-rendered as LaTeX, joined by " = "
+
+
 class Limits(BaseModel):
     """Static (pre-parse) and dynamic (sandbox) resource limits."""
 

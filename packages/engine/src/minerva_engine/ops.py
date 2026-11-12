@@ -12,13 +12,14 @@ from typing import Any
 
 import sympy as sp
 
-from .claims import ClaimCheck, check_claim
+from .claims import ClaimCheck, check_claim, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
 from .features import expression_features
 from .latexparse import parse_latex
 from .models import (
     Applicability,
     ExpressionInput,
+    FormulaReading,
     IdentitiesResult,
     Limits,
     Rule,
@@ -146,6 +147,29 @@ def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
             results.append(
                 ClaimCheck(status="unparsed", detail="could not be checked").model_dump()
             )
+    return {"results": results}
+
+
+# --- formulas transcribed from an image ----------------------------------------------
+def op_read_formulas(payload: dict[str, Any]) -> dict[str, Any]:
+    """Parse each transcribed formula strictly and show how it was read. Never simplifies."""
+    limits = Limits(**payload["limits"])
+    results: list[dict[str, Any]] = []
+    for latex in payload["formulas"]:
+        text = str(latex)
+        try:
+            if len(text) > limits.max_input_chars:
+                raise LimitError("input is too long")
+            sides = split_equation(text) or [text]
+            parsed = [parse_latex(side, {}, limits) for side in sides]
+            read_as = " = ".join(sp.latex(p) for p in parsed)
+            reading = FormulaReading(status=Status.OK, read_as=read_as)
+        except MinervaMathError as exc:
+            status, message = _failure(exc)
+            reading = FormulaReading(status=status, message=message)
+        except Exception:
+            reading = FormulaReading(status=Status.PARSE_ERROR, message="could not be read")
+        results.append(reading.model_dump(mode="json"))
     return {"results": results}
 
 
@@ -394,6 +418,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "identities": op_identities,
     "features": op_features,
     "check_claims": op_check_claims,
+    "read_formulas": op_read_formulas,
     "solve": op_solve,
     "differentiate": op_differentiate,
     "lagrangian": op_lagrangian,

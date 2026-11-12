@@ -78,6 +78,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
 - Conversations are user data: private per account, never logged.
+- "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
+  (`MINERVA_LLM_VISION_MODEL`) proposes LaTeX, the user confirms it, and `Engine.read_formulas` reports how the
+  strict parser reads it. Uploaded images are never stored or logged; keep it that way.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
   copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.
   The data comes from `AssistantMessage.trace/debug` stored with the message. The server log gets counters and
