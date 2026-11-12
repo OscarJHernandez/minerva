@@ -316,7 +316,7 @@ capabilities:
           same parser as typed input, and nothing is simplified.
         op: read_formulas
         formulas:
-          - 'x^2 + 2x + 1 = (x+1)^2'
+          - "x^2 + 2x + 1 = (x+1)^2"
       - id: image-read-ambiguous
         title: A transcription with ambiguous notation is refused
         op: read_formulas
