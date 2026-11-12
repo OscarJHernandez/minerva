@@ -127,10 +127,37 @@ export type Block =
   | { kind: "text"; segments: Segment[]; card: null }
   | { kind: "card"; segments: Segment[]; card: Card };
 
+/** A tool call as the model made it, and what the model read back. Kept for debugging. */
+export interface TraceStep {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  for_model: string;
+  /** Absent on messages stored before debug data existed. */
+  duration_ms?: number | null;
+  status?: string | null;
+}
+
+export interface TurnDebug {
+  request_id: string;
+  api_version: string;
+  mode: string;
+  model: string;
+  prompt_sha: string;
+  max_steps: number;
+  max_seconds: number;
+  duration_ms: number;
+  llm_calls: { ms: number; text_chars: number; tool_calls: number }[];
+  claims: { value: string; status: string; detail: string }[];
+  error: string | null;
+}
+
 export interface AssistantContent {
   text: string;
   blocks: Block[];
   truncated: boolean;
+  trace?: TraceStep[];
+  debug?: TurnDebug | null;
 }
 
 export interface StoredMessage {
@@ -163,5 +190,5 @@ export type StreamEvent =
   | { event: "tool_call"; data: ToolRun }
   | { event: "card"; data: Card }
   | { event: "message"; data: AssistantContent }
-  | { event: "error"; data: { message: string } }
+  | { event: "error"; data: { message: string; debug?: TurnDebug; trace?: TraceStep[] } }
   | { event: "done"; data: Record<string, never> };

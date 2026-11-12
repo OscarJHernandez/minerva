@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 import uuid
 from collections.abc import AsyncIterator, Sequence
@@ -10,7 +12,15 @@ from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
 
-from .events import AssistantMessage, Block, Card, TraceStep
+from .events import (
+    AssistantMessage,
+    Block,
+    Card,
+    ClaimDebug,
+    LLMCallDebug,
+    TraceStep,
+    TurnDebug,
+)
 from .llm import LLMClient, LLMError
 from .prompts import SYSTEM_PROMPT
 from .segments import split_segments
@@ -23,6 +33,25 @@ class AgentLimits:
     max_seconds: float = 180.0
 
 
+@dataclass
+class TurnInfo:
+    """Facts about the request that the loop cannot know itself, copied into the debug record."""
+
+    request_id: str = ""
+    mode: str = ""
+    api_version: str = ""
+
+
+def prompt_sha() -> str:
+    """Short fingerprint of the system prompt and tool schemas: which version produced a turn."""
+    blob = SYSTEM_PROMPT + json.dumps(schemas(), sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:12]
+
+
+def _ms(since: float) -> int:
+    return int((time.monotonic() - since) * 1000)
+
+
 async def run_agent(
     llm: LLMClient,
     history: Sequence[dict[str, Any]],
@@ -30,6 +59,7 @@ async def run_agent(
     limits: AgentLimits | None = None,
     *,
     prior_known: set[str] | None = None,
+    info: TurnInfo | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}."""
     limits = limits or AgentLimits()
@@ -40,6 +70,16 @@ async def run_agent(
     trace: list[TraceStep] = []
     full_text: list[str] = []
     truncated = False
+    info = info or TurnInfo()
+    debug = TurnDebug(
+        request_id=info.request_id,
+        api_version=info.api_version,
+        mode=info.mode,
+        model=llm.name,
+        prompt_sha=prompt_sha(),
+        max_steps=limits.max_steps,
+        max_seconds=limits.max_seconds,
+    )
 
     try:
         for _ in range(limits.max_steps):
@@ -48,12 +88,16 @@ async def run_agent(
                 break
             step_text: list[str] = []
             calls = []
+            call_started = time.monotonic()
             async for chunk in llm.chat(messages, schemas()):
                 if chunk.text:
                     step_text.append(chunk.text)
                     yield {"event": "text", "data": {"delta": chunk.text}}
                 calls.extend(chunk.tool_calls)
             text = "".join(step_text)
+            debug.llm_calls.append(
+                LLMCallDebug(ms=_ms(call_started), text_chars=len(text), tool_calls=len(calls))
+            )
             if text:
                 full_text.append(text)
                 order.append(text)
@@ -74,6 +118,7 @@ async def run_agent(
                     "event": "tool_call",
                     "data": {"id": call_id, "name": call.name, "arguments": call.arguments},
                 }
+                tool_started = time.monotonic()
                 output = await run_in_threadpool(execute, call.name, call.arguments, ctx)
                 output.card.id = call_id
                 outputs.append(output)
@@ -84,6 +129,8 @@ async def run_agent(
                         name=call.name,
                         arguments=call.arguments,
                         for_model=output.for_model,
+                        duration_ms=_ms(tool_started),
+                        status=output.status,
                     )
                 )
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
@@ -93,7 +140,16 @@ async def run_agent(
         else:
             truncated = True
     except LLMError as exc:
-        yield {"event": "error", "data": {"message": str(exc)}}
+        debug.error = str(exc)
+        debug.duration_ms = _ms(started)
+        yield {
+            "event": "error",
+            "data": {
+                "message": str(exc),
+                "debug": debug.model_dump(mode="json"),
+                "trace": [t.model_dump(mode="json") for t in trace],
+            },
+        }
         return
 
     raw = "\n\n".join(full_text).strip()
@@ -108,12 +164,14 @@ async def run_agent(
         else Block(kind="text", segments=split_segments(item, known))
         for item in order
     ]
-    await check_model_claims(blocks, ctx, trace)
+    debug.claims = await check_model_claims(blocks, ctx, trace)
+    debug.duration_ms = _ms(started)
     final = AssistantMessage(
         text=raw,
         blocks=blocks,
         trace=trace,
         truncated=truncated,
+        debug=debug,
     )
     yield {"event": "message", "data": final.model_dump(mode="json")}
 
@@ -121,7 +179,9 @@ async def run_agent(
 MAX_CLAIMS = 12
 
 
-async def check_model_claims(blocks: list[Block], ctx: ToolContext, trace: list[TraceStep]) -> None:
+async def check_model_claims(
+    blocks: list[Block], ctx: ToolContext, trace: list[TraceStep]
+) -> list[ClaimDebug]:
     """Test the equations the model wrote itself; mark them checked, contradicted or unchecked.
 
     Assumptions the model declared in its own tool calls apply to its claims too (an equation about
@@ -135,7 +195,7 @@ async def check_model_claims(blocks: list[Block], ctx: ToolContext, trace: list[
         if s.type != "text" and s.status == "unchecked" and len(s.value) <= 500
     ][:MAX_CLAIMS]
     if not pending:
-        return
+        return []
     assumptions: dict[str, list[str]] = {}
     for step in trace:
         declared = step.arguments.get("assumptions")
@@ -146,7 +206,11 @@ async def check_model_claims(blocks: list[Block], ctx: ToolContext, trace: list[
     results = await run_in_threadpool(
         ctx.engine.check_claims, [s.value for s in pending], assumptions
     )
+    report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):
+        report.append(
+            ClaimDebug(value=segment.value, status=str(result.status), detail=result.detail)
+        )
         if result.status == "holds":
             segment.status = "checked"
         elif result.status == "conditional":
@@ -154,3 +218,4 @@ async def check_model_claims(blocks: list[Block], ctx: ToolContext, trace: list[
             segment.note = result.detail
         elif result.status == "fails":
             segment.status = "contradicted"
+    return report
