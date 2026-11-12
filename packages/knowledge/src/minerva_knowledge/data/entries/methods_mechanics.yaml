@@ -63,3 +63,14 @@
   statement_latex: 'n\ \text{degrees of freedom},\ k\ \text{independent conserved quantities}\;\Rightarrow\;\text{phase-space dimension } 2n-k\text{ (before eliminating time)}'
   notes: "With n independent integrals in involution the system is integrable by quadratures (Liouville). One degree of freedom with conserved energy reduces to a single quadrature."
   keywords: [reduction, quadrature, integrable, liouville, conserved quantities, kepler]
+- id: method.mech.small_oscillations
+  title: Linearisation and normal modes about an equilibrium
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:time-independent"]
+  validity: "An equilibrium q0 (all accelerations vanish at q0, zero velocity) of a time-independent L with an invertible mass matrix. The expansion is local."
+  statement_latex: '\ddot{u}=A\,u+B\,\dot{u}+O(|u,\dot u|^2),\qquad A=\frac{\partial \ddot q}{\partial q}\Big|_{q_0},\ B=\frac{\partial \ddot q}{\partial \dot q}\Big|_{q_0};\qquad B=0:\ \det(A+\omega^2 I)=0'
+  notes: "Minerva expands the accelerations in the deviations from the equilibrium and checks every expansion against a contour-integral estimate of its coefficients and the order of its remainder. For up to two coordinates without velocity-linear terms it gives the normal-mode frequencies, each checked by substitution. A negative ω² describes the linearised equations only; it is not a statement about the full motion."
+  keywords: [small oscillations, linearisation, normal modes, equilibrium, perturbation, approximation, expansion, frequency]

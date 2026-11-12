@@ -7,6 +7,41 @@ import type {
   Status,
 } from "./types";
 
+export interface ExpansionReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  equilibrium: { name: string; latex: string; name_latex: string }[];
+  order: number;
+  equilibrium_verification: {
+    symbolic_zero: boolean;
+    numeric_points_checked: number;
+    numeric_points_agreed: number;
+    passed: boolean;
+    note: string;
+  } | null;
+  equations: {
+    coordinate: string;
+    full_latex: string;
+    terms: { degree: number; latex: string }[];
+    verification: SeriesResult["verification"];
+  }[];
+  stiffness_latex: string | null;
+  velocity_latex: string | null;
+  characteristic_latex: string | null;
+  modes: {
+    omega_squared_latex: string;
+    sign: "positive" | "negative" | "zero" | "unknown";
+    omega_latex: string | null;
+    multiplicity: number;
+    eigenvector_latex: string | null;
+    verified: boolean;
+  }[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
 export interface LagrangianReport {
   status: Status;
   lagrangian_latex: string | null;
@@ -263,6 +298,16 @@ export type Card =
       data: {
         report: LagrangianReport;
         methods: EntrySummary[];
+        request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
+      };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "expansion";
+      title: string;
+      data: {
+        report: ExpansionReport;
         request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
       };
     }

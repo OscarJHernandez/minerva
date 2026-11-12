@@ -88,6 +88,22 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("integrate_motion", args)])
+        elif ("equilibrium" in lower or "small oscillation" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 3
+            at = re.search(r"at (\w+)\s*=\s*([\w/*]+)", user)
+            args2: dict[str, Any] = {
+                "lagrangian": latex,
+                "coordinates": names or ["x"],
+                "order": order,
+            }
+            if at:
+                args2["equilibrium"] = {at.group(1): at.group(2)}
+            async for c in self._say(
+                "I will expand the equations of motion about the equilibrium. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("expand_motion", args2)])
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -196,6 +212,19 @@ class ScriptedLLM:
                 text = (
                     f"I could not differentiate that ({status}). The card says why; for example "
                     "|x| needs x declared real."
+                )
+        elif tool == "expand_motion":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the expansion about the equilibrium. Each expansion was checked "
+                    "independently of SymPy's series. It is local: it says nothing about large motion."
+                )
+            else:
+                text = (
+                    f"I could not expand that ({status}). The card says why; the point must be an "
+                    "equilibrium, and L must not depend explicitly on time."
                 )
         elif tool == "series":
             found = re.search(r"status=(\w+)", content)

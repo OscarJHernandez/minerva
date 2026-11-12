@@ -127,6 +127,22 @@ class LagrangianArgs(BaseModel):
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class ExpandMotionArgs(LagrangianArgs):
+    equilibrium: dict[str, str] = Field(
+        default_factory=dict,
+        description="Equilibrium value of each coordinate as text (numbers, pi, or the Lagrangian's "
+        'parameters), e.g. {"theta": "pi"} or {"x": "m*g/k"}. Coordinates left out are 0. Only an '
+        "equilibrium is accepted; Minerva checks that it is one.",
+    )
+    order: int = Field(
+        default=3,
+        ge=1,
+        le=12,
+        description="Highest degree in the deviations kept in the accelerations, 1 to 12. "
+        "1 gives the linearised equations.",
+    )
+
+
 class MotionArgs(MotionRequest):
     """Arguments of integrate_motion: the engine's own request model (also the JSON schema)."""
 
@@ -443,6 +459,75 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.expand_motion(
+        args.lagrangian,
+        args.coordinates,
+        args.time,
+        args.assumptions,
+        args.equilibrium,
+        args.order,
+    )
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="expand_motion",
+        type="expansion",
+        title="Expansion about an equilibrium",
+        data={
+            "report": report.model_dump(mode="json"),
+            "request": {
+                "lagrangian": args.lagrangian,
+                "coordinates": args.coordinates,
+                "time": args.time,
+                "assumptions": args.assumptions,
+            },
+        },
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    if report.equilibrium:
+        lines.append(
+            "equilibrium: " + ", ".join(f"{e.name} = ${e.latex}$" for e in report.equilibrium)
+        )
+    for e in report.equations:
+        ok = e.verification is not None and e.verification.passed
+        lines.append(
+            f"expansion ({e.coordinate}, {'verified' if ok else 'NOT verified'}): ${e.full_latex}$"
+        )
+        known.append(e.full_latex)
+        known.extend(t.latex for t in e.terms)
+    if report.stiffness_latex:
+        lines.append(f"linear part, A (uddot = A u + B v): ${report.stiffness_latex}$")
+        known.append(report.stiffness_latex)
+    if report.velocity_latex:
+        lines.append(f"velocity terms, B: ${report.velocity_latex}$")
+        known.append(report.velocity_latex)
+    if report.characteristic_latex:
+        lines.append(f"characteristic polynomial: ${report.characteristic_latex}$")
+        known.append(report.characteristic_latex)
+    for m in report.modes:
+        claim = {
+            "positive": "omega^2 provably positive",
+            "negative": "omega^2 provably negative (linearised equations only)",
+            "zero": "omega^2 is zero",
+            "unknown": "sign not decided by the declared assumptions",
+        }[m.sign]
+        lines.append(
+            f"normal mode (verified={m.verified}; {claim}): ${m.omega_squared_latex}$"
+            + (f"; ${m.omega_latex}$" if m.omega_latex else "")
+            + (f"; eigenvector ${m.eigenvector_latex}$" if m.eigenvector_latex else "")
+        )
+        known.append(m.omega_squared_latex)
+        known.extend(x for x in (m.omega_latex, m.eigenvector_latex) if x)
+    lines.extend(f"note: {n}" for n in report.notes)
+    if report.status.value == "ok":
+        lines.append(
+            "The expansion is local: it says nothing about motion far from the equilibrium. "
+            "Do not state stability unless a mode's sign is marked provable."
+        )
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
 def _motion_summary(report: Any) -> list[str]:
     lines: list[str] = []
     values = ", ".join(f"{k}={v:g}" for k, v in report.parameters.items()) or "no parameters"
@@ -713,6 +798,16 @@ TOOLS: dict[str, Tool] = {
             "coordinates, energy, rotations). States which symmetries were not searched for.",
             LagrangianArgs,
             run_lagrangian,
+        ),
+        Tool(
+            "expand_motion",
+            "Expand the equations of motion of a Lagrangian about an equilibrium the user gives "
+            "(default: every coordinate 0): the accelerations as a series in the deviations, up to a chosen "
+            "degree (1 = linearised), the linear matrix, and for up to two coordinates without damping the "
+            "normal-mode frequencies. Every expansion is verified independently of SymPy; a point that is "
+            "not an equilibrium is refused. Use this to approximate, not to solve; the result is local.",
+            ExpandMotionArgs,
+            run_expand_motion,
         ),
         Tool(
             "integrate_motion",

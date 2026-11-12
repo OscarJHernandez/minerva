@@ -7,6 +7,7 @@ from typing import Any
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .expansion import ExpansionReport
 from .lagrangian import LagrangianReport
 from .models import (
     ExpressionInput,
@@ -194,6 +195,32 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return LagrangianReport(status=status, message=message, duration_ms=ms)
         report = LagrangianReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def expand_motion(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+        equilibrium: dict[str, str] | None = None,
+        order: int = 3,
+    ) -> ExpansionReport:
+        """Expand the accelerations about an equilibrium and give the linear modes (sandboxed)."""
+        payload = {
+            "lagrangian": lagrangian,
+            "coordinates": coordinates,
+            "time": time,
+            "assumptions": assumptions or {},
+            "equilibrium": equilibrium or {},
+            "order": order,
+        }
+        outcome, ms = self._run("expand_motion", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return ExpansionReport(status=status, message=message, duration_ms=ms)
+        report = ExpansionReport(**outcome.value)
         report.duration_ms = ms
         return report
 

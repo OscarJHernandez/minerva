@@ -118,6 +118,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   remainder. Poles, branch points, logarithms and `|x|` are `unsupported`; there are no Laurent, Puiseux or
   asymptotic fallbacks. The error table is a measurement, never a bound. Do not loosen `check_series` (its
   tests include wrong candidates that differ by 1e-9).
+- Expansion about an equilibrium (`expansion.py`, tool `expand_motion`) shows a formula only if the EL equations
+  and the solved accelerations were confirmed, the point was shown to be an equilibrium, and every expansion
+  passed `check_series`. A point that is not an equilibrium is `unsupported`, not expanded. The sign of ω² is
+  stated only when the declared assumptions decide it, a negative ω² is described as a fact about the
+  linearised equations, and nothing here says "stable" or "unstable" about the full motion. Mode formulas
+  exist only for at most two coordinates and no velocity-linear terms; otherwise the characteristic polynomial.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

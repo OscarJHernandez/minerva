@@ -22,7 +22,8 @@ Ordering favours correctness infrastructure before breadth.
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
    Derivatives are done (`differentiate`, any order up to 10, mixed partials, every step checked numerically).
    Taylor series are done (`series`, order up to 12, coefficients and remainder order checked independently).
-   Next in the same line: equations of motion expanded about an equilibrium, then perturbative solutions
+   Equations of motion about an equilibrium are done (`expand_motion`: expansion to degree 12, linearisation,
+   normal modes for up to two coordinates). Next in the same line: perturbative solutions
    (Poincaré–Lindstedt) checked against the verified numerical integrator.
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).

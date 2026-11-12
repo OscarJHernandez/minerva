@@ -207,6 +207,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "tensor_canonicalize",
         "solve_polynomial",
         "analyze_lagrangian",
+        "expand_motion",
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
@@ -414,6 +415,75 @@ def test_differentiate_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) 
         ctx,
     )
     assert real.card.data["result_text"] == "sign(x)"
+
+
+PENDULUM_LATEX = r"\frac12 m l^2 \dot{\theta}^2 + m g l \cos\theta"
+POSITIVE_MGL = {"m": ["positive"], "g": ["positive"], "l": ["positive"]}
+
+
+def test_expand_motion_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute(
+        "expand_motion",
+        {
+            "lagrangian": PENDULUM_LATEX,
+            "coordinates": ["theta"],
+            "assumptions": POSITIVE_MGL,
+            "order": 3,
+        },
+        ctx,
+    )
+    assert out.card.type == "expansion"
+    report = out.card.data["report"]
+    assert report["status"] == "ok"
+    assert report["equations"][0]["verification"]["passed"] is True
+    assert "expansion (theta, verified)" in out.for_model
+    assert "omega^2 provably positive" in out.for_model
+    assert "local" in out.for_model  # the model is told the result is local
+    assert report["equations"][0]["full_latex"] in out.known_latex
+    assert out.card.data["request"]["coordinates"] == ["theta"]
+
+
+def test_expand_motion_tool_refuses_a_non_equilibrium_and_claims_no_stability(
+    ctx: ToolContext,
+) -> None:
+    refused = execute(
+        "expand_motion",
+        {
+            "lagrangian": PENDULUM_LATEX,
+            "coordinates": ["theta"],
+            "assumptions": POSITIVE_MGL,
+            "equilibrium": {"theta": "1"},
+        },
+        ctx,
+    )
+    assert refused.card.data["report"]["status"] == "unsupported"
+    assert "expansion (" not in refused.for_model
+    top = execute(
+        "expand_motion",
+        {
+            "lagrangian": PENDULUM_LATEX,
+            "coordinates": ["theta"],
+            "assumptions": POSITIVE_MGL,
+            "equilibrium": {"theta": "pi"},
+        },
+        ctx,
+    )
+    assert "provably negative (linearised equations only)" in top.for_model
+    assert "omega = " not in top.for_model  # no frequency for a negative omega^2
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"coordinates": ["x"]},
+        {"lagrangian": "x", "coordinates": []},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 0},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 13},
+        {"lagrangian": "x" * 3000, "coordinates": ["x"]},
+    ],
+)
+def test_expand_motion_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    assert execute("expand_motion", arguments, ctx).card.type == "error"
 
 
 def test_series_tool_returns_a_verified_card(ctx: ToolContext) -> None:

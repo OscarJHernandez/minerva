@@ -96,6 +96,36 @@ def test_series_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]
     assert card["data"]["order"] == 3
 
 
+def test_expansion_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Expand about the equilibrium to order 3: $\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "expansion"
+    report = card["data"]["report"]
+    assert report["status"] == "ok" and report["order"] == 3
+    assert report["equations"][0]["verification"]["passed"] is True
+
+
+def test_expansion_turn_about_a_non_equilibrium_is_refused(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Expand about the equilibrium at x = 1: $\frac12 \dot{x}^2 - \frac12 x^2$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["report"]["status"] == "unsupported"
+    assert card["data"]["report"]["equations"] == []
+
+
 def test_series_turn_about_a_pole_shows_no_formula(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, r"Taylor series of $\frac{1}{x}$ about 0")

@@ -149,6 +149,22 @@ def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- expansion about an equilibrium -------------------------------------------------------
+def op_expand_motion(payload: dict[str, Any]) -> dict[str, Any]:
+    from .expansion import expand_motion
+
+    report = expand_motion(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        {str(k): str(v) for k, v in payload.get("equilibrium", {}).items()},
+        int(payload["order"]),
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- dimensional analysis ------------------------------------------------------------------
 def op_dimensional_analysis(payload: dict[str, Any]) -> dict[str, Any]:
     from .pi_groups import ConstantCandidate, QuantitySpec, analyze_dimensions
@@ -472,6 +488,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "differentiate": op_differentiate,
     "series": op_series,
     "lagrangian": op_lagrangian,
+    "expand_motion": op_expand_motion,
     "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,
     "check_units": op_check_units,
