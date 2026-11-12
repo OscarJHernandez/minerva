@@ -132,6 +132,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   comparison with `integrate_motion` needs numbers only the user may choose (the model must ask), is a
   measurement on that span (never "valid for all times"), and is omitted when the numerical run fails its own
   checks. Damping, driving, velocity-dependent accelerations and several coordinates are `unsupported`.
+- Quadratic integrals (`quadratic_integrals.py`, part of `analyze_lagrangian`, not of `integrate_motion`) are a
+  bounded search: L = (m/2)|q̇|² − V(q) in Cartesian coordinates (at most three), K a Killing tensor of degree ≤ 2
+  in the positions, V a sum of terms homogeneous in the coordinates built from powers and roots. Candidates come
+  from a numerical null space and are made exact by rationalising; the energy and the products of linear integrals
+  are removed. A candidate is reported only if `verify_quantity` passes (d/dt along the equations of motion, symbolic
+  and numeric); anything not rationalisable, integrable or verified is dropped with a note. Never claim there are
+  no further integrals: the report states the bounds. Do not add `sympy.integrate` here: it stalls on roots and
+  cannot be interrupted (the potential U is built by Euler's formula or the degree-zero ansatz).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

@@ -146,8 +146,9 @@ export default function Home() {
             </div>
             <p className="mt-5 max-w-2xl text-sm text-muted">
               Both conserved quantities are verified: their time derivative is zero on the equations
-              of motion, checked symbolically and numerically. Hidden symmetries, such as the
-              Runge–Lenz vector, are not searched for, and the result says so.
+              of motion, checked symbolically and numerically. In Cartesian coordinates Minerva also
+              finds integrals quadratic in the velocities, such as the Runge–Lenz vector; in polar
+              coordinates, as here, it does not search for them, and the result says so.
             </p>
           </figure>
         </div>

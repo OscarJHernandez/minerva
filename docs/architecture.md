@@ -61,7 +61,13 @@ one most likely to be wrong.
     nested numerical differentiation of the lambdified L along random cubic paths (`verify.euler_lagrange_check`,
     mpmath, no SymPy differentiation), and an unconfirmed equation makes the whole report `not_verified`.
     `find_conserved` finds cyclic coordinates, energy and rotations of coordinate pairs and verifies each on
-    the equations of motion.
+    the equations of motion. With `quadratic_deadline` (the analyser only) it also runs `quadratic_integrals`: for
+    L = (m/2)|q̇|² − V(q) in at most three Cartesian coordinates, integrals m K_ij(q) q̇_i q̇_j + U(q) with K a Killing
+    tensor of flat space of degree ≤ 2 (exact linear algebra), the closed-form condition d_j U = 2 K_ij d_i V solved by
+    a numerical null space at random points and parameters that is rationalised, the energy and the products of linear
+    integrals removed, U built by Euler's formula on homogeneous pieces (or, in the degenerate degree −1 class that
+    contains the Runge–Lenz vector, as a rationalised combination of monomial × potential term), and every candidate
+    verified on the equations of motion. Bounded; "none found" proves nothing.
   - `expansion.py` (`expand_motion`): the accelerations from `derive`, expanded in the deviations from a
     user-given equilibrium (default 0; may use the parameters of L) by repeated differentiation in a scaling
     parameter, to degree 1-12. Shown only if the EL equations were re-confirmed (`check_equations`) and the

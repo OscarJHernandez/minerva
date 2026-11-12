@@ -42,7 +42,12 @@ def test_kepler_in_polar_coordinates_finds_angular_momentum_and_energy() -> None
 
 def test_kepler_in_cartesian_coordinates_finds_angular_momentum_by_rotation() -> None:
     r = analyze(r"\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}", ["x", "y"])
-    assert sorted(kinds(r)) == ["energy", "rotation"]
+    assert sorted(kinds(r)) == [
+        "energy",
+        "quadratic",
+        "quadratic",
+        "rotation",
+    ]  # the Runge-Lenz vector
     rotation = next(c for c in r.conserved if c.kind == "rotation")
     assert rotation.expression_latex == r"Q = m \left(x \dot{y} - \dot{x} y\right)"
     assert rotation.verification and rotation.verification.symbolic_zero

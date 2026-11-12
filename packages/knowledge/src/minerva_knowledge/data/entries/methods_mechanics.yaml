@@ -39,7 +39,7 @@
   applies_to: ["lagrangian:rotation", "lagrangian:cyclic", "lagrangian:time-independent", "lagrangian:no-symmetry-found"]
   validity: "A continuous transformation q_i → q_i + ε ξ_i(q, t) with δL = dF/dt."
   statement_latex: '\delta L=\frac{dF}{dt}\;\Longrightarrow\;Q=\sum_i p_i\,\xi_i-F\ \text{is conserved}'
-  notes: "Minerva searches cyclic coordinates, time translation and rotations of coordinate pairs (F = 0). Symmetries needing F ≠ 0 (such as Galilean boosts) and hidden symmetries (such as the Runge–Lenz vector) are not searched for."
+  notes: "Minerva searches cyclic coordinates, time translation and rotations of coordinate pairs (F = 0), and, for L = (m/2)|q̇|² − V(q) in Cartesian coordinates, integrals quadratic in the velocities (which include the Runge–Lenz vector of the Kepler problem). Symmetries needing F ≠ 0 (such as Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms are not searched for."
   keywords: [noether, symmetry, conservation law, angular momentum, momentum]
 - id: method.mech.legendre_hamiltonian
   title: Legendre transform to the Hamiltonian
@@ -85,3 +85,14 @@
   statement_latex: '\ddot w+\omega_0^2 w=\sum_{j\ge1}\varepsilon^j G_j(w),\quad \tau=\omega t,\ \omega=\omega_0+\varepsilon\omega_1+\cdots,\quad w=w_0+\varepsilon w_1+\cdots;\ \text{choose }\omega_k\text{ so that the }\cos\tau\text{ term of each order vanishes}'
   notes: "Minerva solves each order exactly on cosine polynomials, then puts the truncated solution into the unexpanded equation of motion and checks that its residual falls at order ε^(N+1). The optional comparison with the numerical solution is a measurement on the chosen span, not a bound. Damped or driven systems need multiple scales or averaging, which are not implemented."
   keywords: [poincare lindstedt, perturbation theory, duffing, anharmonic oscillator, pendulum period, frequency shift, secular term, strained time, approximation]
+- id: method.mech.runge_lenz
+  title: Runge–Lenz vector of the Kepler problem
+  kind: theorem
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:quadratic-integral"]
+  validity: "A potential V = -k/r in three dimensions (or two, with the plane component) and no other forces. Conserved for attractive and repulsive k alike."
+  statement_latex: '\mathbf A=m\,\mathbf v\times(\mathbf r\times\mathbf v)-k\,\hat{\mathbf r},\qquad \frac{d\mathbf A}{dt}=0'
+  notes: "An integral quadratic in the velocities that does not come from a symmetry of the coordinates; with the energy and the angular momentum it makes the bound orbits closed. Minerva finds integrals of this form for L = (m/2)|q̇|² − V(q) in Cartesian coordinates and verifies each on the equations of motion; the name Runge–Lenz is not assigned by the program."
+  keywords: [runge lenz, laplace runge lenz, kepler, hidden symmetry, conserved vector, eccentricity vector, closed orbits]

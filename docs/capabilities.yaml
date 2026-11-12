@@ -211,10 +211,15 @@ capabilities:
     summary: >-
       From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations,
       and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs.
-      Each constant is verified: its time derivative is zero on the equations of motion.
+      For a Lagrangian of the form (m/2)|q̇|² − V(q) in Cartesian coordinates it also searches for integrals
+      quadratic in the velocities, which include the Runge–Lenz vector of the Kepler problem. Each constant is
+      verified: its time derivative is zero on the equations of motion.
     limits:
-      - Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as
-        the Runge–Lenz vector are not searched for, and the result says so.
+      - The search for quadratic integrals needs Cartesian coordinates (at most three), no explicit time, and a
+        potential built from powers and roots of the coordinates. The same Kepler problem in polar coordinates is
+        not searched for its Runge–Lenz vector, and the result says so.
+      - Symmetries that hold only up to a total time derivative (Galilean boosts) and integrals of higher degree
+        in the velocities are not searched for. "None found" is not a proof that none exists.
     examples:
       - id: lagrangian-kepler-polar
         title: Kepler problem in polar coordinates
@@ -222,7 +227,7 @@ capabilities:
         input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
         coordinates: [r, theta]
       - id: lagrangian-kepler-cartesian
-        title: The same problem in Cartesian coordinates
+        title: The same problem in Cartesian coordinates, where the Runge–Lenz vector is found
         op: lagrangian
         input: '\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}'
         coordinates: [x, y]

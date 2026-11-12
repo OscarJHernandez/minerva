@@ -103,7 +103,7 @@ export interface LagrangianReport {
   accelerations: { coordinate: string; latex: string }[];
   conserved: {
     name: string;
-    kind: "cyclic" | "energy" | "rotation";
+    kind: "cyclic" | "energy" | "rotation" | "quadratic";
     expression_latex: string;
     reason: string;
     verified: boolean;

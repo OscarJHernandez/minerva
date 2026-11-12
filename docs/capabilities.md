@@ -232,11 +232,12 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 
 *Available in:* chat.
 
-From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. Each constant is verified: its time derivative is zero on the equations of motion.
+From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. For a Lagrangian of the form (m/2)|q̇|² − V(q) in Cartesian coordinates it also searches for integrals quadratic in the velocities, which include the Runge–Lenz vector of the Kepler problem. Each constant is verified: its time derivative is zero on the equations of motion.
 
 **Limits**
 
-- Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as the Runge–Lenz vector are not searched for, and the result says so.
+- The search for quadratic integrals needs Cartesian coordinates (at most three), no explicit time, and a potential built from powers and roots of the coordinates. The same Kepler problem in polar coordinates is not searched for its Runge–Lenz vector, and the result says so.
+- Symmetries that hold only up to a total time derivative (Galilean boosts) and integrals of higher degree in the velocities are not searched for. "None found" is not a proof that none exists.
 
 ### Kepler problem in polar coordinates
 
@@ -250,9 +251,10 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for.
+- integrals quadratic in the velocities: not searched: it needs L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, and these coordinates are not of that form (so, for example, a Kepler problem in polar coordinates is not searched for its Runge-Lenz vector).
+- Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not a proof that none exists.
 
-### The same problem in Cartesian coordinates
+### The same problem in Cartesian coordinates, where the Runge–Lenz vector is found
 
 - **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}`
 - **Coordinates:** x, y
@@ -261,10 +263,15 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (y):** $\frac{k y}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{y} = 0$
 - **Conserved: energy:** $h = - \frac{k}{\sqrt{x^{2} + y^{2}}} + \frac{m \dot{x}^{2}}{2} + \frac{m \dot{y}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
 - **Conserved: rotation:** $Q = m \left(x \dot{y} - \dot{x} y\right)$ — L is unchanged by rotating (x, y) as Cartesian coordinates, so by Noether's theorem Q = Σ p ξ is conserved
+- **Conserved: quadratic:** $I_{1} = \frac{2 k y}{\sqrt{x^{2} + y^{2}}} + 2 m x \dot{x} \dot{y} - 2 m \dot{x}^{2} y$ — quadratic in the velocities, I = m K_ij(q) qdot_i qdot_j + U(q) with K a Killing tensor of flat space; independent of the energy and of products of the linear integrals; verified by d/dt = 0 on the equations of motion
+- **Conserved: quadratic:** $I_{2} = - \frac{k x}{\sqrt{x^{2} + y^{2}}} + m x \dot{y}^{2} - m \dot{x} y \dot{y}$ — quadratic in the velocities, I = m K_ij(q) qdot_i qdot_j + U(q) with K a Killing tensor of flat space; independent of the energy and of products of the linear integrals; verified by d/dt = 0 on the equations of motion
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
 - **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** quadratic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** quadratic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
 - cyclic coordinates: none (every coordinate appears in L)
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for.
+- 2 quadratic integrals found beyond the energy and the products of the linear integrals. The search is bounded: Cartesian coordinates, quadratic in the velocities, K of degree <= 2 in the positions, no explicit time. Other integrals may exist.
+- Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not a proof that none exists.
 
 ### Explicit time dependence removes the energy
 
@@ -274,7 +281,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (x):** $k t x + m \ddot{x} = 0$
 - cyclic coordinates: none (every coordinate appears in L)
 - energy function: not conserved (L depends explicitly on time)
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for.
+- Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not a proof that none exists.
 
 ## Tensor canonicalization
 
