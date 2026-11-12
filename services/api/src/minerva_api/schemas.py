@@ -34,6 +34,13 @@ class DifferentiateRequest(ExpressionInput):
     save: bool = True
 
 
+class SeriesRequest(ExpressionInput):
+    variable: str = Field(min_length=1, max_length=32)
+    point: str = Field(default="0", min_length=1, max_length=64)
+    order: int = Field(default=6, ge=1, le=12)
+    save: bool = True
+
+
 class HistoryItem(BaseModel):
     id: uuid.UUID
     operation: str

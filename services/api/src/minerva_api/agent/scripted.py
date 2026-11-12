@@ -114,6 +114,19 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif ("series" in lower or "taylor" in lower or "expand" in lower) and latex:
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 4
+            about = m.group(1) if (m := re.search(r"about (-?\d+(?:/\d+)?)", lower)) else "0"
+            async for c in self._say("I will expand it and verify the coefficients. "):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "series",
+                        {"latex": latex, "variable": "x", "point": about, "order": order},
+                    )
+                ]
+            )
         elif "solve" in lower and latex:
             async for c in self._say("I will solve the equation and check the roots. "):
                 yield c
@@ -183,6 +196,20 @@ class ScriptedLLM:
                 text = (
                     f"I could not differentiate that ({status}). The card says why; for example "
                     "|x| needs x declared real."
+                )
+        elif tool == "series":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the Taylor polynomial. Its coefficients were re-derived with an "
+                    "independent contour-integral estimate and the remainder order was confirmed. "
+                    "The measured errors are measurements, not guarantees."
+                )
+            else:
+                text = (
+                    f"I could not give a series ({status}). The card says why; a pole or branch point "
+                    "at the expansion point has no Taylor series."
                 )
         elif tool == "find_identities":
             applicable = [ln for ln in content.splitlines() if ": applicable" in ln]

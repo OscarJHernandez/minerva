@@ -35,6 +35,7 @@ from .pi_groups import (
     QuantitySpec,
     UnitsCheckReport,
 )
+from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
 from .textparse import parse_text
@@ -64,6 +65,9 @@ __all__ = [
     "Rule",
     "RuleApplication",
     "RuleCondition",
+    "SeriesResult",
+    "SeriesTerm",
+    "SeriesVerification",
     "SimplifyResult",
     "SolveReport",
     "Status",

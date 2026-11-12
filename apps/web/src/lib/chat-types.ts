@@ -1,5 +1,6 @@
 import type {
   DifferentiateResult,
+  SeriesResult,
   EntrySummary,
   IdentitiesResult,
   SimplifyResult,
@@ -224,6 +225,7 @@ export interface Segment {
 export type Card =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
+  | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {
       id: string;

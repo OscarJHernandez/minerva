@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from minerva_engine import (
     DifferentiateResult,
     ExpressionInput,
+    SeriesResult,
     SimplifyResult,
     TensorInput,
     TensorResult,
@@ -18,7 +19,7 @@ from minerva_knowledge.identities import FindIdentitiesResponse, find_identities
 from .db import Calculation
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .logging import get_logger
-from .schemas import DifferentiateRequest, IdentitiesRequest, SimplifyRequest
+from .schemas import DifferentiateRequest, IdentitiesRequest, SeriesRequest, SimplifyRequest
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -29,6 +30,10 @@ class SimplifyResponse(SimplifyResult):
 
 
 class DifferentiateResponse(DifferentiateResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class SeriesResponse(SeriesResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -117,6 +122,34 @@ def differentiate(
         out.calculation_id = _save(
             db, user, "differentiate", expression, result.status.value, saved
         )
+    return out
+
+
+@router.post("/series", response_model=SeriesResponse)
+def series(
+    body: SeriesRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> SeriesResponse:
+    _guard(user, limiter, settings, len(body.input))
+    expression = ExpressionInput(**body.model_dump(exclude={"save", "variable", "point", "order"}))
+    result = engine.series(expression, body.variable, body.point, body.order)
+    log.info(
+        "compute",
+        operation="series",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    out = SeriesResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # Kept even on failure, so history can show what was asked.
+        saved.update(variable=body.variable, point_requested=body.point, order=body.order)
+        out.calculation_id = _save(db, user, "series", expression, result.status.value, saved)
     return out
 
 

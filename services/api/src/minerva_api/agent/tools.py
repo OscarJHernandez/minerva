@@ -71,6 +71,25 @@ class DifferentiateArgs(SimplifyArgs):
     )
 
 
+class SeriesArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description="The expression to expand, in LaTeX, e.g. \\frac{1}{\\sqrt{1-x^2}}",
+    )
+    variable: str = Field(min_length=1, max_length=32, description="The variable to expand in")
+    point: str = Field(
+        default="0",
+        max_length=64,
+        description="Finite real point to expand about, as a number (text syntax: 0, 1, 1/2, pi)",
+    )
+    order: int = Field(
+        default=6,
+        ge=1,
+        le=12,
+        description="Highest power of (variable - point) kept, 1 to 12. The remainder is O of the next power.",
+    )
+
+
 class IdentitiesArgs(SimplifyArgs):
     query: str = Field(default="", max_length=200, description="Optional extra search words")
 
@@ -229,6 +248,47 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
         if x
     ]
     return ToolOutput(card, text, known)
+
+
+def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.series(_expr(args), args.variable, args.point, args.order)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="series",
+        type="series",
+        title="Series",
+        data=result.model_dump(mode="json"),
+    )
+    v = result.verification
+    text = (
+        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        f"about {result.variable}=${result.point_latex}$, order {result.order}; "
+        + (
+            f"series=${result.result_latex} + {result.remainder_latex}$; "
+            if result.result_latex and result.remainder_latex
+            else (f"series=${result.result_latex}$; " if result.result_latex else "")
+        )
+        + (
+            f"verified: coefficients (Cauchy integral) {'agree' if v.coefficients_passed else 'DISAGREE'}, "
+            f"remainder order {'confirmed' if v.remainder_passed else 'NOT confirmed'}, "
+            f"{v.parameter_sets_checked} parameter set(s); "
+            if v
+            else ""
+        )
+        + result.message
+        + "".join(f" note: {n}" for n in result.notes)
+        + (
+            " Measured truncation error (not a bound): "
+            + ", ".join(
+                f"{m.absolute_error} at distance {m.distance}" for m in result.measured_errors
+            )
+            if result.measured_errors
+            else ""
+        )
+    )
+    known = [x for x in (result.input_latex, result.result_latex) if x]
+    known += [t.coefficient_latex for t in result.terms]
+    return ToolOutput(card, text, known, result.status.value)
 
 
 def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
@@ -627,6 +687,16 @@ TOOLS: dict[str, Tool] = {
             "example |x| for a complex x: declare x real).",
             DifferentiateArgs,
             run_differentiate,
+        ),
+        Tool(
+            "series",
+            "Taylor expansion of an expression in one variable about a finite real point, to order 1-12. "
+            "The coefficients are re-derived by an independent Cauchy-integral estimate and the "
+            "remainder order is measured; a series is shown only if both agree. Reports 'unsupported' "
+            "for poles, branch points, logarithms and functions like |x| (no Laurent, Puiseux or "
+            "asymptotic series). For an approximation to a physical system, expand its equations of motion, not the answer.",
+            SeriesArgs,
+            run_series,
         ),
         Tool(
             "solve_polynomial",

@@ -9,6 +9,7 @@
 # fields that op needs:
 #   simplify     input, assumptions
 #   differentiate input, variables [{name, order}], assumptions
+#   series       input, variable, point, order, assumptions
 #   identities   input, assumptions, show [rule ids to display]
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
@@ -104,6 +105,50 @@ capabilities:
         op: differentiate
         input: "|x|"
         variables: [{ name: x }]
+
+  - id: series
+    title: Verified Taylor series
+    status: available
+    where: [workbench, chat, api]
+    summary: >-
+      Expands an expression in one variable about a finite real point, to order 12 at most. The coefficients are
+      re-derived from the original function by a contour-integral estimate (no differentiation), and the
+      remainder is measured to shrink at the claimed order. Both checks must pass or no series is shown.
+    limits:
+      - Only Taylor series about a finite point. A pole or branch point at the point (`1/x`, `\sqrt{x}`, `\ln x` at 0)
+        is "unsupported"; Laurent, Puiseux and asymptotic series are not produced.
+      - Functions with no complex derivative (`|x|`) are unsupported.
+      - The error table is a measurement at a few distances for this expression, not a bound.
+    examples:
+      - id: series-exp
+        title: Exponential about zero
+        op: series
+        input: '\exponentialE^{x}'
+        variable: x
+        point: "0"
+        order: 5
+      - id: series-parameter
+        title: Binomial series with a symbolic exponent
+        op: series
+        input: "(1+x)^{a}"
+        variable: x
+        point: "0"
+        order: 3
+      - id: series-shifted
+        title: Logarithm about 1
+        op: series
+        input: '\ln x'
+        variable: x
+        point: "1"
+        order: 4
+        assumptions: { x: [positive] }
+      - id: series-pole
+        title: A pole has no Taylor series
+        op: series
+        input: '\frac{1}{x}'
+        variable: x
+        point: "0"
+        order: 3
 
   - id: identities
     title: Identity search with applicability checks
@@ -274,9 +319,9 @@ capabilities:
     status: planned
     summary: Differential geometry on explicit manifolds, as an optional backend.
   - id: integrals
-    title: Integrals, limits and series
+    title: Integrals and limits
     status: planned
-    summary: In the workbench, with the same verification discipline as derivatives.
+    summary: In the workbench, with the same verification discipline as derivatives. Taylor series are available.
   - id: semantic-search
     title: Semantic and structural search
     status: planned

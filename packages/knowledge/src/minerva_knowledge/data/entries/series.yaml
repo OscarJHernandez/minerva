@@ -72,3 +72,14 @@
   statement_latex: '\sum_{n=1}^{\infty}\frac{1}{n^2} = \frac{\pi^2}{6}'
   check: {kind: series, term: "1/n**2", index: n, lower: 1, upper: "oo", result: "pi**2/6"}
   keywords: [basel, zeta, euler, series]
+- id: series.taylor_theorem
+  title: Taylor polynomial and the order of its remainder
+  kind: theorem
+  chapter: math.series
+  section: power
+  verification: stated
+  applies_to: ["series"]
+  validity: "f analytic at x0 (complex differentiable on a disc around x0). The disc of convergence reaches the nearest singularity."
+  statement_latex: 'f(x)=\sum_{k=0}^{N}\frac{f^{(k)}(x_0)}{k!}(x-x_0)^k+O\!\left((x-x_0)^{N+1}\right),\qquad \frac{f^{(k)}(x_0)}{k!}=\frac{1}{2\pi i}\oint\frac{f(z)}{(z-x_0)^{k+1}}\,dz'
+  notes: "Minerva's series tool checks a candidate polynomial two ways that do not differentiate: the contour-integral form of the coefficients, and the h^(N+1) decay of f(x0+h) minus the polynomial. A pole, branch point or |x| at x0 has no Taylor series and is reported as unsupported."
+  keywords: [taylor, maclaurin, series, remainder, cauchy integral, expansion, approximation]

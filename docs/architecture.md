@@ -23,6 +23,15 @@ one most likely to be wrong.
   - `simplify`: SymPy `simplify`, then `verify_equal` (numeric sampling that respects assumptions,
     plus a symbolic zero test). Statuses: `ok`, `unchanged`, `not_verified`, `parse_error`,
     `resource_limit`, `internal_error`.
+  - `series` (`series.py`): Taylor polynomial about a finite real point, order 1 to 12, from `sympy.series`.
+    Shown only if both checks pass, computed from the original function with mpmath at 80 digits at random
+    values of every other symbol: (1) the coefficients against a Cauchy-integral estimate (64-node trapezoid
+    rule on circles; trusted at the first radius where the estimates at r and r/2 agree, so a pole inside a
+    circle is never mistaken for agreement, tolerance per coefficient so a wrong high-order term cannot hide on
+    a small circle), and (2) the remainder |f - P| falling at least as h^(order+1) along real (and, for a
+    variable that may be complex, imaginary) directions. A pole, branch point, logarithm or `|x|` is
+    `unsupported`; a failed leg is `not_verified` and shows no formula. The measured-error table is a
+    measurement at a few distances for expressions with no other symbols, not a bound.
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -100,7 +109,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `series`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `analyze_lagrangian` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
@@ -136,7 +145,7 @@ and explains; it never computes and never decides correctness.
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
-limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,differentiate,identities,tensor/canonicalize}`,
+limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,differentiate,series,identities,tensor/canonicalize}`,
 `/v1/reference/*` (public, read-only), `/v1/history`. History rows contain user mathematics and are
 private to the account. Logging uses an allow-list of fields (no inputs, emails or tokens).
 

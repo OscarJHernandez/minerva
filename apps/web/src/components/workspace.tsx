@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
-import { MAX_DERIVATIVE_ORDER } from "@/lib/types";
+import { MAX_DERIVATIVE_ORDER, MAX_SERIES_ORDER } from "@/lib/types";
 import type {
   Assumptions,
   DifferentiateResult,
   HistoryItem,
   IdentitiesResult,
+  SeriesResult,
   SimplifyResult,
 } from "@/lib/types";
 import { AssumptionsEditor } from "./assumptions-editor";
@@ -17,14 +18,16 @@ import { HistoryList } from "./history-list";
 import { IdentitiesPanel } from "./identities-panel";
 import { MathInput } from "./math-input";
 import { ResultPanel } from "./result-panel";
+import { SeriesPanel } from "./series-panel";
 
 type Output =
   | { kind: "simplify"; data: SimplifyResult }
   | { kind: "identities"; data: IdentitiesResult }
   | { kind: "differentiate"; data: DifferentiateResult }
+  | { kind: "series"; data: SeriesResult }
   | null;
 
-type Kind = "simplify" | "identities" | "differentiate";
+type Kind = "simplify" | "identities" | "differentiate" | "series";
 
 const EXAMPLES = [
   { label: "sin² + cos²", latex: "\\sin^2 x + \\cos^2 x" },
@@ -33,6 +36,8 @@ const EXAMPLES = [
   { label: "√(x²)", latex: "\\sqrt{x^2}" },
 ];
 
+// A finite real number as the server reads it in text syntax: 0, -2, 1/2, 0.5, pi.
+const POINT_PATTERN = /^-?(\d+(\.\d+)?(\/\d+)?|pi)$/;
 const VARIABLE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
 
 export function Workspace() {
@@ -42,6 +47,8 @@ export function Workspace() {
   const [output, setOutput] = useState<Output>(null);
   const [variable, setVariable] = useState("x");
   const [order, setOrder] = useState(1);
+  const [point, setPoint] = useState("0");
+  const [seriesOrder, setSeriesOrder] = useState(6);
   const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -72,11 +79,18 @@ export function Workspace() {
   }, [refreshHistory]);
 
   const variableValid = VARIABLE_PATTERN.test(variable);
+  const pointValid = POINT_PATTERN.test(point);
 
   async function run(kind: Kind) {
     if (!latex.trim() || busy) return;
     if (kind === "differentiate" && !variableValid) {
       setError("Enter the variable to differentiate by, for example x.");
+      return;
+    }
+    if (kind === "series" && (!variableValid || !pointValid)) {
+      setError(
+        "Enter the variable (for example x) and a finite expansion point such as 0, 1/2 or pi.",
+      );
       return;
     }
     setBusy(kind);
@@ -85,6 +99,10 @@ export function Workspace() {
       const payload = { input: latex, assumptions };
       if (kind === "simplify") {
         const data = await api.simplify(payload);
+        setOutput({ kind, data });
+        setActiveId(data.calculation_id ?? null);
+      } else if (kind === "series") {
+        const data = await api.series(payload, variable, point, seriesOrder);
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
       } else if (kind === "differentiate") {
@@ -117,6 +135,14 @@ export function Workspace() {
         setOrder(first.order);
       }
       setOutput({ kind: "differentiate", data });
+      return;
+    }
+    if (item.operation === "series") {
+      const data = item.result as unknown as SeriesResult & { point_requested?: string };
+      if (data.variable) setVariable(data.variable);
+      if (data.point_requested) setPoint(data.point_requested);
+      if (data.order) setSeriesOrder(data.order);
+      setOutput({ kind: "series", data });
       return;
     }
     setOutput(
@@ -203,6 +229,42 @@ export function Workspace() {
               />
             </label>
           </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => run("series")}
+              disabled={!latex.trim() || busy !== null || !variableValid || !pointValid}
+              className="rounded border border-accent px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
+            >
+              {busy === "series" ? "Expanding…" : "Series"}
+            </button>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              about
+              <input
+                value={point}
+                onChange={(e) => setPoint(e.target.value.trim())}
+                aria-label="Point to expand about"
+                maxLength={64}
+                className="w-14 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              to order
+              <input
+                type="number"
+                min={1}
+                max={MAX_SERIES_ORDER}
+                value={seriesOrder}
+                onChange={(e) =>
+                  setSeriesOrder(
+                    Math.min(MAX_SERIES_ORDER, Math.max(1, Number(e.target.value) || 1)),
+                  )
+                }
+                aria-label="Order of the series"
+                className="w-16 rounded border border-rule bg-raised px-2 py-1.5 text-sm text-ink"
+              />
+            </label>
+          </div>
           <span className="ml-2 hidden text-xs text-muted sm:inline">Try:</span>
           {EXAMPLES.map((ex) => (
             <button
@@ -227,11 +289,12 @@ export function Workspace() {
         {output?.kind === "simplify" && <ResultPanel result={output.data} />}
         {output?.kind === "identities" && <IdentitiesPanel result={output.data} />}
         {output?.kind === "differentiate" && <DerivativePanel result={output.data} />}
+        {output?.kind === "series" && <SeriesPanel result={output.data} />}
         {!output && (
           <p className="text-sm text-muted">
-            Enter an expression, then simplify it, differentiate it or look up identities. Results
-            are verified before they are shown; if Minerva cannot verify or simplify something, it
-            says so.
+            Enter an expression, then simplify it, differentiate it, expand it in a series or look
+            up identities. Results are verified before they are shown; if Minerva cannot verify or
+            simplify something, it says so.
           </p>
         )}
       </div>

@@ -112,6 +112,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a
   symbolic fallback or weaken `check_derivative` (its tests include a deliberately wrong candidate).
+- Series (`series.py`) are Taylor polynomials about a finite real point, shown only if two checks that do not
+  use `sympy.series` both pass: the coefficients against a Cauchy-integral estimate (trapezoid on circles,
+  trusted only where the estimates at r and r/2 agree, tolerance per coefficient) and the h^(N+1) decay of the
+  remainder. Poles, branch points, logarithms and `|x|` are `unsupported`; there are no Laurent, Puiseux or
+  asymptotic fallbacks. The error table is a measurement, never a bound. Do not loosen `check_series` (its
+  tests include wrong candidates that differ by 1e-9).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

@@ -202,6 +202,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "get_entry",
         "simplify",
         "differentiate",
+        "series",
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
@@ -413,6 +414,44 @@ def test_differentiate_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) 
         ctx,
     )
     assert real.card.data["result_text"] == "sign(x)"
+
+
+def test_series_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute("series", {"latex": r"\sin x", "variable": "x", "order": 5}, ctx)
+    assert out.card.type == "series"
+    assert out.card.data["status"] == "ok"
+    assert out.card.data["result_text"] == "x**5/120 - x**3/6 + x"
+    assert "coefficients (Cauchy integral) agree" in out.for_model
+    assert "remainder order confirmed" in out.for_model
+    assert "Measured truncation error (not a bound)" in out.for_model
+    # Both the polynomial and each coefficient are known, so prose quoting them is "checked".
+    assert any("x^{5}" in k for k in out.known_latex)
+    assert "\\frac{1}{120}" in out.known_latex
+
+
+def test_series_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) -> None:
+    pole = execute("series", {"latex": r"\frac{1}{x}", "variable": "x"}, ctx)
+    assert pole.card.type == "series"
+    assert pole.card.data["status"] == "unsupported"
+    assert pole.card.data["result_latex"] is None
+    assert "series=" not in pole.for_model
+    assert pole.known_latex == [pole.card.data["input_latex"]]
+    modulus = execute("series", {"latex": r"\left|x\right|", "variable": "x", "point": "1"}, ctx)
+    assert modulus.card.data["status"] == "unsupported"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"latex": "x"},
+        {"latex": "x", "variable": "x", "order": 0},
+        {"latex": "x", "variable": "x", "order": 13},
+        {"latex": "x", "variable": ""},
+        {"latex": "x" * 3000, "variable": "x"},
+    ],
+)
+def test_series_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    assert execute("series", arguments, ctx).card.type == "error"
 
 
 @pytest.mark.parametrize(

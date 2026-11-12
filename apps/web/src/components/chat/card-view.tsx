@@ -3,6 +3,7 @@ import type { Card } from "@/lib/chat-types";
 import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
+import { SeriesPanel } from "../series-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
@@ -18,6 +19,8 @@ export function CardView({ card }: { card: Card }) {
       return <ResultPanel result={card.data} />;
     case "differentiate":
       return <DerivativePanel result={card.data} />;
+    case "series":
+      return <SeriesPanel result={card.data} />;
     case "identities":
       return <IdentitiesPanel result={card.data} />;
     case "entries":

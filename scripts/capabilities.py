@@ -125,6 +125,33 @@ def run_differentiate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
     )
 
 
+def run_series(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.series(
+        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        spec.get("variable", "x"),
+        str(spec.get("point", "0")),
+        int(spec["order"]),
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    if r.status.value == "ok" and r.result_latex and r.remainder_latex:
+        outputs.append({"label": "Series", "latex": f"{r.result_latex} + {r.remainder_latex}"})
+        if r.verification:
+            v = r.verification
+            checks.append(
+                "coefficients agree with a Cauchy-integral estimate and the remainder shrinks at "
+                f"order {r.order + 1} ({v.parameter_sets_checked} parameter set(s))"
+            )
+    return _example(
+        spec,
+        r.status.value,
+        [{"label": "Input", "source": spec["input"]}],
+        outputs,
+        checks,
+        [r.message] if r.message else [],
+    )
+
+
 def run_identities(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = find_identities(
         kb,
@@ -295,6 +322,7 @@ def run_entry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[s
 RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
+    "series": run_series,
     "identities": run_identities,
     "tensor": run_tensor,
     "solve": run_solve,

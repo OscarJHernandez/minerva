@@ -27,6 +27,7 @@ from .pi_groups import (
     UnitsCheckReport,
 )
 from .sandbox import Outcome, Sandbox, SandboxResult
+from .series import SeriesResult
 from .solve import SolveReport
 
 
@@ -78,6 +79,24 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return DifferentiateResult(status=status, message=message, duration_ms=ms)
         result = DifferentiateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def series(
+        self, expression: ExpressionInput, variable: str, point: str = "0", order: int = 6
+    ) -> SeriesResult:
+        """Taylor polynomial about a finite real point; coefficients and remainder order verified."""
+        payload = {
+            "expression": expression.model_dump(),
+            "variable": variable,
+            "point": point,
+            "order": order,
+        }
+        outcome, ms = self._run("series", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return SeriesResult(status=status, message=message, duration_ms=ms)
+        result = SeriesResult(**outcome.value)
         result.duration_ms = ms
         return result
 

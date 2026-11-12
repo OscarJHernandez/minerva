@@ -84,6 +84,28 @@ def test_differentiate_turn_streams_a_verified_card(chat_client: tuple[TestClien
     assert card["data"]["verification"]["passed"] is True
 
 
+def test_series_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Taylor series of $\exponentialE^x$ about 0 to order 3")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "series"
+    assert card["data"]["status"] == "ok"
+    assert card["data"]["verification"]["coefficients_passed"] is True
+    assert card["data"]["verification"]["remainder_passed"] is True
+    assert card["data"]["order"] == 3
+
+
+def test_series_turn_about_a_pole_shows_no_formula(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Taylor series of $\frac{1}{x}$ about 0")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "series"
+    assert card["data"]["status"] == "unsupported"
+    assert card["data"]["result_latex"] is None
+
+
 def test_model_written_formula_is_marked_unchecked(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, "just tell me the answer without tools")

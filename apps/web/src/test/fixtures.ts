@@ -2,6 +2,7 @@ import type {
   DifferentiateResult,
   IdentitiesResult,
   IdentityMatch,
+  SeriesResult,
   SimplifyResult,
 } from "@/lib/types";
 
@@ -29,6 +30,41 @@ export const okDerivative: DifferentiateResult = {
   notes: [],
   message: "Differentiated with SymPy; every step was verified numerically.",
   duration_ms: 30,
+};
+
+export const okSeries: SeriesResult = {
+  status: "ok",
+  input_latex: "e^{x}",
+  variable: "x",
+  point_latex: "0",
+  order: 3,
+  result_latex: "\\frac{x^{3}}{6} + \\frac{x^{2}}{2} + x + 1",
+  result_text: "x**3/6 + x**2/2 + x + 1",
+  remainder_latex: "O\\left(x^{4}\\right)",
+  terms: [
+    { power: 0, coefficient_latex: "1" },
+    { power: 1, coefficient_latex: "1" },
+    { power: 2, coefficient_latex: "\\frac{1}{2}" },
+    { power: 3, coefficient_latex: "\\frac{1}{6}" },
+  ],
+  verification: {
+    coefficient_method: "Cauchy integral",
+    remainder_method: "remainder falls as h^(order+1)",
+    directions: ["real", "imaginary"],
+    parameter_sets_checked: 1,
+    coefficients_passed: true,
+    remainder_passed: true,
+    radius: 1,
+    passed: true,
+    note: "coefficients agree with a Cauchy-integral estimate and the remainder shrinks at the claimed order",
+  },
+  measured_errors: [
+    { distance: 0.5, absolute_error: "2.34e-3", relative_error: "1.42e-3" },
+    { distance: 0.1, absolute_error: "4.2e-7", relative_error: "3.8e-7" },
+  ],
+  notes: [],
+  message: "Expanded with SymPy; coefficients and remainder order verified numerically.",
+  duration_ms: 40,
 };
 
 export const okSimplify: SimplifyResult = {
