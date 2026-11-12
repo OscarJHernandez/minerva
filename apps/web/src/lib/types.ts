@@ -83,6 +83,35 @@ export interface DifferentiateResult {
   calculation_id?: string | null;
 }
 
+export const MAX_SERIES_ORDER = 12;
+
+export interface SeriesResult {
+  status: Status;
+  input_latex: string | null;
+  variable: string | null;
+  point_latex: string | null;
+  order: number;
+  result_latex: string | null;
+  result_text: string | null;
+  remainder_latex: string | null;
+  terms: { power: number; coefficient_latex: string }[];
+  verification: {
+    coefficient_method: string;
+    remainder_method: string;
+    directions: ("real" | "imaginary")[];
+    parameter_sets_checked: number;
+    coefficients_passed: boolean;
+    remainder_passed: boolean;
+    radius: number | null;
+    passed: boolean;
+    note: string;
+  } | null;
+  measured_errors: { distance: number; absolute_error: string; relative_error: string | null }[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+}
 export interface IntegrateResult {
   status: Status;
   input_latex: string | null;
@@ -172,7 +201,7 @@ export interface IdentitiesResult {
 
 export interface HistoryItem {
   id: string;
-  operation: "simplify" | "identities" | "differentiate" | "integrate";
+  operation: "simplify" | "identities" | "differentiate" | "series" | "integrate";
   input: string;
   format: "latex" | "text";
   assumptions: Assumptions;

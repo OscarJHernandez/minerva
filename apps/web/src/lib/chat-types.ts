@@ -1,11 +1,107 @@
 import type {
   DifferentiateResult,
+  SeriesResult,
   EntrySummary,
   IdentitiesResult,
   IntegrateResult,
   SimplifyResult,
   Status,
 } from "./types";
+
+export interface ExpansionReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  equilibrium: { name: string; latex: string; name_latex: string }[];
+  order: number;
+  equilibrium_verification: {
+    symbolic_zero: boolean;
+    numeric_points_checked: number;
+    numeric_points_agreed: number;
+    passed: boolean;
+    note: string;
+  } | null;
+  equations: {
+    coordinate: string;
+    full_latex: string;
+    terms: { degree: number; latex: string }[];
+    verification: SeriesResult["verification"];
+  }[];
+  stiffness_latex: string | null;
+  velocity_latex: string | null;
+  characteristic_latex: string | null;
+  modes: {
+    omega_squared_latex: string;
+    sign: "positive" | "negative" | "zero" | "unknown";
+    omega_latex: string | null;
+    multiplicity: number;
+    eigenvector_latex: string | null;
+    verified: boolean;
+  }[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
+export interface PerturbationReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  equilibrium: { name: string; latex: string; name_latex: string }[];
+  mode: "parameter" | "amplitude" | null;
+  parameters: string[];
+  small_latex: string | null;
+  amplitude_latex: string | null;
+  order: number;
+  linear_frequency_latex: string | null;
+  frequency_latex: string | null;
+  period_ratio_latex: string | null;
+  solution_latex: string | null;
+  orders: { order: number; frequency_latex: string | null; shape_latex: string }[];
+  verification: {
+    residual_method: string;
+    residual_passed: boolean;
+    parameter_sets_checked: number;
+    initial_conditions_passed: boolean;
+    bounded: boolean;
+    passed: boolean;
+    note: string;
+  } | null;
+  comparison: {
+    status: Status;
+    message: string;
+    epsilon: number;
+    predicted_order: number;
+    t: number[];
+    numerical: number[];
+    perturbative: number[];
+    max_error: number | null;
+    max_error_half: number | null;
+    observed_order: number | null;
+    scaling: string;
+    notes: string[];
+  } | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
+/** What a perturbation solution was computed from, and what the comparison form sends back. */
+export interface PerturbationRequest {
+  lagrangian: string;
+  coordinates: string[];
+  time: string;
+  assumptions: Record<string, string[]>;
+  small_parameter: string | null;
+  equilibrium: string;
+  order: number;
+  compare?: {
+    parameters: Record<string, number>;
+    epsilon: number;
+    amplitude?: number;
+    t_end: number;
+  };
+}
 
 export interface LagrangianReport {
   status: Status;
@@ -253,6 +349,7 @@ export interface Segment {
 export type Card =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
+  | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
   | { id: string; tool: string; type: "integrate"; title: string; data: IntegrateResult }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {
@@ -293,6 +390,23 @@ export type Card =
         methods: EntrySummary[];
         request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "expansion";
+      title: string;
+      data: {
+        report: ExpansionReport;
+        request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
+      };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "perturbation";
+      title: string;
+      data: { report: PerturbationReport; request?: PerturbationRequest };
     }
   | {
       id: string;

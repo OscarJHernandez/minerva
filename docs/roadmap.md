@@ -20,13 +20,19 @@ Ordering favours correctness infrastructure before breadth.
    conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
    The search for hidden constants of motion (`search_invariants`) covers rational, autonomous systems; next:
    square roots (Cartesian Kepler), time-dependent ansätze and symmetries up to a total derivative.
-3. **More operations in the workspace:** integrals, limits, series, numeric evaluation, each with
+3. **More operations in the workspace:** integrals, limits, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
    Antiderivatives and definite integrals are done (`integrate`: candidate from SymPy; antiderivatives are
    accepted only if a numerical derivative matches, definite values only if independent quadrature agrees).
    Next: improper integrals with interior singularities (split at the pole), integrals with several
    variables, and the workbench handbook link ("this is entry int.gaussian").
    Derivatives are done (`differentiate`, any order up to 10, mixed partials, every step checked numerically).
+   Taylor series are done (`series`, order up to 12, coefficients and remainder order checked independently).
+   Equations of motion about an equilibrium are done (`expand_motion`: expansion to degree 12, linearisation,
+   normal modes for up to two coordinates) and perturbative solutions (`perturbation_solve`: Poincaré–Lindstedt,
+   one coordinate, checked by residual order and against the verified numerical integrator). The card has a form for the
+   comparison numbers. Next: multiple scales for damping and driving (needs generalised forces first), and
+   several coordinates.
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported

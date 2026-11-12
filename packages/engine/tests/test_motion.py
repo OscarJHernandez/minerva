@@ -232,7 +232,9 @@ def test_singular_mass_matrix_is_unsupported() -> None:
 
 
 def test_chaotic_double_pendulum_over_a_long_span_is_not_shown() -> None:
-    r = solve(
+    # The run takes a few seconds; a generous budget keeps a slow CI runner from reaching the time limit
+    # (resource_limit) before the verification failure this test is about (not_verified).
+    request = MotionRequest(
         lagrangian=PENDULUM,
         coordinates=["theta_1", "theta_2"],
         parameters={"m_1": 1.0, "m_2": 1.0, "l_1": 1.0, "l_2": 1.0, "g": 9.81},
@@ -240,6 +242,7 @@ def test_chaotic_double_pendulum_over_a_long_span_is_not_shown() -> None:
         initial_velocities=[0.0, 0.0],
         t_end=60.0,
     )
+    r = integrate_motion(request, Limits(timeout_seconds=120))
     assert r.status is Status.NOT_VERIFIED
     run = r.runs[0]
     assert run.status is Status.NOT_VERIFIED and run.q == [] and run.v == [] and run.conserved == []

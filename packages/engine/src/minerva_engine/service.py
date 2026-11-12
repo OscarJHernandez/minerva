@@ -7,6 +7,7 @@ from typing import Any
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .expansion import ExpansionReport
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -22,6 +23,7 @@ from .models import (
     TensorResult,
 )
 from .motion import MotionReport, MotionRequest
+from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
     DimensionalReport,
@@ -29,6 +31,7 @@ from .pi_groups import (
     UnitsCheckReport,
 )
 from .sandbox import Outcome, Sandbox, SandboxResult
+from .series import SeriesResult
 from .solve import SolveReport
 
 
@@ -103,6 +106,24 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return DifferentiateResult(status=status, message=message, duration_ms=ms)
         result = DifferentiateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def series(
+        self, expression: ExpressionInput, variable: str, point: str = "0", order: int = 6
+    ) -> SeriesResult:
+        """Taylor polynomial about a finite real point; coefficients and remainder order verified."""
+        payload = {
+            "expression": expression.model_dump(),
+            "variable": variable,
+            "point": point,
+            "order": order,
+        }
+        outcome, ms = self._run("series", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return SeriesResult(status=status, message=message, duration_ms=ms)
+        result = SeriesResult(**outcome.value)
         result.duration_ms = ms
         return result
 
@@ -200,6 +221,62 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return LagrangianReport(status=status, message=message, duration_ms=ms)
         report = LagrangianReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def expand_motion(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+        equilibrium: dict[str, str] | None = None,
+        order: int = 3,
+    ) -> ExpansionReport:
+        """Expand the accelerations about an equilibrium and give the linear modes (sandboxed)."""
+        payload = {
+            "lagrangian": lagrangian,
+            "coordinates": coordinates,
+            "time": time,
+            "assumptions": assumptions or {},
+            "equilibrium": equilibrium or {},
+            "order": order,
+        }
+        outcome, ms = self._run("expand_motion", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return ExpansionReport(status=status, message=message, duration_ms=ms)
+        report = ExpansionReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def perturbation_solve(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+        small_parameter: str | None = None,
+        equilibrium: str = "0",
+        order: int = 2,
+        compare: CompareRequest | None = None,
+    ) -> PerturbationReport:
+        """Poincare-Lindstedt solution of a one-degree-of-freedom oscillator (sandboxed)."""
+        payload = {
+            "lagrangian": lagrangian,
+            "coordinates": coordinates,
+            "time": time,
+            "assumptions": assumptions or {},
+            "small_parameter": small_parameter,
+            "equilibrium": equilibrium,
+            "order": order,
+            "compare": compare.model_dump() if compare else None,
+        }
+        outcome, ms = self._run("perturbation_solve", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return PerturbationReport(status=status, message=message, duration_ms=ms)
+        report = PerturbationReport(**outcome.value)
         report.duration_ms = ms
         return report
 

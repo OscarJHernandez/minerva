@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from minerva_engine import (
+    CompareRequest,
     DiffVariable,
     Engine,
     ExpressionInput,
@@ -68,6 +69,25 @@ class DifferentiateArgs(SimplifyArgs):
         description="Variables to differentiate by, in order, each with an order (1 to 10; total "
         'at most 10). Example: [{"name": "x", "order": 2}] is the second derivative in x; '
         '[{"name": "x"}, {"name": "y"}] is the mixed partial in x then y.',
+    )
+
+
+class SeriesArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description="The expression to expand, in LaTeX, e.g. \\frac{1}{\\sqrt{1-x^2}}",
+    )
+    variable: str = Field(min_length=1, max_length=32, description="The variable to expand in")
+    point: str = Field(
+        default="0",
+        max_length=64,
+        description="Finite real point to expand about, as a number (text syntax: 0, 1, 1/2, pi)",
+    )
+    order: int = Field(
+        default=6,
+        ge=1,
+        le=12,
+        description="Highest power of (variable - point) kept, 1 to 12. The remainder is O of the next power.",
     )
 
 
@@ -126,6 +146,48 @@ class LagrangianArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class ExpandMotionArgs(LagrangianArgs):
+    equilibrium: dict[str, str] = Field(
+        default_factory=dict,
+        description="Equilibrium value of each coordinate as text (numbers, pi, or the Lagrangian's "
+        'parameters), e.g. {"theta": "pi"} or {"x": "m*g/k"}. Coordinates left out are 0. Only an '
+        "equilibrium is accepted; Minerva checks that it is one.",
+    )
+    order: int = Field(
+        default=3,
+        ge=1,
+        le=12,
+        description="Highest degree in the deviations kept in the accelerations, 1 to 12. "
+        "1 gives the linearised equations.",
+    )
+
+
+class PerturbationArgs(LagrangianArgs):
+    small_parameter: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Name of a parameter of L that is small, e.g. the coefficient of a quartic term "
+        "(the system must be a linear oscillator when it is 0). Leave empty to use the amplitude of the "
+        "initial displacement as the small parameter, which suits the pendulum and any smooth well.",
+    )
+    equilibrium: str = Field(
+        default="0",
+        max_length=64,
+        description="Equilibrium value of the single coordinate (number, pi, or the parameters of L).",
+    )
+    order: int = Field(
+        default=2,
+        ge=1,
+        le=6,
+        description="Highest power of the small parameter kept, 1 to 6.",
+    )
+    compare: CompareRequest | None = Field(
+        default=None,
+        description="Optional numerical comparison. Only with numbers the USER gave you: values of every "
+        "parameter of L, the small parameter or amplitude, and an end time. Never choose them yourself.",
+    )
 
 
 class InvariantArgs(BaseModel):
@@ -278,6 +340,47 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
         if x
     ]
     return ToolOutput(card, text, known)
+
+
+def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.series(_expr(args), args.variable, args.point, args.order)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="series",
+        type="series",
+        title="Series",
+        data=result.model_dump(mode="json"),
+    )
+    v = result.verification
+    text = (
+        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        f"about {result.variable}=${result.point_latex}$, order {result.order}; "
+        + (
+            f"series=${result.result_latex} + {result.remainder_latex}$; "
+            if result.result_latex and result.remainder_latex
+            else (f"series=${result.result_latex}$; " if result.result_latex else "")
+        )
+        + (
+            f"verified: coefficients (Cauchy integral) {'agree' if v.coefficients_passed else 'DISAGREE'}, "
+            f"remainder order {'confirmed' if v.remainder_passed else 'NOT confirmed'}, "
+            f"{v.parameter_sets_checked} parameter set(s); "
+            if v
+            else ""
+        )
+        + result.message
+        + "".join(f" note: {n}" for n in result.notes)
+        + (
+            " Measured truncation error (not a bound): "
+            + ", ".join(
+                f"{m.absolute_error} at distance {m.distance}" for m in result.measured_errors
+            )
+            if result.measured_errors
+            else ""
+        )
+    )
+    known = [x for x in (result.input_latex, result.result_latex) if x]
+    known += [t.coefficient_latex for t in result.terms]
+    return ToolOutput(card, text, known, result.status.value)
 
 
 def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
@@ -468,6 +571,148 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
+def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.expand_motion(
+        args.lagrangian,
+        args.coordinates,
+        args.time,
+        args.assumptions,
+        args.equilibrium,
+        args.order,
+    )
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="expand_motion",
+        type="expansion",
+        title="Expansion about an equilibrium",
+        data={
+            "report": report.model_dump(mode="json"),
+            "request": {
+                "lagrangian": args.lagrangian,
+                "coordinates": args.coordinates,
+                "time": args.time,
+                "assumptions": args.assumptions,
+            },
+        },
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    if report.equilibrium:
+        lines.append(
+            "equilibrium: " + ", ".join(f"{e.name} = ${e.latex}$" for e in report.equilibrium)
+        )
+    for e in report.equations:
+        ok = e.verification is not None and e.verification.passed
+        lines.append(
+            f"expansion ({e.coordinate}, {'verified' if ok else 'NOT verified'}): ${e.full_latex}$"
+        )
+        known.append(e.full_latex)
+        known.extend(t.latex for t in e.terms)
+    if report.stiffness_latex:
+        lines.append(f"linear part, A (uddot = A u + B v): ${report.stiffness_latex}$")
+        known.append(report.stiffness_latex)
+    if report.velocity_latex:
+        lines.append(f"velocity terms, B: ${report.velocity_latex}$")
+        known.append(report.velocity_latex)
+    if report.characteristic_latex:
+        lines.append(f"characteristic polynomial: ${report.characteristic_latex}$")
+        known.append(report.characteristic_latex)
+    for m in report.modes:
+        claim = {
+            "positive": "omega^2 provably positive",
+            "negative": "omega^2 provably negative (linearised equations only)",
+            "zero": "omega^2 is zero",
+            "unknown": "sign not decided by the declared assumptions",
+        }[m.sign]
+        lines.append(
+            f"normal mode (verified={m.verified}; {claim}): ${m.omega_squared_latex}$"
+            + (f"; ${m.omega_latex}$" if m.omega_latex else "")
+            + (f"; eigenvector ${m.eigenvector_latex}$" if m.eigenvector_latex else "")
+        )
+        known.append(m.omega_squared_latex)
+        known.extend(x for x in (m.omega_latex, m.eigenvector_latex) if x)
+    lines.extend(f"note: {n}" for n in report.notes)
+    if report.status.value == "ok":
+        lines.append(
+            "The expansion is local: it says nothing about motion far from the equilibrium. "
+            "Do not state stability unless a mode's sign is marked provable."
+        )
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
+def run_perturbation(args: PerturbationArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.perturbation_solve(
+        args.lagrangian,
+        args.coordinates,
+        args.time,
+        args.assumptions,
+        args.small_parameter,
+        args.equilibrium,
+        args.order,
+        args.compare,
+    )
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="perturbation_solve",
+        type="perturbation",
+        title="Perturbation solution",
+        data={
+            "report": report.model_dump(mode="json"),
+            # What was solved, so the card's comparison form can resend exactly this with the user's numbers.
+            "request": {
+                "lagrangian": args.lagrangian,
+                "coordinates": args.coordinates,
+                "time": args.time,
+                "assumptions": args.assumptions,
+                "small_parameter": args.small_parameter,
+                "equilibrium": args.equilibrium,
+                "order": args.order,
+            },
+        },
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    for label, value in (
+        ("unperturbed frequency", report.linear_frequency_latex),
+        ("frequency", report.frequency_latex),
+        ("period ratio", report.period_ratio_latex),
+        ("solution", report.solution_latex),
+    ):
+        if value:
+            lines.append(f"{label}: ${value}$")
+            known.append(value)
+    for o in report.orders:
+        known.append(o.shape_latex)
+        if o.frequency_latex:
+            known.append(o.frequency_latex)
+    if report.verification:
+        v = report.verification
+        lines.append(
+            f"verified: residual falls at the claimed order={v.residual_passed} "
+            f"({v.parameter_sets_checked} parameter set(s)), initial conditions={v.initial_conditions_passed}, "
+            f"bounded (no secular term)={v.bounded}"
+        )
+    if report.comparison:
+        c = report.comparison
+        if c.status.value == "ok":
+            lines.append(
+                f"comparison with the verified numerical solution (a measurement on this span only): "
+                f"max error {c.max_error:.3g} at the given small parameter, {c.max_error_half:.3g} at half; "
+                f"observed order {c.observed_order if c.observed_order is None else round(c.observed_order, 2)}"
+                f" (predicted {c.predicted_order}); error scaling: {c.scaling}"
+            )
+        else:
+            lines.append(f"comparison not shown ({c.status.value}): {c.message}")
+    lines.extend(f"note: {n}" for n in report.notes)
+    if report.status.value == "ok" and report.comparison is None:
+        lines.append(
+            "To see how well it holds, ask the user for numbers (every parameter, the small parameter or "
+            "amplitude, an end time) and call again with `compare`; never choose them yourself. The series "
+            "is local to small values of the small parameter and says nothing about large ones."
+        )
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
@@ -755,6 +1000,16 @@ TOOLS: dict[str, Tool] = {
             run_differentiate,
         ),
         Tool(
+            "series",
+            "Taylor expansion of an expression in one variable about a finite real point, to order 1-12. "
+            "The coefficients are re-derived by an independent Cauchy-integral estimate and the "
+            "remainder order is measured; a series is shown only if both agree. Reports 'unsupported' "
+            "for poles, branch points, logarithms and functions like |x| (no Laurent, Puiseux or "
+            "asymptotic series). For an approximation to a physical system, expand its equations of motion, not the answer.",
+            SeriesArgs,
+            run_series,
+        ),
+        Tool(
             "integrate",
             "Integrate an expression in one variable. Without bounds: an antiderivative, shown only "
             "if an independent numerical derivative of it matches the integrand. With both bounds "
@@ -780,6 +1035,27 @@ TOOLS: dict[str, Tool] = {
             "coordinates, energy, rotations). States which symmetries were not searched for.",
             LagrangianArgs,
             run_lagrangian,
+        ),
+        Tool(
+            "expand_motion",
+            "Expand the equations of motion of a Lagrangian about an equilibrium the user gives "
+            "(default: every coordinate 0): the accelerations as a series in the deviations, up to a chosen "
+            "degree (1 = linearised), the linear matrix, and for up to two coordinates without damping the "
+            "normal-mode frequencies. Every expansion is verified independently of SymPy; a point that is "
+            "not an equilibrium is refused. Use this to approximate, not to solve; the result is local.",
+            ExpandMotionArgs,
+            run_expand_motion,
+        ),
+        Tool(
+            "perturbation_solve",
+            "Perturbation solution (Poincare-Lindstedt) of a one-degree-of-freedom oscillator whose "
+            "acceleration depends on the position only: the frequency shift, the period series and the "
+            "periodic solution as a series in a small parameter (a named parameter of L, or the amplitude). "
+            "Verified by putting the truncated solution into the unexpanded equation of motion and checking "
+            "that the residual falls at the claimed order. Optionally compares with the verified numerical "
+            "solution for numbers the user gives. Not for damping, driving or several coordinates.",
+            PerturbationArgs,
+            run_perturbation,
         ),
         Tool(
             "search_invariants",

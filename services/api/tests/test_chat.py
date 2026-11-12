@@ -84,6 +84,92 @@ def test_differentiate_turn_streams_a_verified_card(chat_client: tuple[TestClien
     assert card["data"]["verification"]["passed"] is True
 
 
+def test_series_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Taylor series of $\exponentialE^x$ about 0 to order 3")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "series"
+    assert card["data"]["status"] == "ok"
+    assert card["data"]["verification"]["coefficients_passed"] is True
+    assert card["data"]["verification"]["remainder_passed"] is True
+    assert card["data"]["order"] == 3
+
+
+def test_expansion_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Expand about the equilibrium to order 3: $\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "expansion"
+    report = card["data"]["report"]
+    assert report["status"] == "ok" and report["order"] == 3
+    assert report["equations"][0]["verification"]["passed"] is True
+
+
+def test_expansion_turn_about_a_non_equilibrium_is_refused(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Expand about the equilibrium at x = 1: $\frac12 \dot{x}^2 - \frac12 x^2$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["report"]["status"] == "unsupported"
+    assert card["data"]["report"]["equations"] == []
+
+
+def test_perturbation_turn_streams_a_verified_card_and_does_not_invent_numbers(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Perturbation theory to order 2, small parameter b: $\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "perturbation"
+    report = card["data"]["report"]
+    assert report["verification"]["passed"] is True
+    assert report["comparison"] is None  # no numbers from the user, so no comparison was run
+
+
+def test_perturbation_turn_compares_only_with_numbers_taken_from_the_message(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        "Perturbation theory to order 2, small parameter b, compare epsilon=0.1 amplitude=1 t_end=20: "
+        r"$\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    comparison = card["data"]["report"]["comparison"]
+    assert comparison["status"] == "ok" and comparison["epsilon"] == 0.1
+    assert len(comparison["t"]) == len(comparison["numerical"]) == len(comparison["perturbative"])
+
+
+def test_series_turn_about_a_pole_shows_no_formula(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Taylor series of $\frac{1}{x}$ about 0")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "series"
+    assert card["data"]["status"] == "unsupported"
+    assert card["data"]["result_latex"] is None
+
+
 def test_model_written_formula_is_marked_unchecked(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, "just tell me the answer without tools")
@@ -248,6 +334,78 @@ def test_motion_form_endpoint_validation_privacy_and_rate_limit() -> None:
         codes = [a.post(url, json=MOTION_BODY).status_code for _ in range(3)]
         assert 429 in codes
         assert TestClient(app).post(url, json=MOTION_BODY).status_code == 401  # not logged in
+
+
+PERTURBATION_BODY = {
+    "lagrangian": r"\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4",
+    "coordinates": ["x"],
+    "assumptions": {"b": ["positive"]},
+    "small_parameter": "b",
+    "order": 2,
+    "compare": {"parameters": {}, "epsilon": 0.1, "amplitude": 1.0, "t_end": 20.0},
+}
+
+
+def test_perturbation_form_endpoint_stores_the_card_with_the_users_numbers(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    url = f"/v1/chat/conversations/{cid}/tools/perturbation_solve"
+    r = client.post(url, json=PERTURBATION_BODY)
+    assert r.status_code == 201
+    message = r.json()["content"]
+    card = cards_of(message)[0]
+    assert card["type"] == "perturbation"
+    comparison = card["data"]["report"]["comparison"]
+    assert comparison["status"] == "ok" and comparison["epsilon"] == 0.1
+    assert message["trace"][0]["name"] == "perturbation_solve"
+    assert message["trace"][0]["arguments"]["compare"]["amplitude"] == 1.0
+    # what was solved travels with the card, so a form on it can resend exactly this
+    request = card["data"]["request"]
+    assert request["small_parameter"] == "b" and request["order"] == 2
+    assert card["data"]["report"]["parameters"] == []
+    sse(client, cid, "thanks")  # a following turn replays the stored tool call
+    assert len(client.get(f"/v1/chat/conversations/{cid}").json()["messages"]) == 3
+
+
+def test_perturbation_form_endpoint_needs_numbers_and_is_private_and_limited() -> None:
+    app = build_app(llm_mode="scripted", compute_rate_per_minute=3)
+    with TestClient(app) as a, TestClient(app) as b:
+        register(a, "a@example.com")
+        register(b, "b@example.com")
+        cid = a.post("/v1/chat/conversations", json={}).json()["id"]
+        url = f"/v1/chat/conversations/{cid}/tools/perturbation_solve"
+        assert b.post(url, json=PERTURBATION_BODY).status_code == 404
+        without = {k: v for k, v in PERTURBATION_BODY.items() if k != "compare"}
+        assert a.post(url, json=without).status_code == 422  # the form must give numbers
+        bad = {**PERTURBATION_BODY, "compare": {"parameters": {}, "epsilon": -1, "t_end": 1}}
+        assert a.post(url, json=bad).status_code == 422
+        extra = {**PERTURBATION_BODY, "compare": {**PERTURBATION_BODY["compare"], "x": 1}}
+        assert a.post(url, json=extra).status_code == 422
+        too_big = {**PERTURBATION_BODY, "order": 9}
+        assert a.post(url, json=too_big).status_code == 422
+        codes = [a.post(url, json=PERTURBATION_BODY).status_code for _ in range(4)]
+        assert 429 in codes
+        assert TestClient(app).post(url, json=PERTURBATION_BODY).status_code == 401
+
+
+def test_perturbation_form_endpoint_missing_parameter_is_a_stored_card_not_an_error(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    body = {
+        "lagrangian": r"\frac12 m l^2 \dot{\theta}^2 + m g l \cos\theta",
+        "coordinates": ["theta"],
+        "assumptions": {n: ["positive"] for n in ("m", "g", "l")},
+        "order": 2,
+        "compare": {"parameters": {"m": 1.0, "g": 9.81}, "epsilon": 0.3, "t_end": 5.0},
+    }
+    r = client.post(f"/v1/chat/conversations/{cid}/tools/perturbation_solve", json=body)
+    assert r.status_code == 201
+    report = cards_of(r.json()["content"])[0]["data"]["report"]
+    assert report["status"] == "ok" and report["comparison"]["status"] != "ok"
+    assert report["comparison"]["numerical"] == []
+    assert report["parameters"] == ["g", "l", "m"]
 
 
 def test_scripted_model_runs_a_numerical_solution_and_a_sweep(

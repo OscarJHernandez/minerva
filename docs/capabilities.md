@@ -126,6 +126,49 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - This expression has no complex derivative with respect to x (for example |z|, re z, im z or conjugates). If the variable is real, declare it real and try again.
 - Declare x real to differentiate |x|.
 
+### Verified Taylor series
+
+*Available in:* workbench, chat, HTTP API.
+
+Expands an expression in one variable about a finite real point, to order 12 at most. The coefficients are re-derived from the original function by a contour-integral estimate (no differentiation), and the remainder is measured to shrink at the claimed order. Both checks must pass or no series is shown.
+
+**Limits**
+
+- Only Taylor series about a finite point. A pole or branch point at the point (`1/x`, `\sqrt{x}`, `\ln x` at 0) is "unsupported"; Laurent, Puiseux and asymptotic series are not produced.
+- Functions with no complex derivative (`|x|`) are unsupported.
+- The error table is a measurement at a few distances for this expression, not a bound.
+
+#### Exponential about zero
+
+- **Input:** `\exponentialE^{x}`
+- **Status:** `ok`
+- **Series:** $1 + x + \frac{x^{2}}{2} + \frac{x^{3}}{6} + \frac{x^{4}}{24} + \frac{x^{5}}{120} + O\left(x^{6}\right)$
+- **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 6 (1 parameter set(s))
+- Expanded with SymPy; coefficients and remainder order verified numerically.
+
+#### Binomial series with a symbolic exponent
+
+- **Input:** `(1+x)^{a}`
+- **Status:** `ok`
+- **Series:** $1 + a x + \frac{a x^{2} \left(-1 + a\right)}{2} + \frac{a x^{3} \left(2 - 3 a + a^{2}\right)}{6} + O\left(x^{4}\right)$
+- **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 4 (4 parameter set(s))
+- Expanded with SymPy; coefficients and remainder order verified numerically.
+
+#### Logarithm about 1
+
+- **Input:** `\ln x`
+- **Assumptions:** x positive
+- **Status:** `ok`
+- **Series:** $\left(x - 1\right) - \frac{\left(x - 1\right)^{2}}{2} + \frac{\left(x - 1\right)^{3}}{3} - \frac{\left(x - 1\right)^{4}}{4} + O\left(\left(x - 1\right)^{5}\right)$
+- **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 5 (1 parameter set(s))
+- Expanded with SymPy; coefficients and remainder order verified numerically.
+
+#### A pole has no Taylor series
+
+- **Input:** `\frac{1}{x}`
+- **Status:** `unsupported`
+- The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported.
+
 ### Polynomial equations
 
 *Available in:* chat.
@@ -431,6 +474,6 @@ Not implemented. Listed so that nobody mistakes them for features.
 
 - **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
 - **SageManifolds integration** (Mathematics): Differential geometry on explicit manifolds, as an optional backend.
-- **Integrals, limits and series** (Mathematics): In the workbench, with the same verification discipline as derivatives.
+- **Integrals and limits** (Mathematics): In the workbench, with the same verification discipline as derivatives. Taylor series are available.
 - **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
 - **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.

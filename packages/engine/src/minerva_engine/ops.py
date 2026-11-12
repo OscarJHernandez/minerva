@@ -121,6 +121,20 @@ def op_differentiate(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+# --- series ----------------------------------------------------------------------------
+def op_series(payload: dict[str, Any]) -> dict[str, Any]:
+    from .series import series
+
+    result = series(
+        ExpressionInput(**payload["expression"]),
+        str(payload["variable"]),
+        str(payload.get("point", "0")),
+        int(payload["order"]),
+        Limits(**payload["limits"]),
+    )
+    return result.model_dump(mode="json")
+
+
 # --- integrate -------------------------------------------------------------------------
 def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
     from .integrate import integrate
@@ -144,6 +158,42 @@ def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
         [str(c) for c in payload["coordinates"]],
         str(payload.get("time", "t")),
         payload.get("assumptions", {}),
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
+# --- expansion about an equilibrium -------------------------------------------------------
+def op_expand_motion(payload: dict[str, Any]) -> dict[str, Any]:
+    from .expansion import expand_motion
+
+    report = expand_motion(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        {str(k): str(v) for k, v in payload.get("equilibrium", {}).items()},
+        int(payload["order"]),
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
+# --- perturbation solution -------------------------------------------------------------------
+def op_perturbation_solve(payload: dict[str, Any]) -> dict[str, Any]:
+    from .perturbation import CompareRequest, perturbation_solve
+
+    compare = payload.get("compare")
+    small = payload.get("small_parameter")
+    report = perturbation_solve(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        str(small) if small else None,
+        str(payload.get("equilibrium", "0")),
+        int(payload["order"]),
+        CompareRequest(**compare) if compare else None,
         Limits(**payload["limits"]),
     )
     return report.model_dump(mode="json")
@@ -488,8 +538,11 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "read_formulas": op_read_formulas,
     "solve": op_solve,
     "differentiate": op_differentiate,
+    "series": op_series,
     "integrate": op_integrate,
     "lagrangian": op_lagrangian,
+    "expand_motion": op_expand_motion,
+    "perturbation_solve": op_perturbation_solve,
     "search_invariants": op_search_invariants,
     "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,

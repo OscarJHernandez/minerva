@@ -31,6 +31,7 @@ class Card(BaseModel):
     type: Literal[
         "simplify",
         "differentiate",
+        "series",
         "integrate",
         "identities",
         "entries",
@@ -38,6 +39,8 @@ class Card(BaseModel):
         "tensor",
         "solve",
         "lagrangian",
+        "expansion",
+        "perturbation",
         "invariants",
         "motion",
         "dimensional",

@@ -3,11 +3,14 @@ import type { Card } from "@/lib/chat-types";
 import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
+import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
 import { DimensionalCard } from "./dimensional-card";
+import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
+import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
 import { UnitsCard } from "./units-card";
 import { ResultPanel, StatusPill } from "../result-panel";
@@ -20,6 +23,8 @@ export function CardView({ card }: { card: Card }) {
       return <ResultPanel result={card.data} />;
     case "differentiate":
       return <DerivativePanel result={card.data} />;
+    case "series":
+      return <SeriesPanel result={card.data} />;
     case "integrate":
       return <IntegralPanel result={card.data} />;
     case "identities":
@@ -52,6 +57,10 @@ export function CardView({ card }: { card: Card }) {
           request={card.data.request}
         />
       );
+    case "expansion":
+      return <ExpansionCard report={card.data.report} />;
+    case "perturbation":
+      return <PerturbationCard report={card.data.report} request={card.data.request} />;
     case "invariants":
       return <InvariantsCard report={card.data.report} />;
     case "motion":

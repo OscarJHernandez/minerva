@@ -112,6 +112,26 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a
   symbolic fallback or weaken `check_derivative` (its tests include a deliberately wrong candidate).
+- Series (`series.py`) are Taylor polynomials about a finite real point, shown only if two checks that do not
+  use `sympy.series` both pass: the coefficients against a Cauchy-integral estimate (trapezoid on circles,
+  trusted only where the estimates at r and r/2 agree, tolerance per coefficient) and the h^(N+1) decay of the
+  remainder. Poles, branch points, logarithms and `|x|` are `unsupported`; there are no Laurent, Puiseux or
+  asymptotic fallbacks. The error table is a measurement, never a bound. Do not loosen `check_series` (its
+  tests include wrong candidates that differ by 1e-9).
+- Expansion about an equilibrium (`expansion.py`, tool `expand_motion`) shows a formula only if the EL equations
+  and the solved accelerations were confirmed, the point was shown to be an equilibrium, and every expansion
+  passed `check_series`. A point that is not an equilibrium is `unsupported`, not expanded. The sign of ω² is
+  stated only when the declared assumptions decide it, a negative ω² is described as a fact about the
+  linearised equations, and nothing here says "stable" or "unstable" about the full motion. Mode formulas
+  exist only for at most two coordinates and no velocity-linear terms; otherwise the characteristic polynomial.
+- Perturbation solutions (`perturbation.py`, tool `perturbation_solve`) are Poincaré–Lindstedt for one coordinate
+  whose acceleration depends on the position only. A solution is shown only if the truncated solution, put into the
+  *unexpanded* acceleration from L, leaves a residual that falls at ε^(N+1) when ε is halved twice, the initial
+  conditions hold, and the expansion of the equation passed `check_series`. Do not weaken `_check_residual`: its
+  tests include a 1% wrong frequency correction, a wrong harmonic and the unstrained (secular) expansion. The
+  comparison with `integrate_motion` needs numbers only the user may choose (the model must ask), is a
+  measurement on that span (never "valid for all times"), and is omitted when the numerical run fails its own
+  checks. Damping, driving, velocity-dependent accelerations and several coordinates are `unsupported`.
 - Antiderivatives (`integrate.py`) are shown only if an independent numerical derivative of the candidate
   matches the integrand (the same `check_derivative` machinery, branch by branch for `Piecewise`; a branch
   condition that cannot be sampled makes the result `not_verified`). "No closed form" is `unsupported` and

@@ -202,11 +202,14 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "get_entry",
         "simplify",
         "differentiate",
+        "series",
         "integrate",
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
         "analyze_lagrangian",
+        "expand_motion",
+        "perturbation_solve",
         "search_invariants",
         "integrate_motion",
         "dimensional_analysis",
@@ -448,6 +451,195 @@ def test_differentiate_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) 
         ctx,
     )
     assert real.card.data["result_text"] == "sign(x)"
+
+
+PENDULUM_LATEX = r"\frac12 m l^2 \dot{\theta}^2 + m g l \cos\theta"
+POSITIVE_MGL = {"m": ["positive"], "g": ["positive"], "l": ["positive"]}
+
+
+def test_expand_motion_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute(
+        "expand_motion",
+        {
+            "lagrangian": PENDULUM_LATEX,
+            "coordinates": ["theta"],
+            "assumptions": POSITIVE_MGL,
+            "order": 3,
+        },
+        ctx,
+    )
+    assert out.card.type == "expansion"
+    report = out.card.data["report"]
+    assert report["status"] == "ok"
+    assert report["equations"][0]["verification"]["passed"] is True
+    assert "expansion (theta, verified)" in out.for_model
+    assert "omega^2 provably positive" in out.for_model
+    assert "local" in out.for_model  # the model is told the result is local
+    assert report["equations"][0]["full_latex"] in out.known_latex
+    assert out.card.data["request"]["coordinates"] == ["theta"]
+
+
+def test_expand_motion_tool_refuses_a_non_equilibrium_and_claims_no_stability(
+    ctx: ToolContext,
+) -> None:
+    refused = execute(
+        "expand_motion",
+        {
+            "lagrangian": PENDULUM_LATEX,
+            "coordinates": ["theta"],
+            "assumptions": POSITIVE_MGL,
+            "equilibrium": {"theta": "1"},
+        },
+        ctx,
+    )
+    assert refused.card.data["report"]["status"] == "unsupported"
+    assert "expansion (" not in refused.for_model
+    top = execute(
+        "expand_motion",
+        {
+            "lagrangian": PENDULUM_LATEX,
+            "coordinates": ["theta"],
+            "assumptions": POSITIVE_MGL,
+            "equilibrium": {"theta": "pi"},
+        },
+        ctx,
+    )
+    assert "provably negative (linearised equations only)" in top.for_model
+    assert "omega = " not in top.for_model  # no frequency for a negative omega^2
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"coordinates": ["x"]},
+        {"lagrangian": "x", "coordinates": []},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 0},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 13},
+        {"lagrangian": "x" * 3000, "coordinates": ["x"]},
+    ],
+)
+def test_expand_motion_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    assert execute("expand_motion", arguments, ctx).card.type == "error"
+
+
+DUFFING_LATEX = r"\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4"
+
+
+def test_perturbation_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute(
+        "perturbation_solve",
+        {
+            "lagrangian": DUFFING_LATEX,
+            "coordinates": ["x"],
+            "assumptions": {"b": ["positive"]},
+            "small_parameter": "b",
+            "order": 2,
+        },
+        ctx,
+    )
+    assert out.card.type == "perturbation"
+    report = out.card.data["report"]
+    assert report["status"] == "ok" and report["verification"]["passed"] is True
+    assert "residual falls at the claimed order=True" in out.for_model
+    assert "never choose them yourself" in out.for_model  # the model is told to ask for numbers
+    assert report["frequency_latex"] in out.known_latex
+    assert report["period_ratio_latex"] in out.known_latex
+
+
+def test_perturbation_tool_compares_only_with_numbers_it_was_given(ctx: ToolContext) -> None:
+    out = execute(
+        "perturbation_solve",
+        {
+            "lagrangian": DUFFING_LATEX,
+            "coordinates": ["x"],
+            "assumptions": {"b": ["positive"]},
+            "small_parameter": "b",
+            "order": 2,
+            "compare": {"parameters": {}, "epsilon": 0.1, "amplitude": 1.0, "t_end": 20.0},
+        },
+        ctx,
+    )
+    comparison = out.card.data["report"]["comparison"]
+    assert comparison["status"] == "ok" and comparison["observed_order"] is not None
+    assert "a measurement on this span only" in out.for_model
+    assert "never choose them yourself" not in out.for_model  # already compared
+
+
+def test_perturbation_tool_shows_no_formula_when_it_refuses(ctx: ToolContext) -> None:
+    out = execute(
+        "perturbation_solve",
+        {
+            "lagrangian": r"\frac12 \dot{x}^2 - \frac12 x^2 - s(1-\cos x)",
+            "coordinates": ["x"],
+            "assumptions": {"s": ["positive"]},
+            "small_parameter": "s",
+        },
+        ctx,
+    )
+    assert out.card.data["report"]["status"] == "unsupported"
+    assert out.card.data["report"]["solution_latex"] is None
+    assert "frequency:" not in out.for_model and "solution:" not in out.for_model
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"coordinates": ["x"]},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 0},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 7},
+        {"lagrangian": "x", "coordinates": ["x"], "compare": {"parameters": {}, "epsilon": 0.1}},
+        {
+            "lagrangian": "x",
+            "coordinates": ["x"],
+            "compare": {"parameters": {}, "epsilon": -1, "t_end": 1},
+        },
+        {
+            "lagrangian": "x",
+            "coordinates": ["x"],
+            "compare": {"parameters": {}, "epsilon": 1, "t_end": 1, "extra": 1},
+        },
+    ],
+)
+def test_perturbation_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    assert execute("perturbation_solve", arguments, ctx).card.type == "error"
+
+
+def test_series_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute("series", {"latex": r"\sin x", "variable": "x", "order": 5}, ctx)
+    assert out.card.type == "series"
+    assert out.card.data["status"] == "ok"
+    assert out.card.data["result_text"] == "x**5/120 - x**3/6 + x"
+    assert "coefficients (Cauchy integral) agree" in out.for_model
+    assert "remainder order confirmed" in out.for_model
+    assert "Measured truncation error (not a bound)" in out.for_model
+    # Both the polynomial and each coefficient are known, so prose quoting them is "checked".
+    assert any("x^{5}" in k for k in out.known_latex)
+    assert "\\frac{1}{120}" in out.known_latex
+
+
+def test_series_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) -> None:
+    pole = execute("series", {"latex": r"\frac{1}{x}", "variable": "x"}, ctx)
+    assert pole.card.type == "series"
+    assert pole.card.data["status"] == "unsupported"
+    assert pole.card.data["result_latex"] is None
+    assert "series=" not in pole.for_model
+    assert pole.known_latex == [pole.card.data["input_latex"]]
+    modulus = execute("series", {"latex": r"\left|x\right|", "variable": "x", "point": "1"}, ctx)
+    assert modulus.card.data["status"] == "unsupported"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"latex": "x"},
+        {"latex": "x", "variable": "x", "order": 0},
+        {"latex": "x", "variable": "x", "order": 13},
+        {"latex": "x", "variable": ""},
+        {"latex": "x" * 3000, "variable": "x"},
+    ],
+)
+def test_series_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    assert execute("series", arguments, ctx).card.type == "error"
 
 
 @pytest.mark.parametrize(

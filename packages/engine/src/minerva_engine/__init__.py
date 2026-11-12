@@ -8,6 +8,7 @@ from .differentiate import (
     DiffVariable,
 )
 from .errors import LimitError, MinervaMathError, ParseError
+from .expansion import ExpansionReport
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -30,6 +31,7 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest, Sweep
 from .ops import apply_rule, parse_expression, verify_rule
+from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
     ConstantSuggestion,
@@ -37,6 +39,7 @@ from .pi_groups import (
     QuantitySpec,
     UnitsCheckReport,
 )
+from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
 from .textparse import parse_text
@@ -44,6 +47,7 @@ from .textparse import parse_text
 __all__ = [
     "Applicability",
     "ClaimCheck",
+    "CompareRequest",
     "ConstantCandidate",
     "ConstantSuggestion",
     "DerivativeStep",
@@ -52,6 +56,7 @@ __all__ = [
     "DifferentiateResult",
     "DimensionalReport",
     "Engine",
+    "ExpansionReport",
     "ExpressionInput",
     "FormulaReading",
     "IdentitiesResult",
@@ -65,11 +70,15 @@ __all__ = [
     "MotionReport",
     "MotionRequest",
     "ParseError",
+    "PerturbationReport",
     "QuadratureVerification",
     "QuantitySpec",
     "Rule",
     "RuleApplication",
     "RuleCondition",
+    "SeriesResult",
+    "SeriesTerm",
+    "SeriesVerification",
     "SimplifyResult",
     "SolveReport",
     "Status",

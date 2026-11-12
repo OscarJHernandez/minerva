@@ -88,6 +88,53 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("integrate_motion", args)])
+        elif ("perturbation" in lower or "lindstedt" in lower or "period" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 2
+            small = m.group(1) if (m := re.search(r"small parameter (\w+)", user)) else None
+            args3: dict[str, Any] = {
+                "lagrangian": latex,
+                "coordinates": names or ["x"],
+                "order": order,
+            }
+            if small:
+                args3["small_parameter"] = small
+            if "compare" in lower:
+                # Development stand-in: numbers are read from "name=value" pairs in the message, never invented.
+                given = {
+                    k: float(v)
+                    for k, v in re.findall(
+                        r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", re.sub(r"\$[^$]*\$", "", user)
+                    )
+                }
+                spec = {
+                    "epsilon": given.pop("epsilon", 0.1),
+                    "amplitude": given.pop("amplitude", None),
+                    "t_end": given.pop("t_end", 20.0),
+                    "parameters": given,
+                }
+                args3["compare"] = {k: v for k, v in spec.items() if v is not None}
+            async for c in self._say(
+                "I will solve it by perturbation theory and verify the result. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("perturbation_solve", args3)])
+        elif ("equilibrium" in lower or "small oscillation" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 3
+            at = re.search(r"at (\w+)\s*=\s*([\w/*]+)", user)
+            args2: dict[str, Any] = {
+                "lagrangian": latex,
+                "coordinates": names or ["x"],
+                "order": order,
+            }
+            if at:
+                args2["equilibrium"] = {at.group(1): at.group(2)}
+            async for c in self._say(
+                "I will expand the equations of motion about the equilibrium. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("expand_motion", args2)])
         elif ("hidden" in lower or "more conserved" in lower or "runge" in lower) and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             angle_names = [n for n in names if n in ("theta", "phi", "varphi", "psi")]
@@ -130,6 +177,19 @@ class ScriptedLLM:
                     ToolCall(
                         "differentiate",
                         {"latex": latex, "variables": [{"name": name, "order": order}]},
+                    )
+                ]
+            )
+        elif ("series" in lower or "taylor" in lower or "expand" in lower) and latex:
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 4
+            about = m.group(1) if (m := re.search(r"about (-?\d+(?:/\d+)?)", lower)) else "0"
+            async for c in self._say("I will expand it and verify the coefficients. "):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "series",
+                        {"latex": latex, "variable": "x", "point": about, "order": order},
                     )
                 ]
             )
@@ -215,6 +275,48 @@ class ScriptedLLM:
                 text = (
                     f"I could not differentiate that ({status}). The card says why; for example "
                     "|x| needs x declared real."
+                )
+        elif tool == "perturbation_solve":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the frequency shift, the period series and the solution. The truncated "
+                    "solution was put into the unexpanded equation of motion and its residual falls at the "
+                    "claimed order. It is local: it says nothing about large amplitudes. To compare with a "
+                    "numerical run I need parameter values, the amplitude and an end time from you."
+                )
+            else:
+                text = (
+                    f"I could not solve that perturbatively ({status}). The card says why; this works "
+                    "for one coordinate whose acceleration depends on the position only."
+                )
+        elif tool == "expand_motion":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the expansion about the equilibrium. Each expansion was checked "
+                    "independently of SymPy's series. It is local: it says nothing about large motion."
+                )
+            else:
+                text = (
+                    f"I could not expand that ({status}). The card says why; the point must be an "
+                    "equilibrium, and L must not depend explicitly on time."
+                )
+        elif tool == "series":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the Taylor polynomial. Its coefficients were re-derived with an "
+                    "independent contour-integral estimate and the remainder order was confirmed. "
+                    "The measured errors are measurements, not guarantees."
+                )
+            else:
+                text = (
+                    f"I could not give a series ({status}). The card says why; a pole or branch point "
+                    "at the expansion point has no Taylor series."
                 )
         elif tool == "integrate":
             found = re.search(r"status=(\w+)", content)

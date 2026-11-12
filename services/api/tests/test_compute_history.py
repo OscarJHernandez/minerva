@@ -253,6 +253,65 @@ def test_logs_never_contain_user_input(capsys) -> None:  # type: ignore[no-untyp
     assert "ada@example.com" not in out
 
 
+def test_series_and_history(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/series",
+        json={"input": "exp(x)", "format": "text", "variable": "x", "order": 3},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["result_text"] == "x**3/6 + x**2/2 + x + 1"
+    assert body["verification"]["passed"] is True
+    assert [t["power"] for t in body["terms"]] == [0, 1, 2, 3]
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "series"
+    assert item["id"] == body["calculation_id"]
+    assert item["result"]["order"] == 3 and item["result"]["variable"] == "x"
+
+
+def test_series_about_a_point_and_failures_keep_the_request(authed: TestClient) -> None:
+    url = "/v1/compute/series"
+    shifted = authed.post(
+        url,
+        json={
+            "input": "log(x)",
+            "format": "text",
+            "variable": "x",
+            "point": "1",
+            "order": 2,
+            "assumptions": {"x": ["positive"]},
+        },
+    ).json()
+    assert shifted["status"] == "ok"
+    pole = authed.post(
+        url, json={"input": "1/x", "format": "text", "variable": "x", "order": 3}
+    ).json()
+    assert pole["status"] == "unsupported" and pole["result_latex"] is None
+    items = authed.get("/v1/history").json()
+    failed = next(i for i in items if i["status"] == "unsupported")
+    assert failed["result"]["variable"] == "x" and failed["result"]["order"] == 3
+
+
+def test_series_validation(authed: TestClient) -> None:
+    url = "/v1/compute/series"
+    for extra in ({"order": 0}, {"order": 13}, {"variable": ""}):
+        body = {"input": "x", "variable": "x", **extra}
+        assert authed.post(url, json=body).status_code == 422
+    assert authed.post(url, json={"input": "x" * 3000, "variable": "x"}).status_code == 422
+    parse = authed.post(url, json={"input": r"\nonsense", "variable": "x"}).json()
+    assert parse["status"] == "parse_error"
+    infinity = authed.post(
+        url, json={"input": "x", "format": "text", "variable": "x", "point": "oo"}
+    ).json()
+    assert infinity["status"] == "unsupported"
+
+
+def test_series_requires_authentication(client: TestClient) -> None:
+    body = {"input": "x", "variable": "x"}
+    assert client.post("/v1/compute/series", json=body).status_code == 401
+
+
 def test_integrate_definite_and_history(authed: TestClient) -> None:
     r = authed.post(
         "/v1/compute/integrate",

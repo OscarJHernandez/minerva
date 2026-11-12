@@ -5,6 +5,7 @@ import type {
   HistoryItem,
   IntegrateResult,
   IdentitiesResult,
+  SeriesResult,
   SimplifyResult,
   User,
 } from "./types";
@@ -70,6 +71,11 @@ export const api = {
     request<DifferentiateResult>("/v1/compute/differentiate", {
       method: "POST",
       body: JSON.stringify({ ...c, variables, format: "latex" }),
+    }),
+  series: (c: ComputeInput, variable: string, point: string, order: number) =>
+    request<SeriesResult>("/v1/compute/series", {
+      method: "POST",
+      body: JSON.stringify({ ...c, variable, point, order, format: "latex" }),
     }),
   integrate: (c: ComputeInput, variable: string, bounds?: { lower: string; upper: string }) =>
     request<IntegrateResult>("/v1/compute/integrate", {
