@@ -52,7 +52,7 @@ export function SeriesPanel({ result }: { result: SeriesResult }) {
             type="button"
             className="mt-1 text-xs text-accent hover:underline"
             onClick={async () => {
-              await navigator.clipboard?.writeText(result.result_latex ?? "");
+              await navigator.clipboard?.writeText(full ?? "");
               setCopied(true);
               setTimeout(() => setCopied(false), 1500);
             }}
