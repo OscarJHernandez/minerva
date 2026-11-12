@@ -14,7 +14,7 @@
 - {id: sin_cos_product, input: '\sin(x)\cos(y)', expect: [trig.product_to_sum]}
 - {id: sin_squared_reduction, input: '\sin^2 x', expect: [trig.power_reduction_sin]}
 - {id: cos_squared_reduction, input: '\cos^2 x', expect: [trig.power_reduction_cos]}
-- {id: euler, input: 'e^{ix}', expect: []}
+- {id: euler, input: '\exp(\imaginaryI x)', expect: [trig.euler]}
 - {id: hyp_pythagorean, input: '\cosh^2 x - \sinh^2 x', expect: [hyp.pythagorean]}
 - {id: sinh_double, input: '\sinh(2x)', expect: [hyp.double_sinh]}
 - {id: cosh_sum, input: '\cosh(x+y)', expect: [hyp.sum_cosh]}
@@ -26,7 +26,7 @@
 - {id: log_product_positive, input: '\log(xy)', assumptions: {x: [positive], y: [positive]}, expect: [log.product]}
 - {id: log_product_unassumed, input: '\log(xy)', forbid: [log.product]}
 - {id: sqrt_square_unassumed, input: '\sqrt{x^2}', forbid: [radical.sqrt_square_abs, radical.sqrt_square_nonneg]}
-- {id: gamma_recurrence, input: '\Gamma(x+1)', expect: []}
+- {id: gamma_recurrence, input: '\Gamma(x+1)', expect: [special.gamma_recurrence]}
 
 # --- honesty: nothing should be invented ---
 # (sin(2a) must not match sin(x) by binding a = x/2: see _binds_fraction_of_multiple in engine ops.py)
@@ -39,17 +39,17 @@
 - {id: sin_sin_not_double, input: '\sin(x)\sin(y)', forbid: [trig.double_sin]}
 - {id: sin_double_sum_argument, input: '\sin(2x+2y)', expect: [trig.double_sin]}
 
-# --- not in the handbook yet (pending until the generated families land) ---
-- {id: sin_triple, input: '\sin(3x)', expect: [trig.triple_sin], pending: true}
-- {id: cos_triple, input: '\cos(3x)', expect: [trig.triple_cos], pending: true}
-- {id: sin_sin_product, input: '\sin(x)\sin(y)', expect: [trig.product_sin_sin], pending: true}
-- {id: cos_cos_product, input: '\cos(x)\cos(y)', expect: [trig.product_cos_cos], pending: true}
-- {id: sin_sum_to_product, input: '\sin(x)+\sin(y)', expect: [trig.sum_to_product_sin], pending: true}
-- {id: cos_difference_to_product, input: '\cos(x)-\cos(y)', expect: [trig.difference_to_product_cos], pending: true}
-- {id: sin_cubed, input: '\sin^3 x', expect: [trig.power_reduction_sin3], pending: true}
-- {id: sinh_triple, input: '\sinh(3x)', expect: [hyp.triple_sinh], pending: true}
-- {id: tanh_double, input: '\tanh(2x)', expect: [hyp.double_tanh], pending: true}
-- {id: tanh_sum, input: '\tanh(x+y)', expect: [hyp.sum_tanh], pending: true}
-- {id: binomial_cube_sum, input: '(x+y)^3', expect: [alg.binomial_cube_sum], pending: true}
-- {id: binomial_cube_difference, input: '(x-y)^3', expect: [alg.binomial_cube_difference], pending: true}
-- {id: difference_of_fourth_powers, input: 'x^4 - y^4', expect: [alg.difference_of_fourth_powers], pending: true}
+# --- identities added by the generated families (see generate.py) ---
+- {id: sin_triple, input: '\sin(3x)', expect: [trig.triple_sin]}
+- {id: cos_triple, input: '\cos(3x)', expect: [trig.triple_cos]}
+- {id: sin_sin_product, input: '\sin(x)\sin(y)', expect: [trig.product_sin_sin]}
+- {id: cos_cos_product, input: '\cos(x)\cos(y)', expect: [trig.product_cos_cos]}
+- {id: sin_sum_to_product, input: '\sin(x)+\sin(y)', expect: [trig.sum_to_product_sin]}
+- {id: cos_difference_to_product, input: '\cos(x)-\cos(y)', expect: [trig.difference_to_product_cos]}
+- {id: sin_cubed, input: '\sin^3 x', expect: [trig.power_reduction_sin3]}
+- {id: sinh_triple, input: '\sinh(3x)', expect: [hyp.triple_sinh]}
+- {id: tanh_double, input: '\tanh(2x)', expect: [hyp.double_tanh]}
+- {id: tanh_sum, input: '\tanh(x+y)', expect: [hyp.sum_tanh]}
+- {id: binomial_cube_sum, input: '(x+y)^3', expect: [alg.binomial_cube_sum]}
+- {id: binomial_cube_difference, input: '(x-y)^3', expect: [alg.binomial_cube_difference]}
+- {id: difference_of_fourth_powers, input: 'x^4 - y^4', expect: [alg.difference_of_fourth_powers]}

@@ -6,6 +6,7 @@
   summary: Factorisation and expansion identities.
   sections:
     - {id: factoring, title: Factoring and expanding}
+    - {id: binomial, title: Binomial expansions}
 - id: math.methods
   book: mathematics
   title: Solution methods
@@ -25,11 +26,18 @@
     - {id: pythagorean, title: Pythagorean identities}
     - {id: angle, title: Sum, double-angle and half-angle formulas}
     - {id: exponential, title: Relations to the exponential}
+    - {id: multiple, title: Multiple-angle formulas}
+    - {id: products, title: Products and sums}
+    - {id: powers, title: Powers of sine and cosine}
 - id: math.hyperbolic
   book: mathematics
   title: Hyperbolic functions
   sections:
     - {id: identities, title: Identities}
+    - {id: multiple, title: Multiple-argument formulas}
+    - {id: addition, title: Addition formulas}
+    - {id: products, title: Products and sums}
+    - {id: powers, title: Powers of sinh and cosh}
 - id: math.derivatives
   book: mathematics
   title: Derivatives

@@ -66,6 +66,27 @@ def test_identities_endpoint(authed: TestClient) -> None:
     assert matches2["log.product"]["applicability"] == "applicable"
 
 
+def test_identities_endpoint_offers_the_triple_angle_not_a_halved_double_angle(
+    authed: TestClient,
+) -> None:
+    """Handbook growth and the matcher fix, seen through the real endpoint."""
+    r = authed.post("/v1/compute/identities", json={"input": r"\sin(3x)"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    applicable = {
+        m["entry"]["id"]: m
+        for m in body["matches"]
+        if m["application"]["applicability"] == "applicable"
+    }
+    assert "trig.triple_sin" in applicable
+    assert "trig.double_sin" not in applicable  # would need a = 3x/2
+    triple = applicable["trig.triple_sin"]
+    assert triple["entry"]["verification"] in {"symbolic", "numeric"}
+    assert triple["entry"]["reference"]["source"] == "DLMF"
+    assert triple["application"]["verification"]["passed"] is True
+
+
 def test_tensor_endpoint(authed: TestClient) -> None:
     r = authed.post(
         "/v1/compute/tensor/canonicalize",
