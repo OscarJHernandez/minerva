@@ -163,6 +163,7 @@ class _Move:
 class _Step:
     move: _Move
     before: sp.Expr
+    after: sp.Expr
     verification: Verification
 
 
@@ -292,7 +293,7 @@ class _Search:
             accepted.append(
                 _Candidate(
                     result,
-                    (*cand.steps, _Step(move, cand.expr, verification)),
+                    (*cand.steps, _Step(move, cand.expr, result, verification)),
                     self.cost(result),
                 )
             )
@@ -305,7 +306,7 @@ def _finalize(
     """Re-verify a chain with the symbolic zero test added; None if anything does not hold."""
     steps: list[TransformStep] = []
     for step in cand.steps:
-        v = verify_equal(step.before, _after(cand, step), symbolic=allow_symbolic)
+        v = verify_equal(step.before, step.after, symbolic=allow_symbolic)
         if not v.passed:
             return None
         steps.append(
@@ -315,7 +316,7 @@ def _finalize(
                 direction=step.move.direction,
                 matched_latex=step.move.matched,
                 before_latex=sp.latex(step.before),
-                after_latex=sp.latex(_after(cand, step)),
+                after_latex=sp.latex(step.after),
                 verification=v,
             )
         )
@@ -329,11 +330,6 @@ def _finalize(
         verification=end,
     )
     return chain, steps
-
-
-def _after(cand: _Candidate, step: _Step) -> sp.Expr:
-    index = cand.steps.index(step)
-    return cand.steps[index + 1].before if index + 1 < len(cand.steps) else cand.expr
 
 
 def transform(
