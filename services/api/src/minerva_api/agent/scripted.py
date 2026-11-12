@@ -88,6 +88,37 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("integrate_motion", args)])
+        elif ("perturbation" in lower or "lindstedt" in lower or "period" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 2
+            small = m.group(1) if (m := re.search(r"small parameter (\w+)", user)) else None
+            args3: dict[str, Any] = {
+                "lagrangian": latex,
+                "coordinates": names or ["x"],
+                "order": order,
+            }
+            if small:
+                args3["small_parameter"] = small
+            if "compare" in lower:
+                # Development stand-in: numbers are read from "name=value" pairs in the message, never invented.
+                given = {
+                    k: float(v)
+                    for k, v in re.findall(
+                        r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", re.sub(r"\$[^$]*\$", "", user)
+                    )
+                }
+                spec = {
+                    "epsilon": given.pop("epsilon", 0.1),
+                    "amplitude": given.pop("amplitude", None),
+                    "t_end": given.pop("t_end", 20.0),
+                    "parameters": given,
+                }
+                args3["compare"] = {k: v for k, v in spec.items() if v is not None}
+            async for c in self._say(
+                "I will solve it by perturbation theory and verify the result. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("perturbation_solve", args3)])
         elif ("equilibrium" in lower or "small oscillation" in lower) and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 3
@@ -212,6 +243,21 @@ class ScriptedLLM:
                 text = (
                     f"I could not differentiate that ({status}). The card says why; for example "
                     "|x| needs x declared real."
+                )
+        elif tool == "perturbation_solve":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the frequency shift, the period series and the solution. The truncated "
+                    "solution was put into the unexpanded equation of motion and its residual falls at the "
+                    "claimed order. It is local: it says nothing about large amplitudes. To compare with a "
+                    "numerical run I need parameter values, the amplitude and an end time from you."
+                )
+            else:
+                text = (
+                    f"I could not solve that perturbatively ({status}). The card says why; this works "
+                    "for one coordinate whose acceleration depends on the position only."
                 )
         elif tool == "expand_motion":
             found = re.search(r"status=(\w+)", content)

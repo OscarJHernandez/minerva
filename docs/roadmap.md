@@ -23,8 +23,10 @@ Ordering favours correctness infrastructure before breadth.
    Derivatives are done (`differentiate`, any order up to 10, mixed partials, every step checked numerically).
    Taylor series are done (`series`, order up to 12, coefficients and remainder order checked independently).
    Equations of motion about an equilibrium are done (`expand_motion`: expansion to degree 12, linearisation,
-   normal modes for up to two coordinates). Next in the same line: perturbative solutions
-   (Poincaré–Lindstedt) checked against the verified numerical integrator.
+   normal modes for up to two coordinates) and perturbative solutions (`perturbation_solve`: Poincaré–Lindstedt,
+   one coordinate, checked by residual order and against the verified numerical integrator). Next: a form on the
+   card for the comparison numbers, multiple scales for damping and driving (needs generalised forces first), and
+   several coordinates.
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported

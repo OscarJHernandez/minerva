@@ -8,6 +8,7 @@ import { DimensionalCard } from "./dimensional-card";
 import { ExpansionCard } from "./expansion-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
+import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
 import { UnitsCard } from "./units-card";
 import { ResultPanel, StatusPill } from "../result-panel";
@@ -54,6 +55,8 @@ export function CardView({ card }: { card: Card }) {
       );
     case "expansion":
       return <ExpansionCard report={card.data.report} />;
+    case "perturbation":
+      return <PerturbationCard report={card.data.report} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":

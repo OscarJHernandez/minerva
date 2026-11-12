@@ -21,6 +21,7 @@ from .models import (
     TensorResult,
 )
 from .motion import MotionReport, MotionRequest
+from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
     DimensionalReport,
@@ -221,6 +222,36 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return ExpansionReport(status=status, message=message, duration_ms=ms)
         report = ExpansionReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def perturbation_solve(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+        small_parameter: str | None = None,
+        equilibrium: str = "0",
+        order: int = 2,
+        compare: CompareRequest | None = None,
+    ) -> PerturbationReport:
+        """Poincare-Lindstedt solution of a one-degree-of-freedom oscillator (sandboxed)."""
+        payload = {
+            "lagrangian": lagrangian,
+            "coordinates": coordinates,
+            "time": time,
+            "assumptions": assumptions or {},
+            "small_parameter": small_parameter,
+            "equilibrium": equilibrium,
+            "order": order,
+            "compare": compare.model_dump() if compare else None,
+        }
+        outcome, ms = self._run("perturbation_solve", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return PerturbationReport(status=status, message=message, duration_ms=ms)
+        report = PerturbationReport(**outcome.value)
         report.duration_ms = ms
         return report
 

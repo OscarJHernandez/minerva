@@ -71,6 +71,16 @@ one most likely to be wrong.
     (up to 4 coordinates) and, for at most 2 coordinates with B = 0, normal modes: ω² roots of det(A + ω² I)
     checked by substitution, eigenvectors checked by (A + ω² I) w = 0, the sign reported only when the declared
     assumptions decide it. The expansion is local; no stability claim is made.
+  - `perturbation.py` (`perturbation_solve`): Poincaré–Lindstedt for one coordinate with an acceleration that
+    depends on the position only, about a confirmed equilibrium (`expansion.prepare`). The small parameter is a
+    named parameter of L (L must be a linear oscillator at 0; amplitude A symbolic) or the amplitude of the
+    initial displacement. Each order is solved exactly on cosine polynomials with the strained time τ = ω t, ω_k
+    removing the cos τ resonance. Shown only if the expansion passes `check_series`, the truncated solution
+    leaves a residual in the unexpanded acceleration that falls at ε^(N+1) (mpmath, random parameters, ε halved
+    twice), the initial conditions hold (symbolic and numeric) and every order is a finite cosine sum. The period
+    ratio series is derived from ω and checked with `check_series`. Optional comparison with `integrate_motion`
+    for user-given numbers, at ε and ε/2, reporting the observed order of the error; a measurement, omitted when
+    the numerical run fails its own checks. Order 1-6.
   - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
     initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive
     Dormand–Prince 5(4) (relative tolerance 1e-12; no SciPy). A run keeps its trajectory only if (1) a fixed-step
@@ -119,7 +129,7 @@ and explains; it never computes and never decides correctness.
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
 - **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `series`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `expand_motion` and `integrate_motion`. Each is a
+  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
   posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with

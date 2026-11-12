@@ -126,6 +126,40 @@ def test_expansion_turn_about_a_non_equilibrium_is_refused(
     assert card["data"]["report"]["equations"] == []
 
 
+def test_perturbation_turn_streams_a_verified_card_and_does_not_invent_numbers(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Perturbation theory to order 2, small parameter b: $\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "perturbation"
+    report = card["data"]["report"]
+    assert report["verification"]["passed"] is True
+    assert report["comparison"] is None  # no numbers from the user, so no comparison was run
+
+
+def test_perturbation_turn_compares_only_with_numbers_taken_from_the_message(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        "Perturbation theory to order 2, small parameter b, compare epsilon=0.1 amplitude=1 t_end=20: "
+        r"$\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    comparison = card["data"]["report"]["comparison"]
+    assert comparison["status"] == "ok" and comparison["epsilon"] == 0.1
+    assert len(comparison["t"]) == len(comparison["numerical"]) == len(comparison["perturbative"])
+
+
 def test_series_turn_about_a_pole_shows_no_formula(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, r"Taylor series of $\frac{1}{x}$ about 0")

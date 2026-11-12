@@ -208,6 +208,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "solve_polynomial",
         "analyze_lagrangian",
         "expand_motion",
+        "perturbation_solve",
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
@@ -484,6 +485,88 @@ def test_expand_motion_tool_refuses_a_non_equilibrium_and_claims_no_stability(
 )
 def test_expand_motion_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
     assert execute("expand_motion", arguments, ctx).card.type == "error"
+
+
+DUFFING_LATEX = r"\frac12 \dot{x}^2 - \frac12 x^2 - \frac14 b x^4"
+
+
+def test_perturbation_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute(
+        "perturbation_solve",
+        {
+            "lagrangian": DUFFING_LATEX,
+            "coordinates": ["x"],
+            "assumptions": {"b": ["positive"]},
+            "small_parameter": "b",
+            "order": 2,
+        },
+        ctx,
+    )
+    assert out.card.type == "perturbation"
+    report = out.card.data["report"]
+    assert report["status"] == "ok" and report["verification"]["passed"] is True
+    assert "residual falls at the claimed order=True" in out.for_model
+    assert "never choose them yourself" in out.for_model  # the model is told to ask for numbers
+    assert report["frequency_latex"] in out.known_latex
+    assert report["period_ratio_latex"] in out.known_latex
+
+
+def test_perturbation_tool_compares_only_with_numbers_it_was_given(ctx: ToolContext) -> None:
+    out = execute(
+        "perturbation_solve",
+        {
+            "lagrangian": DUFFING_LATEX,
+            "coordinates": ["x"],
+            "assumptions": {"b": ["positive"]},
+            "small_parameter": "b",
+            "order": 2,
+            "compare": {"parameters": {}, "epsilon": 0.1, "amplitude": 1.0, "t_end": 20.0},
+        },
+        ctx,
+    )
+    comparison = out.card.data["report"]["comparison"]
+    assert comparison["status"] == "ok" and comparison["observed_order"] is not None
+    assert "a measurement on this span only" in out.for_model
+    assert "never choose them yourself" not in out.for_model  # already compared
+
+
+def test_perturbation_tool_shows_no_formula_when_it_refuses(ctx: ToolContext) -> None:
+    out = execute(
+        "perturbation_solve",
+        {
+            "lagrangian": r"\frac12 \dot{x}^2 - \frac12 x^2 - s(1-\cos x)",
+            "coordinates": ["x"],
+            "assumptions": {"s": ["positive"]},
+            "small_parameter": "s",
+        },
+        ctx,
+    )
+    assert out.card.data["report"]["status"] == "unsupported"
+    assert out.card.data["report"]["solution_latex"] is None
+    assert "frequency:" not in out.for_model and "solution:" not in out.for_model
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"coordinates": ["x"]},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 0},
+        {"lagrangian": "x", "coordinates": ["x"], "order": 7},
+        {"lagrangian": "x", "coordinates": ["x"], "compare": {"parameters": {}, "epsilon": 0.1}},
+        {
+            "lagrangian": "x",
+            "coordinates": ["x"],
+            "compare": {"parameters": {}, "epsilon": -1, "t_end": 1},
+        },
+        {
+            "lagrangian": "x",
+            "coordinates": ["x"],
+            "compare": {"parameters": {}, "epsilon": 1, "t_end": 1, "extra": 1},
+        },
+    ],
+)
+def test_perturbation_arguments_are_bounded(ctx: ToolContext, arguments: dict[str, Any]) -> None:
+    assert execute("perturbation_solve", arguments, ctx).card.type == "error"
 
 
 def test_series_tool_returns_a_verified_card(ctx: ToolContext) -> None:

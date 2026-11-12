@@ -124,6 +124,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   stated only when the declared assumptions decide it, a negative ω² is described as a fact about the
   linearised equations, and nothing here says "stable" or "unstable" about the full motion. Mode formulas
   exist only for at most two coordinates and no velocity-linear terms; otherwise the characteristic polynomial.
+- Perturbation solutions (`perturbation.py`, tool `perturbation_solve`) are Poincaré–Lindstedt for one coordinate
+  whose acceleration depends on the position only. A solution is shown only if the truncated solution, put into the
+  *unexpanded* acceleration from L, leaves a residual that falls at ε^(N+1) when ε is halved twice, the initial
+  conditions hold, and the expansion of the equation passed `check_series`. Do not weaken `_check_residual`: its
+  tests include a 1% wrong frequency correction, a wrong harmonic and the unstrained (secular) expansion. The
+  comparison with `integrate_motion` needs numbers only the user may choose (the model must ask), is a
+  measurement on that span (never "valid for all times"), and is omitted when the numerical run fails its own
+  checks. Damping, driving, velocity-dependent accelerations and several coordinates are `unsupported`.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

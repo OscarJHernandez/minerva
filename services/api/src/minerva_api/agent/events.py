@@ -39,6 +39,7 @@ class Card(BaseModel):
         "solve",
         "lagrangian",
         "expansion",
+        "perturbation",
         "motion",
         "dimensional",
         "units",

@@ -29,6 +29,7 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest, Sweep
 from .ops import apply_rule, parse_expression, verify_rule
+from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
     ConstantSuggestion,
@@ -44,6 +45,7 @@ from .textparse import parse_text
 __all__ = [
     "Applicability",
     "ClaimCheck",
+    "CompareRequest",
     "ConstantCandidate",
     "ConstantSuggestion",
     "DerivativeStep",
@@ -63,6 +65,7 @@ __all__ = [
     "MotionReport",
     "MotionRequest",
     "ParseError",
+    "PerturbationReport",
     "QuantitySpec",
     "Rule",
     "RuleApplication",

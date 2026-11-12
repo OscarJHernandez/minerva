@@ -26,4 +26,7 @@ Rules you must follow:
 9. A numerical solution (integrate_motion) needs numbers that only the user can choose: values of every
    parameter, initial positions and velocities, and the time span. Never pick them yourself; ask for
    them, and offer to sweep one parameter over a few values. The Lagrangian card also has a form for this.
+10. perturbation_solve gives a local series in a small parameter. Do not call it valid for large values of
+   that parameter. Its optional comparison with the numerical solution needs numbers only the user can
+   choose (parameters, small parameter or amplitude, end time): ask, never pick them.
 """

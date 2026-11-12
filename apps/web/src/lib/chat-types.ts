@@ -42,6 +42,48 @@ export interface ExpansionReport {
   duration_ms: number;
 }
 
+export interface PerturbationReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  equilibrium: { name: string; latex: string; name_latex: string }[];
+  mode: "parameter" | "amplitude" | null;
+  small_latex: string | null;
+  amplitude_latex: string | null;
+  order: number;
+  linear_frequency_latex: string | null;
+  frequency_latex: string | null;
+  period_ratio_latex: string | null;
+  solution_latex: string | null;
+  orders: { order: number; frequency_latex: string | null; shape_latex: string }[];
+  verification: {
+    residual_method: string;
+    residual_passed: boolean;
+    parameter_sets_checked: number;
+    initial_conditions_passed: boolean;
+    bounded: boolean;
+    passed: boolean;
+    note: string;
+  } | null;
+  comparison: {
+    status: Status;
+    message: string;
+    epsilon: number;
+    predicted_order: number;
+    t: number[];
+    numerical: number[];
+    perturbative: number[];
+    max_error: number | null;
+    max_error_half: number | null;
+    observed_order: number | null;
+    scaling: string;
+    notes: string[];
+  } | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
 export interface LagrangianReport {
   status: Status;
   lagrangian_latex: string | null;
@@ -310,6 +352,13 @@ export type Card =
         report: ExpansionReport;
         request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "perturbation";
+      title: string;
+      data: { report: PerturbationReport };
     }
   | {
       id: string;

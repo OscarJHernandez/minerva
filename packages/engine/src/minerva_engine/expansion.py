@@ -26,13 +26,14 @@ and systems with velocity-linear terms get the characteristic polynomial only.
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass, field
 from typing import Literal
 
 import sympy as sp
 from pydantic import BaseModel, Field
 
 from .errors import LimitError, MinervaMathError
-from .lagrangian import DerivationError, check_equations, derive
+from .lagrangian import Derivation, DerivationError, check_equations, derive
 from .models import ExpressionInput, Limits, Status, Verification
 from .series import MAX_ORDER, SeriesVerification, check_series
 from .verify import MIN_VALID_POINTS, numeric_check
@@ -110,68 +111,79 @@ def _fresh(name: str, taken: set[str]) -> sp.Symbol:
     return sp.Symbol(name)
 
 
-def expand_motion(
+@dataclass
+class Prepared:
+    """A confirmed derivation about a confirmed equilibrium, shared by the expansion and perturbation."""
+
+    d: Derivation
+    q0: list[sp.Expr]
+    shown_coordinates: list[str]
+    base: dict[str, object]  # lagrangian, coordinates, equilibrium and its verification
+
+
+@dataclass
+class Refusal:
+    status: Status
+    message: str
+    extra: dict[str, object] = field(default_factory=dict)
+
+
+def prepare(
     latex: str,
     coordinates: list[str],
     time_name: str,
     assumptions: dict[str, list[str]],
     equilibrium: dict[str, str],
-    order: int,
     limits: Limits,
-) -> ExpansionReport:
+) -> Prepared | Refusal:
+    """Derive the equations of motion, confirm them, and confirm the equilibrium point."""
     from .ops import parse_expression  # local import: ops imports this module
 
-    started = time.monotonic()
-    deadline = started + 0.8 * limits.timeout_seconds
-    if not 1 <= order <= MAX_ORDER:
-        return _fail(Status.UNSUPPORTED, f"Give an order between 1 and {MAX_ORDER}.")
     unknown = set(equilibrium) - set(coordinates)
     if unknown:
-        return _fail(
+        return Refusal(
             Status.PARSE_ERROR,
             f"Equilibrium given for {', '.join(sorted(unknown))}, which are not coordinates.",
         )
     try:
         d = derive(latex, coordinates, time_name, assumptions, limits)
     except DerivationError as exc:
-        return _fail(exc.status, str(exc))
+        return Refusal(exc.status, str(exc))
 
     shown_coordinates = [sp.latex(s) for s in d.q]
     base: dict[str, object] = {
         "lagrangian_latex": d.show(d.lagrangian),
         "coordinates": coordinates,
-        "order": order,
     }
     if d.time_dependent:
-        return _fail(
+        return Refusal(
             Status.UNSUPPORTED,
             "L depends explicitly on time, so there is no equilibrium point to expand about.",
-            **base,
+            base,
         )
     if not d.solution:
-        return _fail(
+        return Refusal(
             Status.UNSUPPORTED,
             "The mass matrix is singular, so the accelerations cannot be solved for; "
             "the system is constrained or degenerate.",
-            **base,
+            base,
         )
 
     # 1. The equations of motion and the solved accelerations, confirmed independently of SymPy.
     checks = check_equations(d)
     if not all(c.passed for c in checks):
-        return _fail(
+        return Refusal(
             Status.NOT_VERIFIED,
             "The derived equations of motion could not be confirmed by numerical differentiation "
-            "of L, so nothing is expanded. Declaring assumptions (real, positive) can help.",
-            **base,
+            "of L, so nothing is computed. Declaring assumptions (real, positive) can help.",
+            base,
         )
     for i in range(d.n):
-        residual = d.euler_raw[i].subs(d.solution)
-        if not _zero_check(residual, "").passed:
-            return _fail(
+        if not _zero_check(d.euler_raw[i].subs(d.solution), "").passed:
+            return Refusal(
                 Status.NOT_VERIFIED,
                 "The solved accelerations do not satisfy the Euler-Lagrange equations.",
-                **base,
+                base,
             )
 
     # 2. The equilibrium point.
@@ -179,22 +191,24 @@ def expand_motion(
     param_set = set(d.params)
     try:
         for name in coordinates:
-            text = equilibrium.get(name, "0")
             value = parse_expression(
-                ExpressionInput(input=text, format="text", assumptions=assumptions), limits
+                ExpressionInput(
+                    input=equilibrium.get(name, "0"), format="text", assumptions=assumptions
+                ),
+                limits,
             )
             if not value.free_symbols <= param_set:
-                return _fail(
+                return Refusal(
                     Status.UNSUPPORTED,
                     f"The equilibrium value of {name} may use only numbers and the parameters of L "
                     f"({', '.join(s.name for s in d.params) or 'none'}).",
-                    **base,
+                    base,
                 )
             q0.append(value)
     except LimitError as exc:
-        return _fail(Status.RESOURCE_LIMIT, str(exc), **base)
+        return Refusal(Status.RESOURCE_LIMIT, str(exc), base)
     except MinervaMathError as exc:
-        return _fail(Status.PARSE_ERROR, str(exc), **base)
+        return Refusal(Status.PARSE_ERROR, str(exc), base)
     base["equilibrium"] = [
         NamedLatex(name=n, latex=sp.latex(v), name_latex=shown_coordinates[i])
         for i, (n, v) in enumerate(zip(coordinates, q0, strict=True))
@@ -204,24 +218,44 @@ def expand_motion(
     residuals = [d.solution[a].subs(at_rest) for a in d.qdd]
     bad = [coordinates[i] for i, r in enumerate(residuals) if r.has(sp.zoo, sp.nan, sp.oo)]
     if bad:
-        return _fail(
+        return Refusal(
             Status.UNSUPPORTED,
             f"The accelerations are singular at this point (for {', '.join(bad)}).",
-            **base,
+            base,
         )
     equilibrium_check = _zero_check(
         sum((sp.Abs(r) ** 2 for r in residuals), sp.Integer(0)),
         "every acceleration vanishes at the point, at zero velocity",
     )
     if not equilibrium_check.passed:
-        return _fail(
+        return Refusal(
             Status.UNSUPPORTED,
             "This is not an equilibrium of the system: the accelerations do not all vanish there "
             "at zero velocity. Expansion about a non-equilibrium point is not supported.",
-            equilibrium_verification=equilibrium_check,
-            **base,
+            {**base, "equilibrium_verification": equilibrium_check},
         )
     base["equilibrium_verification"] = equilibrium_check
+    return Prepared(d, q0, shown_coordinates, base)
+
+
+def expand_motion(
+    latex: str,
+    coordinates: list[str],
+    time_name: str,
+    assumptions: dict[str, list[str]],
+    equilibrium: dict[str, str],
+    order: int,
+    limits: Limits,
+) -> ExpansionReport:
+    started = time.monotonic()
+    deadline = started + 0.8 * limits.timeout_seconds
+    if not 1 <= order <= MAX_ORDER:
+        return _fail(Status.UNSUPPORTED, f"Give an order between 1 and {MAX_ORDER}.")
+    prepared = prepare(latex, coordinates, time_name, assumptions, equilibrium, limits)
+    if isinstance(prepared, Refusal):
+        return _fail(prepared.status, prepared.message, order=order, **prepared.extra)
+    d, q0, shown_coordinates = prepared.d, prepared.q0, prepared.shown_coordinates
+    base: dict[str, object] = {**prepared.base, "order": order}
 
     # 3. Expand each acceleration in eps.
     taken = {s.name for s in d.params} | {s.name for s in d.q} | {s.name for s in d.qd} | {"eps"}

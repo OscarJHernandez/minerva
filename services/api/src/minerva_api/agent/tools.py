@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from minerva_engine import (
+    CompareRequest,
     DiffVariable,
     Engine,
     ExpressionInput,
@@ -140,6 +141,32 @@ class ExpandMotionArgs(LagrangianArgs):
         le=12,
         description="Highest degree in the deviations kept in the accelerations, 1 to 12. "
         "1 gives the linearised equations.",
+    )
+
+
+class PerturbationArgs(LagrangianArgs):
+    small_parameter: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Name of a parameter of L that is small, e.g. the coefficient of a quartic term "
+        "(the system must be a linear oscillator when it is 0). Leave empty to use the amplitude of the "
+        "initial displacement as the small parameter, which suits the pendulum and any smooth well.",
+    )
+    equilibrium: str = Field(
+        default="0",
+        max_length=64,
+        description="Equilibrium value of the single coordinate (number, pi, or the parameters of L).",
+    )
+    order: int = Field(
+        default=2,
+        ge=1,
+        le=6,
+        description="Highest power of the small parameter kept, 1 to 6.",
+    )
+    compare: CompareRequest | None = Field(
+        default=None,
+        description="Optional numerical comparison. Only with numbers the USER gave you: values of every "
+        "parameter of L, the small parameter or amplitude, and an end time. Never choose them yourself.",
     )
 
 
@@ -528,6 +555,67 @@ def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def run_perturbation(args: PerturbationArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.perturbation_solve(
+        args.lagrangian,
+        args.coordinates,
+        args.time,
+        args.assumptions,
+        args.small_parameter,
+        args.equilibrium,
+        args.order,
+        args.compare,
+    )
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="perturbation_solve",
+        type="perturbation",
+        title="Perturbation solution",
+        data={"report": report.model_dump(mode="json")},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    for label, value in (
+        ("unperturbed frequency", report.linear_frequency_latex),
+        ("frequency", report.frequency_latex),
+        ("period ratio", report.period_ratio_latex),
+        ("solution", report.solution_latex),
+    ):
+        if value:
+            lines.append(f"{label}: ${value}$")
+            known.append(value)
+    for o in report.orders:
+        known.append(o.shape_latex)
+        if o.frequency_latex:
+            known.append(o.frequency_latex)
+    if report.verification:
+        v = report.verification
+        lines.append(
+            f"verified: residual falls at the claimed order={v.residual_passed} "
+            f"({v.parameter_sets_checked} parameter set(s)), initial conditions={v.initial_conditions_passed}, "
+            f"bounded (no secular term)={v.bounded}"
+        )
+    if report.comparison:
+        c = report.comparison
+        if c.status.value == "ok":
+            lines.append(
+                f"comparison with the verified numerical solution (a measurement on this span only): "
+                f"max error {c.max_error:.3g} at the given small parameter, {c.max_error_half:.3g} at half; "
+                f"observed order {c.observed_order if c.observed_order is None else round(c.observed_order, 2)}"
+                f" (predicted {c.predicted_order}); error scaling: {c.scaling}"
+            )
+        else:
+            lines.append(f"comparison not shown ({c.status.value}): {c.message}")
+    lines.extend(f"note: {n}" for n in report.notes)
+    if report.status.value == "ok" and report.comparison is None:
+        lines.append(
+            "To see how well it holds, ask the user for numbers (every parameter, the small parameter or "
+            "amplitude, an end time) and call again with `compare`; never choose them yourself. The series "
+            "is local to small values of the small parameter and says nothing about large ones."
+        )
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
 def _motion_summary(report: Any) -> list[str]:
     lines: list[str] = []
     values = ", ".join(f"{k}={v:g}" for k, v in report.parameters.items()) or "no parameters"
@@ -808,6 +896,17 @@ TOOLS: dict[str, Tool] = {
             "not an equilibrium is refused. Use this to approximate, not to solve; the result is local.",
             ExpandMotionArgs,
             run_expand_motion,
+        ),
+        Tool(
+            "perturbation_solve",
+            "Perturbation solution (Poincare-Lindstedt) of a one-degree-of-freedom oscillator whose "
+            "acceleration depends on the position only: the frequency shift, the period series and the "
+            "periodic solution as a series in a small parameter (a named parameter of L, or the amplitude). "
+            "Verified by putting the truncated solution into the unexpanded equation of motion and checking "
+            "that the residual falls at the claimed order. Optionally compares with the verified numerical "
+            "solution for numbers the user gives. Not for damping, driving or several coordinates.",
+            PerturbationArgs,
+            run_perturbation,
         ),
         Tool(
             "integrate_motion",

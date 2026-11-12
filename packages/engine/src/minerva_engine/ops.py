@@ -165,6 +165,26 @@ def op_expand_motion(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- perturbation solution -------------------------------------------------------------------
+def op_perturbation_solve(payload: dict[str, Any]) -> dict[str, Any]:
+    from .perturbation import CompareRequest, perturbation_solve
+
+    compare = payload.get("compare")
+    small = payload.get("small_parameter")
+    report = perturbation_solve(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        str(small) if small else None,
+        str(payload.get("equilibrium", "0")),
+        int(payload["order"]),
+        CompareRequest(**compare) if compare else None,
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- dimensional analysis ------------------------------------------------------------------
 def op_dimensional_analysis(payload: dict[str, Any]) -> dict[str, Any]:
     from .pi_groups import ConstantCandidate, QuantitySpec, analyze_dimensions
@@ -489,6 +509,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "series": op_series,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
+    "perturbation_solve": op_perturbation_solve,
     "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,
     "check_units": op_check_units,

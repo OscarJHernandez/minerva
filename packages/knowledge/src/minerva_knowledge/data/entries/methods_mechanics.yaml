@@ -74,3 +74,14 @@
   statement_latex: '\ddot{u}=A\,u+B\,\dot{u}+O(|u,\dot u|^2),\qquad A=\frac{\partial \ddot q}{\partial q}\Big|_{q_0},\ B=\frac{\partial \ddot q}{\partial \dot q}\Big|_{q_0};\qquad B=0:\ \det(A+\omega^2 I)=0'
   notes: "Minerva expands the accelerations in the deviations from the equilibrium and checks every expansion against a contour-integral estimate of its coefficients and the order of its remainder. For up to two coordinates without velocity-linear terms it gives the normal-mode frequencies, each checked by substitution. A negative ω² describes the linearised equations only; it is not a statement about the full motion."
   keywords: [small oscillations, linearisation, normal modes, equilibrium, perturbation, approximation, expansion, frequency]
+- id: method.mech.poincare_lindstedt
+  title: Poincaré–Lindstedt method for a weakly nonlinear oscillator
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["lagrangian:time-independent"]
+  validity: "One degree of freedom, acceleration depending on the position only, small parameter ε with a linear oscillator at ε = 0 (ω0² > 0). The series is local in ε."
+  statement_latex: '\ddot w+\omega_0^2 w=\sum_{j\ge1}\varepsilon^j G_j(w),\quad \tau=\omega t,\ \omega=\omega_0+\varepsilon\omega_1+\cdots,\quad w=w_0+\varepsilon w_1+\cdots;\ \text{choose }\omega_k\text{ so that the }\cos\tau\text{ term of each order vanishes}'
+  notes: "Minerva solves each order exactly on cosine polynomials, then puts the truncated solution into the unexpanded equation of motion and checks that its residual falls at order ε^(N+1). The optional comparison with the numerical solution is a measurement on the chosen span, not a bound. Damped or driven systems need multiple scales or averaging, which are not implemented."
+  keywords: [poincare lindstedt, perturbation theory, duffing, anharmonic oscillator, pendulum period, frequency shift, secular term, strained time, approximation]
