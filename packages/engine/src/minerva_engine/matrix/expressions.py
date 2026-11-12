@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 import sympy as sp
 
 from ..errors import LimitError, MinervaMathError, ParseError
+from ..latexprint import to_latex
 
 MAX_TERMS = 64
 MAX_POWER = 12
@@ -361,7 +362,7 @@ def _merge_exp(a: Exp, b: Exp) -> list[Factor]:
 
 # -- rendering -------------------------------------------------------------------------------
 def name_latex(name: str) -> str:
-    return str(sp.latex(sp.Symbol(name)))
+    return str(to_latex(sp.Symbol(name)))
 
 
 def _coeff_parts(c: sp.Expr) -> tuple[int, str]:
@@ -371,7 +372,7 @@ def _coeff_parts(c: sp.Expr) -> tuple[int, str]:
         sign, c = -1, -c
     if c == 1:
         return sign, ""
-    text = str(sp.latex(c))
+    text = str(to_latex(c))
     return sign, f"\\left({text}\\right)" if isinstance(c, sp.Add) else text
 
 

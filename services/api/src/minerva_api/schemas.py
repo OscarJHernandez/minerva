@@ -21,41 +21,48 @@ class UserOut(BaseModel):
     email: str
 
 
-class IntegrateRequest(ExpressionInput):
+class Linked(ExpressionInput):
+    """An expression request that may be saved as a step of a Workbench derivation."""
+
+    save: bool = True
+    derivation_id: uuid.UUID | None = None
+    parent_id: uuid.UUID | None = None
+
+
+class IntegrateRequest(Linked):
     variable: str = Field(min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
-    save: bool = True
 
 
-class IdentitiesRequest(ExpressionInput):
+class IdentitiesRequest(Linked):
     query: str = Field(default="", max_length=200)
-    save: bool = True
 
 
-class SimplifyRequest(ExpressionInput):
+class SimplifyRequest(Linked):
     """`goal` ranks the results: simplify (default), expand, factor, or rewrite in terms of `target`."""
 
     goal: Literal["simplify", "expand", "factor", "rewrite"] = "simplify"
     target: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
         default_factory=list, max_length=8
     )
-    save: bool = True
 
 
-class DifferentiateRequest(ExpressionInput):
+class DifferentiateRequest(Linked):
     variables: list[DiffVariable] = Field(min_length=1, max_length=4)
-    save: bool = True
 
 
-class SeriesRequest(ExpressionInput):
+class SeriesRequest(Linked):
     variable: str = Field(min_length=1, max_length=32)
     point: str = Field(default="0", min_length=1, max_length=64)
     order: int = Field(default=6, ge=1, le=12)
-    save: bool = True
 
 
-class MatrixCalculusRequest(ExpressionInput):
+class ApplyIdentityRequest(Linked):
+    rule_id: str = Field(min_length=1, max_length=128)
+
+
+class MatrixCalculusRequest(Linked):
     """An expression in declared matrices (`input` uses `\\exp(tA)` for exponentials)."""
 
     matrices: list[MatrixDecl] = Field(min_length=1, max_length=MAX_MATRICES)
@@ -65,7 +72,6 @@ class MatrixCalculusRequest(ExpressionInput):
     variable: str | None = Field(default=None, min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
-    save: bool = True
 
 
 class HistoryItem(BaseModel):
@@ -77,6 +83,22 @@ class HistoryItem(BaseModel):
     status: str
     result: dict[str, Any]
     created_at: datetime
+    derivation_id: uuid.UUID | None = None
+    parent_id: uuid.UUID | None = None
+
+
+class DerivationSummary(BaseModel):
+    id: uuid.UUID
+    updated_at: datetime
+    steps: int
+    first_input: str | None = None
+    first_format: str | None = None
+
+
+class DerivationOut(BaseModel):
+    id: uuid.UUID
+    updated_at: datetime
+    steps: list[HistoryItem]
 
 
 class EntryOut(BaseModel):

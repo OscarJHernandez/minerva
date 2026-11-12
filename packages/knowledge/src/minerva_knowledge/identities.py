@@ -189,6 +189,8 @@ def simplify_expression(
         result_text=plain.result_text,
         verification=plain.verification,
         search_complete=False,
+        restrictions_latex=plain.restrictions_latex,
+        restrictions_complete=plain.restrictions_complete,
         message="The search through handbook identities did not finish, so this is SymPy's "
         "simplification alone, with no identities cited. " + plain.message,
         duration_ms=result.duration_ms + plain.duration_ms,

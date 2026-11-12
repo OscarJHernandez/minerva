@@ -15,6 +15,7 @@ import sympy as sp
 
 from ..build import Builder
 from ..errors import LimitError, MinervaMathError, ParseError
+from ..latexprint import to_latex
 from ..models import ExpressionInput, Limits, Status
 from .expressions import (
     Commutation,
@@ -96,7 +97,7 @@ def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCa
             )
     shapes = {d.name: d.shape for d in data.matrices}
 
-    expr = parse_expression(data.expression, limits, names)
+    expr = parse_expression(data.expression, limits, noncommutative=names)
     terms = to_terms(expr, nameset)
     shape = shape_of(terms, shapes)
     used = matrices_in(terms)
@@ -212,7 +213,7 @@ def _with_outcome(
     if any(s != p.var for s in p.ev.symbols):
         assumptions.append("scalar symbols are complex unless declared otherwise")
     if p.var is not None:
-        assumptions.append(f"all matrices are constant in {sp.latex(p.var)}")
+        assumptions.append(f"all matrices are constant in {to_latex(p.var)}")
     message = {
         "explicit": "Evaluated and verified.",
         "expression": "Transformed and verified.",

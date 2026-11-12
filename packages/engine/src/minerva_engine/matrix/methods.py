@@ -15,6 +15,7 @@ from typing import Any
 import mpmath as mp
 import sympy as sp
 
+from ..latexprint import to_latex
 from .expressions import (
     Canonical,
     Commutation,
@@ -209,7 +210,7 @@ def run_exp_explicit(p: Problem) -> Attempt:
     return Attempt(
         Outcome(
             "explicit",
-            str(sp.latex(value)),
+            str(to_latex(value)),
             count,
             "exponentials by mpmath.expm at sampled parameter values (30 digits), independent of "
             "the Jordan-form route that produced the result",
@@ -219,7 +220,7 @@ def run_exp_explicit(p: Problem) -> Attempt:
                     method="exp_explicit",
                     title="Evaluate with explicit entries",
                     before_latex=render_terms(p.terms),
-                    after_latex=str(sp.latex(value)),
+                    after_latex=str(to_latex(value)),
                     note="exponentials through the Jordan form; no diagonalisability assumed",
                 )
             ],
@@ -432,12 +433,12 @@ def match_template(term: Term, var: sp.Symbol) -> Template | str:
 
 def _bound_text(p: Problem) -> str:
     assert p.var is not None and p.lower is not None and p.upper is not None  # noqa: S101
-    return f"\\int_{{{sp.latex(p.lower)}}}^{{{sp.latex(p.upper)}}} {render_terms(p.terms)}\\,d{sp.latex(p.var)}"
+    return f"\\int_{{{to_latex(p.lower)}}}^{{{to_latex(p.upper)}}} {render_terms(p.terms)}\\,d{to_latex(p.var)}"
 
 
 def _integral_notation(p: Problem) -> str:
     if p.lower is None or p.upper is None:
-        return f"\\int {render_terms(p.terms)}\\,d{sp.latex(p.var)}"
+        return f"\\int {render_terms(p.terms)}\\,d{to_latex(p.var)}"
     return _bound_text(p)
 
 
@@ -472,7 +473,7 @@ def _closed_form(p: Problem, allow_exp: bool, method_id: str, title: str) -> Att
         if name not in p.invertible:
             needs.append(f"{name} is invertible")
         if alpha.is_zero is not False:
-            needs.append(f"{sp.latex(alpha)} \\neq 0")
+            needs.append(f"{to_latex(alpha)} \\neq 0")
         if needs:
             blocked.append(
                 MatrixBlocked(
@@ -485,7 +486,7 @@ def _closed_form(p: Problem, allow_exp: bool, method_id: str, title: str) -> Att
             return Attempt(blocked=blocked)
         assumptions.append(f"{name} is invertible ({p.invertible[name]})")
         if not alpha.is_number:
-            assumptions.append(f"{sp.latex(alpha)} \\neq 0 (follows from the declared assumptions)")
+            assumptions.append(f"{to_latex(alpha)} \\neq 0 (follows from the declared assumptions)")
         e1 = tmpl.exps[0][0]
         antiderivative.append(
             Term(
@@ -851,7 +852,7 @@ def run_sylvester(p: Problem) -> Attempt:
     )
     outcome = Outcome(
         "explicit",
-        str(sp.latex(full)),
+        str(to_latex(full)),
         count,
         "adaptive quadrature (mpmath) of the integrand against the solved result, random parameter values",
         entries=_entries(full),
@@ -862,7 +863,7 @@ def run_sylvester(p: Problem) -> Attempt:
                 method="sylvester_reduction",
                 title="Solve the Sylvester equation",
                 before_latex=red.equation_latex,
-                after_latex=str(sp.latex(full)),
+                after_latex=str(to_latex(full)),
                 note="the Kronecker operator has a nonzero determinant, so the solution is unique",
             ),
         ],
@@ -937,7 +938,7 @@ def _block_latex(p: Problem, red: Reduction) -> str:
     assert p.lower is not None and p.upper is not None  # noqa: S101
 
     def paren(e: sp.Expr) -> str:
-        text = str(sp.latex(e))
+        text = str(to_latex(e))
         return f"\\left({text}\\right)" if isinstance(e, sp.Add) else text
 
     neg_alpha = -red.alpha
@@ -1012,7 +1013,7 @@ def run_block_exponential(p: Problem) -> Attempt:
             x0e, residual_zero = explicit
             full = _full_from_core(p, red, x0e)
             count = _merge(_judge_full(p, red, _numeric_candidate(p, x0e)), red.outcome.count)
-            result_latex = str(sp.latex(full))
+            result_latex = str(to_latex(full))
             entries = _entries(full)
             kind, evaluated = "explicit", True
             notes = [

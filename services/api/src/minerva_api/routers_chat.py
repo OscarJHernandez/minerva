@@ -463,6 +463,10 @@ async def send_message(
                         session.commit()
                 yield _sse(event["event"], event["data"])
             yield _sse("done", {})
+        except Exception:
+            log.error("chat_turn_failed")
+            yield _sse("error", {"message": "The assistant hit an internal error."})
+            yield _sse("done", {})
         finally:
             log.info(
                 "chat_turn",

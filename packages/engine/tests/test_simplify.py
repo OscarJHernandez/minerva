@@ -78,3 +78,33 @@ def test_expansion_bomb_is_rejected_before_computation(engine: Engine) -> None:
     result = run(engine, "(x+1)**9999999", "text")
     assert result.status is Status.RESOURCE_LIMIT
     assert result.result_latex is None
+
+
+@pytest.mark.parametrize(
+    ("source", "assumptions", "result", "restrictions"),
+    [
+        (r"\frac{x^2-1}{x-1}", {}, "x + 1", [r"x \neq 1"]),
+        (r"\frac{x-1}{x^2-1}", {}, r"\frac{1}{x + 1}", [r"x \neq 1"]),
+        (r"\frac{x-1}{x-1}", {}, "1", [r"x \neq 1"]),  # the parser cancels it while reading
+        (r"\frac{x}{x}", {}, "1", [r"x \neq 0"]),
+        (r"\frac{x}{x}", {"x": ["positive"]}, "1", []),  # proved nonzero: nothing to report
+        (r"\frac{\sin x}{x}", {}, r"\frac{\sin{\left(x \right)}}{x}", []),  # still excluded
+        (r"\sin^2 x + \cos^2 x", {}, "1", []),
+    ],
+)
+def test_cancelled_singularities_are_reported(
+    engine: Engine, source: str, assumptions: dict, result: str, restrictions: list[str]
+) -> None:
+    out = run(engine, source, **assumptions)
+    assert out.status in (Status.OK, Status.UNCHANGED)
+    assert out.result_latex == result
+    assert out.restrictions_latex == restrictions
+    assert out.restrictions_complete
+    if restrictions:
+        assert "valid only where" in out.message
+
+
+def test_multivariable_denominator_is_reported_as_nonzero_condition(engine: Engine) -> None:
+    out = run(engine, r"\frac{x^2-y^2}{x-y}")
+    assert out.result_latex == "x + y"
+    assert out.restrictions_latex == [r"x - y \neq 0"]

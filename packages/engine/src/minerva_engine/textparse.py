@@ -28,12 +28,15 @@ def parse_text(
     text: str,
     assumptions: dict[str, list[str]] | None = None,
     limits: Limits | None = None,
+    denominators: list[sp.Expr] | None = None,
     noncommutative: Iterable[str] = (),
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(text) > limits.max_input_chars:
         raise LimitError("input is too long")
     builder = Builder(assumptions, limits, noncommutative)
+    if denominators is not None:
+        builder.denominators = denominators
     source = text.strip().replace("^", "**")
     try:
         tree = ast.parse(source, mode="eval")

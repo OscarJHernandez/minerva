@@ -1,4 +1,5 @@
 import type {
+  HistoryItem,
   DifferentiateResult,
   IdentitiesResult,
   IdentityMatch,
@@ -285,3 +286,30 @@ export const matrixRepresentation: MatrixCalculusResult = {
   notes: ["X is an exact representation, but not an evaluated entrywise result"],
   message: "Written exactly through a block-matrix exponential and verified.",
 };
+
+export function step(
+  id: string,
+  operation: HistoryItem["operation"],
+  input: string,
+  result: Record<string, unknown>,
+  extra: Partial<HistoryItem> = {},
+): HistoryItem {
+  return {
+    id,
+    operation,
+    input,
+    format: "text",
+    assumptions: {},
+    status: "ok",
+    result: {
+      status: "ok",
+      message: "",
+      duration_ms: 1,
+      ...result,
+    } as unknown as HistoryItem["result"],
+    created_at: "2026-11-12T10:00:00Z",
+    derivation_id: "d1",
+    parent_id: null,
+    ...extra,
+  };
+}

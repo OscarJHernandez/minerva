@@ -523,7 +523,7 @@ def _setup(*names: str) -> tuple[Setup, Evaluator]:
 
 
 def _terms(source: str, *names: str):  # type: ignore[no-untyped-def]
-    return to_terms(parse_latex(source, None, None, names), frozenset(names))
+    return to_terms(parse_latex(source, noncommutative=names), frozenset(names))
 
 
 def test_the_verifiers_reject_a_wrong_merge() -> None:
@@ -595,16 +595,18 @@ def test_a_one_in_a_million_error_is_rejected() -> None:
 
 # -- the normal form --------------------------------------------------------------------------
 def test_parsers_keep_the_order_of_declared_matrices_only() -> None:
-    ordered = parse_latex(r"AB", None, None, ["A", "B"])
-    assert ordered != parse_latex(r"BA", None, None, ["A", "B"])
+    ordered = parse_latex(r"AB", noncommutative=["A", "B"])
+    assert ordered != parse_latex(r"BA", noncommutative=["A", "B"])
     assert parse_latex("ab") == parse_latex("ba")  # unchanged behaviour without declarations
-    assert parse_text("A*B", None, None, ["A", "B"]) != parse_text("B*A", None, None, ["A", "B"])
+    assert parse_text("A*B", noncommutative=["A", "B"]) != parse_text(
+        "B*A", noncommutative=["A", "B"]
+    )
     with pytest.raises(ParseError):
-        parse_latex("A", {"A": ["real"]}, None, ["A"])
+        parse_latex("A", {"A": ["real"]}, noncommutative=["A"])
 
 
 def test_canonical_form_orders_commuting_matrices_and_nothing_else() -> None:
-    terms = to_terms(parse_latex(r"BA", None, None, ["A", "B"]), frozenset("AB"))
+    terms = to_terms(parse_latex(r"BA", noncommutative=["A", "B"]), frozenset("AB"))
     assert canonicalize(terms, Commutation()).terms == terms
     swapped = canonicalize(terms, Commutation(frozenset({frozenset("AB")})))
     assert swapped.terms != terms and swapped.assumptions == ["AB = BA"]

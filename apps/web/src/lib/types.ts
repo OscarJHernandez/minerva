@@ -75,6 +75,9 @@ export interface SimplifyResult {
   result_latex: string | null;
   result_text: string | null;
   verification: Verification | null;
+  /** Points the result excludes that the input did not (e.g. `x \\neq 1`). */
+  restrictions_latex?: string[];
+  restrictions_complete?: boolean;
   message: string;
   duration_ms: number;
   calculation_id?: string | null;
@@ -268,6 +271,8 @@ export interface RuleApplication {
   rewritten_latex: string | null;
   unmet_conditions: RuleCondition[];
   verification: Verification | null;
+  restrictions_latex?: string[];
+  restrictions_complete?: boolean;
   message: string;
 }
 
@@ -305,16 +310,58 @@ export interface IdentitiesResult {
   calculation_id?: string | null;
 }
 
+/** One handbook identity applied to an expression (recomputed and verified by the server). */
+export interface ApplyIdentityResult {
+  status: Status;
+  input_latex: string | null;
+  rule_id: string;
+  entry: EntrySummary;
+  matched_subexpression_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  unmet_conditions: RuleCondition[];
+  verification: Verification | null;
+  restrictions_latex?: string[];
+  restrictions_complete?: boolean;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+}
+
+export type Operation =
+  | "simplify"
+  | "identities"
+  | "differentiate"
+  | "series"
+  | "integrate"
+  | "apply_identity"
+  | "matrix_calculus";
+
 export interface HistoryItem {
   id: string;
-  operation:
-    "simplify" | "identities" | "differentiate" | "series" | "integrate" | "matrix_calculus";
+  operation: Operation;
   input: string;
   format: "latex" | "text";
   assumptions: Assumptions;
   status: Status;
-  result: SimplifyResult | IdentitiesResult;
+  result: SimplifyResult | IdentitiesResult | ApplyIdentityResult;
   created_at: string;
+  derivation_id?: string | null;
+  parent_id?: string | null;
+}
+
+export interface DerivationSummary {
+  id: string;
+  updated_at: string;
+  steps: number;
+  first_input: string | null;
+  first_format: "latex" | "text" | null;
+}
+
+export interface Derivation {
+  id: string;
+  updated_at: string;
+  steps: HistoryItem[];
 }
 
 export interface User {

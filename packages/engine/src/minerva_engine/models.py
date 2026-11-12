@@ -63,6 +63,7 @@ class Verification(BaseModel):
     symbolic_zero: bool = False  # simplify(original - result) == 0
     numeric_points_checked: int = 0
     numeric_points_agreed: int = 0
+    numeric_points_skipped: int = 0  # sample points where both sides were undefined or failed
     passed: bool = False
     note: str = ""
 
@@ -73,6 +74,9 @@ class SimplifyResult(BaseModel):
     result_latex: str | None = None
     result_text: str | None = None
     verification: Verification | None = None
+    # Points the result excludes that the input, as written, did not (and vice versa): `x \\neq 1`.
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True  # False: they could not be determined, see `message`
     message: str = ""
     duration_ms: int = 0
 
@@ -120,8 +124,12 @@ class RuleApplication(BaseModel):
     applicability: Applicability
     matched_subexpression_latex: str | None = None
     rewritten_latex: str | None = None
+    # Text form of the rewrite (re-readable by the text parser); set only when applicable.
+    rewritten_text: str | None = None
     unmet_conditions: list[RuleCondition] = Field(default_factory=list)
     verification: Verification | None = None
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
     message: str = ""
 
 
@@ -177,6 +185,9 @@ class TransformResult(BaseModel):
     candidates_tried: int = 0
     discarded_not_verified: int = 0
     search_complete: bool = True
+    # Points the result excludes that the input, as written, did not: `x \\neq 1`.
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
     message: str = ""
     duration_ms: int = 0
 

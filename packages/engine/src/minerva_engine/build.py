@@ -88,6 +88,8 @@ class Builder:
                 raise ParseError(f"unknown assumption(s): {sorted(unknown)}")
             self._assumptions[name] = {item: True for item in items}
         self.symbols: dict[str, sp.Symbol] = {}
+        # Denominators met while reading (SymPy may cancel them at once): see restrictions.py
+        self.denominators: list[sp.Expr] = []
 
     # -- atoms -------------------------------------------------------------------------
     def integer(self, digits: str) -> sp.Expr:
@@ -134,6 +136,8 @@ class Builder:
             and abs(int(exponent)) * len(str(abs(int(base)))) > 10_000
         ):
             raise LimitError("result of power would be too large")
+        if exponent.is_Number and exponent < 0 and base.free_symbols:
+            self.denominators.append(base)
         return sp.Pow(base, exponent)
 
     def function(self, name: str, args: Iterable[sp.Expr]) -> sp.Expr:
@@ -159,6 +163,8 @@ class Builder:
     def divide(self, numerator: sp.Expr, denominator: sp.Expr) -> sp.Expr:
         if denominator == 0:
             raise ParseError("division by zero")
+        if denominator.free_symbols:
+            self.denominators.append(denominator)
         return numerator / denominator
 
     # -- final guards ------------------------------------------------------------------

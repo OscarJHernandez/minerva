@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field
 
 from .errors import LimitError, MinervaMathError
 from .lagrangian import Derivation, DerivationError, check_equations, derive
+from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status, Verification
 from .series import MAX_ORDER, SeriesVerification, check_series
 from .verify import MIN_VALID_POINTS, numeric_check
@@ -150,7 +151,7 @@ def prepare(
     except DerivationError as exc:
         return Refusal(exc.status, str(exc))
 
-    shown_coordinates = [sp.latex(s) for s in d.q]
+    shown_coordinates = [to_latex(s) for s in d.q]
     base: dict[str, object] = {
         "lagrangian_latex": d.show(d.lagrangian),
         "coordinates": coordinates,
@@ -210,7 +211,7 @@ def prepare(
     except MinervaMathError as exc:
         return Refusal(Status.PARSE_ERROR, str(exc), base)
     base["equilibrium"] = [
-        NamedLatex(name=n, latex=sp.latex(v), name_latex=shown_coordinates[i])
+        NamedLatex(name=n, latex=to_latex(v), name_latex=shown_coordinates[i])
         for i, (n, v) in enumerate(zip(coordinates, q0, strict=True))
     ]
 
@@ -269,7 +270,7 @@ def expand_motion(
         names[v[i]] = rf"\dot{{\delta {shown_coordinates[i]}}}"
 
     def show(expr: sp.Expr) -> str:
-        return str(sp.latex(expr, symbol_names=names))
+        return str(to_latex(expr, symbol_names=names))
 
     substitution = {
         **{d.q[i]: q0[i] + eps * u[i] for i in range(d.n)},
@@ -313,7 +314,7 @@ def expand_motion(
         left = rf"\ddot{{\delta {shown_coordinates[i]}}}"
         nonzero = [c for c in coefficients[1:] if c != 0]
         right = (
-            str(sp.latex(sp.Add(*nonzero, evaluate=False), symbol_names=names, order="none"))
+            str(to_latex(sp.Add(*nonzero, evaluate=False), symbol_names=names, order="none"))
             if nonzero
             else "0"
         )
@@ -339,15 +340,15 @@ def expand_motion(
         return report
     a_matrix = a_matrix.applyfunc(sp.simplify)
     b_matrix = b_matrix.applyfunc(sp.simplify)
-    report.stiffness_latex = sp.latex(a_matrix)
+    report.stiffness_latex = to_latex(a_matrix)
     velocity_free = all(e == 0 for e in b_matrix)
     if not velocity_free:
-        report.velocity_latex = sp.latex(b_matrix)
+        report.velocity_latex = to_latex(b_matrix)
 
     lam = _fresh("lambda", taken)
     if d.n <= MAX_POLY_COORDINATES:
         poly = sp.factor((lam**2 * sp.eye(d.n) - lam * b_matrix - a_matrix).det(method="berkowitz"))
-        report.characteristic_latex = rf"{sp.latex(poly, symbol_names={lam: r'\lambda'})} = 0"
+        report.characteristic_latex = rf"{to_latex(poly, symbol_names={lam: r'\lambda'})} = 0"
         report.notes.append(
             "Characteristic polynomial of the linearised system: each root λ gives solutions "
             "proportional to exp(λ t)."
@@ -399,13 +400,13 @@ def _modes(report: ExpansionReport, a_matrix: sp.Matrix, n: int, taken: set[str]
             vec = vectors[0]
             residual = (a_matrix + root * sp.eye(n)) * vec
             if _zero_check(sum((sp.Abs(r) ** 2 for r in residual), sp.Integer(0)), "").passed:
-                eigenvector = sp.latex(vec.applyfunc(sp.simplify))
+                eigenvector = to_latex(vec.applyfunc(sp.simplify))
         report.modes.append(
             NormalMode(
-                omega_squared_latex=rf"\omega^2 = {sp.latex(sp.simplify(root))}",
+                omega_squared_latex=rf"\omega^2 = {to_latex(sp.simplify(root))}",
                 sign=sign,
                 omega_latex=(
-                    rf"\omega = {sp.latex(sp.sqrt(sp.simplify(root)))}"
+                    rf"\omega = {to_latex(sp.sqrt(sp.simplify(root)))}"
                     if sign == "positive"
                     else None
                 ),

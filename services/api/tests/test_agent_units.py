@@ -1,6 +1,7 @@
 """Agent loop, tools and segment marking, with a deterministic fake model."""
 
 import asyncio
+import dataclasses
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
@@ -184,7 +185,10 @@ def test_turn_records_debug_timings_statuses_and_claim_checks(ctx: ToolContext) 
     assert debug["llm_calls"][0]["tool_calls"] == 1 and debug["llm_calls"][1]["text_chars"] > 0
     assert debug["max_steps"] == 6 and debug["model"] == "fake"
     by_value = {c["value"]: c["status"] for c in debug["claims"]}
-    assert by_value["x^2 = 5x"] == "fails" or by_value["x^2 = 5x"] == "conditional"
+    assert by_value["x^2 = 5x"] in (
+        "not_identity",
+        "conditional",
+    )  # never "fails": may be an equation
     assert debug["prompt_sha"] == prompt_sha()
 
 
@@ -315,13 +319,14 @@ def test_prose_and_cards_keep_the_order_they_happened_in(ctx: ToolContext) -> No
 
 def test_equations_the_model_writes_are_checked_or_contradicted(ctx: ToolContext) -> None:
     text = (
-        r"True: $\frac{x^2-1}{x-1} = x+1$. False: $(x+1)^2 = x^2 + 1$. "
+        r"True: $\frac{x^2-1}{x-1} = x+1$. False: $x^2+2x+1 = x^2+2x$. May be an equation: $(x+1)^2 = x^2 + 1$. "
         r"Not an equation: $x^2$. Unreadable: $\foo = 1$."
     )
     msg = final(collect(FakeLLM([[Chunk(text=text)]]), ctx, [{"role": "user", "content": "q"}]))
     status = {s["value"]: s["status"] for s in segments_of(msg) if s["type"] != "text"}
-    assert status[r"\frac{x^2-1}{x-1} = x+1"] == "checked"
-    assert status["(x+1)^2 = x^2 + 1"] == "contradicted"
+    assert status[r"\frac{x^2-1}{x-1} = x+1"] == "conditional"  # x = 1 is excluded on one side
+    assert status[r"x^2+2x+1 = x^2+2x"] == "contradicted"  # false for every x
+    assert status["(x+1)^2 = x^2 + 1"] == "unchecked"  # may be an equation to solve
     assert status["x^2"] == "unchecked"
     assert status[r"\foo = 1"] == "unchecked"
 
@@ -470,7 +475,7 @@ def test_differentiate_tool_returns_a_verified_card(ctx: ToolContext) -> None:
     assert out.card.data["status"] == "ok"
     assert out.card.data["result_text"] == "20*x**3"
     assert "derivative=$20 x^{3}$" in out.for_model
-    assert "verified: 2 step(s)" in out.for_model
+    assert "numerically checked: 2 step(s)" in out.for_model
     assert "20 x^{3}" in out.known_latex and "5 x^{4}" in out.known_latex
 
     mixed = execute(
@@ -827,7 +832,7 @@ def test_integrate_tool_returns_a_verified_card(ctx: ToolContext) -> None:
     assert out.card.data["status"] == "ok"
     assert out.status == "ok"
     assert "antiderivative=$" in out.for_model
-    assert "verified: numeric derivative" in out.for_model
+    assert "numerically checked: numeric derivative" in out.for_model
     assert out.card.data["result_latex"] in out.known_latex
 
 
@@ -845,7 +850,7 @@ def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> No
     )
     assert out.status == "ok"
     assert out.card.data["definite"] is True
-    assert "value=$2$" in out.for_model and "verified: quadrature" in out.for_model
+    assert "value=$2$" in out.for_model and "numerically checked: quadrature" in out.for_model
     assert out.card.data["quadrature"]["passed"] is True
 
     blocked = execute(
@@ -947,3 +952,191 @@ def test_matrix_calculus_tool_rejects_bad_arguments_without_raising(ctx: ToolCon
     assert out.card.type == "error" and out.status == "error"
     out = execute("matrix_calculus", {"latex": "A", "matrices": [{"name": "A"}]}, ctx)
     assert out.card.type == "error"
+
+
+# --- bounds and failures ------------------------------------------------------------------------
+def test_total_tool_calls_are_capped_whatever_the_steps(ctx: ToolContext) -> None:
+    many = [Chunk(tool_calls=[ToolCall("search_handbook", {"query": "gaussian"})] * 3)]
+    llm = FakeLLM([many], repeat_last=True)
+    limits = AgentLimits(max_steps=6, max_tool_calls=4)
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}], limits=limits))
+    assert msg["truncated"] is True and "limit" in msg["text"]
+    assert len(cards_of(msg)) == 4
+    assert len(llm.seen) == 2  # the cap ends the turn: no further model call
+    refused = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"][4:]
+    assert all("not run" in r for r in refused)
+
+
+def test_a_tool_that_raises_becomes_an_error_card_not_a_broken_stream(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import minerva_api.agent.loop as loop_module
+
+    def boom(*_: Any) -> Any:
+        raise RuntimeError("secret expression x**2")
+
+    monkeypatch.setattr(loop_module, "execute", boom)
+    llm = FakeLLM(
+        [[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])], [Chunk(text="Sorry.")]]
+    )
+    events = collect(llm, ctx, [{"role": "user", "content": "q"}])
+    msg = final(events)
+    assert [c["type"] for c in cards_of(msg)] == ["error"]
+    assert "secret" not in str(msg)  # the cause is never shown or kept
+
+
+def test_execute_hides_the_cause_of_an_unexpected_tool_failure(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from minerva_api.agent import tools as tools_module
+
+    def boom(*_: Any) -> Any:
+        raise RuntimeError("secret expression")
+
+    broken = dataclasses.replace(tools_module.TOOLS["simplify"], run=boom)
+    monkeypatch.setitem(tools_module.TOOLS, "simplify", broken)
+    out = execute("simplify", {"latex": "x"}, ctx)
+    assert out.card.type == "error" and "secret" not in out.for_model
+
+
+def test_a_resource_limit_in_a_tool_is_reported_to_the_model(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from minerva_engine import SimplifyResult, Status, TransformResult
+
+    monkeypatch.setattr(
+        ctx.engine,
+        "transform",
+        lambda *_a, **_k: TransformResult(status=Status.RESOURCE_LIMIT, message="took too long"),
+    )
+    monkeypatch.setattr(
+        ctx.engine,
+        "simplify",
+        lambda _e: SimplifyResult(status=Status.RESOURCE_LIMIT, message="took too long"),
+    )
+    llm = FakeLLM(
+        [[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])], [Chunk(text="It timed out.")]]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
+    assert msg["trace"][0]["status"] == "resource_limit"
+    assert "resource_limit" in next(m["content"] for m in llm.seen[1] if m["role"] == "tool")
+
+
+class SlowLLM(FakeLLM):
+    """Streams a first chunk and then stalls, like a model host that keeps the connection open."""
+
+    async def chat(
+        self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
+    ) -> AsyncIterator[Chunk]:
+        yield Chunk(text="Let me think. ")
+        await asyncio.sleep(30)
+        yield Chunk(text="never reached")
+
+
+def test_a_stalled_model_is_cut_off_at_the_deadline_and_keeps_the_partial_answer(
+    ctx: ToolContext,
+) -> None:
+    started = asyncio.new_event_loop().time()
+    msg = final(
+        collect(
+            SlowLLM(), ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=0.3)
+        )
+    )
+    assert msg["truncated"] is True
+    assert "Let me think." in msg["text"] and "never reached" not in msg["text"]
+    assert msg["debug"]["duration_ms"] < 10_000
+    assert started >= 0
+
+
+def test_a_slow_tool_does_not_hold_the_turn_past_its_deadline(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+
+    import minerva_api.agent.loop as loop_module
+
+    monkeypatch.setattr(loop_module, "execute", lambda *_: time.sleep(2.5))
+    llm = FakeLLM([[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])]], repeat_last=True)
+    msg = final(
+        collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=0.2))
+    )
+    assert msg["truncated"] is True
+    assert [c["type"] for c in cards_of(msg)] == ["error"]
+
+
+def test_an_unexpected_model_client_error_is_an_error_event(ctx: ToolContext) -> None:
+    class Broken(FakeLLM):
+        async def chat(
+            self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
+        ) -> AsyncIterator[Chunk]:
+            raise ValueError("secret prompt text")
+            yield Chunk()
+
+    events = collect(Broken(), ctx, [{"role": "user", "content": "q"}])
+    assert [e["event"] for e in events] == ["error"]
+    assert "secret" not in str(events)
+
+
+def test_a_hallucinated_formula_is_never_marked_as_checked(ctx: ToolContext) -> None:
+    text = r"Known result: $\int_0^1 x\,dx = \frac{1}{3}$."  # false, and no tool produced it
+    msg = final(collect(FakeLLM([[Chunk(text=text)]]), ctx, [{"role": "user", "content": "q"}]))
+    claim = next(s for s in segments_of(msg) if s["type"] != "text")
+    assert claim["status"] in ("unchecked", "contradicted")
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        (r"a\;b", "ab"),
+        (r"a\quad b\qquad c", "abc"),
+        (r"a\:b\>c\!d", "abcd"),
+        (r"\pi\,r^2", r"\pi r^2"),
+        (r"\exponentialE^{x}", r"\mathrm{e}^{x}"),
+        (r"\imaginaryI x", r"\mathrm{i}x"),
+        ("{{x}}", "x"),
+        (r"\int_0^\infty \mathrm{e}^{-a x}\,dx", r"\int_0^\infty\mathrm{e}^{-ax}\;dx"),
+        (r"\left( a \right) \quad b", "(a)b"),
+    ],
+)
+def test_normalize_treats_these_as_the_same_formula(a: str, b: str) -> None:
+    assert normalize(a) == normalize(b)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("a;b", "ab"),  # a literal semicolon is content
+        (r"\leftarrow", r"\rightarrow"),
+        (r"\leftrightarrow", r"\rightarrow"),
+        (r"\in t", r"\int"),
+        (r"a \\ b", "ab"),  # a line break is not spacing
+        ("e^{x}", r"\mathrm{e}^{x}"),  # a bare e is a variable, not the constant
+        ("i x", r"\mathrm{i}x"),
+        (r"\mathrm{e}", r"\mathrm{i}"),
+    ],
+)
+def test_normalize_keeps_these_apart(a: str, b: str) -> None:
+    assert normalize(a) != normalize(b)
+
+
+def test_normalize_keeps_tensor_indices() -> None:
+    assert normalize(r"R^{\mu}{}_{\nu\rho\sigma}") == r"R^{\mu}_{\nu\rho\sigma}"
+
+
+def test_prices_are_text_and_multiline_display_math_is_found() -> None:
+    segs = split_segments("It costs $5 to $10 in total.", set())
+    assert [s.type for s in segs] == ["text"]
+    text = "A:\n\\[\n x = 1 \\\\\n y = 2\n\\]\nB: \\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned} C: $z$."
+    kinds = [(s.type, s.value) for s in split_segments(text, set()) if s.type != "text"]
+    assert kinds[0][0] == "display_math" and r"\\" in kinds[0][1]
+    assert kinds[1] == ("display_math", "\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}")
+    assert kinds[2] == ("math", "z")
+
+
+def test_a_handbook_formula_matches_whatever_its_spacing() -> None:
+    known = {normalize(r"\int_0^\infty \mathrm{e}^{-a x}\,dx = \frac{1}{a}")}
+    segs = split_segments(
+        r"$$\int_0^\infty \exponentialE^{-ax} dx = \frac{1}{a}$$ and $\int_0^\infty e^{-ax}dx=\frac1a$.",
+        known,
+    )
+    assert [s.status for s in segs if s.type != "text"] == ["from_tool", "unchecked"]

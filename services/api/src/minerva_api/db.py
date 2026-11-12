@@ -49,6 +49,17 @@ class AuthSession(Base):
     user: Mapped[User] = relationship(back_populates="sessions")
 
 
+class Derivation(Base):
+    """An ordered set of saved calculations (the steps of a Workbench derivation). Private data."""
+
+    __tablename__ = "derivations"
+    __table_args__ = (Index("ix_derivations_user_updated", "user_id", "updated_at"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Calculation(Base):
     """One saved computation. Contains user-entered mathematics: treat as private data."""
 
@@ -63,6 +74,13 @@ class Calculation(Base):
     status: Mapped[str] = mapped_column(String(32))
     result: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Workbench derivations: the step this one continued from (if any) and its derivation.
+    derivation_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("derivations.id", ondelete="CASCADE"), default=None, index=True
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("calculations.id", ondelete="SET NULL"), default=None
+    )
 
 
 def make_engine(url: str) -> Engine:
