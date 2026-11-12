@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { MotionRequest } from "@/lib/chat-types";
+import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
 
 /**
  * Lets a card start a numerical solution in the open conversation. Provided by the chat app; absent
@@ -9,6 +9,8 @@ import type { MotionRequest } from "@/lib/chat-types";
  */
 export interface MotionRunner {
   run: (request: MotionRequest) => Promise<void>;
+  /** Solves a perturbation problem again with the user's comparison numbers. */
+  perturb?: (request: PerturbationRequest) => Promise<void>;
 }
 
 const MotionRunnerContext = createContext<MotionRunner | null>(null);

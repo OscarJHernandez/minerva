@@ -630,7 +630,19 @@ def run_perturbation(args: PerturbationArgs, ctx: ToolContext) -> ToolOutput:
         tool="perturbation_solve",
         type="perturbation",
         title="Perturbation solution",
-        data={"report": report.model_dump(mode="json")},
+        data={
+            "report": report.model_dump(mode="json"),
+            # What was solved, so the card's comparison form can resend exactly this with the user's numbers.
+            "request": {
+                "lagrangian": args.lagrangian,
+                "coordinates": args.coordinates,
+                "time": args.time,
+                "assumptions": args.assumptions,
+                "small_parameter": args.small_parameter,
+                "equilibrium": args.equilibrium,
+                "order": args.order,
+            },
+        },
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []

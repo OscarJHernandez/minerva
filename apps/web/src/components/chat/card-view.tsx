@@ -59,7 +59,7 @@ export function CardView({ card }: { card: Card }) {
     case "expansion":
       return <ExpansionCard report={card.data.report} />;
     case "perturbation":
-      return <PerturbationCard report={card.data.report} />;
+      return <PerturbationCard report={card.data.report} request={card.data.request} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":

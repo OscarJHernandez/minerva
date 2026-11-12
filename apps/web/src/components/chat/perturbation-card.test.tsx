@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import type { PerturbationReport } from "@/lib/chat-types";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api";
+import type { PerturbationReport, PerturbationRequest } from "@/lib/chat-types";
+import { MotionRunnerProvider } from "./motion-runner";
 import { PerturbationCard } from "./perturbation-card";
 
 const base: PerturbationReport = {
@@ -9,6 +12,7 @@ const base: PerturbationReport = {
   coordinates: ["x"],
   equilibrium: [{ name: "x", latex: "0", name_latex: "x" }],
   mode: "parameter",
+  parameters: [],
   small_latex: "b",
   amplitude_latex: "A",
   order: 2,
@@ -151,5 +155,95 @@ describe("PerturbationCard", () => {
       expect(screen.getByText(/does not fall at the claimed order/)).toBeInTheDocument();
       unmount();
     }
+  });
+});
+
+describe("PerturbationCard comparison form", () => {
+  const request = {
+    lagrangian: "L",
+    coordinates: ["x"],
+    time: "t",
+    assumptions: {},
+    small_parameter: "b",
+    equilibrium: "0",
+    order: 2,
+  };
+  const withParameters = { ...base, parameters: ["k"] };
+
+  it("offers no form outside a conversation", () => {
+    render(<PerturbationCard report={withParameters} request={request} />);
+    expect(screen.queryByRole("form", { name: "Comparison numbers" })).not.toBeInTheDocument();
+  });
+
+  it("offers no form for a refused solution", () => {
+    const perturb = vi.fn<(r: PerturbationRequest) => Promise<void>>().mockResolvedValue();
+    render(
+      <MotionRunnerProvider value={{ run: vi.fn(), perturb }}>
+        <PerturbationCard report={{ ...withParameters, status: "unsupported" }} request={request} />
+      </MotionRunnerProvider>,
+    );
+    expect(screen.queryByRole("form", { name: "Comparison numbers" })).not.toBeInTheDocument();
+  });
+
+  it("refuses to submit with a missing number, then sends the typed values", async () => {
+    const perturb = vi.fn<(r: PerturbationRequest) => Promise<void>>().mockResolvedValue();
+    const user = userEvent.setup();
+    render(
+      <MotionRunnerProvider value={{ run: vi.fn(), perturb }}>
+        <PerturbationCard report={withParameters} request={request} />
+      </MotionRunnerProvider>,
+    );
+    await user.click(screen.getByText(/Compare with the numerical solution/));
+    await user.click(screen.getByRole("button", { name: "Compare" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Give a value for k.");
+    expect(perturb).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("k"), "1");
+    await user.type(screen.getByLabelText("b (the small parameter)"), "0.1");
+    await user.type(screen.getByLabelText("initial displacement A"), "1");
+    await user.type(screen.getByLabelText("end time"), "30");
+    await user.click(screen.getByRole("button", { name: "Compare" }));
+    expect(perturb).toHaveBeenCalledTimes(1);
+    expect(perturb.mock.calls[0]![0]).toEqual({
+      ...request,
+      compare: { parameters: { k: 1 }, epsilon: 0.1, amplitude: 1, t_end: 30 },
+    });
+  });
+
+  it("shows the server's refusal instead of failing silently", async () => {
+    const perturb = vi
+      .fn<(r: PerturbationRequest) => Promise<void>>()
+      .mockRejectedValue(new ApiError(429, "Too many requests; slow down."));
+    const user = userEvent.setup();
+    render(
+      <MotionRunnerProvider value={{ run: vi.fn(), perturb }}>
+        <PerturbationCard report={{ ...base, parameters: [] }} request={request} />
+      </MotionRunnerProvider>,
+    );
+    await user.click(screen.getByText(/Compare with the numerical solution/));
+    await user.type(screen.getByLabelText("b (the small parameter)"), "0.1");
+    await user.type(screen.getByLabelText("initial displacement A"), "1");
+    await user.type(screen.getByLabelText("end time"), "5");
+    await user.click(screen.getByRole("button", { name: "Compare" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many requests; slow down.");
+  });
+
+  it("asks for the displacement itself when the small parameter is the amplitude", async () => {
+    const perturb = vi.fn<(r: PerturbationRequest) => Promise<void>>().mockResolvedValue();
+    const user = userEvent.setup();
+    render(
+      <MotionRunnerProvider value={{ run: vi.fn(), perturb }}>
+        <PerturbationCard
+          report={{ ...base, mode: "amplitude", parameters: [] }}
+          request={{ ...request, small_parameter: null }}
+        />
+      </MotionRunnerProvider>,
+    );
+    expect(screen.queryByLabelText("initial displacement A")).not.toBeInTheDocument();
+    await user.click(screen.getByText(/Compare with the numerical solution/));
+    await user.type(screen.getByLabelText("initial displacement"), "0.3");
+    await user.type(screen.getByLabelText("end time"), "5");
+    await user.click(screen.getByRole("button", { name: "Compare" }));
+    expect(perturb.mock.calls[0]![0].compare).toEqual({ parameters: {}, epsilon: 0.3, t_end: 5 });
   });
 });

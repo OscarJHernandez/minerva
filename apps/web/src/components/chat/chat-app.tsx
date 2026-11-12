@@ -14,6 +14,7 @@ import type {
   ChatStatus,
   ConversationSummary,
   MotionRequest,
+  PerturbationRequest,
   StoredMessage,
   StreamEvent,
   ToolRun,
@@ -53,6 +54,8 @@ const TOOL_LABEL: Record<string, string> = {
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
   integrate_motion: "Integrating the equations of motion and verifying the run",
+  expand_motion: "Expanding the equations of motion about the equilibrium",
+  perturbation_solve: "Solving by perturbation theory and checking the residual",
 };
 
 type PendingItem = { kind: "text"; text: string } | { kind: "card"; card: Card };
@@ -223,6 +226,22 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** The perturbation card's form: solves again with the user's own comparison numbers. */
+  const runPerturbation = useCallback(
+    async (request: PerturbationRequest) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.perturbationSolve(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   const busy = pending !== null;
   const title = conversations.find((c) => c.id === activeId)?.title ?? "";
 
@@ -250,7 +269,7 @@ export function ChatApp() {
   }
 
   return (
-    <MotionRunnerProvider value={{ run: runMotion }}>
+    <MotionRunnerProvider value={{ run: runMotion, perturb: runPerturbation }}>
       <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
         <aside className="hidden w-60 shrink-0 py-4 md:block">
           <ConversationList

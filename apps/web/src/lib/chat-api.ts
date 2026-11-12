@@ -4,6 +4,7 @@ import type {
   ConversationSummary,
   ExtractedFormula,
   MotionRequest,
+  PerturbationRequest,
   StoredMessage,
   StreamEvent,
 } from "./chat-types";
@@ -30,6 +31,12 @@ export const chatApi = {
   /** Runs the numerical solution with the user's own numbers; the reply is the stored card message. */
   integrateMotion: (id: string, request: MotionRequest) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/integrate_motion`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Solves again with the comparison numbers the user typed; the reply is the stored card message. */
+  perturbationSolve: (id: string, request: PerturbationRequest) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/perturbation_solve`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

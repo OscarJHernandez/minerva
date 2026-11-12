@@ -49,6 +49,7 @@ export interface PerturbationReport {
   coordinates: string[];
   equilibrium: { name: string; latex: string; name_latex: string }[];
   mode: "parameter" | "amplitude" | null;
+  parameters: string[];
   small_latex: string | null;
   amplitude_latex: string | null;
   order: number;
@@ -83,6 +84,23 @@ export interface PerturbationReport {
   notes: string[];
   message: string;
   duration_ms: number;
+}
+
+/** What a perturbation solution was computed from, and what the comparison form sends back. */
+export interface PerturbationRequest {
+  lagrangian: string;
+  coordinates: string[];
+  time: string;
+  assumptions: Record<string, string[]>;
+  small_parameter: string | null;
+  equilibrium: string;
+  order: number;
+  compare?: {
+    parameters: Record<string, number>;
+    epsilon: number;
+    amplitude?: number;
+    t_end: number;
+  };
 }
 
 export interface LagrangianReport {
@@ -360,7 +378,7 @@ export type Card =
       tool: string;
       type: "perturbation";
       title: string;
-      data: { report: PerturbationReport };
+      data: { report: PerturbationReport; request?: PerturbationRequest };
     }
   | {
       id: string;

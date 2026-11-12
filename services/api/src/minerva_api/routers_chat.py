@@ -24,7 +24,7 @@ from .agent.events import AssistantMessage, Block, TraceStep
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, run_agent
 from .agent.segments import normalize
-from .agent.tools import ToolContext, execute
+from .agent.tools import PerturbationArgs, ToolContext, execute
 from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
@@ -240,6 +240,57 @@ def delete_conversation(conversation_id: uuid.UUID, user: UserDep, db: DbDep) ->
     db.commit()
 
 
+def _run_tool_directly(
+    name: str,
+    arguments: dict[str, Any],
+    conversation_id: uuid.UUID,
+    user: Any,
+    db: Any,
+    engine: Any,
+    kb: Any,
+    limiter: Any,
+    settings: Any,
+) -> MessageOut:
+    """Run one tool with the user's own numbers (from a card's form), store it as an assistant message.
+
+    The model is not involved, so it never transcribes the numbers. The result is stored holding the card and
+    the tool call, so later turns see it exactly as if the model had called the tool. Works with the chat
+    model switched off.
+    """
+    if not limiter.allow(f"compute:{user.id}", settings.compute_rate_per_minute):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests; slow down.")
+    conversation = _owned(db, conversation_id, user.id)
+    started = time.monotonic()
+    output = execute(name, arguments, ToolContext(engine=engine, kb=kb))
+    elapsed = int((time.monotonic() - started) * 1000)
+    content = AssistantMessage(
+        text="",
+        blocks=[Block(kind="card", card=output.card)],
+        trace=[
+            TraceStep(
+                id=output.card.id,
+                name=name,
+                arguments=arguments,
+                for_model=output.for_model,
+                duration_ms=elapsed,
+                status=output.status,
+            )
+        ],
+    ).model_dump(mode="json")
+    row = ChatMessage(conversation_id=conversation.id, role="assistant", content=content)
+    db.add(row)
+    conversation.updated_at = utcnow()
+    db.commit()
+    log.info(
+        "compute",
+        operation=name,
+        status=output.status,
+        duration_ms=elapsed,
+        user_id=str(user.id),
+    )
+    return MessageOut(id=row.id, role=row.role, content=row.content, created_at=row.created_at)
+
+
 @router.post(
     "/conversations/{conversation_id}/tools/integrate_motion",
     response_model=MessageOut,
@@ -255,45 +306,51 @@ def integrate_motion_directly(
     limiter: LimiterDep,
     settings: SettingsDep,
 ) -> MessageOut:
-    """Run the numerical solution with the user's own numbers (from the Lagrangian card's form).
-
-    The model is not involved, so it never transcribes the numbers. The result is stored as an assistant
-    message holding the card and the tool call, so later turns see it exactly as if the model had called
-    the tool. Works with the chat model switched off.
-    """
-    if not limiter.allow(f"compute:{user.id}", settings.compute_rate_per_minute):
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests; slow down.")
-    conversation = _owned(db, conversation_id, user.id)
-    arguments = body.model_dump(mode="json")
-    started = time.monotonic()
-    output = execute("integrate_motion", arguments, ToolContext(engine=engine, kb=kb))
-    elapsed = int((time.monotonic() - started) * 1000)
-    content = AssistantMessage(
-        text="",
-        blocks=[Block(kind="card", card=output.card)],
-        trace=[
-            TraceStep(
-                id=output.card.id,
-                name="integrate_motion",
-                arguments=arguments,
-                for_model=output.for_model,
-                duration_ms=elapsed,
-                status=output.status,
-            )
-        ],
-    ).model_dump(mode="json")
-    row = ChatMessage(conversation_id=conversation.id, role="assistant", content=content)
-    db.add(row)
-    conversation.updated_at = utcnow()
-    db.commit()
-    log.info(
-        "compute",
-        operation="integrate_motion",
-        status=output.status,
-        duration_ms=elapsed,
-        user_id=str(user.id),
+    """Run the numerical solution with the user's own numbers (from the Lagrangian card's form)."""
+    return _run_tool_directly(
+        "integrate_motion",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
     )
-    return MessageOut(id=row.id, role=row.role, content=row.content, created_at=row.created_at)
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/perturbation_solve",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def perturbation_solve_directly(
+    conversation_id: uuid.UUID,
+    body: PerturbationArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Solve again with the comparison numbers the user typed into the perturbation card's form."""
+    if body.compare is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Give the numbers for the comparison."
+        )
+    return _run_tool_directly(
+        "perturbation_solve",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
 
 
 def _history(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], set[str]]:

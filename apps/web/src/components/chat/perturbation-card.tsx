@@ -1,14 +1,21 @@
 import { Math } from "@minerva/ui/math";
-import type { PerturbationReport } from "@/lib/chat-types";
+import type { PerturbationReport, PerturbationRequest } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
 import { LinePlot } from "./line-plot";
+import { PerturbationForm } from "./perturbation-form";
 
 function sci(v: number | null): string {
   return v === null ? "–" : v === 0 ? "0" : v.toExponential(2);
 }
 
 /** A perturbation solution; formulas appear only if the residual and initial-condition checks passed. */
-export function PerturbationCard({ report }: { report: PerturbationReport }) {
+export function PerturbationCard({
+  report,
+  request,
+}: {
+  report: PerturbationReport;
+  request?: PerturbationRequest;
+}) {
   const shown = report.status === "ok";
   const v = report.verification;
   const c = report.comparison;
@@ -116,6 +123,8 @@ export function PerturbationCard({ report }: { report: PerturbationReport }) {
           )}
         </div>
       )}
+
+      {shown && request && <PerturbationForm base={request} parameters={report.parameters} />}
 
       {shown && !c && (
         <p className="mt-4 text-xs text-muted">

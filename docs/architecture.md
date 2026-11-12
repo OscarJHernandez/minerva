@@ -96,7 +96,8 @@ one most likely to be wrong.
     leaves a residual in the unexpanded acceleration that falls at ε^(N+1) (mpmath, random parameters, ε halved
     twice), the initial conditions hold (symbolic and numeric) and every order is a finite cosine sum. The period
     ratio series is derived from ω and checked with `check_series`. Optional comparison with `integrate_motion`
-    for user-given numbers, at ε and ε/2, reporting the observed order of the error; a measurement, omitted when
+    for user-given numbers (the card's form posts them to `POST /v1/chat/conversations/{id}/tools/perturbation_solve`,
+    like the motion form, so the model never transcribes them), at ε and ε/2, reporting the observed order of the error; a measurement, omitted when
     the numerical run fails its own checks. Order 1-6.
   - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
     initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive

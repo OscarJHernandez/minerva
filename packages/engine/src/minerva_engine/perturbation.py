@@ -119,6 +119,7 @@ class PerturbationReport(BaseModel):
     coordinates: list[str] = Field(default_factory=list)
     equilibrium: list[NamedLatex] = Field(default_factory=list)
     mode: Literal["parameter", "amplitude"] | None = None
+    parameters: list[str] = Field(default_factory=list)  # parameters of L other than the small one
     small_latex: str | None = None
     amplitude_latex: str | None = None
     order: int = 0
@@ -687,6 +688,7 @@ def perturbation_solve(
     report = PerturbationReport(
         status=Status.OK,
         mode=mode,
+        parameters=[s.name for s in d.params if s != eps_sym],
         small_latex=small_latex,
         amplitude_latex=sp.latex(amp_sym) if amp_sym is not None else None,
         linear_frequency_latex=rf"\omega_0 = {sp.latex(omega0)}",
