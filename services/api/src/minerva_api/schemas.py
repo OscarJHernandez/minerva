@@ -20,6 +20,11 @@ class UserOut(BaseModel):
     email: str
 
 
+class IntegrateRequest(ExpressionInput):
+    variable: str = Field(min_length=1, max_length=32)
+    save: bool = True
+
+
 class IdentitiesRequest(ExpressionInput):
     query: str = Field(default="", max_length=200)
     save: bool = True

@@ -276,3 +276,13 @@ def test_scripted_model_runs_dimensional_analysis_and_a_unit_check(
     message = next(d for e, d in events if e == "message")
     card = cards_of(message)[0]
     assert card["type"] == "units" and card["data"]["report"]["consistent"] is True
+
+
+def test_integrate_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Integrate $x\cos x$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "integrate"
+    assert card["data"]["status"] == "ok"
+    assert card["data"]["verification"]["passed"] is True

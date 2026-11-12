@@ -202,6 +202,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "get_entry",
         "simplify",
         "differentiate",
+        "integrate",
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
@@ -548,3 +549,21 @@ def test_units_tool_reports_missing_factor(ctx: ToolContext) -> None:
         ctx,
     )
     assert "consistent=True" in good.for_model
+
+
+def test_integrate_tool_returns_a_verified_card(ctx: ToolContext) -> None:
+    out = execute("integrate", {"latex": r"x\cos x", "variable": "x"}, ctx)
+    assert out.card.type == "integrate"
+    assert out.card.data["status"] == "ok"
+    assert out.status == "ok"
+    assert "antiderivative=$" in out.for_model
+    assert "verified: numeric derivative" in out.for_model
+    assert out.card.data["result_latex"] in out.known_latex
+
+
+def test_integrate_tool_is_honest_when_there_is_no_closed_form(ctx: ToolContext) -> None:
+    out = execute("integrate", {"latex": "e^{x^x}", "variable": "x"}, ctx)
+    assert out.card.type == "integrate"
+    assert out.card.data["status"] == "unsupported"
+    assert out.card.data["result_latex"] is None
+    assert "antiderivative=" not in out.for_model

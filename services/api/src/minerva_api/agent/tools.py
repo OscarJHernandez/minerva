@@ -71,6 +71,15 @@ class DifferentiateArgs(SimplifyArgs):
     )
 
 
+class IntegrateArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT, description="The integrand, in LaTeX, e.g. x\\cos x (no \\int or dx)"
+    )
+    variable: str = Field(
+        min_length=1, max_length=32, description="The variable of integration, e.g. x"
+    )
+
+
 class IdentitiesArgs(SimplifyArgs):
     query: str = Field(default="", max_length=200, description="Optional extra search words")
 
@@ -229,6 +238,32 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
         if x
     ]
     return ToolOutput(card, text, known)
+
+
+def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.integrate(_expr(args), args.variable)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="integrate",
+        type="integrate",
+        title="Integrate",
+        data=result.model_dump(mode="json"),
+    )
+    v = result.verification
+    text = (
+        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        + (f"antiderivative=${result.result_latex}$; " if result.result_latex else "")
+        + (
+            f"verified: numeric derivative {v.points_agreed}/{v.points_checked} "
+            f"({'+'.join(v.directions)} direction, {v.branches_checked} case(s)); "
+            if v and v.passed
+            else ""
+        )
+        + result.message
+        + "".join(f" note: {n}" for n in result.notes)
+    )
+    known = [x for x in (result.input_latex, result.notation_latex, result.result_latex) if x]
+    return ToolOutput(card, text, known, result.status.value)
 
 
 def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
@@ -627,6 +662,15 @@ TOOLS: dict[str, Tool] = {
             "example |x| for a complex x: declare x real).",
             DifferentiateArgs,
             run_differentiate,
+        ),
+        Tool(
+            "integrate",
+            "Find an antiderivative (indefinite integral) of an expression in one variable. The "
+            "answer is shown only if an independent numerical derivative of it matches the "
+            "integrand. Reports 'unsupported' when no closed form is found (that does not prove "
+            "none exists). Definite integrals are not supported yet.",
+            IntegrateArgs,
+            run_integrate,
         ),
         Tool(
             "solve_polynomial",

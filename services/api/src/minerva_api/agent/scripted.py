@@ -114,6 +114,11 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif ("integra" in lower or "antiderivative" in lower) and latex:
+            name = "y" if re.search(r"\bwith respect to y\b|\bin y\b|\bdy\b", lower) else "x"
+            async for c in self._say("I will find an antiderivative and verify it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("integrate", {"latex": latex, "variable": name})])
         elif "solve" in lower and latex:
             async for c in self._say("I will solve the equation and check the roots. "):
                 yield c
@@ -184,6 +189,16 @@ class ScriptedLLM:
                     f"I could not differentiate that ({status}). The card says why; for example "
                     "|x| needs x declared real."
                 )
+        elif tool == "integrate":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows an antiderivative. Minerva differentiated it numerically at "
+                    "random points and compared it with your integrand."
+                )
+            else:
+                text = f"I could not integrate that ({status}). The card says why."
         elif tool == "find_identities":
             applicable = [ln for ln in content.splitlines() if ": applicable" in ln]
             blocked = [ln for ln in content.splitlines() if "conditions_not_satisfied" in ln]
