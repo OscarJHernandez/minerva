@@ -45,6 +45,16 @@ one most likely to be wrong.
   rule's left-hand side). Semantic or structural-embedding retrievers can implement the same protocol.
   Retrieval only **proposes**; the engine decides.
 - `identities.find_identities` orchestrates: features (sandbox) → candidates (FTS5) → apply (sandbox).
+  The matcher (`engine/ops.py`) discards matches that invent roots, reciprocals or `I`, and matches that
+  bind a variable used only as `n*w` (like the `a` in `sin(2*a)`) to a fraction of the input.
+- Generated entries (`generate.py`): `data/entries/generated_*.yaml` are written by
+  `python -m minerva_knowledge generate` from seeds in `generate.py`; edit the seed, never the YAML.
+  A candidate is written only if it round-trips through the text parser, validates, is not a duplicate,
+  passes its own check (`symbolic` only with a symbolic zero) and the engine applies it to its own
+  left-hand side. The test suite fails when the committed files differ from a fresh generation.
+- Benchmark (`benchmark.py`, `data/benchmark/identity_cases.yaml`): hand-written expression →
+  expected/forbidden identities, run with `python -m minerva_knowledge benchmark`; results and limits in
+  `docs/handbook-benchmark.md`.
 
 ## C. The conversational agent (`services/api/src/minerva_api/agent/`)
 

@@ -8,10 +8,55 @@ from .checks import run_check
 from .loader import load_entries
 
 
+def _benchmark() -> int:
+    from minerva_engine import Engine, Limits
+
+    from .benchmark import format_report, run_benchmark
+    from .kb import KnowledgeBase
+
+    report = run_benchmark(
+        KnowledgeBase.load(), Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    )
+    print(format_report(report))
+    return 1 if report.failures else 0
+
+
+def _generate(check: bool) -> int:
+    from minerva_engine import Engine, Limits
+
+    from . import generate
+
+    generated = generate.build(
+        generate.SEEDS, Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    )
+    for rejection in generated.rejected:
+        print(f"REJECTED {rejection.seed_id}: {rejection.reason}", file=sys.stderr)
+    if generated.rejected:
+        print(f"{len(generated.rejected)} seed(s) rejected; nothing written.", file=sys.stderr)
+        return 1
+    if check:
+        stale = generate.stale_files(generated)
+        for name in stale:
+            print(f"STALE {name}: run `python -m minerva_knowledge generate`", file=sys.stderr)
+        print(f"{generated.count} generated entries, {len(stale)} stale file(s)")
+        return 1 if stale else 0
+    for path in generate.write(generated):
+        print(f"wrote {path.name}")
+    print(f"{generated.count} generated entries")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     command = argv[0] if argv else "verify"
+    if command == "benchmark":
+        return _benchmark()
+    if command == "generate":
+        return _generate(check="--check" in argv[1:])
     if command != "verify":
-        print("usage: python -m minerva_knowledge verify", file=sys.stderr)
+        print(
+            "usage: python -m minerva_knowledge verify | benchmark | generate [--check]",
+            file=sys.stderr,
+        )
         return 2
     entries = load_entries()
     failures = 0

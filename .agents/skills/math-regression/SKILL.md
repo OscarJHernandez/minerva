@@ -21,7 +21,11 @@ was verified; otherwise the status says why. Follow this checklist and stop to a
 | New engine operation | `packages/engine/src/minerva_engine/ops.py` + `service.py` + API route | explicit statuses, independent verification |
 
 Never claim a stronger level than the checker establishes. Never copy text or tables from books: write the
-formula yourself and cite by locator (`DLMF §4.21`).
+formula yourself and cite by locator (`DLMF §4.21`). Cite a section only after confirming it contains the formula.
+
+Files `data/entries/generated_*.yaml` are written by `python -m minerva_knowledge generate`: change the seed
+in `generate.py` and regenerate, never edit the YAML (a test fails on drift). Add a benchmark case in
+`data/benchmark/identity_cases.yaml` for every new identity family (`pending: true` until the entry exists).
 
 ## 2. Write the entry or operation
 
@@ -36,6 +40,8 @@ formula yourself and cite by locator (`DLMF §4.21`).
 
 ```bash
 uv run python -m minerva_knowledge verify          # every entry at its declared level
+uv run python -m minerva_knowledge generate --check # generated files match their seeds
+uv run python -m minerva_knowledge benchmark       # identity cases: expected found, nothing spurious
 uv run pytest packages/knowledge packages/engine   # schema, retrieval, find-identities, parsers, sandbox
 ```
 

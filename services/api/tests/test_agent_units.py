@@ -182,6 +182,17 @@ def test_identities_tool_reports_conditions_honestly(ctx: ToolContext) -> None:
     assert "applicable" in ok.for_model
 
 
+def test_identities_tool_finds_a_generated_identity(ctx: ToolContext) -> None:
+    out = execute("find_identities", {"latex": r"\sin(3x)"}, ctx)
+    status = {
+        line.split(" ", 2)[1]: line.split("): ", 1)[1].split(";", 1)[0]
+        for line in out.for_model.splitlines()
+        if line.startswith("- ") and "): " in line
+    }
+    assert status["trig.triple_sin"] == "applicable"
+    assert status["trig.double_sin"] == "no_match"  # would need a = 3x/2
+
+
 def test_segments_parse_all_math_delimiters() -> None:
     known = {normalize("x^{2}")}
     segs = split_segments(r"A $x^2$, B $$y$$, C \(z\), D \[w\], cost \$5.", known)

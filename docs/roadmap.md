@@ -37,8 +37,15 @@ Ordering favours correctness infrastructure before breadth.
 
 - Structural retrieval: expression-tree and operator-pattern indexes beyond the current feature tokens.
 - Semantic retrieval behind the `Retriever` protocol (embedding model on local hardware), combined with FTS5.
-- Retrieval quality evaluation set (expression → expected identities); never let retrieval affect
+- Retrieval quality evaluation set: started (45 identity cases, `docs/handbook-benchmark.md`); grow it with
+  cases from real use, and add cases for text search and the chat agent. Never let retrieval affect
   correctness: candidates always pass through the engine.
+- More generated families on the same pipeline (`generate.py`): derivatives and antiderivatives (needs an
+  independent numeric derivative check first, since the current one compares against SymPy itself),
+  definite integrals with parameter ranges, series from term templates.
+- Import from permissively licensed formula collections (for example Fungrim, MIT): needs a maintainer
+  decision on provenance and notices in `docs/licensing.md`, a converter that parses without executing,
+  and parser support for the functions involved (zeta, Bessel, elliptic, ...).
 
 ## Quantum field theory
 

@@ -1,0 +1,55 @@
+# Hand-written identity-finder cases. `expect`: entries that must be APPLICABLE; `forbid`: entries that
+# must NOT be APPLICABLE. `pending: true`: the identity is not in the handbook yet (reported, not asserted).
+# Written independently of any generator; do not derive these from the entries they test.
+
+# --- already in the handbook ---
+- {id: pythagorean, input: '\sin^2 x + \cos^2 x', expect: [trig.pythagorean]}
+- {id: tan_secant, input: '1 + \tan^2 x', expect: [trig.tan_secant]}
+- {id: sin_sum, input: '\sin(x+y)', expect: [trig.sum_sin]}
+- {id: cos_sum, input: '\cos(x+y)', expect: [trig.sum_cos]}
+- {id: tan_sum, input: '\tan(x+y)', expect: [trig.sum_tan]}
+- {id: sin_double, input: '\sin(2x)', expect: [trig.double_sin]}
+- {id: sin_double_6, input: '\sin(6x)', expect: [trig.double_sin]}
+- {id: cos_double, input: '\cos(2x)', expect: [trig.double_cos, trig.double_cos_cos, trig.double_cos_sin]}
+- {id: sin_cos_product, input: '\sin(x)\cos(y)', expect: [trig.product_to_sum]}
+- {id: sin_squared_reduction, input: '\sin^2 x', expect: [trig.power_reduction_sin]}
+- {id: cos_squared_reduction, input: '\cos^2 x', expect: [trig.power_reduction_cos]}
+- {id: euler, input: '\exp(\imaginaryI x)', expect: [trig.euler]}
+- {id: hyp_pythagorean, input: '\cosh^2 x - \sinh^2 x', expect: [hyp.pythagorean]}
+- {id: sinh_double, input: '\sinh(2x)', expect: [hyp.double_sinh]}
+- {id: cosh_sum, input: '\cosh(x+y)', expect: [hyp.sum_cosh]}
+- {id: difference_of_squares, input: 'x^2 - y^2', expect: [alg.difference_of_squares]}
+- {id: difference_of_squares_nested, input: '\frac{x^2 - y^2}{z}', expect: [alg.difference_of_squares]}
+- {id: sum_of_cubes, input: 'x^3 + y^3', expect: [alg.sum_of_cubes]}
+- {id: difference_of_cubes, input: 'x^3 - y^3', expect: [alg.difference_of_cubes]}
+- {id: binomial_square, input: '(x+y)^2', expect: [alg.binomial_square]}
+- {id: log_product_positive, input: '\log(xy)', assumptions: {x: [positive], y: [positive]}, expect: [log.product]}
+- {id: log_product_unassumed, input: '\log(xy)', forbid: [log.product]}
+- {id: sqrt_square_unassumed, input: '\sqrt{x^2}', forbid: [radical.sqrt_square_abs, radical.sqrt_square_nonneg]}
+- {id: gamma_recurrence, input: '\Gamma(x+1)', expect: [special.gamma_recurrence]}
+
+# --- honesty: nothing should be invented ---
+# (sin(2a) must not match sin(x) by binding a = x/2: see _binds_fraction_of_multiple in engine ops.py)
+- {id: unrelated_sum, input: 'x + y', forbid: [trig.double_sin, alg.difference_of_squares, log.product]}
+- {id: plain_sin_not_halved, input: '\sin(x)', forbid: [trig.double_sin]}
+- {id: sin_triple_not_halved, input: '\sin(3x)', forbid: [trig.double_sin]}
+- {id: cos_triple_not_halved, input: '\cos(3x)', forbid: [trig.double_cos, trig.double_cos_cos, trig.double_cos_sin]}
+- {id: sinh_triple_not_halved, input: '\sinh(3x)', forbid: [hyp.double_sinh]}
+- {id: sin_half_angle_not_quartered, input: '\sin(x/2)', forbid: [trig.double_sin]}
+- {id: sin_sin_not_double, input: '\sin(x)\sin(y)', forbid: [trig.double_sin]}
+- {id: sin_double_sum_argument, input: '\sin(2x+2y)', expect: [trig.double_sin]}
+
+# --- identities added by the generated families (see generate.py) ---
+- {id: sin_triple, input: '\sin(3x)', expect: [trig.triple_sin]}
+- {id: cos_triple, input: '\cos(3x)', expect: [trig.triple_cos]}
+- {id: sin_sin_product, input: '\sin(x)\sin(y)', expect: [trig.product_sin_sin]}
+- {id: cos_cos_product, input: '\cos(x)\cos(y)', expect: [trig.product_cos_cos]}
+- {id: sin_sum_to_product, input: '\sin(x)+\sin(y)', expect: [trig.sum_to_product_sin]}
+- {id: cos_difference_to_product, input: '\cos(x)-\cos(y)', expect: [trig.difference_to_product_cos]}
+- {id: sin_cubed, input: '\sin^3 x', expect: [trig.power_reduction_sin3]}
+- {id: sinh_triple, input: '\sinh(3x)', expect: [hyp.triple_sinh]}
+- {id: tanh_double, input: '\tanh(2x)', expect: [hyp.double_tanh]}
+- {id: tanh_sum, input: '\tanh(x+y)', expect: [hyp.sum_tanh]}
+- {id: binomial_cube_sum, input: '(x+y)^3', expect: [alg.binomial_cube_sum]}
+- {id: binomial_cube_difference, input: '(x-y)^3', expect: [alg.binomial_cube_difference]}
+- {id: difference_of_fourth_powers, input: 'x^4 - y^4', expect: [alg.difference_of_fourth_powers]}
