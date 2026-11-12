@@ -299,3 +299,16 @@ def test_definite_integral_turn_streams_a_verified_card(
     assert card["data"]["definite"] is True
     assert card["data"]["result_text"] == "9"
     assert card["data"]["quadrature"]["passed"] is True
+
+
+def test_scripted_model_searches_for_hidden_constants_of_motion(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    latex = r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}"
+    events = sse(client, cid, f"find hidden conserved quantities of ${latex}$")
+    message = next(d for e, d in events if e == "message")
+    card = cards_of(message)[0]
+    assert card["type"] == "invariants" and len(card["data"]["report"]["found"]) == 2
+    assert message["trace"][0]["name"] == "search_invariants"
+    assert message["trace"][0]["arguments"]["angles"] == ["theta"]

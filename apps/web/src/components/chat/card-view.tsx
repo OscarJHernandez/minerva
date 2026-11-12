@@ -5,6 +5,7 @@ import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
 import { IntegralPanel } from "../integral-panel";
 import { DimensionalCard } from "./dimensional-card";
+import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
 import { SolveCard } from "./solve-card";
@@ -51,6 +52,8 @@ export function CardView({ card }: { card: Card }) {
           request={card.data.request}
         />
       );
+    case "invariants":
+      return <InvariantsCard report={card.data.report} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":

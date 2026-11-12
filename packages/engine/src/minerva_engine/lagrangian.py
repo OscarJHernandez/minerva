@@ -195,6 +195,25 @@ class ConservedSearch:
     features: list[str] = field(default_factory=list)
 
 
+def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
+    """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
+    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
+    if not d.solution:
+        return False, None
+    derivative = d.total_derivative(quantity).subs(d.solution)
+    symbolic_zero = sp.simplify(derivative) == 0
+    checked, agreed = numeric_check(derivative, sp.Integer(0))
+    passed = checked >= 4 and agreed == checked
+    verification = Verification(
+        symbolic_zero=symbolic_zero,
+        numeric_points_checked=checked,
+        numeric_points_agreed=agreed,
+        passed=passed,
+        note="d/dt of the quantity, evaluated on the equations of motion, is zero",
+    )
+    return bool(passed), verification
+
+
 def find_conserved(d: Derivation) -> ConservedSearch:
     """Cyclic coordinates, energy and rotations, each verified on the equations of motion."""
     L, q, qd, p, n, show = d.lagrangian, d.q, d.qd, d.momenta, d.n, d.show
@@ -202,20 +221,7 @@ def find_conserved(d: Derivation) -> ConservedSearch:
     out = ConservedSearch()
 
     def verify_conserved(quantity: sp.Expr) -> tuple[bool, Verification | None]:
-        if not d.solution:
-            return False, None
-        derivative = d.total_derivative(quantity).subs(d.solution)
-        symbolic_zero = sp.simplify(derivative) == 0
-        checked, agreed = numeric_check(derivative, sp.Integer(0))
-        passed = checked >= 4 and agreed == checked
-        verification = Verification(
-            symbolic_zero=symbolic_zero,
-            numeric_points_checked=checked,
-            numeric_points_agreed=agreed,
-            passed=passed,
-            note="d/dt of the quantity, evaluated on the equations of motion, is zero",
-        )
-        return bool(passed), verification
+        return verify_constant(d, quantity)
 
     # 1. Cyclic coordinates.
     for i in range(n):
@@ -372,7 +378,8 @@ def analyze_lagrangian(
     report.notes.append(
         "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. "
         "Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden "
-        "symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+        "symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; "
+        "the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
     )
     unverified = [c for c in report.conserved if not c.verified]
     report.message = (

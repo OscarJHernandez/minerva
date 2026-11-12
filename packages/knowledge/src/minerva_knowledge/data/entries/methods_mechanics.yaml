@@ -39,7 +39,7 @@
   applies_to: ["lagrangian:rotation", "lagrangian:cyclic", "lagrangian:time-independent", "lagrangian:no-symmetry-found"]
   validity: "A continuous transformation q_i → q_i + ε ξ_i(q, t) with δL = dF/dt."
   statement_latex: '\delta L=\frac{dF}{dt}\;\Longrightarrow\;Q=\sum_i p_i\,\xi_i-F\ \text{is conserved}'
-  notes: "Minerva searches cyclic coordinates, time translation and rotations of coordinate pairs (F = 0). Symmetries needing F ≠ 0 (such as Galilean boosts) and hidden symmetries (such as the Runge–Lenz vector) are not searched for."
+  notes: "Minerva searches cyclic coordinates, time translation and rotations of coordinate pairs (F = 0). Symmetries needing F ≠ 0 (such as Galilean boosts) and hidden symmetries (such as the Runge–Lenz vector) are not searched for here; the search for more constants of motion looks for them in a declared family."
   keywords: [noether, symmetry, conservation law, angular momentum, momentum]
 - id: method.mech.legendre_hamiltonian
   title: Legendre transform to the Hamiltonian

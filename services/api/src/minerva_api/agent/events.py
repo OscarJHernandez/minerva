@@ -38,6 +38,7 @@ class Card(BaseModel):
         "tensor",
         "solve",
         "lagrangian",
+        "invariants",
         "motion",
         "dimensional",
         "units",

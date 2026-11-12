@@ -1,10 +1,33 @@
 {
   "handbook_entries": 146,
+  "groups": [
+    {
+      "id": "math",
+      "title": "Mathematics",
+      "summary": "Symbolic computation, with every result verified before it is shown."
+    },
+    {
+      "id": "physics",
+      "title": "Physics",
+      "summary": "Mechanics and other physical systems, from a Lagrangian to its conserved quantities."
+    },
+    {
+      "id": "knowledge",
+      "title": "Handbook and identities",
+      "summary": "A citable, machine-checked collection of identities and equations, and the search over it."
+    },
+    {
+      "id": "interfaces",
+      "title": "Using Minerva",
+      "summary": "How to reach the tools, through the chat, photos of equations and the workbench."
+    }
+  ],
   "capabilities": [
     {
       "id": "simplify",
       "title": "Verified simplification",
       "status": "available",
+      "group": "math",
       "where": [
         "workbench",
         "chat",
@@ -188,6 +211,7 @@
       "id": "differentiate",
       "title": "Verified differentiation",
       "status": "available",
+      "group": "math",
       "where": [
         "workbench",
         "chat",
@@ -300,6 +324,7 @@
       "id": "identities",
       "title": "Identity search with applicability checks",
       "status": "available",
+      "group": "knowledge",
       "where": [
         "workbench",
         "chat",
@@ -388,6 +413,7 @@
       "id": "polynomial-solving",
       "title": "Polynomial equations",
       "status": "available",
+      "group": "math",
       "where": [
         "chat"
       ],
@@ -465,13 +491,14 @@
       "id": "lagrangian",
       "title": "Lagrangian mechanics",
       "status": "available",
+      "group": "physics",
       "where": [
         "chat"
       ],
       "needs_model": false,
       "summary": "From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. Each constant is verified: its time derivative is zero on the equations of motion.",
       "limits": [
-        "Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as the Runge–Lenz vector are not searched for, and the result says so."
+        "Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search for more constants of motion looks for them in a declared family."
       ],
       "examples": [
         {
@@ -516,7 +543,7 @@
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
           ]
         },
         {
@@ -561,7 +588,7 @@
           ],
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
           ]
         },
         {
@@ -590,7 +617,159 @@
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
             "energy function: not conserved (L depends explicitly on time)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "invariants",
+      "title": "Search for hidden constants of motion",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Looks for constants of motion beyond cyclic coordinates, energy and rotations, such as the Runge–Lenz vector of the Kepler problem. It solves exactly for every combination of functions of the coordinates (powers, and cos and sin of coordinates you declare to be angles) times velocity monomials of a chosen degree whose time derivative vanishes on the equations of motion. Only constants that pass the same verification as the others are shown, and the known ones and their products are left out of the count.",
+      "limits": [
+        "It searches one declared family and says which. Finding nothing proves nothing outside that family.",
+        "Time-dependent Lagrangians, accelerations with square roots or other non-rational functions, and more than three coordinates are refused.",
+        "The family is capped (500 unknown coefficients); a bigger one is reported as a resource limit.",
+        "Naming a constant (for example as the Runge–Lenz vector) is a recognition the model may offer, not something the search proves."
+      ],
+      "examples": [
+        {
+          "id": "invariants-kepler-polar",
+          "title": "Kepler problem, with the angle declared",
+          "op": "invariants",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "r, theta"
+            },
+            {
+              "label": "Angles",
+              "text": "theta"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Constant of motion 1",
+              "latex": "C_{1} = - k \\cos{\\left(\\theta \\right)} + m r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Constant of motion 2",
+              "latex": "C_{2} = k \\sin{\\left(\\theta \\right)} - m r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+          ],
+          "notes": [
+            "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.",
+            "Already known and left out of the count: Momentum conjugate to theta; Energy function.",
+            "Nothing outside this family was searched; finding none proves nothing beyond it.",
+            "Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.",
+            "Both components of the Laplace–Runge–Lenz vector appear, up to a constant factor, without being looked up. The angular momentum and energy are known already and are not counted."
+          ]
+        },
+        {
+          "id": "invariants-oscillator",
+          "title": "Isotropic oscillator in the plane",
+          "op": "invariants",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) - \\frac12 k(x^2 + y^2)"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Constant of motion 1",
+              "latex": "C_{1} = k x y + m \\dot{x} \\dot{y}"
+            },
+            {
+              "label": "Constant of motion 2",
+              "latex": "C_{2} = k x^{2} + m \\dot{x}^{2}"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)"
+          ],
+          "notes": [
+            "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.",
+            "Already known and left out of the count: Energy function; Rotation symmetry in the (x, y) plane.",
+            "Nothing outside this family was searched; finding none proves nothing beyond it.",
+            "Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.",
+            "The cross term and the energy of one direction, the components of the Fradkin tensor, beyond the energy and angular momentum."
+          ]
+        },
+        {
+          "id": "invariants-henon-heiles",
+          "title": "Hénon–Heiles, none in this family",
+          "op": "invariants",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12(\\dot{x}^2 + \\dot{y}^2) - \\frac12(x^2 + y^2) - x^2 y + \\frac13 y^3"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "text": "no new constant in the searched family"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.",
+            "Already known and left out of the count: Energy function.",
+            "Nothing outside this family was searched; finding none proves nothing beyond it.",
+            "Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.",
+            "Only the energy is known and nothing else is found. That says nothing about constants outside the searched family."
+          ]
+        },
+        {
+          "id": "invariants-time-dependent",
+          "title": "Explicit time dependence is refused",
+          "op": "invariants",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m\\dot{x}^2 - \\frac12 k t x^2"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The Lagrangian depends explicitly on time; the search covers autonomous systems only."
           ]
         }
       ]
@@ -599,6 +778,7 @@
       "id": "tensors",
       "title": "Tensor canonicalization",
       "status": "available",
+      "group": "math",
       "where": [
         "HTTP API",
         "chat"
@@ -726,6 +906,7 @@
       "id": "handbook",
       "title": "Citable handbook",
       "status": "available",
+      "group": "knowledge",
       "where": [
         "handbook pages",
         "chat",
@@ -795,6 +976,7 @@
       "id": "chat",
       "title": "Chat with a model you host",
       "status": "available",
+      "group": "interfaces",
       "where": [
         "chat"
       ],
@@ -808,9 +990,77 @@
       "examples": []
     },
     {
+      "id": "formula-image",
+      "title": "Read formulas from a photo",
+      "status": "available",
+      "group": "interfaces",
+      "where": [
+        "chat"
+      ],
+      "needs_model": true,
+      "summary": "Attach a photo or screenshot of an equation in the chat. A vision model you host transcribes it to LaTeX, you confirm or correct the transcription, and Minerva's strict parser shows how it reads each formula before anything is computed. The model only transcribes; it never solves, simplifies or decides anything about the image.",
+      "limits": [
+        "A transcription can be wrong, which is why you confirm it before it is used. Only what the parser accepts from the confirmed text is passed on to the tools.",
+        "Ambiguous notation is refused exactly as typed input is, for example `\\sin 2x`.",
+        "Images are never stored or logged, and are limited in size to PNG, JPEG or WebP files.",
+        "It needs a vision-capable model on the Ollama-compatible host you connect."
+      ],
+      "examples": [
+        {
+          "id": "image-read-clean",
+          "title": "A transcribed equation, read by the strict parser",
+          "op": "read_formulas",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Transcribed",
+              "source": "x^2 + 2x + 1 = (x+1)^2"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Read as",
+              "latex": "x^{2} + 2 x + 1 = \\left(x + 1\\right)^{2}"
+            }
+          ],
+          "checks": [
+            "strict parser: the formula is parsed, never simplified or evaluated"
+          ],
+          "notes": [
+            "This is the step after the vision model and your confirmation: the confirmed LaTeX is read by the same parser as typed input, and nothing is simplified."
+          ]
+        },
+        {
+          "id": "image-read-ambiguous",
+          "title": "A transcription with ambiguous notation is refused",
+          "op": "read_formulas",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Transcribed",
+              "source": "\\sin 2x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Not read",
+              "text": "ambiguous argument of \\sin: use parentheses"
+            }
+          ],
+          "checks": [
+            "strict parser: the formula is parsed, never simplified or evaluated"
+          ],
+          "notes": []
+        }
+      ]
+    },
+    {
       "id": "cadabra",
       "title": "Cadabra integration",
       "status": "planned",
+      "group": "math",
       "where": [],
       "needs_model": false,
       "summary": "Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.",
@@ -821,6 +1071,7 @@
       "id": "sagemanifolds",
       "title": "SageManifolds integration",
       "status": "planned",
+      "group": "math",
       "where": [],
       "needs_model": false,
       "summary": "Differential geometry on explicit manifolds, as an optional backend.",
@@ -831,6 +1082,7 @@
       "id": "integrals",
       "title": "Integrals, limits and series",
       "status": "planned",
+      "group": "math",
       "where": [],
       "needs_model": false,
       "summary": "In the workbench, with the same verification discipline as derivatives.",
@@ -841,6 +1093,7 @@
       "id": "semantic-search",
       "title": "Semantic and structural search",
       "status": "planned",
+      "group": "knowledge",
       "where": [],
       "needs_model": false,
       "summary": "Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.",
@@ -851,6 +1104,7 @@
       "id": "tensors-workbench",
       "title": "Tensors in the workbench",
       "status": "planned",
+      "group": "interfaces",
       "where": [],
       "needs_model": false,
       "summary": "Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.",

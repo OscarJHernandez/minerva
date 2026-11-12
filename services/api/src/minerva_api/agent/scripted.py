@@ -88,6 +88,25 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("integrate_motion", args)])
+        elif ("hidden" in lower or "more conserved" in lower or "runge" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            angle_names = [n for n in names if n in ("theta", "phi", "varphi", "psi")]
+            async for c in self._say(
+                "I will search a declared family for constants of motion beyond Noether's easy cases. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "search_invariants",
+                        {
+                            "lagrangian": latex,
+                            "coordinates": names or ["x"],
+                            "angles": angle_names,
+                        },
+                    )
+                ]
+            )
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -234,6 +253,12 @@ class ScriptedLLM:
             text = (
                 "The card lists the equations of motion, the accelerations, and the constants of motion "
                 "that Minerva verified on those equations, and says which symmetries it did not search for."
+            )
+        elif tool == "search_invariants":
+            text = (
+                "The card lists the constants of motion that were verified on the equations of motion, "
+                "the exact family that was searched, and what was already known. Nothing outside that "
+                "family was searched."
             )
         elif tool == "dimensional_analysis":
             text = (

@@ -207,6 +207,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "tensor_canonicalize",
         "solve_polynomial",
         "analyze_lagrangian",
+        "search_invariants",
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
@@ -348,6 +349,39 @@ def test_lagrangian_tool_offers_the_numerical_solution_and_echoes_the_request(
     assert "next step: integrate_motion" in out.for_model and "do not choose them" in out.for_model
     report = out.card.data["report"]
     assert all(e["verification"]["passed"] for e in report["equations"])
+
+
+KEPLER_ARGS = {
+    "lagrangian": r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}",
+    "coordinates": ["r", "theta"],
+    "angles": ["theta"],
+}
+
+
+def test_invariants_tool_finds_the_runge_lenz_vector_and_says_what_it_searched(
+    ctx: ToolContext,
+) -> None:
+    out = execute("search_invariants", KEPLER_ARGS, ctx)
+    assert out.card.type == "invariants" and out.status == "ok"
+    report = out.card.data["report"]
+    assert len(report["found"]) == 2 and all(c["verified"] for c in report["found"])
+    assert "new constant of motion (verified on the equations of motion)" in out.for_model
+    assert "searched: " in out.for_model and "proves nothing" in out.for_model
+    assert "Energy function" in out.for_model  # already known, factored out
+    # what the tool found counts as present in the conversation, so the model may quote it
+    assert all(c["expression_latex"] in out.known_latex for c in report["found"])
+    assert "not something this result proves" in out.for_model
+
+
+def test_invariants_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None:
+    timed = execute(
+        "search_invariants", {"lagrangian": r"\frac12\dot{x}^2 - t x^2", "coordinates": ["x"]}, ctx
+    )
+    assert timed.status == "unsupported" and not timed.card.data["report"]["found"]
+    too_many = execute("search_invariants", {**KEPLER_ARGS, "coordinates": list("abcd")}, ctx)
+    assert too_many.card.type == "error"
+    bad_degree = execute("search_invariants", {**KEPLER_ARGS, "degree": 3}, ctx)
+    assert bad_degree.card.type == "error"
 
 
 OSC_ARGS = {

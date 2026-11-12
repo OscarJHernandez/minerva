@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { APP_URL, CONTRIBUTING_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
 
-export function SiteFooter() {
+export function SiteFooter({ wide = false }: { wide?: boolean }) {
   return (
     <footer className="border-t border-rule py-10 text-sm text-muted">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 sm:px-8">
+      <div
+        className={`mx-auto flex ${wide ? "max-w-6xl" : "max-w-5xl"} flex-wrap items-center justify-between gap-x-6 gap-y-3 px-5 sm:px-8`}
+      >
         <span>
           <span className="font-serif italic">Minerva</span> · Apache-2.0
         </span>

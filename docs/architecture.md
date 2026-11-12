@@ -64,6 +64,15 @@ one most likely to be wrong.
     mpmath, no SymPy differentiation), and an unconfirmed equation makes the whole report `not_verified`.
     `find_conserved` finds cyclic coordinates, energy and rotations of coordinate pairs and verifies each on
     the equations of motion.
+  - `invariants.py` (`search_invariants`): constants of motion beyond the Noether families. The ansatz
+    C = Σ f_α(q) q̇^α (|α| ≤ D; f a product of powers q^a, |a| ≤ P, and for declared angles 1, cos, sin up to a
+    harmonic) turns dC/dt = 0 on the equations of motion into a linear system for the coefficients over the field
+    of the parameters (exact, no floats; cos²+sin²=1 is reduced). The nullspace modulo the known constants
+    (cyclic momenta, energy, rotation charges, 1 and their products in the ansatz) is reported, and each
+    candidate is checked again with the same `verify_constant` as `find_conserved` (symbolic zero and numeric
+    points); anything that fails is dropped. It reports the exact family searched and that finding none proves
+    nothing beyond it. Autonomous Lagrangians with rational accelerations only (square roots are `unsupported`),
+    at most 3 coordinates and 500 unknowns (`resource_limit` above).
   - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
     initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive
     Dormand–Prince 5(4) (relative tolerance 1e-12; no SciPy). A run keeps its trajectory only if (1) a fixed-step
@@ -112,7 +121,7 @@ and explains; it never computes and never decides correctness.
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
 - **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`, `solve_polynomial`, `analyze_lagrangian` and `integrate_motion`. Each is a
+  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
   posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with

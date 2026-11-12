@@ -4,7 +4,10 @@
 # Regenerate with `uv run python scripts/capabilities.py`; CI fails when the generated files differ
 # (scripts/tests/test_capabilities.py), so a change in behaviour shows up as a diff in the pull request.
 #
-# Per capability: id, title, status (available | planned), where (workbench | chat | api), summary, limits,
+# Top level: `groups` (ordered; id, title, summary) organise the docs navigation. Every capability, planned ones
+# included, names its `group`; add a group here before using it, and every group needs a capability.
+#
+# Per capability: id, title, status (available | planned), group, where (workbench | reference | chat | api), summary, limits,
 # examples. Planned capabilities have no examples. Every example has an `id`, a `title`, an `op` and the
 # fields that op needs:
 #   simplify     input, assumptions
@@ -13,14 +16,31 @@
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates
+#   invariants   input, coordinates, angles, degree, power_bound, harmonics
 #   entry        entry [handbook entry id]
+#   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
 # Inputs are LaTeX (tensor inputs use the text form S(a,b)*A(-a,-b)). Add a refusal example wherever a
 # capability has an obvious limit: what Minerva declines to do is part of what it does.
+
+groups:
+  - id: math
+    title: Mathematics
+    summary: Symbolic computation, with every result verified before it is shown.
+  - id: physics
+    title: Physics
+    summary: Mechanics and other physical systems, from a Lagrangian to its conserved quantities.
+  - id: knowledge
+    title: Handbook and identities
+    summary: A citable, machine-checked collection of identities and equations, and the search over it.
+  - id: interfaces
+    title: Using Minerva
+    summary: How to reach the tools, through the chat, photos of equations and the workbench.
 
 capabilities:
   - id: simplify
     title: Verified simplification
     status: available
+    group: math
     where: [workbench, chat, api]
     summary: >-
       Simplifies an expression with SymPy, then checks the result at random complex sample points and with a
@@ -73,6 +93,7 @@ capabilities:
   - id: differentiate
     title: Verified differentiation
     status: available
+    group: math
     where: [workbench, chat, api]
     summary: >-
       Differentiates symbolically with respect to one or more variables, to any order up to 10, mixed partials
@@ -108,6 +129,7 @@ capabilities:
   - id: identities
     title: Identity search with applicability checks
     status: available
+    group: knowledge
     where: [workbench, chat, api]
     summary: >-
       Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern,
@@ -140,6 +162,7 @@ capabilities:
   - id: polynomial-solving
     title: Polynomial equations
     status: available
+    group: math
     where: [chat]
     summary: >-
       Factors a polynomial equation, says whether a formula in radicals exists (Galois criterion, Abel–Ruffini),
@@ -162,14 +185,16 @@ capabilities:
   - id: lagrangian
     title: Lagrangian mechanics
     status: available
+    group: physics
     where: [chat]
     summary: >-
       From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations,
       and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs.
       Each constant is verified: its time derivative is zero on the equations of motion.
     limits:
-      - Symmetries that hold only up to a total time derivative (Galilean boosts) and hidden symmetries such as
-        the Runge–Lenz vector are not searched for, and the result says so.
+      - Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the
+        result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search
+        for more constants of motion looks for them in a declared family.
     examples:
       - id: lagrangian-kepler-polar
         title: Kepler problem in polar coordinates
@@ -187,9 +212,60 @@ capabilities:
         input: '\frac12 m\dot{x}^2 - \frac12 k x^2 t'
         coordinates: [x]
 
+  - id: invariants
+    title: Search for hidden constants of motion
+    status: available
+    group: physics
+    where: [chat]
+    summary: >-
+      Looks for constants of motion beyond cyclic coordinates, energy and rotations, such as the
+      Runge–Lenz vector of the Kepler problem. It solves exactly for every combination of functions of the
+      coordinates (powers, and cos and sin of coordinates you declare to be angles) times velocity monomials of
+      a chosen degree whose time derivative vanishes on the equations of motion. Only constants that pass the
+      same verification as the others are shown, and the known ones and their products are left out of the count.
+    limits:
+      - It searches one declared family and says which. Finding nothing proves nothing outside that family.
+      - Time-dependent Lagrangians, accelerations with square roots or other non-rational functions, and more
+        than three coordinates are refused.
+      - The family is capped (500 unknown coefficients); a bigger one is reported as a resource limit.
+      - Naming a constant (for example as the Runge–Lenz vector) is a recognition the model may offer, not
+        something the search proves.
+    examples:
+      - id: invariants-kepler-polar
+        title: Kepler problem, with the angle declared
+        note: >-
+          Both components of the Laplace–Runge–Lenz vector appear, up to a constant factor, without being
+          looked up. The angular momentum and energy are known already and are not counted.
+        op: invariants
+        input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
+        coordinates: [r, theta]
+        angles: [theta]
+      - id: invariants-oscillator
+        title: Isotropic oscillator in the plane
+        note: >-
+          The cross term and the energy of one direction, the components of the Fradkin tensor, beyond the
+          energy and angular momentum.
+        op: invariants
+        input: '\frac12 m(\dot{x}^2 + \dot{y}^2) - \frac12 k(x^2 + y^2)'
+        coordinates: [x, y]
+      - id: invariants-henon-heiles
+        title: Hénon–Heiles, none in this family
+        note: >-
+          Only the energy is known and nothing else is found. That says nothing about constants outside the
+          searched family.
+        op: invariants
+        input: '\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3'
+        coordinates: [x, y]
+      - id: invariants-time-dependent
+        title: Explicit time dependence is refused
+        op: invariants
+        input: '\frac12 m\dot{x}^2 - \frac12 k t x^2'
+        coordinates: [x]
+
   - id: tensors
     title: Tensor canonicalization
     status: available
+    group: math
     where: [api, chat]
     summary: >-
       Puts a tensor expression in canonical form using declared index symmetries (symmetric, antisymmetric,
@@ -232,6 +308,7 @@ capabilities:
   - id: handbook
     title: Citable handbook
     status: available
+    group: knowledge
     where: [reference, chat, api]
     summary: >-
       Handbook entries state identities, integrals, series, special functions and physical equations in original
@@ -253,6 +330,7 @@ capabilities:
   - id: chat
     title: Chat with a model you host
     status: available
+    group: interfaces
     where: [chat]
     needs_model: true
     summary: >-
@@ -265,23 +343,60 @@ capabilities:
         See docs/model-evaluation.md.
       - Only Ollama-compatible hosts are supported.
 
+  - id: formula-image
+    title: Read formulas from a photo
+    status: available
+    group: interfaces
+    where: [chat]
+    needs_model: true
+    summary: >-
+      Attach a photo or screenshot of an equation in the chat. A vision model you host transcribes it to
+      LaTeX, you confirm or correct the transcription, and Minerva's strict parser shows how it reads each
+      formula before anything is computed. The model only transcribes; it never solves, simplifies or
+      decides anything about the image.
+    limits:
+      - A transcription can be wrong, which is why you confirm it before it is used. Only what the parser
+        accepts from the confirmed text is passed on to the tools.
+      - Ambiguous notation is refused exactly as typed input is, for example `\sin 2x`.
+      - Images are never stored or logged, and are limited in size to PNG, JPEG or WebP files.
+      - It needs a vision-capable model on the Ollama-compatible host you connect.
+    examples:
+      - id: image-read-clean
+        title: A transcribed equation, read by the strict parser
+        note: >-
+          This is the step after the vision model and your confirmation: the confirmed LaTeX is read by the
+          same parser as typed input, and nothing is simplified.
+        op: read_formulas
+        formulas:
+          - "x^2 + 2x + 1 = (x+1)^2"
+      - id: image-read-ambiguous
+        title: A transcription with ambiguous notation is refused
+        op: read_formulas
+        formulas:
+          - '\sin 2x'
+
   - id: cadabra
     title: Cadabra integration
     status: planned
+    group: math
     summary: Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
   - id: sagemanifolds
     title: SageManifolds integration
     status: planned
+    group: math
     summary: Differential geometry on explicit manifolds, as an optional backend.
   - id: integrals
     title: Integrals, limits and series
     status: planned
+    group: math
     summary: In the workbench, with the same verification discipline as derivatives.
   - id: semantic-search
     title: Semantic and structural search
     status: planned
+    group: knowledge
     summary: Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
   - id: tensors-workbench
     title: Tensors in the workbench
     status: planned
+    group: interfaces
     summary: Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.
