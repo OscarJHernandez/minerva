@@ -7,12 +7,14 @@ import { MAX_DERIVATIVE_ORDER } from "@/lib/types";
 import type {
   Assumptions,
   DifferentiateResult,
+  IntegrateResult,
   HistoryItem,
   IdentitiesResult,
   SimplifyResult,
 } from "@/lib/types";
 import { AssumptionsEditor } from "./assumptions-editor";
 import { DerivativePanel } from "./derivative-panel";
+import { IntegralPanel } from "./integral-panel";
 import { HistoryList } from "./history-list";
 import { IdentitiesPanel } from "./identities-panel";
 import { MathInput } from "./math-input";
@@ -22,9 +24,10 @@ type Output =
   | { kind: "simplify"; data: SimplifyResult }
   | { kind: "identities"; data: IdentitiesResult }
   | { kind: "differentiate"; data: DifferentiateResult }
+  | { kind: "integrate"; data: IntegrateResult }
   | null;
 
-type Kind = "simplify" | "identities" | "differentiate";
+type Kind = "simplify" | "identities" | "differentiate" | "integrate";
 
 const EXAMPLES = [
   { label: "sin² + cos²", latex: "\\sin^2 x + \\cos^2 x" },
@@ -42,6 +45,8 @@ export function Workspace() {
   const [output, setOutput] = useState<Output>(null);
   const [variable, setVariable] = useState("x");
   const [order, setOrder] = useState(1);
+  const [lower, setLower] = useState("");
+  const [upper, setUpper] = useState("");
   const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -75,8 +80,13 @@ export function Workspace() {
 
   async function run(kind: Kind) {
     if (!latex.trim() || busy) return;
-    if (kind === "differentiate" && !variableValid) {
-      setError("Enter the variable to differentiate by, for example x.");
+    const oneBound = (lower.trim() === "") !== (upper.trim() === "");
+    if (kind === "integrate" && oneBound) {
+      setError("Give both bounds for a definite integral, or leave both empty.");
+      return;
+    }
+    if ((kind === "differentiate" || kind === "integrate") && !variableValid) {
+      setError("Enter the variable to differentiate or integrate by, for example x.");
       return;
     }
     setBusy(kind);
@@ -89,6 +99,14 @@ export function Workspace() {
         setActiveId(data.calculation_id ?? null);
       } else if (kind === "differentiate") {
         const data = await api.differentiate(payload, [{ name: variable, order }]);
+        setOutput({ kind, data });
+        setActiveId(data.calculation_id ?? null);
+      } else if (kind === "integrate") {
+        const data = await api.integrate(
+          payload,
+          variable,
+          lower.trim() ? { lower: lower.trim(), upper: upper.trim() } : undefined,
+        );
         setOutput({ kind, data });
         setActiveId(data.calculation_id ?? null);
       } else {
@@ -117,6 +135,14 @@ export function Workspace() {
         setOrder(first.order);
       }
       setOutput({ kind: "differentiate", data });
+      return;
+    }
+    if (item.operation === "integrate") {
+      const data = item.result as unknown as IntegrateResult;
+      if (data.variable) setVariable(data.variable);
+      setLower(data.definite ? (data.lower_latex ?? "") : "");
+      setUpper(data.definite ? (data.upper_latex ?? "") : "");
+      setOutput({ kind: "integrate", data });
       return;
     }
     setOutput(
@@ -169,7 +195,15 @@ export function Workspace() {
           >
             {busy === "identities" ? "Searching…" : "Find identities"}
           </button>
-          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => run("integrate")}
+            disabled={!latex.trim() || busy !== null || !variableValid}
+            className="rounded border border-accent px-4 py-2 text-sm font-medium text-accent disabled:opacity-50"
+          >
+            {busy === "integrate" ? "Integrating…" : "Integrate"}
+          </button>
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => run("differentiate")}
@@ -183,9 +217,31 @@ export function Workspace() {
               <input
                 value={variable}
                 onChange={(e) => setVariable(e.target.value.trim())}
-                aria-label="Variable to differentiate by"
+                aria-label="Variable to differentiate or integrate by"
                 maxLength={32}
                 className="w-14 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              from
+              <input
+                value={lower}
+                onChange={(e) => setLower(e.target.value)}
+                aria-label="Lower bound of a definite integral (optional)"
+                placeholder="lower"
+                maxLength={200}
+                className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1 text-xs text-muted">
+              to
+              <input
+                value={upper}
+                onChange={(e) => setUpper(e.target.value)}
+                aria-label="Upper bound of a definite integral (optional)"
+                placeholder="upper"
+                maxLength={200}
+                className="w-16 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink"
               />
             </label>
             <label className="flex items-center gap-1 text-xs text-muted">
@@ -227,11 +283,12 @@ export function Workspace() {
         {output?.kind === "simplify" && <ResultPanel result={output.data} />}
         {output?.kind === "identities" && <IdentitiesPanel result={output.data} />}
         {output?.kind === "differentiate" && <DerivativePanel result={output.data} />}
+        {output?.kind === "integrate" && <IntegralPanel result={output.data} />}
         {!output && (
           <p className="text-sm text-muted">
-            Enter an expression, then simplify it, differentiate it or look up identities. Results
-            are verified before they are shown; if Minerva cannot verify or simplify something, it
-            says so.
+            Enter an expression, then simplify it, differentiate it, find an antiderivative or look
+            up identities. Results are verified before they are shown; if Minerva cannot verify or
+            simplify something, it says so.
           </p>
         )}
       </div>

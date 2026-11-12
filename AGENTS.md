@@ -112,6 +112,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a
   symbolic fallback or weaken `check_derivative` (its tests include a deliberately wrong candidate).
+- Antiderivatives (`integrate.py`) are shown only if an independent numerical derivative of the candidate
+  matches the integrand (the same `check_derivative` machinery, branch by branch for `Piecewise`; a branch
+  condition that cannot be sampled makes the result `not_verified`). "No closed form" is `unsupported` and
+  never claims that none exists. The symbolic zero test is reported separately and never decides.
+  Definite integrals are verified by independent adaptive quadrature at sampled parameter values, never
+  by the fundamental theorem (it would "verify" `\int_{-1}^{1} x^{-2}\,dx = -2`); a quadrature with a large
+  error estimate counts as no agreement, and convergence conditions the declared assumptions do not imply
+  give `conditions_not_satisfied`. Do not add a symbolic-only path.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

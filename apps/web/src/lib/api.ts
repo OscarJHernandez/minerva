@@ -3,6 +3,7 @@ import type {
   DiffVariable,
   DifferentiateResult,
   HistoryItem,
+  IntegrateResult,
   IdentitiesResult,
   SimplifyResult,
   User,
@@ -69,6 +70,11 @@ export const api = {
     request<DifferentiateResult>("/v1/compute/differentiate", {
       method: "POST",
       body: JSON.stringify({ ...c, variables, format: "latex" }),
+    }),
+  integrate: (c: ComputeInput, variable: string, bounds?: { lower: string; upper: string }) =>
+    request<IntegrateResult>("/v1/compute/integrate", {
+      method: "POST",
+      body: JSON.stringify({ ...c, variable, ...bounds, format: "latex" }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {
