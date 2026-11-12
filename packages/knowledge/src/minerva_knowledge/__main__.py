@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 
 from .checks import run_check
 from .loader import load_entries
@@ -63,6 +64,13 @@ def main(argv: list[str]) -> int:
     stated = 0
     for entry in entries:
         report = run_check(entry)
+        # `symbolic` means a symbolic zero was found, not only numeric agreement.
+        if entry.verification == "symbolic" and report.passed and not report.symbolic_proof:
+            report = replace(
+                report,
+                passed=False,
+                detail="declared symbolic but no symbolic zero: " + report.detail,
+            )
         mark = "ok  " if report.passed else "FAIL"
         if entry.verification == "stated":
             stated += 1

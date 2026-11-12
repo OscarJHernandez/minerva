@@ -296,8 +296,14 @@ def run_simplify(args: SimplifyArgs, ctx: ToolContext) -> ToolOutput:
         f"status={result.status.value}; input_as_read=${result.input_latex}$; "
         f"result=${result.result_latex}$; "
         + (
-            f"verified: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
-            f"symbolic_zero={v.symbolic_zero}; "
+            f"checked: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
+            f"symbolic_zero={v.symbolic_zero} "
+            f"({'symbolic and numeric evidence' if v.symbolic_zero else 'numeric evidence only, not a proof'}); "
+            + (
+                "valid only where " + ", ".join(f"${r}$" for r in result.restrictions_latex) + "; "
+                if result.restrictions_latex
+                else ""
+            )
             if v
             else ""
         )
@@ -321,7 +327,7 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
         f"status={result.status.value}; input_as_read=${result.input_latex}$; "
         + (f"derivative=${result.result_latex}$; " if result.result_latex else "")
         + (
-            f"verified: {v.steps_checked} step(s), numeric {v.points_agreed}/{v.points_checked} "
+            f"numerically checked: {v.steps_checked} step(s), numeric {v.points_agreed}/{v.points_checked} "
             f"({'+'.join(v.directions)} direction); "
             if v
             else ""
@@ -361,7 +367,7 @@ def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
             else (f"series=${result.result_latex}$; " if result.result_latex else "")
         )
         + (
-            f"verified: coefficients (Cauchy integral) {'agree' if v.coefficients_passed else 'DISAGREE'}, "
+            f"numerically checked: coefficients (Cauchy integral) {'agree' if v.coefficients_passed else 'DISAGREE'}, "
             f"remainder order {'confirmed' if v.remainder_passed else 'NOT confirmed'}, "
             f"{v.parameter_sets_checked} parameter set(s); "
             if v
@@ -402,13 +408,13 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
         )
         + (f"approx={result.numeric}; " if result.numeric else "")
         + (
-            f"verified: numeric derivative {v.points_agreed}/{v.points_checked} "
+            f"numerically checked: numeric derivative {v.points_agreed}/{v.points_checked} "
             f"({'+'.join(v.directions)} direction, {v.branches_checked} case(s)); "
             if v and v.passed
             else ""
         )
         + (
-            f"verified: quadrature {q.points_agreed}/{q.points_checked} points; "
+            f"numerically checked: quadrature {q.points_agreed}/{q.points_checked} points; "
             if (q := result.quadrature) and q.passed
             else ""
         )
@@ -440,8 +446,11 @@ def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
         line = f"- {m.entry.id} ({m.entry.title}): {a.applicability.value}; statement=${m.entry.statement_latex}$"
         known.append(m.entry.statement_latex)
         if a.rewritten_latex:
-            line += f"; rewritten=${a.rewritten_latex}$"
+            line += f"; rewritten=${a.rewritten_latex}$ (numerically checked)"
             known.append(a.rewritten_latex)
+            if a.restrictions_latex:
+                line += "; valid only where " + ", ".join(f"${r}$" for r in a.restrictions_latex)
+                known.extend(a.restrictions_latex)
         if a.unmet_conditions:
             line += "; unmet: " + ", ".join(
                 f"{c.variable} {c.assumption}" for c in a.unmet_conditions

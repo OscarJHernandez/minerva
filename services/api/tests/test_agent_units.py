@@ -430,7 +430,7 @@ def test_differentiate_tool_returns_a_verified_card(ctx: ToolContext) -> None:
     assert out.card.data["status"] == "ok"
     assert out.card.data["result_text"] == "20*x**3"
     assert "derivative=$20 x^{3}$" in out.for_model
-    assert "verified: 2 step(s)" in out.for_model
+    assert "numerically checked: 2 step(s)" in out.for_model
     assert "20 x^{3}" in out.known_latex and "5 x^{4}" in out.known_latex
 
     mixed = execute(
@@ -787,7 +787,7 @@ def test_integrate_tool_returns_a_verified_card(ctx: ToolContext) -> None:
     assert out.card.data["status"] == "ok"
     assert out.status == "ok"
     assert "antiderivative=$" in out.for_model
-    assert "verified: numeric derivative" in out.for_model
+    assert "numerically checked: numeric derivative" in out.for_model
     assert out.card.data["result_latex"] in out.known_latex
 
 
@@ -805,7 +805,7 @@ def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> No
     )
     assert out.status == "ok"
     assert out.card.data["definite"] is True
-    assert "value=$2$" in out.for_model and "verified: quadrature" in out.for_model
+    assert "value=$2$" in out.for_model and "numerically checked: quadrature" in out.for_model
     assert out.card.data["quadrature"]["passed"] is True
 
     blocked = execute(

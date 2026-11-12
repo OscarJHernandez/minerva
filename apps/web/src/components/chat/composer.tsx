@@ -157,7 +157,7 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
         )}
       </div>
       <p className="mt-1.5 text-center text-xs text-muted">
-        Results come from verified computation. Formulas written by the model alone are marked.
+        Results come from checked computation. Formulas written by the model alone are marked.
       </p>
     </div>
   );

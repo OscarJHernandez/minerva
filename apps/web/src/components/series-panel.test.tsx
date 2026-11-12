@@ -6,7 +6,7 @@ import { SeriesPanel } from "./series-panel";
 describe("SeriesPanel", () => {
   it("shows the verified polynomial with its remainder and both checks", () => {
     render(<SeriesPanel result={okSeries} />);
-    expect(screen.getByText("Expanded and verified")).toBeInTheDocument();
+    expect(screen.getByText("Expanded, numerically checked")).toBeInTheDocument();
     expect(screen.getByLabelText("Result")).toBeInTheDocument();
     expect(screen.getByText(/in x about 0, order 3/)).toBeInTheDocument();
     expect(screen.getByText(/agree with a Cauchy-integral estimate/)).toBeInTheDocument();

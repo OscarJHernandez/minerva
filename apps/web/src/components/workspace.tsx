@@ -350,7 +350,7 @@ export function Workspace() {
         {!output && (
           <p className="text-sm text-muted">
             Enter an expression, then simplify it, differentiate it, find an antiderivative, expand
-            it in a series or look up identities. Results are verified before they are shown; if
+            it in a series or look up identities. Results are checked before they are shown; if
             Minerva cannot verify or simplify something, it says so.
           </p>
         )}

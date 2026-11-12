@@ -6,7 +6,7 @@ import { DerivativePanel } from "./derivative-panel";
 describe("DerivativePanel", () => {
   it("shows the verified result, its steps and how it was checked", () => {
     render(<DerivativePanel result={okDerivative} />);
-    expect(screen.getByText("Differentiated and verified")).toBeInTheDocument();
+    expect(screen.getByText("Differentiated, numerically checked")).toBeInTheDocument();
     expect(screen.getByLabelText("Result")).toBeInTheDocument();
     expect(screen.getByText(/24 of 24 sample points agree, over 2 steps/)).toBeInTheDocument();
     expect(screen.getByText(/real and imaginary/)).toBeInTheDocument();

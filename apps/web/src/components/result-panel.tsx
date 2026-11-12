@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { SimplifyResult, Status } from "@/lib/types";
 
 const STATUS: Record<Status, { label: string; tone: string }> = {
-  ok: { label: "Simplified and verified", tone: "bg-ok-soft text-ok" },
+  ok: { label: "Simplified", tone: "bg-ok-soft text-ok" },
   unchanged: { label: "No simpler form found", tone: "bg-sunk text-muted" },
   not_verified: { label: "Could not verify a result", tone: "bg-warn-soft text-warn" },
   conditions_not_satisfied: { label: "Conditions not satisfied", tone: "bg-warn-soft text-warn" },
@@ -24,6 +24,35 @@ export function StatusPill({ status, okLabel }: { status: Status; okLabel?: stri
   );
 }
 
+/** Where the result is valid when it excludes points the input did not (a cancelled singularity). */
+export function Restrictions({
+  latex,
+  complete,
+}: {
+  latex: string[] | undefined;
+  complete: boolean;
+}) {
+  if (!complete) {
+    return (
+      <p className="mt-3 text-sm text-warn">
+        Where this result is valid could not be determined. Do not assume it holds at poles.
+      </p>
+    );
+  }
+  if (!latex || latex.length === 0) return null;
+  return (
+    <div className="mt-3 text-sm" data-testid="restrictions">
+      <span className="text-muted">Valid only for </span>
+      {latex.map((item, index) => (
+        <span key={item}>
+          {index > 0 && ", "}
+          <Math latex={item} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function ResultPanel({ result }: { result: SimplifyResult }) {
   const [copied, setCopied] = useState(false);
   const v = result.verification;
@@ -38,7 +67,12 @@ export function ResultPanel({ result }: { result: SimplifyResult }) {
         <h2 id="result-heading" className="font-serif text-xl">
           Simplify
         </h2>
-        <StatusPill status={result.status} />
+        <StatusPill
+          status={result.status}
+          okLabel={
+            v?.symbolic_zero ? "Simplified and proved equal" : "Simplified, numerically checked"
+          }
+        />
       </div>
 
       {result.input_latex && (
@@ -68,6 +102,10 @@ export function ResultPanel({ result }: { result: SimplifyResult }) {
         </div>
       )}
 
+      <Restrictions
+        latex={result.restrictions_latex}
+        complete={result.restrictions_complete ?? true}
+      />
       <p className="mt-3 text-sm text-muted">{result.message}</p>
 
       {v && (

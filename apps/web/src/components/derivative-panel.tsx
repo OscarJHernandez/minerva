@@ -20,7 +20,7 @@ export function DerivativePanel({ result }: { result: DifferentiateResult }) {
         <h2 id="derivative-heading" className="font-serif text-xl">
           Differentiate
         </h2>
-        <StatusPill status={result.status} okLabel="Differentiated and verified" />
+        <StatusPill status={result.status} okLabel="Differentiated, numerically checked" />
       </div>
 
       {result.input_latex && (

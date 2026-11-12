@@ -26,7 +26,7 @@ describe("IdentitiesPanel", () => {
     expect(screen.getByRole("heading", { name: /Applicable/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /Needs assumptions/ })).toBeInTheDocument();
     expect(screen.getByText(/Related, not applicable/)).toBeInTheDocument(); // collapsed group
-    expect(screen.getByText(/Rewritten expression, verified/)).toBeInTheDocument();
+    expect(screen.getByText(/Rewritten expression \(numerically checked\)/)).toBeInTheDocument();
     expect(screen.getByText(/not applied: these conditions cannot be shown/)).toBeInTheDocument();
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(2);
@@ -36,7 +36,9 @@ describe("IdentitiesPanel", () => {
   it("does not present non-applicable entries as results", () => {
     render(<IdentitiesPanel result={identities([match("c.related", "no_match")])} />);
     expect(screen.getByText(/No identity from the knowledge base applies/)).toBeInTheDocument();
-    expect(screen.queryByText(/Rewritten expression, verified/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Rewritten expression \(numerically checked\)/),
+    ).not.toBeInTheDocument();
   });
 
   it("links entries to the reference", () => {
