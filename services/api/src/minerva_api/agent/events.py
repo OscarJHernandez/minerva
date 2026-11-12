@@ -41,6 +41,7 @@ class Card(BaseModel):
         "lagrangian",
         "expansion",
         "perturbation",
+        "invariants",
         "motion",
         "dimensional",
         "units",

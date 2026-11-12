@@ -9,6 +9,7 @@ from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
 from .expansion import ExpansionReport
 from .integrate import IntegrateResult
+from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
 from .models import (
     ExpressionInput,
@@ -276,6 +277,38 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return PerturbationReport(status=status, message=message, duration_ms=ms)
         report = PerturbationReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def search_invariants(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        angles: list[str] | None = None,
+        degree: int = 2,
+        power_bound: int = 3,
+        harmonics: int = 1,
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+    ) -> InvariantReport:
+        """Search a declared family for constants of motion beyond Noether's easy cases, sandboxed."""
+        outcome, ms = self._run(
+            "search_invariants",
+            {
+                "lagrangian": lagrangian,
+                "coordinates": coordinates,
+                "angles": angles or [],
+                "degree": degree,
+                "power_bound": power_bound,
+                "harmonics": harmonics,
+                "time": time,
+                "assumptions": assumptions or {},
+            },
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return InvariantReport(status=status, message=message, duration_ms=ms)
+        report = InvariantReport(**outcome.value)
         report.duration_ms = ms
         return report
 

@@ -12,7 +12,11 @@ so a change in behaviour appears as a diff here. Regenerate with
 **Available in** says which interface exposes a capability: the *workbench* forms, the *handbook pages*,
 the *chat* (needs a model you connect, see [self-hosting.md](self-hosting.md)) or the *HTTP API*.
 
-## Verified simplification
+## Mathematics
+
+Symbolic computation, with every result verified before it is shown.
+
+### Verified simplification
 
 *Available in:* workbench, chat, HTTP API.
 
@@ -24,7 +28,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - If nothing simpler is found, the input is returned unchanged and the status says so.
 - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
 
-### Rational trigonometric expression
+#### Rational trigonometric expression
 
 - **Input:** `\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}`
 - **Status:** `ok`
@@ -32,7 +36,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
 - Simplified with SymPy and verified.
 
-### Difference of fourth powers
+#### Difference of fourth powers
 
 - **Input:** `\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}`
 - **Status:** `ok`
@@ -40,7 +44,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - **Check:** symbolic zero test passed; numeric check agreed at 12 of 12 points
 - Simplified with SymPy and verified.
 
-### Square root of a square, no assumptions
+#### Square root of a square, no assumptions
 
 - **Input:** `\sqrt{x^2}`
 - **Status:** `unchanged`
@@ -48,7 +52,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified.
 
-### The same, with x declared real
+#### The same, with x declared real
 
 - **Input:** `\sqrt{x^2}`
 - **Assumptions:** x real
@@ -57,7 +61,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - Under the declared assumption the expression is read as |x|.
 
-### Power of a power, no assumptions
+#### Power of a power, no assumptions
 
 - **Input:** `(x^a)^b`
 - **Status:** `unchanged`
@@ -65,7 +69,7 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is.
 
-### The same, with x positive and a real
+#### The same, with x positive and a real
 
 - **Input:** `(x^a)^b`
 - **Assumptions:** x positive; a real
@@ -74,13 +78,13 @@ Simplifies an expression with SymPy, then checks the result at random complex sa
 - No simpler form was found. The expression is returned unchanged.
 - With x positive and a real the exponents combine, and the expression is read as x^{ab}.
 
-### Ambiguous input is refused
+#### Ambiguous input is refused
 
 - **Input:** `\sin 2x`
 - **Status:** `parse_error`
 - ambiguous argument of \sin: use parentheses
 
-## Verified differentiation
+### Verified differentiation
 
 *Available in:* workbench, chat, HTTP API.
 
@@ -91,7 +95,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - Where no complex derivative exists (`|x|`, real and imaginary parts, conjugates) the answer is "unsupported" unless the variable is declared real.
 - The notation `\frac{d}{dx}` and undefined functions `f(x)` are not accepted in the input yet.
 
-### Product rule
+#### Product rule
 
 - **Input:** `x^3 \sin(x)`
 - **Status:** `ok`
@@ -99,7 +103,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - **Check:** 1 step(s) checked against a numerical derivative; agreed at 12 of 12 points
 - Differentiated with SymPy; every step was verified numerically.
 
-### Third derivative of a Gaussian
+#### Third derivative of a Gaussian
 
 - **Input:** `\exp(-x^2)`
 - **Status:** `ok`
@@ -107,7 +111,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - **Check:** 3 step(s) checked against a numerical derivative; agreed at 36 of 36 points
 - Differentiated with SymPy; every step was verified numerically.
 
-### Mixed partial derivative
+#### Mixed partial derivative
 
 - **Input:** `x^2 y^3`
 - **Status:** `ok`
@@ -115,14 +119,14 @@ Differentiates symbolically with respect to one or more variables, to any order 
 - **Check:** 2 step(s) checked against a numerical derivative; agreed at 24 of 24 points
 - Differentiated with SymPy; every step was verified numerically.
 
-### No complex derivative
+#### No complex derivative
 
 - **Input:** `|x|`
 - **Status:** `unsupported`
 - This expression has no complex derivative with respect to x (for example |z|, re z, im z or conjugates). If the variable is real, declare it real and try again.
 - Declare x real to differentiate |x|.
 
-## Verified Taylor series
+### Verified Taylor series
 
 *Available in:* workbench, chat, HTTP API.
 
@@ -134,7 +138,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - Functions with no complex derivative (`|x|`) are unsupported.
 - The error table is a measurement at a few distances for this expression, not a bound.
 
-### Exponential about zero
+#### Exponential about zero
 
 - **Input:** `\exponentialE^{x}`
 - **Status:** `ok`
@@ -142,7 +146,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 6 (1 parameter set(s))
 - Expanded with SymPy; coefficients and remainder order verified numerically.
 
-### Binomial series with a symbolic exponent
+#### Binomial series with a symbolic exponent
 
 - **Input:** `(1+x)^{a}`
 - **Status:** `ok`
@@ -150,7 +154,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 4 (4 parameter set(s))
 - Expanded with SymPy; coefficients and remainder order verified numerically.
 
-### Logarithm about 1
+#### Logarithm about 1
 
 - **Input:** `\ln x`
 - **Assumptions:** x positive
@@ -159,47 +163,13 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 5 (1 parameter set(s))
 - Expanded with SymPy; coefficients and remainder order verified numerically.
 
-### A pole has no Taylor series
+#### A pole has no Taylor series
 
 - **Input:** `\frac{1}{x}`
 - **Status:** `unsupported`
 - The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported.
 
-## Identity search with applicability checks
-
-*Available in:* workbench, chat, HTTP API.
-
-Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern, checks its validity conditions against your declared assumptions, rewrites, and verifies the rewrite.
-
-**Limits**
-
-- An identity whose conditions cannot be proven from your assumptions is reported, with the unmet conditions, and not applied.
-- Matches that only work by inventing roots, reciprocals or the imaginary unit are discarded.
-- Retrieval is keyword and structure based; semantic search is planned.
-
-### The identity is found but not applied
-
-- **Input:** `\log(x y)`
-- **Status:** `conditions_not_satisfied`
-- **Logarithm of a product:** not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)
-- The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
-
-### Applied once x and y are declared positive
-
-- **Input:** `\log(x y)`
-- **Assumptions:** x positive; y positive
-- **Status:** `applicable`
-- **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
-
-### Product to sum
-
-- **Input:** `\sin(a)\cos(b)`
-- **Status:** `applicable`
-- **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
-- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
-
-## Polynomial equations
+### Polynomial equations
 
 *Available in:* chat.
 
@@ -209,7 +179,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 
 - Polynomial equations in one variable only; other equations are not solved.
 
-### A cubic that factors
+#### A cubic that factors
 
 - **Equation:** `x^3 + x^2 + x + 1 = 0`
 - **Status:** `ok`
@@ -218,7 +188,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Check:** roots substituted back (largest residual 0); root count equals the degree; Vieta's relations hold
 - Degree 3: 3 roots found and verified by substitution and Vieta's relations.
 
-### A quintic with no formula in radicals
+#### A quintic with no formula in radicals
 
 - **Equation:** `x^5 - x - 1 = 0`
 - **Status:** `ok`
@@ -228,62 +198,7 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Check:** roots substituted back (largest residual 8.87e-31); root count equals the degree; Vieta's relations hold
 - Degree 5: 5 roots found and verified by substitution and Vieta's relations.
 
-## Lagrangian mechanics
-
-*Available in:* chat.
-
-From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. For a Lagrangian of the form (m/2)|q̇|² − V(q) in Cartesian coordinates it also searches for integrals quadratic in the velocities, which include the Runge–Lenz vector of the Kepler problem. Each constant is verified: its time derivative is zero on the equations of motion.
-
-**Limits**
-
-- The search for quadratic integrals needs Cartesian coordinates (at most three), no explicit time, and a potential built from powers and roots of the coordinates. The same Kepler problem in polar coordinates is not searched for its Runge–Lenz vector, and the result says so.
-- Symmetries that hold only up to a total time derivative (Galilean boosts) and integrals of higher degree in the velocities are not searched for. "None found" is not a proof that none exists.
-
-### Kepler problem in polar coordinates
-
-- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
-- **Coordinates:** r, theta
-- **Status:** `ok`
-- **Equation of motion (r):** $\frac{k}{r^{2}} - m r \dot{\theta}^{2} + m \ddot{r} = 0$
-- **Equation of motion (theta):** $m r \left(r \ddot{\theta} + 2 \dot{r} \dot{\theta}\right) = 0$
-- **Conserved: cyclic:** $p_{\theta} = m r^{2} \dot{\theta}$ — theta is cyclic: L does not depend on it, so dp/dt = dL/dq = 0
-- **Conserved: energy:** $h = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
-- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
-- integrals quadratic in the velocities: not searched: it needs L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, and these coordinates are not of that form (so, for example, a Kepler problem in polar coordinates is not searched for its Runge-Lenz vector).
-- Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not a proof that none exists.
-
-### The same problem in Cartesian coordinates, where the Runge–Lenz vector is found
-
-- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}`
-- **Coordinates:** x, y
-- **Status:** `ok`
-- **Equation of motion (x):** $\frac{k x}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{x} = 0$
-- **Equation of motion (y):** $\frac{k y}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{y} = 0$
-- **Conserved: energy:** $h = - \frac{k}{\sqrt{x^{2} + y^{2}}} + \frac{m \dot{x}^{2}}{2} + \frac{m \dot{y}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
-- **Conserved: rotation:** $Q = m \left(x \dot{y} - \dot{x} y\right)$ — L is unchanged by rotating (x, y) as Cartesian coordinates, so by Noether's theorem Q = Σ p ξ is conserved
-- **Conserved: quadratic:** $I_{1} = \frac{2 k y}{\sqrt{x^{2} + y^{2}}} + 2 m x \dot{x} \dot{y} - 2 m \dot{x}^{2} y$ — quadratic in the velocities, I = m K_ij(q) qdot_i qdot_j + U(q) with K a Killing tensor of flat space; independent of the energy and of products of the linear integrals; verified by d/dt = 0 on the equations of motion
-- **Conserved: quadratic:** $I_{2} = - \frac{k x}{\sqrt{x^{2} + y^{2}}} + m x \dot{y}^{2} - m \dot{x} y \dot{y}$ — quadratic in the velocities, I = m K_ij(q) qdot_i qdot_j + U(q) with K a Killing tensor of flat space; independent of the energy and of products of the linear integrals; verified by d/dt = 0 on the equations of motion
-- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** quadratic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- **Check:** quadratic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
-- cyclic coordinates: none (every coordinate appears in L)
-- 2 quadratic integrals found beyond the energy and the products of the linear integrals. The search is bounded: Cartesian coordinates, quadratic in the velocities, K of degree <= 2 in the positions, no explicit time. Other integrals may exist.
-- Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not a proof that none exists.
-
-### Explicit time dependence removes the energy
-
-- **Lagrangian:** `\frac12 m\dot{x}^2 - \frac12 k x^2 t`
-- **Coordinates:** x
-- **Status:** `ok`
-- **Equation of motion (x):** $k t x + m \ddot{x} = 0$
-- cyclic coordinates: none (every coordinate appears in L)
-- energy function: not conserved (L depends explicitly on time)
-- Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = (m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not a proof that none exists.
-
-## Tensor canonicalization
+### Tensor canonicalization
 
 *Available in:* HTTP API, chat.
 
@@ -295,7 +210,7 @@ Puts a tensor expression in canonical form using declared index symmetries (symm
 - The result is not independently verified; the report says so.
 - There is no workbench form for tensors yet.
 
-### Symmetric contracted with antisymmetric
+#### Symmetric contracted with antisymmetric
 
 - **Input:** `S(a,b)*A(-a,-b)`
 - **Declared:** S: rank 2, symmetric; A: rank 2, antisymmetric
@@ -303,7 +218,7 @@ Puts a tensor expression in canonical form using declared index symmetries (symm
 - **Canonical form:** $0$
 - Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
 
-### Riemann tensor contracted with a symmetric pair
+#### Riemann tensor contracted with a symmetric pair
 
 - **Input:** `R(a,b,c,d)*S(-a,-b)`
 - **Declared:** R: rank 4, riemann; S: rank 2, symmetric
@@ -311,7 +226,7 @@ Puts a tensor expression in canonical form using declared index symmetries (symm
 - **Canonical form:** $0$
 - Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
 
-### Pair exchange symmetry
+#### Pair exchange symmetry
 
 - **Input:** `R(a,b,c,d) - R(c,d,a,b)`
 - **Declared:** R: rank 4, riemann
@@ -319,7 +234,7 @@ Puts a tensor expression in canonical form using declared index symmetries (symm
 - **Canonical form:** $0$
 - Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
 
-### The cyclic sum is left alone
+#### The cyclic sum is left alone
 
 - **Input:** `R(a,b,c,d) + R(a,c,d,b) + R(a,d,b,c)`
 - **Declared:** R: rank 4, riemann
@@ -328,7 +243,160 @@ Puts a tensor expression in canonical form using declared index symmetries (symm
 - Canonical form from SymPy (Butler-Portugal), using only the declared monoterm symmetries. Multi-term identities (e.g. Bianchi) are not applied. Not independently verified.
 - This cyclic sum vanishes by the algebraic Bianchi identity, a multi-term identity that Minerva does not apply, so it is returned in canonical form and not as 0.
 
-## Citable handbook
+## Physics
+
+Mechanics and other physical systems, from a Lagrangian to its conserved quantities.
+
+### Lagrangian mechanics
+
+*Available in:* chat.
+
+From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, momenta and accelerations, and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs. Each constant is verified: its time derivative is zero on the equations of motion.
+
+**Limits**
+
+- Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search for more constants of motion looks for them in a declared family.
+
+#### Kepler problem in polar coordinates
+
+- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **Equation of motion (r):** $\frac{k}{r^{2}} - m r \dot{\theta}^{2} + m \ddot{r} = 0$
+- **Equation of motion (theta):** $m r \left(r \ddot{\theta} + 2 \dot{r} \dot{\theta}\right) = 0$
+- **Conserved: cyclic:** $p_{\theta} = m r^{2} \dot{\theta}$ — theta is cyclic: L does not depend on it, so dp/dt = dL/dq = 0
+- **Conserved: energy:** $h = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
+- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+
+#### The same problem in Cartesian coordinates
+
+- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}`
+- **Coordinates:** x, y
+- **Status:** `ok`
+- **Equation of motion (x):** $\frac{k x}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{x} = 0$
+- **Equation of motion (y):** $\frac{k y}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{y} = 0$
+- **Conserved: energy:** $h = - \frac{k}{\sqrt{x^{2} + y^{2}}} + \frac{m \dot{x}^{2}}{2} + \frac{m \dot{y}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
+- **Conserved: rotation:** $Q = m \left(x \dot{y} - \dot{x} y\right)$ — L is unchanged by rotating (x, y) as Cartesian coordinates, so by Noether's theorem Q = Σ p ξ is conserved
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- cyclic coordinates: none (every coordinate appears in L)
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+
+#### Explicit time dependence removes the energy
+
+- **Lagrangian:** `\frac12 m\dot{x}^2 - \frac12 k x^2 t`
+- **Coordinates:** x
+- **Status:** `ok`
+- **Equation of motion (x):** $k t x + m \ddot{x} = 0$
+- cyclic coordinates: none (every coordinate appears in L)
+- energy function: not conserved (L depends explicitly on time)
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+
+### Search for hidden constants of motion
+
+*Available in:* chat.
+
+Looks for constants of motion beyond cyclic coordinates, energy and rotations, such as the Runge–Lenz vector of the Kepler problem. It solves exactly for every combination of functions of the coordinates (powers, and cos and sin of coordinates you declare to be angles) times velocity monomials of a chosen degree whose time derivative vanishes on the equations of motion. Only constants that pass the same verification as the others are shown, and the known ones and their products are left out of the count.
+
+**Limits**
+
+- It searches one declared family and says which. Finding nothing proves nothing outside that family.
+- Time-dependent Lagrangians, accelerations with square roots or other non-rational functions, and more than three coordinates are refused.
+- The family is capped (500 unknown coefficients); a bigger one is reported as a resource limit.
+- Naming a constant (for example as the Runge–Lenz vector) is a recognition the model may offer, not something the search proves.
+
+#### Kepler problem, with the angle declared
+
+- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Angles:** theta
+- **Status:** `ok`
+- **Constant of motion 1:** $C_{1} = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
+- **Constant of motion 2:** $C_{2} = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of r from -3 to 3; cos and sin of theta up to harmonic 1. 126 unknown coefficients, solved exactly.
+- Already known and left out of the count: Momentum conjugate to theta; Energy function.
+- Nothing outside this family was searched; finding none proves nothing beyond it.
+- Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.
+- Both components of the Laplace–Runge–Lenz vector appear, up to a constant factor, without being looked up. The angular momentum and energy are known already and are not counted.
+
+#### Isotropic oscillator in the plane
+
+- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) - \frac12 k(x^2 + y^2)`
+- **Coordinates:** x, y
+- **Status:** `ok`
+- **Constant of motion 1:** $C_{1} = k x y + m \dot{x} \dot{y}$
+- **Constant of motion 2:** $C_{2} = k x^{2} + m \dot{x}^{2}$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 12 of 12 points)
+- Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.
+- Already known and left out of the count: Energy function; Rotation symmetry in the (x, y) plane.
+- Nothing outside this family was searched; finding none proves nothing beyond it.
+- Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.
+- The cross term and the energy of one direction, the components of the Fradkin tensor, beyond the energy and angular momentum.
+
+#### Hénon–Heiles, none in this family
+
+- **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3`
+- **Coordinates:** x, y
+- **Status:** `ok`
+- **Result:** no new constant in the searched family
+- Constants of the form sum f(q) times a velocity monomial: polynomials of degree at most 2 in the velocities; powers of x, y from -3 to 3. 294 unknown coefficients, solved exactly.
+- Already known and left out of the count: Energy function.
+- Nothing outside this family was searched; finding none proves nothing beyond it.
+- Each constant is determined up to a constant factor and up to adding the known constants (and their products) that were factored out.
+- Only the energy is known and nothing else is found. That says nothing about constants outside the searched family.
+
+#### Explicit time dependence is refused
+
+- **Lagrangian:** `\frac12 m\dot{x}^2 - \frac12 k t x^2`
+- **Coordinates:** x
+- **Status:** `unsupported`
+- The Lagrangian depends explicitly on time; the search covers autonomous systems only.
+
+## Handbook and identities
+
+A citable, machine-checked collection of identities and equations, and the search over it.
+
+### Identity search with applicability checks
+
+*Available in:* workbench, chat, HTTP API.
+
+Retrieval proposes handbook identities that may fit an expression. The engine then matches each pattern, checks its validity conditions against your declared assumptions, rewrites, and verifies the rewrite.
+
+**Limits**
+
+- An identity whose conditions cannot be proven from your assumptions is reported, with the unmet conditions, and not applied.
+- Matches that only work by inventing roots, reciprocals or the imaginary unit are discarded.
+- Retrieval is keyword and structure based; semantic search is planned.
+
+#### The identity is found but not applied
+
+- **Input:** `\log(x y)`
+- **Status:** `conditions_not_satisfied`
+- **Logarithm of a product:** not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)
+- The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
+
+#### Applied once x and y are declared positive
+
+- **Input:** `\log(x y)`
+- **Assumptions:** x positive; y positive
+- **Status:** `applicable`
+- **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
+- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+
+#### Product to sum
+
+- **Input:** `\sin(a)\cos(b)`
+- **Status:** `applicable`
+- **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
+- **Check:** symbolic zero test not established; numeric check agreed at 12 of 12 points
+
+### Citable handbook
 
 *Available in:* handbook pages, chat, HTTP API.
 
@@ -339,7 +407,7 @@ Handbook entries state identities, integrals, series, special functions and phys
 - Entries recorded from the literature ("stated") carry no rule and are never used to rewrite anything.
 - Coverage is limited and growing; quantum field theory is stated entries only.
 
-### A checked identity with its condition
+#### A checked identity with its condition
 
 - **Entry:** log.product: Logarithm of a product
 - **Status:** `verified`
@@ -348,7 +416,7 @@ Handbook entries state identities, integrals, series, special functions and phys
 - Validity: Both factors positive.
 - Source: DLMF §4.8
 
-### A stated literature record
+#### A stated literature record
 
 - **Entry:** qft.klein_gordon: Klein–Gordon equation
 - **Status:** `stated`
@@ -356,7 +424,11 @@ Handbook entries state identities, integrals, series, special functions and phys
 - **Check:** verification level: stated
 - Validity: Free scalar field, natural units (ħ = c = 1).
 
-## Chat with a model you host
+## Using Minerva
+
+How to reach the tools, through the chat, photos of equations and the workbench.
+
+### Chat with a model you host
 
 *Available in:* chat. Needs a model you connect.
 
@@ -368,12 +440,40 @@ A conversation in which a language model plans, asks and explains, and calls the
 - How well it chooses tools depends on the model, and no model tried so far passes every evaluation case. See docs/model-evaluation.md.
 - Only Ollama-compatible hosts are supported.
 
+### Read formulas from a photo
+
+*Available in:* chat. Needs a model you connect.
+
+Attach a photo or screenshot of an equation in the chat. A vision model you host transcribes it to LaTeX, you confirm or correct the transcription, and Minerva's strict parser shows how it reads each formula before anything is computed. The model only transcribes; it never solves, simplifies or decides anything about the image.
+
+**Limits**
+
+- A transcription can be wrong, which is why you confirm it before it is used. Only what the parser accepts from the confirmed text is passed on to the tools.
+- Ambiguous notation is refused exactly as typed input is, for example `\sin 2x`.
+- Images are never stored or logged, and are limited in size to PNG, JPEG or WebP files.
+- It needs a vision-capable model on the Ollama-compatible host you connect.
+
+#### A transcribed equation, read by the strict parser
+
+- **Transcribed:** `x^2 + 2x + 1 = (x+1)^2`
+- **Status:** `ok`
+- **Read as:** $x^{2} + 2 x + 1 = \left(x + 1\right)^{2}$
+- **Check:** strict parser: the formula is parsed, never simplified or evaluated
+- This is the step after the vision model and your confirmation: the confirmed LaTeX is read by the same parser as typed input, and nothing is simplified.
+
+#### A transcription with ambiguous notation is refused
+
+- **Transcribed:** `\sin 2x`
+- **Status:** `parse_error`
+- **Not read:** ambiguous argument of \sin: use parentheses
+- **Check:** strict parser: the formula is parsed, never simplified or evaluated
+
 ## Planned
 
 Not implemented. Listed so that nobody mistakes them for features.
 
-- **Cadabra integration**: Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
-- **SageManifolds integration**: Differential geometry on explicit manifolds, as an optional backend.
-- **Integrals and limits**: In the workbench, with the same verification discipline as derivatives. Taylor series are available.
-- **Semantic and structural search**: Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
-- **Tensors in the workbench**: Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.
+- **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
+- **SageManifolds integration** (Mathematics): Differential geometry on explicit manifolds, as an optional backend.
+- **Integrals and limits** (Mathematics): In the workbench, with the same verification discipline as derivatives. Taylor series are available.
+- **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
+- **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.

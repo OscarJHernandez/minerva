@@ -72,33 +72,16 @@ one most likely to be wrong.
     nested numerical differentiation of the lambdified L along random cubic paths (`verify.euler_lagrange_check`,
     mpmath, no SymPy differentiation), and an unconfirmed equation makes the whole report `not_verified`.
     `find_conserved` finds cyclic coordinates, energy and rotations of coordinate pairs and verifies each on
-    the equations of motion. With `quadratic_deadline` (the analyser only) it also runs `quadratic_integrals`: for
-    L = (m/2)|q̇|² − V(q) in at most three Cartesian coordinates, integrals m K_ij(q) q̇_i q̇_j + U(q) with K a Killing
-    tensor of flat space of degree ≤ 2 (exact linear algebra), the closed-form condition d_j U = 2 K_ij d_i V solved by
-    a numerical null space at random points and parameters that is rationalised, the energy and the products of linear
-    integrals removed, U built by Euler's formula on homogeneous pieces (or, in the degenerate degree −1 class that
-    contains the Runge–Lenz vector, as a rationalised combination of monomial × potential term), and every candidate
-    verified on the equations of motion. Bounded; "none found" proves nothing.
-  - `expansion.py` (`expand_motion`): the accelerations from `derive`, expanded in the deviations from a
-    user-given equilibrium (default 0; may use the parameters of L) by repeated differentiation in a scaling
-    parameter, to degree 1-12. Shown only if the EL equations were re-confirmed (`check_equations`) and the
-    solved accelerations satisfy them, the point is an equilibrium (accelerations vanish there: symbolic and
-    numeric legs, refused otherwise), and each expansion passes `series.check_series` at random values of the
-    deviations and parameters. Gives the linear matrices A, B (uddot = A u + B v), the characteristic polynomial
-    (up to 4 coordinates) and, for at most 2 coordinates with B = 0, normal modes: ω² roots of det(A + ω² I)
-    checked by substitution, eigenvectors checked by (A + ω² I) w = 0, the sign reported only when the declared
-    assumptions decide it. The expansion is local; no stability claim is made.
-  - `perturbation.py` (`perturbation_solve`): Poincaré–Lindstedt for one coordinate with an acceleration that
-    depends on the position only, about a confirmed equilibrium (`expansion.prepare`). The small parameter is a
-    named parameter of L (L must be a linear oscillator at 0; amplitude A symbolic) or the amplitude of the
-    initial displacement. Each order is solved exactly on cosine polynomials with the strained time τ = ω t, ω_k
-    removing the cos τ resonance. Shown only if the expansion passes `check_series`, the truncated solution
-    leaves a residual in the unexpanded acceleration that falls at ε^(N+1) (mpmath, random parameters, ε halved
-    twice), the initial conditions hold (symbolic and numeric) and every order is a finite cosine sum. The period
-    ratio series is derived from ω and checked with `check_series`. Optional comparison with `integrate_motion`
-    for user-given numbers (the card's form posts them to `POST /v1/chat/conversations/{id}/tools/perturbation_solve`,
-    like the motion form, so the model never transcribes them), at ε and ε/2, reporting the observed order of the error; a measurement, omitted when
-    the numerical run fails its own checks. Order 1-6.
+    the equations of motion.
+  - `invariants.py` (`search_invariants`): constants of motion beyond the Noether families. The ansatz
+    C = Σ f_α(q) q̇^α (|α| ≤ D; f a product of powers q^a, |a| ≤ P, and for declared angles 1, cos, sin up to a
+    harmonic) turns dC/dt = 0 on the equations of motion into a linear system for the coefficients over the field
+    of the parameters (exact, no floats; cos²+sin²=1 is reduced). The nullspace modulo the known constants
+    (cyclic momenta, energy, rotation charges, 1 and their products in the ansatz) is reported, and each
+    candidate is checked again with the same `verify_constant` as `find_conserved` (symbolic zero and numeric
+    points); anything that fails is dropped. It reports the exact family searched and that finding none proves
+    nothing beyond it. Autonomous Lagrangians with rational accelerations only (square roots are `unsupported`),
+    at most 3 coordinates and 500 unknowns (`resource_limit` above).
   - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
     initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive
     Dormand–Prince 5(4) (relative tolerance 1e-12; no SciPy). A run keeps its trajectory only if (1) a fixed-step
@@ -147,7 +130,7 @@ and explains; it never computes and never decides correctness.
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
 - **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
+  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
   posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with

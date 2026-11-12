@@ -132,14 +132,6 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   comparison with `integrate_motion` needs numbers only the user may choose (the model must ask), is a
   measurement on that span (never "valid for all times"), and is omitted when the numerical run fails its own
   checks. Damping, driving, velocity-dependent accelerations and several coordinates are `unsupported`.
-- Quadratic integrals (`quadratic_integrals.py`, part of `analyze_lagrangian`, not of `integrate_motion`) are a
-  bounded search: L = (m/2)|q̇|² − V(q) in Cartesian coordinates (at most three), K a Killing tensor of degree ≤ 2
-  in the positions, V a sum of terms homogeneous in the coordinates built from powers and roots. Candidates come
-  from a numerical null space and are made exact by rationalising; the energy and the products of linear integrals
-  are removed. A candidate is reported only if `verify_quantity` passes (d/dt along the equations of motion, symbolic
-  and numeric); anything not rationalisable, integrable or verified is dropped with a note. Never claim there are
-  no further integrals: the report states the bounds. Do not add `sympy.integrate` here: it stalls on roots and
-  cannot be interrupted (the potential U is built by Euler's formula or the degree-zero ansatz).
 - Antiderivatives (`integrate.py`) are shown only if an independent numerical derivative of the candidate
   matches the integrand (the same `check_derivative` machinery, branch by branch for `Piecewise`; a branch
   condition that cannot be sampled makes the result `not_verified`). "No closed form" is `unsupported` and
@@ -148,6 +140,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   by the fundamental theorem (it would "verify" `\int_{-1}^{1} x^{-2}\,dx = -2`); a quadrature with a large
   error estimate counts as no agreement, and convergence conditions the declared assumptions do not imply
   give `conditions_not_satisfied`. Do not add a symbolic-only path.
+- The search for hidden constants of motion (`invariants.py`, tool `search_invariants`) shows a constant only if it
+  is new (known constants and their products in the ansatz are factored out) and its time derivative on the
+  equations of motion is zero symbolically and at random points (`lagrangian.verify_constant`, the same check as for
+  Noether constants). It always states the exact family searched; an empty result proves nothing outside it and
+  nothing here says "integrable" or names a constant: a name such as Runge–Lenz is for the model to offer, not for the
+  result to assert. Time-dependent Lagrangians and non-rational accelerations are `unsupported`, an oversized
+  ansatz is `resource_limit`. Do not widen the ansatz silently or report an unverified candidate.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

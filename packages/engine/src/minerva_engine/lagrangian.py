@@ -11,15 +11,13 @@ for constants of motion:
 Every derived equation is checked against numerical differentiation of L (no SymPy differentiation).
 Every constant is verified: its time derivative is evaluated on the equations of motion and must be
 zero, symbolically and at random numerical points. The search covers these families only; symmetries
-that hold up to a total time derivative (for example Galilean boosts) are not found. For L = (m/2)|qdot|^2 -
-V(q) in Cartesian coordinates `quadratic_integrals` adds a bounded search for integrals quadratic in the
-velocities (the Runge-Lenz vector of the Kepler problem is one); what is not searched for is reported.
+that hold up to a total time derivative (for example Galilean boosts) or hidden symmetries (for example
+the Runge-Lenz vector) are not found, and the report says so.
 """
 
 from __future__ import annotations
 
 import itertools
-import time as clock
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -47,7 +45,7 @@ class NamedExpression(BaseModel):
 
 class ConservedQuantity(BaseModel):
     name: str
-    kind: Literal["cyclic", "energy", "rotation", "quadratic"]
+    kind: Literal["cyclic", "energy", "rotation"]
     expression_latex: str
     reason: str
     verified: bool
@@ -190,8 +188,16 @@ def check_equations(d: Derivation) -> list[Verification]:
     return euler_lagrange_check(d.lagrangian, d.q, d.qd, d.qdd, d.t, d.euler)
 
 
-def verify_quantity(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
-    """d/dt of `quantity` along the equations of motion is zero: symbolic and numeric, reported separately."""
+@dataclass
+class ConservedSearch:
+    items: list[tuple[ConservedQuantity, sp.Expr]] = field(default_factory=list)
+    tested: list[str] = field(default_factory=list)
+    features: list[str] = field(default_factory=list)
+
+
+def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
+    """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
+    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
     if not d.solution:
         return False, None
     derivative = d.total_derivative(quantity).subs(d.solution)
@@ -208,26 +214,14 @@ def verify_quantity(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verificatio
     return bool(passed), verification
 
 
-@dataclass
-class ConservedSearch:
-    items: list[tuple[ConservedQuantity, sp.Expr]] = field(default_factory=list)
-    tested: list[str] = field(default_factory=list)
-    features: list[str] = field(default_factory=list)
-    notes: list[str] = field(default_factory=list)
-
-
-def find_conserved(d: Derivation, *, quadratic_deadline: float | None = None) -> ConservedSearch:
-    """Cyclic coordinates, energy and rotations, each verified on the equations of motion.
-
-    With `quadratic_deadline` (a `time.monotonic()` value) it also searches for integrals quadratic in the
-    velocities (the Runge-Lenz vector of the Kepler problem and its relatives), see `quadratic_integrals`.
-    """
+def find_conserved(d: Derivation) -> ConservedSearch:
+    """Cyclic coordinates, energy and rotations, each verified on the equations of motion."""
     L, q, qd, p, n, show = d.lagrangian, d.q, d.qd, d.momenta, d.n, d.show
     coordinates = d.coordinates
     out = ConservedSearch()
 
     def verify_conserved(quantity: sp.Expr) -> tuple[bool, Verification | None]:
-        return verify_quantity(d, quantity)
+        return verify_constant(d, quantity)
 
     # 1. Cyclic coordinates.
     for i in range(n):
@@ -306,17 +300,6 @@ def find_conserved(d: Derivation, *, quadratic_deadline: float | None = None) ->
         out.tested.append(
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged"
         )
-
-    # 4. Integrals quadratic in the velocities (opt-in: it costs time and is only for the analyser).
-    if quadratic_deadline is not None:
-        from .quadratic_integrals import find_quadratic
-
-        quadratic = find_quadratic(d, quadratic_deadline)
-        out.items += quadratic.items
-        out.tested += quadratic.tested
-        out.notes += quadratic.notes
-        if quadratic.items:
-            out.features.append("lagrangian:quadratic-integral")
     return out
 
 
@@ -327,7 +310,6 @@ def analyze_lagrangian(
     assumptions: dict[str, list[str]],
     limits: Limits,
 ) -> LagrangianReport:
-    started = clock.monotonic()
     try:
         d = derive(latex, coordinates, time, assumptions, limits)
     except DerivationError as exc:
@@ -387,20 +369,17 @@ def analyze_lagrangian(
             "accelerations cannot be solved for uniquely: the system is constrained or degenerate."
         )
 
-    search = find_conserved(d, quadratic_deadline=started + 0.55 * limits.timeout_seconds)
+    search = find_conserved(d)
     report.conserved = [item for item, _ in search.items]
     report.tested += search.tested
     report.features += search.features
     if not report.conserved:
         report.features.append("lagrangian:no-symmetry-found")
-    report.notes += search.notes
     report.notes.append(
-        "Searched: cyclic coordinates, time translation, rotations of coordinate pairs, and (for L = "
-        "(m/2)|qdot|^2 - V(q) in Cartesian coordinates, up to three of them) integrals quadratic in the "
-        "velocities, which include the Runge-Lenz vector of the Kepler problem. Not searched: symmetries that "
-        "hold only up to a total time derivative (for example Galilean boosts), integrals of higher degree in "
-        'the velocities, and hidden symmetries in other coordinates or of other forms. "None found" is not '
-        "a proof that none exists."
+        "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. "
+        "Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden "
+        "symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; "
+        "the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
     )
     unverified = [c for c in report.conserved if not c.verified]
     report.message = (

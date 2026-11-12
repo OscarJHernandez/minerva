@@ -122,7 +122,7 @@ export interface LagrangianReport {
   accelerations: { coordinate: string; latex: string }[];
   conserved: {
     name: string;
-    kind: "cyclic" | "energy" | "rotation" | "quadratic";
+    kind: "cyclic" | "energy" | "rotation";
     expression_latex: string;
     reason: string;
     verified: boolean;
@@ -137,6 +137,34 @@ export interface LagrangianReport {
   tested: string[];
   features: string[];
   notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
+export interface InvariantReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  angles: string[];
+  degree: number;
+  power_bound: number;
+  harmonics: number;
+  unknowns: number;
+  ansatz: string;
+  known: string[];
+  found: {
+    name: string;
+    expression_latex: string;
+    verified: boolean;
+    verification: {
+      symbolic_zero: boolean;
+      numeric_points_checked: number;
+      numeric_points_agreed: number;
+      passed: boolean;
+    } | null;
+  }[];
+  notes: string[];
+  features: string[];
   message: string;
   duration_ms: number;
 }
@@ -379,6 +407,13 @@ export type Card =
       type: "perturbation";
       title: string;
       data: { report: PerturbationReport; request?: PerturbationRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "invariants";
+      title: string;
+      data: { report: InvariantReport };
     }
   | {
       id: string;

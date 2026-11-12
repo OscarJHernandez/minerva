@@ -10,6 +10,7 @@ from .differentiate import (
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
+from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
 from .models import (
@@ -61,6 +62,7 @@ __all__ = [
     "IdentitiesResult",
     "IntegrateResult",
     "IntegrateVerification",
+    "InvariantReport",
     "LagrangianReport",
     "LimitError",
     "Limits",

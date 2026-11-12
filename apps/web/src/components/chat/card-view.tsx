@@ -7,6 +7,7 @@ import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { ExpansionCard } from "./expansion-card";
+import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
 import { PerturbationCard } from "./perturbation-card";
@@ -60,6 +61,8 @@ export function CardView({ card }: { card: Card }) {
       return <ExpansionCard report={card.data.report} />;
     case "perturbation":
       return <PerturbationCard report={card.data.report} request={card.data.request} />;
+    case "invariants":
+      return <InvariantsCard report={card.data.report} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":
