@@ -83,8 +83,8 @@ two or three cases is noise.
 
 | Run | Before | After | Reading |
 | --- | --- | --- | --- |
-| `llama3.1:8b`, all scored cases | 6 / 32 | 3 / 32 | Noise: most failures are the model sending `assumptions` as a list, which both versions reject (three cases flipped each way) |
-| `qwen3-vl:8b`, 8 simplify/identity cases that finished on both | 5 / 8 | 5 / 8 | Same cases fail on both: `simplify-rational` (unchecked formulas in the reply), `sqrt-no-assumptions`, `identity-compound-argument` |
+| `llama3.1:8b`, all scored cases | 6 / 32 | 3 / 32 | Noise: most failures are the model sending `assumptions` as a list, which both versions reject (four cases went from pass to fail, one the other way) |
+| `qwen3-vl:8b`, 8 simplify/identity cases that finished on both | 5 / 8 | 5 / 8 | Same cases fail on both: `simplify-rational` (unchecked formulas in the reply), `sqrt-no-assumptions` (passes in some runs), `identity-compound-argument`; `followup-uses-context` also fails on both when it finishes (it picks `search_handbook`) |
 | `qwen3-vl:8b`, new case: cites the identities used | fail (answered from the handbook search) | pass | The result lists the identities, so the model can name them |
 | `qwen3-vl:8b`, new case: asked to factor | fail (no `goal` exists) | pass | `goal` is a tool argument now |
 | `qwen3-vl:8b`, new case: a conditional identity | pass | fail 2 of 3 runs | See below |
@@ -97,10 +97,13 @@ and "NOT APPLIED ... this is not a result" instead of echoing the input as the r
 failed once, so it is mitigated, not fixed. A larger model is the realistic remedy; this is the same class of error as
 the "formulas the model wrote" counts in the table above.
 
-Not measured: the other 24 cases on `qwen3-vl:8b`. `qwen3-vl:8b` stalled on a case in three of four attempts (the
-model server kept generating with no end; the evaluation's per-call timeout restarts with every streamed chunk,
-and a case that never stops is bounded only by the step count), so the run was cut to the cases above. Re-run on
-the models of the table above with
-`uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md`
-on `origin/main` and on this branch before drawing a conclusion.
+Not measured: the other cases on `qwen3-vl:8b`. Three of the six runs on that model stalled on a case (the model
+server kept generating with no end; the evaluation's per-call timeout restarts with every streamed chunk, so a
+case that never stops is bounded only by the step count), and the run was cut to the cases above. A stalled case
+was re-run on its own and finished normally on both versions, so the stalls were not caused by the change, but
+the table above is a subset. Re-run on the models of the table at the top, on `origin/main` and on this branch,
+before drawing a conclusion:
 
+```bash
+uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
+```
