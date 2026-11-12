@@ -1,5 +1,8 @@
 # A dedicated Ollama server for Minerva
 
+Running Minerva with Docker and an Ollama on the same machine or network? Start with
+[docs/self-hosting.md](../../docs/self-hosting.md). This page covers a dedicated instance on a shared GPU host.
+
 Minerva's chat needs a language model behind an Ollama-compatible API. On a shared machine, loading Minerva's
 model must not evict anyone else's, so Minerva gets **its own Ollama server** with its own model slot.
 

@@ -21,8 +21,9 @@ each one assumes. If something cannot be simplified or verified, it says so inst
 | Accounts and history | Email + password (Argon2id), server-side sessions, private per-user history |
 | LaTeX input | MathLive editor or raw LaTeX, strict parser (no `eval`) |
 
-Not implemented yet: Cadabra / SageManifolds backends, derivatives/integrals/limits in the UI,
-semantic search, any LLM. All are on the roadmap and clearly labelled as planned.
+Chat with your own Ollama model is available when self-hosted (see below). Not implemented yet:
+Cadabra / SageManifolds backends, integrals/limits in the UI, semantic search. All are on the roadmap and
+clearly labelled as planned.
 
 ## Quick start (Docker)
 
@@ -35,9 +36,31 @@ cp .env.example .env
 docker compose up --build
 ```
 
+Self-hosting guide: [docs/self-hosting.md](docs/self-hosting.md).
+
 - Landing page: <http://localhost:3001>
 - Workspace: <http://localhost:3000> (create an account on the register page)
 - API docs: <http://localhost:8100/docs>
+
+## Use your own model
+
+Chat is optional and off by default. To connect it to a language model you run yourself with
+[Ollama](https://ollama.com), set three variables in `.env` and restart the API:
+
+```bash
+MINERVA_LLM_MODE=ollama
+MINERVA_LLM_BASE_URL=http://host.docker.internal:11434   # Ollama on the same machine as Docker
+MINERVA_LLM_MODEL=qwen3.5:35b                            # a tool-calling model from `ollama list`
+```
+
+```bash
+docker compose up -d api
+curl -s http://127.0.0.1:8100/v1/chat/status
+```
+
+The model plans and explains; every result still comes from the sandboxed engine and the handbook.
+The full guide, including addresses for Linux and remote hosts, troubleshooting and security notes, is in
+[docs/self-hosting.md](docs/self-hosting.md).
 
 ## Development without Docker
 
