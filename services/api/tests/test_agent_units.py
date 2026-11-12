@@ -184,7 +184,10 @@ def test_turn_records_debug_timings_statuses_and_claim_checks(ctx: ToolContext) 
     assert debug["llm_calls"][0]["tool_calls"] == 1 and debug["llm_calls"][1]["text_chars"] > 0
     assert debug["max_steps"] == 6 and debug["model"] == "fake"
     by_value = {c["value"]: c["status"] for c in debug["claims"]}
-    assert by_value["x^2 = 5x"] == "fails" or by_value["x^2 = 5x"] == "conditional"
+    assert by_value["x^2 = 5x"] in (
+        "not_identity",
+        "conditional",
+    )  # never "fails": may be an equation
     assert debug["prompt_sha"] == prompt_sha()
 
 
@@ -271,13 +274,14 @@ def test_prose_and_cards_keep_the_order_they_happened_in(ctx: ToolContext) -> No
 
 def test_equations_the_model_writes_are_checked_or_contradicted(ctx: ToolContext) -> None:
     text = (
-        r"True: $\frac{x^2-1}{x-1} = x+1$. False: $(x+1)^2 = x^2 + 1$. "
+        r"True: $\frac{x^2-1}{x-1} = x+1$. False: $x^2+2x+1 = x^2+2x$. May be an equation: $(x+1)^2 = x^2 + 1$. "
         r"Not an equation: $x^2$. Unreadable: $\foo = 1$."
     )
     msg = final(collect(FakeLLM([[Chunk(text=text)]]), ctx, [{"role": "user", "content": "q"}]))
     status = {s["value"]: s["status"] for s in segments_of(msg) if s["type"] != "text"}
-    assert status[r"\frac{x^2-1}{x-1} = x+1"] == "checked"
-    assert status["(x+1)^2 = x^2 + 1"] == "contradicted"
+    assert status[r"\frac{x^2-1}{x-1} = x+1"] == "conditional"  # x = 1 is excluded on one side
+    assert status[r"x^2+2x+1 = x^2+2x"] == "contradicted"  # false for every x
+    assert status["(x+1)^2 = x^2 + 1"] == "unchecked"  # may be an equation to solve
     assert status["x^2"] == "unchecked"
     assert status[r"\foo = 1"] == "unchecked"
 
