@@ -6,19 +6,29 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
-from minerva_engine import ExpressionInput, SimplifyResult, TensorInput, TensorResult
+from minerva_engine import (
+    DifferentiateResult,
+    ExpressionInput,
+    SimplifyResult,
+    TensorInput,
+    TensorResult,
+)
 from minerva_knowledge.identities import FindIdentitiesResponse, find_identities
 
 from .db import Calculation
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .logging import get_logger
-from .schemas import IdentitiesRequest, SimplifyRequest
+from .schemas import DifferentiateRequest, IdentitiesRequest, SimplifyRequest
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
 
 
 class SimplifyResponse(SimplifyResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class DifferentiateResponse(DifferentiateResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -77,6 +87,35 @@ def simplify(
     if body.save:
         out.calculation_id = _save(
             db, user, "simplify", body, result.status.value, result.model_dump(mode="json")
+        )
+    return out
+
+
+@router.post("/differentiate", response_model=DifferentiateResponse)
+def differentiate(
+    body: DifferentiateRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> DifferentiateResponse:
+    _guard(user, limiter, settings, len(body.input))
+    expression = ExpressionInput(**body.model_dump(exclude={"save", "variables"}))
+    result = engine.differentiate(expression, body.variables)
+    log.info(
+        "compute",
+        operation="differentiate",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    out = DifferentiateResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        saved["variables"] = [v.model_dump() for v in body.variables]  # kept even on failure
+        out.calculation_id = _save(
+            db, user, "differentiate", expression, result.status.value, saved
         )
     return out
 

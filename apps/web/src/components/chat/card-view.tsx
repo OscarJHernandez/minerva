@@ -1,5 +1,6 @@
 import { Math } from "@minerva/ui/math";
 import type { Card } from "@/lib/chat-types";
+import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
 import { LagrangianCard } from "./lagrangian-card";
@@ -12,6 +13,8 @@ export function CardView({ card }: { card: Card }) {
   switch (card.type) {
     case "simplify":
       return <ResultPanel result={card.data} />;
+    case "differentiate":
+      return <DerivativePanel result={card.data} />;
     case "identities":
       return <IdentitiesPanel result={card.data} />;
     case "entries":

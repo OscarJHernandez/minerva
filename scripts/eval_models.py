@@ -162,6 +162,21 @@ CASES = [
         max_unchecked=3,
     ),
     Case(
+        "differentiate-first",
+        r"What is the derivative of $x^x$ with respect to x?",
+        {"differentiate"},
+        args_check=lambda t, a: any(v.get("name") == "x" for v in a.get("variables", [])),
+        max_unchecked=0,
+    ),
+    Case(
+        "differentiate-second",
+        r"Differentiate $\sin x \, e^{x}$ twice with respect to x.",
+        {"differentiate"},
+        args_check=lambda t, a: any(
+            v.get("name") == "x" and v.get("order") == 2 for v in a.get("variables", [])
+        ),
+    ),
+    Case(
         "lagrangian-kepler",
         r"Find the equations of motion and the conserved quantities of the Lagrangian "
         r"$\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}$ in the coordinates r and theta.",

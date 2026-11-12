@@ -23,6 +23,16 @@ one most likely to be wrong.
   - `simplify`: SymPy `simplify`, then `verify_equal` (numeric sampling that respects assumptions,
     plus a symbolic zero test). Statuses: `ok`, `unchanged`, `not_verified`, `parse_error`,
     `resource_limit`, `internal_error`.
+  - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
+    and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
+    central finite difference of the previous expression at assumption-respecting random points;
+    a complex variable is checked along the real and the imaginary direction, so `|z|`, `re`, `im`
+    and conjugates come back `unsupported` ("declare the variable real") instead of as a formula
+    that only looks like a derivative. There is no symbolic-zero leg: no independent symbolic test
+    of a derivative exists, and the report says so. A derivative that fails the check is
+    `not_verified` and never shown; one that grows past the size cap is `resource_limit`. Input
+    expressions are whatever the parsers accept (no undefined functions `f(x)`, integrals or `d/dx`
+    notation). A Dirac delta in the result (second derivative of `|x|`) carries a note.
   - `apply_rules`: for each candidate rule, match its left-hand side against every subexpression
     (with a `rest` wildcard for sums/products), reject matches that invent structure, check the
     rule's conditions against the declared assumptions, rewrite, and verify the rewrite.
@@ -64,7 +74,8 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `find_identities`, `tensor_canonicalize`. Each is a
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `find_identities`, `tensor_canonicalize`, plus
+  `solve_polynomial` and `analyze_lagrangian`. Each is a
   pure computation. A tool returns a `Card` that the interface renders from the tool's own output, plus a compact
   text for the model. Bad or unknown calls become an error result the model can read, never an exception.
 - **Honesty** (`segments.py`): after each turn, every formula in the model's prose is compared with the formulas
@@ -81,7 +92,7 @@ and explains; it never computes and never decides correctness.
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
-limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,identities,tensor/canonicalize}`,
+limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify,differentiate,identities,tensor/canonicalize}`,
 `/v1/reference/*` (public, read-only), `/v1/history`. History rows contain user mathematics and are
 private to the account. Logging uses an allow-list of fields (no inputs, emails or tokens).
 
