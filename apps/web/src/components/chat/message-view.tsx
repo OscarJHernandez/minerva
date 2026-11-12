@@ -1,9 +1,17 @@
 import type { StoredMessage } from "@/lib/chat-types";
 import { parseInlineMath } from "@/lib/inline-math";
 import { CardView } from "./card-view";
+import { DebugPanel } from "./debug-panel";
 import { RichText } from "./rich-text";
 
-export function MessageView({ message }: { message: StoredMessage }) {
+export function MessageView({
+  message,
+  getReport,
+}: {
+  message: StoredMessage;
+  /** Present only in debug mode: builds the copyable report for this turn. */
+  getReport?: () => string;
+}) {
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
@@ -23,6 +31,7 @@ export function MessageView({ message }: { message: StoredMessage }) {
           <RichText key={i} segments={block.segments} />
         ),
       )}
+      {getReport && <DebugPanel content={message.content} getReport={getReport} />}
     </div>
   );
 }

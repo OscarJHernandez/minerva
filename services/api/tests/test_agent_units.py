@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 from minerva_api.agent.llm import Chunk, LLMError, ToolCall
-from minerva_api.agent.loop import AgentLimits, run_agent
+from minerva_api.agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
 from minerva_api.agent.segments import normalize, split_segments
 from minerva_api.agent.tools import ToolContext, execute
 from minerva_engine import Engine, Limits
@@ -153,6 +153,45 @@ def test_model_host_failure_is_an_error_event_without_a_message(ctx: ToolContext
     llm.error = LLMError("The model host is not reachable.")
     events = collect(llm, ctx, [{"role": "user", "content": "q"}])
     assert [e["event"] for e in events] == ["error"]
+
+
+def test_model_host_failure_carries_debug_and_partial_trace(ctx: ToolContext) -> None:
+    llm = FakeLLM()
+    llm.error = LLMError("The model host is not reachable.")
+    info = TurnInfo(request_id="abc", mode="ollama", api_version="9.9")
+    events = collect(llm, ctx, [{"role": "user", "content": "q"}], info=info)
+    data = events[0]["data"]
+    assert data["message"] == "The model host is not reachable."
+    assert data["trace"] == []
+    debug = data["debug"]
+    assert debug["error"] == data["message"]
+    assert (debug["request_id"], debug["mode"], debug["model"]) == ("abc", "ollama", "fake")
+    assert len(debug["prompt_sha"]) == 12
+
+
+def test_turn_records_debug_timings_statuses_and_claim_checks(ctx: ToolContext) -> None:
+    llm = FakeLLM(
+        [
+            [Chunk(tool_calls=[ToolCall("simplify", {"latex": r"\frac{x^2-1}{x-1}"})])],
+            [Chunk(text="Done: $x+1 = x+1$ and $x^2 = 5x$.")],
+        ]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
+    step = msg["trace"][0]
+    assert step["status"] == "ok" and isinstance(step["duration_ms"], int)
+    debug = msg["debug"]
+    assert len(debug["llm_calls"]) == 2
+    assert debug["llm_calls"][0]["tool_calls"] == 1 and debug["llm_calls"][1]["text_chars"] > 0
+    assert debug["max_steps"] == 6 and debug["model"] == "fake"
+    by_value = {c["value"]: c["status"] for c in debug["claims"]}
+    assert by_value["x^2 = 5x"] == "fails" or by_value["x^2 = 5x"] == "conditional"
+    assert debug["prompt_sha"] == prompt_sha()
+
+
+def test_tool_error_is_recorded_in_the_trace(ctx: ToolContext) -> None:
+    llm = FakeLLM([[Chunk(tool_calls=[ToolCall("nope", {})])], [Chunk(text="Could not do that.")]])
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}]))
+    assert msg["trace"][0]["status"] == "error"
 
 
 def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:

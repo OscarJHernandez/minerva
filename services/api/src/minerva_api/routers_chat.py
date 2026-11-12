@@ -20,7 +20,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, run_agent
+from .agent.loop import AgentLimits, TurnInfo, run_agent
 from .agent.segments import normalize
 from .agent.tools import ToolContext
 from .agent.vision import FormulaReader, clean_candidates
@@ -314,14 +314,28 @@ async def send_message(
     session_factory = request.app.state.session_factory
     ctx = ToolContext(engine=engine, kb=kb)
     limits = AgentLimits(max_steps=settings.agent_max_steps, max_seconds=settings.agent_max_seconds)
+    info = TurnInfo(
+        request_id=str(getattr(request.state, "request_id", "")),
+        mode=settings.llm_mode,
+        api_version=request.app.version,
+    )
 
     async def stream() -> AsyncIterator[str]:
         started = time.monotonic()
         outcome = "error"
+        counts = {"steps": 0, "tool_calls": 0, "tool_errors": 0}  # numbers only, never content
         try:
-            async for event in run_agent(llm, history, ctx, limits, prior_known=prior_known):
+            async for event in run_agent(
+                llm, history, ctx, limits, prior_known=prior_known, info=info
+            ):
                 if event["event"] == "message":
                     outcome = "ok"
+                    trace = event["data"]["trace"]
+                    counts = {
+                        "steps": len(event["data"]["debug"]["llm_calls"]),
+                        "tool_calls": len(trace),
+                        "tool_errors": sum(1 for t in trace if t.get("status") == "error"),
+                    }
                     with session_factory() as session:
                         session.add(
                             ChatMessage(
@@ -340,6 +354,7 @@ async def send_message(
                 status=outcome,
                 duration_ms=int((time.monotonic() - started) * 1000),
                 user_id=str(user_id),
+                **counts,
             )
 
     return StreamingResponse(

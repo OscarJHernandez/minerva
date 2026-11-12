@@ -41,6 +41,7 @@ class ToolOutput:
     card: Card
     for_model: str
     known_latex: list[str] = field(default_factory=list)
+    status: str = "ok"  # the tool's own status, for the debug trace
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -128,7 +129,7 @@ def _error(tool: str, message: str) -> ToolOutput:
         title="Could not run",
         data={"message": message},
     )
-    return ToolOutput(card=card, for_model=f"error: {message}")
+    return ToolOutput(card=card, for_model=f"error: {message}", status="error")
 
 
 # --- tool implementations ----------------------------------------------------------------------
@@ -154,7 +155,7 @@ def run_simplify(args: SimplifyArgs, ctx: ToolContext) -> ToolOutput:
         + result.message
     )
     known = [x for x in (result.input_latex, result.result_latex) if x]
-    return ToolOutput(card, text, known)
+    return ToolOutput(card, text, known, result.status.value)
 
 
 def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
@@ -217,7 +218,7 @@ def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
                 f"{c.variable} {c.assumption}" for c in a.unmet_conditions
             )
         lines.append(line)
-    return ToolOutput(card, "\n".join(lines), known)
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 
 def run_tensor(args: TensorArgs, ctx: ToolContext) -> ToolOutput:
@@ -234,7 +235,9 @@ def run_tensor(args: TensorArgs, ctx: ToolContext) -> ToolOutput:
         data=result.model_dump(mode="json"),
     )
     text = f"status={result.status.value}; result={result.result_text}; {result.message}"
-    return ToolOutput(card, text, [result.result_latex] if result.result_latex else [])
+    return ToolOutput(
+        card, text, [result.result_latex] if result.result_latex else [], result.status.value
+    )
 
 
 def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
@@ -279,7 +282,7 @@ def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
-    return ToolOutput(card, "\n".join(lines), known)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
 def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
@@ -322,7 +325,7 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
-    return ToolOutput(card, "\n".join(lines), known)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
 def _entry_card_data(ctx: ToolContext, entry_ids: list[str]) -> list[dict[str, Any]]:
@@ -348,7 +351,7 @@ def run_search(args: SearchArgs, ctx: ToolContext) -> ToolOutput:
         data={"query": args.query, "entries": entries},
     )
     if not entries:
-        return ToolOutput(card, "no handbook entries matched; try other words", [])
+        return ToolOutput(card, "no handbook entries matched; try other words", [], "no_results")
     lines = [
         f"- {e['id']} ({e['title']}; verification={e['verification']}): ${e['statement_latex']}$"
         + (f" Valid: {e['validity']}" if e["validity"] else "")
