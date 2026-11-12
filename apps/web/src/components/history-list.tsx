@@ -13,6 +13,7 @@ const DOT: Record<string, string> = {
 const OPERATION_LABEL: Record<string, string> = {
   simplify: "Simplify",
   differentiate: "Differentiate",
+  integrate: "Integrate",
   identities: "Identities",
 };
 

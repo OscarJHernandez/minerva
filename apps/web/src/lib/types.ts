@@ -82,6 +82,30 @@ export interface DifferentiateResult {
   calculation_id?: string | null;
 }
 
+export interface IntegrateResult {
+  status: Status;
+  input_latex: string | null;
+  variable: string | null;
+  notation_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  verification: {
+    method: string;
+    directions: ("real" | "imaginary")[];
+    steps_checked: number;
+    branches_checked: number;
+    points_checked: number;
+    points_agreed: number;
+    passed: boolean;
+    symbolic_zero: boolean | null;
+    note: string;
+  } | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+}
+
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
 export interface RuleCondition {
@@ -135,7 +159,7 @@ export interface IdentitiesResult {
 
 export interface HistoryItem {
   id: string;
-  operation: "simplify" | "identities" | "differentiate";
+  operation: "simplify" | "identities" | "differentiate" | "integrate";
   input: string;
   format: "latex" | "text";
   assumptions: Assumptions;
