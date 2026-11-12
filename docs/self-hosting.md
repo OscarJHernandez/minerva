@@ -135,7 +135,7 @@ delays streaming).
 | `docker compose logs api` shows "MINERVA_LLM_MODE=ollama needs MINERVA_LLM_BASE_URL and MINERVA_LLM_MODEL" | One of the two is empty. Set both |
 | Chat answers "The model host is not reachable." | Wrong address, or Ollama listens only on loopback (Linux). Test from the container: `docker compose exec api python -c "import urllib.request as u; print(u.urlopen('http://host.docker.internal:11434/api/tags', timeout=5).status)"` |
 | "The model host answered with status 404" | The model name does not match `ollama list` exactly. Pull or create it, or fix `MINERVA_LLM_MODEL` |
-| The model answers in prose but never calls a tool | The model does not support tool calling, or is too small to use it. Try another model from [model-evaluation.md](model-evaluation.md) |
+| The model answers in prose, or prints a JSON object such as `{"name": "simplify", ...}` as its reply, and no result card appears | The model is not making real tool calls: it does not support tool calling, or is too small to use it (small general models often do this). Try another model from [model-evaluation.md](model-evaluation.md) |
 | Replies time out | Raise `MINERVA_LLM_TIMEOUT_SECONDS`, or use a smaller or faster model |
 | Chat works but some formulas are marked "unchecked" | Intended: the model wrote a formula no tool produced. The engine's cards are the results; treat unchecked text as the model's prose |
 
