@@ -21,7 +21,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 
 ```
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
-apps/web/             Authenticated app: chat (home), workbench (/workbench), handbook, login. Next.js 16 + Tailwind 4
+apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
 packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder

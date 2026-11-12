@@ -1,23 +1,21 @@
 "use client";
 
 import { Math } from "@minerva/ui/math";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { DifferentiateResult } from "@/lib/types";
 import { StatusPill } from "./result-panel";
 
 export function DerivativePanel({ result }: { result: DifferentiateResult }) {
+  const headingId = useId();
   const [copied, setCopied] = useState(false);
   const v = result.verification;
   const shown = result.status === "ok" && result.result_latex;
   const intermediate = result.steps.slice(0, -1);
 
   return (
-    <section
-      aria-labelledby="derivative-heading"
-      className="rounded-lg border border-rule bg-raised p-5"
-    >
+    <section aria-labelledby={headingId} className="rounded-lg border border-rule bg-raised p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="derivative-heading" className="font-serif text-xl">
+        <h2 id={headingId} className="font-serif text-xl">
           Differentiate
         </h2>
         <StatusPill status={result.status} okLabel="Differentiated, numerically checked" />

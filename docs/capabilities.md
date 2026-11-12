@@ -524,6 +524,27 @@ Handbook entries state identities, integrals, series, special functions and phys
 
 How to reach the tools, through the chat, photos of equations and the workbench.
 
+### Derivations in the workbench
+
+*Available in:* workbench, HTTP API.
+
+Builds a derivation step by step without a language model. Each step is an operation (simplify, differentiate, integrate, Taylor polynomial) or a handbook identity applied to the previous result, and is verified and saved to your account with what produced it and the assumptions in force. You can continue from any earlier step.
+
+**Limits**
+
+- A step is carried forward as its text form, which the parser reads back exactly. A result the text parser cannot read (for example one using `erf` or `Piecewise`) is shown but cannot be continued.
+- An identity is offered only when the engine reports it applicable (conditions proven from your assumptions); applying it recomputes and re-verifies the rewrite on the server. Handbook entries that are only stated are never applied.
+- If you edit a carried-forward result, the next step is recorded as a new input, not a continuation.
+
+#### Applying a handbook identity as a step
+
+- **Input:** `\log(x y)`
+- **Assumptions:** x positive; y positive
+- **Status:** `applicable`
+- **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
+- In the workbench this is the Apply button next to an applicable identity; it appears only after the assumptions make the identity applicable.
+
 ### Chat with a model you host
 
 *Available in:* chat. Needs a model you connect.

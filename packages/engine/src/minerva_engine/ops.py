@@ -523,6 +523,7 @@ def apply_rule(expr: sp.Expr, rule: Rule) -> RuleApplication:
             applicability=Applicability.APPLICABLE,
             matched_subexpression_latex=matched_latex,
             rewritten_latex=to_latex(rewrite.rewritten),
+            rewritten_text=str(rewrite.rewritten),
             verification=verification,
             restrictions_latex=restrictions,
             restrictions_complete=complete,

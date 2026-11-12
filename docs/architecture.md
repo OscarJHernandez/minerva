@@ -187,8 +187,13 @@ and explains; it never computes and never decides correctness.
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
 limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,identities,tensor/canonicalize}`,
-`/v1/reference/*` (public, read-only), `/v1/history`. History rows contain user mathematics and are
-private to the account. Logging uses an allow-list of fields (no inputs, emails or tokens).
+`/v1/compute/apply-identity`, `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
+History rows contain user mathematics and are private to the account. A Workbench derivation is a
+`derivations` row plus the calculations saved with its id; each step may name the step it continued
+(`parent_id`). The server never accepts a result from the client: steps are written by the compute
+endpoints, and `apply-identity` recomputes and re-verifies the rewrite from the handbook rule. The
+client continues a step from its `result_text` (text syntax), because engine LaTeX does not always
+read back as the same expression. Logging uses an allow-list of fields (no inputs, emails or tokens).
 
 ## Web (`apps/web`, `apps/site`, `packages/ui`)
 

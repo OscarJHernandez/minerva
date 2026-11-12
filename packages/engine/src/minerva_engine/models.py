@@ -124,6 +124,8 @@ class RuleApplication(BaseModel):
     applicability: Applicability
     matched_subexpression_latex: str | None = None
     rewritten_latex: str | None = None
+    # Text form of the rewrite (re-readable by the text parser); set only when applicable.
+    rewritten_text: str | None = None
     unmet_conditions: list[RuleCondition] = Field(default_factory=list)
     verification: Verification | None = None
     restrictions_latex: list[str] = Field(default_factory=list)

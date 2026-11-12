@@ -15,7 +15,14 @@ from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 from sqlalchemy import text
 
-from . import routers_auth, routers_chat, routers_compute, routers_history, routers_reference
+from . import (
+    routers_auth,
+    routers_chat,
+    routers_compute,
+    routers_derivations,
+    routers_history,
+    routers_reference,
+)
 from .agent.llm import LLMClient, OllamaClient
 from .agent.scripted import ScriptedLLM
 from .agent.vision import FormulaReader, OllamaFormulaReader, ScriptedFormulaReader
@@ -134,6 +141,7 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
         routers_auth,
         routers_compute,
         routers_history,
+        routers_derivations,
         routers_reference,
         routers_chat,
     ):
