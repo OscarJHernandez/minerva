@@ -147,6 +147,16 @@ def op_check_units(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+# --- numerical motion ------------------------------------------------------------------
+def op_integrate_motion(payload: dict[str, Any]) -> dict[str, Any]:
+    from .motion import MotionReport, integrate_motion, parse_request
+
+    limits = Limits(**payload["limits"])
+    parsed = parse_request({k: v for k, v in payload.items() if k != "limits"})
+    report = parsed if isinstance(parsed, MotionReport) else integrate_motion(parsed, limits)
+    return report.model_dump(mode="json")
+
+
 # --- claims written by the language model --------------------------------------------
 def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
@@ -409,6 +419,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "check_claims": op_check_claims,
     "solve": op_solve,
     "lagrangian": op_lagrangian,
+    "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,
     "check_units": op_check_units,
     "tensor_canonicalize": op_tensor_canonicalize,

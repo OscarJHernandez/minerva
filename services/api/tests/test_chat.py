@@ -183,6 +183,72 @@ def test_scripted_model_is_refused_outside_development() -> None:
         Settings(_env_file=None, llm_mode="ollama").validate_for_runtime()
 
 
+MOTION_BODY = {
+    "lagrangian": r"\frac12 m\dot{x}^2 - \frac12 k x^2",
+    "coordinates": ["x"],
+    "parameters": {"m": 1.0, "k": 4.0},
+    "initial_positions": [1.0],
+    "initial_velocities": [0.0],
+    "t_end": 5.0,
+}
+
+
+def test_motion_form_endpoint_stores_a_card_message_that_later_turns_can_read(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    url = f"/v1/chat/conversations/{cid}/tools/integrate_motion"
+    r = client.post(url, json=MOTION_BODY)
+    assert r.status_code == 201
+    message = r.json()["content"]
+    card = cards_of(message)[0]
+    assert card["type"] == "motion" and card["data"]["report"]["runs"][0]["status"] == "ok"
+    assert message["trace"][0]["name"] == "integrate_motion"
+    assert message["trace"][0]["arguments"]["parameters"] == {"m": 1.0, "k": 4.0}
+    detail = client.get(f"/v1/chat/conversations/{cid}").json()
+    assert [m["role"] for m in detail["messages"]] == ["assistant"]
+    # a following turn replays the tool call and its compact result as history
+    sse(client, cid, "thanks")
+    assert len(client.get(f"/v1/chat/conversations/{cid}").json()["messages"]) == 3
+
+
+def test_motion_form_endpoint_works_without_a_chat_model() -> None:
+    with TestClient(build_app()) as c:  # llm_mode off
+        register(c)
+        cid = c.post("/v1/chat/conversations", json={}).json()["id"]
+        r = c.post(f"/v1/chat/conversations/{cid}/tools/integrate_motion", json=MOTION_BODY)
+        assert r.status_code == 201
+
+
+def test_motion_form_endpoint_validation_privacy_and_rate_limit() -> None:
+    app = build_app(llm_mode="scripted", compute_rate_per_minute=2)
+    with TestClient(app) as a, TestClient(app) as b:
+        register(a, "a@example.com")
+        register(b, "b@example.com")
+        cid = a.post("/v1/chat/conversations", json={}).json()["id"]
+        url = f"/v1/chat/conversations/{cid}/tools/integrate_motion"
+        assert b.post(url, json=MOTION_BODY).status_code == 404
+        bad = {**MOTION_BODY, "initial_positions": []}
+        assert a.post(url, json=bad).status_code == 422
+        missing = {**MOTION_BODY, "parameters": {"m": 1.0}}
+        r = a.post(url, json=missing)  # a bad value is a stored card, not a server error
+        assert r.status_code == 201
+        assert cards_of(r.json()["content"])[0]["data"]["report"]["status"] == "parse_error"
+        codes = [a.post(url, json=MOTION_BODY).status_code for _ in range(3)]
+        assert 429 in codes
+        assert TestClient(app).post(url, json=MOTION_BODY).status_code == 401  # not logged in
+
+
+def test_scripted_model_runs_a_numerical_solution_and_a_sweep(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"solve $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically, sweep k")
+    message = next(d for e, d in events if e == "message")
+    report = cards_of(message)[0]["data"]["report"]
+    assert cards_of(message)[0]["type"] == "motion" and len(report["runs"]) == 3
+
+
 def test_scripted_model_runs_dimensional_analysis_and_a_unit_check(
     chat_client: tuple[TestClient, str],
 ) -> None:

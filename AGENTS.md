@@ -77,6 +77,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
+- `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
+  never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
+  A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
 - Conversations are user data: private per account, never logged.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
   copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.

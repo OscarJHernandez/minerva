@@ -19,6 +19,7 @@ from .models import (
     TensorSpec,
     Verification,
 )
+from .motion import MotionReport, MotionRequest, Sweep
 from .ops import apply_rule, parse_expression, verify_rule
 from .pi_groups import (
     ConstantCandidate,
@@ -44,6 +45,8 @@ __all__ = [
     "LimitError",
     "Limits",
     "MinervaMathError",
+    "MotionReport",
+    "MotionRequest",
     "ParseError",
     "QuantitySpec",
     "Rule",
@@ -52,6 +55,7 @@ __all__ = [
     "SimplifyResult",
     "SolveReport",
     "Status",
+    "Sweep",
     "TensorInput",
     "TensorResult",
     "TensorSpec",

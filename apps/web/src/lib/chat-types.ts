@@ -6,7 +6,15 @@ export interface LagrangianReport {
   coordinates: string[];
   parameters: string[];
   time_dependent: boolean;
-  equations: { coordinate: string; latex: string }[];
+  equations: {
+    coordinate: string;
+    latex: string;
+    verification: {
+      numeric_points_checked: number;
+      numeric_points_agreed: number;
+      passed: boolean;
+    } | null;
+  }[];
   momenta: { coordinate: string; latex: string }[];
   accelerations: { coordinate: string; latex: string }[];
   conserved: {
@@ -25,6 +33,66 @@ export interface LagrangianReport {
   }[];
   tested: string[];
   features: string[];
+  notes: string[];
+  message: string;
+  duration_ms: number;
+}
+
+/** What the Lagrangian card sends to the numerical-solution endpoint (the engine's request model). */
+export interface MotionRequest {
+  lagrangian: string;
+  coordinates: string[];
+  time: string;
+  assumptions: Record<string, string[]>;
+  parameters: Record<string, number>;
+  initial_positions: number[];
+  initial_velocities: number[];
+  t_start: number;
+  t_end: number;
+  sweep: { name: string; values: number[] } | null;
+  samples?: number;
+}
+
+export interface MotionVerification {
+  method_difference: number | null;
+  reversal_error: number | null;
+  max_drift: number | null;
+  drift_checked: number;
+  steps: number;
+  passed: boolean;
+  notes: string[];
+}
+
+export interface MotionRun {
+  status: Status;
+  parameter_value: number | null;
+  message: string;
+  /** [coordinate][sample]; empty unless the run was verified. */
+  q: number[][];
+  v: number[][];
+  conserved: {
+    name: string;
+    kind: string;
+    expression_latex: string;
+    values: number[];
+    relative_drift: number;
+  }[];
+  verification: MotionVerification;
+}
+
+export interface MotionReport {
+  status: Status;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  accelerations: string[];
+  parameters: Record<string, number>;
+  initial_positions: number[];
+  initial_velocities: number[];
+  t_start: number;
+  t_end: number;
+  sweep_name: string | null;
+  t: number[];
+  runs: MotionRun[];
   notes: string[];
   message: string;
   duration_ms: number;
@@ -183,7 +251,18 @@ export type Card =
       tool: string;
       type: "lagrangian";
       title: string;
-      data: { report: LagrangianReport; methods: EntrySummary[] };
+      data: {
+        report: LagrangianReport;
+        methods: EntrySummary[];
+        request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
+      };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "motion";
+      title: string;
+      data: { report: MotionReport; request: MotionRequest };
     }
   | {
       id: string;

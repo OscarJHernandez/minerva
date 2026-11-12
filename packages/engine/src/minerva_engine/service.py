@@ -17,6 +17,7 @@ from .models import (
     TensorInput,
     TensorResult,
 )
+from .motion import MotionReport, MotionRequest
 from .pi_groups import (
     ConstantCandidate,
     DimensionalReport,
@@ -183,5 +184,15 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return UnitsCheckReport(status=status, message=message, duration_ms=ms)
         report = UnitsCheckReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def integrate_motion(self, request: MotionRequest) -> MotionReport:
+        """Numerical solution of a Lagrangian system (optionally a one-parameter sweep), verified, sandboxed."""
+        outcome, ms = self._run("integrate_motion", request.model_dump())
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return MotionReport(status=status, message=message, duration_ms=ms)
+        report = MotionReport(**outcome.value)
         report.duration_ms = ms
         return report

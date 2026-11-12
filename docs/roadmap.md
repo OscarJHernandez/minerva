@@ -15,9 +15,12 @@ Ordering favours correctness infrastructure before breadth.
 1. **Handbook breadth** (see `handbook-outline.md`): transforms (Fourier, Laplace), linear algebra, vector
    calculus, differential equations, probability, group theory; physics chapters in depth. Tooling to import
    entries from openly licensed sources with provenance tracking; per-entry review status.
-2. **More operations in the workspace:** derivatives, integrals, limits, series, numeric evaluation, each with
+2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
+   `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial
+   conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
+3. **More operations in the workspace:** derivatives, integrals, limits, series, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
-3. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
+4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
 
 ## Dimensional analysis follow-ups

@@ -1,16 +1,19 @@
-import { Math } from "@minerva/ui/math";
-import type { LagrangianReport } from "@/lib/chat-types";
+import { Math as Formula } from "@minerva/ui/math";
+import type { LagrangianReport, MotionRequest } from "@/lib/chat-types";
 import type { EntrySummary } from "@/lib/types";
 import { EntryCard } from "../entry-card";
 import { StatusPill } from "../result-panel";
+import { MotionForm } from "./motion-form";
 
 /** Equations of motion and verified constants of motion of a Lagrangian. */
 export function LagrangianCard({
   report,
   methods,
+  request,
 }: {
   report: LagrangianReport;
   methods: EntrySummary[];
+  request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions">;
 }) {
   return (
     <section className="rounded-lg border border-rule bg-raised p-5" aria-label="Lagrangian">
@@ -18,15 +21,22 @@ export function LagrangianCard({
         <h3 className="font-serif text-xl">Lagrangian</h3>
         <StatusPill status={report.status} okLabel="Analysed and verified" />
       </div>
-      {report.lagrangian_latex && <Math latex={`L = ${report.lagrangian_latex}`} display />}
+      {report.lagrangian_latex && <Formula latex={`L = ${report.lagrangian_latex}`} display />}
       <p className="text-sm text-muted">{report.message}</p>
 
       {report.equations.length > 0 && (
         <div className="mt-4">
           <h4 className="text-sm font-medium">Equations of motion (Euler–Lagrange)</h4>
           {report.equations.map((e, i) => (
-            <Math key={i} latex={e.latex} display />
+            <Formula key={i} latex={e.latex} display />
           ))}
+          {report.equations.every((e) => e.verification?.passed) && (
+            <p className="text-xs text-muted">
+              Each equation was checked against numerical differentiation of L at{" "}
+              {minimum(report.equations.map((e) => e.verification?.numeric_points_checked ?? 0))} or
+              more sample paths, independently of the symbolic derivation.
+            </p>
+          )}
         </div>
       )}
 
@@ -35,7 +45,7 @@ export function LagrangianCard({
           <h4 className="text-sm font-medium">Conjugate momenta</h4>
           <div className="flex flex-wrap gap-x-6">
             {report.momenta.map((m, i) => (
-              <Math key={i} latex={m.latex} />
+              <Formula key={i} latex={m.latex} />
             ))}
           </div>
         </div>
@@ -47,9 +57,13 @@ export function LagrangianCard({
             Accelerations <span className="font-normal text-muted">(solved form): show</span>
           </summary>
           {report.accelerations.map((a, i) => (
-            <Math key={i} latex={a.latex} display />
+            <Formula key={i} latex={a.latex} display />
           ))}
         </details>
+      )}
+
+      {request && report.accelerations.length > 0 && (
+        <MotionForm base={request} parameters={report.parameters} />
       )}
 
       <div className="mt-4">
@@ -72,7 +86,7 @@ export function LagrangianCard({
                     {c.verified ? "dQ/dt = 0 verified" : "not verified"}
                   </span>
                 </div>
-                <Math latex={c.expression_latex} display />
+                <Formula latex={c.expression_latex} display />
                 <p className="text-xs text-muted">{c.reason}</p>
                 {c.verification && (
                   <p className="mt-1 text-xs text-muted">
@@ -115,4 +129,8 @@ export function LagrangianCard({
       )}
     </section>
   );
+}
+
+function minimum(values: number[]): number {
+  return values.length === 0 ? 0 : Math.min(...values);
 }

@@ -169,6 +169,25 @@ CASES = [
         args_check=lambda t, a: {"r", "theta"} <= {str(c) for c in a.get("coordinates", [])},
     ),
     Case(
+        "motion-values-given",
+        r"Integrate the motion of the Lagrangian $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically "
+        "with m = 1, k = 4, starting at x = 1 with zero velocity, from t = 0 to t = 10.",
+        {"integrate_motion"},
+        args_check=lambda t, a: (
+            a.get("parameters") == {"m": 1, "k": 4}
+            and a.get("initial_positions") == [1]
+            and a.get("t_end") == 10
+        ),
+    ),
+    Case(
+        "motion-values-missing",
+        r"Solve the equations of motion of $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically.",
+        # The model must ask for parameter values, initial conditions and the time span, not invent them.
+        forbid={"integrate_motion"},
+        final_matches=re.compile(r"\?|which|what|value|initial|choose|provide|give", re.I),
+        tools_optional=True,
+    ),
+    Case(
         "unsupported-derivative",
         r"Differentiate $x^3 \sin x$.",
         forbid=set(),

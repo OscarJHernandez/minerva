@@ -70,6 +70,24 @@ class ScriptedLLM:
             yield Chunk(
                 tool_calls=[ToolCall("check_units", {"equation": latex, "quantities": quantities})]
             )
+        elif "numerically" in lower and latex:
+            # Development stand-in: fixed numbers for a unit-mass oscillator, optionally swept in k.
+            args: dict[str, Any] = {
+                "lagrangian": latex,
+                "coordinates": ["x"],
+                "parameters": {"m": 1.0, "k": 4.0},
+                "initial_positions": [1.0],
+                "initial_velocities": [0.0],
+                "t_end": 10.0,
+            }
+            if "sweep" in lower:
+                args["parameters"] = {"m": 1.0}
+                args["sweep"] = {"name": "k", "values": [1.0, 2.0, 4.0]}
+            async for c in self._say(
+                "I will integrate the equations of motion and verify the run. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("integrate_motion", args)])
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -94,7 +112,7 @@ class ScriptedLLM:
             ):
                 yield c
         elif "identit" in lower or "split" in lower:
-            args: dict[str, Any] = {"latex": latex or "\\log(xy)"}
+            args = {"latex": latex or "\\log(xy)"}
             if "positive" in lower or not latex:
                 args["assumptions"] = {"x": ["positive"], "y": ["positive"]}
             async for c in self._say("I will check which handbook identities apply. "):
@@ -167,6 +185,11 @@ class ScriptedLLM:
         elif tool == "check_units":
             text = (
                 "The card shows the dimension of each side and, if they differ, the missing factor."
+            )
+        elif tool == "integrate_motion":
+            text = (
+                "The card shows the verified trajectory, the drift of the constants of motion and the "
+                "phase portrait. Runs that failed verification carry no data."
             )
         elif tool == "solve_polynomial":
             text = (

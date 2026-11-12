@@ -57,6 +57,7 @@ function cardSummary(card: Card | null | undefined): string[] {
   } else if (
     card.type === "solve" ||
     card.type === "lagrangian" ||
+    card.type === "motion" ||
     card.type === "dimensional" ||
     card.type === "units"
   ) {

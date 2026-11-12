@@ -37,6 +37,24 @@ one most likely to be wrong.
     absent quantity must carry (verified by re-solving with it appended) and the handbook constants, alone or in
     pairs, that close the gap. It does not determine the function of the groups, dimensionless constants, or
     whether the list of quantities is complete.
+  - `lagrangian.py` (`analyze_lagrangian`): `derive` builds the Euler–Lagrange equations, momenta and (for an
+    invertible mass matrix) the accelerations with SymPy; `check_equations` then confirms every equation by
+    nested numerical differentiation of the lambdified L along random cubic paths (`verify.euler_lagrange_check`,
+    mpmath, no SymPy differentiation), and an unconfirmed equation makes the whole report `not_verified`.
+    `find_conserved` finds cyclic coordinates, energy and rotations of coordinate pairs and verifies each on
+    the equations of motion.
+  - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
+    initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive
+    Dormand–Prince 5(4) (relative tolerance 1e-12; no SciPy). A run keeps its trajectory only if (1) a fixed-step
+    RK4 run with a step of a quarter of the primary's smallest accepted step in each segment agrees at every
+    sample (1e-6, relative to each component's range), (2) integrating back from the end recovers the start
+    (1e-6), and (3) every constant of motion verified by `find_conserved` drifts by less than 1e-6. Otherwise the
+    run is `not_verified` and carries no data (chaotic or stiff motion over a long span, singularities);
+    exceeding the step cap or the time budget is `resource_limit`. Parameters and initial values must respect
+    the declared assumptions; a missing or unknown parameter is a `parse_error`; a singular mass matrix is
+    `unsupported`. Stored series are rounded to 10 significant digits and capped at about 20 000 numbers.
+    Not covered: field Lagrangians, generalised forces (damping, driving not derived from L), constraints,
+    stiff solvers, sweeping initial conditions.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 
@@ -73,8 +91,12 @@ and explains; it never computes and never decides correctness.
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
 - **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`. Each is a
-  pure computation. A tool returns a `Card` that the interface renders from the tool's own output, plus a compact
+  `check_units`, `solve_polynomial`, `analyze_lagrangian` and `integrate_motion`. Each is a
+  pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
+  choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
+  posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with
+  `MINERVA_LLM_MODE=off`), the user's numbers go to the engine untouched, and the result is stored as an assistant
+  message with the card and a trace step, so later turns see it. A tool returns a `Card` that the interface renders from the tool's own output, plus a compact
   text for the model. Bad or unknown calls become an error result the model can read, never an exception.
 - **Honesty** (`segments.py`): after each turn, every formula in the model's prose is compared with the formulas
   that tool results and handbook entries of the conversation contain. Others are shown as *unchecked*.

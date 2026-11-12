@@ -8,6 +8,7 @@ for constants of motion:
 * no explicit time dependence conserves the energy function h = sum(q-dot_i p_i) - L;
 * a rotation of a pair of coordinates that leaves L unchanged conserves q_i p_j - q_j p_i.
 
+Every derived equation is checked against numerical differentiation of L (no SymPy differentiation).
 Every constant is verified: its time derivative is evaluated on the equations of motion and must be
 zero, symbolically and at random numerical points. The search covers these families only; symmetries
 that hold up to a total time derivative (for example Galilean boosts) or hidden symmetries (for example
@@ -17,6 +18,7 @@ the Runge-Lenz vector) are not found, and the report says so.
 from __future__ import annotations
 
 import itertools
+from dataclasses import dataclass, field
 from typing import Literal
 
 import sympy as sp
@@ -25,7 +27,7 @@ from pydantic import BaseModel, Field
 from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .models import Limits, Status, Verification
-from .verify import numeric_check
+from .verify import euler_lagrange_check, numeric_check
 
 MAX_COORDINATES = 8
 
@@ -33,6 +35,7 @@ MAX_COORDINATES = 8
 class EquationOfMotion(BaseModel):
     coordinate: str
     latex: str
+    verification: Verification | None = None
 
 
 class NamedExpression(BaseModel):
@@ -70,21 +73,65 @@ def _fail(status: Status, message: str) -> LagrangianReport:
     return LagrangianReport(status=status, message=message)
 
 
-def analyze_lagrangian(
+class DerivationError(Exception):
+    """The input cannot be analysed; carries the explicit status to report."""
+
+    def __init__(self, status: Status, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.message = message
+
+
+@dataclass
+class Derivation:
+    """The symbolic result of the Euler-Lagrange derivation, shared by the analyser and the integrator."""
+
+    lagrangian: sp.Expr
+    coordinates: list[str]
+    q: list[sp.Symbol]
+    qd: list[sp.Symbol]
+    qdd: list[sp.Symbol]
+    t: sp.Symbol
+    params: list[sp.Symbol]
+    momenta: list[sp.Expr]
+    euler_raw: list[sp.Expr]  # expanded, used to solve for the accelerations
+    euler: list[sp.Expr]  # simplified, shown to the user
+    time_dependent: bool
+    solution: dict[sp.Symbol, sp.Expr] = field(default_factory=dict)  # qdd_i -> expression
+    names: dict[sp.Symbol, str] = field(default_factory=dict)
+
+    @property
+    def n(self) -> int:
+        return len(self.q)
+
+    def show(self, expr: sp.Expr) -> str:
+        return str(sp.latex(expr, symbol_names=self.names))
+
+    def total_derivative(self, f: sp.Expr) -> sp.Expr:
+        """Total time derivative along a motion: q' = qd, qd' = qdd."""
+        out = sp.diff(f, self.t)
+        for qi, qdi, qddi in zip(self.q, self.qd, self.qdd, strict=True):
+            out += sp.diff(f, qi) * qdi + sp.diff(f, qdi) * qddi
+        return out
+
+
+def derive(
     latex: str,
     coordinates: list[str],
     time: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
-) -> LagrangianReport:
+) -> Derivation:
     if not coordinates or len(coordinates) > MAX_COORDINATES:
-        return _fail(Status.UNSUPPORTED, f"Give between 1 and {MAX_COORDINATES} coordinates.")
+        raise DerivationError(
+            Status.UNSUPPORTED, f"Give between 1 and {MAX_COORDINATES} coordinates."
+        )
     if len(set(coordinates)) != len(coordinates):
-        return _fail(Status.PARSE_ERROR, "Coordinates must be distinct.")
+        raise DerivationError(Status.PARSE_ERROR, "Coordinates must be distinct.")
     try:
         L = parse_latex(latex, assumptions, limits)
     except MinervaMathError as exc:
-        return _fail(Status.PARSE_ERROR, str(exc))
+        raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
 
     by_name = {s.name: s for s in L.free_symbols}
     q = [by_name.get(n) or sp.Symbol(n) for n in coordinates]
@@ -92,86 +139,72 @@ def analyze_lagrangian(
     qdd = [sp.Symbol(f"{n}_ddot") for n in coordinates]
     t = by_name.get(time) or sp.Symbol(time)
     if any(s.name.endswith("_ddot") for s in L.free_symbols):
-        return _fail(
+        raise DerivationError(
             Status.UNSUPPORTED,
             "Lagrangians with accelerations (higher derivatives) are not supported.",
         )
     if not any(v in L.free_symbols for v in qd):
-        return _fail(
+        raise DerivationError(
             Status.UNSUPPORTED,
             "The Lagrangian does not depend on any velocity \\dot{q}; it is not a dynamical Lagrangian.",
         )
     known = set(q) | set(qd) | {t}
     params = sorted(L.free_symbols - known, key=lambda s: s.name)
 
-    # Latex printing with dots over the velocities.
     names: dict[sp.Symbol, str] = {}
     for coordinate, velocity, acceleration in zip(q, qd, qdd, strict=True):
         base = sp.latex(coordinate)
         names[velocity] = rf"\dot{{{base}}}"
         names[acceleration] = rf"\ddot{{{base}}}"
 
-    def show(expr: sp.Expr) -> str:
-        return str(sp.latex(expr, symbol_names=names))
-
-    def D(f: sp.Expr) -> sp.Expr:
-        """Total time derivative along a motion: q' = qd, qd' = qdd."""
-        out = sp.diff(f, t)
-        for qi, qdi, qddi in zip(q, qd, qdd, strict=True):
-            out += sp.diff(f, qi) * qdi + sp.diff(f, qdi) * qddi
-        return out
-
-    n = len(q)
-    p = [sp.diff(L, v) for v in qd]
-    euler = [sp.expand(D(p[i]) - sp.diff(L, q[i])) for i in range(n)]
-    time_dependent = sp.simplify(sp.diff(L, t)) != 0
-
-    report = LagrangianReport(
-        status=Status.OK,
-        lagrangian_latex=show(L),
+    d = Derivation(
+        lagrangian=L,
         coordinates=coordinates,
-        parameters=[s.name for s in params],
-        time_dependent=time_dependent,
-        equations=[
-            EquationOfMotion(coordinate=coordinates[i], latex=f"{show(sp.simplify(euler[i]))} = 0")
-            for i in range(n)
-        ],
-        momenta=[
-            NamedExpression(
-                coordinate=coordinates[i], latex=f"p_{{{sp.latex(q[i])}}} = {show(p[i])}"
-            )
-            for i in range(n)
-        ],
-        features=["lagrangian", f"lagrangian:dof:{min(n, 4)}", "ode:second-order"],
+        q=q,
+        qd=qd,
+        qdd=qdd,
+        t=t,
+        params=params,
+        momenta=[sp.diff(L, v) for v in qd],
+        euler_raw=[],
+        euler=[],
+        time_dependent=sp.simplify(sp.diff(L, t)) != 0,
+        names=names,
     )
-    if n > 1:
-        report.features.append("ode:system")
-    if not time_dependent:
-        report.features += ["lagrangian:time-independent", "ode:autonomous"]
+    n = d.n
+    d.euler_raw = [sp.expand(d.total_derivative(d.momenta[i]) - sp.diff(L, q[i])) for i in range(n)]
+    d.euler = [sp.simplify(e) for e in d.euler_raw]
 
-    # Accelerations from the Euler-Lagrange equations, when the mass matrix is invertible.
     mass = sp.Matrix(n, n, lambda i, j: sp.diff(L, qd[i], qd[j]))
-    solution: dict[sp.Symbol, sp.Expr] = {}
     if sp.simplify(mass.det()) != 0:
-        rest = sp.Matrix([e.subs({a: 0 for a in qdd}) for e in euler])
+        rest = sp.Matrix([e.subs({a: 0 for a in qdd}) for e in d.euler_raw])
         accel = mass.LUsolve(-rest)
-        solution = {qdd[i]: sp.simplify(accel[i]) for i in range(n)}
-        report.accelerations = [
-            NamedExpression(
-                coordinate=coordinates[i], latex=f"{show(qdd[i])} = {show(solution[qdd[i]])}"
-            )
-            for i in range(n)
-        ]
-    else:
-        report.notes.append(
-            "The mass matrix (second derivatives of L with respect to the velocities) is singular, so the "
-            "accelerations cannot be solved for uniquely: the system is constrained or degenerate."
-        )
+        d.solution = {qdd[i]: sp.simplify(accel[i]) for i in range(n)}
+    return d
+
+
+def check_equations(d: Derivation) -> list[Verification]:
+    """Independent numerical check of every derived equation (see `verify.euler_lagrange_check`)."""
+    return euler_lagrange_check(d.lagrangian, d.q, d.qd, d.qdd, d.t, d.euler)
+
+
+@dataclass
+class ConservedSearch:
+    items: list[tuple[ConservedQuantity, sp.Expr]] = field(default_factory=list)
+    tested: list[str] = field(default_factory=list)
+    features: list[str] = field(default_factory=list)
+
+
+def find_conserved(d: Derivation) -> ConservedSearch:
+    """Cyclic coordinates, energy and rotations, each verified on the equations of motion."""
+    L, q, qd, p, n, show = d.lagrangian, d.q, d.qd, d.momenta, d.n, d.show
+    coordinates = d.coordinates
+    out = ConservedSearch()
 
     def verify_conserved(quantity: sp.Expr) -> tuple[bool, Verification | None]:
-        if not solution:
+        if not d.solution:
             return False, None
-        derivative = D(quantity).subs(solution)
+        derivative = d.total_derivative(quantity).subs(d.solution)
         symbolic_zero = sp.simplify(derivative) == 0
         checked, agreed = numeric_check(derivative, sp.Integer(0))
         passed = checked >= 4 and agreed == checked
@@ -188,36 +221,42 @@ def analyze_lagrangian(
     for i in range(n):
         if sp.simplify(sp.diff(L, q[i])) == 0:
             ok, ver = verify_conserved(p[i])
-            report.conserved.append(
-                ConservedQuantity(
-                    name=f"Momentum conjugate to {coordinates[i]}",
-                    kind="cyclic",
-                    expression_latex=f"p_{{{sp.latex(q[i])}}} = {show(p[i])}",
-                    reason=f"{coordinates[i]} is cyclic: L does not depend on it, so dp/dt = dL/dq = 0",
-                    verified=ok,
-                    verification=ver,
+            out.items.append(
+                (
+                    ConservedQuantity(
+                        name=f"Momentum conjugate to {coordinates[i]}",
+                        kind="cyclic",
+                        expression_latex=f"p_{{{sp.latex(q[i])}}} = {show(p[i])}",
+                        reason=f"{coordinates[i]} is cyclic: L does not depend on it, so dp/dt = dL/dq = 0",
+                        verified=ok,
+                        verification=ver,
+                    ),
+                    p[i],
                 )
             )
-            report.features.append("lagrangian:cyclic")
-    if "lagrangian:cyclic" not in report.features:
-        report.tested.append("cyclic coordinates: none (every coordinate appears in L)")
+            out.features.append("lagrangian:cyclic")
+    if "lagrangian:cyclic" not in out.features:
+        out.tested.append("cyclic coordinates: none (every coordinate appears in L)")
 
     # 2. Energy.
-    if not time_dependent:
+    if not d.time_dependent:
         energy = sp.expand(sum(qd[i] * p[i] for i in range(n)) - L)
         ok, ver = verify_conserved(energy)
-        report.conserved.append(
-            ConservedQuantity(
-                name="Energy function",
-                kind="energy",
-                expression_latex=f"h = {show(energy)}",
-                reason="L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved",
-                verified=ok,
-                verification=ver,
+        out.items.append(
+            (
+                ConservedQuantity(
+                    name="Energy function",
+                    kind="energy",
+                    expression_latex=f"h = {show(energy)}",
+                    reason="L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved",
+                    verified=ok,
+                    verification=ver,
+                ),
+                energy,
             )
         )
     else:
-        report.tested.append("energy function: not conserved (L depends explicitly on time)")
+        out.tested.append("energy function: not conserved (L depends explicitly on time)")
 
     # 3. Rotations of coordinate pairs.
     found_rotation = False
@@ -232,27 +271,102 @@ def analyze_lagrangian(
         if sp.simplify(delta) == 0:
             charge = sp.simplify(p[i] * xi[i] + p[j] * xi[j])
             ok, ver = verify_conserved(charge)
-            report.conserved.append(
-                ConservedQuantity(
-                    name=f"Rotation symmetry in the ({coordinates[i]}, {coordinates[j]}) plane",
-                    kind="rotation",
-                    expression_latex=f"Q = {show(charge)}",
-                    reason=(
-                        f"L is unchanged by rotating ({coordinates[i]}, {coordinates[j]}) as Cartesian "
-                        "coordinates, so by Noether's theorem Q = Σ p ξ is conserved"
+            out.items.append(
+                (
+                    ConservedQuantity(
+                        name=f"Rotation symmetry in the ({coordinates[i]}, {coordinates[j]}) plane",
+                        kind="rotation",
+                        expression_latex=f"Q = {show(charge)}",
+                        reason=(
+                            f"L is unchanged by rotating ({coordinates[i]}, {coordinates[j]}) as Cartesian "
+                            "coordinates, so by Noether's theorem Q = Σ p ξ is conserved"
+                        ),
+                        verified=ok,
+                        verification=ver,
                     ),
-                    verified=ok,
-                    verification=ver,
+                    charge,
                 )
             )
             found_rotation = True
     if found_rotation:
-        report.features.append("lagrangian:rotation")
+        out.features.append("lagrangian:rotation")
     if n > 1 and not found_rotation:
-        report.tested.append(
+        out.tested.append(
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged"
         )
+    return out
 
+
+def analyze_lagrangian(
+    latex: str,
+    coordinates: list[str],
+    time: str,
+    assumptions: dict[str, list[str]],
+    limits: Limits,
+) -> LagrangianReport:
+    try:
+        d = derive(latex, coordinates, time, assumptions, limits)
+    except DerivationError as exc:
+        return _fail(exc.status, exc.message)
+    q, qdd, p, n, show = d.q, d.qdd, d.momenta, d.n, d.show
+
+    checks = check_equations(d)
+    if not all(c.passed for c in checks):
+        failed = [coordinates[i] for i, c in enumerate(checks) if not c.passed]
+        return LagrangianReport(
+            status=Status.NOT_VERIFIED,
+            lagrangian_latex=show(d.lagrangian),
+            coordinates=coordinates,
+            message=(
+                "The derived equations of motion for "
+                + ", ".join(failed)
+                + " could not be confirmed by numerical differentiation of L, so they are not "
+                "shown. Declaring assumptions (real, positive) on the symbols can help."
+            ),
+        )
+
+    report = LagrangianReport(
+        status=Status.OK,
+        lagrangian_latex=show(d.lagrangian),
+        coordinates=coordinates,
+        parameters=[s.name for s in d.params],
+        time_dependent=d.time_dependent,
+        equations=[
+            EquationOfMotion(
+                coordinate=coordinates[i], latex=f"{show(d.euler[i])} = 0", verification=checks[i]
+            )
+            for i in range(n)
+        ],
+        momenta=[
+            NamedExpression(
+                coordinate=coordinates[i], latex=f"p_{{{sp.latex(q[i])}}} = {show(p[i])}"
+            )
+            for i in range(n)
+        ],
+        features=["lagrangian", f"lagrangian:dof:{min(n, 4)}", "ode:second-order"],
+    )
+    if n > 1:
+        report.features.append("ode:system")
+    if not d.time_dependent:
+        report.features += ["lagrangian:time-independent", "ode:autonomous"]
+
+    if d.solution:
+        report.accelerations = [
+            NamedExpression(
+                coordinate=coordinates[i], latex=f"{show(qdd[i])} = {show(d.solution[qdd[i]])}"
+            )
+            for i in range(n)
+        ]
+    else:
+        report.notes.append(
+            "The mass matrix (second derivatives of L with respect to the velocities) is singular, so the "
+            "accelerations cannot be solved for uniquely: the system is constrained or degenerate."
+        )
+
+    search = find_conserved(d)
+    report.conserved = [item for item, _ in search.items]
+    report.tested += search.tested
+    report.features += search.features
     if not report.conserved:
         report.features.append("lagrangian:no-symmetry-found")
     report.notes.append(
@@ -262,7 +376,7 @@ def analyze_lagrangian(
     )
     unverified = [c for c in report.conserved if not c.verified]
     report.message = (
-        f"{n} equation{'s' if n > 1 else ''} of motion; "
+        f"{n} equation{'s' if n > 1 else ''} of motion, each confirmed by numerical differentiation; "
         f"{len(report.conserved) - len(unverified)} verified constant"
         f"{'' if len(report.conserved) - len(unverified) == 1 else 's'} of motion"
         + (f", {len(unverified)} not verified" if unverified else "")

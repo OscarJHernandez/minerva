@@ -16,6 +16,7 @@ from typing import Any
 from minerva_engine import (
     Engine,
     ExpressionInput,
+    MotionRequest,
     QuantitySpec,
     TensorInput,
     TensorSpec,
@@ -91,6 +92,10 @@ class LagrangianArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class MotionArgs(MotionRequest):
+    """Arguments of integrate_motion: the engine's own request model (also the JSON schema)."""
 
 
 class DimensionalArgs(BaseModel):
@@ -284,7 +289,17 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
         tool="analyze_lagrangian",
         type="lagrangian",
         title="Lagrangian",
-        data={"report": report.model_dump(mode="json"), "methods": method_data},
+        data={
+            "report": report.model_dump(mode="json"),
+            "methods": method_data,
+            # What was analysed, so the card's numerical-solution form can resend exactly this.
+            "request": {
+                "lagrangian": args.lagrangian,
+                "coordinates": args.coordinates,
+                "time": args.time,
+                "assumptions": args.assumptions,
+            },
+        },
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
@@ -303,12 +318,72 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
         known.append(c.expression_latex)
     lines.extend(f"tested, not found: {t}" for t in report.tested)
     lines.extend(f"note: {n}" for n in report.notes)
+    if report.accelerations:
+        needed = ", ".join(report.parameters) or "none"
+        lines.append(
+            "next step: integrate_motion solves these numerically and verifies the run. Ask the user for "
+            f"values of the parameters ({needed}), the initial positions and velocities and the time span; "
+            "do not choose them. One parameter may be swept over 2-6 values. The card has a form for this."
+        )
     if method_data:
         lines.append(
             "handbook methods: "
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
+def _motion_summary(report: Any) -> list[str]:
+    lines: list[str] = []
+    values = ", ".join(f"{k}={v:g}" for k, v in report.parameters.items()) or "no parameters"
+    lines.append(
+        f"values as read: {values}; q(0)={report.initial_positions}; qdot(0)={report.initial_velocities}; "
+        f"t from {report.t_start:g} to {report.t_end:g}"
+        + (f"; sweeping {report.sweep_name}" if report.sweep_name else "")
+    )
+    for run in report.runs:
+        label = (
+            f"{report.sweep_name}={run.parameter_value:g}"
+            if run.parameter_value is not None
+            else "run"
+        )
+        v = run.verification
+        if run.status.value == "ok":
+            ranges = "; ".join(
+                f"{name}: min {min(row):.4g}, max {max(row):.4g}, final {row[-1]:.4g}"
+                for name, row in zip(report.coordinates, run.q, strict=True)
+            )
+            lines.append(
+                f"- {label}: ok; {ranges}; verified: method difference {v.method_difference:.1e}, "
+                f"reversal error {v.reversal_error:.1e}, constants of motion followed {v.drift_checked}"
+                + (f", max drift {v.max_drift:.1e}" if v.max_drift is not None else "")
+            )
+        else:
+            lines.append(f"- {label}: {run.status.value}; {run.message}")
+    return lines
+
+
+def run_motion(args: MotionArgs, ctx: ToolContext) -> ToolOutput:
+    report = ctx.engine.integrate_motion(args)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="integrate_motion",
+        type="motion",
+        title="Numerical solution",
+        data={"report": report.model_dump(mode="json"), "request": args.model_dump(mode="json")},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = []
+    if report.lagrangian_latex:
+        lines.append(f"Lagrangian: ${report.lagrangian_latex}$")
+        known.append(report.lagrangian_latex)
+    for a in report.accelerations:
+        lines.append(f"acceleration: ${a}$")
+        known.append(a)
+    if report.runs:
+        lines.extend(_motion_summary(report))
+    lines.extend(f"note: {n}" for n in report.notes)
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
@@ -510,6 +585,15 @@ TOOLS: dict[str, Tool] = {
             "coordinates, energy, rotations). States which symmetries were not searched for.",
             LagrangianArgs,
             run_lagrangian,
+        ),
+        Tool(
+            "integrate_motion",
+            "Solve the equations of motion of a Lagrangian numerically for given parameter values, initial "
+            "conditions and time span, optionally sweeping one parameter over 2-6 values. Every run is "
+            "verified (second method, time reversal, constants of motion) and shown only if it passes. "
+            "Never choose the numbers yourself: ask the user.",
+            MotionArgs,
+            run_motion,
         ),
         Tool(
             "dimensional_analysis",
