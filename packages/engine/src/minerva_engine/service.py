@@ -10,6 +10,7 @@ from .differentiate import DifferentiateResult, DiffVariable
 from .lagrangian import LagrangianReport
 from .models import (
     ExpressionInput,
+    FormulaReading,
     IdentitiesResult,
     Limits,
     Rule,
@@ -118,6 +119,16 @@ class Engine:
                 ClaimCheck(status="unverified", detail="check did not complete") for _ in formulas
             ]
         return [ClaimCheck(**r) for r in outcome.value["results"]]
+
+    def read_formulas(self, formulas: list[str]) -> list[FormulaReading]:
+        """Show how the strict parser reads formulas transcribed from an image (sandboxed)."""
+        if not formulas:
+            return []
+        outcome, _ = self._run("read_formulas", {"formulas": formulas})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return [FormulaReading(status=status, message=message) for _ in formulas]
+        return [FormulaReading(**r) for r in outcome.value["results"]]
 
     def solve(
         self,

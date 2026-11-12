@@ -285,6 +285,7 @@ export function ChatApp() {
           )}
           <Composer
             disabled={!status}
+            imagesEnabled={status?.images === true}
             busy={busy}
             onSend={send}
             onStop={() => abortRef.current?.abort()}

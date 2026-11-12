@@ -18,6 +18,7 @@ from sqlalchemy import text
 from . import routers_auth, routers_chat, routers_compute, routers_history, routers_reference
 from .agent.llm import LLMClient, OllamaClient
 from .agent.scripted import ScriptedLLM
+from .agent.vision import FormulaReader, OllamaFormulaReader, ScriptedFormulaReader
 from .db import Base, make_engine, make_session_factory
 from .logging import configure_logging, get_logger
 from .security import RateLimiter
@@ -37,6 +38,16 @@ def _make_llm(settings: Settings) -> LLMClient | None:
         )
     if settings.llm_mode == "scripted":
         return ScriptedLLM()
+    return None
+
+
+def _make_vision(settings: Settings) -> FormulaReader | None:
+    if settings.llm_mode == "ollama" and settings.llm_vision_model:
+        return OllamaFormulaReader(
+            settings.llm_base_url, settings.llm_vision_model, settings.llm_timeout_seconds
+        )
+    if settings.llm_mode == "scripted":
+        return ScriptedFormulaReader()
     return None
 
 
@@ -63,6 +74,7 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
             )
         )
         app.state.llm = _make_llm(settings)
+        app.state.vision = _make_vision(settings)
         await run_in_threadpool(app.state.engine.warm_up)
         log.info("startup", status="ready")
         yield
