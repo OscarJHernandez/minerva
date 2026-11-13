@@ -34,6 +34,51 @@ def _benchmark() -> int:
     return 1 if report.failures or chains.failures else 0
 
 
+def _step_benchmark(argv: list[str]) -> int:
+    """Controlled-transformation cases. `--adapter existing|steps`, `--repeat N` and `--timing` for the
+    local latency run, `--write-baseline` to record the existing functionality's pass/fail."""
+    from minerva_engine import Engine, Limits
+
+    from .kb import KnowledgeBase
+    from .loader import DATA_DIR
+    from .step_benchmark import (
+        ADAPTERS,
+        BASELINE_FILE,
+        baseline_json,
+        format_step_report,
+        run_step_benchmark,
+    )
+
+    def option(name: str, default: str) -> str:
+        return (
+            argv[argv.index(name) + 1]
+            if name in argv and argv.index(name) + 1 < len(argv)
+            else default
+        )
+
+    adapter = option("--adapter", "steps" if "steps" in ADAPTERS else "existing")
+    if adapter not in ADAPTERS:
+        print(f"unknown adapter {adapter!r}; choose from {sorted(ADAPTERS)}", file=sys.stderr)
+        return 2
+    repeat = int(option("--repeat", "1"))
+    timing = "--timing" in argv or repeat > 1
+    kb = KnowledgeBase.load()
+    engine = Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    report = run_step_benchmark(kb, engine, adapter, repeat=repeat)
+    print(format_step_report(report, timing=timing))
+    if "--write-baseline" in argv:
+        if adapter != "existing":
+            print(
+                "the baseline records the existing functionality: use --adapter existing",
+                file=sys.stderr,
+            )
+            return 2
+        (DATA_DIR / BASELINE_FILE).write_text(baseline_json(report), encoding="utf-8")
+        print(f"wrote {BASELINE_FILE}")
+        return 0
+    return 1 if report.failures and adapter == "steps" else 0
+
+
 def _generate(check: bool) -> int:
     from minerva_engine import Engine, Limits
 
@@ -63,11 +108,15 @@ def main(argv: list[str]) -> int:
     command = argv[0] if argv else "verify"
     if command == "benchmark":
         return _benchmark()
+    if command == "step-benchmark":
+        return _step_benchmark(argv[1:])
     if command == "generate":
         return _generate(check="--check" in argv[1:])
     if command != "verify":
         print(
-            "usage: python -m minerva_knowledge verify | benchmark | generate [--check]",
+            "usage: python -m minerva_knowledge verify | benchmark | "
+            "step-benchmark [--adapter existing|steps] [--repeat N] [--timing] [--write-baseline] | "
+            "generate [--check]",
             file=sys.stderr,
         )
         return 2
