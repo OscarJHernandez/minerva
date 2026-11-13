@@ -120,3 +120,28 @@ describe("Composer: multiline editing", () => {
     expect(area.style.height).toBe("150px");
   });
 });
+
+// jsdom has no layout, so these pin the classes that fixed two alignment bugs seen in a browser:
+// a square focus outline drawn by the global `:focus-visible` rule inside the rounded composer
+// outline, and the footer buttons starting 5px right of the message text.
+describe("Composer: layout guards", () => {
+  it("keeps the textarea's own focus outline off (the container draws the only one)", () => {
+    render(<Composer {...props} />);
+    expect(screen.getByLabelText("Message")).toHaveClass("outline-none!");
+    expect(screen.getByLabelText("Message").parentElement).toHaveClass(
+      "focus-within:outline",
+      "rounded-2xl",
+    );
+  });
+
+  it("puts the controls and Send in one footer row with equal inset", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const footer = screen.getByRole("button", { name: "Send" }).parentElement;
+    expect(footer).toHaveClass("flex", "items-center", "px-2", "pb-2");
+    for (const name of ["Insert a formula", "Add image", "Send"]) {
+      expect(screen.getByRole("button", { name }).parentElement).toBe(footer);
+      expect(screen.getByRole("button", { name })).toHaveClass("h-9");
+    }
+    expect(screen.getByRole("button", { name: "Insert a formula" })).toHaveClass("-ml-1");
+  });
+});
