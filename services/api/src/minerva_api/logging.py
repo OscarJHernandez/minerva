@@ -130,6 +130,10 @@ ALLOWED_FIELDS = frozenset(
         "evidence_pct",
         "stop_reason",
         "events_dropped",
+        # matrix calculus: enums only, never names, entries or expressions
+        "matrix_method",
+        "result_kind",
+        "commutation",
     }
 )
 

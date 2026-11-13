@@ -79,6 +79,39 @@ def _benchmark(args: list[str] | None = None) -> int:
     return 1 if report.failures or chains.failures or distributions else 0
 
 
+def _matrix_benchmark(args: list[str]) -> int:
+    from pathlib import Path
+
+    from minerva_engine import Engine, Limits
+
+    from .matrix_benchmark import (
+        convergence_line,
+        format_markdown,
+        format_report,
+        run_matrix_benchmark,
+        write_section,
+    )
+
+    def option(name: str, default: str) -> str:
+        return args[args.index(name) + 1] if name in args else default
+
+    repeat = int(option("--repeat", "1"))
+    engine = Engine(Limits(timeout_seconds=20, max_concurrency=2))
+    report = run_matrix_benchmark(engine, repeat=repeat)
+    print(format_report(report, trace="--trace" in args))
+    extra: list[str] = []
+    if "--convergence" in args:
+        extra = [convergence_line()]
+        print(extra[0])
+    if "--out" in args:
+        label = option("--section", "current")
+        write_section(
+            Path(option("--out", "")), label, format_markdown(report, label, repeat, extra)
+        )
+        print(f"\nwrote section '{label}' to {option('--out', '')}")
+    return 1 if report.failures or report.stale_pending else 0
+
+
 def _generate(check: bool) -> int:
     from minerva_engine import Engine, Limits
 
@@ -108,12 +141,16 @@ def main(argv: list[str]) -> int:
     command = argv[0] if argv else "verify"
     if command == "benchmark":
         return _benchmark(argv[1:])
+    if command == "matrix-benchmark":
+        return _matrix_benchmark(argv[1:])
     if command == "generate":
         return _generate(check="--check" in argv[1:])
     if command != "verify":
         print(
             "usage: python -m minerva_knowledge verify | benchmark [--only distributions] "
-            "[--json PATH] [--compare BASELINE.json] [--label NAME] | generate [--check]",
+            "[--json PATH] [--compare BASELINE.json] [--label NAME] | matrix-benchmark "
+            "[--repeat N] [--trace] [--convergence] [--section LABEL] [--out FILE] | "
+            "generate [--check]",
             file=sys.stderr,
         )
         return 2

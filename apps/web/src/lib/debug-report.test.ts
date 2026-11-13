@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { okDistributionIntegral } from "@/test/fixtures";
+import { matrixFrechet, okDistributionIntegral } from "@/test/fixtures";
 import type { StoredMessage, TraceEvent } from "./chat-types";
 import { sphere, sphereRequest } from "../test/geometry-fixtures";
 import {
@@ -459,5 +459,37 @@ describe("buildDebugReport, format 2", () => {
     expect(old).not.toContain("Timeline:");
     expect(old).not.toContain("- evidence:");
     expect(old).toContain("trace - · request req123");
+  });
+});
+
+describe("matrix cards in a debug report", () => {
+  it("states the method, evaluated flag, checks and the content-free diagnostics", () => {
+    const matrix: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        blocks: [
+          {
+            kind: "card",
+            segments: [],
+            card: {
+              id: "t1",
+              tool: "matrix_calculus",
+              type: "matrix",
+              title: "Matrix calculus",
+              data: { result: matrixFrechet, methods: [], request: {} as never },
+            },
+          },
+        ],
+      },
+    };
+    const report = buildDebugReport({ ...input, messages: [user, matrix] });
+    expect(report).toContain("- card: matrix");
+    expect(report).toContain(
+      "- method: exp_frechet_derivative; kind: representation; evaluated: false",
+    );
+    expect(report).toContain("- verification: numeric 4/4, exact leg true");
+    expect(report).toContain("trace req0123-card0123; tried [integrate_polynomial:no_match");
+    expect(report).toContain("fallbacks []");
   });
 });

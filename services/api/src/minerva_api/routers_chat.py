@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
+from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent
 from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
@@ -629,6 +629,15 @@ def _claim_context(
     return relations[-MAX_RELATIONS:], assumptions
 
 
+def _prior_matrices(messages: list[ChatMessage]) -> list[str]:
+    """Matrix names declared in earlier `matrix_calculus` calls of this conversation."""
+    steps: list[dict[str, Any]] = []
+    for m in messages[-HISTORY_MESSAGES:]:
+        if m.role != "user":
+            steps.extend(s for s in m.content.get("trace", []) if isinstance(s, dict))
+    return sorted(matrix_names(steps))
+
+
 def _title(text: str) -> str:
     """First words of the first message. Formulas keep their `$`, so the list can typeset them."""
     short = re.sub(r"\s+", " ", text).strip()[:60]
@@ -668,6 +677,7 @@ async def send_message(
     )
     history, prior_known, prior_quoted, prior_results = _history(previous)
     prior_relations, prior_assumptions = _claim_context(previous, body.content)
+    prior_matrices = _prior_matrices(previous)
     history.append({"role": "user", "content": body.content})
 
     if not previous:
@@ -718,6 +728,7 @@ async def send_message(
                 prior_quoted=prior_quoted,
                 prior_relations=prior_relations,
                 prior_assumptions=prior_assumptions,
+                prior_matrices=prior_matrices,
                 prior_results=prior_results,
                 info=info,
             ):

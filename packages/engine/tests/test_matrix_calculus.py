@@ -117,11 +117,16 @@ def test_derivative_of_a_scalar_function_in_the_exponent(engine: Engine) -> None
     assert r.result_latex is not None and r.result_latex.startswith("2 t A")
 
 
-def test_derivative_needing_a_time_ordered_exponential_is_unsupported(engine: Engine) -> None:
+def test_derivative_of_a_noncommuting_exponent_is_the_frechet_integral(engine: Engine) -> None:
     r = mc(engine, r"\exp(t^2 A + t B)", AB, action="differentiate", variable="t")
-    assert r.status is Status.UNSUPPORTED and r.result_latex is None
-    assert "not supported" in r.message
-    # declared commutation makes it a different problem, and a valid one
+    assert r.status is Status.OK and r.method == "exp_frechet_derivative"
+    # an integral representation: never presented as an evaluated matrix, never as X' exp(X)
+    assert r.result_kind == "representation" and not r.evaluated
+    assert r.result_latex is not None and r.result_latex.startswith(r"\int_0^1")
+    assert any(b.method == "exp_derivative" for b in r.blocked)
+    assert r.verification is not None and r.verification.passed
+    assert r.verification.symbolic_zero is True
+    # declared commutation makes it a different problem, with the familiar answer
     r = mc(
         engine,
         r"\exp(t^2 A + t B)",
@@ -130,7 +135,8 @@ def test_derivative_needing_a_time_ordered_exponential_is_unsupported(engine: En
         variable="t",
         commuting=[("A", "B")],
     )
-    assert r.status is Status.OK
+    assert r.status is Status.OK and r.method == "exp_derivative"
+    assert r.result_kind == "expression" and r.evaluated
 
 
 # -- 4, 5: integration of one exponential -----------------------------------------------------

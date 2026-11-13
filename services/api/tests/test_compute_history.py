@@ -1,4 +1,7 @@
+import json
+
 from fastapi.testclient import TestClient
+from minerva_api.logging import ALLOWED_FIELDS
 
 from .conftest import PASSWORD, build_app, register
 
@@ -471,6 +474,126 @@ def test_matrix_calculus_logs_no_user_input(capsys) -> None:  # type: ignore[no-
         )
     out = capsys.readouterr().out
     assert "compute" in out and marker not in out
+
+
+# -- matrix calculus: Frechet derivative, Duhamel integral, evolution operator, diagnostics ---------
+def test_matrix_frechet_derivative_and_trace_id(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp(t^2 A + t B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "differentiate",
+            "variable": "t",
+            "trace_id": "client-supplied-id",  # never accepted from the client
+        },
+    )
+    body = r.json()
+    assert body["status"] == "ok" and body["method"] == "exp_frechet_derivative"
+    assert body["result_kind"] == "representation" and body["evaluated"] is False
+    assert body["blocked"] and body["verification"]["passed"] is True
+    diagnostics = body["diagnostics"]
+    assert diagnostics["trace_id"] == r.headers["X-Request-ID"] != "client-supplied-id"
+    assert diagnostics["method"] == "exp_frechet_derivative"
+    assert [m["id"] for m in diagnostics["methods_tried"]][-1] == "exp_frechet_derivative"
+
+
+def test_matrix_duhamel_and_time_dependent_requests(authed: TestClient) -> None:
+    mats = [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp((t-s)A) B \exp(sA)",
+            "matrices": mats,
+            "commuting": [["A", "B"]],
+            "action": "integrate",
+            "variable": "s",
+            "lower": "0",
+            "upper": "t",
+        },
+    ).json()
+    assert r["status"] == "ok" and r["method"] == "duhamel" and r["result_kind"] == "expression"
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp(A(t))",
+            "matrices": [{"name": "A", "rows": 2, "depends_on": "t"}],
+            "self_commuting": ["A"],
+            "action": "differentiate",
+            "variable": "t",
+        },
+    ).json()
+    assert r["status"] == "ok" and r["method"] == "exp_derivative"
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"A(t)",
+            "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+            "action": "evolve",
+            "variable": "t",
+            "upper": "1",
+            "save": True,
+        },
+    ).json()
+    assert r["status"] == "ok" and r["result_kind"] == "numeric" and r["evaluated"] is False
+    assert r["verification"]["symbolic_zero"] is None  # never described as proved
+    assert r["diagnostics"]["verification"] == "rk4+backward+liouville"
+    item = next(i for i in authed.get("/v1/history").json() if i["id"] == r["calculation_id"])
+    assert item["result"]["request"]["action"] == "evolve"
+    assert "trace_id" not in item["result"]["request"]
+    # the end of the span is never chosen for the user
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"A(t)",
+            "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+            "action": "evolve",
+            "variable": "t",
+        },
+    ).json()
+    assert r["status"] == "unsupported" and "end time" in r["message"]
+
+
+def test_matrix_calculus_checks_links_like_the_other_operations(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": "A",
+            "matrices": [{"name": "A", "rows": 2}],
+            "save": True,
+            "derivation_id": "00000000-0000-0000-0000-000000000000",
+        },
+    )
+    assert r.status_code in (404, 422)
+
+
+def test_matrix_calculus_logs_diagnostic_counters_only(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzDIAGMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        response = c.post(
+            "/v1/compute/matrix",
+            json={
+                "input": f"exp(t**2*{marker} + t*B)",
+                "format": "text",
+                "matrices": [{"name": marker, "rows": 2}, {"name": "B", "rows": 2}],
+                "action": "differentiate",
+                "variable": "t",
+            },
+        )
+    out = capsys.readouterr().out
+    assert response.json()["status"] == "ok" and marker not in out
+    compute = next(
+        json.loads(line)
+        for line in out.splitlines()
+        if line.startswith("{") and '"event": "compute"' in line
+    )
+    assert compute["matrix_method"] == "exp_frechet_derivative"
+    assert compute["result_kind"] == "representation" and compute["commutation"] == "not_used"
+    assert compute["trace_id"] == response.headers["X-Request-ID"]
+    assert isinstance(compute["verify_ms"], int)
+    assert set(compute) <= ALLOWED_FIELDS
 
 
 def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type: ignore[no-untyped-def]

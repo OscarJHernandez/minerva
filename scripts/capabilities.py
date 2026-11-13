@@ -480,6 +480,7 @@ def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
         matrices=spec["matrices"],
         commuting=[tuple(p) for p in spec.get("commuting", [])],
         invertible=spec.get("invertible", []),
+        self_commuting=spec.get("self_commuting", []),
         action=spec["action"],
         variable=spec.get("variable"),
         lower=spec.get("lower"),
@@ -496,7 +497,8 @@ def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
             "explicit": "Result",
             "expression": "Result",
             "equation": "Equation (not an evaluated integral)",
-            "representation": "Exact representation (not an evaluated integral)",
+            "representation": "Exact representation (not evaluated)",
+            "numeric": "Numerical approximation (not a closed form)",
         }[r.result_kind or "expression"]
         if r.result_latex:
             outputs.append({"label": heading, "latex": r.result_latex})

@@ -8,8 +8,11 @@ verification passed, and an equation or a representation is never presented as a
 
 from __future__ import annotations
 
+import re
 import time
+from dataclasses import dataclass, field
 from itertools import combinations
+from typing import Literal
 
 import sympy as sp
 
@@ -31,31 +34,147 @@ from .models import (
     MatrixBlocked,
     MatrixCalculusInput,
     MatrixCalculusResult,
+    MatrixDiagnostics,
+    MatrixMethodTried,
+    MatrixStage,
     MatrixVerification,
 )
-from .verify import Evaluator, Setup
+from .verify import Evaluator, Setup, Telemetry, start_telemetry
 
 DEADLINE_FRACTION = 0.8
 RESULT_CHARS = 20_000
 
 
+@dataclass
+class _Trace:
+    """What the diagnostics need to know about a computation while it is running."""
+
+    started: float
+    record: Telemetry
+    problem: Problem | None = None
+    labels: dict[str, str] = field(default_factory=dict)
+    outcome: Outcome | None = None
+    parse_s: float | None = None
+    select_s: float | None = None
+
+
 def matrix_calculus(data: MatrixCalculusInput, limits: Limits) -> MatrixCalculusResult:
     started = time.monotonic()
+    trace = _Trace(started, start_telemetry())
     deadline = started + DEADLINE_FRACTION * limits.timeout_seconds
     try:
-        return _run(data, limits, deadline)
+        result = _run(data, limits, deadline, trace)
     except LimitError as exc:
-        return _fail(data, Status.RESOURCE_LIMIT, str(exc))
+        result = _fail(data, Status.RESOURCE_LIMIT, str(exc))
     except (UnsupportedMatrixExpression, UnsupportedInput) as exc:
-        return _fail(data, Status.UNSUPPORTED, str(exc))
+        result = _fail(data, Status.UNSUPPORTED, str(exc))
     except MinervaMathError as exc:
-        return _fail(data, Status.PARSE_ERROR, str(exc))
+        result = _fail(data, Status.PARSE_ERROR, str(exc))
     except RecursionError:
-        return _fail(data, Status.RESOURCE_LIMIT, "The expression is nested too deeply.")
+        result = _fail(data, Status.RESOURCE_LIMIT, "The expression is nested too deeply.")
+    result.diagnostics = _diagnostics(data, result, trace)
+    return result
 
 
 def _fail(data: MatrixCalculusInput, status: Status, message: str) -> MatrixCalculusResult:
     return MatrixCalculusResult(status=status, action=data.action, message=message)
+
+
+# -- diagnostics ------------------------------------------------------------------------------
+VERIFICATION_IDS = {
+    "exp_explicit": "expm_samples",
+    "exp_merge_commuting": "expm_samples+series",
+    "exp_derivative": "central_difference+series",
+    "exp_frechet_derivative": "central_difference+quadrature+series",
+    "integrate_polynomial": "quadrature+series",
+    "exp_integral_invertible": "central_difference+series",
+    "duhamel": "quadrature+series",
+    "sylvester_reduction": "quadrature+residual",
+    "block_exponential": "quadrature+residual",
+    "sylvester_equation": "quadrature+series",
+    "evolution_commuting": "central_difference+initial_condition+series",
+    "evolution_numeric": "rk4+backward+liouville",
+}
+
+
+def _failure_code(result: MatrixCalculusResult) -> str | None:
+    status = result.status
+    if status is Status.OK:
+        return None
+    if status is Status.RESOURCE_LIMIT:
+        text = result.message.lower()
+        return "time_budget" if "time" in text else "size_limit"
+    if status is Status.NOT_VERIFIED:
+        return (
+            "exact_disagreement"
+            if result.verification and (result.verification.symbolic_zero is False)
+            else "numeric_disagreement"
+        )
+    return status.value
+
+
+def _source(
+    statements: list[str], labels: dict[str, str]
+) -> Literal["not_used", "declared", "from_entries", "mixed"]:
+    return _source_kind({labels[a] for a in statements if a in labels})
+
+
+def _source_kind(kinds: set[str]) -> Literal["not_used", "declared", "from_entries", "mixed"]:
+    if kinds == {"declared"}:
+        return "declared"
+    if kinds == {"from the entries"}:
+        return "from_entries"
+    return "mixed" if kinds else "not_used"
+
+
+def _diagnostics(
+    data: MatrixCalculusInput, result: MatrixCalculusResult, trace: _Trace
+) -> MatrixDiagnostics:
+    now = time.monotonic()
+    record = trace.record
+    verify_s = record.numeric_s + record.exact_s
+    stages: list[MatrixStage] = []
+    if trace.parse_s is not None:
+        stages.append(MatrixStage(name="parse", ms=round(trace.parse_s * 1000, 2)))
+    if trace.select_s is not None:
+        transform = max(0.0, trace.select_s - verify_s)
+        stages.append(MatrixStage(name="transform", ms=round(transform * 1000, 2)))
+        stages.append(MatrixStage(name="verify_numeric", ms=round(record.numeric_s * 1000, 2)))
+        stages.append(MatrixStage(name="verify_exact", ms=round(record.exact_s * 1000, 2)))
+    stages.append(MatrixStage(name="total", ms=round((now - trace.started) * 1000, 2)))
+    p = trace.problem
+    used_shapes = sorted({p.setup.shapes[n] for n in matrices_in(p.terms)}) if p is not None else []
+    assumptions = list(result.assumptions_used)
+    labelled = [a.rsplit(" (", 1)[0] for a in assumptions]
+    invertible = {
+        "from the entries" if a.endswith("(from the entries)") else "declared"
+        for a in assumptions
+        if "is invertible (" in a
+    }
+    v = result.verification
+    return MatrixDiagnostics(
+        trace_id=data.trace_id,
+        method=result.method,
+        methods_tried=[
+            MatrixMethodTried(id=m, outcome=o)
+            for m, o in (p.scratch.get("tried", []) if p is not None else [])
+        ],
+        dimensions=used_shapes,
+        matrices=len(data.matrices),
+        explicit=sum(1 for d in data.matrices if d.entries is not None),
+        time_dependent=len(p.setup.dependent) if p is not None else 0,
+        commutation=_source(labelled, trace.labels),
+        invertibility=_source_kind(invertible),
+        stages=stages,
+        digits=record.digits,
+        tolerance=record.tolerance,
+        max_residual=record.max_residual,
+        points_checked=v.points_checked if v else 0,
+        points_agreed=v.points_agreed if v else 0,
+        verification=VERIFICATION_IDS.get(result.method or "", "") if v else "",
+        fallbacks=list(record.fallbacks),
+        failure_reason=_failure_code(result),
+    )
 
 
 def _parse_scalar(
@@ -75,7 +194,9 @@ def _parse_scalar(
     return expr
 
 
-def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCalculusResult:
+def _run(
+    data: MatrixCalculusInput, limits: Limits, deadline: float, trace: _Trace
+) -> MatrixCalculusResult:
     from ..ops import parse_expression  # local import: ops imports this package lazily
 
     names = [d.name for d in data.matrices]
@@ -97,20 +218,23 @@ def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCa
             )
     shapes = {d.name: d.shape for d in data.matrices}
 
-    expr = parse_expression(data.expression, limits, noncommutative=names)
+    dependent = _dependent(data, explicit)
+    source = _time_arguments(data, dependent)
+    expr = parse_expression(source, limits, noncommutative=names)
     terms = to_terms(expr, nameset)
     shape = shape_of(terms, shapes)
     used = matrices_in(terms)
 
-    comm, labels, cliques = _commutation(data, explicit, shapes)
-    invertible = _invertible(data, explicit, shapes)
-
-    var, lower, upper = _variable_and_bounds(data, limits, nameset, terms, explicit)
+    var, lower, upper = _variable_and_bounds(data, limits, nameset, terms, explicit, dependent)
     if lower is not None and upper is not None and lower == upper:
         raise ParseError("the two bounds are equal")
+    comm, labels, cliques = _commutation(data, explicit, shapes, dependent, var)
+    invertible = _invertible(data, explicit, shapes)
 
     symbols = _scalar_symbols(terms, explicit, [x for x in (lower, upper) if x is not None], var)
-    setup = Setup(shapes, explicit, comm, cliques)
+    setup = Setup(shapes, explicit, comm, cliques, var, frozenset(dependent & used))
+    trace.labels = labels
+    trace.parse_s = time.monotonic() - trace.started
     problem = Problem(
         data.action,
         terms,
@@ -123,7 +247,11 @@ def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCa
         upper,
         deadline,
     )
+    trace.problem = problem
+    selecting = time.monotonic()
     method, attempt, blocked, reason = select(problem)
+    trace.select_s = time.monotonic() - selecting
+    trace.outcome = attempt.outcome
     base = MatrixCalculusResult(
         status=Status.OK,
         action=data.action,
@@ -213,14 +341,29 @@ def _with_outcome(
     if any(s != p.var for s in p.ev.symbols):
         assumptions.append("scalar symbols are complex unless declared otherwise")
     if p.var is not None:
-        assumptions.append(f"all matrices are constant in {to_latex(p.var)}")
+        moving = sorted(p.setup.dependent)
+        fixed = sorted(matrices_in(p.terms) - p.setup.dependent)
+        if moving:
+            assumptions.append(
+                f"{', '.join(moving)} {'depends' if len(moving) == 1 else 'depend'} on "
+                f"{to_latex(p.var)}"
+            )
+        if fixed:
+            assumptions.append(
+                f"{', '.join(fixed)} {'is' if len(fixed) == 1 else 'are'} constant in "
+                f"{to_latex(p.var)}"
+            )
     message = {
         "explicit": "Evaluated and verified.",
         "expression": "Transformed and verified.",
         "equation": "Reduced to a verified equation; the integral itself was not evaluated.",
         "representation": (
-            "Written exactly through a block-matrix exponential and verified; "
+            "Written exactly (for example through a block-matrix exponential or an integral) and verified; "
             "it is a representation, not an evaluated result."
+        ),
+        "numeric": (
+            "Computed numerically on the stated span and verified by independent checks; this is "
+            "a numerical approximation, not a closed form."
         ),
     }[outcome.kind]
     return common.model_copy(
@@ -250,6 +393,8 @@ def _commutation(
     data: MatrixCalculusInput,
     explicit: dict[str, sp.Matrix],
     shapes: dict[str, tuple[int, int]],
+    dependent: set[str],
+    var: sp.Symbol | None,
 ) -> tuple[Commutation, dict[str, str], list[list[str]]]:
     declared: set[frozenset[str]] = set()
     for a, b in data.commuting:
@@ -265,7 +410,7 @@ def _commutation(
         labels[f"{x}{y} = {y}{x}"] = "declared"
     for x, y in combinations(sorted(explicit), 2):
         diff = (
-            explicit[x] * explicit[y] - explicit[y] * explicit[x]
+            _commutator_at_all_times(explicit, x, y, dependent, var)
             if shapes[x] == shapes[y]
             else None
         )
@@ -292,7 +437,107 @@ def _commutation(
         if len({shapes[n] for n in group}) != 1 or shapes[group[0]][0] != shapes[group[0]][1]:
             raise ParseError("matrices declared to commute must be square and of the same size")
         cliques.append(sorted(group))
-    return Commutation(frozenset(pairs)), labels, cliques
+    selfs = _self_commuting(data, explicit, dependent, var, labels)
+    return Commutation(frozenset(pairs), selfs), labels, cliques
+
+
+def _commutator_at_all_times(
+    explicit: dict[str, sp.Matrix],
+    x: str,
+    y: str,
+    dependent: set[str],
+    var: sp.Symbol | None,
+) -> sp.Matrix:
+    """[X, Y] for explicit matrices. A time-dependent matrix is compared at two different times,
+    because the derivative of a commutator that vanishes only at equal times need not vanish."""
+    other = sp.Dummy("tau")
+    right = explicit[y]
+    if var is not None and x in dependent and y in dependent:
+        right = right.subs(var, other)
+    return explicit[x] * right - right * explicit[x]
+
+
+def _self_commuting(
+    data: MatrixCalculusInput,
+    explicit: dict[str, sp.Matrix],
+    dependent: set[str],
+    var: sp.Symbol | None,
+    labels: dict[str, str],
+) -> frozenset[str]:
+    out: set[str] = set()
+    for name in data.self_commuting:
+        if name not in dependent:
+            raise ParseError(
+                f"{name} is not a time-dependent matrix, so it has no self-commutation"
+            )
+        out.add(name)
+        labels[f"{name}(t1) {name}(t2) = {name}(t2) {name}(t1) at all times"] = "declared"
+    for name in sorted(dependent & set(explicit)):
+        if var is None:
+            continue
+        other = sp.Dummy("tau")
+        shifted = explicit[name].subs(var, other)
+        diff = explicit[name] * shifted - shifted * explicit[name]
+        zero = all(sp.simplify(e) == 0 for e in diff)
+        key = f"{name}(t1) {name}(t2) = {name}(t2) {name}(t1) at all times"
+        if zero and name not in out:
+            out.add(name)
+            labels[key] = "from the entries"
+        elif not zero and name in out:
+            raise ParseError(
+                f"{name} is declared to commute with itself at all times but its entries do not"
+            )
+    return frozenset(out)
+
+
+def _dependent(data: MatrixCalculusInput, explicit: dict[str, sp.Matrix]) -> set[str]:
+    """Matrices that are functions of the variable: declared, or visible in explicit entries."""
+    found: set[str] = set()
+    for decl in data.matrices:
+        if decl.depends_on is None:
+            continue
+        if data.variable is None or decl.depends_on != data.variable:
+            raise ParseError(
+                f"{decl.name} is declared to depend on {decl.depends_on}, which is not the "
+                "variable of this operation"
+            )
+        found.add(decl.name)
+    if data.variable is not None:
+        for name, m in explicit.items():
+            if any(sym.name == data.variable for sym in m.free_symbols):
+                found.add(name)
+    if found and data.action not in ("differentiate", "evolve"):
+        raise UnsupportedMatrixExpression(
+            "time-dependent matrices are supported for differentiate and evolve only"
+        )
+    return found
+
+
+def _time_arguments(data: MatrixCalculusInput, dependent: set[str]) -> ExpressionInput:
+    """Read A(t) as the matrix A when A is declared time dependent; refuse to read it as t times A
+    otherwise (implicit multiplication would silently change the meaning)."""
+    text = data.expression.input
+    if data.variable is None:
+        return data.expression
+    var = re.escape(data.variable)
+    for decl in data.matrices:
+        pattern = re.compile(
+            r"(?<![A-Za-z0-9\\])"
+            + re.escape(decl.name)
+            + r"\s*(?:\\left\s*\(|\()\s*"
+            + var
+            + r"\s*(?:\\right\s*\)|\))"
+        )
+        if not pattern.search(text):
+            continue
+        if decl.name not in dependent:
+            raise ParseError(
+                f"{decl.name}({data.variable}) would be read as {data.variable} times "
+                f"{decl.name}; write {data.variable}{decl.name} for the product, or declare "
+                f"{decl.name} as depending on {data.variable}"
+            )
+        text = pattern.sub(decl.name, text)
+    return data.expression.model_copy(update={"input": text})
 
 
 def _components(nodes: set[str], pairs: set[frozenset[str]]) -> list[list[str]]:
@@ -339,19 +584,32 @@ def _variable_and_bounds(
     names: frozenset[str],
     terms: Terms,
     explicit: dict[str, sp.Matrix],
+    dependent: set[str],
 ) -> tuple[sp.Symbol | None, sp.Expr | None, sp.Expr | None]:
-    if data.action not in ("differentiate", "integrate"):
+    if data.action not in ("differentiate", "integrate", "evolve"):
         if data.variable or data.lower or data.upper:
-            raise ParseError("a variable and bounds are only used to differentiate or integrate")
+            raise ParseError(
+                "a variable and bounds are only used to differentiate, integrate or evolve"
+            )
         return None, None, None
     if not data.variable:
-        raise ParseError("give the variable to differentiate or integrate with respect to")
+        raise ParseError("give the variable (time) of this operation")
     flags = {item: True for item in data.expression.assumptions.get(data.variable, [])}
     var = sp.Symbol(data.variable, **flags)
-    if any(var in m.free_symbols for m in explicit.values()):
-        raise ParseError(
-            "matrix entries must not depend on the variable: the matrices are constant"
+    if data.action == "integrate" and dependent:
+        raise UnsupportedMatrixExpression(
+            "integrals of time-dependent matrices are not supported; matrix entries must not "
+            "depend on the variable of integration"
         )
+    if data.action == "evolve":
+        lower = _parse_scalar(data.lower, data, limits, names) if data.lower else sp.Integer(0)
+        upper = _parse_scalar(data.upper, data, limits, names) if data.upper else None
+        for bound in (lower, upper):
+            if bound is not None and (
+                bound.has(sp.oo, -sp.oo, sp.zoo) or var in bound.free_symbols
+            ):
+                raise ParseError("the time bounds must be finite and must not contain the variable")
+        return var, lower, upper
     if data.action == "differentiate":
         if data.lower or data.upper:
             raise ParseError("bounds are only used to integrate")
@@ -413,6 +671,15 @@ def _features(p: Problem, used: set[str]) -> list[str]:
         feats.append("matrix:explicit")
     if "reduction" in p.scratch and not isinstance(p.scratch["reduction"], str):
         feats.append("matrix:sylvester-form")
+    selected = {m for m, o in p.scratch.get("tried", []) if o == "selected"}
+    if "exp_frechet_derivative" in selected:
+        feats.append("matrix:frechet")
+    if "duhamel" in selected:
+        feats.append("matrix:duhamel")
+    if p.setup.dependent:
+        feats.append("matrix:parameter-dependent")
+    if p.action == "evolve":
+        feats.append("matrix:evolution")
     return feats
 
 

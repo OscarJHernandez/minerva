@@ -2,7 +2,12 @@
 
 import { Math } from "@minerva/ui/math";
 import { useState } from "react";
-import type { EntrySummary, MatrixCalculusResult, MatrixResultKind } from "@/lib/types";
+import type {
+  EntrySummary,
+  MatrixCalculusResult,
+  MatrixDiagnostics,
+  MatrixResultKind,
+} from "@/lib/types";
 import { EntryCard } from "./entry-card";
 import { StatusPill } from "./result-panel";
 
@@ -11,6 +16,7 @@ const OK_LABEL: Record<MatrixResultKind, string> = {
   expression: "Transformed and verified",
   equation: "Reduced, not evaluated",
   representation: "Represented exactly, not evaluated",
+  numeric: "Numerical approximation, verified",
 };
 
 const RESULT_HEADING: Record<MatrixResultKind, string> = {
@@ -18,7 +24,20 @@ const RESULT_HEADING: Record<MatrixResultKind, string> = {
   expression: "Result",
   equation: "Equation",
   representation: "Exact representation",
+  numeric: "Numerical value (approximation)",
 };
+
+/** Why a verified result is still not an evaluated closed form. */
+function notEvaluatedText(kind: MatrixResultKind, action: MatrixCalculusResult["action"]): string {
+  const what = action === "integrate" ? "The integral" : "The result";
+  if (kind === "equation") {
+    return `${what} was not evaluated. This is an equation that it satisfies, verified, but not entries.`;
+  }
+  if (kind === "numeric") {
+    return `${what} was not evaluated in closed form. This is a numerical approximation on the stated span: a measurement checked by independent methods, not a closed form and not a proof for all times.`;
+  }
+  return `${what} was not evaluated. This is an exact representation (a block-matrix exponential or an integral), verified, but not entries.`;
+}
 
 /**
  * Matrix calculus: what was recognised, which method was chosen, what it assumed, every step and
@@ -72,17 +91,13 @@ export function MatrixPanel({
         </p>
       )}
 
-      {shown && kind && (kind === "equation" || kind === "representation") && (
+      {shown && kind && !result.evaluated && (
         <p
           role="note"
           className="mt-3 rounded bg-warn-soft p-3 text-sm text-warn"
           data-testid="not-evaluated"
         >
-          The integral was not evaluated. This is{" "}
-          {kind === "equation"
-            ? "an equation that it satisfies"
-            : "an exact representation through a block-matrix exponential"}
-          , verified, but not entries.
+          {notEvaluatedText(kind, result.action)}
         </p>
       )}
 
@@ -203,6 +218,8 @@ export function MatrixPanel({
         </dl>
       )}
 
+      {result.diagnostics && <Diagnostics d={result.diagnostics} />}
+
       {methods.length > 0 && (
         <details className="mt-4">
           <summary className="cursor-pointer text-sm font-medium">
@@ -217,5 +234,98 @@ export function MatrixPanel({
         </details>
       )}
     </section>
+  );
+}
+
+const SOURCE_TEXT: Record<MatrixDiagnostics["commutation"], string> = {
+  not_used: "not used",
+  declared: "declared",
+  from_entries: "visible in the entries",
+  mixed: "declared and from the entries",
+};
+
+function stageMs(d: MatrixDiagnostics, name: string): number | null {
+  return d.stages.find((s) => s.name === name)?.ms ?? null;
+}
+
+/** How the result was reached: methods tried, checks, precision, residual and timings. No mathematics. */
+function Diagnostics({ d }: { d: MatrixDiagnostics }) {
+  const stages = d.stages.filter((s) => s.name !== "total");
+  return (
+    <details className="mt-4" data-testid="matrix-diagnostics">
+      <summary className="cursor-pointer text-sm font-medium">
+        How this was computed <span className="font-normal text-muted">(diagnostics)</span>
+      </summary>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <dt className="text-muted">Methods tried</dt>
+        <dd>
+          {d.methods_tried.length === 0
+            ? "none applied"
+            : d.methods_tried.map((m) => `${m.id}: ${m.outcome.replace("_", " ")}`).join("; ")}
+        </dd>
+        <dt className="text-muted">Matrices</dt>
+        <dd>
+          {d.matrices} declared ({d.explicit} explicit, {d.time_dependent} time dependent)
+          {d.dimensions.length > 0 &&
+            `, sizes ${d.dimensions.map(([r, c]) => `${r}×${c}`).join(", ")}`}
+        </dd>
+        <dt className="text-muted">Commutation</dt>
+        <dd>{SOURCE_TEXT[d.commutation]}</dd>
+        {d.invertibility !== "not_used" && (
+          <>
+            <dt className="text-muted">Invertibility</dt>
+            <dd>{SOURCE_TEXT[d.invertibility]}</dd>
+          </>
+        )}
+        {d.verification && (
+          <>
+            <dt className="text-muted">Checks</dt>
+            <dd>
+              <code className="text-xs">{d.verification}</code>, {d.points_agreed} of{" "}
+              {d.points_checked} points
+            </dd>
+          </>
+        )}
+        {d.digits !== null && (
+          <>
+            <dt className="text-muted">Precision</dt>
+            <dd>
+              {d.digits} digits
+              {d.tolerance !== null && `, tolerance ${d.tolerance.toExponential(0)}`}
+              {d.max_residual !== null && `, largest residual ${d.max_residual.toExponential(1)}`}
+            </dd>
+          </>
+        )}
+        {stages.length > 0 && (
+          <>
+            <dt className="text-muted">Time per stage</dt>
+            <dd>
+              {stages.map((s) => `${s.name.replace("_", " ")} ${s.ms.toFixed(0)} ms`).join(", ")}
+              {stageMs(d, "total") !== null && `; total ${stageMs(d, "total")?.toFixed(0)} ms`}
+            </dd>
+          </>
+        )}
+        {d.fallbacks.length > 0 && (
+          <>
+            <dt className="text-muted">Fallbacks</dt>
+            <dd>{d.fallbacks.join(", ")}</dd>
+          </>
+        )}
+        {d.failure_reason && (
+          <>
+            <dt className="text-muted">Failure</dt>
+            <dd>{d.failure_reason}</dd>
+          </>
+        )}
+        {d.trace_id && (
+          <>
+            <dt className="text-muted">Trace id</dt>
+            <dd>
+              <code className="break-all text-xs">{d.trace_id}</code>
+            </dd>
+          </>
+        )}
+      </dl>
+    </details>
   );
 }

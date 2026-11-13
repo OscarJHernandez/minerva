@@ -7,7 +7,7 @@
   section: matrix
   verification: stated
   applies_to: ["matrix:differentiate", "matrix:exp"]
-  validity: "A constant square matrix. For an exponent X(t) that is not a multiple of one constant matrix, the formula needs X to commute with its derivative; otherwise the derivative is a Duhamel integral."
+  validity: "A constant square matrix. For an exponent X(t) that is not a multiple of one constant matrix, the formula needs X to commute with its derivative; otherwise the derivative is the Frechet integral (see the entry on the derivative of a matrix exponential with a non-commuting exponent)."
   statement_latex: '\frac{d}{dt}\mathrm{e}^{tA}=A\mathrm{e}^{tA}=\mathrm{e}^{tA}A'
   reference: {source: "N. J. Higham, Functions of Matrices (SIAM, 2008)", locator: "Ch. 10"}
   keywords: [matrix exponential, derivative, product rule, noncommuting]
@@ -65,3 +65,55 @@
   statement_latex: 'K=\begin{pmatrix}-P&C\\0&Q\end{pmatrix}\;\Longrightarrow\;\int_0^{\tau}\mathrm{e}^{sP}C\mathrm{e}^{sQ}\,ds=\mathrm{e}^{\tau P}\,\big[\mathrm{e}^{\tau K}\big]_{12}'
   reference: {source: "C. F. Van Loan, Computing integrals involving the matrix exponential (IEEE Trans. Automatic Control 23, 1978)", locator: "pp. 395-404"}
   keywords: [block matrix, van loan, matrix exponential, integral, sylvester]
+- id: method.matrix.frechet_derivative
+  title: Derivative of a matrix exponential whose exponent does not commute with its derivative
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:frechet", "matrix:differentiate"]
+  validity: "A differentiable square matrix function X(t). No commutation is assumed. The integral equals X' exp(X) exactly when X and X' commute, and in general it does not."
+  statement_latex: '\frac{d}{dt}\mathrm{e}^{X(t)}=\int_0^1\mathrm{e}^{(1-s)X}\,X^{\prime}\,\mathrm{e}^{sX}\,ds=\Big[\exp\begin{pmatrix}X&X^{\prime}\\0&X\end{pmatrix}\Big]_{12}'
+  reference: {source: "N. J. Higham, Functions of Matrices (SIAM, 2008)", locator: "Ch. 10"}
+  keywords: [frechet derivative, matrix exponential, derivative, noncommuting, time dependent, duhamel]
+- id: method.matrix.duhamel_commuting
+  title: Duhamel integral when the middle matrix commutes with the exponent
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:duhamel", "matrix:integrate"]
+  validity: "Square matrices A and B of the same size with AB = BA. Then the integrand does not depend on s. Without commutation use the block-matrix exponential."
+  statement_latex: 'AB=BA\;\Longrightarrow\;\int_a^b\mathrm{e}^{(t-s)A}\,B\,\mathrm{e}^{sA}\,ds=(b-a)\,B\,\mathrm{e}^{tA}'
+  keywords: [duhamel, variation of constants, matrix exponential, commuting, integral]
+- id: method.matrix.duhamel_block
+  title: Duhamel integral from one block-matrix exponential
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:duhamel", "matrix:integrate"]
+  validity: "Square matrices A and B of the same size; no commutation, invertibility or diagonalisability. An exact representation; entries only for explicit matrices. The Sylvester equation of this form is singular and does not determine the integral."
+  statement_latex: '\int_0^{t}\mathrm{e}^{(t-s)A}\,B\,\mathrm{e}^{sA}\,ds=\Big[\exp\Big(t\begin{pmatrix}A&B\\0&A\end{pmatrix}\Big)\Big]_{12}'
+  reference: {source: "C. F. Van Loan, Computing integrals involving the matrix exponential (IEEE Trans. Automatic Control 23, 1978)", locator: "pp. 395-404"}
+  keywords: [duhamel, block matrix, van loan, matrix exponential, variation of constants]
+- id: method.matrix.evolution_commuting
+  title: Evolution operator of a generator that commutes with itself
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:evolution"]
+  validity: "A(t1) A(t2) = A(t2) A(t1) for all times in the interval (it implies A A' = A' A). Without it U(t) is a time-ordered exponential, which Minerva does not give in closed form."
+  statement_latex: '\frac{dU}{dt}=A(t)U,\;U(t_0)=I,\;[A(t_1),A(t_2)]=0\;\Longrightarrow\;U(t)=\exp\Big(\int_{t_0}^{t}A(\tau)\,d\tau\Big)'
+  keywords: [evolution operator, time ordered exponential, commuting generator, magnus, dyson]
+- id: method.matrix.liouville
+  title: Determinant of the evolution operator (Liouville's formula)
+  kind: method
+  chapter: math.methods
+  section: matrix
+  verification: stated
+  applies_to: ["matrix:evolution"]
+  validity: "A continuous matrix function A(t). It checks a numerical solution (the determinant of U must match the exponential of the integrated trace); it does not determine U."
+  statement_latex: '\frac{dU}{dt}=A(t)U,\;U(t_0)=I\;\Longrightarrow\;\det U(t)=\exp\Big(\int_{t_0}^{t}\operatorname{tr}A(\tau)\,d\tau\Big)'
+  keywords: [liouville formula, determinant, trace, evolution operator, wronskian]

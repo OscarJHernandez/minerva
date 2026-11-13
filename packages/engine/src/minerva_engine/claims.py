@@ -18,6 +18,7 @@ A relation that disagrees with them after substitution `fails`; one they cannot 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Literal
 
 import sympy as sp
@@ -88,11 +89,14 @@ def check_claims(
     assumptions: dict[str, list[str]],
     relations: list[str],
     limits: Limits,
+    matrices: Sequence[str] = (),
 ) -> list[ClaimCheck]:
     """Check equations in order. `relations` are formulas stated earlier in the conversation: the
     ones that are definitions (`\\theta = \\phi + \\omega t`) are used by substitution. Each checked
-    formula that is itself a definition is remembered for the ones after it."""
-    checker = ClaimChecker(assumptions, limits)
+    formula that is itself a definition is remembered for the ones after it. `matrices` are names the
+    conversation declared as matrices: an equation that mentions one is never tested by sampling
+    numbers (that would treat them as commuting scalars)."""
+    checker = ClaimChecker(assumptions, limits, frozenset(matrices))
     for relation in relations:
         checker.learn(relation)
     results: list[ClaimCheck] = []
@@ -132,9 +136,15 @@ _DISTRIBUTION_DETAIL = (
 class ClaimChecker:
     """Checks equations one after another against the definitions stated so far."""
 
-    def __init__(self, assumptions: dict[str, list[str]], limits: Limits) -> None:
+    def __init__(
+        self,
+        assumptions: dict[str, list[str]],
+        limits: Limits,
+        matrices: frozenset[str] = frozenset(),
+    ) -> None:
         self.assumptions = assumptions
         self.limits = limits
+        self.matrices = matrices
         # symbol -> (right side with earlier definitions substituted, its text, texts it was built on)
         self.definitions: dict[sp.Symbol, tuple[sp.Expr, str, list[str]]] = {}
 
@@ -151,6 +161,8 @@ class ClaimChecker:
         """Remember `latex` if it is a definition. A later definition of a symbol replaces the earlier
         one; one that would define a symbol in terms of itself is ignored."""
         parsed = self._parse(latex)
+        if parsed and self._mentions_matrix(parsed):
+            return  # a definition of or by a matrix is not a scalar substitution
         if parsed and any(contains_distribution(p) for p in parsed):
             return
         found = _definition(parsed) if parsed else None
@@ -163,6 +175,11 @@ class ClaimChecker:
         if symbol not in self.definitions and len(self.definitions) >= MAX_DEFINITIONS:
             return
         self.definitions[symbol] = (rhs, _text(latex), self._given(used))
+
+    def _mentions_matrix(self, parsed: list[sp.Expr]) -> bool:
+        return bool(self.matrices) and any(
+            s.name in self.matrices for p in parsed for s in p.free_symbols
+        )
 
     def _given(self, used: list[sp.Symbol]) -> list[str]:
         """Texts of the definitions in `used` and of those they were built on, each once."""
@@ -199,6 +216,16 @@ class ClaimChecker:
             ]
         except MinervaMathError as exc:
             return ClaimCheck(status="unparsed", detail=str(exc))
+        if self._mentions_matrix(parsed):
+            return ClaimCheck(
+                status="unverified",
+                kind="relation",
+                detail=(
+                    "this mentions a matrix declared in the conversation; Minerva does not test "
+                    "matrix equations by sampling numbers (that would treat the matrices as "
+                    "commuting scalars), so it is not checked unless a matrix calculation produced it"
+                ),
+            )
         if any(contains_distribution(p) for p in parsed):
             return ClaimCheck(status="unverified", detail=_DISTRIBUTION_DETAIL)
         outcome, detail = _compare(parsed)

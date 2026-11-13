@@ -12,8 +12,8 @@ MAX_MATRICES = 6
 MAX_ABSTRACT_SIZE = 8
 MAX_EXPLICIT_SIZE = 4
 
-Action = Literal["evaluate", "simplify", "differentiate", "integrate"]
-ResultKind = Literal["explicit", "expression", "equation", "representation"]
+Action = Literal["evaluate", "simplify", "differentiate", "integrate", "evolve"]
+ResultKind = Literal["explicit", "expression", "equation", "representation", "numeric"]
 
 
 class MatrixDecl(BaseModel):
@@ -35,6 +35,17 @@ class MatrixDecl(BaseModel):
     entries: list[list[str]] | None = Field(
         default=None,
         description="Entries of an explicit matrix as LaTeX expressions, row by row, up to 4x4",
+    )
+
+    depends_on: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=SYMBOL_NAME_MAX,
+        description=(
+            "Name of the scalar variable (for example t) this matrix is a differentiable function "
+            "of, written A(t) in the expression. Leave empty for a constant matrix. Explicit "
+            "entries that contain the variable make the matrix time dependent automatically"
+        ),
     )
 
     @field_validator("entries")
@@ -76,10 +87,23 @@ class MatrixCalculusInput(BaseModel):
     matrices: list[MatrixDecl] = Field(min_length=1, max_length=MAX_MATRICES)
     commuting: list[tuple[str, str]] = Field(default_factory=list, max_length=16)
     invertible: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
+    self_commuting: list[str] = Field(
+        default_factory=list,
+        max_length=MAX_MATRICES,
+        description=(
+            "Time-dependent matrices A for which A(t1) A(t2) = A(t2) A(t1) at all times "
+            "(which implies A A' = A' A). Only the user can state this"
+        ),
+    )
     action: Action = "simplify"
     variable: str | None = Field(default=None, min_length=1, max_length=SYMBOL_NAME_MAX)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
+    trace_id: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9_-]{1,64}$",
+        description="Opaque id that correlates this computation with the request that asked for it",
+    )
 
 
 class MatrixStep(BaseModel):
@@ -113,6 +137,44 @@ class MatrixVerification(BaseModel):
     note: str = ""
 
 
+Commutation = Literal["not_used", "declared", "from_entries", "mixed"]
+
+
+class MatrixStage(BaseModel):
+    name: Literal["parse", "transform", "verify_numeric", "verify_exact", "total"]
+    ms: float
+
+
+class MatrixMethodTried(BaseModel):
+    id: str
+    outcome: Literal["selected", "blocked", "unsupported", "no_match"]
+
+
+class MatrixDiagnostics(BaseModel):
+    """How a result was reached, without any of the mathematics: no names, expressions, entries or
+    bounds. Safe to log and to paste into a bug report; `trace_id` ties the agent request, the
+    engine operation and the verification together."""
+
+    trace_id: str | None = None
+    method: str | None = None
+    methods_tried: list[MatrixMethodTried] = Field(default_factory=list)
+    dimensions: list[tuple[int, int]] = Field(default_factory=list)  # of the matrices used
+    matrices: int = 0
+    explicit: int = 0
+    time_dependent: int = 0
+    commutation: Commutation = "not_used"  # where the commutation the method used came from
+    invertibility: Commutation = "not_used"
+    stages: list[MatrixStage] = Field(default_factory=list)
+    digits: int | None = None  # working precision of the numeric checks
+    tolerance: float | None = None  # relative tolerance of the comparisons
+    max_residual: float | None = None  # largest residual among comparisons that agreed
+    points_checked: int = 0
+    points_agreed: int = 0
+    verification: str = ""  # short id of the checks that ran
+    fallbacks: list[str] = Field(default_factory=list)  # codes such as symbolic_timeout
+    failure_reason: str | None = None  # a code, never a free-text message
+
+
 class MatrixCalculusResult(BaseModel):
     status: Status
     action: Action | None = None
@@ -133,3 +195,4 @@ class MatrixCalculusResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     message: str = ""
     duration_ms: int = 0
+    diagnostics: MatrixDiagnostics | None = None

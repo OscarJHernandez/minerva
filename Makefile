@@ -1,7 +1,7 @@
 # Shortcuts for humans and agents. CI calls the underlying commands directly (see .github/workflows/ci.yml);
 # `make check` runs the same set. Run `make help` for the list.
 .DEFAULT_GOAL := help
-.PHONY: help setup check check-py check-web test handbook fmt dev bench-geometry
+.PHONY: help setup check check-py check-web test handbook matrix-benchmark fmt dev bench-geometry
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -44,6 +44,9 @@ test: ## Python and JavaScript tests only
 
 handbook: ## Verify every handbook entry at its declared level
 	uv run python -m minerva_knowledge verify
+
+matrix-benchmark: ## Matrix calculus benchmark (docs/matrix-benchmark.md)
+	uv run python -m minerva_knowledge matrix-benchmark --repeat 5
 
 fmt: ## Format Python and JavaScript
 	uv run ruff format .

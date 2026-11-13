@@ -133,32 +133,51 @@ class MatrixCalculusArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
         description="Expression in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
-        "(a bare e is an ordinary symbol). Products keep their order; matrices are constant.",
+        "(a bare e is an ordinary symbol). Products keep their order. Matrices are constant unless "
+        "declared with depends_on; a matrix that depends on the variable is written A(t), and tA "
+        "always means t times A. For action evolve this is the generator A(t) of dU/dt = A(t)U.",
     )
     matrices: list[MatrixDecl] = Field(
         min_length=1,
         max_length=6,
         description="Every matrix in the expression: a size (rows, cols) or explicit entries. "
-        "Ask the user for sizes or entries; never invent them.",
+        "Ask the user for sizes or entries; never invent them. Set depends_on to the variable only "
+        "when the USER says the matrix depends on it.",
     )
-    action: Literal["evaluate", "simplify", "differentiate", "integrate"] = Field(
+    action: Literal["evaluate", "simplify", "differentiate", "integrate", "evolve"] = Field(
         default="simplify",
         description="evaluate: explicit matrices only. simplify: merge what is provably mergeable. "
-        "differentiate/integrate need `variable`; integrate may take bounds `lower` and `upper`.",
+        "differentiate/integrate need `variable`; integrate may take bounds `lower` and `upper`; "
+        "differentiate also handles exponents that do not commute with their derivative (Frechet "
+        "derivative) and time-dependent matrices. integrate recognises Duhamel integrals "
+        "(exp((t-s)A) B exp(sA) over s). evolve solves dU/dt = A(t)U, U(t0)=I: `variable` is time, "
+        "`lower` the initial time (default 0), `upper` the end of the span.",
     )
     variable: str | None = Field(
         default=None, max_length=32, description="Scalar variable of differentiation or integration"
     )
     lower: str | None = Field(
-        default=None, max_length=200, description="Lower bound (a scalar expression)"
+        default=None,
+        max_length=200,
+        description="Lower bound (a scalar expression); for evolve the initial time",
     )
     upper: str | None = Field(
-        default=None, max_length=200, description="Upper bound (a scalar expression)"
+        default=None,
+        max_length=200,
+        description="Upper bound (a scalar expression); for evolve the end of the numerical span: "
+        "a number only the USER may choose, so ask and never pick one",
     )
     commuting: list[tuple[str, str]] = Field(
         default_factory=list,
         max_length=16,
-        description="Pairs of matrices the USER says commute. Never add a pair on your own.",
+        description="Pairs of matrices the USER says commute (for time-dependent matrices: at all "
+        "times). Never add a pair on your own.",
+    )
+    self_commuting: list[str] = Field(
+        default_factory=list,
+        max_length=6,
+        description="Time-dependent matrices A the USER says satisfy A(t1)A(t2) = A(t2)A(t1) at "
+        "all times. Never add one on your own.",
     )
     invertible: list[str] = Field(
         default_factory=list,
@@ -799,6 +818,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
         matrices=args.matrices,
         commuting=args.commuting,
         invertible=args.invertible,
+        self_commuting=args.self_commuting,
         action=args.action,
         variable=args.variable,
         lower=args.lower,
@@ -819,7 +839,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
         data={
             "result": result.model_dump(mode="json"),
             "methods": method_data,
-            "request": request.model_dump(mode="json", exclude={"expression"}),
+            "request": request.model_dump(mode="json", exclude={"expression", "trace_id"}),
         },
     )
     shown = result.status.value == "ok"
@@ -830,11 +850,17 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
     )
     if shown:
         head += f"method={result.method}; kind={result.result_kind}; "
-        head += (
-            "evaluated=yes; "
-            if result.evaluated
-            else "evaluated=NO (do not call this an evaluated result); "
-        )
+        if result.result_kind == "numeric":
+            head += (
+                "evaluated=NO (a numerical approximation on the given span, not a closed form and "
+                "not a proof; say so); "
+            )
+        else:
+            head += (
+                "evaluated=yes; "
+                if result.evaluated
+                else "evaluated=NO (do not call this an evaluated result); "
+            )
         if result.result_latex:
             head += f"result=${result.result_latex}$; "
         if result.equation_latex:
@@ -1648,13 +1674,17 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "matrix_calculus",
             "Calculus with noncommuting matrices and their exponentials: evaluate (explicit entries), "
-            "simplify, differentiate, or integrate products such as \\exp(wA)\\exp(-wB) in a scalar variable. "
-            "Declare every matrix (a size, or explicit entries). The method is chosen from the structure "
-            "(ordered product rule, merge only when commutation is declared or visible in the entries, "
-            "closed form for an invertible matrix, Sylvester equation, block-matrix exponential) and the "
-            "result is shown only if independent numerical checks pass. A Sylvester equation or a "
-            "block-matrix representation is NOT an evaluated integral: say so. Matrices are never assumed "
-            "to commute or to be invertible; ask the user before declaring either.",
+            "simplify, differentiate, integrate or evolve. Differentiate \\exp(X(t)) for noncommuting "
+            "X and X' (the Frechet derivative integral, never assumed to equal X' exp(X)), including "
+            "time-dependent matrices A(t); integrate products such as \\exp(wA)\\exp(-wB) and Duhamel "
+            "integrals \\exp((t-s)A) B \\exp(sA); evolve dU/dt = A(t)U with U(0)=I (closed form "
+            "exp of the integral only when the generator commutes with itself at all times; explicit "
+            "entries on a span the user gives are solved numerically). Declare every matrix (a size, "
+            "or explicit entries). The method is chosen from the structure and the result is shown "
+            "only if independent checks pass. A Sylvester equation, a block-matrix or integral "
+            "representation is NOT an evaluated result and a numerical solution is an approximation "
+            "on its span, not a closed form: say so. Matrices are never assumed to commute or to be "
+            "invertible; ask the user before declaring either.",
             MatrixCalculusArgs,
             run_matrix_calculus,
         ),

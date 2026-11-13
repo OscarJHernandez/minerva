@@ -13,6 +13,7 @@
 | [invariant-benchmark.md](invariant-benchmark.md) | Adaptive against fixed-parameter search on generated Hamiltonians (generated) |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
 | [geometry-benchmark.md](geometry-benchmark.md) | Differential geometry: correctness against closed forms and `sympy.diffgeom`, latency, expression growth and memory (generated; data in [benchmarks/geometry.json](benchmarks/geometry.json)) |
+| [matrix-benchmark.md](matrix-benchmark.md) | Matrix calculus: coverage, method selection, verification and timing on hand-written cases, with a baseline |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |
 | [licensing.md](licensing.md) | Licence assessment, including the GPL-licensed integrations |
 | [security-publication.md](security-publication.md) | Security and publication notes |

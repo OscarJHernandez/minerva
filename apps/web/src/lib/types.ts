@@ -186,8 +186,9 @@ export interface IntegrateResult {
   calculation_id?: string | null;
 }
 
-export type MatrixAction = "evaluate" | "simplify" | "differentiate" | "integrate";
-export type MatrixResultKind = "explicit" | "expression" | "equation" | "representation";
+export type MatrixAction = "evaluate" | "simplify" | "differentiate" | "integrate" | "evolve";
+export type MatrixResultKind =
+  "explicit" | "expression" | "equation" | "representation" | "numeric";
 
 /** A declared matrix: a size (abstract) or explicit entries (LaTeX expressions). */
 export interface MatrixDecl {
@@ -195,12 +196,16 @@ export interface MatrixDecl {
   rows?: number | null;
   cols?: number | null;
   entries?: string[][] | null;
+  /** The variable this matrix is a function of, A(t); absent for a constant matrix. */
+  depends_on?: string | null;
 }
 
 export interface MatrixRequest {
   matrices: MatrixDecl[];
   commuting: [string, string][];
   invertible: string[];
+  /** Time-dependent matrices declared to commute with themselves at all times. */
+  self_commuting?: string[];
   action: MatrixAction;
   variable: string | null;
   lower: string | null;
@@ -232,6 +237,30 @@ export interface MatrixVerification {
   note: string;
 }
 
+export type MatrixSource = "not_used" | "declared" | "from_entries" | "mixed";
+
+/** How a result was reached. Contains no names, entries, expressions or bounds. */
+export interface MatrixDiagnostics {
+  trace_id: string | null;
+  method: string | null;
+  methods_tried: { id: string; outcome: "selected" | "blocked" | "unsupported" | "no_match" }[];
+  dimensions: [number, number][];
+  matrices: number;
+  explicit: number;
+  time_dependent: number;
+  commutation: MatrixSource;
+  invertibility: MatrixSource;
+  stages: { name: string; ms: number }[];
+  digits: number | null;
+  tolerance: number | null;
+  max_residual: number | null;
+  points_checked: number;
+  points_agreed: number;
+  verification: string;
+  fallbacks: string[];
+  failure_reason: string | null;
+}
+
 export interface MatrixCalculusResult {
   status: Status;
   action: MatrixAction | null;
@@ -252,6 +281,7 @@ export interface MatrixCalculusResult {
   notes: string[];
   message: string;
   duration_ms: number;
+  diagnostics?: MatrixDiagnostics | null;
   calculation_id?: string | null;
   /** Only in saved history items: the declarations the result was computed from. */
   request?: MatrixRequest;
