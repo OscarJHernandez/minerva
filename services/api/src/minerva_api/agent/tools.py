@@ -29,6 +29,7 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
 )
+from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -55,6 +56,9 @@ MAX_INPUT = 2000
 class ToolContext:
     engine: Engine
     kb: KnowledgeBase
+    # Names this conversation declared as matrices or operators (set by the loop before each call).
+    # Tools that treat symbols as commuting numbers refuse expressions that mention one.
+    matrices: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -874,7 +878,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
                 if v.symbolic_zero is not None
                 else ", no exact check was run"
             )
-            + "; "
+            + " (checks, not a proof: say 'checked', never 'proved'); "
         )
     lines = [head + result.message]
     if result.structure:
@@ -2075,6 +2079,46 @@ def schemas() -> list[dict[str, Any]]:
     return [t.schema() for t in TOOLS.values()]
 
 
+# Tools whose engine treats every symbol as a commuting number: on a declared matrix they would give a
+# plausible but wrong answer, which the loop would then mark as verified.
+SCALAR_TOOLS = frozenset(
+    {
+        "simplify",
+        "differentiate",
+        "series",
+        "integrate",
+        "isolate_variable",
+        "solve_polynomial",
+        "find_identities",
+        "distribution",
+    }
+)
+_EXPRESSION_FIELDS = ("latex", "equation", "expression")
+
+
+def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput | None:
+    if name not in SCALAR_TOOLS or not ctx.matrices:
+        return None
+    hit = sorted(
+        n
+        for n in ctx.matrices
+        if any(
+            isinstance(arguments.get(f), str) and mentions_name(arguments[f], {n})
+            for f in _EXPRESSION_FIELDS
+        )
+    )
+    if not hit:
+        return None
+    return _error(
+        name,
+        f"{', '.join(hit)} was declared as a matrix or operator in this conversation; `{name}` treats "
+        "symbols as commuting numbers and would give a wrong answer for it. Use `matrix_calculus` "
+        "(it needs each matrix's size or entries), or say that this is not supported. Do not "
+        "compute it yourself.",
+        "unsupported",
+    )
+
+
 def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput:
     """Validate and run one tool call. Never raises: problems become an error result the model can read."""
     tool = TOOLS.get(name)
@@ -2098,6 +2142,9 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
         )
     except TypeError:
         return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
+    refused = _matrix_refusal(name, arguments, ctx)
+    if refused is not None:
+        return refused
     try:
         output = tool.run(args, ctx)
     except ValidationError as exc:

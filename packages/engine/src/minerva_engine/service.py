@@ -7,7 +7,7 @@ import re
 import time
 from typing import Any
 
-from .claims import ClaimCheck
+from .claims import ClaimCheck, clean_assumptions
 from .differentiate import DifferentiateResult, DiffVariable
 from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
@@ -406,13 +406,16 @@ class Engine:
         conversation: equations that mention them are never tested by sampling numbers."""
         if not formulas:
             return []
+        # A `noncommutative` declaration means "matrix" here; it must not reach the engine as an
+        # assumption, where it would stop the whole check.
+        clean, noncommutative = clean_assumptions(assumptions or {})
         outcome, _ = self._run(
             "check_claims",
             {
                 "formulas": formulas,
-                "assumptions": assumptions or {},
+                "assumptions": clean,
                 "relations": relations or [],
-                "matrices": matrices or [],
+                "matrices": sorted({*(matrices or []), *noncommutative}),
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:

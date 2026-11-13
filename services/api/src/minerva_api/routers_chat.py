@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from .agent.declarations import declared_matrices
 from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent
@@ -629,13 +630,18 @@ def _claim_context(
     return relations[-MAX_RELATIONS:], assumptions
 
 
-def _prior_matrices(messages: list[ChatMessage]) -> list[str]:
-    """Matrix names declared in earlier `matrix_calculus` calls of this conversation."""
+def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
+    """Matrix names this conversation declared: in tool calls (`matrix_calculus`, or `noncommutative`
+    assumptions) and in words ("let A and B be matrices"). The whole conversation counts, not only
+    the history window: a name is cheap to remember and forgetting one makes a matrix claim checkable
+    as if it were about numbers."""
     steps: list[dict[str, Any]] = []
-    for m in messages[-HISTORY_MESSAGES:]:
+    texts: list[str] = [current]
+    for m in messages:
+        texts.append(str(m.content.get("text", "")))
         if m.role != "user":
             steps.extend(s for s in m.content.get("trace", []) if isinstance(s, dict))
-    return sorted(matrix_names(steps))
+    return sorted(matrix_names(steps) | declared_matrices(texts))
 
 
 def _title(text: str) -> str:
@@ -677,7 +683,7 @@ async def send_message(
     )
     history, prior_known, prior_quoted, prior_results = _history(previous)
     prior_relations, prior_assumptions = _claim_context(previous, body.content)
-    prior_matrices = _prior_matrices(previous)
+    prior_matrices = _prior_matrices(previous, body.content)
     history.append({"role": "user", "content": body.content})
 
     if not previous:

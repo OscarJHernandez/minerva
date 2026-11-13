@@ -11,7 +11,9 @@ import { MatrixPanel } from "./matrix-panel";
 describe("MatrixPanel", () => {
   it("shows the structure, method, assumptions, steps and both checks of an evaluated result", () => {
     render(<MatrixPanel result={okMatrixIntegral} />);
-    expect(screen.getByText("Evaluated and verified", { selector: "span" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Evaluated, checked numerically and exactly", { selector: "span" }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/commutation is not assumed for AB/)).toBeInTheDocument();
     expect(screen.getAllByText("sylvester_reduction", { selector: "code" }).length).toBe(2);
     expect(screen.getByLabelText("Result")).toBeInTheDocument();
@@ -22,11 +24,24 @@ describe("MatrixPanel", () => {
     expect(screen.queryByTestId("not-evaluated")).not.toBeInTheDocument();
   });
 
+  it("names the exact leg only when it passed", () => {
+    const numericOnly = {
+      ...okMatrixIntegral,
+      verification: { ...okMatrixIntegral.verification!, symbolic_zero: null },
+    };
+    render(<MatrixPanel result={numericOnly} />);
+    expect(
+      screen.getByText("Evaluated, checked numerically", { selector: "span" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/and exactly/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/verified/i, { selector: "span" })).not.toBeInTheDocument();
+  });
+
   it("never calls a representation an evaluated integral", () => {
     render(<MatrixPanel result={matrixRepresentation} />);
     expect(screen.getByText("Represented exactly, not evaluated")).toBeInTheDocument();
     expect(screen.getByTestId("not-evaluated")).toHaveTextContent(/was not evaluated/);
-    expect(screen.queryByText("Evaluated and verified")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Evaluated,/)).not.toBeInTheDocument();
   });
 
   it("never shows a result for a failure status", () => {
@@ -106,12 +121,12 @@ describe("MatrixPanel", () => {
 
   it("labels a numerical solution an approximation, never a closed form or a proof", () => {
     render(<MatrixPanel result={matrixNumericEvolution} />);
-    expect(screen.getByText("Numerical approximation, verified")).toBeInTheDocument();
+    expect(screen.getByText("Numerical approximation, checked independently")).toBeInTheDocument();
     expect(screen.getByText("Numerical value (approximation)")).toBeInTheDocument();
     expect(screen.getByTestId("not-evaluated")).toHaveTextContent(
       /numerical approximation.*not a closed form and not a proof/,
     );
-    expect(screen.queryByText("Evaluated and verified")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Evaluated,/)).not.toBeInTheDocument();
     expect(screen.getByText(/Not run \(the numeric check decides\)/)).toBeInTheDocument();
   });
 
