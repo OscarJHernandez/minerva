@@ -386,7 +386,7 @@ capabilities:
       - id: matrix-evolution-commuting
         title: An evolution operator for a generator whose matrices commute
         op: matrix
-        input: 'tA + t^2 B'
+        input: "tA + t^2 B"
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
@@ -396,7 +396,7 @@ capabilities:
       - id: matrix-evolution-explicit
         title: An evolution operator from explicit entries that commute with themselves
         op: matrix
-        input: 'A(t)'
+        input: "A(t)"
         matrices:
           - { name: A, entries: [["t", "0"], ["0", "2t"]] }
         action: evolve
@@ -404,7 +404,7 @@ capabilities:
       - id: matrix-evolution-numeric
         title: A generator that does not commute with itself is solved numerically on a span you choose
         op: matrix
-        input: 'A(t)'
+        input: "A(t)"
         matrices:
           - { name: A, entries: [["0", "1"], ["-t", "0"]] }
         action: evolve
@@ -413,7 +413,7 @@ capabilities:
       - id: matrix-time-ordered
         title: An abstract generator that does not commute with itself is declined
         op: matrix
-        input: 'tA + t^2 B'
+        input: "tA + t^2 B"
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
