@@ -16,14 +16,17 @@ import type {
   DistributionResult,
   HistoryItem,
   IntegrateResult,
+  IsolateResult,
   SeriesResult,
   SimplifyResult,
+  StepResult,
 } from "@/lib/types";
 import { DerivativePanel } from "../derivative-panel";
 import { DistributionPanel } from "../distribution-panel";
 import { IntegralPanel } from "../integral-panel";
 import { ResultPanel, StatusPill } from "../result-panel";
 import { SeriesPanel } from "../series-panel";
+import { DiagnosticsView, IsolatePanel, Premises, StepResultPanel } from "../step-result-panel";
 
 interface Props {
   item: HistoryItem;
@@ -32,7 +35,8 @@ interface Props {
   /** Position of the step this one continued, when it is still in the derivation. */
   parentNumber: number | null;
   current: boolean;
-  onContinue: (item: HistoryItem, edit: boolean) => void;
+  /** `which`: for an equation, the index of the solution to continue with. */
+  onContinue: (item: HistoryItem, edit: boolean, which?: number) => void;
   onDelete: (item: HistoryItem) => void;
 }
 
@@ -46,6 +50,11 @@ function FullResult({ item }: { item: HistoryItem }) {
       return <IntegralPanel result={item.result as unknown as IntegrateResult} />;
     case "series":
       return <SeriesPanel result={item.result as unknown as SeriesResult} />;
+    case "substitute":
+    case "rewrite":
+      return <StepResultPanel result={item.result as unknown as StepResult} />;
+    case "isolate":
+      return <DiagnosticsView d={(item.result as unknown as IsolateResult).diagnostics} />;
     case "distribution":
       return <DistributionPanel result={item.result as unknown as DistributionResult} />;
     case "apply_identity": {
@@ -109,6 +118,17 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
   const continuing = cont !== null;
   const identity =
     item.operation === "apply_identity" ? (item.result as unknown as ApplyIdentityResult) : null;
+  const isolated = item.operation === "isolate" ? (item.result as unknown as IsolateResult) : null;
+  const stepped =
+    item.operation === "substitute" || item.operation === "rewrite"
+      ? (item.result as unknown as StepResult)
+      : null;
+  const okLabel =
+    stepped?.evidence === "conditional"
+      ? "Holds given your relation"
+      : isolated?.complete
+        ? "Verified, none dropped"
+        : "Verified";
 
   return (
     <li
@@ -135,7 +155,7 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
             {parentNumber !== null ? `from step ${parentNumber}` : "new input"}
           </span>
         </h3>
-        <StatusPill status={item.status} okLabel="Verified" />
+        <StatusPill status={item.status} okLabel={okLabel} />
       </div>
 
       <div className="mt-2 text-sm text-muted">
@@ -146,8 +166,16 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
         )}
       </div>
 
+      {stepped && item.status === "ok" && stepped.evidence === "conditional" && (
+        <Premises given={stepped.given} />
+      )}
       {latex && (
         <Math latex={latex} display className="text-xl" label={`Result of step ${number}`} />
+      )}
+      {isolated && (
+        <div className="mt-2">
+          <IsolatePanel result={isolated} onContinue={(i) => onContinue(item, false, i)} />
+        </div>
       )}
       {failed && message && <p className="mt-2 text-sm text-warn">{message}</p>}
 

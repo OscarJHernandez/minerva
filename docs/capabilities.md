@@ -699,6 +699,292 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - **Status:** `parse_error`
 - The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
 
+### Substituting relations
+
+*Available in:* workbench, chat, HTTP API.
+
+Replaces the left side of a relation you supply by its right side, one relation at a time, and records each replacement as a step with the relation it used. The relations are your premises: Minerva checks that the replacement reproduces the original expression, not that your relation is true, so a result that depends on them is shown as holding given them. If the result also holds without them, it says so.
+
+**Limits**
+
+- At most four relations, applied once each in the order you give. If another order would give a different result, or the relations rewrite each other, the request is refused until you say whether to apply them in the order listed or all at once; Minerva never picks one.
+- A relation that can never hold (`x = x + 1`) or relates only numbers is refused. A relation used as a commutation rule (`AB - BA = 1`) is not applied, because only patterns that occur in the expression are replaced.
+- Replacement finds the occurrences SymPy recognises; a pattern that does not occur leaves the expression unchanged.
+- The input must be an expression (not an equation). Noncommuting symbols are supported for polynomial expressions, and the order of their factors is kept.
+- Where a cancelled denominator excludes a point, the result states it (`x \neq 0`).
+
+#### A relation replaces a part, and the result is conditional
+
+- **Expression:** `x^2 + y^2`
+- **Relation 1:** `y^2 = 1 - x^2`
+- **Status:** `ok`
+- **Step 1: substitute:** $x^{2} + y^{2} \to \left(1 - x^{2}\right) + x^{2} \to 1$
+- **Result:** $1$
+- **Given (your relation, not checked by Minerva):** $y^{2} = 1 - x^{2}$
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
+- Conditional: the result holds given the relations, which Minerva did not check.
+- The step is shown before SymPy combines the terms. The result depends on your relation, so it is marked as holding given it.
+
+#### Energy conservation
+
+- **Expression:** `\frac{1}{2} m v^2 + m g h`
+- **Relation 1:** `v^2 = 2 g (H - h)`
+- **Status:** `ok`
+- **Step 1: substitute:** $g h m + \frac{m v^{2}}{2} \to \frac{2 g \left(H - h\right) m}{2} + g h m \to g h m + g m \left(H - h\right)$
+- **Result:** $g h m + g m \left(H - h\right)$
+- **Given (your relation, not checked by Minerva):** $v^{2} = 2 g \left(H - h\right)$
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
+- Conditional: the result holds given the relations, which Minerva did not check.
+
+#### A cancelled denominator is reported
+
+- **Expression:** `\frac{y}{x}`
+- **Relation 1:** `y = x^2`
+- **Status:** `ok`
+- **Step 1: substitute:** $\frac{y}{x} \to \frac{x^{2}}{x} \to x$
+- **Result:** $x$
+- **Given (your relation, not checked by Minerva):** $y = x^{2}$
+- **Valid only where:** $x \neq 0$
+- **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
+- Conditional: the result holds given the relations, which Minerva did not check.
+
+#### The order matters, so Minerva asks
+
+- **Expression:** `x + y`
+- **Relation 1:** `x = y`
+- **Relation 2:** `y = 1`
+- **Status:** `unsupported`
+- The result depends on the order in which the relations are applied (or they rewrite each other), so Minerva will not choose one. Say whether to apply them in the order given, or all at once.
+- Applying x = y first gives 2; applying y = 1 first gives y + 1. Nothing is shown until the order is stated.
+
+#### The order stated by the user
+
+- **Expression:** `x + y`
+- **Relation 1:** `x = y`
+- **Relation 2:** `y = 1`
+- **Order:** `given`
+- **Status:** `ok`
+- **Step 1: substitute:** $x + y \to y + y \to 2 y$
+- **Step 2: substitute:** $2 y \to 2 \cdot 1 \to 2$
+- **Result:** $2$
+- **Given (your relation, not checked by Minerva):** $x = y$
+- **Given (your relation, not checked by Minerva):** $y = 1$
+- **Check:** symbolic zero test not established; numeric check agreed at 40 of 40 points
+- Conditional: the result holds given the relations, which Minerva did not check.
+
+#### A relation that can never hold is refused
+
+- **Expression:** `x + 1`
+- **Relation 1:** `x = x + 1`
+- **Status:** `unsupported`
+- this relation can never hold, so nothing follows from it
+
+#### The left side does not occur
+
+- **Expression:** `x + 1`
+- **Relation 1:** `z = 2`
+- **Status:** `unchanged`
+- The left side of no relation occurs in the expression (as SymPy reads it), so nothing was replaced.
+
+#### Noncommuting symbols keep their order
+
+- **Expression:** `A^2 B`
+- **Relation 1:** `A B = D`
+- **Assumptions:** A noncommutative; B noncommutative; D noncommutative
+- **Status:** `ok`
+- **Step 1: substitute:** $A^{2} B \to A D$
+- **Result:** $A D$
+- **Given (your relation, not checked by Minerva):** $A B = D$
+- **Check:** symbolic zero test not established; numeric check agreed at 6 of 6 points
+- Conditional: the result holds given the relations, which Minerva did not check.
+
+### Changing one part of an expression
+
+*Available in:* workbench, chat, HTTP API.
+
+Applies one move to one part of an expression and leaves the rest alone: expand, factor, cancel, simplify, collect terms by chosen variables or powers, or a handbook identity. You choose the part from a list the server makes (or type it); if it occurs more than once you choose the occurrence. The whole expression before and after is verified, and an identity whose conditions are not provable from your assumptions is reported and not applied.
+
+**Limits**
+
+- A part is chosen for one exact expression; if the expression has changed, the choice is refused as stale and never applied somewhere else.
+- An identity is matched against the chosen part alone, with the same filters as everywhere else (no invented roots, reciprocals or the imaginary unit).
+- Collect works on symbols and parts of the expression, at most four, and by commuting ones for noncommuting expressions. For noncommuting symbols only expand and collect are supported, on polynomial expressions; every other operation reports that it does not support them.
+- Verification is numerical, and symbolic where SymPy finds a zero; for noncommuting symbols random matrices sized from the degree are used.
+
+#### Expand one factor
+
+- **Expression:** `(x + 1)^2 (y + 1)^2`
+- **Part:** `(x + 1)^2`
+- **Move:** `expand`
+- **Status:** `ok`
+- **Applied sympy.expand to the part:** $\left(x + 1\right)^{2}$
+- **Result:** $\left(y + 1\right)^{2} \left(x^{2} + 2 x + 1\right)$
+- **Check:** whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### A handbook identity on the second term
+
+- **Expression:** `\sin(2x) + \sin(2y)`
+- **Part:** `\sin(2y)`
+- **Move:** `trig.double_sin`
+- **Status:** `ok`
+- **Applied trig.double_sin to the part:** $\sin{\left(2 y \right)}$
+- **Result:** $\sin{\left(2 x \right)} + 2 \sin{\left(y \right)} \cos{\left(y \right)}$
+- **Check:** whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### One of two equal places
+
+- **Expression:** `\sin(2x) + y \sin(2x)`
+- **Part:** `\sin(2x)`
+- **Move:** `trig.double_sin`
+- **Status:** `ok`
+- **Applied trig.double_sin to the part:** $\sin{\left(2 x \right)}$
+- **Result:** $y \sin{\left(2 x \right)} + 2 \sin{\left(x \right)} \cos{\left(x \right)}$
+- **Check:** whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- The same part occurs twice; only the chosen occurrence changes.
+
+#### Collect terms
+
+- **Expression:** `a x^2 y + b x y^2 + c x^2 + d y^2`
+- **Move:** `collect`
+- **Status:** `ok`
+- **Applied sympy.collect to the part:** $a x^{2} y + b x y^{2} + c x^{2} + d y^{2}$
+- **Result:** $b x y^{2} + d y^{2} + x^{2} \left(a y + c\right)$
+- **Check:** whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points
+
+#### The identity is found but not applied
+
+- **Expression:** `\log(x y) + \log(x z)`
+- **Part:** `\log(x y)`
+- **Move:** `log.product`
+- **Status:** `conditions_not_satisfied`
+- **Not applied:** the identity needs its variable a to be positive
+- **Not applied:** the identity needs its variable b to be positive
+- The identity matches this part, but its conditions cannot be shown from the declared assumptions, so it is not applied.
+- log(xy) = log x + log y needs both factors positive; nothing in the declared assumptions says so.
+
+#### A part that is not there
+
+- **Expression:** `\sin x`
+- **Part:** `\tan x`
+- **Move:** `expand`
+- **Status:** `parse_error`
+- That part does not occur in the expression.
+
+#### Expanding a square of noncommuting symbols
+
+- **Expression:** `(A + B)^2 + x`
+- **Part:** `(A + B)^2`
+- **Move:** `expand`
+- **Assumptions:** A noncommutative; B noncommutative
+- **Status:** `ok`
+- **Applied sympy.expand to the part:** $\left(A + B\right)^{2}$
+- **Result:** $x + A B + A^{2} + B A + B^{2}$
+- **Check:** whole expression: symbolic zero test passed; numeric check agreed at 6 of 6 points
+
+### Solving an equation for one variable
+
+*Available in:* workbench, chat, HTTP API.
+
+Isolates a variable in an equation and lists every solution with the conditions it needs: parameters that must not vanish, values the equation itself excludes, and the parameter values where it degenerates. Polynomial and rational equations are solved in closed form where one exists; a variable that occurs once inside powers, roots, exp and log is solved by undoing each operation, one recorded step at a time. Every solution is substituted back into your equation, and a separate check shows that none was dropped.
+
+**Limits**
+
+- Solutions are over the complex numbers. Assumptions on the unknown (real, positive) are not used to choose among them, and the result says so; a logarithm or an exponential gives a family with an integer k_1.
+- Supported are linear and quadratic factors with symbolic coefficients, cubic and quartic factors with rational coefficients, and one occurrence of the unknown inside sums, products, powers, principal roots, exp and log (a base is accepted only if known positive). Periodic inverses (sin, cos), absolute values, symbolic exponents of the unknown, systems of equations and symbolic polynomials of degree three or more are unsupported, and no partial answer is given.
+- A root that makes a denominator zero is removed, and a principal root can make a candidate extraneous (the equation √x = -2 has no solution). An equation with no solution is reported as such.
+- Noncommuting symbols are not supported here.
+
+#### The condition and the degenerate case
+
+- **Equation:** `a x + b = c`
+- **Unknown:** `x`
+- **Status:** `ok`
+- **Solution 1:** $x = \frac{- b + c}{a}$
+- **All solutions need:** $a \neq 0$
+- **Not covered if:** $a = 0$
+- **Check:** each solution substituted back into the equation: 6 of 6 sampled points agree
+- **Check:** nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes
+
+#### Both roots of a quadratic
+
+- **Equation:** `s = u t + \frac{1}{2} a t^2`
+- **Unknown:** `t`
+- **Status:** `ok`
+- **Solution 1:** $t = \frac{- u + \sqrt{2 a s + u^{2}}}{a}$
+- **Solution 2:** $t = \frac{- u - \sqrt{2 a s + u^{2}}}{a}$
+- **All solutions need:** $a \neq 0$
+- **Not covered if:** $a = 0$
+- **Check:** each solution substituted back into the equation: 12 of 12 sampled points agree
+- **Check:** nothing dropped: the distinct roots of the numerator matched the solutions at 8 of 8 parameter points
+
+#### A rational equation
+
+- **Equation:** `\frac{1}{f} = \frac{1}{u} + \frac{1}{v}`
+- **Unknown:** `v`
+- **Status:** `ok`
+- **Solution 1:** $v = \frac{f u}{- f + u}$
+- **All solutions need:** $- f + u \neq 0$
+- **The equation excludes:** $f \neq 0, u \neq 0$
+- **Not covered if:** $- f + u = 0$
+- **Check:** each solution substituted back into the equation: 6 of 6 sampled points agree
+- **Check:** nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes
+
+#### The only candidate is excluded
+
+- **Equation:** `\frac{x^2 - 1}{x - 1} = 2`
+- **Unknown:** `x`
+- **Status:** `ok`
+- **Result:** no solution
+- **The equation excludes:** $x - 1 \neq 0$
+- **Check:** nothing dropped: the distinct roots of the numerator matched the solutions at 8 of 8 parameter points
+- Clearing the denominator gives x = 1, which makes the denominator zero.
+
+#### Squaring creates an extraneous candidate
+
+- **Equation:** `\sqrt{x} = -2`
+- **Unknown:** `x`
+- **Status:** `ok`
+- **Result:** no solution
+- **Check:** nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes
+
+#### An exponential gives a family of solutions
+
+- **Equation:** `N = M \exp(-r t)`
+- **Unknown:** `t`
+- **Status:** `ok`
+- **Solution 1:** $t = - \frac{2 \mathrm{i} \pi k_{1} + \log{\left(\frac{N}{M} \right)}}{r}$
+- **All solutions need:** $M \neq 0, N \neq 0, r \neq 0$
+- **Not covered if:** $M = 0, N = 0, r = 0$
+- **Check:** each solution substituted back into the equation: 6 of 6 sampled points agree
+- **Check:** nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes
+- Solution 1 is a family: k_1 any integer.
+
+#### A root of each sign
+
+- **Equation:** `F = \frac{G m n}{r^2}`
+- **Unknown:** `r`
+- **Status:** `ok`
+- **Solution 1:** $r = \sqrt{\frac{G m n}{F}}$
+- **Solution 2:** $r = - \sqrt{\frac{G m n}{F}}$
+- **All solutions need:** $G \neq 0, m \neq 0, n \neq 0, F \neq 0$
+- **Not covered if:** $G = 0, m = 0, n = 0, F = 0$
+- **Check:** each solution substituted back into the equation: 12 of 12 sampled points agree
+- **Check:** nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes
+
+#### A periodic inverse is not supported
+
+- **Equation:** `\sin x = a`
+- **Unknown:** `x`
+- **Status:** `unsupported`
+- the unknown is inside a form this version cannot invert (only sums, products, powers, roots, exp and log around it are supported; periodic functions are not)
+
+#### No closed form in general
+
+- **Equation:** `x^5 + a x + 1 = 0`
+- **Unknown:** `x`
+- **Status:** `unsupported`
+- no closed form is produced for a factor of this degree with these coefficients: a general polynomial of degree 5 or more has none (Abel-Ruffini), and cubics and quartics are solved here only with rational coefficients
+
 ### Polynomial equations
 
 *Available in:* chat.

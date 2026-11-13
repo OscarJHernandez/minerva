@@ -8,10 +8,12 @@ import type {
   DistributionRequest,
   DistributionResult,
   IntegrateResult,
+  IsolateResult,
   MatrixCalculusResult,
   MatrixRequest,
   SimplifyResult,
   Status,
+  StepResult,
 } from "./types";
 
 export interface ExpansionReport {
@@ -542,6 +544,15 @@ export type Card =
       type: "units";
       title: string;
       data: { report: UnitsCheckReport; methods: EntrySummary[] };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "step";
+      title: string;
+      data:
+        | { operation: "substitute" | "rewrite"; result: StepResult }
+        | { operation: "isolate"; result: IsolateResult };
     }
   | { id: string; tool: string; type: "error"; title: string; data: { message: string } };
 

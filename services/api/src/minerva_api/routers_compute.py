@@ -16,11 +16,13 @@ from minerva_engine import (
     GeometryInput,
     GeometryResult,
     IntegrateResult,
+    IsolateResult,
     MatrixCalculusInput,
     MatrixCalculusResult,
     RuleCondition,
     SeriesResult,
     Status,
+    StepResult,
     TensorInput,
     TensorResult,
     Verification,
@@ -48,11 +50,15 @@ from .schemas import (
     GeometryRequest,
     IdentitiesRequest,
     IntegrateRequest,
+    IsolateRequest,
     Linked,
     Links,
     MatrixCalculusRequest,
+    RewriteRequest,
     SeriesRequest,
     SimplifyRequest,
+    SubstituteRequest,
+    SubtermsRequest,
 )
 from .search_log import log_search_events
 
@@ -565,6 +571,172 @@ def apply_identity(
     if body.save:
         out.calculation_id = _save(
             db, user, "apply_identity", body, out.status.value, out.model_dump(mode="json")
+        )
+    return out
+
+
+class StepResponse(StepResult):
+    """A controlled step (rewrite one part, substitute, or a list of parts)."""
+
+    calculation_id: uuid.UUID | None = None
+    entry: EntrySummary | None = None  # the handbook identity applied, if any
+
+
+class IsolateResponse(IsolateResult):
+    calculation_id: uuid.UUID | None = None
+
+
+def _guard_total(user: UserDep, limiter: LimiterDep, settings: SettingsDep, *texts: str) -> None:
+    _guard(user, limiter, settings, sum(len(t) for t in texts))
+
+
+def _log_step(operation: str, user: UserDep, status_value: str, result: Any) -> None:
+    """Counters, durations and codes only: `StepDiagnostics.log_fields` cannot hold an expression."""
+    log.info(
+        "compute",
+        operation=operation,
+        status=status_value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+        **result.diagnostics.log_fields(),
+    )
+
+
+def _saved(out: Any, request: dict[str, Any]) -> dict[str, Any]:
+    """What is stored with a step: the result and the request parameters, without debug detail."""
+    saved = out.model_dump(mode="json")
+    saved["diagnostics"]["detail"] = []
+    saved["request"] = request
+    return saved  # type: ignore[no-any-return]
+
+
+@router.post("/subterms", response_model=StepResponse)
+def subterms(
+    body: SubtermsRequest,
+    user: UserDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> StepResponse:
+    """The parts of an expression that can be chosen for a step. A lookup: never saved."""
+    _guard_total(user, limiter, settings, body.input, body.find or "")
+    rule = None
+    if body.rule_id is not None:
+        entry = kb.get(body.rule_id)
+        if entry is None or entry.rule is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No applicable identity with that id")
+        rule = entry.rule
+    result = engine.subterms(
+        _expr(body), find=body.find, rule=rule, reverse=body.reverse, debug=settings.debug_compute
+    )
+    _log_step("subterms", user, result.status.value, result)
+    return StepResponse(**result.model_dump())
+
+
+@router.post("/rewrite", response_model=StepResponse)
+def rewrite(
+    body: RewriteRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> StepResponse:
+    """Apply one move (an identity, expand, factor, cancel, simplify, collect) to one chosen part."""
+    _guard_total(
+        user,
+        limiter,
+        settings,
+        body.input,
+        body.part or "",
+        *body.by,
+        body.selection.expected_latex if body.selection else "",
+    )
+    rule = entry = None
+    if body.action == "rule":
+        entry = kb.get(body.rule_id or "")
+        if entry is None or entry.rule is None:
+            # `stated` and other rule-less entries are never applied.
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "No applicable identity with that id")
+        rule = entry.rule
+    _check_links(db, user, body)
+    result = engine.rewrite_at(
+        _expr(body),
+        body.action,
+        selection=body.selection.model_dump() if body.selection else None,
+        part=body.part,
+        occurrence=body.occurrence,
+        rule=rule,
+        reverse=body.reverse,
+        by=body.by,
+        debug=settings.debug_compute,
+    )
+    _log_step("rewrite", user, result.status.value, result)
+    out = StepResponse(**result.model_dump())
+    if entry is not None:
+        out.entry = summarize(kb, entry)
+    if body.save:
+        request = {
+            "action": body.action,
+            "rule_id": body.rule_id,
+            "reverse": body.reverse,
+            "part": body.part,
+            "occurrence": body.occurrence,
+            "by": body.by,
+            "selection": body.selection.model_dump() if body.selection else None,
+        }
+        out.calculation_id = _save(
+            db, user, "rewrite", body, result.status.value, _saved(out, request)
+        )
+    return out
+
+
+@router.post("/substitute", response_model=StepResponse)
+def substitute(
+    body: SubstituteRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> StepResponse:
+    """Replace the left side of each relation by its right side. The relations are premises: a result
+    that depends on them is conditional, and says so."""
+    _guard_total(user, limiter, settings, body.input, *body.relations)
+    _check_links(db, user, body)
+    result = engine.substitute(
+        _expr(body), body.relations, order=body.order, debug=settings.debug_compute
+    )
+    _log_step("substitute", user, result.status.value, result)
+    out = StepResponse(**result.model_dump())
+    if body.save:
+        request = {"relations": body.relations, "order": body.order}
+        out.calculation_id = _save(
+            db, user, "substitute", body, result.status.value, _saved(out, request)
+        )
+    return out
+
+
+@router.post("/isolate", response_model=IsolateResponse)
+def isolate(
+    body: IsolateRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> IsolateResponse:
+    """Solve an equation for one variable, listing every solution and the conditions it needs."""
+    _guard_total(user, limiter, settings, body.input, body.variable)
+    _check_links(db, user, body)
+    result = engine.isolate(_expr(body), body.variable, debug=settings.debug_compute)
+    _log_step("isolate", user, result.status.value, result)
+    out = IsolateResponse(**result.model_dump())
+    if body.save:
+        out.calculation_id = _save(
+            db, user, "isolate", body, result.status.value, _saved(out, {"variable": body.variable})
         )
     return out
 

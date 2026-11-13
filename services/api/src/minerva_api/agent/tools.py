@@ -1600,6 +1600,226 @@ def run_get_entry(args: EntryArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, [data["statement_latex"]])
 
 
+# --- controlled steps: substitute, rewrite one part, isolate a variable -----------------------------
+class SubstituteArgs(SimplifyArgs):
+    relations: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description="Relations to use, each `left = right` in LaTeX, e.g. y^2 = 1 - x^2. They come "
+        "from the user: never invent one. The left side is replaced by the right side.",
+    )
+    order: Literal["given", "simultaneous"] | None = Field(
+        default=None,
+        description="Only if the user said how several relations combine: `given` applies them one after "
+        "another in the order listed, `simultaneous` all at once. Leave empty otherwise: the tool refuses "
+        "when the order would change the result, and then you must ask the user.",
+    )
+
+
+class RewritePartArgs(SimplifyArgs):
+    action: Literal["simplify", "expand", "factor", "cancel", "collect", "rule"] = Field(
+        description="The move to apply to the chosen part. `rule` applies the handbook identity `rule_id`."
+    )
+    rule_id: str | None = Field(
+        default=None, max_length=128, description="Handbook entry id when action is `rule`."
+    )
+    reverse: bool = Field(default=False, description="Read the identity right to left.")
+    part: str | None = Field(
+        default=None,
+        max_length=400,
+        description="The part of the expression to change, in LaTeX. Empty: the whole expression.",
+    )
+    occurrence: int | None = Field(
+        default=None,
+        ge=1,
+        le=1000,
+        description="Which occurrence, when the part appears more than once. Ask the user; never guess.",
+    )
+    by: list[str] = Field(
+        default_factory=list,
+        max_length=4,
+        description="For `collect`: the variables or parts to collect by.",
+    )
+
+
+class IsolateArgs(BaseModel):
+    equation: str = Field(
+        max_length=MAX_INPUT,
+        description="The equation `left = right` in LaTeX, e.g. s = u t + \\frac{1}{2} a t^2",
+    )
+    variable: str = Field(max_length=32, description="The unknown to solve for, e.g. t")
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Properties of symbols: real, positive, negative, nonnegative, nonpositive, nonzero, "
+        "integer, rational.",
+    )
+
+
+def _step_card(tool: str, title: str, operation: str, result: Any) -> Card:
+    return Card(
+        id=uuid.uuid4().hex[:8],
+        tool=tool,
+        type="step",
+        title=title,
+        data={"operation": operation, "result": result.model_dump(mode="json")},
+    )
+
+
+def _step_known(result: Any) -> list[str]:
+    """Every formula in a step result that the model may quote."""
+    known = [x for x in (result.input_latex, result.result_latex) if x]
+    for step in result.steps:
+        known += [step.before_latex, step.after_latex, *step.conditions_latex]
+        if step.display_latex:
+            known.append(step.display_latex)
+        if step.matched_latex:
+            known.append(step.matched_latex)
+    for premise in result.given:
+        known.append(premise.latex)
+        known += [side for side in premise.latex.split(" = ") if side]
+    known += [*result.conditions_latex, *result.restrictions_latex]
+    return known
+
+
+def _evidence_clause(result: Any) -> str:
+    v = result.verification
+    if v is None:
+        return ""
+    return (
+        f"checked numerically at {v.numeric_points_agreed}/{v.numeric_points_checked} points; "
+        f"symbolic_zero={v.symbolic_zero}"
+    )
+
+
+def run_substitute(args: SubstituteArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.substitute(_expr(args), args.relations, order=args.order)
+    card = _step_card("substitute", "Substitute", "substitute", result)
+    head = f"status={result.status.value}; input_as_read=${result.input_latex}$"
+    lines = []
+    if result.status.value == "ok":
+        head += f"; result=${result.result_latex}$; evidence={result.evidence}"
+        if result.evidence == "conditional":
+            head += (
+                "; the result HOLDS GIVEN the user's relations "
+                + ", ".join(f"${p.latex}$" for p in result.given)
+                + ". Minerva did not check that they are true: say 'given', never 'proved'"
+            )
+        head += f"; {_evidence_clause(result)}"
+        for i, step in enumerate(result.steps, start=1):
+            shown = (
+                f" (written ${step.display_latex}$ before combining)" if step.display_latex else ""
+            )
+            lines.append(f"- step {i}: ${step.before_latex}$ -> ${step.after_latex}${shown}")
+        if result.restrictions_latex:
+            head += "; valid only where " + ", ".join(f"${r}$" for r in result.restrictions_latex)
+        if result.order_dependent:
+            head += "; ANOTHER ORDER of the relations would give a different expression"
+    else:
+        head += f"; result=none ({result.reason.value if result.reason else result.message})"
+        if result.reason is not None and result.reason.value in {
+            "order_dependent",
+            "cyclic",
+            "deadline",
+        }:
+            head += (
+                ". Ask the user whether to apply the relations in the order listed or all at once"
+            )
+    return ToolOutput(
+        card, "\n".join([head, result.message, *lines]), _step_known(result), result.status.value
+    )
+
+
+def run_rewrite_part(args: RewritePartArgs, ctx: ToolContext) -> ToolOutput:
+    rule = None
+    if args.action == "rule":
+        entry = ctx.kb.get(args.rule_id or "")
+        if entry is None or entry.rule is None:
+            return _error(
+                "rewrite_part", "that handbook entry is not an identity that can be applied"
+            )
+        rule = entry.rule
+    result = ctx.engine.rewrite_at(
+        _expr(args),
+        args.action,
+        part=args.part,
+        occurrence=args.occurrence,
+        rule=rule,
+        reverse=args.reverse,
+        by=args.by,
+    )
+    card = _step_card("rewrite_part", "Change one part", "rewrite", result)
+    head = (
+        f"status={result.status.value}; input_as_read=${result.input_latex}$; action={args.action}"
+    )
+    lines: list[str] = []
+    if result.status.value == "ok":
+        head += f"; result=${result.result_latex}$; {_evidence_clause(result)}"
+        for step in result.steps:
+            head += f"; applied {step.name} to the part ${step.matched_latex}$"
+        if result.restrictions_latex:
+            head += "; valid only where " + ", ".join(f"${r}$" for r in result.restrictions_latex)
+    elif result.status.value == "conditions_not_satisfied":
+        needs = ", ".join(f"{c.variable} {c.assumption}" for c in result.unmet_conditions)
+        head += f"; NOT APPLIED: the identity matches this part but needs {needs}. Ask whether they hold"
+    else:
+        head += "; result=none"
+        if result.reason is not None and result.reason.value == "ambiguous_selection":
+            for sub in result.subterms[:8]:
+                lines.append(
+                    f"- occurrence {sub.occurrence} of {sub.occurrences}: ${sub.latex}$ in ${sub.highlight_latex}$"
+                )
+            head += ". The part occurs more than once: ask the user which occurrence, then call again with `occurrence`"
+    known = (
+        _step_known(result)
+        + [s.latex for s in result.subterms]
+        + [s.highlight_latex for s in result.subterms]
+    )
+    return ToolOutput(card, "\n".join([head, result.message, *lines]), known, result.status.value)
+
+
+def run_isolate(args: IsolateArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.isolate(
+        ExpressionInput(input=args.equation, format="latex", assumptions=args.assumptions),
+        args.variable,
+    )
+    card = _step_card("isolate_variable", "Solve for a variable", "isolate", result)
+    head = f"status={result.status.value}; equation_as_read=${result.equation_latex}$; unknown={args.variable}"
+    known: list[str] = [x for x in [result.equation_latex] if x]
+    lines: list[str] = []
+    if result.status.value == "ok":
+        if not result.solutions:
+            head += "; NO SOLUTION (every candidate was excluded by a condition)"
+        for i, sol in enumerate(result.solutions[:12], start=1):
+            value = sol.latex.split(" = ", 1)[-1]
+            needs = (
+                f"; needs {', '.join(f'${c}$' for c in sol.conditions_latex)}"
+                if sol.conditions_latex
+                else ""
+            )
+            family = f"; family: {sol.branch}" if sol.branch else ""
+            lines.append(f"- solution {i}: ${sol.latex}${needs}{family}")
+            known += [sol.latex, value, *sol.conditions_latex]
+        if result.conditions_latex:
+            head += "; ALL solutions need " + ", ".join(f"${c}$" for c in result.conditions_latex)
+        if result.excluded_latex:
+            head += "; the equation itself excludes " + ", ".join(
+                f"${c}$" for c in result.excluded_latex
+            )
+        if result.exceptional:
+            head += (
+                "; NOT COVERED when "
+                + ", ".join(f"${c}$" for c in result.exceptional)
+                + " (the equation degenerates there: say so)"
+            )
+        if result.assumption_note:
+            head += f"; {result.assumption_note}"
+        head += f"; every solution was substituted back; complete={result.complete}"
+        known += [*result.conditions_latex, *result.excluded_latex, *result.exceptional]
+    else:
+        head += "; result=none (do not offer a partial answer)"
+    return ToolOutput(card, "\n".join([head, result.message, *lines]), known, result.status.value)
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -1640,6 +1860,38 @@ TOOLS: dict[str, Tool] = {
             "then). Reports 'unchanged' if nothing better was found, which does not show that none exists.",
             SimplifyToolArgs,
             run_simplify,
+        ),
+        Tool(
+            "substitute",
+            "Replace the left side of the user's relation(s) `left = right` by the right side in an "
+            "expression, step by step (for example x^2 + y^2 with y^2 = 1 - x^2 gives 1). The relations "
+            "are the user's premises: Minerva does not check them, so a result that depends on them holds "
+            "'given' them; say so, never 'proved'. If several relations give different results in "
+            "different orders, or rewrite each other, the tool refuses until the user states the order.",
+            SubstituteArgs,
+            run_substitute,
+        ),
+        Tool(
+            "rewrite_part",
+            "Apply ONE move (a handbook identity by id, expand, factor, cancel, simplify, or collect terms "
+            "by chosen variables) to one part of an expression and leave the rest alone; the whole "
+            "expression is verified. Name the part in LaTeX, and the occurrence if it appears more than "
+            "once (ask the user, never guess). An identity whose conditions are not provable from the "
+            "assumptions is reported and not applied.",
+            RewritePartArgs,
+            run_rewrite_part,
+        ),
+        Tool(
+            "isolate_variable",
+            "Solve an equation for one variable: lists EVERY solution and the conditions each needs "
+            "(for example a != 0), values the equation excludes, and parameter values where it degenerates. "
+            "Covers polynomial and rational equations, and a variable that occurs once inside powers, "
+            "roots, exp and log (a family with an integer k_1 where the logarithm is multi-valued). "
+            "Each solution is substituted back and a separate check shows none was dropped. Periodic "
+            "inverses (sin, cos), higher-degree symbolic polynomials and several occurrences of the "
+            "variable in other forms are 'unsupported': report that, never a partial answer.",
+            IsolateArgs,
+            run_isolate,
         ),
         Tool(
             "differentiate",

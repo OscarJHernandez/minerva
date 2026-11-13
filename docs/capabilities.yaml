@@ -27,6 +27,9 @@
 #   discovery    input, coordinates, system (lagrangian | hamiltonian), momenta, angles, budget
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
+#   substitute   input, relations [LaTeX `left = right`], order (given | simultaneous), assumptions
+#   rewrite      input, action (simplify | expand | factor | cancel | collect | rule), part, occurrence, rule, by, assumptions
+#   isolate      input (an equation), variable, assumptions
 # Inputs are LaTeX (tensor inputs use the text form S(a,b)*A(-a,-b)). Add a refusal example wherever a
 # capability has an obvious limit: what Minerva declines to do is part of what it does.
 
@@ -640,6 +643,219 @@ capabilities:
         input: '\log(x y)'
         assumptions: { x: [positive], y: [positive] }
         show: [log.product]
+
+  - id: substitution
+    title: Substituting relations
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Replaces the left side of a relation you supply by its right side, one relation at a time, and records each
+      replacement as a step with the relation it used. The relations are your premises: Minerva checks that the
+      replacement reproduces the original expression, not that your relation is true, so a result that depends on
+      them is shown as holding given them. If the result also holds without them, it says so.
+    limits:
+      - At most four relations, applied once each in the order you give. If another order would give a different
+        result, or the relations rewrite each other, the request is refused until you say whether to apply them in the
+        order listed or all at once; Minerva never picks one.
+      - A relation that can never hold (`x = x + 1`) or relates only numbers is refused. A relation used as a
+        commutation rule (`AB - BA = 1`) is not applied, because only patterns that occur in the expression are replaced.
+      - Replacement finds the occurrences SymPy recognises; a pattern that does not occur leaves the expression unchanged.
+      - The input must be an expression (not an equation). Noncommuting symbols are supported for polynomial
+        expressions, and the order of their factors is kept.
+      - Where a cancelled denominator excludes a point, the result states it (`x \neq 0`).
+    examples:
+      - id: substitution-pythagoras
+        title: A relation replaces a part, and the result is conditional
+        note: >-
+          The step is shown before SymPy combines the terms. The result depends on your relation, so it is marked
+          as holding given it.
+        op: substitute
+        input: "x^2 + y^2"
+        relations: ["y^2 = 1 - x^2"]
+      - id: substitution-physics
+        title: Energy conservation
+        op: substitute
+        input: '\frac{1}{2} m v^2 + m g h'
+        relations: ["v^2 = 2 g (H - h)"]
+      - id: substitution-restriction
+        title: A cancelled denominator is reported
+        op: substitute
+        input: '\frac{y}{x}'
+        relations: ["y = x^2"]
+      - id: substitution-order-refused
+        title: The order matters, so Minerva asks
+        note: >-
+          Applying x = y first gives 2; applying y = 1 first gives y + 1. Nothing is shown until the order is stated.
+        op: substitute
+        input: "x + y"
+        relations: ["x = y", "y = 1"]
+      - id: substitution-order-given
+        title: The order stated by the user
+        op: substitute
+        input: "x + y"
+        relations: ["x = y", "y = 1"]
+        order: given
+      - id: substitution-false-premise
+        title: A relation that can never hold is refused
+        op: substitute
+        input: "x + 1"
+        relations: ["x = x + 1"]
+      - id: substitution-absent
+        title: The left side does not occur
+        op: substitute
+        input: "x + 1"
+        relations: ["z = 2"]
+      - id: substitution-noncommutative
+        title: Noncommuting symbols keep their order
+        op: substitute
+        input: "A^2 B"
+        relations: ["A B = D"]
+        assumptions: { A: [noncommutative], B: [noncommutative], D: [noncommutative] }
+
+  - id: rewrite-part
+    title: Changing one part of an expression
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Applies one move to one part of an expression and leaves the rest alone: expand, factor, cancel, simplify,
+      collect terms by chosen variables or powers, or a handbook identity. You choose the part from a list the server
+      makes (or type it); if it occurs more than once you choose the occurrence. The whole expression before and
+      after is verified, and an identity whose conditions are not provable from your assumptions is reported and not applied.
+    limits:
+      - A part is chosen for one exact expression; if the expression has changed, the choice is refused as stale and
+        never applied somewhere else.
+      - An identity is matched against the chosen part alone, with the same filters as everywhere else (no invented
+        roots, reciprocals or the imaginary unit).
+      - Collect works on symbols and parts of the expression, at most four, and by commuting ones for noncommuting
+        expressions. For noncommuting symbols only expand and collect are supported, on polynomial expressions;
+        every other operation reports that it does not support them.
+      - Verification is numerical, and symbolic where SymPy finds a zero; for noncommuting symbols random matrices
+        sized from the degree are used.
+    examples:
+      - id: rewrite-expand-one-factor
+        title: Expand one factor
+        op: rewrite
+        input: "(x + 1)^2 (y + 1)^2"
+        part: "(x + 1)^2"
+        action: expand
+      - id: rewrite-identity-second-term
+        title: A handbook identity on the second term
+        op: rewrite
+        input: '\sin(2x) + \sin(2y)'
+        part: '\sin(2y)'
+        action: rule
+        rule: trig.double_sin
+      - id: rewrite-one-of-two
+        title: One of two equal places
+        note: >-
+          The same part occurs twice; only the chosen occurrence changes.
+        op: rewrite
+        input: '\sin(2x) + y \sin(2x)'
+        part: '\sin(2x)'
+        occurrence: 2
+        action: rule
+        rule: trig.double_sin
+      - id: rewrite-collect
+        title: Collect terms
+        op: rewrite
+        input: "a x^2 y + b x y^2 + c x^2 + d y^2"
+        action: collect
+        by: ["x"]
+      - id: rewrite-conditions
+        title: The identity is found but not applied
+        note: >-
+          log(xy) = log x + log y needs both factors positive; nothing in the declared assumptions says so.
+        op: rewrite
+        input: '\log(x y) + \log(x z)'
+        part: '\log(x y)'
+        action: rule
+        rule: log.product
+      - id: rewrite-stale
+        title: A part that is not there
+        op: rewrite
+        input: '\sin x'
+        part: '\tan x'
+        action: expand
+      - id: rewrite-noncommutative
+        title: Expanding a square of noncommuting symbols
+        op: rewrite
+        input: "(A + B)^2 + x"
+        part: "(A + B)^2"
+        action: expand
+        assumptions: { A: [noncommutative], B: [noncommutative] }
+
+  - id: isolate
+    title: Solving an equation for one variable
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Isolates a variable in an equation and lists every solution with the conditions it needs: parameters that must
+      not vanish, values the equation itself excludes, and the parameter values where it degenerates. Polynomial and
+      rational equations are solved in closed form where one exists; a variable that occurs once inside powers, roots,
+      exp and log is solved by undoing each operation, one recorded step at a time. Every solution is substituted back
+      into your equation, and a separate check shows that none was dropped.
+    limits:
+      - Solutions are over the complex numbers. Assumptions on the unknown (real, positive) are not used to choose among
+        them, and the result says so; a logarithm or an exponential gives a family with an integer k_1.
+      - Supported are linear and quadratic factors with symbolic coefficients, cubic and quartic factors with rational
+        coefficients, and one occurrence of the unknown inside sums, products, powers, principal roots, exp and log
+        (a base is accepted only if known positive). Periodic inverses (sin, cos), absolute values, symbolic exponents of
+        the unknown, systems of equations and symbolic polynomials of degree three or more are unsupported, and no
+        partial answer is given.
+      - A root that makes a denominator zero is removed, and a principal root can make a candidate extraneous (the
+        equation √x = -2 has no solution). An equation with no solution is reported as such.
+      - Noncommuting symbols are not supported here.
+    examples:
+      - id: isolate-linear
+        title: The condition and the degenerate case
+        op: isolate
+        input: "a x + b = c"
+        variable: x
+      - id: isolate-kinematics
+        title: Both roots of a quadratic
+        op: isolate
+        input: 's = u t + \frac{1}{2} a t^2'
+        variable: t
+      - id: isolate-lens
+        title: A rational equation
+        op: isolate
+        input: '\frac{1}{f} = \frac{1}{u} + \frac{1}{v}'
+        variable: v
+      - id: isolate-extraneous
+        title: The only candidate is excluded
+        note: >-
+          Clearing the denominator gives x = 1, which makes the denominator zero.
+        op: isolate
+        input: '\frac{x^2 - 1}{x - 1} = 2'
+        variable: x
+      - id: isolate-sqrt-extraneous
+        title: Squaring creates an extraneous candidate
+        op: isolate
+        input: '\sqrt{x} = -2'
+        variable: x
+      - id: isolate-exponential
+        title: An exponential gives a family of solutions
+        op: isolate
+        input: 'N = M \exp(-r t)'
+        variable: t
+      - id: isolate-inverse-square
+        title: A root of each sign
+        op: isolate
+        input: 'F = \frac{G m n}{r^2}'
+        variable: r
+      - id: isolate-periodic-refused
+        title: A periodic inverse is not supported
+        op: isolate
+        input: '\sin x = a'
+        variable: x
+      - id: isolate-quintic-refused
+        title: No closed form in general
+        op: isolate
+        input: "x^5 + a x + 1 = 0"
+        variable: x
 
   - id: polynomial-solving
     title: Polynomial equations

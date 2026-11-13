@@ -617,6 +617,55 @@
   expected_tool: none
   source: "no computation is requested"
 
+# ----------------------------------------------------------------------------- controlled steps
+- id: substitute-names-the-premise
+  category: multistep
+  prompt: 'Using $y^2 = 1 - x^2$, substitute into $x^2 + y^2$.'
+  expected_tool: substitute
+  forbid: [simplify]
+  args: {present: [relations]}
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: substitute, arguments: {latex: 'x^2 + y^2', relations: ['y^2 = 1 - x^2']}}
+  reply_matches: 'given|assum|premise|your relation|if '
+  source: "engine test_substitute.py (the result holds given the user's relation)"
+
+- id: isolate-reports-the-condition
+  category: symbolic
+  prompt: 'Solve $a x + b = c$ for $x$.'
+  expected_tool: isolate_variable
+  expect_card: {status: ok}
+  reference: {tool: isolate_variable, arguments: {equation: 'a x + b = c', variable: 'x'}}
+  reply_matches: 'a\s*(\\neq|!=|≠|not equal)|nonzero|non-zero|a\s*=\s*0'
+  source: "engine test_isolate.py (a must not be zero; a = 0 degenerates)"
+
+- id: isolate-gives-both-roots
+  category: physics
+  prompt: 'Solve $s = u t + \frac{1}{2} a t^2$ for $t$.'
+  expected_tool: isolate_variable
+  expect_card: {status: ok}
+  reference: {tool: isolate_variable, arguments: {equation: 's = u t + \frac{1}{2} a t^2', variable: 't'}}
+  reply_matches: '\\pm|both|two|second|-\s*u\s*-'
+  source: "engine test_isolate.py (a quadratic has two roots)"
+
+- id: isolate-unsupported-is-not-answered
+  category: unsupported
+  prompt: 'Solve $\sin x = a$ for $x$.'
+  expected_tool: isolate_variable
+  expect_card: {status: unsupported}
+  reference: {tool: isolate_variable, arguments: {equation: '\sin x = a', variable: 'x'}}
+  reply_matches: 'not supported|unsupported|cannot|can.t|could not|no solution'
+  source: "engine test_isolate.py (periodic inverses are unsupported; no partial answer)"
+
+- id: rewrite-part-asks-which-occurrence
+  category: ambiguous
+  prompt: 'In $\sin(2x) + y \sin(2x)$ apply the double angle formula to the part $\sin(2x)$.'
+  expected_tool: rewrite_part
+  expect_card: {status: parse_error}
+  reference: {tool: rewrite_part, arguments: {latex: '\sin(2x) + y \sin(2x)', action: rule, rule_id: trig.double_sin, part: '\sin(2x)'}}
+  reply_matches: 'which|occurrence|first|second|both|\?'
+  informational: true
+  source: "engine test_steps.py (a part that occurs twice needs an occurrence)"
+
 # ----------------------------------------------------------------------------- unsupported
 - id: unsupported-derivative-abs
   category: unsupported
