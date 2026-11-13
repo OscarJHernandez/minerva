@@ -15,16 +15,26 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
-from minerva_engine import MotionRequest
+from minerva_engine import MotionRequest, trace_scope
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .agent.events import AssistantMessage, Block, TraceStep
+from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, TurnInfo, run_agent
+from .agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
+from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
 from .agent.tools import PerturbationArgs, ToolContext, execute
+from .agent.tracing import (
+    AgentCompleted,
+    Sink,
+    ToolCompleted,
+    Tracer,
+    activate,
+    deactivate,
+    tool_status,
+)
 from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
@@ -34,6 +44,27 @@ router = APIRouter(prefix="/v1/chat", tags=["chat"])
 log = get_logger()
 
 HISTORY_MESSAGES = 20
+
+
+def _event_sink(mode: str) -> Sink | None:
+    """Where trace events go as they happen: the server log, which holds no content.
+
+    Events carry identifiers, counts, durations and fixed-vocabulary values only (agent/tracing.py), and
+    the log allow-list (logging.py) drops anything else, so this cannot write an expression, a tool
+    argument or result, or model text at any setting.
+    """
+    if mode == "off":
+        return None
+
+    def sink(record: dict[str, Any]) -> None:
+        name = str(record["event"])
+        if mode == "summary" and name != "agent.completed":
+            return
+        log.info(name, **{k: v for k, v in record.items() if k != "event" and v is not None})
+
+    return sink
+
+
 _MATH = re.compile(r"\$\$(.+?)\$\$|(?<!\\)\$([^$\n]+?)(?<!\\)\$", re.DOTALL)
 
 
@@ -260,9 +291,41 @@ def _run_tool_directly(
     if not limiter.allow(f"compute:{user.id}", settings.compute_rate_per_minute):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests; slow down.")
     conversation = _owned(db, conversation_id, user.id)
+    trace_id = uuid.uuid4().hex
+    tracer = Tracer(trace_id, _event_sink(settings.agent_events))
+    activate(tracer, engine)
     started = time.monotonic()
-    output = execute(name, arguments, ToolContext(engine=engine, kb=kb))
+    try:
+        with trace_scope(trace_id):
+            output = execute(name, arguments, ToolContext(engine=engine, kb=kb))
+    finally:
+        deactivate(tracer)
     elapsed = int((time.monotonic() - started) * 1000)
+    sandbox = tracer.sandbox_since(0)
+    engine_ms = sum(c.ms for c in sandbox) if sandbox else None
+    category = output.error_category
+    tracer.emit(
+        ToolCompleted,
+        None,
+        tool=name,
+        call_id=output.card.id,
+        status=tool_status(output.status),
+        duration_ms=elapsed,
+        engine_ms=engine_ms,
+        sandbox_calls=len(sandbox),
+        error_category=category,
+    )
+    tracer.emit(
+        AgentCompleted,
+        None,
+        status="error" if output.status == "error" else "ok",
+        total_ms=elapsed,
+        tool_calls=1,
+        tool_errors=1 if output.status == "error" else 0,
+        tool_ms=elapsed,
+        engine_ms=engine_ms or 0,
+        error_category=category,
+    )
     content = AssistantMessage(
         text="",
         blocks=[Block(kind="card", card=output.card)],
@@ -274,8 +337,25 @@ def _run_tool_directly(
                 for_model=output.for_model,
                 duration_ms=elapsed,
                 status=output.status,
+                evidence=output.evidence,
+                arguments_valid=output.arguments_valid,
+                error_category=category,
+                engine_ms=engine_ms,
+                verified_latex=list(output.known_latex),
+                quoted=dict(output.quoted_latex),
             )
         ],
+        # No model took part: the debug record only says so and carries the trace id and events.
+        debug=TurnDebug(
+            mode="direct",
+            prompt_sha=prompt_sha(),
+            duration_ms=elapsed,
+            trace_id=trace_id,
+            stop_reason="completed",
+            events=list(tracer.events),
+            events_dropped=tracer.dropped,
+        ),
+        stop_reason="completed",
     ).model_dump(mode="json")
     row = ChatMessage(conversation_id=conversation.id, role="assistant", content=content)
     db.add(row)
@@ -287,6 +367,7 @@ def _run_tool_directly(
         status=output.status,
         duration_ms=elapsed,
         user_id=str(user.id),
+        trace_id=trace_id,
     )
     return MessageOut(id=row.id, role=row.role, content=row.content, created_at=row.created_at)
 
@@ -353,14 +434,32 @@ def perturbation_solve_directly(
     )
 
 
-def _history(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], set[str]]:
-    """Rebuild the model's view of earlier turns, and the formulas Minerva produced in them."""
+LEGACY_QUOTED = "from an earlier tool result; how it was verified was not recorded"
+
+
+def _history(
+    messages: list[ChatMessage],
+) -> tuple[list[dict[str, Any]], set[str], dict[str, str], dict[str, str]]:
+    """Rebuild the model's view of earlier turns.
+
+    Also returns what earlier turns established, so formulas are marked the same way across turns:
+    the formulas verified results produced, the formulas that were only quoted (with why), and the
+    verified results that a later call may refer to (`@r1`). Messages stored before verification was
+    recorded per step have only text: their formulas count as quoted, never as verified.
+    """
     out: list[dict[str, Any]] = []
     known: set[str] = set()
+    quoted: dict[str, str] = {}
+    results: dict[str, str] = {}
     for m in messages[-HISTORY_MESSAGES:]:
         if m.role == "user":
             out.append({"role": "user", "content": str(m.content.get("text", ""))})
             continue
+        cards = {
+            b["card"]["id"]: b["card"]
+            for b in m.content.get("blocks", [])
+            if b.get("kind") == "card" and isinstance(b.get("card"), dict)
+        }
         for step in m.content.get("trace", []):
             out.append(
                 {
@@ -371,11 +470,22 @@ def _history(messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], set[str
                     ],
                 }
             )
-            out.append({"role": "tool", "tool_name": step["name"], "content": step["for_model"]})
-            for found in _MATH.finditer(step["for_model"]):
-                known.add(normalize(found.group(1) or found.group(2)))
+            content = step["for_model"]
+            result_id = step.get("result_id")
+            if result_id:
+                content += "\n" + reference_note(result_id)
+                latex = cards.get(step["id"], {}).get("data", {}).get("result_latex")
+                if isinstance(latex, str) and latex:
+                    results[result_id] = latex
+            out.append({"role": "tool", "tool_name": step["name"], "content": content})
+            if "verified_latex" in step or "quoted" in step:
+                known.update(normalize(x) for x in step.get("verified_latex", []))
+                quoted.update(step.get("quoted", {}))
+            else:  # stored before verification was recorded: quoted, never verified
+                for found in _MATH.finditer(step["for_model"]):
+                    quoted.setdefault(normalize(found.group(1) or found.group(2)), LEGACY_QUOTED)
         out.append({"role": "assistant", "content": str(m.content.get("text", ""))})
-    return out, known
+    return out, known, {k: v for k, v in quoted.items() if k not in known}, results
 
 
 MAX_RELATIONS = 60
@@ -445,7 +555,7 @@ async def send_message(
             .order_by(ChatMessage.created_at, ChatMessage.id)
         )
     )
-    history, prior_known = _history(previous)
+    history, prior_known, prior_quoted, prior_results = _history(previous)
     prior_relations, prior_assumptions = _claim_context(previous, body.content)
     history.append({"role": "user", "content": body.content})
 
@@ -459,17 +569,27 @@ async def send_message(
     user_id, conv_id = user.id, conversation.id
     session_factory = request.app.state.session_factory
     ctx = ToolContext(engine=engine, kb=kb)
-    limits = AgentLimits(max_steps=settings.agent_max_steps, max_seconds=settings.agent_max_seconds)
+    limits = AgentLimits(
+        max_steps=settings.agent_max_steps,
+        max_seconds=settings.agent_max_seconds,
+        max_tool_calls=settings.agent_max_tool_calls,
+    )
+    trace_id = (
+        uuid.uuid4().hex
+    )  # one per agent request: joins the stored trace, the events and the log
     info = TurnInfo(
         request_id=str(getattr(request.state, "request_id", "")),
         mode=settings.llm_mode,
         api_version=request.app.version,
+        trace_id=trace_id,
+        sink=_event_sink(settings.agent_events),
     )
 
     async def stream() -> AsyncIterator[str]:
         started = time.monotonic()
         outcome = "error"
         counts = {"steps": 0, "tool_calls": 0, "tool_errors": 0}  # numbers only, never content
+        stop_reason = "error"
         try:
             async for event in run_agent(
                 llm,
@@ -477,12 +597,15 @@ async def send_message(
                 ctx,
                 limits,
                 prior_known=prior_known,
+                prior_quoted=prior_quoted,
                 prior_relations=prior_relations,
                 prior_assumptions=prior_assumptions,
+                prior_results=prior_results,
                 info=info,
             ):
                 if event["event"] == "message":
-                    outcome = "ok"
+                    stop_reason = str(event["data"].get("stop_reason") or "completed")
+                    outcome = "error" if stop_reason in ("model_error", "internal_error") else "ok"
                     trace = event["data"]["trace"]
                     counts = {
                         "steps": len(event["data"]["debug"]["llm_calls"]),
@@ -499,23 +622,27 @@ async def send_message(
                         if conv is not None:
                             conv.updated_at = utcnow()
                         session.commit()
-                yield _sse(event["event"], event["data"])
-            yield _sse("done", {})
+                yield _sse(event["event"], {**event["data"], "trace_id": trace_id})
+            yield _sse("done", {"trace_id": trace_id})
         except Exception:
-            log.error("chat_turn_failed")
-            yield _sse("error", {"message": "The assistant hit an internal error."})
-            yield _sse("done", {})
+            log.error("chat_turn_failed", trace_id=trace_id)
+            yield _sse(
+                "error", {"message": "The assistant hit an internal error.", "trace_id": trace_id}
+            )
+            yield _sse("done", {"trace_id": trace_id})
         finally:
             log.info(
                 "chat_turn",
                 status=outcome,
                 duration_ms=int((time.monotonic() - started) * 1000),
                 user_id=str(user_id),
+                trace_id=trace_id,
+                stop_reason=stop_reason,
                 **counts,
             )
 
     return StreamingResponse(
         stream(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no", "X-Trace-ID": trace_id},
     )

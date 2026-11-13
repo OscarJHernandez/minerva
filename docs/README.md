@@ -6,6 +6,7 @@
 | [self-hosting.md](self-hosting.md) | Build the Docker images, run your own instance, connect your own Ollama model |
 | [architecture.md](architecture.md) | How the engine, handbook, API, agent and web app fit together |
 | [roadmap.md](roadmap.md) | What is planned, in order |
+| [observability.md](observability.md) | Traces, structured events, debug reports, replay, the agent benchmark, troubleshooting and what is never logged |
 | [model-evaluation.md](model-evaluation.md) | How candidate language models score on tool calling and honesty |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |

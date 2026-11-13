@@ -13,6 +13,14 @@ const MARKS: Record<
     box: "border-rule bg-raised",
     tone: "",
   },
+  quoted: {
+    label: "quoted",
+    title:
+      "Shown in a tool result, but not a verified result of its own: your input as read by Minerva, or a handbook entry that is only stated. It is not marked as checked.",
+    underline: "border-b border-dotted border-muted",
+    box: "border-rule bg-sunk",
+    tone: "text-muted",
+  },
   checked: {
     label: "checked",
     title:
@@ -144,13 +152,15 @@ function DisplayFormula({ seg }: { seg: Segment }) {
       <Math latex={seg.value} display />
       {mark.label && (
         <div className={`pb-1 text-xs ${mark.tone}`} title={mark.title}>
-          {seg.status === "checked"
-            ? "Written by the model; checked numerically by Minerva"
-            : seg.status === "conditional"
-              ? `Written by the model; ${seg.note ?? "true only under extra assumptions"}`
-              : seg.status === "contradicted"
-                ? `Written by the model; ${seg.note ?? "Minerva's check says this does not hold"}`
-                : `Not verified by Minerva (written by the model)${seg.note ? `: ${seg.note}` : ""}`}
+          {seg.status === "quoted"
+            ? `Quoted from a tool result, not a verified result${seg.note ? `: ${seg.note}` : ""}`
+            : seg.status === "checked"
+              ? "Written by the model; checked numerically by Minerva"
+              : seg.status === "conditional"
+                ? `Written by the model; ${seg.note ?? "true only under extra assumptions"}`
+                : seg.status === "contradicted"
+                  ? `Written by the model; ${seg.note ?? "Minerva's check says this does not hold"}`
+                  : `Not verified by Minerva (written by the model)${seg.note ? `: ${seg.note}` : ""}`}
         </div>
       )}
     </div>

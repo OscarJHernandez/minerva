@@ -247,8 +247,10 @@ def test_messages_stored_before_debug_existed_still_work() -> None:
             "trace": [{"id": "a", "name": "simplify", "arguments": {}, "for_model": "r=$x$"}],
         }
 
-    history, known = _history([Row()])  # type: ignore[list-item]
-    assert history[1]["content"] == "r=$x$" and "x" in known
+    history, known, quoted, results = _history([Row()])  # type: ignore[list-item]
+    assert history[1]["content"] == "r=$x$"
+    # How it was verified was not recorded, so the formula is quoted and never vouched for.
+    assert "x" not in known and "x" in quoted and results == {}
 
 
 def test_chat_logs_contain_no_message_content(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -533,3 +535,22 @@ def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
         r"\dot\theta = \dot\phi + \omega",
     ]
     assert assumptions == {"x": ["positive"]}
+
+
+def test_scripted_model_can_simulate_a_host_failure_and_a_repeat_loop() -> None:
+    """Development stand-ins for failure modes, so the interface can be checked without a real model."""
+    with TestClient(build_app(llm_mode="scripted")) as c:
+        register(c)
+        cid = c.post("/v1/chat/conversations", json={}).json()["id"]
+        failed = sse(c, cid, "Please simulate a model host failure")
+        assert [e for e, _ in failed][-3:] == ["error", "message", "done"]
+        reply = dict(failed)["message"]
+        assert reply["stop_reason"] == "model_error" and reply["debug"]["error"]
+
+        looping = sse(c, cid, r"Repeat the same call: simplify $\frac{x^2-1}{x-1}$")
+        message = dict(looping)["message"]
+        assert message["stop_reason"] == "repeated_calls"
+        assert [t["repeated"] for t in message["trace"]] == [False, True, True]
+        assert len(cards_of(message)) == 1
+        stored = c.get(f"/v1/chat/conversations/{cid}").json()["messages"]
+        assert [m["role"] for m in stored] == ["user", "assistant", "user", "assistant"]

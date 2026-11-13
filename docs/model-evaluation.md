@@ -1,6 +1,15 @@
 # Model evaluation
 
-Generated 2026-11-11 by `scripts/eval_models.py`. Each prompt runs through the real agent loop (real tools and verification) on the configured Ollama host. A case passes when the right tool is called with valid arguments, the reply says what it should (for example that conditions or assumptions are needed), and the model does not write formulas that no tool produced where that would be wrong. Results vary from run to run; treat differences of one case as noise.
+> **Status of this page.** The table and failures below were produced on 2026-11-11 by the previous version
+> of `scripts/eval_models.py`: 21 scored cases, one run per cell, an older claim checker. They are
+> **historical and outdated**: the case set, the scoring, the claim checker and the agent loop have all
+> changed since (the old `unsupported-derivative` case demanded a refusal for something `differentiate` now
+> does). Do not compare them with new runs. This page is now written by hand and is never overwritten by the
+> script. Current, reproducible measurements (per-category rates, tool-selection confusion matrices, latency
+> distributions, failure classes, baseline-versus-new comparisons) are produced by the benchmark described in
+> [observability.md](observability.md) and kept as JSON and Markdown under `docs/benchmarks/`.
+
+Generated 2026-11-11 by the earlier `scripts/eval_models.py`. Each prompt runs through the real agent loop (real tools and verification) on the configured Ollama host. A case passes when the right tool is called with valid arguments, the reply says what it should (for example that conditions or assumptions are needed), and the model does not write formulas that no tool produced where that would be wrong. Results vary from run to run; treat differences of one case as noise.
 
 | Model | Passed | Median s/case | Slowest | Formulas the model wrote |
 | --- | --- | --- | --- | --- |

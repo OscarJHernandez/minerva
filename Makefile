@@ -12,6 +12,14 @@ setup: ## Install Python and JavaScript dependencies
 
 check: check-py check-web ## Everything CI runs for Python and web
 
+eval-check: ## Fast deterministic benchmark checks: case ground truth, scoring, reports, replay
+	uv run python scripts/eval_models.py --check-cases
+	uv run pytest services/api/tests/test_evaluation.py scripts/tests/test_replay_trace.py
+
+eval: ## Real-model benchmark (needs MINERVA_EVAL_BASE_URL and MINERVA_EVAL_MODELS; LABEL=name)
+	uv run python scripts/eval_models.py --repeat 3 --seed 7 --label "$(or $(LABEL),run)" \
+		--json-out "docs/benchmarks/$(or $(LABEL),run).json" --out "docs/benchmarks/$(or $(LABEL),run).md"
+
 check-py: ## Ruff, mypy, handbook verification, agent files, pytest
 	uv run ruff check .
 	uv run ruff format --check .

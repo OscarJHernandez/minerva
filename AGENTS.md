@@ -53,8 +53,10 @@ uv run python -m minerva_knowledge verify # check every handbook entry at its de
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
-uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
-uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
+uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
+uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --repeat 3 --seed 7 --label NAME \
+    --json-out docs/benchmarks/NAME.json --out docs/benchmarks/NAME.md   # real-model run; --compare BASE.json to compare
+uv run python scripts/replay_trace.py report.md [--llm]   # re-run the tool calls (or a whole turn) of a chat debug report
 MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
 
 pnpm install                              # JS workspace
@@ -77,7 +79,24 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
-- `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
+- `scripts/eval_models.py` scores a model on a fixed benchmark through the real loop (`agent/evaluation/`: cases are data in
+  `cases.yaml`, each with an independent source and, where possible, a reference call that the test suite runs against the
+  engine; every failure gets one class). Reports are JSON plus Markdown under `docs/benchmarks/`; `docs/model-evaluation.md`
+  is hand-written interpretation and is never overwritten. Editing the cases changes the case-set digest: say so when
+  comparing runs. The model host name never goes into a report.
+- Every agent request has a `trace_id`; the loop records typed events (`agent/tracing.py`) with monotonic timings. **Events
+  hold no content**: only identifiers, counts, durations, booleans and fixed vocabulary. Do not add a free-text field to
+  an event, an expression, tool argument or result to a log line, or any third-party logging or telemetry service; tests
+  enforce this (`test_tracing.py`). The detailed trace (arguments and results) lives only in the stored assistant message,
+  under the conversation's own access, deletion and export rules: do not give it a table, file or endpoint of its own.
+  Logging and tracing failures must never reach the mathematics (`Tracer.emit` and the engine observer swallow them).
+- A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
+  `malformed_output`, `internal_error`). An identical call in a turn is not run twice; a model call that failed before any
+  output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
+- A formula in the model's prose is marked `from_tool` only if a *verified* result (or a machine-checked handbook entry)
+  produced it. The user's own input as read, a `stated` handbook entry, an identity that was not applied and anything from
+  a result that was not accepted are `quoted`: shown, never marked verified. Do not widen `known_latex` back to "anything a
+  tool printed"; `ToolOutput.evidence` is read from the engine's own result, never from the model.
 - `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
   never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
@@ -87,10 +106,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   strict parser reads it. Uploaded images are never stored or logged; keep it that way.
 - A turn is bounded: `AgentLimits` caps steps, total tool calls (12) and seconds, enforced during model streaming, between
   tool calls and around the claim check; a failing or hanging tool becomes an error card with fixed text, never its cause.
-- Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
-  copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.
-  The data comes from `AssistantMessage.trace/debug` stored with the message. The server log gets counters and
-  `request_id` only, never content.
+- Debug mode (chat footer checkbox, or `?debug=1`): shows a timeline (`apps/web/src/lib/trace-timeline.ts`) and each tool
+  call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 2) to
+  paste to an agent; use the `chat-trace-triage` skill on it. The data comes from `AssistantMessage.trace/debug` stored with
+  the message (failed turns too). The server log gets counters, `request_id` and `trace_id` only, never content. See
+  `docs/observability.md`.
 
 ## Mathematical correctness (non-negotiable)
 
