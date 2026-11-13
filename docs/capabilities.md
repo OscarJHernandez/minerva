@@ -350,6 +350,78 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - **Status:** `unsupported`
 - The exponent mixes A and B, which do not commute, with coefficients that are not proportional; the derivative then needs the Duhamel integral (or a time-ordered exponential), which is not supported.
 
+### Dirac delta and Heaviside calculus
+
+*Available in:* workbench, chat, HTTP API.
+
+Simplify, integrate and differentiate expressions with Dirac delta and Heaviside functions. Equality is as distributions (the same action on every test function), never pointwise: a delta has no values to compare. Each step cites a handbook identity and the conditions that were established exactly (the variable is real, a scale factor is nonzero, a root is real and simple, a delta lies inside the limits); a result is shown only if an independent test-function pairing against a regularised input agrees. Whatever cannot be decided is refused with a reason, never guessed.
+
+**Limits**
+
+- One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.
+- A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.
+- Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.
+- The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}); \delta and \theta remain ordinary symbols.
+
+#### An integral against a delta of a polynomial with two simple roots
+
+- **Expression:** `x^2 \operatorname{DiracDelta}(x^2 - 4)`
+- **Limits:** `-oo to oo`
+- **Status:** `ok`
+- **Value:** $2$
+- **Check:** conditions established exactly: yes
+- **Check:** 1 of 1 test-function pairings agree (supporting evidence, not a proof)
+- Step: Delta of a polynomial with simple real roots (distributions.delta_composite_simple_roots).
+- Step: A continuous factor takes its value at the delta (distributions.delta_times_function).
+- Step: Integrating against a delta picks out the value (distributions.delta_sifting).
+- Integrated with handbook identities under conditions that were established exactly; 1 of 1 test-function pairings agree (supporting evidence, not a proof).
+
+#### Scaling by a parameter whose sign is known
+
+- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Assumptions:** a negative
+- **Status:** `ok`
+- **Result (as distributions):** $- \frac{\operatorname{DiracDelta}\left(x\right)}{a}$
+- **Check:** conditions established exactly: yes
+- **Check:** 18 of 18 test-function pairings agree (supporting evidence, not a proof)
+- Step: Scaling and translation of the delta argument (distributions.delta_scaling).
+- Simplified with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof).
+
+#### The derivative of a switched-on decay has a delta where it jumps
+
+- **Expression:** `\mathrm{e}^{-g x} \operatorname{Heaviside}(x)`
+- **Assumptions:** g positive
+- **Status:** `ok`
+- **Result (as distributions):** $- g \mathrm{e}^{- g x} \operatorname{Heaviside}\left(x\right) + \operatorname{DiracDelta}\left(x\right)$
+- **Check:** conditions established exactly: yes
+- **Check:** 18 of 18 test-function pairings agree (supporting evidence, not a proof)
+- Step: The derivative of a step function is a delta at its jump (distributions.heaviside_derivative).
+- Step: Scaling of the delta and the value of its coefficient at the jump (distributions.delta_scaling).
+- Differentiated with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof).
+
+#### A scale factor of unknown sign is declined
+
+- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Assumptions:** a real
+- **Status:** `conditions_not_satisfied`
+- Refused (assumptions_insufficient).
+- The slope a of the argument at the root 0 is not proved nonzero from the declared assumptions (declare the parameter nonzero, positive or negative).
+
+#### A delta on an integration limit is ambiguous until you choose a convention
+
+- **Expression:** `\operatorname{DiracDelta}(x - 1)`
+- **Limits:** `0 to 1`
+- **Status:** `conditions_not_satisfied`
+- Refused (integration_domain_ambiguous).
+- A delta sits exactly on an integration limit (at 1). Its contribution depends on a convention that you must choose: half, include or exclude.
+
+#### A repeated root is declined
+
+- **Expression:** `\operatorname{DiracDelta}(x^2)`
+- **Status:** `unsupported`
+- Refused (singular_root).
+- The root 0 is a repeated root, where the delta of a function is not a combination of simple deltas.
+
 ### Differential geometry in coordinates
 
 *Available in:* workbench, chat, HTTP API.

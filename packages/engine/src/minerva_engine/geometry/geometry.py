@@ -16,7 +16,7 @@ from typing import Any
 
 import sympy as sp
 
-from ..errors import LimitError, MinervaMathError
+from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..latexprint import to_latex
 from ..models import Limits, Status
 from .compute import CONVENTIONS, Workspace
@@ -67,7 +67,12 @@ def geometry(
     except GeometryError as exc:
         return _fail(diagnostics, exc.status, exc.message)
     except MinervaMathError as exc:
-        status = Status.RESOURCE_LIMIT if isinstance(exc, LimitError) else Status.PARSE_ERROR
+        if isinstance(exc, LimitError):
+            status = Status.RESOURCE_LIMIT
+        elif isinstance(exc, UnsupportedInput):
+            status = Status.UNSUPPORTED
+        else:
+            status = Status.PARSE_ERROR
         return _fail(diagnostics, status, str(exc))
     except RecursionError:
         return _fail(diagnostics, Status.RESOURCE_LIMIT, "The expression is nested too deeply.")

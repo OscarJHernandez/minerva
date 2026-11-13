@@ -82,6 +82,17 @@ class GeometryRequest(GeometryInput, Links):
     """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
 
 
+class DistributionRequest(Linked):
+    """An expression with `DiracDelta` / `Heaviside` (text or `\\operatorname{...}` LaTeX)."""
+
+    action: Literal["simplify", "integrate", "differentiate"] = "simplify"
+    variable: str = Field(min_length=1, max_length=32)
+    lower: str | None = Field(default=None, min_length=1, max_length=200)
+    upper: str | None = Field(default=None, min_length=1, max_length=200)
+    # How a delta exactly on a limit counts. Chosen by the user, never by Minerva.
+    endpoint: Literal["half", "include", "exclude"] | None = None
+
+
 class HistoryItem(BaseModel):
     id: uuid.UUID
     operation: str

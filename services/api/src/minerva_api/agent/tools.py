@@ -16,6 +16,7 @@ from typing import Any, Literal
 from minerva_engine import (
     CompareRequest,
     DiffVariable,
+    DistributionInput,
     Engine,
     ExpressionInput,
     GeometryInput,
@@ -37,6 +38,7 @@ from minerva_knowledge.identities import (
 )
 from pydantic import BaseModel, Field, ValidationError
 
+from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
 from .events import Card
 from .segments import normalize
@@ -197,6 +199,32 @@ class GeometryArgs(BaseModel):
         ge=0,
         le=2,
         description="Which index (0-based) raise_index or lower_index acts on",
+    )
+
+
+class DistributionArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description="Expression with Dirac delta or Heaviside functions, written with explicit names: "
+        "\\operatorname{DiracDelta}(x-a) and \\operatorname{Heaviside}(x). \\delta(x) and \\theta(x) are "
+        "NOT read as distributions. For integrate give only the integrand (no \\int, no dx).",
+    )
+    action: Literal["simplify", "integrate", "differentiate"] = Field(
+        default="simplify",
+        description="simplify: normal form sum c_i delta(x - x_i). integrate: needs `lower` and `upper` "
+        "(numbers, oo, -oo). differentiate: the distributional derivative of steps and smooth terms.",
+    )
+    variable: str = Field(
+        default="x",
+        max_length=32,
+        description="The real variable. Declare it real in `assumptions`; distributions need a real line.",
+    )
+    lower: str | None = Field(default=None, max_length=64, description="Lower limit (integrate)")
+    upper: str | None = Field(default=None, max_length=64, description="Upper limit (integrate)")
+    endpoint: Literal["half", "include", "exclude"] | None = Field(
+        default=None,
+        description="How a delta exactly on an integration limit counts. Set it ONLY if the USER chose "
+        "one; never choose it yourself. Without it such an integral is reported as ambiguous.",
     )
 
 
@@ -756,6 +784,78 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
     if method_data:
         lines.append(
             "handbook methods: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data if m.get("statement_latex"))
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
+
+
+def run_distribution(args: DistributionArgs, ctx: ToolContext) -> ToolOutput:
+    request = DistributionInput(
+        expression=_expr(args),
+        action=args.action,
+        variable=args.variable,
+        lower=args.lower,
+        upper=args.upper,
+        endpoint=args.endpoint,
+    )
+    result = ctx.engine.distribution(request)
+    log_distribution(result)
+    cited = list(
+        dict.fromkeys([s.entry_id for s in result.steps] + [b.entry_id for b in result.blocked])
+    )
+    entries = [e for entry_id in cited if (e := ctx.kb.get(entry_id)) is not None]
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in entries]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="distribution",
+        type="distribution",
+        title="Delta and step functions",
+        data={
+            "result": result.model_dump(mode="json"),
+            "methods": method_data,
+            "request": request.model_dump(mode="json", exclude={"expression"}),
+        },
+    )
+    shown = result.status.value == "ok"
+    head = f"status={result.status.value}; action={result.action}; "
+    if result.reason:
+        head += f"reason={result.reason}; "
+    if result.input_latex:
+        head += f"input_as_read=${result.input_latex}$; "
+    if shown:
+        head += f"result=${result.result_latex}$; "
+        head += (
+            "equality=value (an ordinary number or expression); "
+            if result.equality == "value"
+            else "equality=AS DISTRIBUTIONS (not pointwise); "
+        )
+        if result.endpoint:
+            head += f"endpoint_convention={result.endpoint} (chosen by the user); "
+    v = result.verification
+    if v and shown:
+        head += (
+            "conditions established exactly: "
+            + ("yes" if v.conditions_established else "NO")
+            + f"; {v.pairings_agreed}/{v.pairings_checked} test-function pairings agree "
+            "(supporting evidence, not a proof); "
+        )
+    lines = [head + result.message]
+    known: list[str] = [x for x in (result.input_latex, result.result_latex) if x]
+    if shown:
+        for s in result.steps:
+            lines.append(
+                f"- step ({s.entry_id}): {s.title}: ${s.before_latex}$ -> ${s.after_latex}$"
+            )
+            known.extend([s.before_latex, s.after_latex])
+            for c in s.conditions:
+                lines.append(f"  - condition ${c.latex}$ ({c.how})")
+                known.append(c.latex)
+    lines.extend(f"- NOT APPLIED ({b.entry_id}): {b.detail} [{b.reason}]" for b in result.blocked)
+    lines.extend(f"- note: {n}" for n in result.notes)
+    if method_data:
+        lines.append(
+            "handbook entries: "
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data if m.get("statement_latex"))
@@ -1393,6 +1493,19 @@ TOOLS: dict[str, Tool] = {
             "remembered: resend it with every call.",
             GeometryArgs,
             run_geometry,
+        ),
+        Tool(
+            "distribution",
+            "Calculus with Dirac delta and Heaviside (step) functions: simplify a delta of a polynomial "
+            "(scaling, translation, several simple roots, a continuous factor taking its value), integrate "
+            "against deltas over given limits, or differentiate steps (d/dx of a step is a delta). Equality "
+            "is as distributions, never pointwise. Each step cites a handbook identity with the conditions "
+            "that were established; the result is shown only if independent test-function pairings agree. "
+            "Declare the variable and every symbol in a delta or step real. Refuses (with a reason) repeated "
+            "roots, unknown signs or zero scales, a delta on an integration limit without a convention the "
+            "USER chose, products of distributions and derivatives of deltas.",
+            DistributionArgs,
+            run_distribution,
         ),
         Tool(
             "solve_polynomial",

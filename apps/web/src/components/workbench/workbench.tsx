@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS,
   continuation,
   validateSettings,
+  withRealVariable,
   type Settings,
   type StepOperation,
 } from "@/lib/derivation";
@@ -195,6 +196,20 @@ export function Workbench() {
           settings.lower.trim()
             ? { lower: settings.lower.trim(), upper: settings.upper.trim() }
             : undefined,
+        ),
+      );
+    else if (operation === "distribution")
+      void addStep(operation, (c) =>
+        api.distribution(
+          { ...c, assumptions: withRealVariable(c.assumptions, by) },
+          {
+            action: settings.distAction,
+            variable: by,
+            lower: settings.distAction === "integrate" ? settings.lower.trim() : null,
+            upper: settings.distAction === "integrate" ? settings.upper.trim() : null,
+            endpoint:
+              settings.distAction === "integrate" && settings.endpoint ? settings.endpoint : null,
+          },
         ),
       );
     else void addStep(operation, (c) => api.series(c, by, settings.point, settings.seriesOrder));

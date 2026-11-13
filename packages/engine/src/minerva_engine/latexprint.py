@@ -50,6 +50,23 @@ class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
         tex = rf"\mathrm{{e}}^{{{self._print(expr.args[0])}}}"
         return str(self._do_exponent(tex, exp))
 
+    # Distributions print with the explicit names the parsers read back (\delta and \theta are
+    # ordinary symbols in Minerva's input, so the SymPy defaults would not survive a round trip).
+    def _print_DiracDelta(self, expr: sp.Basic, exp: Any = None) -> str:
+        if len(expr.args) > 1:  # derivative order: not supported as input, shown honestly
+            tex = rf"\operatorname{{DiracDelta}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+        else:
+            tex = rf"\operatorname{{DiracDelta}}\left({self._print(expr.args[0])}\right)"
+        return str(self._do_exponent(tex, exp))
+
+    def _print_Heaviside(self, expr: sp.Basic, exp: Any = None) -> str:
+        # SymPy stores the value at 0 (default 1/2) as a second argument; show it only if it differs.
+        if len(expr.args) > 1 and expr.args[1] != sp.S.Half:
+            tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+        else:
+            tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}\right)"
+        return str(self._do_exponent(tex, exp))
+
 
 _DEFAULTS: dict[str, Any] = {"imaginary_unit": "ri", "inv_trig_style": "full"}
 

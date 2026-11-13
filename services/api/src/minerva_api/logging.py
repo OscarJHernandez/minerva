@@ -26,6 +26,7 @@ ALLOWED_FIELDS = frozenset(
         "operation",
         "status",
         "user_id",
+        "reason",
         "steps",
         "tool_calls",
         "tool_errors",

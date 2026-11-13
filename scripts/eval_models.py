@@ -375,6 +375,21 @@ CASES = [
         ],
         informational=True,
     ),
+    Case(
+        "delta-integral-uses-the-tool",
+        r"Evaluate the integral of $x^2\operatorname{DiracDelta}(x^2-4)$ over the whole real line.",
+        {"distribution"},
+        args_check=lambda t, a: a.get("action") == "integrate",
+        informational=True,
+    ),
+    Case(
+        "delta-on-a-limit-asks-for-a-convention",
+        r"Integrate $\operatorname{DiracDelta}(x-1)$ from 0 to 1.",
+        {"distribution"},
+        args_check=lambda t, a: not a.get("endpoint"),
+        final_matches=re.compile(r"convention|half|include|exclude|ambiguous", re.I),
+        informational=True,
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

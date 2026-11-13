@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { okDistributionIntegral } from "@/test/fixtures";
 import type { StoredMessage } from "./chat-types";
 import { sphere, sphereRequest } from "../test/geometry-fixtures";
 import {
@@ -99,6 +100,54 @@ const input = {
   status: { enabled: true, mode: "ollama", model: "some-model" },
   now: NOW,
 };
+
+describe("distribution cards in a report", () => {
+  it("lists the status, the evidence and the stages", () => {
+    const withCard: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        trace: [
+          {
+            id: "d1",
+            name: "distribution",
+            arguments: { latex: "\\operatorname{DiracDelta}(x)" },
+            for_model: "status=ok",
+            duration_ms: 90,
+            status: "ok",
+          },
+        ],
+        blocks: [
+          {
+            kind: "card",
+            segments: [],
+            card: {
+              id: "d1",
+              tool: "distribution",
+              type: "distribution",
+              title: "Delta and step functions",
+              data: {
+                result: okDistributionIntegral,
+                methods: [],
+                request: {
+                  action: "integrate",
+                  variable: "x",
+                  lower: "-oo",
+                  upper: "oo",
+                  endpoint: null,
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const out = buildDebugReport({ ...input, messages: [user, withCard] });
+    expect(out).toContain("- card: distribution");
+    expect(out).toContain("1/1 test-function pairings, conditions established true");
+    expect(out).toContain("- stages: parsed > completed");
+  });
+});
 
 describe("fence", () => {
   it("is longer than any backtick run in the text", () => {

@@ -119,6 +119,27 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("matrix_calculus", mat_args)])
+        elif ("dirac" in lower or "heaviside" in lower or "step function" in lower) and latex:
+            # Development stand-in: x is the real variable; the action comes from the wording. A limit
+            # convention is passed only if the user wrote one ("convention half").
+            dist_args: dict[str, Any] = {
+                "latex": latex,
+                "assumptions": {"x": ["real"]},
+                "variable": "x",
+                "action": "simplify",
+            }
+            limits = re.search(r"from\s+(-?[\w\\]+)\s+to\s+(-?[\w\\]+)", lower)
+            if "integra" in lower:
+                dist_args.update(action="integrate", lower="-oo", upper="oo")
+                if limits:
+                    dist_args.update(lower=limits.group(1), upper=limits.group(2))
+                if conv := re.search(r"convention (half|include|exclude)", lower):
+                    dist_args["endpoint"] = conv.group(1)
+            elif "deriv" in lower or "differentiate" in lower:
+                dist_args["action"] = "differentiate"
+            async for c in self._say("I will run the distribution calculus on that. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("distribution", dist_args)])
         elif "dimension" in lower and re.search(r"\w+\s*\[[^\]]+\]", user):
             # Development stand-in: quantities are written `name [unit]`, the unknown as `unknown name`.
             quantities = [
@@ -483,6 +504,30 @@ class ScriptedLLM:
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "distribution":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            reason = re.search(r"reason=(\w+)", content)
+            result = re.search(r"result=\$([^$]*)\$", content)
+            if status == "ok" and result:
+                kind = "as distributions" if "AS DISTRIBUTIONS" in content else "as a value"
+                text = (
+                    f"**Result ({kind}):** $${result.group(1)}$$\n\n"
+                    "The card lists the handbook identity of each step, the conditions that were "
+                    "established, and how many test-function pairings agreed."
+                )
+            elif reason and reason.group(1) == "integration_domain_ambiguous":
+                text = (
+                    "A delta sits exactly on an integration limit, and its contribution depends on a "
+                    "convention. Which do you want: half, include or exclude?"
+                )
+            elif status == "conditions_not_satisfied":
+                text = (
+                    "A condition is not established from what was declared, so nothing was changed. "
+                    "The card names it (for example that a scale factor is nonzero): does it hold?"
+                )
+            else:
+                text = f"I could not complete that ({status}). The card gives the reason."
         elif tool == "integrate_motion":
             text = (
                 "The card shows the verified trajectory, the drift of the constants of motion and the "

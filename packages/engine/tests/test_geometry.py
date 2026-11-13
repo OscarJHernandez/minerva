@@ -334,6 +334,12 @@ def test_a_function_may_only_depend_on_coordinates() -> None:
     assert r.status is Status.PARSE_ERROR
 
 
+def test_a_delta_or_step_in_a_metric_is_refused_as_unsupported_input() -> None:
+    # distributions belong to the `distribution` operation; pointwise checks cannot handle them
+    r = run(["x"], [[r"1 + \operatorname{Heaviside}(x)"]], ["christoffel"])
+    assert r.status is Status.UNSUPPORTED and r.quantities == []
+
+
 def test_dimension_above_the_cap_is_unsupported() -> None:
     names = ["x1", "x2", "x3", "x4", "x5"]
     eye = [["1" if i == j else "0" for j in range(5)] for i in range(5)]

@@ -1,0 +1,443 @@
+# Distribution-calculus benchmark: hand-written problems from mathematical physics with analytically
+# established answers (never produced by the engine). Input is text syntax; `x` is the real variable.
+#
+# kind:
+#   supported          the engine must return `ok`, a result equal to `result`, citing every id in `entries`,
+#                      and must not return anything in `forbid_results` (the tempting wrong answers).
+#   unsupported        outside the first version: must be refused with `status` and `reason`.
+#   invalid_transform  a wrong rewriting of `input` (`candidate`): the test-function pairing must reject it.
+# `retrieval` lists handbook entries that a search by the input's structure must find (rank is reported).
+- id: point_source_scaled_coordinate
+  kind: supported
+  note: "A point source in a coordinate stretched by 2 (unit charge at x=3 in the scaled variable)."
+  action: simplify
+  input: "DiracDelta(2*x - 6)"
+  result: "DiracDelta(x - 3)/2"
+  forbid_results: ["DiracDelta(x - 3)", "2*DiracDelta(x - 3)"]
+  entries: [distributions.delta_scaling]
+  retrieval: [distributions.delta_scaling]
+- id: reflected_coordinate
+  kind: supported
+  note: "Charge density in a reflected, stretched coordinate; the sign of the scale must not leak out."
+  action: simplify
+  input: "DiracDelta(-3*x + 6)"
+  result: "DiracDelta(x - 2)/3"
+  forbid_results: ["-DiracDelta(x - 2)/3"]
+  entries: [distributions.delta_scaling]
+  retrieval: [distributions.delta_scaling]
+- id: scale_parameter_nonzero
+  kind: supported
+  note: "Delta of k (x - x0) for an unknown nonzero real scale k."
+  action: simplify
+  input: "DiracDelta(k*(x - x0))"
+  assumptions: {k: [real, nonzero], x0: [real]}
+  result: "DiracDelta(x - x0)/Abs(k)"
+  forbid_results: ["DiracDelta(x - x0)/k"]
+  entries: [distributions.delta_scaling]
+  retrieval: [distributions.delta_scaling]
+- id: scale_parameter_negative
+  kind: supported
+  action: simplify
+  input: "DiracDelta(k*x)"
+  assumptions: {k: [negative]}
+  result: "-DiracDelta(x)/k"
+  forbid_results: ["DiracDelta(x)/k"]
+  entries: [distributions.delta_scaling]
+  retrieval: [distributions.delta_scaling]
+- id: delta_times_polynomial
+  kind: supported
+  action: simplify
+  input: "x**2*DiracDelta(x - 3)"
+  result: "9*DiracDelta(x - 3)"
+  entries: [distributions.delta_scaling, distributions.delta_times_function]
+  retrieval: [distributions.delta_times_function]
+- id: x_times_delta
+  kind: supported
+  note: "x delta(x) = 0, used in deriving commutation relations."
+  action: simplify
+  input: "x*DiracDelta(x)"
+  result: "0"
+  forbid_results: ["DiracDelta(x)"]
+  entries: [distributions.delta_times_function]
+  retrieval: [distributions.delta_times_x]
+- id: two_roots_shell
+  kind: supported
+  note: "A spherical-shell-like constraint x^2 = 4 (two simple roots)."
+  action: simplify
+  input: "DiracDelta(x**2 - 4)"
+  result: "(DiracDelta(x - 2) + DiracDelta(x + 2))/4"
+  forbid_results: ["DiracDelta(x - 2) + DiracDelta(x + 2)"]
+  entries: [distributions.delta_composite_simple_roots]
+  retrieval: [distributions.delta_composite_simple_roots]
+- id: three_roots_cubic
+  kind: supported
+  action: simplify
+  input: "DiracDelta(x**3 - x)"
+  result: "DiracDelta(x) + DiracDelta(x - 1)/2 + DiracDelta(x + 1)/2"
+  entries: [distributions.delta_composite_simple_roots]
+  retrieval: [distributions.delta_composite_simple_roots]
+- id: shell_radius_parameter
+  kind: supported
+  note: "Mass-shell constraint x^2 = a^2 with a > 0."
+  action: simplify
+  input: "DiracDelta(x**2 - a**2)"
+  assumptions: {a: [positive]}
+  result: "(DiracDelta(x - a) + DiracDelta(x + a))/(2*a)"
+  entries: [distributions.delta_composite_simple_roots]
+  retrieval: [distributions.delta_composite_simple_roots]
+- id: density_of_states_normalisation
+  kind: supported
+  note: "Integral of x^2 delta(x^2 - 4) over the line, as in a shell sum rule."
+  action: integrate
+  input: "x**2*DiracDelta(x**2 - 4)"
+  lower: "-oo"
+  upper: "oo"
+  result: "2"
+  entries: [distributions.delta_composite_simple_roots, distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: point_charge_normalisation
+  kind: supported
+  action: integrate
+  input: "DiracDelta(x - a)"
+  assumptions: {a: [real]}
+  lower: "-oo"
+  upper: "oo"
+  result: "1"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: potential_at_source
+  kind: supported
+  note: "Gaussian potential evaluated at a point source located at a."
+  action: integrate
+  input: "exp(-x**2)*DiracDelta(x - a)"
+  assumptions: {a: [real]}
+  lower: "-oo"
+  upper: "oo"
+  result: "exp(-a**2)"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: cosine_on_two_roots
+  kind: supported
+  action: integrate
+  input: "cos(x)*DiracDelta(x**2 - 1)"
+  lower: "-oo"
+  upper: "oo"
+  result: "cos(1)"
+  entries: [distributions.delta_composite_simple_roots, distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: odd_function_cancels
+  kind: supported
+  action: integrate
+  input: "sin(x)*DiracDelta(x**2 - 1)"
+  lower: "-oo"
+  upper: "oo"
+  result: "0"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: source_inside_window
+  kind: supported
+  action: integrate
+  input: "x*DiracDelta(x - 1)"
+  lower: "0"
+  upper: "3"
+  result: "1"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: source_outside_window
+  kind: supported
+  note: "The same source with the window moved away contributes nothing."
+  action: integrate
+  input: "x*DiracDelta(x - 1)"
+  lower: "2"
+  upper: "5"
+  result: "0"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: decaying_response_at_source
+  kind: supported
+  action: integrate
+  input: "exp(-x)*DiracDelta(x - a)"
+  assumptions: {a: [positive]}
+  lower: "0"
+  upper: "oo"
+  result: "exp(-a)"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: impulse_momentum_transfer
+  kind: supported
+  note: "Impulse J delta(t - t0) integrated over the interaction window gives the momentum transfer J."
+  action: integrate
+  input: "J*DiracDelta(x - t0)"
+  assumptions: {J: [real], t0: [positive]}
+  lower: "0"
+  upper: "oo"
+  result: "J"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: limit_half_convention
+  kind: supported
+  note: "A delta exactly on a limit, counted with weight 1/2 by an explicit choice."
+  action: integrate
+  input: "DiracDelta(x - 1)"
+  lower: "0"
+  upper: "1"
+  endpoint: half
+  result: "1/2"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: limit_include_convention
+  kind: supported
+  action: integrate
+  input: "DiracDelta(x - 1)"
+  lower: "0"
+  upper: "1"
+  endpoint: include
+  result: "1"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: limit_exclude_convention
+  kind: supported
+  action: integrate
+  input: "DiracDelta(x - 1)"
+  lower: "0"
+  upper: "1"
+  endpoint: exclude
+  result: "0"
+  entries: [distributions.delta_sifting]
+  retrieval: [distributions.delta_sifting]
+- id: step_potential_force
+  kind: supported
+  note: "Force from a potential step V0 H(x): a delta at the wall."
+  action: differentiate
+  input: "V0*Heaviside(x)"
+  assumptions: {V0: [real]}
+  result: "V0*DiracDelta(x)"
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_derivative]
+- id: continuous_causal_sine
+  kind: supported
+  note: "A sine switched on at zero is continuous there, so its derivative has no delta."
+  action: differentiate
+  input: "sin(x)*Heaviside(x)"
+  result: "cos(x)*Heaviside(x)"
+  forbid_results: ["cos(x)*Heaviside(x) + DiracDelta(x)"]
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_product_rule]
+- id: causal_decay_green_jump
+  kind: supported
+  note: "Retarded response of a damped system: the unit jump at t=0 is the delta source."
+  action: differentiate
+  input: "exp(-g*x)*Heaviside(x)"
+  assumptions: {g: [positive]}
+  result: "-g*exp(-g*x)*Heaviside(x) + DiracDelta(x)"
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_product_rule]
+- id: rectangular_pulse
+  kind: supported
+  action: differentiate
+  input: "Heaviside(x + 1) - Heaviside(x - 1)"
+  result: "DiracDelta(x + 1) - DiracDelta(x - 1)"
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_derivative]
+- id: reversed_step
+  kind: supported
+  action: differentiate
+  input: "Heaviside(-x)"
+  result: "-DiracDelta(x)"
+  forbid_results: ["DiracDelta(x)"]
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_affine_derivative]
+- id: stretched_step
+  kind: supported
+  action: differentiate
+  input: "Heaviside(2*x - 4)"
+  result: "DiracDelta(x - 2)"
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_affine_derivative]
+- id: ramp_function
+  kind: supported
+  action: differentiate
+  input: "x*Heaviside(x)"
+  result: "Heaviside(x)"
+  forbid_results: ["Heaviside(x) + DiracDelta(x)"]
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_product_rule]
+- id: jump_with_coefficient
+  kind: supported
+  action: differentiate
+  input: "(x + 2)*Heaviside(x - 1)"
+  result: "Heaviside(x - 1) + 3*DiracDelta(x - 1)"
+  entries: [distributions.heaviside_derivative]
+  retrieval: [distributions.heaviside_product_rule]
+# --- refused: outside the first version, or conditions that cannot be established ---------------
+- id: double_root_is_singular
+  kind: unsupported
+  note: "Delta of a square: the root is not simple."
+  action: simplify
+  input: "DiracDelta(x**2)"
+  status: unsupported
+  reason: singular_root
+- id: dirac_comb_argument
+  kind: unsupported
+  note: "Delta of sin(x) is a comb of infinitely many deltas."
+  action: simplify
+  input: "DiracDelta(sin(x))"
+  status: unsupported
+  reason: unsupported_distribution
+- id: delta_squared
+  kind: unsupported
+  note: "The self-energy divergence of a point charge."
+  action: simplify
+  input: "DiracDelta(x)**2"
+  status: unsupported
+  reason: unsupported_distribution
+- id: delta_times_step
+  kind: unsupported
+  action: simplify
+  input: "DiracDelta(x)*Heaviside(x)"
+  status: unsupported
+  reason: unsupported_distribution
+- id: delta_over_x
+  kind: unsupported
+  action: simplify
+  input: "DiracDelta(x)/x"
+  status: unsupported
+  reason: unsupported_distribution
+- id: derivative_of_delta
+  kind: unsupported
+  note: "A dipole source needs the derivative of the delta."
+  action: differentiate
+  input: "DiracDelta(x)"
+  status: unsupported
+  reason: unsupported_distribution
+- id: delta_mixed_with_smooth_part
+  kind: unsupported
+  action: integrate
+  input: "DiracDelta(x) + x**2"
+  lower: "-1"
+  upper: "1"
+  status: unsupported
+  reason: unsupported_distribution
+- id: nonaffine_step
+  kind: unsupported
+  action: differentiate
+  input: "Heaviside(x**2 - 1)"
+  status: unsupported
+  reason: unsupported_distribution
+- id: windowed_ordinary_integral
+  kind: unsupported
+  action: integrate
+  input: "Heaviside(x)*exp(-x)"
+  lower: "-oo"
+  upper: "oo"
+  status: unsupported
+  reason: unsupported_distribution
+- id: scale_sign_unknown
+  kind: unsupported
+  note: "Without a sign for a the factor 1/|a| cannot be written, and a = 0 is excluded by nothing."
+  action: simplify
+  input: "DiracDelta(a*x)"
+  assumptions: {a: [real]}
+  status: conditions_not_satisfied
+  reason: assumptions_insufficient
+- id: shell_radius_sign_unknown
+  kind: unsupported
+  note: "a only real: a = 0 would make the roots coincide."
+  action: simplify
+  input: "DiracDelta(x**2 - a**2)"
+  assumptions: {a: [real]}
+  status: conditions_not_satisfied
+  reason: assumptions_insufficient
+- id: source_position_unknown
+  kind: unsupported
+  note: "Whether the source lies inside the window is not decided by a being real."
+  action: integrate
+  input: "sin(x)*DiracDelta(x - a)"
+  assumptions: {a: [real]}
+  lower: "0"
+  upper: "1"
+  status: conditions_not_satisfied
+  reason: assumptions_insufficient
+- id: limit_without_convention
+  kind: unsupported
+  note: "A delta exactly on a limit is ambiguous until a convention is chosen."
+  action: integrate
+  input: "DiracDelta(x - 1)"
+  lower: "0"
+  upper: "1"
+  status: conditions_not_satisfied
+  reason: integration_domain_ambiguous
+- id: step_slope_sign_unknown
+  kind: unsupported
+  action: differentiate
+  input: "Heaviside(a*x)"
+  assumptions: {a: [real]}
+  status: conditions_not_satisfied
+  reason: assumptions_insufficient
+- id: complex_variable
+  kind: unsupported
+  note: "The variable is not declared real, so the delta is not a distribution on the line."
+  action: simplify
+  input: "DiracDelta(x - 1)"
+  real_variable: false
+  status: conditions_not_satisfied
+  reason: assumptions_insufficient
+# --- invalid transformations the verifier must reject ----------------------------------------------
+- id: bad_scaling_missing_factor
+  kind: invalid_transform
+  action: simplify
+  input: "DiracDelta(2*x)"
+  candidate: "DiracDelta(x)"
+- id: bad_scaling_wrong_sign
+  kind: invalid_transform
+  action: simplify
+  input: "DiracDelta(k*x)"
+  assumptions: {k: [negative]}
+  candidate: "DiracDelta(x)/k"
+- id: bad_composite_no_jacobian
+  kind: invalid_transform
+  action: simplify
+  input: "DiracDelta(x**2 - 4)"
+  candidate: "DiracDelta(x - 2) + DiracDelta(x + 2)"
+- id: bad_composite_dropped_root
+  kind: invalid_transform
+  action: simplify
+  input: "DiracDelta(x**2 - 4)"
+  candidate: "DiracDelta(x - 2)/4"
+- id: bad_product_not_evaluated
+  kind: invalid_transform
+  action: simplify
+  input: "x*DiracDelta(x)"
+  candidate: "DiracDelta(x)"
+- id: bad_step_derivative_sign
+  kind: invalid_transform
+  action: differentiate
+  input: "Heaviside(x - 1)"
+  candidate: "-DiracDelta(x - 1)"
+- id: bad_step_derivative_position
+  kind: invalid_transform
+  action: differentiate
+  input: "Heaviside(x - 1)"
+  candidate: "DiracDelta(x)"
+- id: bad_sifting_value
+  kind: invalid_transform
+  action: integrate
+  input: "x**2*DiracDelta(x - 3)"
+  lower: "-oo"
+  upper: "oo"
+  candidate: "3"
+- id: bad_sifting_wrong_window
+  kind: invalid_transform
+  action: integrate
+  input: "x**2*DiracDelta(x - 3)"
+  lower: "4"
+  upper: "oo"
+  candidate: "9"
+- id: bad_limit_convention
+  kind: invalid_transform
+  action: integrate
+  input: "DiracDelta(x - 1)"
+  lower: "0"
+  upper: "1"
+  endpoint: half
+  candidate: "1"

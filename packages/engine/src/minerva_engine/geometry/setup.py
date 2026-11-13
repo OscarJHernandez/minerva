@@ -14,7 +14,7 @@ import sympy as sp
 from sympy.core.function import AppliedUndef
 
 from ..build import Builder
-from ..errors import MinervaMathError
+from ..errors import MinervaMathError, UnsupportedInput
 from ..models import ExpressionInput, Limits, Status
 from .models import GeometryInput
 from .tensors import Tensor
@@ -106,7 +106,8 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
     except GeometryError:
         raise
     except MinervaMathError as exc:
-        raise GeometryError(Status.PARSE_ERROR, str(exc)) from exc
+        status = Status.UNSUPPORTED if isinstance(exc, UnsupportedInput) else Status.PARSE_ERROR
+        raise GeometryError(status, str(exc)) from exc
 
     _check_symmetric(g, names)
 

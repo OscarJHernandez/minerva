@@ -56,6 +56,13 @@
   sections:
     - {id: power, title: Power series}
     - {id: numeric, title: Numerical series}
+- id: math.distributions
+  book: mathematics
+  title: Distributions
+  summary: Dirac delta and Heaviside functions, acting on test functions; equalities hold as distributions, not pointwise.
+  sections:
+    - {id: delta, title: Dirac delta}
+    - {id: step, title: Heaviside step function}
 - id: math.special_functions
   book: mathematics
   title: Special functions

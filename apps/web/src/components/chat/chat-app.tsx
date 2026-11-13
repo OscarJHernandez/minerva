@@ -54,6 +54,7 @@ const TOOL_LABEL: Record<string, string> = {
   tensor_canonicalize: "Canonicalizing the tensor expression",
   matrix_calculus: "Running the matrix calculus and verifying the result",
   geometry: "Computing the geometry and checking it independently",
+  distribution: "Applying delta and step identities and pairing with test functions",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
   integrate_motion: "Integrating the equations of motion and verifying the run",

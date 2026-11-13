@@ -43,5 +43,6 @@ Status: **●** has entries, **○** planned.
 ## Entry quality levels
 
 `symbolic` (SymPy proves it) > `numeric` (sampled) > `structural` (tensor canonicaliser) >
-`dimensional` (units only) > `stated` (literature record, never applied). Promotion towards stronger
+`distributional` (equality as distributions: exact conditions plus a test-function pairing, since a
+pointwise sample cannot see a Dirac delta) > `dimensional` (units only) > `stated` (literature record, never applied). Promotion towards stronger
 levels is a goal as backends improve.
