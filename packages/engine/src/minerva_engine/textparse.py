@@ -17,7 +17,7 @@ from typing import Any
 
 import sympy as sp
 
-from .build import CONSTANTS, TEXT_FUNCTION_ALIASES, Builder, NotationLog
+from .build import CONSTANTS, FUNCTIONS, TEXT_FUNCTION_ALIASES, Builder, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
 
@@ -113,6 +113,8 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
         if name == "log" and len(args) == 2:
             return b.log_base(args[0], args[1])
         canonical = TEXT_FUNCTION_ALIASES.get(name, name)
+        if b.strict_calls and canonical not in FUNCTIONS:
+            raise ParseError(f"{name}(…) is not a known function: declare {name} as a function")
         return b.function(canonical, args)
 
     raise ParseError(f"unsupported syntax: {type(node).__name__}")
