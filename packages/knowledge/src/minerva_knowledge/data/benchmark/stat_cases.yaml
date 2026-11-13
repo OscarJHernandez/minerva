@@ -33,7 +33,6 @@
   request: {action: expand}
   expect:
     outputs: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2"}
-  pending: true
 
 - id: sum-deviation-identity
   group: sums
@@ -46,7 +45,6 @@
   request: {action: expand}
   expect:
     outputs: {result: "Sum(x[i]**2, (i, 1, n)) - Sum(x[i], (i, 1, n))**2/n"}
-  pending: true
 
 - id: sum-deviations-vanish
   group: sums
@@ -59,7 +57,6 @@
   request: {action: expand}
   expect:
     outputs: {result: "0"}
-  pending: true
 
 - id: sum-constant-summand
   group: sums
@@ -72,7 +69,6 @@
   request: {action: evaluate_constant}
   expect:
     outputs: {result: "n*c"}
-  pending: true
 
 - id: sum-differentiate-parameter
   group: sums
@@ -85,7 +81,6 @@
   request: {action: differentiate, variable: mu}
   expect:
     outputs: {result: "-2*Sum(x[i] - mu, (i, 1, n))"}
-  pending: true
 
 - id: sum-log-of-product-positive
   group: sums
@@ -98,7 +93,6 @@
   request: {action: log_of_product}
   expect:
     outputs: {result: "Sum(log(x[i]), (i, 1, n))"}
-  pending: true
 
 - id: sum-product-of-sums-factor
   group: sums
@@ -111,7 +105,6 @@
   request: {action: factor}
   expect:
     outputs: {result: "Sum(x[i], (i, 1, n))*Sum(y[j], (j, 1, n))"}
-  pending: true
 
 - id: sum-log-of-product-complex-refused
   group: sums
@@ -123,7 +116,6 @@
   vars: {n: size}
   request: {action: log_of_product}
   expect: {status: conditions_not_satisfied}
-  pending: true
 
 - id: sum-range-not-provable
   group: sums
@@ -135,7 +127,6 @@
   vars: {}
   request: {action: expand}
   expect: {status: conditions_not_satisfied, reason: range_not_provable}
-  pending: true
 
 - id: sum-infinite-range-unsupported
   group: sums
@@ -147,7 +138,6 @@
   vars: {}
   request: {action: evaluate_constant}
   expect: {status: unsupported}
-  pending: true
 
 - id: sum-oversized-input
   group: sums
@@ -160,7 +150,6 @@
   vars: {}
   request: {action: expand}
   expect: {status: resource_limit}
-  pending: true
 
 - id: sum-check-sum-of-squares-wrong
   group: sums
@@ -173,7 +162,6 @@
   request: {action: check}
   candidate: {result: "Sum(x[i]**2, (i, 1, n)) - n*mu**2"}
   control: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2"}
-  pending: true
 
 - id: sum-check-square-of-sum-wrong
   group: sums
@@ -186,7 +174,6 @@
   request: {action: check}
   candidate: {result: "Sum(x[i], (i, 1, n))**2/n"}
   control: {result: "Sum(x[i]**2, (i, 1, n-1)) + x[n]**2"}
-  pending: true
 
 - id: sum-check-off-by-one-range
   group: sums
@@ -199,7 +186,6 @@
   request: {action: check}
   candidate: {result: "Sum(x[i], (i, 1, n-1))"}
   control: {result: "Sum(x[i], (i, 1, n-1)) + x[n]"}
-  pending: true
 
 - id: sum-check-perturbed-by-1e-6
   group: sums
@@ -212,7 +198,6 @@
   request: {action: check}
   candidate: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2 + 1/1000000"}
   control: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2"}
-  pending: true
 
 - id: sum-check-sample-variance-identity-wrong
   group: sums
@@ -225,7 +210,6 @@
   request: {action: check}
   candidate: {result: "Sum(x[i]**2, (i, 1, n)) - (Sum(x[i], (i, 1, n))/n)**2"}
   control: {result: "Sum(x[i]**2, (i, 1, n)) - Sum(x[i], (i, 1, n))**2/n"}
-  pending: true
 
 # ------------------------------------------------------------------ expectation (Phase 1)
 
@@ -241,7 +225,6 @@
   expect:
     outputs: {result: "a*E[X] + b*E[Y] + c"}
     evidence: identity
-  pending: true
 
 - id: expectation-of-indexed-sum
   group: expectation
@@ -255,7 +238,6 @@
   expect:
     outputs: {result: "Sum(E[X[i]], (i, 1, n))"}
     evidence: identity
-  pending: true
 
 - id: variance-of-sum-keeps-covariance
   group: expectation
@@ -269,7 +251,6 @@
   expect:
     outputs: {result: "Var(X) + Var(Y) + 2*Cov(X, Y)"}
     evidence: identity
-  pending: true
 
 - id: variance-of-sum-independent
   group: expectation
@@ -283,7 +264,6 @@
   expect:
     outputs: {result: "Var(X) + Var(Y)"}
     evidence: conditional
-  pending: true
 
 - id: variance-of-affine
   group: expectation
@@ -297,7 +277,6 @@
   expect:
     outputs: {result: "a**2*Var(X)"}
     evidence: identity
-  pending: true
 
 - id: covariance-definition
   group: expectation
@@ -310,7 +289,6 @@
   request: {action: to_moments, random: [X, Y]}
   expect:
     outputs: {result: "E[X*Y] - E[X]*E[Y]"}
-  pending: true
 
 - id: expectation-of-product-independent
   group: expectation
@@ -324,7 +302,6 @@
   expect:
     outputs: {result: "E[X]*E[Y]"}
     evidence: conditional
-  pending: true
 
 - id: variance-of-indexed-sum-independent
   group: expectation
@@ -338,7 +315,6 @@
   expect:
     outputs: {result: "Sum(Var(X[i]), (i, 1, n))"}
     evidence: conditional
-  pending: true
 
 - id: variance-of-indexed-sum-keeps-covariances
   group: expectation
@@ -352,7 +328,6 @@
   expect:
     outputs: {result: "Sum(Sum(Cov(X[i], X[j]), (j, 1, n)), (i, 1, n))"}
     evidence: identity
-  pending: true
 
 - id: expectation-of-product-undeclared-unchanged
   group: expectation
@@ -364,7 +339,6 @@
   vars: {X: random, Y: random}
   request: {action: expand, random: [X, Y]}
   expect: {status: unchanged}
-  pending: true
 
 - id: expectation-undeclared-variable
   group: expectation
@@ -376,7 +350,6 @@
   vars: {}
   request: {action: expand, random: [X]}
   expect: {status: parse_error}
-  pending: true
 
 - id: expectation-check-assumed-independence
   group: expectation
@@ -389,7 +362,6 @@
   request: {action: check, random: [X, Y]}
   candidate: {result: "E[X]*E[Y]"}
   control: {result: "Cov(X, Y) + E[X]*E[Y]"}
-  pending: true
 
 - id: variance-check-missing-covariance
   group: expectation
@@ -402,7 +374,6 @@
   request: {action: check, random: [X, Y]}
   candidate: {result: "Var(X) + Var(Y)"}
   control: {result: "Var(X) + Var(Y) + 2*Cov(X, Y)"}
-  pending: true
 
 - id: variance-check-scale-not-squared
   group: expectation
@@ -415,7 +386,6 @@
   request: {action: check, random: [X]}
   candidate: {result: "a*Var(X)"}
   control: {result: "a**2*Var(X)"}
-  pending: true
 
 - id: covariance-check-raw-moment
   group: expectation
@@ -428,7 +398,6 @@
   request: {action: check, random: [X, Y]}
   candidate: {result: "E[X*Y]"}
   control: {result: "E[X*Y] - E[X]*E[Y]"}
-  pending: true
 
 # ------------------------------------------------------------------ families (Phase 3)
 

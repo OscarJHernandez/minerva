@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`)
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
@@ -326,6 +326,21 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
   add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
   connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
+- Finite sums, products and indexed data (`indexed/`, operation `sums`): the parsers refuse `Sum`, `Product`, `x[i]`, `\sum`,
+  `\prod` and `E[...]` unless the operation opts in (`Builder(allow_sums=...)`, default off), and every pointwise checker
+  (`verify_equal`, `check_derivative`, `check_antiderivative`, `check_definite`, `verify_equal_nc`, the rule matcher,
+  `domain_restrictions`, claims) refuses them through `indexed.guard.contains_indexed`: sampling one number per symbol gives
+  every `x[i]` the same value, so `sum x_i^2 = (sum x_i)^2 / n` "agreed". Do not remove those guards or route a sum through
+  a sampler. A rewrite is shown only if original and result agree on **explicit instances** (`indexed.instantiate`: the sums
+  expanded by us, never `Sum.doit`/`simplify`, at several sizes that always include n >= 2, one fresh symbol per element)
+  under the ordinary sampled check and symbolic zero; it is worded "checked for n = ...", never "proved for every n".
+  Ranges must be provably non-empty (`range_not_provable` otherwise), indices are bound once (no shadowing, no use outside
+  the sum), at most two nested, infinite sums are `unsupported`, and `x_{ij}`/`x_{i,j}` are refused as ambiguous.
+- Expectations (`stats/`, operation `expectation`): `E`, `Var`, `Cov` are unevaluated functions of **declared** random
+  variables (`random`); an undeclared symbol is a `parse_error`. Independence is never assumed: `independent` groups are
+  the only source of it, a result that used one is `conditional` ("holds given ...") and Minerva never checks the premise,
+  and a result is shown only if it agrees with the original on explicit finite joint distributions with exact weights that
+  are dependent unless independence was declared (`stats.pmf_check`). Only one independence group is modelled.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

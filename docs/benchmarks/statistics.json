@@ -4,466 +4,404 @@
       "group": "sums",
       "id": "sum-expand-squares",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 1380.4,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 61,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-deviation-identity",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 158.6,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 51,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-deviations-vanish",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 22.2,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 1,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-constant-summand",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 21.8,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 3,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-differentiate-parameter",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 45.0,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 29,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-log-of-product-positive",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 122.5,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 25,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-product-of-sums-factor",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
+      "milliseconds": 129.3,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 41,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "sums",
       "id": "sum-log-of-product-complex-refused",
       "kind": "unsupported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 15.2,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "conditions_unmet",
       "result_chars": 0,
-      "status": "not_expressible",
+      "status": "conditions_not_satisfied",
       "verified": null
     },
     {
       "group": "sums",
       "id": "sum-range-not-provable",
       "kind": "unsupported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 13.4,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "range_not_provable",
       "result_chars": 0,
-      "status": "not_expressible",
+      "status": "conditions_not_satisfied",
       "verified": null
     },
     {
       "group": "sums",
       "id": "sum-infinite-range-unsupported",
       "kind": "unsupported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 13.3,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "unsupported_form",
       "result_chars": 0,
-      "status": "not_expressible",
+      "status": "unsupported",
       "verified": null
     },
     {
       "group": "sums",
       "id": "sum-oversized-input",
       "kind": "unsupported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 12.7,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "resource_limit",
       "result_chars": 0,
-      "status": "not_expressible",
+      "status": "resource_limit",
       "verified": null
     },
     {
       "group": "sums",
       "id": "sum-check-sum-of-squares-wrong",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 254.2,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "sums",
       "id": "sum-check-square-of-sum-wrong",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 138.0,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "sums",
       "id": "sum-check-off-by-one-range",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 40.1,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "sums",
       "id": "sum-check-perturbed-by-1e-6",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 253.1,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "sums",
       "id": "sum-check-sample-variance-identity-wrong",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.sums"
-      ],
-      "reason": null,
+      "milliseconds": 327.8,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "expectation",
       "id": "expectation-linearity",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 24.1,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 19,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "expectation-of-indexed-sum",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 26.7,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 23,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "variance-of-sum-keeps-covariance",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 18.9,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 29,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "variance-of-sum-independent",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 18.6,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 15,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "variance-of-affine",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 22.4,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 11,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "covariance-definition",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 18.9,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 19,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "expectation-of-product-independent",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 17.5,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 9,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "variance-of-indexed-sum-independent",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 38.0,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 25,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "variance-of-indexed-sum-keeps-covariances",
       "kind": "supported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 68.3,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
-      "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "result_chars": 42,
+      "status": "ok",
+      "verified": true
     },
     {
       "group": "expectation",
       "id": "expectation-of-product-undeclared-unchanged",
       "kind": "unsupported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
+      "milliseconds": 15.8,
+      "passed": true,
+      "pending": false,
+      "problems": [],
       "reason": null,
       "result_chars": 0,
-      "status": "not_expressible",
+      "status": "unchanged",
       "verified": null
     },
     {
       "group": "expectation",
       "id": "expectation-undeclared-variable",
       "kind": "unsupported",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
-      "reason": null,
+      "milliseconds": 13.9,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "parse_error",
       "result_chars": 0,
-      "status": "not_expressible",
+      "status": "parse_error",
       "verified": null
     },
     {
       "group": "expectation",
       "id": "expectation-check-assumed-independence",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
-      "reason": null,
+      "milliseconds": 33.1,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "expectation",
       "id": "variance-check-missing-covariance",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
-      "reason": null,
+      "milliseconds": 35.6,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "expectation",
       "id": "variance-check-scale-not-squared",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
-      "reason": null,
+      "milliseconds": 99.8,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "expectation",
       "id": "covariance-check-raw-moment",
       "kind": "invalid_candidate",
-      "milliseconds": 0.0,
-      "passed": false,
-      "pending": true,
-      "problems": [
-        "not expressible: Engine.expectation"
-      ],
-      "reason": null,
+      "milliseconds": 33.9,
+      "passed": true,
+      "pending": false,
+      "problems": [],
+      "reason": "verification_failed",
       "result_chars": 0,
-      "status": "not_expressible",
-      "verified": null
+      "status": "not_verified",
+      "verified": false
     },
     {
       "group": "families",
@@ -1622,15 +1560,15 @@
     }
   ],
   "format": 1,
-  "label": "Phase 0: before any implementation",
+  "label": "Phase 1: sums and expectations",
   "summary": {
     "cases": 108,
-    "coverage": 0.0,
+    "coverage": 0.3137,
     "failed": [],
     "groups": {
       "expectation": {
         "cases": 15,
-        "passing": 0
+        "passing": 15
       },
       "families": {
         "cases": 14,
@@ -1654,25 +1592,32 @@
       },
       "sums": {
         "cases": 16,
-        "passing": 0
+        "passing": 16
       }
     },
     "invalid_cases": 29,
-    "invalid_rejected": 0,
-    "latency_median_ms": 0.0,
-    "latency_p95_ms": 0.0,
+    "invalid_rejected": 9,
+    "latency_median_ms": 33.1,
+    "latency_p95_ms": 327.8,
     "minimum_outcome_passing": 0,
     "minimum_outcome_total": 5,
-    "not_expressible": 108,
-    "pending": 108,
-    "refusal_reasons": {},
-    "refused_correctly": 0,
-    "result_chars_max": 0,
-    "scored_cases": 0,
-    "scored_passing": 0,
+    "not_expressible": 77,
+    "pending": 77,
+    "refusal_reasons": {
+      "conditions_unmet": 1,
+      "parse_error": 1,
+      "range_not_provable": 1,
+      "resource_limit": 1,
+      "unsupported_form": 1,
+      "verification_failed": 9
+    },
+    "refused_correctly": 6,
+    "result_chars_max": 61,
+    "scored_cases": 31,
+    "scored_passing": 31,
     "supported_cases": 51,
-    "supported_passing": 0,
+    "supported_passing": 16,
     "unsupported_cases": 28,
-    "verification_success": 0.0
+    "verification_success": 1.0
   }
 }

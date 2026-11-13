@@ -14,7 +14,9 @@ from typing import Any
 
 import sympy as sp
 
-from .errors import LimitError, ParseError, UnsupportedInput
+from .errors import LimitError, ParseError, RangeNotProvable, UnsupportedInput
+from .indexed.guard import SUMS_REFUSAL
+from .indexed.randoms import Covariance, Expectation, Variance
 from .models import ALLOWED_ASSUMPTIONS, SYMBOL_NAME_MAX, Limits
 
 # Whitelisted functions: canonical name -> constructor taking one argument.
@@ -71,6 +73,8 @@ RESERVED_NAMES = (
 )
 
 MAX_FUNCTION_ARGS = 4
+MAX_SUM_DEPTH = 2  # nested sums and products
+MAX_NUMERIC_RANGE = 64  # explicit numeric bounds, so that instance checks stay small
 
 # Names that people write for a Dirac delta or a step function but that are ordinary symbols
 # everywhere else: `\\delta(x)` is delta times x. Only the distribution operation may read them
@@ -112,8 +116,20 @@ class Builder:
         notation: NotationLog | None = None,
         *,
         allow_noncommutative: bool = False,
+        allow_sums: bool = False,
+        random_variables: Iterable[str] = (),
     ) -> None:
         self.limits = limits or Limits()
+        # Finite sums, products and indexed variables exist only in the operations that check them
+        # with instances (indexed/); everywhere else they are refused when the parser meets them.
+        self.allow_sums = allow_sums
+        # Names of random variables (expectation, variance, covariance); empty: E[...] is refused.
+        self.random = frozenset(random_variables)
+        for name in self.random:
+            if not _SYMBOL_RE.match(name) or name in RESERVED_NAMES or len(name) > SYMBOL_NAME_MAX:
+                raise ParseError(f"invalid random variable name {name!r}")
+        self._scope: dict[str, sp.Symbol] = {}  # bound index name -> symbol, outermost first
+        self._bases: dict[str, sp.IndexedBase] = {}
         # Off (None) for every operation except `distribution`.
         self.notation = notation
         # Names that stand for matrices: their products keep their order (matrix calculus only).
@@ -186,6 +202,10 @@ class Builder:
         return sp.Function(name, real=True)(*expected)
 
     def symbol(self, name: str) -> sp.Symbol:
+        if name in self._scope:
+            return self._scope[name]
+        if name in self._bases:
+            raise ParseError(f"{name!r} is indexed data here; write {name}[…] for an element")
         if len(name) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(name) or "__" in name:
             raise ParseError(f"invalid symbol name {name!r}")
         if name in RESERVED_NAMES:
@@ -271,6 +291,137 @@ class Builder:
             self.denominators.append(denominator)
         return numerator / denominator
 
+    # -- finite sums, products, indexed variables --------------------------------------
+    def require_sums(self) -> None:
+        if not self.allow_sums:
+            raise UnsupportedInput(SUMS_REFUSAL)
+
+    @property
+    def bound_names(self) -> frozenset[str]:
+        return frozenset(self._scope)
+
+    def open_sum(self, name: str, lower: sp.Expr) -> sp.Symbol:
+        """Bind the index of a sum or product; the bounds were read outside its scope."""
+        self.require_sums()
+        if len(name) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(name) or "__" in name:
+            raise ParseError(f"invalid index name {name!r}")
+        if name in RESERVED_NAMES:
+            raise ParseError(f"{name!r} is a reserved function or constant name")
+        if name in self._scope:
+            raise ParseError(f"the index {name!r} is already bound by an enclosing sum")
+        if len(self._scope) >= MAX_SUM_DEPTH:
+            raise ParseError(
+                f"sums and products nested deeper than {MAX_SUM_DEPTH} are not supported"
+            )
+        if (
+            name in self.symbols
+            or name in self._bases
+            or name in self.random
+            or name in self.functions
+            or name in self._assumptions
+        ):
+            raise ParseError(f"{name!r} is already used as a variable; choose another index")
+        flags: dict[str, bool] = {"integer": True}
+        if lower.is_positive:
+            flags["positive"] = True
+        elif lower.is_nonnegative:
+            flags["nonnegative"] = True
+        self._scope[name] = sp.Symbol(name, **flags)
+        return self._scope[name]
+
+    def close_sum(self, name: str) -> None:
+        del self._scope[name]
+
+    def summation(
+        self, kind: str, body: sp.Expr, index: sp.Symbol, lower: sp.Expr, upper: sp.Expr
+    ) -> sp.Expr:
+        """`Sum` or `Product` over `index` from `lower` to `upper`, never evaluated."""
+        self.require_sums()
+        if lower.has(sp.oo, -sp.oo, sp.zoo) or upper.has(sp.oo, -sp.oo, sp.zoo):
+            raise UnsupportedInput("infinite sums and products are not supported")
+        if index in lower.free_symbols or index in upper.free_symbols:
+            raise ParseError("the bounds of a sum cannot depend on its own index")
+        for bound in (lower, upper):
+            if bound.is_integer is not True:
+                if bound.free_symbols:
+                    raise RangeNotProvable(
+                        "cannot show that the bounds are integers: declare the symbols in them "
+                        "integer (and the upper one positive or nonnegative)"
+                    )
+                raise ParseError("the bounds of a sum must be integers")
+        if lower.is_Integer and upper.is_Integer:
+            if lower > upper:
+                raise ParseError("the range of this sum is empty (lower bound above upper bound)")
+            if upper - lower + 1 > MAX_NUMERIC_RANGE:
+                raise LimitError(f"a numeric range is limited to {MAX_NUMERIC_RANGE} terms")
+        elif (upper - lower + 1).is_nonnegative is not True:
+            raise RangeNotProvable(
+                "cannot show that the range is non-empty: declare the upper bound positive "
+                "(or nonnegative) and an integer"
+            )
+        maker = sp.Sum if kind == "sum" else sp.Product
+        return maker(body, (index, lower, upper))
+
+    def base(self, name: str) -> sp.IndexedBase:
+        self.require_sums()
+        if len(name) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(name) or "__" in name:
+            raise ParseError(f"invalid name {name!r}")
+        if name in RESERVED_NAMES:
+            raise ParseError(f"{name!r} is a reserved function or constant name")
+        if name in self.symbols or name in self._scope or name in self.functions:
+            raise ParseError(f"{name!r} is used both as a variable and as indexed data")
+        if name not in self._bases:
+            flags = dict(self._assumptions.get(name, {}))
+            if flags.get("commutative") is False:
+                raise ParseError(f"{name!r} cannot be both a matrix and indexed data")
+            try:
+                self._bases[name] = sp.IndexedBase(name, **flags)
+            except ValueError as exc:
+                raise ParseError(f"the assumptions for {name!r} contradict each other") from exc
+        return self._bases[name]
+
+    def indexed(self, name: str, index: sp.Expr) -> sp.Expr:
+        """The element `name[index]`; the index is an integer expression."""
+        base = self.base(name)
+        if index.is_integer is not True:
+            raise ParseError(
+                f"the index of {name} must be an integer expression; declare its symbols integer"
+            )
+        return base[index]
+
+    def check_scopes(self, expr: sp.Basic) -> None:
+        """No index of a sum or product is also used outside it."""
+        bound = {v.name for node in expr.atoms(sp.Sum, sp.Product) for v in node.variables}
+        free = {s.name for s in expr.free_symbols if isinstance(s, sp.Symbol)}
+        clash = sorted(bound & free)
+        if clash:
+            raise ParseError(f"the index {clash[0]!r} is also used outside its sum")
+
+    # -- random variables ----------------------------------------------------------------
+    def _random_arguments(self, what: str, *args: sp.Expr) -> None:
+        if not self.random:
+            raise UnsupportedInput(SUMS_REFUSAL)
+        for arg in args:
+            names = {s.name for s in arg.free_symbols if isinstance(s, sp.Symbol)}
+            names |= {b.name for b in arg.atoms(sp.IndexedBase)}
+            if not names & self.random:
+                raise ParseError(
+                    f"{what} contains no random variable declared for this problem "
+                    f"({', '.join(sorted(self.random))})"
+                )
+
+    def expectation(self, arg: sp.Expr) -> sp.Expr:
+        self._random_arguments("E[…]", arg)
+        return Expectation(arg)
+
+    def variance(self, arg: sp.Expr) -> sp.Expr:
+        self._random_arguments("Var(…)", arg)
+        return Variance(arg)
+
+    def covariance(self, a: sp.Expr, b: sp.Expr) -> sp.Expr:
+        self._random_arguments("Cov(…)", a, b)
+        return Covariance(a, b)
+
     # -- final guards ------------------------------------------------------------------
     def check_tree(self, expr: sp.Basic) -> None:
         nodes = sum(1 for _ in sp.preorder_traversal(expr))
@@ -278,6 +429,7 @@ class Builder:
             raise LimitError("expression is too large")
         if _depth(expr) > self.limits.max_tree_depth:
             raise LimitError("expression is nested too deeply")
+        self.check_scopes(expr)
 
 
 def _depth(expr: Any) -> int:

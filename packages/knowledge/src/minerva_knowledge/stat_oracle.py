@@ -147,12 +147,24 @@ class _Eval:
         raise OracleError("unsupported operator")
 
     def _loop(self, args: list[ast.expr], env: Mapping[str, Number], product: bool) -> Number:
-        if len(args) != 2 or not isinstance(args[1], ast.Tuple) or len(args[1].elts) != 3:
+        """Sum or Product with one or more limits; as in SymPy the first limit is the innermost."""
+        limits = args[1:]
+        if not limits or not all(isinstance(g, ast.Tuple) and len(g.elts) == 3 for g in limits):
             raise OracleError("malformed Sum/Product")
-        body = args[0]
-        index, lo, hi = args[1].elts
+        outer = limits[-1]
+        assert isinstance(outer, ast.Tuple)  # noqa: S101 - checked above
+        index, lo, hi = outer.elts
         if not isinstance(index, ast.Name):
             raise OracleError("the index must be a name")
+        body = (
+            ast.Call(
+                func=ast.Name(id="Sum" if not product else "Product"),
+                args=[args[0], *limits[:-1]],
+                keywords=[],
+            )
+            if len(limits) > 1
+            else args[0]
+        )
         a, b = _as_int(self.visit(lo, env)), _as_int(self.visit(hi, env))
         if b - a + 1 > MAX_LOOP:
             raise OracleError("range too long")

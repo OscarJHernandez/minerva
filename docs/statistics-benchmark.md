@@ -76,3 +76,25 @@ engine's limits.
 | matrix | 28 | 0 |
 
 Results by phase are appended below as each phase lands.
+
+## Phase 1: sums, products, indexed data and expectations
+
+Sums and products (`Sum(f, (i, a, n))`, `\sum_{i=a}^{n}`), indexed data (`x[i]`, `x_i` inside a sum) and moments
+(`E[...]`, `Var(...)`, `Cov(...)`) are read only by the `sums` and `expectation` operations; every other operation and
+every pointwise checker refuses them (`tests/test_sum_guard.py`). The reason is measured: `verify_equal` used to accept
+`sum x_i^2 = (sum x_i)^2 / n` because it gave every `x[i]` the same number.
+
+* `sums` verifies a rewrite by expanding both sides explicitly at several sizes (always including n of at least 2), with
+  a separate symbol for every `x[k]`, and running the existing sampled check and symbolic zero test on every instance.
+  The result says "checked for n = 1; 2; 3; 5", never "proved for every n".
+* `expectation` verifies against explicit finite joint distributions with exact rational weights. They are dependent
+  unless independence was declared, so an answer that quietly assumes independence is rejected, and a result that used
+  declared independence is `conditional` and says so. `sympy.stats.symbolic_probability` was measured and not used as
+  the container (it needs probability spaces, leaves `Cov(X, X)` unreduced and has no notion of declared independence).
+
+| Group | Cases | Passing |
+| --- | --- | --- |
+| sums | 16 | 16 |
+| expectation | 15 | 15 |
+
+All 31 pass against the independent oracle; 77 cases of the later phases remain pending.

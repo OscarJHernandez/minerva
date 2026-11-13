@@ -35,6 +35,8 @@ def parse_text(
     notation: NotationLog | None = None,
     *,
     allow_noncommutative: bool = False,
+    allow_sums: bool = False,
+    random_variables: Iterable[str] = (),
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(text) > limits.max_input_chars:
@@ -47,6 +49,8 @@ def parse_text(
         strict_calls,
         notation,
         allow_noncommutative=allow_noncommutative,
+        allow_sums=allow_sums,
+        random_variables=random_variables,
     )
     if denominators is not None:
         builder.denominators = denominators
@@ -100,10 +104,22 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
             return b.power(left, right)
         raise ParseError("unsupported operator")
 
+    if isinstance(node, ast.Subscript):
+        return _subscript(node, b, d)
+
     if isinstance(node, ast.Call):
         if not isinstance(node.func, ast.Name) or node.keywords:
             raise ParseError("unsupported function call")
         name = node.func.id
+        if b.allow_sums and name in ("Sum", "Product"):
+            return _big_operator(node, b, d)
+        if b.random and name in ("Var", "Cov"):
+            args = [_convert(a, b, d) for a in node.args]
+            if len(args) != (1 if name == "Var" else 2):
+                raise ParseError(
+                    f"{name} takes {'one argument' if name == 'Var' else 'two arguments'}"
+                )
+            return b.variance(args[0]) if name == "Var" else b.covariance(args[0], args[1])
         args = [_convert(a, b, d) for a in node.args]
         if name in b.functions:
             return b.declared_call(name, args)
@@ -128,3 +144,50 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
         return b.function(canonical, args)
 
     raise ParseError(f"unsupported syntax: {type(node).__name__}")
+
+
+def _subscript(node: ast.Subscript, b: Builder, depth: int) -> sp.Expr:
+    """`x[i]` (an element of indexed data) and `E[expression]` (an expectation)."""
+    if not isinstance(node.value, ast.Name):
+        raise ParseError("unsupported syntax: Subscript")
+    name = node.value.id
+    if isinstance(node.slice, ast.Slice | ast.Tuple):
+        raise ParseError("an index must be a single integer expression")
+    inner = _convert(node.slice, b, depth)
+    if name == "E" and b.random:
+        return b.expectation(inner)
+    if not b.allow_sums:
+        raise ParseError("unsupported syntax: Subscript")
+    return b.indexed(name, inner)
+
+
+def _big_operator(node: ast.Call, b: Builder, depth: int) -> sp.Expr:
+    """`Sum(body, (i, a, n))`; with several limits the first one is the innermost, as in SymPy."""
+    if len(node.args) < 2 or len(node.args) > 1 + 2:
+        raise ParseError(
+            "Sum and Product take a summand and one or two (index, lower, upper) limits"
+        )
+    limit_nodes = node.args[1:]
+    opened: list[tuple[sp.Symbol, sp.Expr, sp.Expr]] = []
+    # The outermost limit is the last one: read its bounds first, outside every scope.
+    try:
+        for limit in reversed(limit_nodes):
+            if (
+                not isinstance(limit, ast.Tuple)
+                or len(limit.elts) != 3
+                or not isinstance(limit.elts[0], ast.Name)
+            ):
+                raise ParseError("a limit is written (index, lower, upper)")
+            lower = _convert(limit.elts[1], b, depth)
+            upper = _convert(limit.elts[2], b, depth)
+            index = b.open_sum(limit.elts[0].id, lower)
+            opened.append((index, lower, upper))
+        body = _convert(node.args[0], b, depth)
+        kind = "sum" if node.func.id == "Sum" else "product"  # type: ignore[attr-defined]
+        result = body  # `opened` holds the outermost limit first: wrap from the inside out
+        for index, lower, upper in reversed(opened):
+            result = b.summation(kind, result, index, lower, upper)
+        return result
+    finally:
+        for index, _, _ in opened:
+            b.close_sum(index.name)
