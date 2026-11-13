@@ -1248,6 +1248,18 @@ def _run_duhamel(p: Problem) -> Attempt:
     return run_duhamel(p)
 
 
+def _run_evolution_commuting(p: Problem) -> Attempt:
+    from .evolution import run_evolution_commuting  # evolution imports this module
+
+    return run_evolution_commuting(p)
+
+
+def _run_evolution_numeric(p: Problem) -> Attempt:
+    from .evolution import run_evolution_numeric
+
+    return run_evolution_numeric(p)
+
+
 def _run_frechet(p: Problem) -> Attempt:
     from .frechet import run_frechet_derivative  # frechet imports this module
 
@@ -1293,6 +1305,29 @@ METHODS: tuple[Method, ...] = (
         "an exact integral representation, evaluated only for explicit entries that SymPy can "
         "exponentiate; second and higher derivatives of the exponential are not supported",
         _run_frechet,
+    ),
+    Method(
+        "evolution_commuting",
+        "Evolution operator exp(∫A) for a generator that commutes with itself",
+        ("evolve",),
+        "dU/dt = A(t) U with U(t0) = I; A constant, a sum of scalar functions times commuting "
+        "matrices, explicit entries that commute at all times, or one declared self-commuting "
+        "time-dependent matrix",
+        "A(t1) A(t2) = A(t2) A(t1) for all times: declared, or visible in the entries",
+        "an abstract time-dependent generator gives a representation (the integral is not "
+        "evaluated); time-ordered exponentials, Dyson series and Magnus expansions are not "
+        "supported for abstract matrices",
+        _run_evolution_commuting,
+    ),
+    Method(
+        "evolution_numeric",
+        "Numerical solution of dU/dt = A(t) U",
+        ("evolve",),
+        "explicit entries with numeric time dependence, no commutation, up to 4 by 4",
+        "numbers for every parameter and for the end time of the span, supplied by the user",
+        "a measurement on the span in double precision, verified by a second method, by "
+        "integrating backwards and by det U = exp(∫ tr A); never a closed form",
+        _run_evolution_numeric,
     ),
     Method(
         "integrate_polynomial",

@@ -232,7 +232,7 @@ def _with_outcome(
         "expression": "Transformed and verified.",
         "equation": "Reduced to a verified equation; the integral itself was not evaluated.",
         "representation": (
-            "Written exactly through a block-matrix exponential and verified; "
+            "Written exactly (for example through a block-matrix exponential or an integral) and verified; "
             "it is a representation, not an evaluated result."
         ),
         "numeric": (

@@ -419,7 +419,11 @@ def name_latex(name: str) -> str:
 def _coeff_parts(c: sp.Expr) -> tuple[int, str]:
     """Sign and the latex of |c| ("" when it is 1)."""
     sign = 1
-    if c.could_extract_minus_sign():
+    if isinstance(c, sp.Add):  # -(s - t) is not nicer than t - s: pull out a sign only if all agree
+        negative = all(arg.could_extract_minus_sign() for arg in c.args)
+    else:
+        negative = bool(c.could_extract_minus_sign())
+    if negative:
         sign, c = -1, -c
     if c == 1:
         return sign, ""

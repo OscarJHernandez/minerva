@@ -62,6 +62,8 @@ class Env:
     scalars: dict[sp.Symbol, mp.mpc]
     mats: dict[str, mp.matrix]
     rebuild: Rebuild | None = None  # recomputes the time-dependent matrices for new scalars
+    # coefficient matrices C_k of the sampled abstract time-dependent matrices A(t) = sum t^k C_k
+    poly: dict[str, list[mp.matrix]] = field(default_factory=dict)
 
     def at(self, var: sp.Symbol, value: mp.mpc) -> Env:
         """The same sample with the variable moved: time-dependent matrices follow it."""
@@ -69,7 +71,7 @@ class Env:
         mats = dict(self.mats)
         if self.rebuild is not None:
             mats.update(self.rebuild(scalars))
-        return Env(scalars, mats, self.rebuild)
+        return Env(scalars, mats, self.rebuild, self.poly)
 
 
 class Evaluator:
@@ -245,7 +247,7 @@ def make_env(setup: Setup, ev: Evaluator, rng: random.Random) -> Env:
             out[name + "''"] = _explicit_matrix(setup.derivative_entries(name, 2), ev, values)
         return out
 
-    env = Env(scalars, mats, rebuild if (coeffs or moving) else None)
+    env = Env(scalars, mats, rebuild if (coeffs or moving) else None, coeffs)
     if env.rebuild is not None and var is not None:
         env.mats.update(rebuild(scalars))
     return env

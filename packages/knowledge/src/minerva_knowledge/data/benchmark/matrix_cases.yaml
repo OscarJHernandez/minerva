@@ -364,9 +364,8 @@
   action: evolve
   variable: t
   matrices: [{name: A, rows: 2}]
-  pending: true
   expect_status: ok
-  expect_method: evolution_constant
+  expect_method: evolution_commuting
   expect_kind: expression
   expect_evaluated: true
 - id: evolution-commuting-family
@@ -376,7 +375,6 @@
   variable: t
   matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
   commuting: [[A, B]]
-  pending: true
   expect_status: ok
   expect_method: evolution_commuting
   expect_kind: expression
@@ -388,7 +386,6 @@
   variable: t
   matrices: [{name: A, rows: 2, depends_on: t}]
   self_commuting: [A]
-  pending: true
   expect_status: ok
   expect_method: evolution_commuting
   expect_kind: representation
@@ -400,7 +397,6 @@
   variable: t
   upper: '1'
   matrices: [{name: A, entries: [['0', 't'], ['-1', '0']]}]
-  pending: true
   expect_status: ok
   expect_method: evolution_numeric
   expect_kind: numeric
