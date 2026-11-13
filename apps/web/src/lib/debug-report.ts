@@ -62,6 +62,21 @@ function cardSummary(card: Card | null | undefined): string[] {
     card.type === "units"
   ) {
     out.push(`- status: ${card.data.report.status}`, `- message: ${card.data.report.message}`);
+  } else if (card.type === "distribution") {
+    const d = card.data.result;
+    out.push(`- status: ${d.status}${d.reason ? ` (${d.reason})` : ""}`);
+    out.push(`- action: ${d.action ?? "-"}`);
+    out.push(`- input as read: ${d.input_latex ?? "-"}`);
+    out.push(`- result: ${d.result_latex ?? "-"}`);
+    if (d.verification) {
+      out.push(
+        `- verification: ${d.verification.pairings_agreed}/${d.verification.pairings_checked} test-function pairings, conditions established ${d.verification.conditions_established}`,
+      );
+    }
+    out.push(
+      `- stages: ${d.diagnostics.events.map((e) => `${e.stage}${e.status === "failed" ? "!" : ""}`).join(" > ")}`,
+    );
+    out.push(`- engine message: ${d.message}`);
   } else if (card.type === "error") {
     out.push(`- message: ${card.data.message}`);
   } else if ("status" in card.data) {

@@ -257,6 +257,84 @@ export interface MatrixCalculusResult {
   request?: MatrixRequest;
 }
 
+export type DistributionAction = "simplify" | "integrate" | "differentiate";
+export type DistributionEndpoint = "half" | "include" | "exclude";
+export type DistributionReason =
+  | "unsupported_distribution"
+  | "singular_root"
+  | "assumptions_insufficient"
+  | "verification_failed"
+  | "integration_domain_ambiguous"
+  | "resource_limit"
+  | "parse_error";
+
+export interface DistributionRequest {
+  action: DistributionAction;
+  variable: string;
+  lower: string | null;
+  upper: string | null;
+  endpoint: DistributionEndpoint | null;
+}
+
+export interface DistributionCondition {
+  latex: string;
+  established: boolean;
+  how: string;
+}
+
+export interface DistributionStep {
+  entry_id: string;
+  title: string;
+  before_latex: string;
+  after_latex: string;
+  conditions: DistributionCondition[];
+}
+
+export interface DistributionVerification {
+  method: string;
+  test_functions: string[];
+  pairings_checked: number;
+  pairings_agreed: number;
+  parameter_samples: number;
+  widths: number[];
+  convergence_observed: boolean;
+  conditions_established: boolean;
+  passed: boolean;
+  note: string;
+}
+
+export interface DistributionResult {
+  status: Status;
+  action: DistributionAction | null;
+  reason: DistributionReason | null;
+  input_latex: string | null;
+  variable: string | null;
+  lower_latex: string | null;
+  upper_latex: string | null;
+  endpoint: DistributionEndpoint | null;
+  result_latex: string | null;
+  result_text: string | null;
+  equality: "distributional" | "value" | null;
+  steps: DistributionStep[];
+  blocked: { entry_id: string; reason: DistributionReason; detail: string }[];
+  verification: DistributionVerification | null;
+  diagnostics: {
+    reason: DistributionReason | null;
+    events: {
+      stage: string;
+      status: "ok" | "failed";
+      duration_ms: number;
+      reason: string | null;
+    }[];
+  };
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  /** Only in saved history items: the request the result was computed from. */
+  request?: DistributionRequest;
+}
+
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
 export interface RuleCondition {
@@ -283,12 +361,7 @@ export interface Reference {
 }
 
 export type Verified =
-  | "symbolic"
-  | "numeric"
-  | "structural"
-  | "dimensional"
-  | "distributional"
-  | "stated";
+  "symbolic" | "numeric" | "structural" | "dimensional" | "distributional" | "stated";
 
 export interface EntrySummary {
   id: string;
@@ -341,7 +414,8 @@ export type Operation =
   | "series"
   | "integrate"
   | "apply_identity"
-  | "matrix_calculus";
+  | "matrix_calculus"
+  | "distribution";
 
 export interface HistoryItem {
   id: string;

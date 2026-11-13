@@ -5,6 +5,8 @@ import type {
   DerivationSummary,
   DiffVariable,
   DifferentiateResult,
+  DistributionRequest,
+  DistributionResult,
   HistoryItem,
   IntegrateResult,
   IdentitiesResult,
@@ -103,6 +105,11 @@ export const api = {
     request<MatrixCalculusResult>("/v1/compute/matrix", {
       method: "POST",
       body: JSON.stringify({ ...c, ...req, format: "latex" }),
+    }),
+  distribution: (c: ComputeInput, req: DistributionRequest) =>
+    request<DistributionResult>("/v1/compute/distribution", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, ...req }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {

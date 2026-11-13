@@ -76,6 +76,7 @@ vi.mock("@/lib/api", async () => {
       differentiate: vi.fn((...a: unknown[]) => fakes.differentiate(...(a as [never]))),
       integrate: vi.fn(),
       series: vi.fn(),
+      distribution: vi.fn((...a: unknown[]) => fakes.distribution(...(a as [never]))),
       applyIdentity: vi.fn((...a: unknown[]) => fakes.applyIdentity(...(a as [never]))),
     },
   };
@@ -92,6 +93,29 @@ const fakes = {
     steps: [],
     notes: [],
     verification: null,
+  }),
+  distribution: record("distribution", "distribution", {
+    result_text: "2",
+    result_latex: "2",
+    action: "integrate",
+    steps: [],
+    blocked: [],
+    notes: [],
+    equality: "value",
+    reason: null,
+    diagnostics: { reason: null, events: [] },
+    verification: {
+      pairings_checked: 1,
+      pairings_agreed: 1,
+      conditions_established: true,
+      passed: true,
+      test_functions: [],
+      widths: [],
+      parameter_samples: 1,
+      convergence_observed: true,
+      method: "m",
+      note: "n",
+    },
   }),
   applyIdentity: record("apply_identity", "apply_identity", {
     result_text: "log(x) + log(y)",
@@ -176,6 +200,38 @@ describe("Workbench derivation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/both bounds/);
     expect(api.integrate).not.toHaveBeenCalled();
+  });
+
+  it("runs a distribution step with the variable declared real and the chosen limits", async () => {
+    render(<Workbench />);
+    type("x^2 \\operatorname{DiracDelta}(x^2-4)");
+    fireEvent.click(screen.getByRole("button", { name: "Deltas" }));
+    fireEvent.change(screen.getByLabelText("Distribution action"), {
+      target: { value: "integrate" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/both limits/);
+    expect(api.distribution).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Lower limit"), { target: { value: "-oo" } });
+    fireEvent.change(screen.getByLabelText("Upper limit"), { target: { value: "oo" } });
+    fireEvent.change(screen.getByLabelText("Convention for a delta on a limit"), {
+      target: { value: "half" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    await screen.findByRole("listitem", { name: /Step 1: Integrate against deltas/ });
+    const [input, request] = vi.mocked(api.distribution).mock.calls[0] as unknown as [
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ];
+    expect(input.assumptions).toEqual({ x: ["real"] });
+    expect(request).toEqual({
+      action: "integrate",
+      variable: "x",
+      lower: "-oo",
+      upper: "oo",
+      endpoint: "half",
+    });
   });
 
   it("keeps a failed step visible but offers no way to continue from it", async () => {
