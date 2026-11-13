@@ -29,6 +29,11 @@ ALLOWED_FIELDS = frozenset(
         "steps",
         "tool_calls",
         "tool_errors",
+        "dimension",  # geometry: counters and enumerated names only, never content
+        "stage",
+        "ops",
+        "failure",
+        "quantities",
         "logger",
     }
 )

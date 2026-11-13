@@ -18,6 +18,7 @@ from minerva_engine import (
     DiffVariable,
     Engine,
     ExpressionInput,
+    GeometryInput,
     MatrixCalculusInput,
     MatrixDecl,
     MotionRequest,
@@ -25,6 +26,7 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
 )
+from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
@@ -35,6 +37,7 @@ from minerva_knowledge.identities import (
 )
 from pydantic import BaseModel, Field, ValidationError
 
+from ..geometry_log import log_geometry
 from .events import Card
 from .segments import normalize
 
@@ -147,6 +150,53 @@ class MatrixCalculusArgs(SimplifyArgs):
         default_factory=list,
         max_length=6,
         description="Matrices the USER says are invertible. Never add one on your own.",
+    )
+
+
+class GeometryArgs(BaseModel):
+    """Arguments of `geometry`. The whole geometry is sent every time: nothing is remembered between calls."""
+
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description="Coordinate names in order, plain names as the LaTeX parser reads them: "
+        '["t", "r", "theta", "phi"]. They are real symbols.',
+    )
+    metric: list[list[str]] = Field(
+        min_length=1,
+        max_length=4,
+        description="The metric components g_{mu nu} as an n by n grid of LaTeX strings, one row per "
+        'coordinate, e.g. [["-(1-2M/r)", "0"], ["0", "(1-2M/r)^{-1}"]]. Use \\sin^2\\theta, '
+        "not \\sin 2\\theta. Ask the user for the metric; never invent one.",
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of symbols (e.g. {"M": ["positive"]}). Coordinates are real already. '
+        "Do not add assumptions the user did not state.",
+    )
+    functions: list[FunctionDecl] = Field(
+        default_factory=list,
+        max_length=6,
+        description='Unspecified real functions of coordinates used in the metric, e.g. [{"name": "f", '
+        '"args": ["r"]}] for f(r). A function must be declared before it is written f(r).',
+    )
+    quantities: list[Literal[*QUANTITIES]] = Field(  # type: ignore[valid-type]
+        min_length=1,
+        max_length=len(QUANTITIES),
+        description="What to compute: inverse_metric, determinant, christoffel, riemann, ricci, ricci_scalar, "
+        "einstein, kretschmann, ricci_squared, geodesics (symbolic geodesic equations), "
+        "covariant_derivative, raise_index, lower_index. The last three need `tensor`.",
+    )
+    tensor: TensorField | None = Field(
+        default=None,
+        description="A tensor field given by variance (up/down per index) and its n**rank components, "
+        "row-major, as LaTeX strings. Only for covariant_derivative, raise_index and lower_index.",
+    )
+    tensor_index: int = Field(
+        default=0,
+        ge=0,
+        le=2,
+        description="Which index (0-based) raise_index or lower_index acts on",
     )
 
 
@@ -530,6 +580,95 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
         x for x in (result.input_latex, result.notation_latex, result.result_latex) if x
     ] + result.conditions_latex
     return ToolOutput(card, text, known, result.status.value)
+
+
+def geometry_request(args: GeometryArgs) -> GeometryInput:
+    return GeometryInput(**args.model_dump(), format="latex")
+
+
+def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
+    request = geometry_request(args)
+    result = ctx.engine.geometry(request)
+    log_geometry(result)  # stage names and counters only
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="geometry",
+        type="geometry",
+        title="Differential geometry",
+        data={
+            "result": result.model_dump(mode="json"),
+            # the whole problem, so that the card's buttons can ask for more about the same geometry
+            "request": request.model_dump(mode="json"),
+        },
+    )
+    head = f"status={result.status.value}; dimension={result.dimension}; "
+    known: list[str] = []
+    if result.metric_latex:
+        head += f"metric=${result.metric_latex}$; "
+        known.append(result.metric_latex)
+    if result.signature:
+        head += f"signature={result.signature}; "
+    elif result.status.value == "ok":
+        head += "signature=NOT DETERMINED (do not call the metric Lorentzian or Riemannian); "
+    lines = [head + result.message]
+    if result.status.value == "ok" or result.quantities:
+        lines.extend(f"- convention: {c}" for c in result.conventions)
+        lines.extend(f"- assumption: {a}" for a in result.assumptions_used)
+        if result.restrictions_latex:
+            lines.append(
+                "- the coordinate expressions are valid only where "
+                + ", ".join(f"${r}$" for r in result.restrictions_latex)
+                + (
+                    ""
+                    if result.restrictions_complete
+                    else " (and possibly elsewhere: root, logarithm and branch domains were not analysed)"
+                )
+                + ". This says where the coordinates break down, not whether the geometry is singular."
+            )
+            known.extend(result.restrictions_latex)
+        elif not result.restrictions_complete:
+            lines.append("- domain restrictions could not be fully determined")
+        if result.signature is None and result.signature_note:
+            lines.append(f"- signature: {result.signature_note}")
+    for q in result.quantities:
+        evidence = ""
+        v = q.verification
+        if v is not None and q.status.value == "ok":
+            numeric = [c for c in v.checks if c.kind == "numeric"]
+            points = min((c.points_agreed for c in numeric), default=0)
+            evidence = f"; numerically checked ({len(numeric)} independent checks, at least {points} points each)"
+            if v.symbolic_zero is True:
+                evidence += "; also proved by a symbolic zero test"
+            else:
+                evidence += "; NO symbolic proof (say 'numerically checked', never 'proved')"
+        lines.append(
+            f"- {q.kind}: status={q.status.value}{evidence}"
+            + (f"; {q.message}" if q.message else "")
+        )
+        if q.status.value != "ok":
+            continue
+        if q.scalar_latex is not None:
+            lines.append(f"  value=${q.scalar_latex}$")
+            known.append(q.scalar_latex)
+        elif q.all_zero and q.kind != "geodesics":
+            lines.append("  every component is zero")
+        for c in q.components[:40]:
+            statement = c.latex if q.kind == "geodesics" else f"{c.label_latex} = {c.latex}"
+            lines.append(f"  ${statement}$")
+            known.extend([statement, c.latex.split(" = ")[-1]])
+        if len(q.components) > 40:
+            lines.append(f"  ... and {len(q.components) - 40} more components (see the card)")
+        if q.symmetry_note and q.kind != "geodesics":
+            lines.append(f"  ({q.symmetry_note})")
+        lines.extend(f"  note: {n}" for n in q.notes)
+    slow = [d for d in result.diagnostics if d.status == "failed"]
+    if slow:
+        lines.append("- failed stage(s): " + ", ".join(f"{d.stage} ({d.failure})" for d in slow))
+    lines.append(
+        "to compute more about THIS geometry, call geometry again with the same coordinates, metric, "
+        "assumptions and functions."
+    )
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
@@ -1240,6 +1379,20 @@ TOOLS: dict[str, Tool] = {
             "to commute or to be invertible; ask the user before declaring either.",
             MatrixCalculusArgs,
             run_matrix_calculus,
+        ),
+        Tool(
+            "geometry",
+            "Differential geometry in explicit coordinates: give the coordinates and the metric once and "
+            "ask for the inverse metric, determinant, Christoffel symbols, Riemann, Ricci and Einstein "
+            "tensors, the Ricci scalar, Kretschmann and Ricci-squared invariants, symbolic geodesic "
+            "equations, and covariant derivatives or index raising/lowering of a tensor field. Conventions "
+            "are fixed and returned. Every quantity is shown only if independent numerical checks pass "
+            "(metric compatibility, curvature symmetries, Bianchi identities, Euler-Lagrange); a symbolic "
+            "proof is reported separately. The signature is never assumed, a degenerate or asymmetric "
+            "metric is refused, and where the coordinates break down is reported. The geometry is not "
+            "remembered: resend it with every call.",
+            GeometryArgs,
+            run_geometry,
         ),
         Tool(
             "solve_polynomial",

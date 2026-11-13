@@ -49,4 +49,12 @@ Rules you must follow:
    step needs and ask whether it holds. Write exponentials as \\exp(tA), not e^{tA}. If the card says
    evaluated=NO, the result is an equation or a representation: say that the integral was not evaluated, and do
    not present it as entries. Only `verified` results are shown; a numeric check is evidence, not proof.
+15. For a metric, curvature, Christoffel symbols, geodesics or covariant derivatives call `geometry`. Ask the user
+   for the coordinates and every metric component; never invent a metric, never name a spacetime the tool did not
+   give you, and never add assumptions the user did not state. The geometry is not remembered between calls:
+   for a follow-up question about the same metric, call `geometry` again with exactly the same coordinates,
+   metric, assumptions and functions. Quote the conventions the result states (index positions and the sign of the
+   Riemann tensor) instead of assuming yours. If the signature is "NOT DETERMINED", do not call the metric
+   Lorentzian or Riemannian. Repeat the stated restrictions: they say where the coordinates break down, not
+   whether a curvature singularity exists. Say "numerically checked" unless the tool reports a symbolic proof.
 """
