@@ -5,7 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, type ComputeInput } from "@/lib/api";
 import {
   DEFAULT_SETTINGS,
+  collectTargets,
   continuation,
+  relationLines,
   validateSettings,
   type Settings,
   type StepOperation,
@@ -16,12 +18,15 @@ import type {
   HistoryItem,
   IdentitiesResult,
   IdentityMatch,
+  StepResult,
+  Subterm,
 } from "@/lib/types";
 import { AssumptionsEditor } from "../assumptions-editor";
 import { DerivationView } from "./derivation-view";
 import { ExpressionEditor, type EditorFormat } from "./expression-editor";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
+import { PartPicker, type PartAction } from "./part-picker";
 import { SavedPanel } from "./saved-panel";
 
 type Call = (c: ComputeInput) => Promise<{ calculation_id?: string | null }>;
@@ -80,11 +85,15 @@ export function Workbench() {
   const [derivationId, setDerivationId] = useState<string | null>(null);
   const [steps, setSteps] = useState<HistoryItem[]>([]);
   const [fromId, setFromId] = useState<string | null>(null);
+  const [fromWhich, setFromWhich] = useState(0); // the solution continued, for an equation
   const [selected, setSelected] = useState<StepOperation | null>(null);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lookup, setLookup] = useState<{ key: string; result: IdentitiesResult } | null>(null);
+  const [partOpen, setPartOpen] = useState(false);
+  const [parts, setParts] = useState<{ key: string; result: StepResult } | null>(null);
+  const [chosen, setChosen] = useState<{ key: string; part: Subterm } | null>(null);
   const [saved, setSaved] = useState<DerivationSummary[]>([]);
   const [earlier, setEarlier] = useState<HistoryItem[]>([]);
   const [focusSignal, setFocusSignal] = useState(0);
@@ -93,10 +102,13 @@ export function Workbench() {
   const value = format === "latex" ? latex : text;
   const key = JSON.stringify([value, format, assumptions]);
   const fromStep = steps.find((s) => s.id === fromId) ?? null;
-  const fromResult = fromStep ? continuation(fromStep) : null;
+  const fromResult = fromStep ? continuation(fromStep, fromWhich) : null;
   const intact = fromResult !== null && format === "text" && text === fromResult.text;
   const parentId = intact && fromStep ? fromStep.id : undefined;
   const lookupFresh = lookup?.key === key ? lookup.result : null;
+  // A part is chosen for this exact expression: when it changes, the choice is dropped.
+  const partsFresh = parts?.key === key ? parts.result : null;
+  const chosenPart = chosen?.key === key ? chosen.part : null;
 
   const handleError = useCallback(
     (e: unknown) => {
@@ -128,12 +140,13 @@ export function Workbench() {
     }
   }, [refreshSaved]);
 
-  function continueFrom(item: HistoryItem, edit: boolean) {
-    const next = continuation(item);
+  function continueFrom(item: HistoryItem, edit: boolean, which = 0) {
+    const next = continuation(item, which);
     if (!next) return;
     setFormat("text");
     setText(next.text);
     setFromId(item.id);
+    setFromWhich(which);
     setAssumptions(item.assumptions); // the result is valid under the assumptions it was made with
     setError(null);
     if (edit) setFocusSignal((n) => n + 1);
@@ -177,7 +190,20 @@ export function Workbench() {
       return;
     }
     const by = settings.variable;
+    const selection = chosenPart
+      ? { path: chosenPart.path, args: chosenPart.args, expected_latex: chosenPart.latex }
+      : undefined;
     if (operation === "simplify") void addStep(operation, (c) => api.simplify(c));
+    else if (operation === "substitute")
+      void addStep(operation, (c) =>
+        api.substitute(c, relationLines(settings.relations), settings.relationOrder || undefined),
+      );
+    else if (operation === "collect")
+      void addStep(operation, (c) =>
+        api.rewrite(c, { action: "collect", by: collectTargets(settings.collectBy), selection }),
+      );
+    else if (operation === "isolate")
+      void addStep(operation, (c) => api.isolate(c, settings.solveFor));
     else if (operation === "differentiate")
       void addStep(operation, (c) => api.differentiate(c, [{ name: by, order: settings.order }]));
     else if (operation === "integrate")
@@ -209,7 +235,50 @@ export function Workbench() {
   }
 
   function apply(match: IdentityMatch) {
-    void addStep(match.entry.id, (c) => api.applyIdentity(c, match.entry.id));
+    if (chosenPart) {
+      // The identity is matched against the chosen part alone.
+      const selection = {
+        path: chosenPart.path,
+        args: chosenPart.args,
+        expected_latex: chosenPart.latex,
+      };
+      void addStep(match.entry.id, (c) =>
+        api.rewrite(c, { action: "rule", rule_id: match.entry.id, selection }),
+      );
+    } else {
+      void addStep(match.entry.id, (c) => api.applyIdentity(c, match.entry.id));
+    }
+  }
+
+  async function listParts(find: string) {
+    if (!value.trim() || busy) return;
+    setBusy("parts");
+    setError(null);
+    try {
+      const result = await api.subterms(
+        { input: value, format, assumptions },
+        find ? { find } : {},
+      );
+      setParts({ key, result });
+      setChosen(null);
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function runPart(action: PartAction) {
+    if (!chosenPart) {
+      setError("Choose a part first.");
+      return;
+    }
+    const selection = {
+      path: chosenPart.path,
+      args: chosenPart.args,
+      expected_latex: chosenPart.latex,
+    };
+    void addStep(`part-${action}`, (c) => api.rewrite(c, { action, selection }));
   }
 
   function reset() {
@@ -323,9 +392,24 @@ export function Workbench() {
           onSettings={setSettings}
           onRun={run}
           onFind={find}
+          partOpen={partOpen}
+          onTogglePart={() => setPartOpen((o) => !o)}
+          partChosen={chosenPart !== null}
           empty={!value.trim()}
           busy={busy}
         />
+        {partOpen && (
+          <PartPicker
+            result={partsFresh}
+            stale={parts !== null && partsFresh === null}
+            searching={busy === "parts"}
+            chosen={chosenPart}
+            disabled={!value.trim() || busy !== null}
+            onList={listParts}
+            onChoose={(part) => setChosen(part ? { key, part } : null)}
+            onRun={runPart}
+          />
+        )}
         {error && (
           <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
             {error}

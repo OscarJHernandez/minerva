@@ -256,3 +256,134 @@ export function step(
     ...extra,
   };
 }
+
+// --- controlled steps (substitute, rewrite one part, isolate) ---
+import type { Diagnostics, IsolateResult, StepResult, Subterm } from "@/lib/types";
+
+export function diagnostics(over: Partial<Diagnostics> = {}): Diagnostics {
+  return {
+    parse_ms: 1,
+    candidates_ms: 0,
+    transform_ms: 0,
+    verify_ms: 2,
+    candidates: 1,
+    rejected: {},
+    verification_method: "congruence",
+    verification_outcome: "passed",
+    symbolic_zero: false,
+    restrictions_outcome: "none",
+    assumptions_declared: 0,
+    premises: 1,
+    detail: [],
+    ...over,
+  };
+}
+
+export function stepResult(over: Partial<StepResult> = {}): StepResult {
+  return {
+    status: "ok",
+    operation: "substitute",
+    input_latex: "x^{2} + y^{2}",
+    result_latex: "1",
+    result_text: "1",
+    steps: [
+      {
+        action: "substitute",
+        name: "y^{2} = 1 - x^{2}",
+        direction: null,
+        matched_latex: "y^{2}",
+        before_latex: "x^{2} + y^{2}",
+        after_latex: "1",
+        display_latex: "x^{2} + \\left(1 - x^{2}\\right)",
+        evidence: "conditional",
+        given: ["y^{2} = 1 - x^{2}"],
+        conditions_latex: [],
+        verification: null,
+        note: "",
+      },
+    ],
+    evidence: "conditional",
+    given: [{ latex: "y^{2} = 1 - x^{2}", text: "y**2 = 1 - x**2" }],
+    verification: {
+      symbolic_zero: false,
+      numeric_points_checked: 12,
+      numeric_points_agreed: 12,
+      passed: true,
+      note: "",
+    },
+    restrictions_latex: [],
+    restrictions_complete: true,
+    conditions_latex: [],
+    unmet_conditions: [],
+    reason: null,
+    order_dependent: false,
+    subterms: [],
+    truncated: false,
+    diagnostics: diagnostics(),
+    message: "Holds given y**2 = 1 - x**2.",
+    duration_ms: 5,
+    ...over,
+  };
+}
+
+export function isolateResult(over: Partial<IsolateResult> = {}): IsolateResult {
+  return {
+    status: "ok",
+    equation_latex: "a x^{2} = b",
+    variable: "x",
+    method: "polynomial",
+    steps: [],
+    solutions: [
+      {
+        latex: "x = \\sqrt{\\frac{b}{a}}",
+        text: "sqrt(b/a)",
+        equation_text: "x = sqrt(b/a)",
+        conditions_latex: [],
+        branch: "",
+        verification: null,
+      },
+      {
+        latex: "x = - \\sqrt{\\frac{b}{a}}",
+        text: "-sqrt(b/a)",
+        equation_text: "x = -sqrt(b/a)",
+        conditions_latex: [],
+        branch: "",
+        verification: null,
+      },
+    ],
+    conditions_latex: ["a \\neq 0"],
+    excluded_latex: [],
+    exceptional: ["a = 0"],
+    verification: {
+      symbolic_zero: false,
+      numeric_points_checked: 12,
+      numeric_points_agreed: 12,
+      passed: true,
+      note: "",
+    },
+    complete: true,
+    completeness_note:
+      "a random value of the unknown was returned by some solution in 8 of 8 probes",
+    assumption_note: "",
+    reason: null,
+    diagnostics: diagnostics({ verification_method: "back_substitution" }),
+    message: "2 solution(s), each substituted back into the equation and checked for completeness.",
+    duration_ms: 9,
+    ...over,
+  };
+}
+
+export function subterm(index: number, latex: string, over: Partial<Subterm> = {}): Subterm {
+  return {
+    index,
+    path: [index - 1],
+    args: null,
+    latex,
+    text: latex,
+    highlight_latex: `\\boxed{${latex}} + z`,
+    occurrence: 1,
+    occurrences: 1,
+    blocked: false,
+    ...over,
+  };
+}

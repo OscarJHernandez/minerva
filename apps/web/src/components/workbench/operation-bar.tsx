@@ -12,6 +12,11 @@ interface Props {
   onSettings: (settings: Settings) => void;
   onRun: (operation: StepOperation) => void;
   onFind: () => void;
+  /** The panel for choosing one part of the expression is open. */
+  partOpen: boolean;
+  onTogglePart: () => void;
+  /** A part is chosen: collect and identities act on it. */
+  partChosen: boolean;
   /** No expression yet. */
   empty: boolean;
   busy: string | null;
@@ -22,6 +27,9 @@ const OPERATIONS: { id: StepOperation | "identities"; label: string; needsSettin
   { id: "differentiate", label: "Differentiate", needsSettings: true },
   { id: "integrate", label: "Integrate", needsSettings: true },
   { id: "series", label: "Series", needsSettings: true },
+  { id: "substitute", label: "Substitute", needsSettings: true },
+  { id: "collect", label: "Collect", needsSettings: true },
+  { id: "isolate", label: "Solve for", needsSettings: true },
   { id: "identities", label: "Identities", needsSettings: false },
 ];
 
@@ -45,6 +53,9 @@ export function OperationBar({
   onSettings,
   onRun,
   onFind,
+  partOpen,
+  onTogglePart,
+  partChosen,
   empty,
   busy,
 }: Props) {
@@ -97,6 +108,20 @@ export function OperationBar({
             </button>
           );
         })}
+        <button
+          type="button"
+          disabled={disabled}
+          aria-pressed={partOpen}
+          aria-expanded={partOpen}
+          onClick={onTogglePart}
+          className={`rounded border px-3.5 py-1.5 text-sm font-medium disabled:opacity-50 ${
+            partOpen || partChosen
+              ? "border-accent bg-accent-soft text-accent"
+              : "border-rule text-ink hover:bg-sunk"
+          }`}
+        >
+          {partChosen ? "Part chosen" : "Part…"}
+        </button>
       </div>
 
       {selected && selected !== "simplify" && (
@@ -108,15 +133,71 @@ export function OperationBar({
             onRun(selected);
           }}
         >
-          <Field label="by">
-            <input
-              value={settings.variable}
-              onChange={(e) => set({ variable: e.target.value.trim() })}
-              aria-label="Variable"
-              maxLength={32}
-              className={`${FIELD} w-16 font-mono`}
-            />
-          </Field>
+          {selected === "substitute" && (
+            <>
+              <label className="flex w-full flex-col gap-1 text-xs text-muted">
+                Relations, one per line, written like the expression (your premises: Minerva does
+                not check them)
+                <textarea
+                  value={settings.relations}
+                  onChange={(e) => set({ relations: e.target.value })}
+                  aria-label="Relations"
+                  placeholder="y^2 = 1 - x^2"
+                  rows={3}
+                  maxLength={1600}
+                  className={`${FIELD} w-full font-mono`}
+                />
+              </label>
+              <Field label="if several">
+                <select
+                  value={settings.relationOrder}
+                  onChange={(e) =>
+                    set({ relationOrder: e.target.value as Settings["relationOrder"] })
+                  }
+                  aria-label="Order of the relations"
+                  className={FIELD}
+                >
+                  <option value="">ask me if the order matters</option>
+                  <option value="given">apply in the order listed</option>
+                  <option value="simultaneous">apply all at once</option>
+                </select>
+              </Field>
+            </>
+          )}
+          {selected === "collect" && (
+            <Field label="collect by">
+              <input
+                value={settings.collectBy}
+                onChange={(e) => set({ collectBy: e.target.value })}
+                aria-label="Collect by"
+                placeholder="x, y"
+                maxLength={200}
+                className={`${FIELD} w-40 font-mono`}
+              />
+            </Field>
+          )}
+          {selected === "isolate" && (
+            <Field label="unknown">
+              <input
+                value={settings.solveFor}
+                onChange={(e) => set({ solveFor: e.target.value.trim() })}
+                aria-label="Unknown to solve for"
+                maxLength={32}
+                className={`${FIELD} w-16 font-mono`}
+              />
+            </Field>
+          )}
+          {(selected === "differentiate" || selected === "integrate" || selected === "series") && (
+            <Field label="by">
+              <input
+                value={settings.variable}
+                onChange={(e) => set({ variable: e.target.value.trim() })}
+                aria-label="Variable"
+                maxLength={32}
+                className={`${FIELD} w-16 font-mono`}
+              />
+            </Field>
+          )}
           {selected === "differentiate" && (
             <Field label="order">
               <input

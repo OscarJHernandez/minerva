@@ -257,8 +257,129 @@ export interface ApplyIdentityResult {
   calculation_id?: string | null;
 }
 
+/** What a controlled step did and why it ended as it did: durations, counts and codes only. */
+export interface Diagnostics {
+  parse_ms: number;
+  candidates_ms: number;
+  transform_ms: number;
+  verify_ms: number;
+  candidates: number;
+  rejected: Record<string, number>;
+  verification_method: string;
+  verification_outcome: "passed" | "failed" | "not_run";
+  symbolic_zero: boolean;
+  restrictions_outcome: string;
+  assumptions_declared: number;
+  premises: number;
+  /** Only with the local debug setting: rejected candidates, which may contain expressions. */
+  detail: string[];
+}
+
+/** A relation the user supplied. Minerva does not check it: results that use it are conditional. */
+export interface Premise {
+  latex: string;
+  text: string;
+}
+
+export interface StepRecord {
+  action: "substitute" | "builtin" | "rule" | "collect" | "peel" | "polynomial";
+  name: string;
+  direction: "forward" | "reverse" | null;
+  matched_latex: string | null;
+  before_latex: string;
+  after_latex: string;
+  /** A substitution before the arithmetic done on construction: x^2 + (1 - x^2). */
+  display_latex: string | null;
+  evidence: "identity" | "conditional";
+  given: string[];
+  conditions_latex: string[];
+  verification: Verification | null;
+  note: string;
+}
+
+/** A part of an expression that can be chosen for a step. */
+export interface Subterm {
+  index: number;
+  path: number[];
+  args: number[] | null;
+  latex: string;
+  text: string;
+  highlight_latex: string;
+  occurrence: number;
+  occurrences: number;
+  blocked: boolean;
+}
+
+/** Substitute, rewrite one part, or the list of parts that can be chosen. */
+export interface StepResult {
+  status: Status;
+  operation: "rewrite" | "substitute" | "subterms";
+  input_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  steps: StepRecord[];
+  evidence: "identity" | "conditional";
+  given: Premise[];
+  verification: Verification | null;
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  conditions_latex: string[];
+  unmet_conditions: RuleCondition[];
+  reason: string | null;
+  order_dependent: boolean | null;
+  subterms: Subterm[];
+  truncated: boolean;
+  diagnostics: Diagnostics;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  entry?: EntrySummary | null;
+  /** What was asked, saved with the step so a reload shows it. */
+  request?: Record<string, unknown>;
+}
+
+export interface Solution {
+  latex: string;
+  text: string;
+  equation_text: string;
+  conditions_latex: string[];
+  branch: string;
+  verification: Verification | null;
+}
+
+/** The solutions of an equation for one variable, with the conditions under which each holds. */
+export interface IsolateResult {
+  status: Status;
+  equation_latex: string | null;
+  variable: string | null;
+  method: "inversion" | "polynomial" | null;
+  steps: StepRecord[];
+  solutions: Solution[];
+  conditions_latex: string[];
+  excluded_latex: string[];
+  exceptional: string[];
+  verification: Verification | null;
+  complete: boolean;
+  completeness_note: string;
+  assumption_note: string;
+  reason: string | null;
+  diagnostics: Diagnostics;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  request?: Record<string, unknown>;
+}
+
 export type Operation =
-  "simplify" | "identities" | "differentiate" | "series" | "integrate" | "apply_identity";
+  | "simplify"
+  | "identities"
+  | "differentiate"
+  | "series"
+  | "integrate"
+  | "apply_identity"
+  | "rewrite"
+  | "substitute"
+  | "isolate";
 
 export interface HistoryItem {
   id: string;
@@ -267,7 +388,7 @@ export interface HistoryItem {
   format: "latex" | "text";
   assumptions: Assumptions;
   status: Status;
-  result: SimplifyResult | IdentitiesResult | ApplyIdentityResult;
+  result: SimplifyResult | IdentitiesResult | ApplyIdentityResult | StepResult | IsolateResult;
   created_at: string;
   derivation_id?: string | null;
   parent_id?: string | null;

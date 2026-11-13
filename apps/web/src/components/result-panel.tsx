@@ -70,7 +70,7 @@ export function Restrictions({
   );
 }
 
-function Evidence({ v }: { v: Verification }) {
+export function Evidence({ v }: { v: Verification }) {
   return (
     <span
       className="text-xs text-muted"

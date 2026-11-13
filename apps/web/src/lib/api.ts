@@ -8,9 +8,11 @@ import type {
   HistoryItem,
   IntegrateResult,
   IdentitiesResult,
+  IsolateResult,
   SeriesResult,
   SimplifyGoal,
   SimplifyResult,
+  StepResult,
   User,
 } from "./types";
 
@@ -67,6 +69,23 @@ export interface SimplifyInput extends ComputeInput {
   target?: string[];
 }
 
+/** The part of an expression a step acts on, as `subterms` listed it. */
+export interface PartSelection {
+  path: number[];
+  args: number[] | null;
+  expected_latex: string;
+}
+
+export interface RewriteBody {
+  action: "simplify" | "expand" | "factor" | "cancel" | "collect" | "rule";
+  rule_id?: string;
+  reverse?: boolean;
+  selection?: PartSelection;
+  part?: string;
+  occurrence?: number;
+  by?: string[];
+}
+
 export const api = {
   me: () => request<User>("/v1/auth/me"),
   login: (email: string, password: string) =>
@@ -106,6 +125,29 @@ export const api = {
     request<ApplyIdentityResult>("/v1/compute/apply-identity", {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, rule_id: ruleId }),
+    }),
+  substitute: (c: ComputeInput, relations: string[], order?: "given" | "simultaneous") =>
+    request<StepResult>("/v1/compute/substitute", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, relations, order }),
+    }),
+  rewrite: (c: ComputeInput, body: RewriteBody) =>
+    request<StepResult>("/v1/compute/rewrite", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, ...body }),
+    }),
+  subterms: (
+    c: Pick<ComputeInput, "input" | "assumptions" | "format">,
+    options: { find?: string; rule_id?: string } = {},
+  ) =>
+    request<StepResult>("/v1/compute/subterms", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, ...options }),
+    }),
+  isolate: (c: ComputeInput, variable: string) =>
+    request<IsolateResult>("/v1/compute/isolate", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, variable }),
     }),
   createDerivation: () => request<Derivation>("/v1/derivations", { method: "POST" }),
   derivations: () => request<DerivationSummary[]>("/v1/derivations"),
