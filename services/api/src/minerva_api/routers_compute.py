@@ -11,6 +11,8 @@ from minerva_engine import (
     DifferentiateResult,
     ExpressionInput,
     IntegrateResult,
+    MatrixCalculusInput,
+    MatrixCalculusResult,
     RuleCondition,
     SeriesResult,
     Status,
@@ -37,6 +39,7 @@ from .schemas import (
     IdentitiesRequest,
     IntegrateRequest,
     Linked,
+    MatrixCalculusRequest,
     SeriesRequest,
     SimplifyRequest,
 )
@@ -58,6 +61,10 @@ class SeriesResponse(SeriesResult):
 
 
 class IntegrateResponse(IntegrateResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class MatrixCalculusResponse(MatrixCalculusResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -237,6 +244,44 @@ def integrate(
         saved = result.model_dump(mode="json")
         saved["variable"] = body.variable  # kept even on failure
         out.calculation_id = _save(db, user, "integrate", body, result.status.value, saved)
+    return out
+
+
+@router.post("/matrix", response_model=MatrixCalculusResponse)
+def matrix_calculus(
+    body: MatrixCalculusRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MatrixCalculusResponse:
+    _guard(user, limiter, settings, len(body.input))
+    expression = ExpressionInput(input=body.input, format=body.format, assumptions=body.assumptions)
+    request = MatrixCalculusInput(
+        expression=expression,
+        matrices=body.matrices,
+        commuting=body.commuting,
+        invertible=body.invertible,
+        action=body.action,
+        variable=body.variable,
+        lower=body.lower,
+        upper=body.upper,
+    )
+    result = engine.matrix_calculus(request)
+    log.info(
+        "compute",
+        operation="matrix_calculus",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    out = MatrixCalculusResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the declarations are kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json", exclude={"expression"})
+        out.calculation_id = _save(db, user, "matrix_calculus", body, result.status.value, saved)
     return out
 
 

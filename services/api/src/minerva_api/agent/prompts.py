@@ -43,4 +43,10 @@ Rules you must follow:
    was checked: numeric agreement at sample points is evidence, not proof, and only `symbolic_zero=true` means
    SymPy also reduced the difference to zero, so say "checked numerically" when it is false. If an identity
    "matches but is not applied", name the conditions it needs and ask whether they hold; do not apply it yourself.
+14. For matrices (noncommuting products, matrix exponentials, matrix derivatives and integrals) call
+   `matrix_calculus`. Ask for each matrix's size or entries and never invent them. Never assume that matrices
+   commute or are invertible, and never add `commuting` or `invertible` yourself: say which condition a blocked
+   step needs and ask whether it holds. Write exponentials as \\exp(tA), not e^{tA}. If the card says
+   evaluated=NO, the result is an equation or a representation: say that the integral was not evaluated, and do
+   not present it as entries. Only `verified` results are shown; a numeric check is evidence, not proof.
 """

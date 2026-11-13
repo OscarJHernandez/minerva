@@ -11,6 +11,7 @@ from .expansion import ExpansionReport
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
+from .matrix import MatrixCalculusInput, MatrixCalculusResult
 from .models import (
     ExpressionInput,
     FormulaReading,
@@ -91,6 +92,20 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return IntegrateResult(status=status, message=message, duration_ms=ms)
         result = IntegrateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def matrix_calculus(self, request: MatrixCalculusInput) -> MatrixCalculusResult:
+        """Evaluate, simplify, differentiate or integrate an expression in declared, noncommuting
+        matrices and their exponentials; the method is chosen from the structure and the result is
+        shown only if its own verification passed."""
+        outcome, ms = self._run("matrix_calculus", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return MatrixCalculusResult(
+                status=status, action=request.action, message=message, duration_ms=ms
+            )
+        result = MatrixCalculusResult(**outcome.value)
         result.duration_ms = ms
         return result
 

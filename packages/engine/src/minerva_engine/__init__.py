@@ -13,6 +13,7 @@ from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerific
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
 from .latexparse import parse_latex
+from .matrix import MatrixCalculusInput, MatrixCalculusResult, MatrixDecl
 from .models import (
     Applicability,
     BlockedMove,
@@ -71,6 +72,9 @@ __all__ = [
     "LagrangianReport",
     "LimitError",
     "Limits",
+    "MatrixCalculusInput",
+    "MatrixCalculusResult",
+    "MatrixDecl",
     "MinervaMathError",
     "MotionReport",
     "MotionRequest",

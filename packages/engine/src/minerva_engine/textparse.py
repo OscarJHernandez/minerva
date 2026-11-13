@@ -12,6 +12,7 @@ functions listed in `build.FUNCTIONS` (plus `sqrt` and `root(x, n)`).
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from typing import Any
 
 import sympy as sp
@@ -28,11 +29,12 @@ def parse_text(
     assumptions: dict[str, list[str]] | None = None,
     limits: Limits | None = None,
     denominators: list[sp.Expr] | None = None,
+    noncommutative: Iterable[str] = (),
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(text) > limits.max_input_chars:
         raise LimitError("input is too long")
-    builder = Builder(assumptions, limits)
+    builder = Builder(assumptions, limits, noncommutative)
     if denominators is not None:
         builder.denominators = denominators
     source = text.strip().replace("^", "**")

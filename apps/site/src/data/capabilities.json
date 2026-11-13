@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 149,
+  "handbook_entries": 155,
   "groups": [
     {
       "id": "math",
@@ -713,6 +713,232 @@
           "checks": [],
           "notes": [
             "The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "matrix-calculus",
+      "title": "Noncommutative matrix calculus",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Ordered products of matrix exponentials with declared matrices (a size, or explicit entries). Minerva recognises the structure and picks the technique: the ordered product rule, merging exponentials only where commutation is declared or visible in the entries, a closed form for an invertible matrix, a Sylvester equation for integrals of products such as e^(wA) e^(-wB), or a block-matrix exponential. A result is shown only if independent numerical checks agree, and an equation or a representation is never presented as an evaluated integral.",
+      "limits": [
+        "Matrices are constant; the variable is scalar. No time-ordered exponentials, Magnus expansion or Duhamel integrals.",
+        "Matrices are never assumed to commute or to be invertible; both must be declared, or be visible in explicit entries.",
+        "Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4).",
+        "The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately."
+      ],
+      "examples": [
+        {
+          "id": "matrix-integral-explicit",
+          "title": "An integral of a product of noncommuting exponentials",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(wA)\\exp(-wB)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A = [1, 0; 0, 2]"
+            },
+            {
+              "label": "Matrix",
+              "source": "B = [0, 1; 0, 0]"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]"
+            },
+            {
+              "label": "Verified equation",
+              "latex": "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Sylvester equation for ∫ e^{(at+b)P} C e^{(ct+d)Q} dt (sylvester_reduction).",
+            "Assumes: the Sylvester operator X -> aPX + cXQ is invertible (its Kronecker determinant is nonzero).",
+            "Assumes: all matrices are constant in w.",
+            "Evaluated and verified."
+          ]
+        },
+        {
+          "id": "matrix-integral-abstract",
+          "title": "The same structure with abstract matrices gives a verified equation, not entries",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(-(x-y)(y-w)A)\\exp(-(w-z)(z-q)B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Exact representation (not an evaluated integral)",
+              "latex": "\\exp\\left(-\\left(x y - y^{2}\\right) A\\right) \\left(\\exp\\left(\\left(b x - b y\\right) A\\right)\\left[\\exp\\left(b\\,\\begin{pmatrix} -\\left(x - y\\right) A & I \\\\ 0 & \\left(q - z\\right) B \\end{pmatrix}\\right)\\right]_{12} - \\exp\\left(\\left(a x - a y\\right) A\\right)\\left[\\exp\\left(a\\,\\begin{pmatrix} -\\left(x - y\\right) A & I \\\\ 0 & \\left(q - z\\right) B \\end{pmatrix}\\right)\\right]_{12}\\right) \\exp\\left(-\\left(q z - z^{2}\\right) B\\right)"
+            },
+            {
+              "label": "Verified equation",
+              "latex": "\\left(x - y\\right) A X + \\left(q - z\\right) X B = \\exp\\left(-\\left(- b + y\\right) \\left(x - y\\right) A\\right) \\exp\\left(-\\left(b - z\\right) \\left(- q + z\\right) B\\right) - \\exp\\left(-\\left(- a + y\\right) \\left(x - y\\right) A\\right) \\exp\\left(-\\left(a - z\\right) \\left(- q + z\\right) B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Block-matrix exponential representation (block_exponential).",
+            "Assumes: all matrices are constant in w.",
+            "Written exactly through a block-matrix exponential and verified; it is a representation, not an evaluated result."
+          ]
+        },
+        {
+          "id": "matrix-derivative",
+          "title": "Derivative of a product keeps the order",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(tA)\\exp(sB)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "A \\exp\\left(t A\\right) \\exp\\left(s B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Ordered product rule for exponentials (exp_derivative).",
+            "Assumes: all matrices are constant in t.",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-merge-blocked",
+          "title": "Exponentials of matrices that may not commute are not merged",
+          "op": "matrix",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(A)\\exp(B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Not applied: Merge exponentials into one needs AB = BA (not declared).",
+            "Nothing was changed because a step needs a condition that is not established: Merge exponentials into one needs AB = BA (not declared). Declare it if it holds."
+          ]
+        },
+        {
+          "id": "matrix-merge-declared",
+          "title": "Merged once commutation is declared",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(A)\\exp(B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\exp\\left(A + B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Merge exponentials of commuting matrices (exp_merge_commuting).",
+            "Assumes: AB = BA (declared).",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-time-ordered",
+          "title": "A derivative that needs a time-ordered exponential is declined",
+          "op": "matrix",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(t^2 A + t B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The exponent mixes A and B, which do not commute, with coefficients that are not proportional; the derivative then needs the Duhamel integral (or a time-ordered exponential), which is not supported."
           ]
         }
       ]

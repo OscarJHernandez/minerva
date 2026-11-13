@@ -8,6 +8,8 @@ import type {
   HistoryItem,
   IntegrateResult,
   IdentitiesResult,
+  MatrixCalculusResult,
+  MatrixRequest,
   SeriesResult,
   SimplifyGoal,
   SimplifyResult,
@@ -96,6 +98,11 @@ export const api = {
     request<IntegrateResult>("/v1/compute/integrate", {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, variable, ...bounds }),
+    }),
+  matrix: (c: ComputeInput, req: MatrixRequest) =>
+    request<MatrixCalculusResult>("/v1/compute/matrix", {
+      method: "POST",
+      body: JSON.stringify({ ...c, ...req, format: "latex" }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {

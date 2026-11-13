@@ -300,6 +300,22 @@ CASES = [
         args_check=lambda t, a: a.get("goal") == "factor",
         informational=True,
     ),
+    Case(
+        "matrix-merge-needs-commutation",
+        r"Simplify $\exp(A)\exp(B)$ for two 2x2 matrices A and B.",
+        {"matrix_calculus"},
+        args_check=lambda t, a: not a.get("commuting"),
+        final_matches=re.compile(r"commut", re.I),
+        informational=True,
+    ),
+    Case(
+        "matrix-integral-not-evaluated",
+        r"Integrate $\exp(tP)\exp(tQ)$ in t from 0 to 1, where P and Q are 2x2 matrices.",
+        {"matrix_calculus"},
+        args_check=lambda t, a: a.get("action") == "integrate" and not a.get("invertible"),
+        final_matches=re.compile(r"not evaluated|equation|representation", re.I),
+        informational=True,
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

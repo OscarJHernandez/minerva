@@ -472,6 +472,43 @@ def test_scripted_model_searches_for_hidden_constants_of_motion(
     assert message["trace"][0]["arguments"]["angles"] == ["theta"]
 
 
+def test_matrix_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Differentiate this matrix expression in t: $\exp(tA)$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "matrix"
+    assert card["data"]["result"]["status"] == "ok"
+    assert card["data"]["result"]["verification"]["passed"] is True
+
+
+def test_matrix_turn_for_a_reduction_says_it_was_not_evaluated(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Matrix integral of $\exp(tP)\exp(tQ)$ from 0 to 1")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["evaluated"] is False
+    assert "not evaluated" in message["text"]
+
+
+def test_matrix_turn_blocked_merge_asks_about_commutation(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Simplify this matrix product $\exp(A)\exp(B)$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["status"] == "conditions_not_satisfied"
+    events = sse(
+        client, cid, r"Simplify this matrix product $\exp(A)\exp(B)$ where A and B commute"
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["result_latex"] == r"\exp\left(A + B\right)"
+
+
 def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
     from minerva_api.routers_chat import _claim_context
 

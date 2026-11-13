@@ -380,3 +380,94 @@ def test_integrate_definite_and_history(authed: TestClient) -> None:
         json={"input": "x", "format": "text", "variable": "x", "lower": "0"},
     ).json()
     assert half["status"] == "parse_error"
+
+
+MATRIX_REGRESSION = {
+    "input": r"\exp(wA)\exp(-wB)",
+    "matrices": [
+        {"name": "A", "entries": [["1", "0"], ["0", "2"]]},
+        {"name": "B", "entries": [["0", "1"], ["0", "0"]]},
+    ],
+    "action": "integrate",
+    "variable": "w",
+    "lower": "0",
+    "upper": "1",
+}
+
+
+def test_matrix_calculus_regression_and_history(authed: TestClient) -> None:
+    r = authed.post("/v1/compute/matrix", json=MATRIX_REGRESSION)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["result_kind"] == "explicit" and body["evaluated"] is True
+    assert body["result_entries"][0][1] == "-1"
+    assert body["verification"]["passed"] is True
+    assert body["method"] == "sylvester_reduction"
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "matrix_calculus"
+    assert item["id"] == body["calculation_id"]
+    # the declarations are stored so that the workbench can restore the form
+    assert item["result"]["request"]["variable"] == "w"
+    assert [m["name"] for m in item["result"]["request"]["matrices"]] == ["A", "B"]
+
+
+def test_matrix_calculus_reports_a_reduction_as_not_evaluated(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp(tP)\exp(tQ)",
+            "matrices": [{"name": "P", "rows": 2}, {"name": "Q", "rows": 2}],
+            "action": "integrate",
+            "variable": "t",
+            "lower": "0",
+            "upper": "1",
+        },
+    ).json()
+    assert body["status"] == "ok"
+    assert body["evaluated"] is False and body["result_kind"] == "representation"
+    assert body["equation_latex"]
+
+
+def test_matrix_calculus_failures_and_validation(authed: TestClient) -> None:
+    mats = [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]
+    body = authed.post(
+        "/v1/compute/matrix", json={"input": r"\exp(A)\exp(B)", "matrices": mats}
+    ).json()
+    assert body["status"] == "conditions_not_satisfied" and body["result_latex"] is None
+    body = authed.post(
+        "/v1/compute/matrix",
+        json={"input": "AB", "matrices": [{"name": "A", "rows": 2, "cols": 3}, mats[1]]},
+    ).json()
+    assert body["status"] == "parse_error"
+    assert authed.post("/v1/compute/matrix", json={"input": "A", "matrices": []}).status_code == 422
+    assert (
+        authed.post(
+            "/v1/compute/matrix", json={"input": "A", "matrices": [{"name": "A"}]}
+        ).status_code
+        == 422
+    )
+    assert (
+        authed.post(
+            "/v1/compute/matrix",
+            json={"input": "A", "matrices": mats, "action": "invert"},
+        ).status_code
+        == 422
+    )
+
+
+def test_matrix_calculus_requires_authentication(client: TestClient) -> None:
+    assert client.post("/v1/compute/matrix", json=MATRIX_REGRESSION).status_code == 401
+
+
+def test_matrix_calculus_logs_no_user_input(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzMATRIXMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        c.post(
+            "/v1/compute/matrix",
+            json={"input": rf"\exp(t{marker})", "matrices": [{"name": marker, "rows": 2}]},
+        )
+    out = capsys.readouterr().out
+    assert "compute" in out and marker not in out

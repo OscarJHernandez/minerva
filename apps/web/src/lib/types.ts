@@ -186,6 +186,77 @@ export interface IntegrateResult {
   calculation_id?: string | null;
 }
 
+export type MatrixAction = "evaluate" | "simplify" | "differentiate" | "integrate";
+export type MatrixResultKind = "explicit" | "expression" | "equation" | "representation";
+
+/** A declared matrix: a size (abstract) or explicit entries (LaTeX expressions). */
+export interface MatrixDecl {
+  name: string;
+  rows?: number | null;
+  cols?: number | null;
+  entries?: string[][] | null;
+}
+
+export interface MatrixRequest {
+  matrices: MatrixDecl[];
+  commuting: [string, string][];
+  invertible: string[];
+  action: MatrixAction;
+  variable: string | null;
+  lower: string | null;
+  upper: string | null;
+}
+
+export interface MatrixStep {
+  method: string;
+  title: string;
+  before_latex: string | null;
+  after_latex: string | null;
+  note: string;
+}
+
+export interface MatrixBlocked {
+  method: string;
+  title: string;
+  needs: string;
+  latex: string | null;
+}
+
+export interface MatrixVerification {
+  method: string;
+  points_checked: number;
+  points_agreed: number;
+  passed: boolean;
+  symbolic_zero: boolean | null;
+  symbolic_method: string;
+  note: string;
+}
+
+export interface MatrixCalculusResult {
+  status: Status;
+  action: MatrixAction | null;
+  input_latex: string | null;
+  structure: string;
+  features: string[];
+  method: string | null;
+  method_title: string | null;
+  result_kind: MatrixResultKind | null;
+  result_latex: string | null;
+  result_entries: string[][] | null;
+  equation_latex: string | null;
+  evaluated: boolean;
+  assumptions_used: string[];
+  steps: MatrixStep[];
+  blocked: MatrixBlocked[];
+  verification: MatrixVerification | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  /** Only in saved history items: the declarations the result was computed from. */
+  request?: MatrixRequest;
+}
+
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
 export interface RuleCondition {
@@ -258,7 +329,13 @@ export interface ApplyIdentityResult {
 }
 
 export type Operation =
-  "simplify" | "identities" | "differentiate" | "series" | "integrate" | "apply_identity";
+  | "simplify"
+  | "identities"
+  | "differentiate"
+  | "series"
+  | "integrate"
+  | "apply_identity"
+  | "matrix_calculus";
 
 export interface HistoryItem {
   id: string;

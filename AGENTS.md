@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM client (Ollama), tool registry, agent loop, formula marking, scripted test model
@@ -169,6 +169,21 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   exists. Keep the bounds (width, depth, verifications per state, size cap, deadline), the visited set, the
   right-to-left restriction (`can_reverse`) and the match filters; do not add an unverified shortcut. Chains
   must not become a way around `_invents_structure`: `rule_rewrites` is the one place that decides what matches.
+- Matrix calculus (`matrix/`, tool and endpoint `matrix`) treats declared matrices as noncommutative symbols and
+  shows a result only if its method's own checks pass: random complex matrices of the declared sizes (declared
+  commuting groups sampled as polynomials of one matrix; explicit entries at sampled parameters), exponentials by
+  `mpmath.expm`, integrals by quadrature and derivatives by a central difference, none of which uses the route that
+  produced the result. The exact leg (formal power series through degree 4, modulo the declared commutations, or
+  the explicit result substituted into the Sylvester equation) is reported separately; a failed exact leg is
+  `not_verified`. Matrices are never reordered and never assumed to commute or to be invertible: a merge or a
+  closed form that needs either is `blocked` and reported, unless the commutation or invertibility is declared or
+  visible in explicit entries (a declaration contradicted by the entries is an error). A Sylvester equation
+  `aPX + cXQ = F(b) - F(a)` or a block-matrix representation is **never** presented as an evaluated integral
+  (`evaluated=false`, `result_kind` equation or representation); entries exist only for explicit matrices. No
+  Duhamel integral, time-ordered exponential or Magnus term: those are `unsupported`. `e^{tA}` is a `parse_error`
+  (a bare e is a symbol; write `\exp(tA)`). Do not loosen the numeric tolerance, add an unverified shortcut, or let
+  `_invents_structure`-style filters be bypassed; the tests include wrong merges, reordered products, a wrong
+  derivative and a 1e-6 error.
 - Relations in claims (`claims.py`): an equation with a symbol on one side only or a time derivative (`\theta=\phi+\omega t`,
   `L=T`, `F=ma`, `m\ddot x=-kx`) is a *relation*, not an identity, and is never tested by independent sampling. Definitions
   stated earlier in the conversation (`symbol = expression`, from the user or the model, not verified by Minerva) are

@@ -35,6 +35,7 @@ class Card(BaseModel):
         "differentiate",
         "series",
         "integrate",
+        "matrix",
         "identities",
         "entries",
         "entry",

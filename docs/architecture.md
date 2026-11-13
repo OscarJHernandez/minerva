@@ -58,6 +58,19 @@ one most likely to be wrong.
     inside the interval. A quadrature with a large error estimate, or a non-finite or huge integrand on an
     interior grid, never counts as agreement; SymPy's convergence conditions that the declared assumptions
     do not imply give `conditions_not_satisfied`; divergent or undefined results show no value.
+  - `matrix_calculus` (`matrix/`, `Engine.matrix_calculus`): evaluate, simplify, differentiate or integrate an
+    expression in declared, noncommuting matrices (an abstract size or explicit entries) and their exponentials.
+    `expressions.py` turns the parsed SymPy tree (declared names are noncommutative symbols) into a normal form
+    (sum of scalar x ordered product of matrices and exponentials of sums of scalar multiples of matrices) and
+    rejects everything else as `unsupported`; dimensions are checked on every product and sum. `methods.py` is a
+    deterministic registry tried in a fixed order: `exp_explicit`, `exp_merge_commuting`, `exp_derivative`,
+    `integrate_polynomial`, `exp_integral_invertible`, `sylvester_reduction` (the equation
+    `aPX + cXQ = F(b) - F(a)` for `X = int e^{(at+b)P} C e^{(ct+d)Q}`, solved when the Kronecker operator is
+    provably invertible), `block_exponential` (Van Loan: `X` from one block-matrix exponential, no invertibility
+    or diagonalisability) and, last, the equation alone. Each method states its pattern, requirements and limits
+    and verifies its own result with `verify.py` (numeric leg decides; exact series leg reported separately).
+    The language model only fills in the declarations and explains the card; handbook `method.matrix.*` entries
+    (stated) document the techniques and are retrieved by the features the engine emits (`matrix:*`).
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -150,7 +163,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
@@ -192,7 +205,7 @@ and explains; it never computes and never decides correctness.
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
-limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,identities,tensor/canonicalize}`,
+limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,matrix,identities,tensor/canonicalize}`,
 `/v1/compute/apply-identity`, `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
 History rows contain user mathematics and are private to the account. A Workbench derivation is a
 `derivations` row plus the calculations saved with its id; each step may name the step it continued

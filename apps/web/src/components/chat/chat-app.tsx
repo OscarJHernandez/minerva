@@ -51,6 +51,7 @@ const TOOL_LABEL: Record<string, string> = {
   search_handbook: "Searching the handbook",
   get_entry: "Reading a handbook entry",
   tensor_canonicalize: "Canonicalizing the tensor expression",
+  matrix_calculus: "Running the matrix calculus and verifying the result",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
   integrate_motion: "Integrating the equations of motion and verifying the run",

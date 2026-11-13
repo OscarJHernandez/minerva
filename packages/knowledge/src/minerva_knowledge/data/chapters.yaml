@@ -13,6 +13,7 @@
   summary: Standard methods and theorems for solving equations, with the conditions under which they apply.
   sections:
     - {id: polynomial, title: Polynomial equations}
+    - {id: matrix, title: Matrix exponentials and noncommuting products}
 - id: math.exp_log
   book: mathematics
   title: Exponentials and logarithms

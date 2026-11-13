@@ -47,6 +47,31 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif "matrix" in lower and latex:
+            # Development stand-in: every capital letter is a 2x2 abstract matrix; the action comes from
+            # the wording. "A and B commute" declares that pair. A real model asks for sizes first.
+            bare = re.sub(r"\\[A-Za-z]+", "", latex)
+            letters = sorted(set(re.findall(r"[A-Z]", bare)))
+            mat_args: dict[str, Any] = {
+                "latex": latex,
+                "matrices": [{"name": n, "rows": 2} for n in letters],
+                "action": "simplify",
+            }
+            var = next((v for v in "wtxs" if v in bare), "t")
+            bounds = re.search(r"from\s+(-?[\w\\]+)\s+to\s+(-?[\w\\]+)", lower)
+            if "integra" in lower:
+                mat_args.update(action="integrate", variable=var)
+                if bounds:
+                    mat_args.update(lower=bounds.group(1), upper=bounds.group(2))
+            elif "deriv" in lower or "differentiate" in lower:
+                mat_args.update(action="differentiate", variable=var)
+            if pair := re.search(r"\b([A-Z]) and ([A-Z]) commute", user):
+                mat_args["commuting"] = [[pair.group(1), pair.group(2)]]
+            async for c in self._say(
+                "I will treat these as 2x2 matrices and run the matrix calculus. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("matrix_calculus", mat_args)])
         elif "dimension" in lower and re.search(r"\w+\s*\[[^\]]+\]", user):
             # Development stand-in: quantities are written `name [unit]`, the unknown as `unknown name`.
             quantities = [
@@ -379,6 +404,27 @@ class ScriptedLLM:
             text = (
                 "The card shows the dimension of each side and, if they differ, the missing factor."
             )
+        elif tool == "matrix_calculus":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            result = re.search(r"result=\$([^$]*)\$", content)
+            if status == "ok" and "evaluated=NO" in content:
+                text = (
+                    "Minerva verified an exact reduction, but the integral was **not evaluated**: the card "
+                    "shows the equation it satisfies and a block-matrix representation, not entries."
+                )
+            elif status == "ok" and result:
+                text = (
+                    f"**Result:** $${result.group(1)}$$\n\n"
+                    "The card shows the method, the assumptions used and how it was verified."
+                )
+            elif status == "conditions_not_satisfied":
+                text = (
+                    "A step needs a condition that is not established, so nothing was changed. "
+                    "The card names it (for example that two matrices commute): does it hold?"
+                )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
         elif tool == "integrate_motion":
             text = (
                 "The card shows the verified trajectory, the drift of the constants of motion and the "
