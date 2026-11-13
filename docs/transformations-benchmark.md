@@ -52,7 +52,7 @@ as generous as the old operations allow.
 | rewrite one part | 3 | 11 |
 | **all** | **20** | **65** |
 
-Of the 50 cases that expect a result, 12 pass (27 return another status, 11 return a different result);
+Of the 50 cases that expect a result, 12 pass (26 return another status, 12 return a different result);
 of the 15 cases that expect a refusal, 8 pass. Resource limits hit: 0. Pending cases: 3, none satisfied.
 
 What the old operations did pass:
@@ -80,5 +80,62 @@ The per-case pass/fail is recorded in `data/benchmark/step_baseline.json` (no ti
 reproducible) and re-checked by a test: if an older operation changes behaviour the test fails, so a
 change in the baseline is never mistaken for an improvement.
 
-Cases the new operations are **not** expected to solve yet (`pending`): substituting with a commutation
-relation, periodic inverses (`sin x = a`), and selecting the real branch from declared real quantities.
+## Results with the new operations
+
+`step-benchmark --adapter steps`, the same 65 scored cases:
+
+| Operation | Baseline (existing) | New operations |
+| --- | ---: | ---: |
+| substitute | 1 / 17 | 17 / 17 |
+| collect | 2 / 10 | 10 / 10 |
+| isolate | 14 / 27 | 27 / 27 |
+| rewrite one part | 3 / 11 | 11 / 11 |
+| **all** | **20 / 65** | **65 / 65** |
+| of which: expected a result | 12 / 50 | 50 / 50 |
+| of which: expected a refusal | 8 / 15 | 15 / 15 |
+
+Scoring is strict where it should be. A result that is the right function in another form fails when the case asks for
+a form (collect and rewrite); `isolate` needs the *complete* solution set (a dropped, an extra and a repeated solution all
+fail); a refusal case passes only with the refusal status; the conditions a correct answer must report are checked
+(a reported `n R \neq 0` covers `n \neq 0` and `R \neq 0`). The scorer is independent of the engine: it compares with the
+hand-worked answer and never decides what the engine shows.
+
+What the new operations do that the baseline cannot, in terms of the cases: substitute a relation (and say that the result is
+conditional), group terms by a chosen variable or power, solve rational equations and equations with `exp`, `log` and roots (with
+every branch and condition, and without the extraneous candidate), change one chosen part (including the second of two equal
+places), refuse an order-dependent set of relations, and handle noncommuting symbols in order.
+
+### What is still not solved (pending cases)
+
+Three cases describe wanted behaviour that is not implemented, and a test fails if one starts passing without being promoted:
+
+| Case | Why it is not solved |
+| --- | --- |
+| `sub_pending_commutator_relation` | `AB - BA = 1` would have to be used as a commutation rule, not as a pattern that occurs in the expression |
+| `iso_pending_periodic` | `sin x = a` needs the periodic inverse with its integer family; periodic inverses are `unsupported` |
+| `iso_pending_real_branch` | Solutions are over the complex numbers; declared real quantities do not select one branch |
+
+Other limits are covered by refusal cases that pass (`unsupported`): a transcendental equation with the unknown in two places,
+Lambert-type equations, symbolic polynomials of degree five, equations with noncommuting symbols, an order-dependent
+substitution, a relation that can never hold.
+
+## Latency and effort (local, not asserted in CI)
+
+`make bench` (`step-benchmark --adapter steps --repeat 5`), one run on a laptop, each case five times, sandbox start-up
+included, so these are costs of the whole request:
+
+| Operation | Cases | Median | p95 | Max | Candidates | Rejected | Time verifying |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| substitute | 18 | 123 ms | 270 ms | 364 ms | 13 | 5 | 1.1 s |
+| collect | 10 | 153 ms | 201 ms | 264 ms | 9 | 1 | 0.8 s |
+| isolate | 29 | 82 ms | 257 ms | 378 ms | 33 | 6 | 1.4 s |
+| rewrite one part | 11 | 143 ms | 206 ms | 207 ms | 11 | 2 | 0.8 s |
+| **all (new)** | 68 | 112 ms | 216 ms | 378 ms | 66 | 14 | 4.1 s |
+| all (existing, for scale) | 68 | 106 ms | 1534 ms | 3188 ms | | | |
+
+Resource-limit status was never returned on these cases. A whole-expression search in the existing operations reaches seconds
+for cases that a single chosen step answers in about a tenth of a second, because a step does not search. "Candidates" are
+the parts, branches or roots considered, "rejected" those dropped for a reason code (extraneous roots, a pattern that does not
+occur, ...), and the same counters are in every result's `diagnostics` and in the server log (see `AGENTS.md`).
+
+Timings depend on the machine and are not compared in CI: only correctness is (`packages/knowledge/tests/test_step_benchmark.py`).

@@ -157,6 +157,18 @@ def nonzero(expr: sp.Expr) -> list[Cond] | None:
     return found
 
 
+def _minus(conds: list[Cond], known: list[Cond]) -> list[Cond]:
+    """`conds` without those the equation's own domain already requires (up to sign)."""
+    return [
+        c
+        for c in conds
+        if not any(
+            k.kind == c.kind and (k.expr == c.expr or sp.expand(k.expr + c.expr) == 0)
+            for k in known
+        )
+    ]
+
+
 def _unique(conds: list[Cond]) -> list[Cond]:
     out: list[Cond] = []
     for cond in conds:
@@ -700,10 +712,14 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
         params = sorted((L.free_symbols | R.free_symbols) - {x}, key=lambda s: s.name)
         taken = {s.name for s in params} | {variable}
         rng = random.Random(20260104)  # noqa: S311 - deterministic sampling, not cryptographic
-        outside = [d for d in denominators if not d.has(x)]
+        # What the equation itself requires to be defined (a denominator free of the unknown): these are
+        # not conditions the solving adds, so they are listed as exclusions and not as exceptional cases.
+        domain: list[Cond] = []
+        for d in denominators:
+            if not d.has(x):
+                domain.extend(nonzero(d) or [])
+        domain = _unique(domain)
         global_conds: list[Cond] = []
-        for d in outside:
-            global_conds.extend(nonzero(d) or [])
 
         occurrences = _count(L, x) + _count(R, x)
         excluded: list[str] = []
@@ -782,10 +798,15 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
                 started,
             )
 
-        shared = [c for c in _unique(global_conds)]
+        states = [State(s.h, _minus(s.conds, domain)) for s in states]
+        shared = _minus(_unique(global_conds), domain)
         if states:
             common = [c for c in states[0].conds if all(c in s.conds for s in states[1:])]
             shared = _unique([*shared, *common])
+        excluded = [
+            *(c.latex() for c in domain),
+            *(e for e in excluded if e not in {c.latex() for c in domain}),
+        ]
         everything = [*shared, *(c for s in states for c in s.conds)]
         exceptional: list[str] = []
         for cond in everything:

@@ -52,6 +52,7 @@ uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
+uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
@@ -175,6 +176,24 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   substituted into it; a result that used them names them (`given`), and one that disagrees with them after
   substitution is `fails` ("does not agree with …"), not "false". A new definition is never a contradiction, and a
   stale definition never rescues a false identity. "Could not check" must never be worded as "false".
+- Controlled steps (`steps.py`, `substitute.py`, `isolate.py`; tools `substitute`, `rewrite_part`, `isolate_variable`) do one move the
+  user chose. A relation the user supplies is a *premise*: a result that depends on it is `conditional` ("holds given ..."), is never
+  called proved, and Minerva never checks that the relation is true. Several relations whose order changes the result, or that rewrite
+  each other, are refused until the user states the order: never pick one. A part is chosen by path plus its LaTeX and a stale choice is
+  refused. A rewrite of a part goes through `ops.rule_rewrites` (so `_unmet`, `_invents_structure` and `can_reverse` stay the only
+  matcher) and the *whole* expression is re-verified. `isolate` lists every solution with its conditions, removes roots a denominator
+  excludes, and shows a solution only after substituting it back into the original equation and passing a separate check that none was
+  dropped (`peel` with a free symbol and wide probes, or the numerator's numerical roots); anything else (periodic inverses, symbolic
+  degree 3+, systems, a base not known positive) is `unsupported` and never partially answered. Solutions are over the complex numbers
+  (a log or exponential gives a family in an integer `k_1`); assumptions on the unknown are not used to choose among them. Do not
+  weaken `back_substitute`, `forward_probe` or `count_roots`: their tests include a dropped root, an extraneous root, a missing
+  branch, a missing integer family and a wrong formula.
+- Noncommuting symbols: declared `noncommutative`, allowed only for polynomial expressions in substitute, rewrite (expand, collect by
+  commuting targets) and subterms. `Engine._run` refuses them everywhere else, `Builder` refuses them unless asked, and identities are
+  checked on random matrices of size `max(3, degree // 2 + 1)` (smaller matrices accept false identities).
+- Diagnostics (`models.Diagnostics`) hold durations, counts and enum codes only, and are logged by default; the fields are allow-listed in
+  `logging.py`. Rejected candidates (`Diagnostics.detail`) may contain expressions: they exist only with `MINERVA_DEBUG_COMPUTE`
+  (development only), are returned in the response, and are never logged or saved.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are

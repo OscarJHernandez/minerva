@@ -378,3 +378,18 @@ def test_rejected_candidates_are_kept_only_when_debugging_is_requested(
     assert call(False)["diagnostics"]["detail"] == []  # type: ignore[index]
     detail = call(True)["diagnostics"]["detail"]  # type: ignore[index]
     assert any("candidate: x = 7" in line for line in detail)
+
+
+def test_the_equations_own_denominators_are_exclusions_not_exceptional_cases(
+    engine: Engine,
+) -> None:
+    """Regression: for 1/f = 1/u + 1/v the equation is undefined at f = 0 and u = 0, which is not a
+    parameter value where the equation 'degenerates'. Only f = u (then 1/v = 0) is exceptional."""
+    result = engine.isolate(eq(r"\frac{1}{f} = \frac{1}{u} + \frac{1}{v}"), "v")
+    assert result.status is Status.OK
+    assert sorted(result.excluded_latex) == sorted([r"f \neq 0", r"u \neq 0"])
+    assert len(result.conditions_latex) == 1 and "u" in result.conditions_latex[0]
+    assert len(result.exceptional) == 1 and result.exceptional[0].endswith("= 0")
+    assert all(not e.startswith(("f ", "u ")) for e in result.exceptional)
+    f, u = sp.symbols("f u")
+    assert same_set(values(result), [f * u / (u - f)])

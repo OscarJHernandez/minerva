@@ -401,6 +401,136 @@ def run_read_formulas(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
     )
 
 
+def _given(r: Any) -> list[dict[str, str]]:
+    return [
+        {"label": "Given (your relation, not checked by Minerva)", "latex": premise.latex}
+        for premise in r.given
+    ]
+
+
+def run_substitute(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.substitute(
+        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        spec["relations"],
+        order=spec.get("order"),
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        for i, step in enumerate(r.steps, start=1):
+            shown = f"{step.before_latex} \\to "
+            shown += f"{step.display_latex} \\to " if step.display_latex else ""
+            outputs.append({"label": f"Step {i}: substitute", "latex": shown + step.after_latex})
+        outputs.append({"label": "Result", "latex": r.result_latex})
+        if r.evidence == "conditional":
+            outputs += _given(r)
+            notes.append(
+                "Conditional: the result holds given the relations, which Minerva did not check."
+            )
+        else:
+            notes.append("The result also holds without the relation.")
+        if r.restrictions_latex:
+            outputs.append({"label": "Valid only where", "latex": ", ".join(r.restrictions_latex)})
+        if r.verification:
+            checks.append(_sample_check(r.verification))
+    elif r.message:
+        notes.append(r.message)
+    inputs = [{"label": "Expression", "source": spec["input"]}] + [
+        {"label": f"Relation {i}", "source": text}
+        for i, text in enumerate(spec["relations"], start=1)
+    ]
+    if spec.get("order"):
+        inputs.append({"label": "Order", "source": spec["order"]})
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_rewrite(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    rule = None
+    if spec.get("rule"):
+        entry = kb.get(spec["rule"])
+        rule = entry.rule if entry is not None else None
+    r = engine.rewrite_at(
+        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        spec["action"],
+        part=spec.get("part"),
+        occurrence=spec.get("occurrence"),
+        rule=rule,
+        by=spec.get("by") or [],
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        for step in r.steps:
+            outputs.append(
+                {
+                    "label": f"Applied {step.name} to the part",
+                    "latex": f"{step.matched_latex}" if step.matched_latex else step.name,
+                }
+            )
+        outputs.append({"label": "Result", "latex": r.result_latex})
+        if r.restrictions_latex:
+            outputs.append({"label": "Valid only where", "latex": ", ".join(r.restrictions_latex)})
+        if r.verification:
+            checks.append("whole expression: " + _sample_check(r.verification))
+    for cond in r.unmet_conditions:
+        outputs.append(
+            {
+                "label": "Not applied",
+                "text": f"the identity needs its variable {cond.variable} to be {cond.assumption}",
+            }
+        )
+    inputs = [{"label": "Expression", "source": spec["input"]}]
+    if spec.get("part"):
+        inputs.append({"label": "Part", "source": spec["part"]})
+    inputs.append({"label": "Move", "source": spec.get("rule") or spec["action"]})
+    notes = [r.message] if r.message and r.status.value != "ok" else []
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_isolate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.isolate(
+        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        spec["variable"],
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        for i, sol in enumerate(r.solutions, start=1):
+            outputs.append({"label": f"Solution {i}", "latex": sol.latex})
+            if sol.conditions_latex:
+                outputs.append(
+                    {"label": f"Solution {i} needs", "latex": ", ".join(sol.conditions_latex)}
+                )
+            if sol.branch:
+                notes.append(f"Solution {i} is a family: {sol.branch}.")
+        if not r.solutions:
+            outputs.append({"label": "Result", "text": "no solution"})
+        if r.conditions_latex:
+            outputs.append({"label": "All solutions need", "latex": ", ".join(r.conditions_latex)})
+        if r.excluded_latex:
+            outputs.append({"label": "The equation excludes", "latex": ", ".join(r.excluded_latex)})
+        if r.exceptional:
+            outputs.append({"label": "Not covered if", "latex": ", ".join(r.exceptional)})
+        if r.verification and r.solutions:
+            checks.append(
+                f"each solution substituted back into the equation: {r.verification.numeric_points_agreed} "
+                f"of {r.verification.numeric_points_checked} sampled points agree"
+            )
+        if r.completeness_note:
+            checks.append(f"nothing dropped: {r.completeness_note}")
+        if r.assumption_note:
+            notes.append(r.assumption_note)
+    elif r.message:
+        notes.append(r.message)
+    inputs = [
+        {"label": "Equation", "source": spec["input"]},
+        {"label": "Unknown", "source": spec["variable"]},
+    ]
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
@@ -412,6 +542,9 @@ RUNNERS = {
     "invariants": run_invariants,
     "entry": run_entry,
     "read_formulas": run_read_formulas,
+    "substitute": run_substitute,
+    "rewrite": run_rewrite,
+    "isolate": run_isolate,
 }
 
 

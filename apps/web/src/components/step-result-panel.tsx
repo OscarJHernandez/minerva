@@ -306,7 +306,7 @@ export function IsolatePanel({
           )}
         </>
       )}
-      {result.verification && (
+      {result.verification && result.solutions.length > 0 && (
         <p className="mt-2">
           <Evidence v={result.verification} />
         </p>

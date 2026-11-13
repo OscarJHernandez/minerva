@@ -851,6 +851,880 @@
       ]
     },
     {
+      "id": "substitution",
+      "title": "Substituting relations",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Replaces the left side of a relation you supply by its right side, one relation at a time, and records each replacement as a step with the relation it used. The relations are your premises: Minerva checks that the replacement reproduces the original expression, not that your relation is true, so a result that depends on them is shown as holding given them. If the result also holds without them, it says so.",
+      "limits": [
+        "At most four relations, applied once each in the order you give. If another order would give a different result, or the relations rewrite each other, the request is refused until you say whether to apply them in the order listed or all at once; Minerva never picks one.",
+        "A relation that can never hold (`x = x + 1`) or relates only numbers is refused. A relation used as a commutation rule (`AB - BA = 1`) is not applied, because only patterns that occur in the expression are replaced.",
+        "Replacement finds the occurrences SymPy recognises; a pattern that does not occur leaves the expression unchanged.",
+        "The input must be an expression (not an equation). Noncommuting symbols are supported for polynomial expressions, and the order of their factors is kept.",
+        "Where a cancelled denominator excludes a point, the result states it (`x \\neq 0`)."
+      ],
+      "examples": [
+        {
+          "id": "substitution-pythagoras",
+          "title": "A relation replaces a part, and the result is conditional",
+          "op": "substitute",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x^2 + y^2"
+            },
+            {
+              "label": "Relation 1",
+              "source": "y^2 = 1 - x^2"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Step 1: substitute",
+              "latex": "x^{2} + y^{2} \\to \\left(1 - x^{2}\\right) + x^{2} \\to 1"
+            },
+            {
+              "label": "Result",
+              "latex": "1"
+            },
+            {
+              "label": "Given (your relation, not checked by Minerva)",
+              "latex": "y^{2} = 1 - x^{2}"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "Conditional: the result holds given the relations, which Minerva did not check.",
+            "The step is shown before SymPy combines the terms. The result depends on your relation, so it is marked as holding given it."
+          ]
+        },
+        {
+          "id": "substitution-physics",
+          "title": "Energy conservation",
+          "op": "substitute",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\frac{1}{2} m v^2 + m g h"
+            },
+            {
+              "label": "Relation 1",
+              "source": "v^2 = 2 g (H - h)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Step 1: substitute",
+              "latex": "g h m + \\frac{m v^{2}}{2} \\to \\frac{2 g \\left(H - h\\right) m}{2} + g h m \\to g h m + g m \\left(H - h\\right)"
+            },
+            {
+              "label": "Result",
+              "latex": "g h m + g m \\left(H - h\\right)"
+            },
+            {
+              "label": "Given (your relation, not checked by Minerva)",
+              "latex": "v^{2} = 2 g \\left(H - h\\right)"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "Conditional: the result holds given the relations, which Minerva did not check."
+          ]
+        },
+        {
+          "id": "substitution-restriction",
+          "title": "A cancelled denominator is reported",
+          "op": "substitute",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\frac{y}{x}"
+            },
+            {
+              "label": "Relation 1",
+              "source": "y = x^2"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Step 1: substitute",
+              "latex": "\\frac{y}{x} \\to \\frac{x^{2}}{x} \\to x"
+            },
+            {
+              "label": "Result",
+              "latex": "x"
+            },
+            {
+              "label": "Given (your relation, not checked by Minerva)",
+              "latex": "y = x^{2}"
+            },
+            {
+              "label": "Valid only where",
+              "latex": "x \\neq 0"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "Conditional: the result holds given the relations, which Minerva did not check."
+          ]
+        },
+        {
+          "id": "substitution-order-refused",
+          "title": "The order matters, so Minerva asks",
+          "op": "substitute",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x + y"
+            },
+            {
+              "label": "Relation 1",
+              "source": "x = y"
+            },
+            {
+              "label": "Relation 2",
+              "source": "y = 1"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The result depends on the order in which the relations are applied (or they rewrite each other), so Minerva will not choose one. Say whether to apply them in the order given, or all at once.",
+            "Applying x = y first gives 2; applying y = 1 first gives y + 1. Nothing is shown until the order is stated."
+          ]
+        },
+        {
+          "id": "substitution-order-given",
+          "title": "The order stated by the user",
+          "op": "substitute",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x + y"
+            },
+            {
+              "label": "Relation 1",
+              "source": "x = y"
+            },
+            {
+              "label": "Relation 2",
+              "source": "y = 1"
+            },
+            {
+              "label": "Order",
+              "source": "given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Step 1: substitute",
+              "latex": "x + y \\to y + y \\to 2 y"
+            },
+            {
+              "label": "Step 2: substitute",
+              "latex": "2 y \\to 2 \\cdot 1 \\to 2"
+            },
+            {
+              "label": "Result",
+              "latex": "2"
+            },
+            {
+              "label": "Given (your relation, not checked by Minerva)",
+              "latex": "x = y"
+            },
+            {
+              "label": "Given (your relation, not checked by Minerva)",
+              "latex": "y = 1"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 40 of 40 points"
+          ],
+          "notes": [
+            "Conditional: the result holds given the relations, which Minerva did not check."
+          ]
+        },
+        {
+          "id": "substitution-false-premise",
+          "title": "A relation that can never hold is refused",
+          "op": "substitute",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x + 1"
+            },
+            {
+              "label": "Relation 1",
+              "source": "x = x + 1"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "this relation can never hold, so nothing follows from it"
+          ]
+        },
+        {
+          "id": "substitution-absent",
+          "title": "The left side does not occur",
+          "op": "substitute",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x + 1"
+            },
+            {
+              "label": "Relation 1",
+              "source": "z = 2"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The left side of no relation occurs in the expression (as SymPy reads it), so nothing was replaced."
+          ]
+        },
+        {
+          "id": "substitution-noncommutative",
+          "title": "Noncommuting symbols keep their order",
+          "op": "substitute",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "A^2 B"
+            },
+            {
+              "label": "Relation 1",
+              "source": "A B = D"
+            }
+          ],
+          "assumptions": "A noncommutative; B noncommutative; D noncommutative",
+          "outputs": [
+            {
+              "label": "Step 1: substitute",
+              "latex": "A^{2} B \\to A D"
+            },
+            {
+              "label": "Result",
+              "latex": "A D"
+            },
+            {
+              "label": "Given (your relation, not checked by Minerva)",
+              "latex": "A B = D"
+            }
+          ],
+          "checks": [
+            "symbolic zero test not established; numeric check agreed at 6 of 6 points"
+          ],
+          "notes": [
+            "Conditional: the result holds given the relations, which Minerva did not check."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rewrite-part",
+      "title": "Changing one part of an expression",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Applies one move to one part of an expression and leaves the rest alone: expand, factor, cancel, simplify, collect terms by chosen variables or powers, or a handbook identity. You choose the part from a list the server makes (or type it); if it occurs more than once you choose the occurrence. The whole expression before and after is verified, and an identity whose conditions are not provable from your assumptions is reported and not applied.",
+      "limits": [
+        "A part is chosen for one exact expression; if the expression has changed, the choice is refused as stale and never applied somewhere else.",
+        "An identity is matched against the chosen part alone, with the same filters as everywhere else (no invented roots, reciprocals or the imaginary unit).",
+        "Collect works on symbols and parts of the expression, at most four, and by commuting ones for noncommuting expressions. For noncommuting symbols only expand and collect are supported, on polynomial expressions; every other operation reports that it does not support them.",
+        "Verification is numerical, and symbolic where SymPy finds a zero; for noncommuting symbols random matrices sized from the degree are used."
+      ],
+      "examples": [
+        {
+          "id": "rewrite-expand-one-factor",
+          "title": "Expand one factor",
+          "op": "rewrite",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "(x + 1)^2 (y + 1)^2"
+            },
+            {
+              "label": "Part",
+              "source": "(x + 1)^2"
+            },
+            {
+              "label": "Move",
+              "source": "expand"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Applied sympy.expand to the part",
+              "latex": "\\left(x + 1\\right)^{2}"
+            },
+            {
+              "label": "Result",
+              "latex": "\\left(y + 1\\right)^{2} \\left(x^{2} + 2 x + 1\\right)"
+            }
+          ],
+          "checks": [
+            "whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "rewrite-identity-second-term",
+          "title": "A handbook identity on the second term",
+          "op": "rewrite",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\sin(2x) + \\sin(2y)"
+            },
+            {
+              "label": "Part",
+              "source": "\\sin(2y)"
+            },
+            {
+              "label": "Move",
+              "source": "trig.double_sin"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Applied trig.double_sin to the part",
+              "latex": "\\sin{\\left(2 y \\right)}"
+            },
+            {
+              "label": "Result",
+              "latex": "\\sin{\\left(2 x \\right)} + 2 \\sin{\\left(y \\right)} \\cos{\\left(y \\right)}"
+            }
+          ],
+          "checks": [
+            "whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "rewrite-one-of-two",
+          "title": "One of two equal places",
+          "op": "rewrite",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\sin(2x) + y \\sin(2x)"
+            },
+            {
+              "label": "Part",
+              "source": "\\sin(2x)"
+            },
+            {
+              "label": "Move",
+              "source": "trig.double_sin"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Applied trig.double_sin to the part",
+              "latex": "\\sin{\\left(2 x \\right)}"
+            },
+            {
+              "label": "Result",
+              "latex": "y \\sin{\\left(2 x \\right)} + 2 \\sin{\\left(x \\right)} \\cos{\\left(x \\right)}"
+            }
+          ],
+          "checks": [
+            "whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "The same part occurs twice; only the chosen occurrence changes."
+          ]
+        },
+        {
+          "id": "rewrite-collect",
+          "title": "Collect terms",
+          "op": "rewrite",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "a x^2 y + b x y^2 + c x^2 + d y^2"
+            },
+            {
+              "label": "Move",
+              "source": "collect"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Applied sympy.collect to the part",
+              "latex": "a x^{2} y + b x y^{2} + c x^{2} + d y^{2}"
+            },
+            {
+              "label": "Result",
+              "latex": "b x y^{2} + d y^{2} + x^{2} \\left(a y + c\\right)"
+            }
+          ],
+          "checks": [
+            "whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "rewrite-conditions",
+          "title": "The identity is found but not applied",
+          "op": "rewrite",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\log(x y) + \\log(x z)"
+            },
+            {
+              "label": "Part",
+              "source": "\\log(x y)"
+            },
+            {
+              "label": "Move",
+              "source": "log.product"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Not applied",
+              "text": "the identity needs its variable a to be positive"
+            },
+            {
+              "label": "Not applied",
+              "text": "the identity needs its variable b to be positive"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "The identity matches this part, but its conditions cannot be shown from the declared assumptions, so it is not applied.",
+            "log(xy) = log x + log y needs both factors positive; nothing in the declared assumptions says so."
+          ]
+        },
+        {
+          "id": "rewrite-stale",
+          "title": "A part that is not there",
+          "op": "rewrite",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\sin x"
+            },
+            {
+              "label": "Part",
+              "source": "\\tan x"
+            },
+            {
+              "label": "Move",
+              "source": "expand"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "That part does not occur in the expression."
+          ]
+        },
+        {
+          "id": "rewrite-noncommutative",
+          "title": "Expanding a square of noncommuting symbols",
+          "op": "rewrite",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "(A + B)^2 + x"
+            },
+            {
+              "label": "Part",
+              "source": "(A + B)^2"
+            },
+            {
+              "label": "Move",
+              "source": "expand"
+            }
+          ],
+          "assumptions": "A noncommutative; B noncommutative",
+          "outputs": [
+            {
+              "label": "Applied sympy.expand to the part",
+              "latex": "\\left(A + B\\right)^{2}"
+            },
+            {
+              "label": "Result",
+              "latex": "x + A B + A^{2} + B A + B^{2}"
+            }
+          ],
+          "checks": [
+            "whole expression: symbolic zero test passed; numeric check agreed at 6 of 6 points"
+          ],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "isolate",
+      "title": "Solving an equation for one variable",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Isolates a variable in an equation and lists every solution with the conditions it needs: parameters that must not vanish, values the equation itself excludes, and the parameter values where it degenerates. Polynomial and rational equations are solved in closed form where one exists; a variable that occurs once inside powers, roots, exp and log is solved by undoing each operation, one recorded step at a time. Every solution is substituted back into your equation, and a separate check shows that none was dropped.",
+      "limits": [
+        "Solutions are over the complex numbers. Assumptions on the unknown (real, positive) are not used to choose among them, and the result says so; a logarithm or an exponential gives a family with an integer k_1.",
+        "Supported are linear and quadratic factors with symbolic coefficients, cubic and quartic factors with rational coefficients, and one occurrence of the unknown inside sums, products, powers, principal roots, exp and log (a base is accepted only if known positive). Periodic inverses (sin, cos), absolute values, symbolic exponents of the unknown, systems of equations and symbolic polynomials of degree three or more are unsupported, and no partial answer is given.",
+        "A root that makes a denominator zero is removed, and a principal root can make a candidate extraneous (the equation √x = -2 has no solution). An equation with no solution is reported as such.",
+        "Noncommuting symbols are not supported here."
+      ],
+      "examples": [
+        {
+          "id": "isolate-linear",
+          "title": "The condition and the degenerate case",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "a x + b = c"
+            },
+            {
+              "label": "Unknown",
+              "source": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Solution 1",
+              "latex": "x = \\frac{- b + c}{a}"
+            },
+            {
+              "label": "All solutions need",
+              "latex": "a \\neq 0"
+            },
+            {
+              "label": "Not covered if",
+              "latex": "a = 0"
+            }
+          ],
+          "checks": [
+            "each solution substituted back into the equation: 6 of 6 sampled points agree",
+            "nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes"
+          ],
+          "notes": []
+        },
+        {
+          "id": "isolate-kinematics",
+          "title": "Both roots of a quadratic",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "s = u t + \\frac{1}{2} a t^2"
+            },
+            {
+              "label": "Unknown",
+              "source": "t"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Solution 1",
+              "latex": "t = \\frac{- u + \\sqrt{2 a s + u^{2}}}{a}"
+            },
+            {
+              "label": "Solution 2",
+              "latex": "t = \\frac{- u - \\sqrt{2 a s + u^{2}}}{a}"
+            },
+            {
+              "label": "All solutions need",
+              "latex": "a \\neq 0"
+            },
+            {
+              "label": "Not covered if",
+              "latex": "a = 0"
+            }
+          ],
+          "checks": [
+            "each solution substituted back into the equation: 12 of 12 sampled points agree",
+            "nothing dropped: the distinct roots of the numerator matched the solutions at 8 of 8 parameter points"
+          ],
+          "notes": []
+        },
+        {
+          "id": "isolate-lens",
+          "title": "A rational equation",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\frac{1}{f} = \\frac{1}{u} + \\frac{1}{v}"
+            },
+            {
+              "label": "Unknown",
+              "source": "v"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Solution 1",
+              "latex": "v = \\frac{f u}{- f + u}"
+            },
+            {
+              "label": "All solutions need",
+              "latex": "- f + u \\neq 0"
+            },
+            {
+              "label": "The equation excludes",
+              "latex": "f \\neq 0, u \\neq 0"
+            },
+            {
+              "label": "Not covered if",
+              "latex": "- f + u = 0"
+            }
+          ],
+          "checks": [
+            "each solution substituted back into the equation: 6 of 6 sampled points agree",
+            "nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes"
+          ],
+          "notes": []
+        },
+        {
+          "id": "isolate-extraneous",
+          "title": "The only candidate is excluded",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\frac{x^2 - 1}{x - 1} = 2"
+            },
+            {
+              "label": "Unknown",
+              "source": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "text": "no solution"
+            },
+            {
+              "label": "The equation excludes",
+              "latex": "x - 1 \\neq 0"
+            }
+          ],
+          "checks": [
+            "nothing dropped: the distinct roots of the numerator matched the solutions at 8 of 8 parameter points"
+          ],
+          "notes": [
+            "Clearing the denominator gives x = 1, which makes the denominator zero."
+          ]
+        },
+        {
+          "id": "isolate-sqrt-extraneous",
+          "title": "Squaring creates an extraneous candidate",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\sqrt{x} = -2"
+            },
+            {
+              "label": "Unknown",
+              "source": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "text": "no solution"
+            }
+          ],
+          "checks": [
+            "nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes"
+          ],
+          "notes": []
+        },
+        {
+          "id": "isolate-exponential",
+          "title": "An exponential gives a family of solutions",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "N = M \\exp(-r t)"
+            },
+            {
+              "label": "Unknown",
+              "source": "t"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Solution 1",
+              "latex": "t = - \\frac{2 \\mathrm{i} \\pi k_{1} + \\log{\\left(\\frac{N}{M} \\right)}}{r}"
+            },
+            {
+              "label": "All solutions need",
+              "latex": "M \\neq 0, N \\neq 0, r \\neq 0"
+            },
+            {
+              "label": "Not covered if",
+              "latex": "M = 0, N = 0, r = 0"
+            }
+          ],
+          "checks": [
+            "each solution substituted back into the equation: 6 of 6 sampled points agree",
+            "nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes"
+          ],
+          "notes": [
+            "Solution 1 is a family: k_1 any integer."
+          ]
+        },
+        {
+          "id": "isolate-inverse-square",
+          "title": "A root of each sign",
+          "op": "isolate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "F = \\frac{G m n}{r^2}"
+            },
+            {
+              "label": "Unknown",
+              "source": "r"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Solution 1",
+              "latex": "r = \\sqrt{\\frac{G m n}{F}}"
+            },
+            {
+              "label": "Solution 2",
+              "latex": "r = - \\sqrt{\\frac{G m n}{F}}"
+            },
+            {
+              "label": "All solutions need",
+              "latex": "G \\neq 0, m \\neq 0, n \\neq 0, F \\neq 0"
+            },
+            {
+              "label": "Not covered if",
+              "latex": "G = 0, m = 0, n = 0, F = 0"
+            }
+          ],
+          "checks": [
+            "each solution substituted back into the equation: 12 of 12 sampled points agree",
+            "nothing dropped: a random value of the unknown was returned by some solution in 8 of 8 probes"
+          ],
+          "notes": []
+        },
+        {
+          "id": "isolate-periodic-refused",
+          "title": "A periodic inverse is not supported",
+          "op": "isolate",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\sin x = a"
+            },
+            {
+              "label": "Unknown",
+              "source": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "the unknown is inside a form this version cannot invert (only sums, products, powers, roots, exp and log around it are supported; periodic functions are not)"
+          ]
+        },
+        {
+          "id": "isolate-quintic-refused",
+          "title": "No closed form in general",
+          "op": "isolate",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "x^5 + a x + 1 = 0"
+            },
+            {
+              "label": "Unknown",
+              "source": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "no closed form is produced for a factor of this degree with these coefficients: a general polynomial of degree 5 or more has none (Abel-Ruffini), and cubics and quartics are solved here only with rational coefficients"
+          ]
+        }
+      ]
+    },
+    {
       "id": "polynomial-solving",
       "title": "Polynomial equations",
       "status": "available",
