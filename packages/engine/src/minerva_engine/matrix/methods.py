@@ -8,7 +8,11 @@ its own result with `verify.py` before an `Outcome` leaves this module.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import signal
+import threading
+import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -17,10 +21,12 @@ import sympy as sp
 
 from ..latexprint import to_latex
 from .expressions import (
+    MAX_DERIV,
     Canonical,
     Commutation,
     Exp,
     Factor,
+    Frechet,
     Sym,
     Term,
     Terms,
@@ -43,6 +49,7 @@ from .verify import (
     check_equal,
     check_integral,
     close,
+    expand_dependent,
     letter,
     poly_add,
     poly_diff,
@@ -119,12 +126,48 @@ class Method:
 
 
 # -- shared helpers ---------------------------------------------------------------------------
+class SymbolicTimeout(Exception):
+    """A symbolic (SymPy) step used its share of the time budget."""
+
+
+@contextmanager
+def symbolic_budget(p: Problem, fraction: float = 0.35) -> Iterator[None]:
+    """Bound a SymPy call, which cannot otherwise be interrupted, to part of what is left of the
+    deadline so the numeric checks still have time. Works in the main thread (the sandbox child);
+    elsewhere the call is unbounded and the sandbox timeout applies."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    seconds = max(0.5, (p.deadline - time.monotonic()) * fraction)
+
+    def expired(signum: int, frame: Any) -> None:
+        raise SymbolicTimeout
+
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
 def matrices_in(terms: Terms) -> set[str]:
     names: set[str] = set()
     for t in terms:
         for f in t.factors:
             names.update([f.name] if isinstance(f, Sym) else f.names)
     return names
+
+
+def with_derivatives(p: Problem) -> dict[str, sp.Matrix]:
+    """Explicit matrices plus the entries of the derivatives of the time-dependent ones, keyed A, A', A''."""
+    out = dict(p.explicit)
+    for name in p.setup.dependent:
+        if name in p.explicit:
+            for d in range(1, MAX_DERIV + 1):
+                out[name + "'" * d] = p.setup.derivative_entries(name, d)
+    return out
 
 
 def _all_explicit(names: set[str], explicit: dict[str, sp.Matrix]) -> bool:
@@ -141,7 +184,9 @@ def _simplified(m: sp.Matrix) -> sp.Matrix:
 
 def explicit_factor(f: Factor, explicit: dict[str, sp.Matrix]) -> sp.Matrix:
     if isinstance(f, Sym):
-        return explicit[f.name] ** f.power
+        return explicit[f.name + "'" * f.deriv] ** f.power
+    if isinstance(f, Frechet):
+        raise NotImplementedError("a Frechet factor has no direct SymPy value")
     total = sp.zeros(*explicit[f.arg[0][0]].shape)
     for name, c in f.arg:
         total += c * explicit[name]
@@ -201,9 +246,14 @@ def run_exp_explicit(p: Problem) -> Attempt:
             unsupported=f"to evaluate, give the entries of every matrix (missing: {', '.join(missing)})"
         )
     try:
-        value = _simplified(explicit_value(p.terms, p.explicit))
+        with symbolic_budget(p):
+            value = _simplified(explicit_value(p.terms, p.explicit))
     except (NotImplementedError, ValueError, sp.matrices.exceptions.MatrixError):
         return Attempt(unsupported="SymPy could not find a closed form for this matrix exponential")
+    except SymbolicTimeout:
+        return Attempt(
+            unsupported="SymPy did not find a closed form for this matrix exponential in time"
+        )
     count = check_equal(
         p.setup, p.ev, p.integrand, _numeric_candidate(p, value), deadline=p.deadline
     )
@@ -283,24 +333,61 @@ _SERIES = (
 
 
 # -- differentiate ----------------------------------------------------------------------------
-def derive_terms(terms: Terms, var: sp.Symbol, comm: Commutation) -> Canonical | str:
-    """Ordered product rule. A string is the reason the derivative is out of scope."""
+def derive_terms(
+    terms: Terms,
+    var: sp.Symbol,
+    comm: Commutation,
+    dependent: frozenset[str] = frozenset(),
+    *,
+    frechet: bool = False,
+) -> Canonical | str:
+    """Ordered product rule. A string is the reason the derivative is out of scope.
+
+    d/dt exp(X) is X' exp(X) only if X commutes with X'; otherwise it is the Frechet derivative
+    (an integral), which is produced only when `frechet` is set."""
     out: list[Term] = []
     assumptions: list[str] = []
     for t in terms:
         if t.coeff.has(var):
             out.append(Term(sp.diff(t.coeff, var), t.factors))
         for j, f in enumerate(t.factors):
-            if not depends_on(f, var):
+            if not depends_on(f, var, dependent):
                 continue
-            assert isinstance(f, Exp)  # noqa: S101 - depends_on is only true for Exp
-            reason = _exp_commutes_with_derivative(f, var, comm, assumptions)
-            if reason:
+            before, after = t.factors[:j], t.factors[j + 1 :]
+            if isinstance(f, Sym):
+                if f.deriv + 1 > MAX_DERIV:
+                    return (
+                        "derivatives of a time-dependent matrix beyond the second are not supported"
+                    )
+                for i in range(f.power):  # (A^p)' = sum A^i A' A^(p-1-i)
+                    mid = (
+                        *(Sym(f.name, 1, f.deriv),) * i,
+                        Sym(f.name, 1, f.deriv + 1),
+                        *(Sym(f.name, 1, f.deriv),) * (f.power - 1 - i),
+                    )
+                    out.append(Term(t.coeff, (*before, *mid, *after)))
+                continue
+            if isinstance(f, Frechet):
+                return "the derivative of an unevaluated integral is not supported"
+            reason = _exp_commutes_with_derivative(f, var, comm, assumptions, dependent)
+            if reason is None:
+                for name, c in f.arg:
+                    dc = sp.diff(c, var)
+                    if dc != 0:
+                        out.append(Term(t.coeff * dc, (*before, Sym(name), f, *after)))
+                    if name in dependent:
+                        out.append(Term(t.coeff * c, (*before, Sym(name, 1, 1), f, *after)))
+                continue
+            if not frechet:
                 return reason
+            direction: list[tuple[str, int, sp.Expr]] = []
             for name, c in f.arg:
                 dc = sp.diff(c, var)
                 if dc != 0:
-                    out.append(Term(t.coeff * dc, (*t.factors[:j], Sym(name), *t.factors[j:])))
+                    direction.append((name, 0, dc))
+                if name in dependent:
+                    direction.append((name, 1, c))
+            out.append(Term(t.coeff, (*before, Frechet(f, tuple(direction)), *after)))
     canon = canonicalize(_collect_terms(out), comm)
     canon.assumptions = list(dict.fromkeys([*assumptions, *canon.assumptions]))
     return canon
@@ -311,14 +398,33 @@ def _collect_terms(terms: list[Term]) -> Terms:
 
 
 def _exp_commutes_with_derivative(
-    f: Exp, var: sp.Symbol, comm: Commutation, assumptions: list[str]
+    f: Exp,
+    var: sp.Symbol,
+    comm: Commutation,
+    assumptions: list[str],
+    dependent: frozenset[str] = frozenset(),
 ) -> str | None:
+    """None when the exponent X commutes with X' (and says why); otherwise the reason it is not
+    established. Declared commutation of two matrices holds at all times, so it covers their
+    derivatives too."""
     items = f.arg
+    for name, _ in items:
+        if name in dependent:
+            if name in comm.self_commuting:
+                assumptions.append(f"{name}(t1) {name}(t2) = {name}(t2) {name}(t1) at all times")
+            else:
+                return (
+                    f"{name} depends on the variable and {name} {name}' = {name}' {name} is not "
+                    "established"
+                )
     for i, (ni, ci) in enumerate(items):
         for nj, cj in items[i + 1 :]:
             if comm.commutes(ni, nj):
                 a, b = sorted((ni, nj))
                 assumptions.append(f"{a}{b} = {b}{a}")
+            elif ni in dependent or nj in dependent:
+                a, b = sorted((ni, nj))
+                return f"{a}{b} = {b}{a} is not established for the time-dependent matrices"
             elif sp.simplify(ci * sp.diff(cj, var) - cj * sp.diff(ci, var)) == 0:
                 assumptions.append(
                     f"the coefficients of {ni} and {nj} in the exponent are proportional, so the "
@@ -327,28 +433,36 @@ def _exp_commutes_with_derivative(
             else:
                 return (
                     f"the exponent mixes {ni} and {nj}, which do not commute, with coefficients "
-                    "that are not proportional; the derivative then needs the Duhamel integral "
-                    "(or a time-ordered exponential), which is not supported"
+                    "that are not proportional, so it does not commute with its derivative"
                 )
     return None
+
+
+def derivative_series_leg(p: Problem, derived: Terms) -> bool | None:
+    """Exact leg: the series of the original, differentiated term by term, against the series of
+    the derivative. Time-dependent matrices are expanded as polynomials in the variable first."""
+    assert p.var is not None  # noqa: S101
+    try:
+        original, comm = expand_dependent(p.terms, p.var, p.setup.dependent, p.comm)
+        candidate, _ = expand_dependent(derived, p.var, p.setup.dependent, p.comm)
+        return poly_equal(
+            poly_diff(series_of_terms(original), p.var), series_of_terms(candidate), comm
+        )
+    except ValueError:
+        return None
 
 
 def run_derivative(p: Problem) -> Attempt:
     assert p.var is not None  # noqa: S101 - calculus checks this before running
     var = p.var
-    derived = derive_terms(p.terms, var, p.comm)
+    derived = derive_terms(p.terms, var, p.comm, p.setup.dependent)
     if isinstance(derived, str):
         return Attempt(unsupported=derived)
     candidate = _terms_eval(p, derived.terms)
     count, directions = check_derivative(
         p.setup, p.ev, var, p.integrand, candidate, deadline=p.deadline
     )
-    try:
-        symbolic: bool | None = poly_equal(
-            poly_diff(series_of_terms(p.terms), var), series_of_terms(derived.terms), p.comm
-        )
-    except ValueError:
-        symbolic = None
+    symbolic = derivative_series_leg(p, derived.terms)
     return Attempt(
         Outcome(
             "expression",
@@ -745,7 +859,7 @@ def _full_from_core(p: Problem, red: Reduction, x0: sp.Matrix) -> sp.Matrix:
 
 def _rows_of(p: Problem, factors: tuple[Factor, ...]) -> int:
     f = factors[0]
-    name = f.name if isinstance(f, Sym) else f.arg[0][0]
+    name = f.name if isinstance(f, Sym) else f.names[0]
     return p.setup.shapes[name][0]
 
 
@@ -1094,6 +1208,12 @@ def run_equation_only(p: Problem) -> Attempt:
 
 
 # -- the registry -----------------------------------------------------------------------------
+def _run_frechet(p: Problem) -> Attempt:
+    from .frechet import run_frechet_derivative  # frechet imports this module
+
+    return run_frechet_derivative(p)
+
+
 METHODS: tuple[Method, ...] = (
     Method(
         "exp_explicit",
@@ -1120,8 +1240,19 @@ METHODS: tuple[Method, ...] = (
         "constant matrices times scalar functions of t inside exponentials",
         "each exponent commutes with its own derivative (one matrix, proportional coefficients, "
         "or declared commutation)",
-        "no Duhamel integral or time-ordered exponential",
+        "when the exponent does not commute with its derivative the Frechet method applies",
         run_derivative,
+    ),
+    Method(
+        "exp_frechet_derivative",
+        "Frechet derivative of the exponential",
+        ("differentiate",),
+        "exp(X(t)) where the exponent X is a sum of scalar functions of t times matrices and "
+        "possibly time-dependent matrices A(t)",
+        "none: no commutation is assumed; X X' = X' X is reported as blocked",
+        "an exact integral representation, evaluated only for explicit entries that SymPy can "
+        "exponentiate; second and higher derivatives of the exponential are not supported",
+        _run_frechet,
     ),
     Method(
         "integrate_polynomial",

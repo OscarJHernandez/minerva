@@ -12,8 +12,8 @@ MAX_MATRICES = 6
 MAX_ABSTRACT_SIZE = 8
 MAX_EXPLICIT_SIZE = 4
 
-Action = Literal["evaluate", "simplify", "differentiate", "integrate"]
-ResultKind = Literal["explicit", "expression", "equation", "representation"]
+Action = Literal["evaluate", "simplify", "differentiate", "integrate", "evolve"]
+ResultKind = Literal["explicit", "expression", "equation", "representation", "numeric"]
 
 
 class MatrixDecl(BaseModel):
@@ -35,6 +35,17 @@ class MatrixDecl(BaseModel):
     entries: list[list[str]] | None = Field(
         default=None,
         description="Entries of an explicit matrix as LaTeX expressions, row by row, up to 4x4",
+    )
+
+    depends_on: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=SYMBOL_NAME_MAX,
+        description=(
+            "Name of the scalar variable (for example t) this matrix is a differentiable function "
+            "of, written A(t) in the expression. Leave empty for a constant matrix. Explicit "
+            "entries that contain the variable make the matrix time dependent automatically"
+        ),
     )
 
     @field_validator("entries")
@@ -76,6 +87,14 @@ class MatrixCalculusInput(BaseModel):
     matrices: list[MatrixDecl] = Field(min_length=1, max_length=MAX_MATRICES)
     commuting: list[tuple[str, str]] = Field(default_factory=list, max_length=16)
     invertible: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
+    self_commuting: list[str] = Field(
+        default_factory=list,
+        max_length=MAX_MATRICES,
+        description=(
+            "Time-dependent matrices A for which A(t1) A(t2) = A(t2) A(t1) at all times "
+            "(which implies A A' = A' A). Only the user can state this"
+        ),
+    )
     action: Action = "simplify"
     variable: str | None = Field(default=None, min_length=1, max_length=SYMBOL_NAME_MAX)
     lower: str | None = Field(default=None, min_length=1, max_length=200)

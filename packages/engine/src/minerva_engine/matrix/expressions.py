@@ -28,10 +28,14 @@ class UnsupportedMatrixExpression(MinervaMathError):
     """A valid input outside what this operation does (reported as `unsupported`)."""
 
 
+MAX_DERIV = 2  # a time-dependent matrix is sampled as a quadratic polynomial in the variable
+
+
 @dataclass(frozen=True)
 class Sym:
     name: str
     power: int = 1
+    deriv: int = 0  # number of derivatives with respect to the variable (time-dependent matrices)
 
 
 @dataclass(frozen=True)
@@ -43,7 +47,22 @@ class Exp:
         return tuple(n for n, _ in self.arg)
 
 
-Factor = Sym | Exp
+@dataclass(frozen=True)
+class Frechet:
+    """The Frechet derivative of the exponential: the integral from 0 to 1 of
+    exp((1-s) X) D exp(s X) ds, with X the exponent of `base` and D a direction (a list of
+    (matrix, derivative order, scalar coefficient) items). Equals d/dt exp(X(t)) when D = X'(t).
+    It is never simplified to D exp(X) here: that needs [X, D] = 0."""
+
+    base: Exp
+    direction: tuple[tuple[str, int, sp.Expr], ...]
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys([*self.base.names, *(n for n, _, _ in self.direction)]))
+
+
+Factor = Sym | Exp | Frechet
 
 
 @dataclass(frozen=True)
@@ -60,9 +79,17 @@ class Commutation:
     """Pairs of matrices known to commute (declared, or established from explicit entries)."""
 
     pairs: frozenset[frozenset[str]] = frozenset()
+    # time-dependent matrices whose values at different times commute (so A and A' commute)
+    self_commuting: frozenset[str] = frozenset()
 
     def commutes(self, a: str, b: str) -> bool:
         return a == b or frozenset((a, b)) in self.pairs
+
+    def sym_commutes(self, a: Sym, b: Sym) -> bool:
+        """Whether two plain matrix factors (possibly derivatives) may be swapped."""
+        if a.name == b.name:
+            return a.deriv == b.deriv or a.name in self.self_commuting
+        return self.commutes(a.name, b.name)
 
 
 @dataclass
@@ -195,7 +222,10 @@ def collect(terms: Terms) -> Terms:
 
 def _sort_key(factors: tuple[Factor, ...]) -> str:
     return "|".join(
-        f"{f.name}^{f.power}" if isinstance(f, Sym) else "~" + "+".join(f.names) for f in factors
+        f"{f.name}{'p' * f.deriv}^{f.power}"
+        if isinstance(f, Sym)
+        else ("~" + "+".join(f.names) if isinstance(f, Exp) else "#" + "+".join(f.names))
+        for f in factors
     )
 
 
@@ -234,6 +264,15 @@ def shape_of(terms: Terms, shapes: dict[str, tuple[int, int]]) -> tuple[int, int
 
 
 def _factor_shape(f: Factor, shapes: dict[str, tuple[int, int]]) -> tuple[tuple[int, int], str]:
+    if isinstance(f, Frechet):
+        shape, label = _factor_shape(f.base, shapes)
+        for name, _, _ in f.direction:
+            if shapes[name] != shape:
+                raise ParseError(
+                    f"dimension mismatch: {name} is {_dims(shapes[name])} but the exponent is "
+                    f"{_dims(shape)}"
+                )
+        return shape, "D" + label
     if isinstance(f, Sym):
         shape = shapes[f.name]
         if f.power != 1 and shape[0] != shape[1]:
@@ -269,9 +308,14 @@ def canonicalize(terms: Terms, comm: Commutation) -> Canonical:
             i = 0
             while i < len(factors) - 1:
                 a, b = factors[i], factors[i + 1]
-                if isinstance(a, Sym) and isinstance(b, Sym) and a.name == b.name:
+                if (
+                    isinstance(a, Sym)
+                    and isinstance(b, Sym)
+                    and a.name == b.name
+                    and a.deriv == b.deriv
+                ):
                     power = a.power + b.power
-                    factors[i : i + 2] = [Sym(a.name, power)] if power != 0 else []
+                    factors[i : i + 2] = [Sym(a.name, power, a.deriv)] if power != 0 else []
                     changed = True
                 elif isinstance(a, Exp) and isinstance(b, Exp):
                     pair_ok, needs = _all_commute(a.names, b.names, comm)
@@ -304,6 +348,8 @@ def canonicalize(terms: Terms, comm: Commutation) -> Canonical:
                         i += 1
                 elif isinstance(a, Exp) and isinstance(b, Sym):
                     ok, needs = _all_commute(a.names, (b.name,), comm)
+                    if b.deriv and b.name in a.names and b.name not in comm.self_commuting:
+                        ok = False  # A' does not commute with a function of A in general
                     if ok:  # a function of M commutes with M: put the plain matrix first
                         for n in needs:
                             assumed[n] = None
@@ -311,8 +357,13 @@ def canonicalize(terms: Terms, comm: Commutation) -> Canonical:
                         changed = True
                     else:
                         i += 1
-                elif isinstance(a, Sym) and isinstance(b, Sym) and a.name > b.name:
-                    if comm.commutes(a.name, b.name):
+                elif (
+                    isinstance(a, Sym)
+                    and isinstance(b, Sym)
+                    and (a.name, a.deriv) > (b.name, b.deriv)
+                    and a.name != b.name
+                ):
+                    if comm.sym_commutes(a, b):
                         assumed[_commute_text(a.name, b.name)] = None
                         factors[i], factors[i + 1] = b, a
                         changed = True
@@ -380,11 +431,36 @@ def render_factors(factors: list[Factor]) -> str:
     parts: list[str] = []
     for f in factors:
         if isinstance(f, Sym):
-            nm = name_latex(f.name)
-            parts.append(nm if f.power == 1 else f"{nm}^{{{f.power}}}")
+            parts.append(_power_latex(_sym_latex(f), f.power, f.deriv))
+        elif isinstance(f, Frechet):
+            parts.append(render_frechet(f))
         else:
             parts.append(f"\\exp\\left({render_exp_arg(f)}\\right)")
     return " ".join(parts)
+
+
+def _power_latex(base: str, power: int, deriv: int) -> str:
+    if power == 1:
+        return base
+    return f"{{{base}}}^{{{power}}}" if deriv else f"{base}^{{{power}}}"
+
+
+def _sym_latex(f: Sym) -> str:
+    return name_latex(f.name) + "'" * f.deriv
+
+
+def render_frechet(f: Frechet) -> str:
+    x = render_exp_arg(f.base)
+    wrapped = f"\\left({x}\\right)" if len(f.base.arg) > 1 else x
+    direction = _join_signed(
+        [(*_coeff_parts(c), name_latex(n) + "'" * d) for n, d, c in f.direction]
+    )
+    if len(f.direction) > 1:
+        direction = f"\\left({direction}\\right)"
+    return (
+        f"\\int_0^1 \\exp\\left((1-\\sigma) {wrapped}\\right) {direction} "
+        f"\\exp\\left(\\sigma {wrapped}\\right) d\\sigma"
+    )
 
 
 def render_exp_arg(f: Exp) -> str:
@@ -421,8 +497,7 @@ def _render_with_names(factors: list[Factor], names: dict[str, str] | None) -> s
     parts = []
     for f in factors:
         if isinstance(f, Sym) and f.name in names:
-            nm = names[f.name]
-            parts.append(nm if f.power == 1 else f"{nm}^{{{f.power}}}")
+            parts.append(_power_latex(names[f.name] + "'" * f.deriv, f.power, f.deriv))
         else:
             parts.append(render_factors([f]))
     return " ".join(parts)
@@ -442,10 +517,15 @@ def substitute(terms: Terms, var: sp.Symbol, value: sp.Expr) -> Terms:
                 if arg:
                     factors.append(Exp(arg))
             else:
-                factors.append(f)
+                factors.append(f)  # a plain matrix or a Frechet factor is left as it is
         out.append(Term(t.coeff.subs(var, value), tuple(factors)))
     return tuple(out)
 
 
-def depends_on(f: Factor, var: sp.Symbol) -> bool:
-    return isinstance(f, Exp) and any(c.has(var) for _, c in f.arg)
+def depends_on(f: Factor, var: sp.Symbol, dependent: frozenset[str] = frozenset()) -> bool:
+    """Whether the factor depends on the variable (a time-dependent matrix counts)."""
+    if isinstance(f, Sym):
+        return f.name in dependent
+    if isinstance(f, Frechet):
+        return True
+    return any(c.has(var) or n in dependent for n, c in f.arg)
