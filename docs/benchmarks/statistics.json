@@ -1,0 +1,1678 @@
+{
+  "cases": [
+    {
+      "group": "sums",
+      "id": "sum-expand-squares",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-deviation-identity",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-deviations-vanish",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-constant-summand",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-differentiate-parameter",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-log-of-product-positive",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-product-of-sums-factor",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-log-of-product-complex-refused",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-range-not-provable",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-infinite-range-unsupported",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-oversized-input",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-check-sum-of-squares-wrong",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-check-square-of-sum-wrong",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-check-off-by-one-range",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-check-perturbed-by-1e-6",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "sums",
+      "id": "sum-check-sample-variance-identity-wrong",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.sums"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "expectation-linearity",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "expectation-of-indexed-sum",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-of-sum-keeps-covariance",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-of-sum-independent",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-of-affine",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "covariance-definition",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "expectation-of-product-independent",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-of-indexed-sum-independent",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-of-indexed-sum-keeps-covariances",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "expectation-of-product-undeclared-unchanged",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "expectation-undeclared-variable",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "expectation-check-assumed-independence",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-check-missing-covariance",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "variance-check-scale-not-squared",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "expectation",
+      "id": "covariance-check-raw-moment",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.expectation"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-normal-moments",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-bernoulli-moments",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-binomial-moments",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-poisson-moments",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-beta-moments",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-gamma-moments",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-cauchy-mean-does-not-exist",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-normal-negative-sd",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-bernoulli-probability-above-one",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-weibull-unsupported",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-check-gamma-mean-wrong",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-check-binomial-variance-wrong",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-check-beta-mean-perturbed",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "families",
+      "id": "family-check-poisson-second-moment-wrong",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-gaussian-mean-known-variance",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-gaussian-mean-and-variance",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-bernoulli",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-poisson",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-bernoulli-all-zeros-has-no-maximiser",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-bernoulli-all-ones-has-no-maximiser",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-gaussian-constant-data-degenerate-variance",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-uniform-is-not-regular",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-independence-not-declared",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-negative-known-variance",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-unsupported-family",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-score-system-oversized",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-check-variance-denominator-n-minus-1",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-check-mean-denominator-n-plus-1",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "mle",
+      "id": "mle-check-variance-with-unsubstituted-mean",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-normal-mean-known-sd",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-normal-mean-and-sd",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-normal-mean-and-variance",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-normal-n-observations",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-bernoulli",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-poisson",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-uniform-is-not-regular",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-check-sd-information-doubled",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-check-nonzero-off-diagonal",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-check-sd-matrix-under-variance",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "fisher",
+      "id": "fisher-check-perturbed-by-1e-6",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-beta-binomial",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-beta-bernoulli-sample",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-gamma-poisson",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-normal-normal-known-variance",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-non-conjugate-kernel-not-recognised",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-invalid-prior-parameter",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-check-beta-not-updated",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-check-beta-adds-trials-not-failures",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "posterior",
+      "id": "posterior-check-normal-prior-variance-not-updated",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: Engine.statistical_model"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-trace-linear",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-trace-quadratic",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-quadratic-form",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-trace-of-inverse",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-logdet",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-det",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gradient-logdet-gram",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gaussian-gradient-mean",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gaussian-gradient-mean-general-covariance",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gaussian-gradient-covariance-unconstrained",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gaussian-gradient-covariance-symmetric",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-gaussian-loglikelihood-scatter",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-hessian-quadratic-form",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-hessian-gaussian-mean",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-jacobian-linear-map",
+      "kind": "supported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-inverse-not-declared-invertible",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-determinant-not-declared-invertible",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-valued-function-has-no-gradient",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-shape-mismatch",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-trace-of-non-square",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-singular-covariance-declared-invertible",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-nonsymmetric-covariance-declared-symmetric",
+      "kind": "unsupported",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-check-missing-transposed-term",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-check-inverse-for-inverse-transpose",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-check-quadratic-form-half-gradient",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-check-unconstrained-gradient-for-symmetric-variable",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-check-reordered-product",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    },
+    {
+      "group": "matrix",
+      "id": "matrix-check-gradient-perturbed-by-1e-6",
+      "kind": "invalid_candidate",
+      "milliseconds": 0.0,
+      "passed": false,
+      "pending": true,
+      "problems": [
+        "not expressible: action: an option the model does not have"
+      ],
+      "reason": null,
+      "result_chars": 0,
+      "status": "not_expressible",
+      "verified": null
+    }
+  ],
+  "format": 1,
+  "label": "Phase 0: before any implementation",
+  "summary": {
+    "cases": 108,
+    "coverage": 0.0,
+    "failed": [],
+    "groups": {
+      "expectation": {
+        "cases": 15,
+        "passing": 0
+      },
+      "families": {
+        "cases": 14,
+        "passing": 0
+      },
+      "fisher": {
+        "cases": 11,
+        "passing": 0
+      },
+      "matrix": {
+        "cases": 28,
+        "passing": 0
+      },
+      "mle": {
+        "cases": 15,
+        "passing": 0
+      },
+      "posterior": {
+        "cases": 9,
+        "passing": 0
+      },
+      "sums": {
+        "cases": 16,
+        "passing": 0
+      }
+    },
+    "invalid_cases": 29,
+    "invalid_rejected": 0,
+    "latency_median_ms": 0.0,
+    "latency_p95_ms": 0.0,
+    "minimum_outcome_passing": 0,
+    "minimum_outcome_total": 5,
+    "not_expressible": 108,
+    "pending": 108,
+    "refusal_reasons": {},
+    "refused_correctly": 0,
+    "result_chars_max": 0,
+    "scored_cases": 0,
+    "scored_passing": 0,
+    "supported_cases": 51,
+    "supported_passing": 0,
+    "unsupported_cases": 28,
+    "verification_success": 0.0
+  }
+}
