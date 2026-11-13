@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
 from typing import Any
 
 import sympy as sp
@@ -71,6 +72,30 @@ RESERVED_NAMES = (
 
 MAX_FUNCTION_ARGS = 4
 
+# Names that people write for a Dirac delta or a step function but that are ordinary symbols
+# everywhere else: `\\delta(x)` is delta times x. Only the distribution operation may read them
+# as distributions, and only for a reading that the user confirmed (`NotationLog.readings`).
+DISTRIBUTION_CANDIDATES: dict[str, str] = {
+    "delta": "dirac_delta",
+    "theta": "heaviside",
+    "Theta": "heaviside",
+}
+_READING_FUNCTION = {"dirac_delta": "DiracDelta", "heaviside": "Heaviside"}
+
+
+@dataclass
+class NotationLog:
+    """How the user said `delta(...)`, `theta(...)` and `Theta(...)` are to be read, and what happened.
+
+    `readings` comes from the user ("dirac_delta", "heaviside" or "symbol"); the parsers fill in
+    `unconfirmed` (a name followed by an argument that nobody has answered for) and `used`.
+    """
+
+    readings: dict[str, str] = field(default_factory=dict)
+    unconfirmed: dict[str, str] = field(default_factory=dict)
+    used: dict[str, str] = field(default_factory=dict)
+
+
 _SYMBOL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -84,8 +109,11 @@ class Builder:
         noncommutative: Iterable[str] = (),
         functions: dict[str, tuple[str, ...]] | None = None,
         strict_calls: bool = False,
+        notation: NotationLog | None = None,
     ) -> None:
         self.limits = limits or Limits()
+        # Off (None) for every operation except `distribution`.
+        self.notation = notation
         # Names that stand for matrices: their products keep their order (matrix calculus only).
         self.noncommutative = frozenset(noncommutative)
         # Declared real functions of named symbols, e.g. {"f": ("r",)} (differential geometry only).
@@ -182,6 +210,25 @@ class Builder:
         if exponent.is_Number and exponent < 0 and base.free_symbols:
             self.denominators.append(base)
         return sp.Pow(base, exponent)
+
+    def distribution_reading(self, name: str) -> str | None:
+        """How `name(` is to be read: None (not applicable), "unconfirmed", or a confirmed reading.
+
+        Called only when `name` is directly followed by an argument list. An unanswered name is
+        recorded so that the operation can ask, and the parser carries on with the ordinary reading.
+        """
+        log = self.notation
+        if log is None or name not in DISTRIBUTION_CANDIDATES:
+            return None
+        reading = log.readings.get(name)
+        if reading is None:
+            log.unconfirmed[name] = DISTRIBUTION_CANDIDATES[name]
+            return "unconfirmed"
+        log.used[name] = reading
+        return reading
+
+    def distribution_function(self, reading: str, argument: sp.Expr) -> sp.Expr:
+        return self.function(_READING_FUNCTION[reading], [argument])
 
     def function(self, name: str, args: Iterable[sp.Expr]) -> sp.Expr:
         canonical = TEXT_FUNCTION_ALIASES.get(name, name)

@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 import sympy as sp
 
+from .build import NotationLog
 from .claims import check_claims, split_equation
 from .distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
 from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
@@ -51,6 +52,7 @@ def parse_expression(
     strict_calls: bool = False,
     *,
     allow_distributions: bool = False,
+    notation: NotationLog | None = None,
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
@@ -63,6 +65,7 @@ def parse_expression(
             noncommutative,
             functions,
             strict_calls,
+            notation,
         )
     else:
         expr = parse_text(
@@ -73,6 +76,7 @@ def parse_expression(
             noncommutative,
             functions,
             strict_calls,
+            notation,
         )
     if not allow_distributions and contains_distribution(expr):
         # Pointwise sampling cannot tell distributions apart (a delta is 0 at every sample point),

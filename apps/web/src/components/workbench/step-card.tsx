@@ -13,6 +13,7 @@ import {
 import type {
   ApplyIdentityResult,
   DifferentiateResult,
+  DistributionNotation,
   DistributionResult,
   HistoryItem,
   IntegrateResult,
@@ -34,9 +35,17 @@ interface Props {
   current: boolean;
   onContinue: (item: HistoryItem, edit: boolean) => void;
   onDelete: (item: HistoryItem) => void;
+  /** The user's answer to "is that a Dirac delta?": runs the step again with it. */
+  onAnswerNotation?: (item: HistoryItem, notation: DistributionNotation) => Promise<void>;
 }
 
-function FullResult({ item }: { item: HistoryItem }) {
+function FullResult({
+  item,
+  onAnswerNotation,
+}: {
+  item: HistoryItem;
+  onAnswerNotation?: Props["onAnswerNotation"];
+}) {
   switch (item.operation) {
     case "simplify":
       return <ResultPanel result={item.result as SimplifyResult} />;
@@ -47,7 +56,12 @@ function FullResult({ item }: { item: HistoryItem }) {
     case "series":
       return <SeriesPanel result={item.result as unknown as SeriesResult} />;
     case "distribution":
-      return <DistributionPanel result={item.result as unknown as DistributionResult} />;
+      return (
+        <DistributionPanel
+          result={item.result as unknown as DistributionResult}
+          onAnswer={onAnswerNotation ? (notation) => onAnswerNotation(item, notation) : undefined}
+        />
+      );
     case "apply_identity": {
       const r = item.result as unknown as ApplyIdentityResult;
       return (
@@ -93,7 +107,15 @@ function Copy({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function StepCard({ item, number, parentNumber, current, onContinue, onDelete }: Props) {
+export function StepCard({
+  item,
+  number,
+  parentNumber,
+  current,
+  onContinue,
+  onDelete,
+  onAnswerNotation,
+}: Props) {
   const cont = continuation(item);
   const latex = resultLatex(item);
   const failed = item.status !== "ok" && item.status !== "unchanged";
@@ -217,7 +239,7 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-muted">Full verification</summary>
         <div className="mt-2">
-          <FullResult item={item} />
+          <FullResult item={item} onAnswerNotation={onAnswerNotation} />
         </div>
       </details>
     </li>

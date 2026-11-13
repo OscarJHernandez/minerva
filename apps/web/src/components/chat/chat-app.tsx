@@ -8,7 +8,7 @@ import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
-import type { GeometryRequest } from "@/lib/types";
+import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 import type {
   AssistantContent,
   Card,
@@ -265,6 +265,22 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** The delta card's question: runs the call again with the user's answer, without the model. */
+  const runDistribution = useCallback(
+    async (request: DistributionAnswer) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.distribution(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   /** The geometry card's buttons: more quantities for the same metric, without the model. */
   const runGeometry = useCallback(
     async (request: GeometryRequest) => {
@@ -309,7 +325,12 @@ export function ChatApp() {
 
   return (
     <MotionRunnerProvider
-      value={{ run: runMotion, perturb: runPerturbation, geometry: runGeometry }}
+      value={{
+        run: runMotion,
+        perturb: runPerturbation,
+        geometry: runGeometry,
+        distribution: runDistribution,
+      }}
     >
       <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
         <aside className="hidden w-60 shrink-0 py-4 md:block">

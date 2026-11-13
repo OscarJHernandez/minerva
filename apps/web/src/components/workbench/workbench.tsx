@@ -14,6 +14,8 @@ import {
 import type {
   Assumptions,
   DerivationSummary,
+  DistributionNotation,
+  DistributionResult,
   GeometryRequest,
   HistoryItem,
   IdentitiesResult,
@@ -170,6 +172,37 @@ export function Workbench() {
       const added = derivation.steps.find((s) => s.id === response.calculation_id);
       if (added) continueFrom(added, false);
       setLookup(null);
+      void refreshSaved();
+    } catch (e) {
+      handleError(e);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** The user answered "is that a Dirac delta?": the same call again, as a new step, with the answer. */
+  async function answerNotation(item: HistoryItem, notation: DistributionNotation) {
+    const saved = (item.result as unknown as DistributionResult).request;
+    if (!saved || busy) return;
+    setBusy("distribution");
+    setError(null);
+    try {
+      const id = derivationId ?? item.derivation_id ?? (await api.createDerivation()).id;
+      setDerivationId(id);
+      const response = await api.distribution(
+        {
+          input: item.input,
+          format: item.format,
+          assumptions: item.assumptions,
+          derivation_id: id,
+          parent_id: item.parent_id ?? undefined,
+        },
+        { ...saved, notation },
+      );
+      const derivation = await api.derivation(id);
+      setSteps(derivation.steps);
+      const added = derivation.steps.find((s) => s.id === response.calculation_id);
+      if (added) continueFrom(added, false);
       void refreshSaved();
     } catch (e) {
       handleError(e);
@@ -446,6 +479,7 @@ export function Workbench() {
             currentId={fromId}
             onContinue={continueFrom}
             onDelete={deleteStep}
+            onAnswerNotation={answerNotation}
           />
         )}
       </div>

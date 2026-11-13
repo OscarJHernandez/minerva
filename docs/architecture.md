@@ -143,7 +143,10 @@ one most likely to be wrong.
     Pointwise sampling cannot see a delta (it is 0 at every sample point), so every other operation
     refuses distribution input as `unsupported` (`ops.parse_expression`), `verify_equal` never passes it, and
     the claim checker leaves such statements `unverified`. Input uses explicit names
-    (`\operatorname{DiracDelta}(x-a)`, `DiracDelta(x)` in text); `\delta` and `\theta` stay symbols. Two legs,
+    (`\operatorname{DiracDelta}(x-a)`, `DiracDelta(x)` in text). `\delta(...)` and `\theta(...)` stay symbols
+    everywhere except in this operation, where the user is asked once ("is that a Dirac delta?", reason
+    `notation_unconfirmed`) and the answer (`notation`) comes from the card's buttons or the workbench, never from
+    the model; a confirmed reading then takes exactly the path of the explicit names. Two legs,
     reported separately: (1) the exact conditions of each identity, decided symbolically from the declared
     assumptions (`normal_form.py`): the variable and every symbol in an argument is real; `\delta(g(x))` for a
     polynomial `g` needs all real roots in closed form, each provably simple (`g'(x_i)` nonzero), a scale factor

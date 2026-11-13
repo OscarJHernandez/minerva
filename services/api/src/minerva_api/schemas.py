@@ -7,8 +7,9 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl
+from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.matrix.models import MAX_MATRICES, Action
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class Credentials(BaseModel):
@@ -91,6 +92,14 @@ class DistributionRequest(Linked):
     upper: str | None = Field(default=None, min_length=1, max_length=200)
     # How a delta exactly on a limit counts. Chosen by the user, never by Minerva.
     endpoint: Literal["half", "include", "exclude"] | None = None
+    # What `delta(...)`, `theta(...)` and `Theta(...)` mean in the expression. Answered by the user,
+    # never by Minerva: a name without an answer is asked about, not assumed.
+    notation: dict[NotationName, Reading] = Field(default_factory=dict)
+
+    @field_validator("notation")
+    @classmethod
+    def _sensible_readings(cls, value: dict[str, str]) -> dict[str, str]:
+        return check_readings(value)
 
 
 class HistoryItem(BaseModel):

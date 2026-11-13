@@ -659,3 +659,53 @@ def test_chat_geometry_logs_stage_counters_without_content(capsys) -> None:  # t
     assert '"geometry_stage"' in out and '"christoffel:verify"' in out
     assert "sin" not in out and "theta" not in out and "phi" not in out
     assert "Christoffel symbols of the sphere" not in out
+
+
+def test_delta_card_asks_and_its_answer_runs_without_the_model(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Integrate $x^2\delta(x^2-4)$ over the whole real line")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "distribution"
+    assert card["data"]["result"]["reason"] == "notation_unconfirmed"
+    assert [q["name"] for q in card["data"]["result"]["questions"]] == ["delta"]
+    assert "notation" not in message["trace"][0]["arguments"]  # the model made no answer
+
+    url = f"/v1/chat/conversations/{cid}/tools/distribution"
+    answer = {**card["data"]["request"], "notation": {"delta": "dirac_delta"}}
+    r = client.post(url, json=answer)
+    assert r.status_code == 201, r.text
+    done = cards_of(r.json()["content"])[0]["data"]["result"]
+    assert done["status"] == "ok" and done["result_text"] == "2"
+    trace = r.json()["content"]["trace"][0]
+    assert trace["arguments"]["notation"] == {
+        "delta": "dirac_delta"
+    }  # recorded, so replay is faithful
+    assert r.json()["content"]["debug"]["mode"] == "direct"
+
+    assert client.post(url, json={**answer, "notation": {"delta": "heaviside"}}).status_code == 422
+
+
+def test_delta_answer_endpoint_is_private_and_needs_no_model() -> None:
+    body = {
+        "latex": r"\delta(x - 1)",
+        "assumptions": {"x": ["real"]},
+        "action": "simplify",
+        "notation": {"delta": "dirac_delta"},
+    }
+    app = build_app(llm_mode="scripted")
+    with TestClient(app) as a, TestClient(app) as b:
+        register(a, "a@example.com")
+        register(b, "b@example.com")
+        cid = a.post("/v1/chat/conversations", json={}).json()["id"]
+        url = f"/v1/chat/conversations/{cid}/tools/distribution"
+        assert b.post(url, json=body).status_code == 404
+        assert a.post(url, json=body).status_code == 201
+        assert TestClient(app).post(url, json=body).status_code == 401
+    with TestClient(build_app()) as c:  # llm_mode off: the answer route still works
+        register(c)
+        cid = c.post("/v1/chat/conversations", json={}).json()["id"]
+        r = c.post(f"/v1/chat/conversations/{cid}/tools/distribution", json=body)
+        assert r.status_code == 201

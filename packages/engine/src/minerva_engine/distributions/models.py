@@ -9,12 +9,21 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..models import ExpressionInput, Status
 
 Action = Literal["simplify", "integrate", "differentiate"]
 Endpoint = Literal["half", "include", "exclude"]
+# How the user says `delta(...)`, `theta(...)` or `Theta(...)` is to be read.
+NotationName = Literal["delta", "theta", "Theta"]
+Reading = Literal["dirac_delta", "heaviside", "symbol"]
+# Only these readings make sense for a name; "symbol" (an ordinary symbol times a bracket) always does.
+ALLOWED_READINGS: dict[str, tuple[str, ...]] = {
+    "delta": ("dirac_delta", "symbol"),
+    "theta": ("heaviside", "symbol"),
+    "Theta": ("heaviside", "symbol"),
+}
 
 Reason = Literal[
     "unsupported_distribution",
@@ -22,6 +31,7 @@ Reason = Literal[
     "assumptions_insufficient",
     "verification_failed",
     "integration_domain_ambiguous",
+    "notation_unconfirmed",
     "resource_limit",
     "parse_error",
 ]
@@ -52,6 +62,14 @@ CITED_ENTRIES = (
 )
 
 
+def check_readings(value: dict[str, str]) -> dict[str, str]:
+    """Reject an answer that does not fit the name (a `delta` is never a step function)."""
+    for name, reading in value.items():
+        if reading not in ALLOWED_READINGS[name]:
+            raise ValueError(f"{name} cannot be read as {reading}")
+    return value
+
+
 class DistributionInput(BaseModel):
     expression: ExpressionInput
     action: Action
@@ -62,6 +80,21 @@ class DistributionInput(BaseModel):
     # How a delta sitting exactly on a limit counts. Never chosen by Minerva: without it such an
     # integral is reported as ambiguous.
     endpoint: Endpoint | None = None
+    # What `delta(...)`, `theta(...)` and `Theta(...)` mean in the expression, as the user answered.
+    # Never set by Minerva or by the model: a name without an answer is asked about, not assumed.
+    notation: dict[NotationName, Reading] = Field(default_factory=dict)
+
+    @field_validator("notation")
+    @classmethod
+    def _sensible_readings(cls, value: dict[str, str]) -> dict[str, str]:
+        return check_readings(value)
+
+
+class NotationQuestion(BaseModel):
+    """A name that may be a distribution: the user has to say what it is."""
+
+    name: NotationName
+    candidate: Literal["dirac_delta", "heaviside"]
 
 
 class Condition(BaseModel):
@@ -123,6 +156,9 @@ class DistributionResult(BaseModel):
     lower_latex: str | None = None
     upper_latex: str | None = None
     endpoint: Endpoint | None = None
+    # Names the user has to answer for (reason `notation_unconfirmed`), and the readings applied.
+    questions: list[NotationQuestion] = Field(default_factory=list)
+    notation: dict[NotationName, Reading] = Field(default_factory=dict)
     result_latex: str | None = None
     result_text: str | None = None
     # "distributional": equal as distributions (acts the same on every test function);

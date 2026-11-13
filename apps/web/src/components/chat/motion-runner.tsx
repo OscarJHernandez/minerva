@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
-import type { GeometryRequest } from "@/lib/types";
+import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 
 /**
  * Lets a card start a numerical solution in the open conversation. Provided by the chat app; absent
@@ -14,6 +14,8 @@ export interface MotionRunner {
   perturb?: (request: PerturbationRequest) => Promise<void>;
   /** Asks for more quantities of the geometry on a card. */
   geometry?: (request: GeometryRequest) => Promise<void>;
+  /** Runs a delta card again with the user's answer to "is that a Dirac delta?". */
+  distribution?: (request: DistributionAnswer) => Promise<void>;
 }
 
 const MotionRunnerContext = createContext<MotionRunner | null>(null);

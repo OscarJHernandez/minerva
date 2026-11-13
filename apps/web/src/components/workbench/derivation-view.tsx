@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { continuation } from "@/lib/derivation";
-import type { HistoryItem } from "@/lib/types";
+import type { DistributionNotation, HistoryItem } from "@/lib/types";
 import { StepCard } from "./step-card";
 
 interface Props {
@@ -11,10 +11,17 @@ interface Props {
   currentId: string | null;
   onContinue: (item: HistoryItem, edit: boolean) => void;
   onDelete: (item: HistoryItem) => void;
+  onAnswerNotation?: (item: HistoryItem, notation: DistributionNotation) => Promise<void>;
 }
 
 /** The derivation: every step with what produced it, in the order it was made. */
-export function DerivationView({ steps, currentId, onContinue, onDelete }: Props) {
+export function DerivationView({
+  steps,
+  currentId,
+  onContinue,
+  onDelete,
+  onAnswerNotation,
+}: Props) {
   const last = useRef<number>(0);
 
   useEffect(() => {
@@ -60,6 +67,7 @@ export function DerivationView({ steps, currentId, onContinue, onDelete }: Props
             current={item.id === currentId && continuation(item) !== null}
             onContinue={onContinue}
             onDelete={onDelete}
+            onAnswerNotation={onAnswerNotation}
           />
         ))}
       </ol>

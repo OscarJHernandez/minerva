@@ -865,6 +865,15 @@
   informational: true
   source: "distribution tool: delta integrals go through the engine, never the model"
 
+- id: delta-notation-asks-the-user
+  category: calculus
+  prompt: 'Integrate $x^2\delta(x^2-4)$ over the whole real line.'
+  expected_tool: distribution
+  args: {equals: {action: integrate}}
+  reply_matches: 'Dirac|delta|confirm|button|card'
+  informational: true
+  source: "distribution tool: \\delta(...) is read as a distribution only after the user confirms it on the card"
+
 - id: delta-on-a-limit-asks-for-a-convention
   category: calculus
   prompt: 'Integrate $\operatorname{DiracDelta}(x-1)$ from 0 to 1.'

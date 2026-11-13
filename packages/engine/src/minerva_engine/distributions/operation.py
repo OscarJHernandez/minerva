@@ -17,6 +17,7 @@ from collections.abc import Callable
 
 import sympy as sp
 
+from ..build import NotationLog
 from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..latexprint import to_latex
 from ..models import Limits, Status
@@ -30,6 +31,7 @@ from .models import (
     DistributionResult,
     DistributionStep,
     DistributionVerification,
+    NotationQuestion,
     Reason,
     Stage,
 )
@@ -50,6 +52,7 @@ _STATUS_FOR_REASON: dict[Reason, Status] = {
     "singular_root": Status.UNSUPPORTED,
     "assumptions_insufficient": Status.CONDITIONS_NOT_SATISFIED,
     "integration_domain_ambiguous": Status.CONDITIONS_NOT_SATISFIED,
+    "notation_unconfirmed": Status.CONDITIONS_NOT_SATISFIED,
     "verification_failed": Status.NOT_VERIFIED,
     "resource_limit": Status.RESOURCE_LIMIT,
     "parse_error": Status.PARSE_ERROR,
@@ -103,6 +106,29 @@ def _failure(
     )
 
 
+def _ask_notation(data: DistributionInput, trace: _Trace, log: NotationLog) -> DistributionResult:
+    """`delta(...)` or `theta(...)` was typed and nobody has said what it is: ask, compute nothing."""
+    questions = [
+        NotationQuestion(name=name, candidate=candidate)
+        for name, candidate in sorted(log.unconfirmed.items())
+    ]
+    failed = _failure(
+        data,
+        trace,
+        "notation_unconfirmed",
+        "Is "
+        + ", ".join(_written(data, q.name) for q in questions)
+        + " a Dirac delta or a step function? Outside this operation they are ordinary symbols, "
+        "so nothing is computed until you say what it is.",
+    )
+    failed.questions = questions
+    return failed
+
+
+def _written(data: DistributionInput, name: str) -> str:
+    return f"\\{name}(…)" if data.expression.format == "latex" else f"{name}(…)"
+
+
 def _bound(text: str, data: DistributionInput, limits: Limits) -> sp.Expr:
     from ..integrate import _bound as parse_bound  # the integrate operation's own bound parser
 
@@ -117,8 +143,12 @@ def distribution(data: DistributionInput, limits: Limits) -> DistributionResult:
     deadline = started + DEADLINE_FRACTION * limits.timeout_seconds
     trace = _Trace()
     input_latex: str | None = None
+    readings: dict[str, str] = {k: v for k, v in data.notation.items()}
+    log = NotationLog(readings=readings)
     try:
-        expr = parse_expression(data.expression, limits, allow_distributions=True)
+        expr = parse_expression(data.expression, limits, allow_distributions=True, notation=log)
+        if log.unconfirmed:
+            return _ask_notation(data, trace, log)
         x = Builder(data.expression.assumptions, limits).symbol(data.variable)
         lower = upper = None
         if data.action == "integrate":
@@ -255,6 +285,10 @@ def distribution(data: DistributionInput, limits: Limits) -> DistributionResult:
     notes = list(outcome.notes)
     if data.action == "integrate":
         notes = [n for n in notes if not n.startswith("Equality is as distributions")]
+    for name, reading in sorted(log.used.items()):
+        if reading != "symbol":
+            what = "the Dirac delta" if reading == "dirac_delta" else "the Heaviside step function"
+            notes.append(f"{_written(data, name)} was read as {what}, as you confirmed.")
     return DistributionResult(
         status=Status.OK,
         action=data.action,
@@ -263,6 +297,7 @@ def distribution(data: DistributionInput, limits: Limits) -> DistributionResult:
         lower_latex=to_latex(lower) if lower is not None else None,
         upper_latex=to_latex(upper) if upper is not None else None,
         endpoint=data.endpoint,
+        notation={n: r for n, r in log.used.items()},
         result_latex=to_latex(outcome.result),
         result_text=str(outcome.result),
         equality=equality,

@@ -5,7 +5,7 @@ import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
 import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
-import { DistributionPanel } from "../distribution-panel";
+import { DistributionCard } from "./distribution-card";
 import { MatrixPanel } from "../matrix-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { GeometryCard } from "./geometry-card";
@@ -35,7 +35,13 @@ export function CardView({ card }: { card: Card }) {
     case "geometry":
       return <GeometryCard result={card.data.result} request={card.data.request} />;
     case "distribution":
-      return <DistributionPanel result={card.data.result} methods={card.data.methods} />;
+      return (
+        <DistributionCard
+          result={card.data.result}
+          methods={card.data.methods}
+          request={card.data.request}
+        />
+      );
     case "identities":
       return <IdentitiesPanel result={card.data} />;
     case "entries":

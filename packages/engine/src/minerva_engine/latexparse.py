@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 import sympy as sp
 
-from .build import FUNCTIONS, Builder
+from .build import FUNCTIONS, Builder, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
 
@@ -256,6 +256,13 @@ class _Parser:
             name = f"{name}_{self._subscript_text()}"
         if name in self.b.functions:
             return self._declared_call(name)
+        if self.cur.kind == "op" and self.cur.text == "(":
+            reading = self.b.distribution_reading(name)
+            if reading in ("dirac_delta", "heaviside"):
+                self.advance()
+                argument = self.expr()
+                self.expect_op(")")
+                return self.b.distribution_function(reading, argument)
         if self.b.strict_calls and self.cur.kind == "op" and self.cur.text == "(":
             raise ParseError(
                 f"{name}(…) is ambiguous: declare {name} as a function, "
@@ -423,11 +430,12 @@ def parse_latex(
     noncommutative: Iterable[str] = (),
     functions: dict[str, tuple[str, ...]] | None = None,
     strict_calls: bool = False,
+    notation: NotationLog | None = None,
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
         raise LimitError("input is too long")
-    builder = Builder(assumptions, limits, noncommutative, functions, strict_calls)
+    builder = Builder(assumptions, limits, noncommutative, functions, strict_calls, notation)
     if denominators is not None:
         builder.denominators = denominators
     parser = _Parser(_tokenize(source), builder)
