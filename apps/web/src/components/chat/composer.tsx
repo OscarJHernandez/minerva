@@ -23,18 +23,14 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
   const [imageError, setImageError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  // Once the user drags the resize handle their height wins until the message is sent.
-  const manualHeight = useRef(false);
-  const autoHeight = useRef(0);
 
   // Grow with the content up to MAX_HEIGHT_VH of the viewport, then scroll inside.
   useLayoutEffect(() => {
     const el = areaRef.current;
-    if (!el || manualHeight.current) return;
+    if (!el) return;
     el.style.height = "auto";
     const cap = Math.round(window.innerHeight * MAX_HEIGHT_VH);
-    autoHeight.current = Math.min(el.scrollHeight, cap);
-    el.style.height = `${autoHeight.current}px`;
+    el.style.height = `${Math.min(el.scrollHeight, cap)}px`;
   }, [text]);
 
   const insertMany = useCallback(
@@ -68,7 +64,6 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
     if (!value || disabled || busy) return;
     onSend(value);
     setText("");
-    manualHeight.current = false;
     if (areaRef.current) areaRef.current.style.height = "";
   }
 
@@ -86,12 +81,6 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
           ref={areaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onPointerUp={(e) => {
-            // The browser's resize handle changes the height without an input event.
-            if (Math.abs(e.currentTarget.offsetHeight - autoHeight.current) > 1) {
-              manualHeight.current = true;
-            }
-          }}
           onPaste={(e) => {
             const file = imagesEnabled
               ? Array.from(e.clipboardData.files).find((f) => f.type.startsWith("image/"))
@@ -112,16 +101,16 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
           placeholder="Describe a problem, or paste a formula between $ signs…"
           aria-label="Message"
           aria-keyshortcuts="Control+Enter Meta+Enter"
-          className="block max-h-[40vh] min-h-[5.5rem] w-full resize-y bg-transparent px-3.5 pb-1 pt-3 text-[15px] leading-6 outline-none"
+          className="block max-h-[40vh] min-h-[5.5rem] w-full resize-none bg-transparent px-3.5 pb-1 pt-3 text-[15px] leading-6 outline-none!"
         />
-        <div className="flex items-center gap-1 px-2 pb-2">
+        <div className="flex items-center gap-1 px-3 pb-3">
           <button
             type="button"
             onClick={() => setFormula((f) => !f)}
             aria-pressed={formula}
             title="Insert a formula"
             aria-label="Insert a formula"
-            className="h-9 shrink-0 rounded-lg px-2.5 text-sm text-muted hover:bg-sunk hover:text-ink"
+            className="-ml-2 h-9 shrink-0 rounded-lg px-2.5 text-sm text-muted hover:bg-sunk hover:text-ink"
           >
             ∑<span className="hidden sm:inline"> Formula</span>
           </button>
