@@ -15,10 +15,12 @@ from .models import (
     ExpressionInput,
     FormulaReading,
     IdentitiesResult,
+    IsolateResult,
     Limits,
     Rule,
     SimplifyResult,
     Status,
+    StepResult,
     TensorInput,
     TensorResult,
     TransformResult,
@@ -83,6 +85,89 @@ class Engine:
                 "one part of an expression; this operation does not accept them."
             )
         return Status.INTERNAL_ERROR, "The computation failed unexpectedly."
+
+    def _step(self, op: str, payload: dict[str, Any], operation: str) -> StepResult:
+        outcome, ms = self._run(op, payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return StepResult(
+                status=status,
+                operation=operation,
+                message=message,
+                duration_ms=ms,
+            )
+        result = StepResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def subterms(
+        self,
+        expression: ExpressionInput,
+        *,
+        find: str | None = None,
+        rule: Rule | None = None,
+        reverse: bool = False,
+    ) -> StepResult:
+        """The parts of an expression that can be chosen: all, where `find` occurs, or where `rule` matches."""
+        payload = {
+            "expression": expression.model_dump(),
+            "find": find,
+            "rule": rule.model_dump() if rule else None,
+            "reverse": reverse,
+        }
+        return self._step("subterms", payload, "subterms")
+
+    def rewrite_at(
+        self,
+        expression: ExpressionInput,
+        action: str,
+        *,
+        selection: dict[str, Any] | None = None,
+        part: str | None = None,
+        occurrence: int | None = None,
+        rule: Rule | None = None,
+        reverse: bool = False,
+        by: list[str] | None = None,
+    ) -> StepResult:
+        """Apply one move (`rule`, `simplify`, `expand`, `factor`, `cancel`, `collect`) to one part."""
+        payload = {
+            "expression": expression.model_dump(),
+            "action": action,
+            "selection": selection,
+            "part": part,
+            "occurrence": occurrence,
+            "rule": rule.model_dump() if rule else None,
+            "reverse": reverse,
+            "by": by or [],
+        }
+        return self._step("rewrite_at", payload, "rewrite")
+
+    def substitute(
+        self,
+        expression: ExpressionInput,
+        relations: list[str],
+        *,
+        order: str | None = None,
+    ) -> StepResult:
+        """Replace the left side of each relation `l = r` by its right side, one relation at a time.
+
+        The relations are premises (not verified by Minerva). If their order changes the result and
+        `order` (`given` or `simultaneous`) is not stated, the request is refused.
+        """
+        payload = {"expression": expression.model_dump(), "relations": relations, "order": order}
+        return self._step("substitute", payload, "substitute")
+
+    def isolate(self, equation: ExpressionInput, variable: str) -> IsolateResult:
+        """Solve `lhs = rhs` for one variable, listing every solution and the conditions it needs."""
+        outcome, ms = self._run(
+            "isolate", {"expression": equation.model_dump(), "variable": variable}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return IsolateResult(status=status, message=message, duration_ms=ms)
+        result = IsolateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
 
     def warm_up(self) -> None:
         """Start the sandbox's fork server and import SymPy so the first request is fast."""

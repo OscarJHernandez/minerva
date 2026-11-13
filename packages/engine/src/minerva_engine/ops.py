@@ -664,6 +664,31 @@ def verify_rule(rule: Rule) -> Verification:
     return verify_equal(lhs, rhs)
 
 
+# --- controlled steps (implemented in steps.py; imported on use, as `solve` is) -----------------------
+def op_subterms(payload: dict[str, Any]) -> dict[str, Any]:
+    from .steps import op_subterms as run
+
+    return run(payload)
+
+
+def op_rewrite_at(payload: dict[str, Any]) -> dict[str, Any]:
+    from .steps import op_rewrite_at as run
+
+    return run(payload)
+
+
+def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
+    from .substitute import op_substitute as run
+
+    return run(payload)
+
+
+def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
+    from .isolate import op_isolate as run
+
+    return run(payload)
+
+
 OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
     "identities": op_identities,
@@ -683,4 +708,8 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "dimensional_analysis": op_dimensional_analysis,
     "check_units": op_check_units,
     "tensor_canonicalize": op_tensor_canonicalize,
+    "subterms": op_subterms,
+    "rewrite_at": op_rewrite_at,
+    "substitute": op_substitute,
+    "isolate": op_isolate,
 }

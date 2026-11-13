@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -306,6 +309,17 @@ class Diagnostics(BaseModel):
     assumptions_declared: int = 0
     premises: int = 0
 
+    @contextmanager
+    def timed(
+        self, field: Literal["parse_ms", "candidates_ms", "transform_ms", "verify_ms"]
+    ) -> Iterator[None]:
+        """Add the time spent in the block to one of the phase durations."""
+        start = time.perf_counter()
+        try:
+            yield
+        finally:
+            setattr(self, field, getattr(self, field) + int((time.perf_counter() - start) * 1000))
+
     def reject(self, reason: Reason, count: int = 1) -> None:
         self.rejected[reason.value] = self.rejected.get(reason.value, 0) + count
 
@@ -364,6 +378,7 @@ class Subterm(BaseModel):
     highlight_latex: str  # the whole expression with this part boxed
     occurrence: int = 1
     occurrences: int = 1
+    blocked: bool = False  # a rule matches here but its conditions are not provable
 
 
 class StepResult(BaseModel):
@@ -379,11 +394,57 @@ class StepResult(BaseModel):
     restrictions_latex: list[str] = Field(default_factory=list)
     restrictions_complete: bool = True
     conditions_latex: list[str] = Field(default_factory=list)
+    unmet_conditions: list[RuleCondition] = Field(
+        default_factory=list
+    )  # a rule that was not applied
     reason: Reason | None = None
     # substitute: True if other orders of the relations give another result, None if not examined.
     order_dependent: bool | None = None
     subterms: list[Subterm] = Field(default_factory=list)
     truncated: bool = False
+    diagnostics: Diagnostics = Field(default_factory=Diagnostics)
+    message: str = ""
+    duration_ms: int = 0
+
+
+class Solution(BaseModel):
+    """One value of the unknown. `text` is the right side in text syntax, `equation_text` is `x = ...`
+    (what a derivation continues from). A solution that depends on an integer parameter (`k_1`) is a
+    family: `branch` says so."""
+
+    latex: str
+    text: str
+    equation_text: str
+    conditions_latex: list[str] = Field(
+        default_factory=list
+    )  # conditions specific to this solution
+    branch: str = ""
+    verification: Verification | None = None
+
+
+class IsolateResult(BaseModel):
+    """The solutions of an equation for one variable, with the conditions under which each holds.
+
+    Solutions are over the complex numbers: declared assumptions on the unknown are not used to select
+    among them (`assumption_note`). An empty list with status ok means the equation has no solution.
+    """
+
+    status: Status
+    equation_latex: str | None = None
+    variable: str | None = None
+    method: Literal["inversion", "polynomial"] | None = None
+    steps: list[Step] = Field(default_factory=list)
+    solutions: list[Solution] = Field(default_factory=list)
+    conditions_latex: list[str] = Field(default_factory=list)  # conditions on every solution
+    excluded_latex: list[str] = Field(default_factory=list)  # values the equation itself excludes
+    # Parameter values (LaTeX equations like `a = 0`) at which the equation degenerates: the solutions
+    # do not describe it there and it must be examined separately.
+    exceptional: list[str] = Field(default_factory=list)
+    verification: Verification | None = None
+    complete: bool = False  # the check that no solution was dropped passed
+    completeness_note: str = ""
+    assumption_note: str = ""
+    reason: Reason | None = None
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     message: str = ""
     duration_ms: int = 0

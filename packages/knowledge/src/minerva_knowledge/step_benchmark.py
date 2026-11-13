@@ -21,6 +21,8 @@ import ast
 import contextlib
 import json
 import operator
+import random
+import re
 import statistics
 import time
 from collections import defaultdict
@@ -39,7 +41,8 @@ from minerva_engine import (
     parse_latex,
     parse_text,
 )
-from minerva_engine.verify import verify_equal
+from minerva_engine.models import Diagnostics
+from minerva_engine.verify import _evaluate_ex, _sample, verify_equal
 from pydantic import BaseModel, Field, model_validator
 
 from .identities import simplify_expression, transform_expression
@@ -112,7 +115,8 @@ class StepOutcome:
     candidates: int = 0
     rejected: int = 0
     verify_ms: int = 0
-    conditions: list[str] = field(default_factory=list)
+    # Conditions the answer reports (LaTeX). None: this adapter cannot report any, so they are not scored.
+    conditions: list[str] | None = None
 
 
 class StepCaseResult(BaseModel):
@@ -207,16 +211,42 @@ def _forms_equal(a: str, b: str, case: StepCase) -> bool:
 
 
 def _same_set(got: list[str], expected: list[str], case: StepCase) -> bool:
-    """Every expected solution matched by a distinct returned one, and nothing extra."""
+    """The returned solutions are exactly the expected ones, as a *set*: at sampled parameter values the
+    values agree as multisets. (`+sqrt(A/c^2)` and `+sqrt(A)/c` can be different branches at one point
+    and still describe the same pair of solutions.) A repeated or extra solution fails."""
     if len(got) != len(expected):
         return False
-    unused = list(got)
-    for want in expected:
-        hit = next((g for g in unused if _forms_equal(g, want, case)), None)
-        if hit is None:
-            return False
-        unused.remove(hit)
-    return True
+    if not expected:
+        return True
+    try:
+        have = [parse_text(g, case.assumptions) for g in got]
+        want = [parse_text(e, case.assumptions) for e in expected]
+    except MinervaMathError:
+        return False
+    symbols = sorted(set().union(*(e.free_symbols for e in [*have, *want])), key=lambda s: s.name)
+    rng = random.Random(20260105)  # noqa: S311 - deterministic sampling, not cryptographic
+    agreed = 0
+    for _ in range(40):
+        if agreed >= 8:
+            break
+        env = {
+            s: sp.Integer(rng.randint(-3, 3)) if s.name.startswith("k_") else _sample(s, rng)
+            for s in symbols
+        }
+        a = [_evaluate_ex(e, env) for e in have]
+        b = [_evaluate_ex(e, env) for e in want]
+        got_values = [v for v in a if isinstance(v, complex)]
+        want_values = [v for v in b if isinstance(v, complex)]
+        if len(got_values) != len(a) or len(want_values) != len(b):
+            continue
+        unused = list(want_values)
+        for v in got_values:
+            hit = next((w for w in unused if abs(v - w) <= 1e-7 * max(1.0, abs(w))), None)
+            if hit is None:
+                return False
+            unused.remove(hit)
+        agreed += 1
+    return agreed >= 4
 
 
 def score(case: StepCase, outcome: StepOutcome) -> tuple[bool, bool]:
@@ -229,7 +259,53 @@ def score(case: StepCase, outcome: StepOutcome) -> tuple[bool, bool]:
         ok = _same_set(outcome.results, case.solutions or [], case)
     else:
         ok = any(_forms_equal(r, want, case) for r in outcome.results for want in case.results)
+    if ok and outcome.conditions is not None:
+        ok = _conditions_reported(case, outcome.conditions)
     return ok, ok
+
+
+_NEQ = re.compile(r"^(?P<left>.+?)\\neq(?P<right>.+)$")
+
+
+def _nonzero_expression(latex: str, case: StepCase) -> sp.Expr | None:
+    """`e \\neq 0` (or `a \\neq b`) as the expression e (a - b) that must not vanish; None for any
+    other kind of condition (ranges, branch conditions), which are documentation, not scored."""
+    found = _NEQ.match(latex.strip())
+    if found is None:
+        return None
+    try:
+        left = parse_latex(found["left"], _plain(case.assumptions))
+        right = parse_latex(found["right"], _plain(case.assumptions))
+    except MinervaMathError:
+        return None
+    return sp.expand(left - right)
+
+
+def _plain(assumptions: dict[str, list[str]]) -> dict[str, list[str]]:
+    return {k: [a for a in v if a != "noncommutative"] for k, v in assumptions.items()}
+
+
+def _factors(expression: sp.Expr) -> list[sp.Expr]:
+    return [f for f, _ in sp.factor_list(expression)[1] if f.free_symbols]
+
+
+def _covers(reported: sp.Expr, wanted: sp.Expr) -> bool:
+    """`reported != 0` implies `wanted != 0`: every irreducible factor of `wanted` divides `reported`."""
+    have = _factors(reported)
+    return all(
+        any(sp.expand(f - g) == 0 or sp.expand(f + g) == 0 for g in have) for f in _factors(wanted)
+    )
+
+
+def _conditions_reported(case: StepCase, reported: list[str]) -> bool:
+    """Every expected `!= 0` condition is implied by one the answer reported (a reported `n R != 0`
+    covers `n != 0` and `R != 0`). Extra conditions are allowed: they are not claims of the case."""
+    have = [e for e in (_nonzero_expression(c, case) for c in reported) if e is not None]
+    for wanted_latex in case.conditions:
+        wanted = _nonzero_expression(wanted_latex, case)
+        if wanted is not None and not any(_covers(r, wanted) for r in have):
+            return False
+    return True
 
 
 # --- the baseline: nearest existing operation -------------------------------------------------------
@@ -291,7 +367,64 @@ def run_existing(kb: KnowledgeBase, engine: Engine, case: StepCase) -> StepOutco
     return StepOutcome("ok" if texts else first_status, texts)
 
 
-ADAPTERS: dict[str, Adapter] = {"existing": run_existing}
+def _effort(outcome: StepOutcome, diagnostics: Diagnostics, steps: int) -> StepOutcome:
+    outcome.steps = steps
+    outcome.candidates = diagnostics.candidates
+    outcome.rejected = sum(diagnostics.rejected.values())
+    outcome.verify_ms = diagnostics.verify_ms
+    return outcome
+
+
+def run_steps(kb: KnowledgeBase, engine: Engine, case: StepCase) -> StepOutcome:
+    """The new operations, called the way the API calls them."""
+    expression = ExpressionInput(input=case.input, assumptions=case.assumptions)
+    if case.operation == "isolate":
+        isolated = engine.isolate(expression, case.variable or "")
+        solutions = [s.text for s in isolated.solutions]
+        conditions = [
+            *isolated.conditions_latex,
+            *isolated.excluded_latex,
+            *(c for s in isolated.solutions for c in s.conditions_latex),
+        ]
+        return _effort(
+            StepOutcome(isolated.status.value, solutions, isolated.message, conditions=conditions),
+            isolated.diagnostics,
+            len(isolated.steps),
+        )
+    if case.operation == "substitute":
+        done = engine.substitute(expression, case.relations, order=case.order)
+    elif case.operation == "collect":
+        done = engine.rewrite_at(expression, "collect", by=case.by)
+    else:
+        rule = None
+        if case.action == "rule":
+            entry = kb.get(case.rule_id or "")
+            rule = entry.rule if entry is not None else None
+        done = engine.rewrite_at(
+            expression,
+            case.action or "expand",
+            part=case.part,
+            occurrence=case.occurrence,
+            rule=rule,
+            reverse=case.reverse,
+            by=case.by,
+        )
+    texts = (
+        [done.result_text] if done.result_text and done.status.value in {"ok", "unchanged"} else []
+    )
+    return _effort(
+        StepOutcome(
+            done.status.value,
+            texts,
+            done.message,
+            conditions=[*done.conditions_latex, *done.restrictions_latex],
+        ),
+        done.diagnostics,
+        len(done.steps),
+    )
+
+
+ADAPTERS: dict[str, Adapter] = {"existing": run_existing, "steps": run_steps}
 
 
 # --- running and reporting --------------------------------------------------------------------------

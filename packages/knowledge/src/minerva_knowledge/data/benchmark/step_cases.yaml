@@ -61,8 +61,8 @@
 - {id: collect_common_mass, operation: collect, domain: physics, input: '\frac{1}{2} m u^2 + \frac{1}{2} m w^2 + m g y', by: ['m'],
    results: ['m*(g*y + u**2/2 + w**2/2)'], match: structural}
 - {id: collect_dispersion_relation, operation: collect, domain: physics,
-   input: '\omega^2 + \gamma \omega^2 - c^2 k^2 - \gamma c^2 k^2', by: ['\omega'],
-   results: ['omega**2*(gamma + 1) - c**2*gamma*k**2 - c**2*k**2'], match: structural}
+   input: '\omega^2 + \beta \omega^2 - c^2 k^2 - \beta c^2 k^2', by: ['\omega'],
+   results: ['omega**2*(beta + 1) - beta*c**2*k**2 - c**2*k**2'], match: structural}
 - {id: collect_function_of_symbol, operation: collect, domain: algebra, input: 'a \sin x + b \sin x + c \cos x', by: ['\sin x'],
    results: ['c*cos(x) + (a + b)*sin(x)'], match: structural}
 - {id: collect_symbol_absent, operation: collect, domain: algebra, input: 'x + 1', by: ['z'], status: unchanged}
