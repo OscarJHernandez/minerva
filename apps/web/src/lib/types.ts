@@ -282,7 +282,13 @@ export interface Reference {
   url?: string | null;
 }
 
-export type Verified = "symbolic" | "numeric" | "structural" | "dimensional" | "stated";
+export type Verified =
+  | "symbolic"
+  | "numeric"
+  | "structural"
+  | "dimensional"
+  | "distributional"
+  | "stated";
 
 export interface EntrySummary {
   id: string;
