@@ -118,6 +118,13 @@ MALFORMED_TEXT = {
     "arguments_not_json": "the arguments were not valid JSON",
     "arguments_not_object": "the arguments were not a JSON object",
 }
+# Statuses that are a definite answer from the engine, however unwelcome.
+ANSWER_STATUSES = frozenset({"unchanged", "unsupported", "conditions_not_satisfied"})
+DROPPED_ASSUMPTIONS_NOTE = (
+    "note: {symbols} was declared earlier in this conversation with assumptions, but this call did "
+    "not repeat them, so the result holds for general complex symbols. If the earlier assumptions "
+    "were meant to apply, call again with them."
+)
 MAX_UNPRODUCTIVE = 3  # consecutive executed calls that established nothing
 MAX_REPEATS = 2  # identical calls in one turn before the turn is wrapped up
 MIN_WRAP_UP_SECONDS = 3.0
@@ -652,9 +659,15 @@ async def _run_turn(
                         verify_ms=engine_ms,
                     )
                 accepted = evidence.accepted if evidence else False
-                unproductive = 0 if accepted else unproductive + 1
+                # An answer is not a stuck loop: "unchanged", "unsupported" and "conditions not
+                # satisfied" are what the engine established. Only errors, refused or invalid calls
+                # and unverified candidates count towards the limit.
+                answered = output.status in ANSWER_STATUSES
+                unproductive = 0 if (accepted or answered) else unproductive + 1
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
                 content = output.for_model + (f"\n{store.note_for(result_id)}" if result_id else "")
+                if dropped:
+                    content += "\n" + DROPPED_ASSUMPTIONS_NOTE.format(symbols=", ".join(dropped))
                 messages.append(
                     {"role": "tool", "tool_call_id": call.id, "name": call.name, "content": content}
                 )

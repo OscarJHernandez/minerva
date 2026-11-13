@@ -13,6 +13,7 @@ from typing import Any
 
 from ..llm import LLMClient
 from ..loop import AgentLimits, run_agent
+from ..segments import split_segments
 from ..tools import ToolContext
 from .cases import EvalCase
 from .score import CaseResult, Observation, score_case
@@ -29,11 +30,19 @@ async def observe(
 ) -> Observation:
     """Drive one turn and record what happened. Never raises: a crashed turn is an observation too."""
     history = [*case.history, {"role": "user", "content": case.prompt}]
+    # What the chat route passes the loop from earlier turns: the formulas written so far, which the
+    # claim checker uses as definitions. (Case histories are plain text: no earlier tool calls.)
+    prior_relations = [
+        seg.value
+        for message in history
+        for seg in split_segments(str(message.get("content", "")), set())
+        if seg.type != "text" and len(seg.value) <= 500
+    ][-60:]
     obs = Observation()
     started = time.monotonic()
 
     async def drive() -> None:
-        async for event in run_agent(llm, history, ctx, limits):
+        async for event in run_agent(llm, history, ctx, limits, prior_relations=prior_relations):
             kind, data = event["event"], event["data"]
             if kind == "tool_call":
                 obs.calls.append((data["name"], data["arguments"]))
