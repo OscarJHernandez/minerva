@@ -279,3 +279,67 @@ def test_distribution_statements_are_never_contradicted() -> None:
         result = Engine().check_claims([claim], {"x": ["real"]})[0]
         assert result.status == "unverified", claim
         assert "distribution" in result.detail or "Dirac" in result.detail
+
+
+# -- the matrix guard reads the text, not the parsed expression ----------------------------------
+@pytest.mark.parametrize(
+    "formula",
+    [
+        r"AB - BA = 0",  # zero as commuting symbols: SymPy cancels the matrices while reading
+        r"A B A^{-1} B^{-1} = 1",
+        r"\frac{AB}{BA} = 1",
+        r"(AB)^{-1} AB = 1",
+        r"AB - BA = x - x",
+        r"A_1 A_2 = A_2 A_1",  # a declared A covers its subscripted family
+        r"(A+B)^2 = A^2 + 2AB + B^2",
+        r"(A+B)(A-B) = A^2 - B^2",
+        r"(AB)^{-1} = A^{-1} B^{-1}",
+    ],
+)
+def test_false_or_conditional_matrix_identities_are_never_checked(formula: str) -> None:
+    [result] = check_claims([formula], {}, [], L, matrices=["A", "B"])
+    assert result.status == "unverified"
+    assert "matrix" in result.detail
+
+
+def test_a_matrix_alias_defined_earlier_is_a_matrix_too() -> None:
+    results = check_claims([r"CD = DC"], {}, [r"C = AB", r"D = C"], L, matrices=["A", "B"])
+    assert [r.status for r in results] == ["unverified"]
+
+
+def test_noncommutative_declarations_mean_matrix_not_a_broken_check() -> None:
+    results = check_claims(
+        [r"AB = BA", r"\sin^2 x + \cos^2 x = 1"],
+        {"A": ["noncommutative"], "B": ["noncommutative"], "x": ["not_an_assumption"]},
+        [],
+        L,
+    )
+    assert [r.status for r in results] == ["unverified", "holds"]
+
+
+def test_engine_keeps_checking_scalars_when_noncommutative_is_declared(engine: Engine) -> None:
+    results = engine.check_claims(
+        [r"AB = BA", r"\sin^2 x + \cos^2 x = 1"], {"A": ["noncommutative"], "x": ["bogus"]}
+    )
+    assert [r.status for r in results] == ["unverified", "holds"]
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [r"(AB)^T = A^T B^T", r"(AB)^T = B^T A^T", r"(AB)^{\top} = B^{\top} A^{\top}", r"A^{*} = A"],
+)
+def test_transpose_notation_is_not_read_as_a_positive_power(formula: str) -> None:
+    [result] = check_claims([formula], {}, [], L)
+    assert result.status == "unverified"
+    assert "transpose" in result.detail
+
+
+def test_unsupported_matrix_notation_is_not_checked() -> None:
+    for formula in (r"\det(AB) = \det(A)\det(B)", r"[A,B] = 0", r"\hat{H} = H"):
+        [result] = check_claims([formula], {}, [], L, matrices=["A", "B", "H"])
+        assert result.status in {"unverified", "unparsed"}
+
+
+def test_scalar_names_that_only_look_like_matrices_are_still_checked() -> None:
+    [result] = check_claims([r"(a+b)^2 = a^2 + 2ab + b^2"], {}, [], L, matrices=["A", "B"])
+    assert result.status == "holds"

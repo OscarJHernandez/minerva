@@ -242,6 +242,8 @@ and explains; it never computes and never decides correctness.
   coordinate change, constraint or equation of motion) is a relation, which sampling cannot judge, so it stays
   *unchecked* with a note, unless definitions stated earlier in the conversation decide it
   by substitution (the note names them).
+  An equation that mentions a matrix (declared by a tool call, as `noncommutative`, or in words) or uses transpose
+  notation is never sampled: it stays *unchecked* (see AGENTS.md, "Claims about matrices").
 - **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
   (prose and cards) and the tool trace so later turns have the same context.
 - **Trace and debug report:** every agent request has a `trace_id` (header `X-Trace-ID`, every stream event, the stored

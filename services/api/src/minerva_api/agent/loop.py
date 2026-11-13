@@ -21,6 +21,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
+from .declarations import declared_matrices
 from .events import (
     AssistantMessage,
     Block,
@@ -572,6 +573,7 @@ async def _run_turn(
                 if refusal is not None:
                     output = refusal
                 else:
+                    ctx.matrices = frozenset(matrix_names(trace)) | frozenset(prior_matrices)
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -838,17 +840,38 @@ async def _run_turn(
 
 
 def matrix_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
-    """Names this conversation declared as matrices in `matrix_calculus` calls."""
+    """Names this conversation declared as matrices: in `matrix_calculus` calls, or as
+    `noncommutative` in the assumptions of any tool call (a refused or failed call counts: the
+    cautious reading)."""
     names: set[str] = set()
     for step in trace:
         name = step.name if isinstance(step, TraceStep) else step.get("name")
         arguments = step.arguments if isinstance(step, TraceStep) else step.get("arguments", {})
-        if name != "matrix_calculus" or not isinstance(arguments, dict):
+        if not isinstance(arguments, dict):
             continue
-        for decl in arguments.get("matrices", []) or []:
-            if isinstance(decl, dict) and isinstance(decl.get("name"), str):
-                names.add(decl["name"])
+        if name == "matrix_calculus":
+            for decl in arguments.get("matrices", []) or []:
+                if isinstance(decl, dict) and isinstance(decl.get("name"), str):
+                    names.add(decl["name"])
+        declared = arguments.get("assumptions")
+        if isinstance(declared, dict):
+            names.update(
+                str(n)
+                for n, items in declared.items()
+                if isinstance(items, list) and "noncommutative" in items
+            )
     return names
+
+
+def _prose_of(blocks: list[Block]) -> list[str]:
+    """The model's own text of this turn, formulas put back in `$...$`, to read declarations from."""
+    texts: list[str] = []
+    for b in blocks:
+        if b.kind == "text":
+            texts.append(
+                "".join(s.value if s.type == "text" else f"${s.value}$" for s in b.segments)
+            )
+    return texts
 
 
 MAX_CLAIMS = 12
@@ -921,7 +944,7 @@ async def check_model_claims(
             for name, items in declared.items():
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
-    matrices = matrix_names(trace) | set(prior_matrices)
+    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(_prose_of(blocks))
     results = await run_in_threadpool(
         ctx.engine.check_claims,
         [s.value for s in pending],

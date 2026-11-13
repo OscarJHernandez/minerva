@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from .distributions.guard import contains_distribution
 from .errors import MinervaMathError
 from .latexparse import parse_latex
-from .models import Limits
+from .models import ALLOWED_ASSUMPTIONS, Limits
 from .restrictions import domain_restrictions
 from .verify import verify_equal
 
@@ -96,7 +96,8 @@ def check_claims(
     formula that is itself a definition is remembered for the ones after it. `matrices` are names the
     conversation declared as matrices: an equation that mentions one is never tested by sampling
     numbers (that would treat them as commuting scalars)."""
-    checker = ClaimChecker(assumptions, limits, frozenset(matrices))
+    clean, noncommutative = clean_assumptions(assumptions)
+    checker = ClaimChecker(clean, limits, frozenset(matrices) | noncommutative)
     for relation in relations:
         checker.learn(relation)
     results: list[ClaimCheck] = []
@@ -108,6 +109,69 @@ def check_claims(
         results.append(result)
         checker.learn(latex)
     return results
+
+
+def clean_assumptions(
+    assumptions: dict[str, list[str]],
+) -> tuple[dict[str, list[str]], frozenset[str]]:
+    """Split declared assumptions into the ones the parser can use and the names declared
+    `noncommutative`. A noncommutative symbol is a matrix or operator for this check (never sampled
+    as a number), and an assumption the parser does not know is dropped for that symbol instead of
+    making every claim in the conversation unparseable."""
+    clean: dict[str, list[str]] = {}
+    noncommutative: set[str] = set()
+    for name, items in assumptions.items():
+        if not isinstance(items, list):
+            continue
+        if "noncommutative" in items:
+            noncommutative.add(name)
+            continue
+        kept = [i for i in items if i in ALLOWED_ASSUMPTIONS]
+        if kept:
+            clean[name] = kept
+    return clean, frozenset(noncommutative)
+
+
+# A symbol in LaTeX source: a command (`\Omega`) or one letter with an optional subscript.
+_SYMBOL_TOKEN = re.compile(r"\\([A-Za-z]+)|([A-Za-z])(?:_\{?([A-Za-z0-9,]+)\}?)?")
+# Transpose and adjoint notation: the parser would read `^T` as a power with a symbol T.
+_SINGLE_SYMBOL = re.compile(r"[A-Za-z](?:_\{?[A-Za-z0-9,]+\}?)?")
+_TRANSPOSE = re.compile(
+    r"\^\s*\{?\s*(?:\\(?:mathrm|mathsf|text|operatorname)\s*\{\s*)?"
+    r"(?:[TH](?![A-Za-z])|\\(?:top|dagger|ast|intercal)\b|\*)"
+)
+_TRANSPOSE_DETAIL = (
+    "this uses transpose or adjoint notation; Minerva reads a superscript T as a symbol, not as a "
+    "transpose, so it does not test it"
+)
+_MATRIX_DETAIL = (
+    "this mentions a matrix declared in the conversation; Minerva does not test "
+    "matrix equations by sampling numbers (that would treat the matrices as "
+    "commuting scalars), so it is not checked unless a matrix calculation produced it"
+)
+
+
+def _norm(name: str) -> str:
+    return name.replace("{", "").replace("}", "").replace(",", "")
+
+
+def mentions_name(latex: str, names: frozenset[str] | set[str]) -> bool:
+    """True if the source text of `latex` contains one of `names` as a symbol. Read from the text,
+    before the parser can cancel anything: `AB - BA` is zero as commuting symbols, and the matrices
+    would no longer be visible in the parsed expression. A declared `A` covers `A_1`, `A_{ij}`."""
+    if not names:
+        return False
+    declared = {_norm(n) for n in names}
+    for match in _SYMBOL_TOKEN.finditer(latex):
+        command, letter, subscript = match.groups()
+        if command is not None:
+            token, base = _norm(command), _norm(command)
+        else:
+            base = letter
+            token = f"{letter}_{_norm(subscript)}" if subscript else letter
+        if token in declared or base in declared:
+            return True
+    return False
 
 
 def _text(latex: str) -> str:
@@ -160,9 +224,12 @@ class ClaimChecker:
     def learn(self, latex: str) -> None:
         """Remember `latex` if it is a definition. A later definition of a symbol replaces the earlier
         one; one that would define a symbol in terms of itself is ignored."""
+        if mentions_name(_text(latex), self.matrices) or _TRANSPOSE.search(latex):
+            self._learn_alias(latex)
+            return  # a definition of or by a matrix is not a scalar substitution
         parsed = self._parse(latex)
         if parsed and self._mentions_matrix(parsed):
-            return  # a definition of or by a matrix is not a scalar substitution
+            return
         if parsed and any(contains_distribution(p) for p in parsed):
             return
         found = _definition(parsed) if parsed else None
@@ -175,6 +242,15 @@ class ClaimChecker:
         if symbol not in self.definitions and len(self.definitions) >= MAX_DEFINITIONS:
             return
         self.definitions[symbol] = (rhs, _text(latex), self._given(used))
+
+    def _learn_alias(self, latex: str) -> None:
+        """`C = AB` with A, B matrices: C is a matrix too, so `CD = DC` is never sampled either."""
+        sides = split_equation(latex)
+        if sides is None or len(sides) != 2:
+            return
+        for one, other in (sides, sides[::-1]):
+            if _SINGLE_SYMBOL.fullmatch(one) and mentions_name(other, self.matrices):
+                self.matrices = self.matrices | {_norm(one)}
 
     def _mentions_matrix(self, parsed: list[sp.Expr]) -> bool:
         return bool(self.matrices) and any(
@@ -205,6 +281,10 @@ class ClaimChecker:
         sides = split_equation(latex)
         if sides is None:
             return ClaimCheck(status="not_an_equation")
+        if mentions_name(_text(latex), self.matrices):
+            return ClaimCheck(status="unverified", kind="relation", detail=_MATRIX_DETAIL)
+        if _TRANSPOSE.search(latex):
+            return ClaimCheck(status="unverified", kind="relation", detail=_TRANSPOSE_DETAIL)
         if _DISTRIBUTION_NOTATION.search(latex):
             # \delta(x) and \theta(x) read as products here, which would make a true statement about
             # a delta or step function look false; a delta cannot be sampled at all.
@@ -217,15 +297,7 @@ class ClaimChecker:
         except MinervaMathError as exc:
             return ClaimCheck(status="unparsed", detail=str(exc))
         if self._mentions_matrix(parsed):
-            return ClaimCheck(
-                status="unverified",
-                kind="relation",
-                detail=(
-                    "this mentions a matrix declared in the conversation; Minerva does not test "
-                    "matrix equations by sampling numbers (that would treat the matrices as "
-                    "commuting scalars), so it is not checked unless a matrix calculation produced it"
-                ),
-            )
+            return ClaimCheck(status="unverified", kind="relation", detail=_MATRIX_DETAIL)
         if any(contains_distribution(p) for p in parsed):
             return ClaimCheck(status="unverified", detail=_DISTRIBUTION_DETAIL)
         outcome, detail = _compare(parsed)
