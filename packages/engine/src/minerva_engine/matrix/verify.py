@@ -17,6 +17,7 @@ from __future__ import annotations
 import random
 import time
 from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 
 import mpmath as mp
@@ -31,6 +32,42 @@ QUAD_DIGITS = 16  # quadrature needs no more than the 1e-9 comparison; this keep
 STEP = mp.mpf("1e-12")
 SERIES_ORDER = 4
 QUAD_ERROR = mp.mpf("1e-12")
+
+
+@dataclass
+class Telemetry:
+    """Counters about one computation: times, tolerances and residuals only, never content."""
+
+    numeric_s: float = 0.0
+    exact_s: float = 0.0
+    digits: int | None = None
+    tolerance: float | None = None
+    max_residual: float | None = None  # largest relative residual among comparisons that agreed
+    fallbacks: list[str] = field(default_factory=list)
+
+    def note_residual(self, residual: float, tolerance: float) -> None:
+        self.tolerance = tolerance if self.tolerance is None else max(self.tolerance, tolerance)
+        if residual <= tolerance:
+            self.max_residual = (
+                residual if self.max_residual is None else max(self.max_residual, residual)
+            )
+
+    def fallback(self, code: str) -> None:
+        if code not in self.fallbacks:
+            self.fallbacks.append(code)
+
+
+_telemetry: ContextVar[Telemetry | None] = ContextVar("matrix_telemetry", default=None)
+
+
+def start_telemetry() -> Telemetry:
+    current = Telemetry()
+    _telemetry.set(current)
+    return current
+
+
+def telemetry() -> Telemetry | None:
+    return _telemetry.get()
 
 
 @dataclass
@@ -260,7 +297,12 @@ def max_abs(m: mp.matrix) -> mp.mpf:
 def close(a: mp.matrix, b: mp.matrix, tol: float = REL_TOL) -> bool:
     if a.rows != b.rows or a.cols != b.cols:
         return False
-    return bool(max_abs(a - b) <= tol * max(1, max_abs(a), max_abs(b)))
+    scale = max(1, max_abs(a), max_abs(b))
+    residual = max_abs(a - b) / scale
+    record = _telemetry.get()
+    if record is not None:
+        record.note_residual(float(residual), tol)
+    return bool(residual <= tol)
 
 
 @dataclass
@@ -286,6 +328,10 @@ def numeric_points(
     """Run `check` at random environments. It returns None for an unusable point."""
     rng = random.Random(seed)  # noqa: S311 - test points, not security
     count = Count()
+    record = _telemetry.get()
+    started = time.monotonic()
+    if record is not None:
+        record.digits = digits if record.digits is None else max(record.digits, digits)
     with mp.workdps(digits):
         for _ in range(SAMPLE_ATTEMPTS):
             if count.checked >= max_points:
@@ -301,6 +347,8 @@ def numeric_points(
                 continue
             count.checked += 1
             count.agreed += bool(verdict)
+    if record is not None:
+        record.numeric_s += time.monotonic() - started
     return count
 
 
@@ -595,12 +643,18 @@ def poly_equal(p: Poly, q: Poly, comm: Commutation, order: int = SERIES_ORDER) -
                 out[key] = out.get(key, sp.Integer(0)) + c
         return out
 
-    a, b = normal(p), normal(q)
-    for key in a.keys() | b.keys():
-        diff = sp.expand(a.get(key, sp.Integer(0)) - b.get(key, sp.Integer(0)))
-        if diff != 0 and sp.simplify(diff) != 0:
-            return False
-    return True
+    started = time.monotonic()
+    try:
+        a, b = normal(p), normal(q)
+        for key in a.keys() | b.keys():
+            diff = sp.expand(a.get(key, sp.Integer(0)) - b.get(key, sp.Integer(0)))
+            if diff != 0 and sp.simplify(diff) != 0:
+                return False
+        return True
+    finally:
+        record = _telemetry.get()
+        if record is not None:
+            record.exact_s += time.monotonic() - started
 
 
 def series_terms_equal(a: Terms, b: Terms, comm: Commutation) -> bool | None:

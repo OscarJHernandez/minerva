@@ -99,6 +99,11 @@ class MatrixCalculusInput(BaseModel):
     variable: str | None = Field(default=None, min_length=1, max_length=SYMBOL_NAME_MAX)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
+    trace_id: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9_-]{1,64}$",
+        description="Opaque id that correlates this computation with the request that asked for it",
+    )
 
 
 class MatrixStep(BaseModel):
@@ -132,6 +137,44 @@ class MatrixVerification(BaseModel):
     note: str = ""
 
 
+Commutation = Literal["not_used", "declared", "from_entries", "mixed"]
+
+
+class MatrixStage(BaseModel):
+    name: Literal["parse", "transform", "verify_numeric", "verify_exact", "total"]
+    ms: float
+
+
+class MatrixMethodTried(BaseModel):
+    id: str
+    outcome: Literal["selected", "blocked", "unsupported", "no_match"]
+
+
+class MatrixDiagnostics(BaseModel):
+    """How a result was reached, without any of the mathematics: no names, expressions, entries or
+    bounds. Safe to log and to paste into a bug report; `trace_id` ties the agent request, the
+    engine operation and the verification together."""
+
+    trace_id: str | None = None
+    method: str | None = None
+    methods_tried: list[MatrixMethodTried] = Field(default_factory=list)
+    dimensions: list[tuple[int, int]] = Field(default_factory=list)  # of the matrices used
+    matrices: int = 0
+    explicit: int = 0
+    time_dependent: int = 0
+    commutation: Commutation = "not_used"  # where the commutation the method used came from
+    invertibility: Commutation = "not_used"
+    stages: list[MatrixStage] = Field(default_factory=list)
+    digits: int | None = None  # working precision of the numeric checks
+    tolerance: float | None = None  # relative tolerance of the comparisons
+    max_residual: float | None = None  # largest residual among comparisons that agreed
+    points_checked: int = 0
+    points_agreed: int = 0
+    verification: str = ""  # short id of the checks that ran
+    fallbacks: list[str] = Field(default_factory=list)  # codes such as symbolic_timeout
+    failure_reason: str | None = None  # a code, never a free-text message
+
+
 class MatrixCalculusResult(BaseModel):
     status: Status
     action: Action | None = None
@@ -152,3 +195,4 @@ class MatrixCalculusResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     message: str = ""
     duration_ms: int = 0
+    diagnostics: MatrixDiagnostics | None = None

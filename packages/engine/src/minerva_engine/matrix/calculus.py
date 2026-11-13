@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import re
 import time
+from dataclasses import dataclass, field
 from itertools import combinations
+from typing import Literal
 
 import sympy as sp
 
@@ -32,31 +34,147 @@ from .models import (
     MatrixBlocked,
     MatrixCalculusInput,
     MatrixCalculusResult,
+    MatrixDiagnostics,
+    MatrixMethodTried,
+    MatrixStage,
     MatrixVerification,
 )
-from .verify import Evaluator, Setup
+from .verify import Evaluator, Setup, Telemetry, start_telemetry
 
 DEADLINE_FRACTION = 0.8
 RESULT_CHARS = 20_000
 
 
+@dataclass
+class _Trace:
+    """What the diagnostics need to know about a computation while it is running."""
+
+    started: float
+    record: Telemetry
+    problem: Problem | None = None
+    labels: dict[str, str] = field(default_factory=dict)
+    outcome: Outcome | None = None
+    parse_s: float | None = None
+    select_s: float | None = None
+
+
 def matrix_calculus(data: MatrixCalculusInput, limits: Limits) -> MatrixCalculusResult:
     started = time.monotonic()
+    trace = _Trace(started, start_telemetry())
     deadline = started + DEADLINE_FRACTION * limits.timeout_seconds
     try:
-        return _run(data, limits, deadline)
+        result = _run(data, limits, deadline, trace)
     except LimitError as exc:
-        return _fail(data, Status.RESOURCE_LIMIT, str(exc))
+        result = _fail(data, Status.RESOURCE_LIMIT, str(exc))
     except UnsupportedMatrixExpression as exc:
-        return _fail(data, Status.UNSUPPORTED, str(exc))
+        result = _fail(data, Status.UNSUPPORTED, str(exc))
     except MinervaMathError as exc:
-        return _fail(data, Status.PARSE_ERROR, str(exc))
+        result = _fail(data, Status.PARSE_ERROR, str(exc))
     except RecursionError:
-        return _fail(data, Status.RESOURCE_LIMIT, "The expression is nested too deeply.")
+        result = _fail(data, Status.RESOURCE_LIMIT, "The expression is nested too deeply.")
+    result.diagnostics = _diagnostics(data, result, trace)
+    return result
 
 
 def _fail(data: MatrixCalculusInput, status: Status, message: str) -> MatrixCalculusResult:
     return MatrixCalculusResult(status=status, action=data.action, message=message)
+
+
+# -- diagnostics ------------------------------------------------------------------------------
+VERIFICATION_IDS = {
+    "exp_explicit": "expm_samples",
+    "exp_merge_commuting": "expm_samples+series",
+    "exp_derivative": "central_difference+series",
+    "exp_frechet_derivative": "central_difference+quadrature+series",
+    "integrate_polynomial": "quadrature+series",
+    "exp_integral_invertible": "central_difference+series",
+    "duhamel": "quadrature+series",
+    "sylvester_reduction": "quadrature+residual",
+    "block_exponential": "quadrature+residual",
+    "sylvester_equation": "quadrature+series",
+    "evolution_commuting": "central_difference+initial_condition+series",
+    "evolution_numeric": "rk4+backward+liouville",
+}
+
+
+def _failure_code(result: MatrixCalculusResult) -> str | None:
+    status = result.status
+    if status is Status.OK:
+        return None
+    if status is Status.RESOURCE_LIMIT:
+        text = result.message.lower()
+        return "time_budget" if "time" in text else "size_limit"
+    if status is Status.NOT_VERIFIED:
+        return (
+            "exact_disagreement"
+            if result.verification and (result.verification.symbolic_zero is False)
+            else "numeric_disagreement"
+        )
+    return status.value
+
+
+def _source(
+    statements: list[str], labels: dict[str, str]
+) -> Literal["not_used", "declared", "from_entries", "mixed"]:
+    return _source_kind({labels[a] for a in statements if a in labels})
+
+
+def _source_kind(kinds: set[str]) -> Literal["not_used", "declared", "from_entries", "mixed"]:
+    if kinds == {"declared"}:
+        return "declared"
+    if kinds == {"from the entries"}:
+        return "from_entries"
+    return "mixed" if kinds else "not_used"
+
+
+def _diagnostics(
+    data: MatrixCalculusInput, result: MatrixCalculusResult, trace: _Trace
+) -> MatrixDiagnostics:
+    now = time.monotonic()
+    record = trace.record
+    verify_s = record.numeric_s + record.exact_s
+    stages: list[MatrixStage] = []
+    if trace.parse_s is not None:
+        stages.append(MatrixStage(name="parse", ms=round(trace.parse_s * 1000, 2)))
+    if trace.select_s is not None:
+        transform = max(0.0, trace.select_s - verify_s)
+        stages.append(MatrixStage(name="transform", ms=round(transform * 1000, 2)))
+        stages.append(MatrixStage(name="verify_numeric", ms=round(record.numeric_s * 1000, 2)))
+        stages.append(MatrixStage(name="verify_exact", ms=round(record.exact_s * 1000, 2)))
+    stages.append(MatrixStage(name="total", ms=round((now - trace.started) * 1000, 2)))
+    p = trace.problem
+    used_shapes = sorted({p.setup.shapes[n] for n in matrices_in(p.terms)}) if p is not None else []
+    assumptions = list(result.assumptions_used)
+    labelled = [a.rsplit(" (", 1)[0] for a in assumptions]
+    invertible = {
+        "from the entries" if a.endswith("(from the entries)") else "declared"
+        for a in assumptions
+        if "is invertible (" in a
+    }
+    v = result.verification
+    return MatrixDiagnostics(
+        trace_id=data.trace_id,
+        method=result.method,
+        methods_tried=[
+            MatrixMethodTried(id=m, outcome=o)
+            for m, o in (p.scratch.get("tried", []) if p is not None else [])
+        ],
+        dimensions=used_shapes,
+        matrices=len(data.matrices),
+        explicit=sum(1 for d in data.matrices if d.entries is not None),
+        time_dependent=len(p.setup.dependent) if p is not None else 0,
+        commutation=_source(labelled, trace.labels),
+        invertibility=_source_kind(invertible),
+        stages=stages,
+        digits=record.digits,
+        tolerance=record.tolerance,
+        max_residual=record.max_residual,
+        points_checked=v.points_checked if v else 0,
+        points_agreed=v.points_agreed if v else 0,
+        verification=VERIFICATION_IDS.get(result.method or "", "") if v else "",
+        fallbacks=list(record.fallbacks),
+        failure_reason=_failure_code(result),
+    )
 
 
 def _parse_scalar(
@@ -76,7 +194,9 @@ def _parse_scalar(
     return expr
 
 
-def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCalculusResult:
+def _run(
+    data: MatrixCalculusInput, limits: Limits, deadline: float, trace: _Trace
+) -> MatrixCalculusResult:
     from ..ops import parse_expression  # local import: ops imports this package lazily
 
     names = [d.name for d in data.matrices]
@@ -113,6 +233,8 @@ def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCa
 
     symbols = _scalar_symbols(terms, explicit, [x for x in (lower, upper) if x is not None], var)
     setup = Setup(shapes, explicit, comm, cliques, var, frozenset(dependent & used))
+    trace.labels = labels
+    trace.parse_s = time.monotonic() - trace.started
     problem = Problem(
         data.action,
         terms,
@@ -125,7 +247,11 @@ def _run(data: MatrixCalculusInput, limits: Limits, deadline: float) -> MatrixCa
         upper,
         deadline,
     )
+    trace.problem = problem
+    selecting = time.monotonic()
     method, attempt, blocked, reason = select(problem)
+    trace.select_s = time.monotonic() - selecting
+    trace.outcome = attempt.outcome
     base = MatrixCalculusResult(
         status=Status.OK,
         action=data.action,

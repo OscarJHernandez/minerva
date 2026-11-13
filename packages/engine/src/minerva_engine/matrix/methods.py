@@ -60,6 +60,7 @@ from .verify import (
     poly_subs,
     series_of_terms,
     series_terms_equal,
+    telemetry,
 )
 
 UNKNOWN = "__X__"  # the unknown matrix of a Sylvester equation
@@ -143,6 +144,9 @@ def symbolic_budget(p: Problem, fraction: float = 0.35) -> Iterator[None]:
     seconds = max(0.5, (p.deadline - time.monotonic()) * fraction)
 
     def expired(signum: int, frame: Any) -> None:
+        record = telemetry()
+        if record is not None:
+            record.fallback("symbolic_timeout")
         raise SymbolicTimeout
 
     previous = signal.signal(signal.SIGALRM, expired)
@@ -1200,6 +1204,9 @@ def _evaluate_block_explicit(p: Problem, red: Reduction) -> tuple[sp.Matrix, boo
     if len(tmpl.exps) == 2:
         x0 = x0 * (tmpl.exps[1][3] * qm).exp()
     if sum(sp.count_ops(e) for e in x0) > MAX_CLOSED_FORM_OPS:
+        record = telemetry()
+        if record is not None:
+            record.fallback("closed_form_too_large")
         return None  # eigenvalues without a short closed form: keep the exact representation
     x0 = _simplified(x0)
     rhs = explicit_value(_core_value_at(p, red.core, p.upper), p.explicit, n) - explicit_value(
@@ -1389,16 +1396,25 @@ METHODS: tuple[Method, ...] = (
 
 
 def select(p: Problem) -> tuple[Method | None, Attempt, list[MatrixBlocked], str | None]:
-    """Try the methods for this action in order. Returns (method, attempt, blocked, unsupported)."""
+    """Try the methods for this action in order. Returns (method, attempt, blocked, unsupported).
+    What each method answered is kept in `p.scratch["tried"]` for the diagnostics."""
     blocked: list[MatrixBlocked] = []
     reason: str | None = None
+    tried: list[tuple[str, str]] = p.scratch.setdefault("tried", [])
     for method in METHODS:
         if p.action not in method.actions:
             continue
         attempt = method.run(p)
         blocked.extend(attempt.blocked)
         if attempt.outcome is not None:
+            tried.append((method.id, "selected"))
             return method, attempt, blocked, reason
-        if attempt.unsupported and reason is None:
-            reason = attempt.unsupported
+        if attempt.unsupported:
+            tried.append((method.id, "unsupported"))
+            if reason is None:
+                reason = attempt.unsupported
+        elif attempt.blocked:
+            tried.append((method.id, "blocked"))
+        else:
+            tried.append((method.id, "no_match"))
     return None, Attempt(), blocked, reason

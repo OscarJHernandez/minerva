@@ -52,6 +52,7 @@ from .verify import (
     poly_mul,
     poly_subs,
     series_of_terms,
+    telemetry,
 )
 
 MAX_SIZE = 4
@@ -603,6 +604,11 @@ def run_evolution_numeric(p: Problem) -> Attempt:
     count.agreed += d <= REVERSAL_TOL
     ok_liouville, liouville_error = _liouville(generator, var, p.lower, p.upper, states[-1], n)
     worst = max(worst, liouville_error)
+    record = telemetry()
+    if record is not None:
+        record.numeric_s += elapsed_integrate
+        record.digits = 15  # double precision
+        record.note_residual(worst, max(METHOD_TOL, REVERSAL_TOL, LIOUVILLE_TOL))
     count.checked += 1  # (3) det U = exp(integral of trace A), by quadrature
     count.agreed += ok_liouville
     count.checked += 1  # (4) the initial condition holds exactly
@@ -679,3 +685,28 @@ def _liouville(
         have = mp.det(matrix)
         error = float(abs(have - want) / max(1, abs(want)))
     return error <= LIOUVILLE_TOL, error
+
+
+def rk4_observed_order(
+    generator: sp.Matrix, var: sp.Symbol, t0: float, t1: float, steps: int = 200
+) -> tuple[list[float], float]:
+    """Errors of fixed-step RK4 at N, 2N and 4N steps against the adaptive solution, and the
+    observed order log2(e_N / e_2N). A measurement of convergence for the benchmark: for a smooth
+    generator the order is close to 4."""
+    n = generator.rows
+    rows = generator.tolist()
+    fn_entries = sp.lambdify(var, rows, modules="cmath")
+
+    def gen(t: float) -> list[list[complex]]:
+        return [[complex(x) for x in row] for row in fn_entries(complex(t))]
+
+    field = _Field(gen, n)
+    identity = [complex(1.0 if i == j else 0.0) for i in range(n) for j in range(n)]
+    deadline = time.monotonic() + 60.0
+    reference, _ = _dopri(field, identity, [t0, t1], deadline)
+    errors = []
+    for factor in (1, 2, 4):
+        final = _rk4(field, identity, [t0, t1], [steps * factor], deadline)[-1]
+        errors.append(_distance(final, reference[-1]))
+    order = math.log2(errors[0] / errors[1]) if errors[0] > 0 and errors[1] > 0 else float("nan")
+    return errors, order

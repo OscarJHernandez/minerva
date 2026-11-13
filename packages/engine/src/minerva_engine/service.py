@@ -11,7 +11,7 @@ from .expansion import ExpansionReport
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
-from .matrix import MatrixCalculusInput, MatrixCalculusResult
+from .matrix import MatrixCalculusInput, MatrixCalculusResult, MatrixDiagnostics, MatrixStage
 from .models import (
     ExpressionInput,
     FormulaReading,
@@ -103,7 +103,15 @@ class Engine:
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             status, message = self._failure_status(outcome.outcome)
             return MatrixCalculusResult(
-                status=status, action=request.action, message=message, duration_ms=ms
+                status=status,
+                action=request.action,
+                message=message,
+                duration_ms=ms,
+                diagnostics=MatrixDiagnostics(
+                    trace_id=request.trace_id,
+                    stages=[MatrixStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
             )
         result = MatrixCalculusResult(**outcome.value)
         result.duration_ms = ms
