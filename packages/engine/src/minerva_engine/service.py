@@ -7,6 +7,7 @@ from typing import Any
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
@@ -92,6 +93,23 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return IntegrateResult(status=status, message=message, duration_ms=ms)
         result = IntegrateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def distribution(self, request: DistributionInput) -> DistributionResult:
+        """Simplify, integrate or differentiate an expression with Dirac deltas and step
+        functions; shown only if the exact conditions hold and a test-function pairing agrees."""
+        outcome, ms = self._run("distribution", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DistributionResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = DistributionResult(**outcome.value)
         result.duration_ms = ms
         return result
 

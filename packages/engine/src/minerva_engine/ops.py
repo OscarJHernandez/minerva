@@ -187,6 +187,14 @@ def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_distribution(payload: dict[str, Any]) -> dict[str, Any]:
+    from .distributions.models import DistributionInput
+    from .distributions.operation import distribution
+
+    result = distribution(DistributionInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
     from .integrate import integrate
 
@@ -678,6 +686,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "differentiate": op_differentiate,
     "series": op_series,
     "integrate": op_integrate,
+    "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
