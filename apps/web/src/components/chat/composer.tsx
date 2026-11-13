@@ -112,7 +112,7 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
           placeholder="Describe a problem, or paste a formula between $ signs…"
           aria-label="Message"
           aria-keyshortcuts="Control+Enter Meta+Enter"
-          className="block max-h-[40vh] min-h-[5.5rem] w-full resize-y bg-transparent px-3.5 pb-1 pt-3 text-[15px] leading-6 outline-none"
+          className="block max-h-[40vh] min-h-[5.5rem] w-full resize-y bg-transparent px-3.5 pb-1 pt-3 text-[15px] leading-6 outline-none!"
         />
         <div className="flex items-center gap-1 px-2 pb-2">
           <button
