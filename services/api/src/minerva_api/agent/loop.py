@@ -22,7 +22,7 @@ from .events import (
     TraceStep,
     TurnDebug,
 )
-from .llm import LLMClient, LLMError
+from .llm import LLMClient, LLMError, Usage
 from .prompts import SYSTEM_PROMPT
 from .segments import split_segments
 from .tools import ToolContext, ToolOutput, _error, execute, known_formulas, schemas
@@ -79,6 +79,7 @@ async def run_agent(
         request_id=info.request_id,
         api_version=info.api_version,
         mode=info.mode,
+        provider=getattr(llm, "provider", ""),
         model=llm.name,
         prompt_sha=prompt_sha(),
         max_steps=limits.max_steps,
@@ -97,11 +98,17 @@ async def run_agent(
             step_text: list[str] = []
             calls = []
             call_started = time.monotonic()
+            first_token_ms: int | None = None
+            usage: Usage | None = None
             try:
                 # The model host's own timeout is per read: a stream that keeps trickling is cut here.
                 async with asyncio.timeout(remaining()):
                     async for chunk in llm.chat(messages, schemas()):
+                        if chunk.usage is not None:
+                            usage = chunk.usage
                         if chunk.text:
+                            if first_token_ms is None:
+                                first_token_ms = _ms(call_started)
                             step_text.append(chunk.text)
                             yield {"event": "text", "data": {"delta": chunk.text}}
                         calls.extend(chunk.tool_calls)
@@ -114,7 +121,15 @@ async def run_agent(
                 break
             text = "".join(step_text)
             debug.llm_calls.append(
-                LLMCallDebug(ms=_ms(call_started), text_chars=len(text), tool_calls=len(calls))
+                LLMCallDebug(
+                    ms=_ms(call_started),
+                    text_chars=len(text),
+                    tool_calls=len(calls),
+                    first_token_ms=first_token_ms,
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    cost_usd=usage.cost_usd if usage else None,
+                )
             )
             if text:
                 full_text.append(text)
@@ -126,7 +141,7 @@ async def run_agent(
                     "role": "assistant",
                     "content": text,
                     "tool_calls": [
-                        {"function": {"name": c.name, "arguments": c.arguments}} for c in calls
+                        {"id": c.id, "name": c.name, "arguments": c.arguments} for c in calls
                     ],
                 }
             )
@@ -136,7 +151,8 @@ async def run_agent(
                     messages.append(
                         {
                             "role": "tool",
-                            "tool_name": call.name,
+                            "tool_call_id": call.id,
+                            "name": call.name,
                             "content": "error: not run, the limit on tool calls or time for "
                             "one answer was reached",
                         }
@@ -170,11 +186,17 @@ async def run_agent(
                         for_model=output.for_model,
                         duration_ms=_ms(tool_started),
                         status=output.status,
+                        call_id=call.id,
                     )
                 )
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
                 messages.append(
-                    {"role": "tool", "tool_name": call.name, "content": output.for_model}
+                    {
+                        "role": "tool",
+                        "tool_call_id": call.id,
+                        "name": call.name,
+                        "content": output.for_model,
+                    }
                 )
             if truncated:
                 break
@@ -183,6 +205,7 @@ async def run_agent(
     except (LLMError, Exception) as exc:
         message = str(exc) if isinstance(exc, LLMError) else "The assistant hit an internal error."
         debug.error = message
+        debug.error_kind = exc.kind if isinstance(exc, LLMError) else "internal"
         debug.duration_ms = _ms(started)
         yield {
             "event": "error",

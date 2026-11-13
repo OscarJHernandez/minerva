@@ -31,6 +31,9 @@ export function MessageView({
           <RichText key={i} segments={block.segments} />
         ),
       )}
+      {message.content.debug?.provider === "openrouter" && (
+        <p className="text-xs text-muted">via OpenRouter · {message.content.debug.model}</p>
+      )}
       {getReport && <DebugPanel content={message.content} getReport={getReport} />}
     </div>
   );
