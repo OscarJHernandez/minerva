@@ -213,16 +213,23 @@ class Engine:
         formulas: list[str],
         assumptions: dict[str, list[str]] | None = None,
         relations: list[str] | None = None,
+        matrices: list[str] | None = None,
     ) -> list[ClaimCheck]:
         """Numerically test equations written by the model. Failures leave claims unchecked.
 
         `relations` are formulas stated earlier in the conversation; definitions among them are used
-        by substitution (see `claims.py`)."""
+        by substitution (see `claims.py`). `matrices` are names declared as matrices in the
+        conversation: equations that mention them are never tested by sampling numbers."""
         if not formulas:
             return []
         outcome, _ = self._run(
             "check_claims",
-            {"formulas": formulas, "assumptions": assumptions or {}, "relations": relations or []},
+            {
+                "formulas": formulas,
+                "assumptions": assumptions or {},
+                "relations": relations or [],
+                "matrices": matrices or [],
+            },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             return [

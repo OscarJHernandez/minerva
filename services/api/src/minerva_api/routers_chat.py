@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
@@ -22,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from .agent.events import AssistantMessage, Block, TraceStep
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, TurnInfo, run_agent
+from .agent.loop import AgentLimits, TurnInfo, matrix_names, run_agent
 from .agent.segments import normalize, split_segments
 from .agent.tools import PerturbationArgs, ToolContext, execute
 from .agent.vision import FormulaReader, clean_candidates
@@ -261,7 +262,8 @@ def _run_tool_directly(
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests; slow down.")
     conversation = _owned(db, conversation_id, user.id)
     started = time.monotonic()
-    output = execute(name, arguments, ToolContext(engine=engine, kb=kb))
+    request_id = str(structlog.contextvars.get_contextvars().get("request_id", "")) or None
+    output = execute(name, arguments, ToolContext(engine=engine, kb=kb, trace_id=request_id))
     elapsed = int((time.monotonic() - started) * 1000)
     content = AssistantMessage(
         text="",
@@ -408,6 +410,15 @@ def _claim_context(
     return relations[-MAX_RELATIONS:], assumptions
 
 
+def _prior_matrices(messages: list[ChatMessage]) -> list[str]:
+    """Matrix names declared in earlier `matrix_calculus` calls of this conversation."""
+    steps: list[dict[str, Any]] = []
+    for m in messages[-HISTORY_MESSAGES:]:
+        if m.role != "user":
+            steps.extend(s for s in m.content.get("trace", []) if isinstance(s, dict))
+    return sorted(matrix_names(steps))
+
+
 def _title(text: str) -> str:
     """First words of the first message. Formulas keep their `$`, so the list can typeset them."""
     short = re.sub(r"\s+", " ", text).strip()[:60]
@@ -447,6 +458,7 @@ async def send_message(
     )
     history, prior_known = _history(previous)
     prior_relations, prior_assumptions = _claim_context(previous, body.content)
+    prior_matrices = _prior_matrices(previous)
     history.append({"role": "user", "content": body.content})
 
     if not previous:
@@ -479,6 +491,7 @@ async def send_message(
                 prior_known=prior_known,
                 prior_relations=prior_relations,
                 prior_assumptions=prior_assumptions,
+                prior_matrices=prior_matrices,
                 info=info,
             ):
                 if event["event"] == "message":

@@ -316,6 +316,25 @@ CASES = [
         final_matches=re.compile(r"not evaluated|equation|representation", re.I),
         informational=True,
     ),
+    Case(
+        "matrix-frechet-not-rewritten",
+        r"Differentiate $\exp(t^2 A + t B)$ in t, where A and B are 2x2 matrices.",
+        {"matrix_calculus"},
+        args_check=lambda t, a: a.get("action") == "differentiate" and not a.get("commuting"),
+        final_matches=re.compile(r"integral|representation|not commute|commut", re.I),
+        informational=True,
+    ),
+    Case(
+        "matrix-evolution-asks-for-the-span",
+        r"Solve dU/dt = A(t) U with U(0) = I for the 2x2 matrix A(t) = [[0, t], [-1, 0]].",
+        {"matrix_calculus"},
+        tools_optional=True,  # asking for the end time first is the right answer
+        args_check=lambda t, a: (
+            a.get("action") != "evolve" or not a.get("upper")
+        ),  # no invented span
+        final_matches=re.compile(r"end|until|span|how long|up to|which time|what time", re.I),
+        informational=True,
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

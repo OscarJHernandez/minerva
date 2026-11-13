@@ -30,6 +30,13 @@ ALLOWED_FIELDS = frozenset(
         "tool_calls",
         "tool_errors",
         "logger",
+        # matrix calculus: ids, enums and numbers only, never names, entries or expressions
+        "trace_id",
+        "matrix_method",
+        "result_kind",
+        "commutation",
+        "verify_ms",
+        "reason",
     }
 )
 

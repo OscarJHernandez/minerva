@@ -1214,3 +1214,120 @@ def test_definitions_from_earlier_turns_and_earlier_assumptions_are_used(ctx: To
         )
     )
     assert next(s for s in segments_of(msg) if s["type"] == "math")["status"] == "checked"
+
+
+# -- the claim checker and matrices declared by tool calls -------------------------------------------
+def test_matrix_names_come_from_matrix_tool_calls_only() -> None:
+    from minerva_api.agent.events import TraceStep
+    from minerva_api.agent.loop import matrix_names
+
+    trace = [
+        TraceStep(
+            id="a",
+            name="matrix_calculus",
+            arguments={"matrices": [{"name": "A", "rows": 2}, {"name": "Bx", "rows": 2}]},
+            for_model="",
+        ),
+        TraceStep(id="b", name="simplify", arguments={"matrices": [{"name": "Z"}]}, for_model=""),
+    ]
+    assert matrix_names(trace) == {"A", "Bx"}
+    assert matrix_names(
+        [{"name": "matrix_calculus", "arguments": {"matrices": [{"name": "Q"}]}}]
+    ) == {"Q"}
+    assert matrix_names([{"name": "matrix_calculus", "arguments": {"matrices": "bad"}}]) == set()
+
+
+def test_a_model_written_matrix_equation_is_not_called_checked(ctx: ToolContext) -> None:
+    from minerva_api.agent.events import Block, Segment, TraceStep
+    from minerva_api.agent.loop import check_model_claims
+
+    trace = [
+        TraceStep(
+            id="a",
+            name="matrix_calculus",
+            arguments={"matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]},
+            for_model="",
+        )
+    ]
+
+    def block() -> Block:
+        return Block(
+            kind="text",
+            segments=[
+                Segment(type="math", value=r"\exp(A)\exp(B) = \exp(A+B)", status="unchecked"),
+                Segment(type="math", value=r"\exp(s)\exp(u) = \exp(s+u)", status="unchecked"),
+            ],
+        )
+
+    with_matrices = block()
+    asyncio.run(check_model_claims([with_matrices], ctx, trace))
+    matrix_claim, scalar_claim = with_matrices.segments
+    assert matrix_claim.status == "unchecked"  # never "checked" for matrices
+    assert scalar_claim.status == "checked"
+    # an earlier turn's declaration protects this turn too
+    later = block()
+    asyncio.run(check_model_claims([later], ctx, [], prior_matrices=["A", "B"]))
+    assert later.segments[0].status == "unchecked" and later.segments[1].status == "checked"
+    # without any declaration the formula is tested as a scalar identity, as before
+    plain = block()
+    asyncio.run(check_model_claims([plain], ctx, []))
+    assert plain.segments[0].status == "checked"
+
+
+# -- matrix calculus tool: new capabilities -------------------------------------------------------
+def test_matrix_tool_reports_a_frechet_derivative_as_a_representation(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(t^2 A + t B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "differentiate",
+            "variable": "t",
+        },
+        ctx,
+    )
+    assert out.card.type == "matrix" and out.status == "ok"
+    assert "method=exp_frechet_derivative" in out.for_model
+    assert "evaluated=NO (do not call this an evaluated result)" in out.for_model
+    assert "NOT APPLIED" in out.for_model and "X'" in out.for_model
+    result = out.card.data["result"]
+    assert result["result_latex"] in out.known_latex
+    assert any(b["latex"] in out.known_latex for b in result["blocked"] if b["latex"])
+
+
+def test_matrix_tool_labels_a_numerical_solution_an_approximation(ctx: ToolContext) -> None:
+    arguments = {
+        "latex": "A(t)",
+        "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+        "action": "evolve",
+        "variable": "t",
+        "upper": "1",
+    }
+    out = execute("matrix_calculus", arguments, ctx)
+    assert out.status == "ok" and "kind=numeric" in out.for_model
+    assert "numerical approximation" in out.for_model and "not a closed form" in out.for_model
+    assert "evaluated=yes" not in out.for_model
+    without_span = execute("matrix_calculus", {**arguments, "upper": None}, ctx)
+    assert without_span.status == "unsupported" and "end time" in without_span.for_model
+
+
+def test_matrix_tool_passes_a_valid_trace_id_to_the_engine(ctx: ToolContext) -> None:
+    arguments = {"latex": "A", "matrices": [{"name": "A", "rows": 2}]}
+    traced = dataclasses.replace(ctx, trace_id="req-1-abcd1234")
+    out = execute("matrix_calculus", arguments, traced)
+    assert out.card.data["result"]["diagnostics"]["trace_id"] == "req-1-abcd1234"
+    assert "trace_id" not in out.card.data["request"]
+    invalid = dataclasses.replace(ctx, trace_id="not valid!")
+    out = execute("matrix_calculus", arguments, invalid)
+    assert out.card.data["result"]["diagnostics"]["trace_id"] is None
+
+
+def test_matrix_tool_schema_asks_for_numbers_the_user_chooses(ctx: ToolContext) -> None:
+    from minerva_api.agent.tools import schemas
+
+    schema = next(s for s in schemas() if s["function"]["name"] == "matrix_calculus")
+    properties = schema["function"]["parameters"]["properties"]
+    assert "evolve" in properties["action"]["enum"]
+    assert "USER" in properties["upper"]["description"]
+    assert "USER" in properties["self_commuting"]["description"]
+    assert "depends_on" in str(schema["function"]["parameters"])

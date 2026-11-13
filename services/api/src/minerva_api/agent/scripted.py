@@ -59,7 +59,11 @@ class ScriptedLLM:
             }
             var = next((v for v in "wtxs" if v in bare), "t")
             bounds = re.search(r"from\s+(-?[\w\\]+)\s+to\s+(-?[\w\\]+)", lower)
-            if "integra" in lower:
+            if "evolution" in lower or "evolve" in lower:
+                mat_args.update(action="evolve", variable="t")
+                if (end := re.search(r"until\s+(-?[\d.]+)", lower)) is not None:
+                    mat_args["upper"] = end.group(1)
+            elif "integra" in lower:
                 mat_args.update(action="integrate", variable=var)
                 if bounds:
                     mat_args.update(lower=bounds.group(1), upper=bounds.group(2))
@@ -67,6 +71,10 @@ class ScriptedLLM:
                 mat_args.update(action="differentiate", variable=var)
             if pair := re.search(r"\b([A-Z]) and ([A-Z]) commute", user):
                 mat_args["commuting"] = [[pair.group(1), pair.group(2)]]
+            if "time-dependent" in lower or "depends on" in lower:
+                mat_args.setdefault("variable", "t")
+                for decl in mat_args["matrices"]:
+                    decl["depends_on"] = mat_args["variable"]
             async for c in self._say(
                 "I will treat these as 2x2 matrices and run the matrix calculus. "
             ):
@@ -408,10 +416,16 @@ class ScriptedLLM:
             found = re.search(r"status=(\w+)", content)
             status = found.group(1) if found else "failed"
             result = re.search(r"result=\$([^$]*)\$", content)
-            if status == "ok" and "evaluated=NO" in content:
+            if status == "ok" and "numerical approximation" in content:
                 text = (
-                    "Minerva verified an exact reduction, but the integral was **not evaluated**: the card "
-                    "shows the equation it satisfies and a block-matrix representation, not entries."
+                    "Minerva solved this numerically on the span you gave: it is a **numerical "
+                    "approximation, not a closed form**, and the card lists the checks it passed."
+                )
+            elif status == "ok" and "evaluated=NO" in content:
+                text = (
+                    "Minerva verified an exact result, but it was **not evaluated** into entries: the card "
+                    "shows the equation it satisfies or a representation (a block-matrix exponential "
+                    "or an integral), not a matrix of values."
                 )
             elif status == "ok" and result:
                 text = (

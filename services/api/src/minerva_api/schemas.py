@@ -68,6 +68,7 @@ class MatrixCalculusRequest(Linked):
     matrices: list[MatrixDecl] = Field(min_length=1, max_length=MAX_MATRICES)
     commuting: list[tuple[str, str]] = Field(default_factory=list, max_length=16)
     invertible: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
+    self_commuting: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
     action: Action = "simplify"
     variable: str | None = Field(default=None, min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)

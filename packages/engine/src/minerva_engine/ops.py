@@ -298,7 +298,8 @@ def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     assumptions: dict[str, list[str]] = payload.get("assumptions", {})
     relations: list[str] = [str(r) for r in payload.get("relations", [])]
     formulas = [str(f) for f in payload["formulas"]]
-    results = check_claims(formulas, assumptions, relations, limits)
+    matrices = [str(m) for m in payload.get("matrices", [])]
+    results = check_claims(formulas, assumptions, relations, limits, matrices)
     return {"results": [r.model_dump() for r in results]}
 
 

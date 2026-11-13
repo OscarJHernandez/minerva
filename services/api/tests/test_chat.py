@@ -533,3 +533,20 @@ def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
         r"\dot\theta = \dot\phi + \omega",
     ]
     assert assumptions == {"x": ["positive"]}
+
+
+def test_matrix_turn_for_a_noncommuting_derivative_is_a_representation(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Differentiate the matrix expression $\exp(t^2 A + t B)$ in t")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    result = card["data"]["result"]
+    assert result["method"] == "exp_frechet_derivative"
+    assert result["evaluated"] is False and result["result_kind"] == "representation"
+    assert "not evaluated" in message["text"]
+    # the trace id of the engine operation is the request id plus the tool call id
+    trace_id = result["diagnostics"]["trace_id"]
+    assert trace_id.endswith(f"-{card['id']}") and len(trace_id) <= 64
+    assert message["debug"]["request_id"] and trace_id.startswith(message["debug"]["request_id"])

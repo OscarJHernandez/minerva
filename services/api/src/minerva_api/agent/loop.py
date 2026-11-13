@@ -8,7 +8,7 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
@@ -63,6 +63,7 @@ async def run_agent(
     prior_known: set[str] | None = None,
     prior_relations: Sequence[str] = (),
     prior_assumptions: dict[str, list[str]] | None = None,
+    prior_matrices: Sequence[str] = (),
     info: TurnInfo | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}."""
@@ -150,8 +151,9 @@ async def run_agent(
                 }
                 tool_started = time.monotonic()
                 try:
+                    call_ctx = replace(ctx, trace_id=f"{info.request_id}-{call_id}"[:64])
                     output = await asyncio.wait_for(
-                        run_in_threadpool(execute, call.name, call.arguments, ctx),
+                        run_in_threadpool(execute, call.name, call.arguments, call_ctx),
                         timeout=max(remaining(), 1.0),
                     )
                 except TimeoutError:
@@ -207,7 +209,7 @@ async def run_agent(
         for item in order
     ]
     debug.claims = await _check_claims_in_budget(
-        blocks, ctx, trace, remaining(), prior_relations, prior_assumptions
+        blocks, ctx, trace, remaining(), prior_relations, prior_assumptions, prior_matrices
     )
     debug.duration_ms = _ms(started)
     final = AssistantMessage(
@@ -218,6 +220,20 @@ async def run_agent(
         debug=debug,
     )
     yield {"event": "message", "data": final.model_dump(mode="json")}
+
+
+def matrix_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
+    """Names this conversation declared as matrices in `matrix_calculus` calls."""
+    names: set[str] = set()
+    for step in trace:
+        name = step.name if isinstance(step, TraceStep) else step.get("name")
+        arguments = step.arguments if isinstance(step, TraceStep) else step.get("arguments", {})
+        if name != "matrix_calculus" or not isinstance(arguments, dict):
+            continue
+        for decl in arguments.get("matrices", []) or []:
+            if isinstance(decl, dict) and isinstance(decl.get("name"), str):
+                names.add(decl["name"])
+    return names
 
 
 MAX_CLAIMS = 12
@@ -236,11 +252,14 @@ async def _check_claims_in_budget(
     seconds_left: float,
     prior_relations: Sequence[str] = (),
     prior_assumptions: dict[str, list[str]] | None = None,
+    prior_matrices: Sequence[str] = (),
 ) -> list[ClaimDebug]:
     """Run the claim check inside what is left of the turn's time; on any failure claims stay unchecked."""
     try:
         return await asyncio.wait_for(
-            check_model_claims(blocks, ctx, trace, prior_relations, prior_assumptions),
+            check_model_claims(
+                blocks, ctx, trace, prior_relations, prior_assumptions, prior_matrices
+            ),
             timeout=max(seconds_left, CLAIM_CHECK_MIN_SECONDS),
         )
     except Exception:
@@ -253,6 +272,7 @@ async def check_model_claims(
     trace: list[TraceStep],
     prior_relations: Sequence[str] = (),
     prior_assumptions: dict[str, list[str]] | None = None,
+    prior_matrices: Sequence[str] = (),
 ) -> list[ClaimDebug]:
     """Test the equations the model wrote itself; mark them checked, contradicted or unchecked.
 
@@ -278,8 +298,13 @@ async def check_model_claims(
             for name, items in declared.items():
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
+    matrices = matrix_names(trace) | set(prior_matrices)
     results = await run_in_threadpool(
-        ctx.engine.check_claims, [s.value for s in pending], assumptions, list(prior_relations)
+        ctx.engine.check_claims,
+        [s.value for s in pending],
+        assumptions,
+        list(prior_relations),
+        sorted(matrices),
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):
