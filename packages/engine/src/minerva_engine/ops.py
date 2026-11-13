@@ -46,12 +46,20 @@ def parse_expression(
     limits: Limits,
     denominators: list[sp.Expr] | None = None,
     noncommutative: Iterable[str] = (),
+    functions: dict[str, tuple[str, ...]] | None = None,
+    strict_calls: bool = False,
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        return parse_latex(data.input, data.assumptions, limits, denominators, noncommutative)
-    return parse_text(data.input, data.assumptions, limits, denominators, noncommutative)
+        return parse_latex(
+            data.input, data.assumptions, limits, denominators, noncommutative, functions,
+            strict_calls,
+        )  # fmt: skip
+    return parse_text(
+        data.input, data.assumptions, limits, denominators, noncommutative, functions,
+        strict_calls,
+    )  # fmt: skip
 
 
 def _failure(exc: MinervaMathError) -> tuple[Status, str]:
