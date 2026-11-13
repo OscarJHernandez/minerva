@@ -14,7 +14,7 @@ from typing import Any
 import sympy as sp
 
 from .claims import check_claims, split_equation
-from .errors import LimitError, MinervaMathError, ParseError
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedError
 from .features import expression_features
 from .latexparse import parse_latex
 from .latexprint import to_latex
@@ -42,18 +42,36 @@ _REST = "__minerva_rest__"
 
 
 def parse_expression(
-    data: ExpressionInput, limits: Limits, denominators: list[sp.Expr] | None = None
+    data: ExpressionInput,
+    limits: Limits,
+    denominators: list[sp.Expr] | None = None,
+    *,
+    allow_noncommutative: bool = False,
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        return parse_latex(data.input, data.assumptions, limits, denominators)
-    return parse_text(data.input, data.assumptions, limits, denominators)
+        return parse_latex(
+            data.input,
+            data.assumptions,
+            limits,
+            denominators,
+            allow_noncommutative=allow_noncommutative,
+        )
+    return parse_text(
+        data.input,
+        data.assumptions,
+        limits,
+        denominators,
+        allow_noncommutative=allow_noncommutative,
+    )
 
 
 def _failure(exc: MinervaMathError) -> tuple[Status, str]:
     if isinstance(exc, LimitError):
         return Status.RESOURCE_LIMIT, str(exc)
+    if isinstance(exc, UnsupportedError):
+        return Status.UNSUPPORTED, str(exc)
     return Status.PARSE_ERROR, str(exc)
 
 

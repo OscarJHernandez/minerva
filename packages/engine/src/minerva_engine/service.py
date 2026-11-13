@@ -35,6 +35,23 @@ from .sandbox import Outcome, Sandbox, SandboxResult
 from .series import SeriesResult
 from .solve import SolveReport
 
+# Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
+NONCOMMUTATIVE_OPERATIONS = frozenset({"substitute", "rewrite_at", "subterms"})
+
+
+def _declares_noncommutative(value: Any) -> bool:
+    """True if any `assumptions` mapping anywhere in the payload declares a noncommutative symbol."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "assumptions" and isinstance(item, dict):
+                if any(isinstance(v, list) and "noncommutative" in v for v in item.values()):
+                    return True
+            elif _declares_noncommutative(item):
+                return True
+    elif isinstance(value, list):
+        return any(_declares_noncommutative(item) for item in value)
+    return False
+
 
 class Engine:
     """Runs operations in the sandbox and converts failures into explicit statuses."""
@@ -44,6 +61,10 @@ class Engine:
         self.sandbox = sandbox or Sandbox(self.limits)
 
     def _run(self, op: str, payload: dict[str, Any]) -> tuple[SandboxResult, int]:
+        # One place decides which operations accept noncommuting symbols. Everything else reports
+        # `unsupported` rather than silently treating them as commuting (which would be wrong).
+        if op not in NONCOMMUTATIVE_OPERATIONS and _declares_noncommutative(payload):
+            return SandboxResult(Outcome.UNSUPPORTED), 0
         start = time.monotonic()
         result = self.sandbox.run(op, {**payload, "limits": self.limits.model_dump()})
         return result, int((time.monotonic() - start) * 1000)
@@ -56,6 +77,11 @@ class Engine:
             return Status.RESOURCE_LIMIT, "The computation exceeded its resource limits."
         if outcome is Outcome.BUSY:
             return Status.RESOURCE_LIMIT, "The server is busy; try again shortly."
+        if outcome is Outcome.UNSUPPORTED:
+            return Status.UNSUPPORTED, (
+                "Noncommutative symbols are supported only by substitute, collect and rewriting "
+                "one part of an expression; this operation does not accept them."
+            )
         return Status.INTERNAL_ERROR, "The computation failed unexpectedly."
 
     def warm_up(self) -> None:

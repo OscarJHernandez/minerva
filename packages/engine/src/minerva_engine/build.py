@@ -13,7 +13,7 @@ from typing import Any
 
 import sympy as sp
 
-from .errors import LimitError, ParseError
+from .errors import LimitError, ParseError, UnsupportedError
 from .models import ALLOWED_ASSUMPTIONS, SYMBOL_NAME_MAX, Limits
 
 # Whitelisted functions: canonical name -> constructor taking one argument.
@@ -73,11 +73,24 @@ class Builder:
     """Creates symbols (with the user's assumptions) and guarded compound expressions."""
 
     def __init__(
-        self, assumptions: dict[str, list[str]] | None = None, limits: Limits | None = None
+        self,
+        assumptions: dict[str, list[str]] | None = None,
+        limits: Limits | None = None,
+        *,
+        allow_noncommutative: bool = False,
     ) -> None:
         self.limits = limits or Limits()
         self._assumptions: dict[str, dict[str, bool]] = {}
         for name, items in (assumptions or {}).items():
+            if "noncommutative" in items:
+                if not allow_noncommutative:
+                    raise UnsupportedError("noncommutative symbols are not supported here")
+                if len(items) > 1:
+                    raise ParseError(
+                        f"{name!r} cannot be noncommutative and carry other assumptions"
+                    )
+                self._assumptions[name] = {"commutative": False}
+                continue
             unknown = set(items) - ALLOWED_ASSUMPTIONS
             if unknown:
                 raise ParseError(f"unknown assumption(s): {sorted(unknown)}")

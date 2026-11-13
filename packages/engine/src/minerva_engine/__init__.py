@@ -7,7 +7,7 @@ from .differentiate import (
     DifferentiateResult,
     DiffVariable,
 )
-from .errors import LimitError, MinervaMathError, ParseError
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedError
 from .expansion import ExpansionReport
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
@@ -95,6 +95,7 @@ __all__ = [
     "TransformResult",
     "TransformStep",
     "UnitsCheckReport",
+    "UnsupportedError",
     "Verification",
     "apply_rule",
     "check_claim",

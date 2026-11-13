@@ -402,11 +402,13 @@ def parse_latex(
     assumptions: dict[str, list[str]] | None = None,
     limits: Limits | None = None,
     denominators: list[sp.Expr] | None = None,
+    *,
+    allow_noncommutative: bool = False,
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
         raise LimitError("input is too long")
-    builder = Builder(assumptions, limits)
+    builder = Builder(assumptions, limits, allow_noncommutative=allow_noncommutative)
     if denominators is not None:
         builder.denominators = denominators
     parser = _Parser(_tokenize(source), builder)

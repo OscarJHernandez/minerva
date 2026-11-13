@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -19,6 +19,11 @@ ALLOWED_ASSUMPTIONS: frozenset[str] = frozenset(
         "rational",
     }
 )
+
+# What a symbol may be declared as. `noncommutative` is not an assumption a handbook rule can require
+# (it is not in ALLOWED_ASSUMPTIONS): it changes what multiplication means, so only operations that
+# say they support it accept it (see `Engine._run`).
+SYMBOL_DECLARATIONS: frozenset[str] = ALLOWED_ASSUMPTIONS | {"noncommutative"}
 
 SYMBOL_NAME_MAX = 32
 
@@ -51,9 +56,11 @@ class ExpressionInput(BaseModel):
         for name, items in value.items():
             if not name or len(name) > SYMBOL_NAME_MAX:
                 raise ValueError("invalid symbol name in assumptions")
-            unknown = set(items) - ALLOWED_ASSUMPTIONS
+            unknown = set(items) - SYMBOL_DECLARATIONS
             if unknown:
                 raise ValueError(f"unknown assumption(s): {sorted(unknown)}")
+            if "noncommutative" in items and len(items) > 1:
+                raise ValueError("a noncommutative symbol cannot carry other assumptions")
         return value
 
 
@@ -246,5 +253,137 @@ class TensorResult(BaseModel):
     result_text: str | None = None
     result_latex: str | None = None
     independent_verification: bool = False
+    message: str = ""
+    duration_ms: int = 0
+
+
+# --- controlled transformation steps ------------------------------------------------------------
+class Reason(StrEnum):
+    """Why a step was refused or a candidate dropped. A code, never user text: it is safe to log."""
+
+    PATTERN_NOT_FOUND = "pattern_not_found"  # the relation's left side does not occur
+    NO_MATCH = "no_match"  # the chosen rule or move does not apply to the chosen part
+    STALE_SELECTION = "stale_selection"  # the chosen part is no longer in the expression
+    AMBIGUOUS_SELECTION = "ambiguous_selection"  # the part occurs more than once
+    CONDITIONS_UNMET = (
+        "conditions_unmet"  # a rule's conditions are not provable from the assumptions
+    )
+    INVENTS_STRUCTURE = "invents_structure"
+    NOT_VERIFIED = "not_verified"
+    ORDER_DEPENDENT = "order_dependent"  # relations give different results in different orders
+    CYCLIC = "cyclic"  # relations feed each other
+    PREMISE_FALSE = "premise_false"  # a relation that can never hold, or relates only numbers
+    NOT_AN_EQUATION = "not_an_equation"
+    NONCOMMUTATIVE = "noncommutative"  # outside the supported noncommutative polynomial subset
+    NOT_POLYNOMIAL = "not_polynomial"
+    DEGREE = "degree"  # no closed form for this degree
+    FORM = "form"  # the variable occurs in a form this version cannot invert
+    EXTRANEOUS = "extraneous"  # a candidate that does not satisfy the original equation
+    SIZE_LIMIT = "size_limit"
+    DEADLINE = "deadline"
+
+
+VerificationMethod = Literal[
+    "none", "numeric", "congruence", "matrix", "back_substitution", "forward_probe"
+]
+
+
+class Diagnostics(BaseModel):
+    """What a transformation did and why it ended as it did. Durations, counts and codes only: nothing
+    here can hold an expression, so it is safe to log by default. Shown under the result and carried in
+    the saved step and the chat debug report."""
+
+    parse_ms: int = 0
+    candidates_ms: int = 0
+    transform_ms: int = 0
+    verify_ms: int = 0
+    candidates: int = 0
+    rejected: dict[str, int] = Field(default_factory=dict)  # Reason value -> count
+    verification_method: VerificationMethod = "none"
+    verification_outcome: Literal["passed", "failed", "not_run"] = "not_run"
+    symbolic_zero: bool = False
+    restrictions_outcome: Literal["not_checked", "none", "some", "incomplete"] = "not_checked"
+    assumptions_declared: int = 0
+    premises: int = 0
+
+    def reject(self, reason: Reason, count: int = 1) -> None:
+        self.rejected[reason.value] = self.rejected.get(reason.value, 0) + count
+
+    def log_fields(self) -> dict[str, Any]:
+        """The flat, allow-listed fields for the server log line."""
+        return {
+            "parse_ms": self.parse_ms,
+            "candidates_ms": self.candidates_ms,
+            "transform_ms": self.transform_ms,
+            "verify_ms": self.verify_ms,
+            "candidates": self.candidates,
+            "rejections": ",".join(f"{k}:{v}" for k, v in sorted(self.rejected.items())),
+            "verification_method": self.verification_method,
+            "verification_outcome": self.verification_outcome,
+            "restrictions_outcome": self.restrictions_outcome,
+        }
+
+
+Evidence = Literal["identity", "conditional"]
+
+
+class Premise(BaseModel):
+    """A relation the user supplied. Minerva does not verify it: results that use it are conditional."""
+
+    latex: str
+    text: str
+
+
+class Step(BaseModel):
+    """One recorded transformation with its justification."""
+
+    action: Literal["substitute", "builtin", "rule", "collect", "peel", "polynomial"]
+    name: str = ""  # a rule id, a SymPy move (`sympy.expand`), or what was peeled
+    direction: Literal["forward", "reverse"] | None = None
+    matched_latex: str | None = None  # the part acted on
+    before_latex: str
+    after_latex: str
+    # What a substitution looks like before the arithmetic SymPy does on construction: `x^2 + (1 - x^2)`.
+    display_latex: str | None = None
+    evidence: Evidence = "identity"
+    given: list[str] = Field(default_factory=list)  # premises (LaTeX) this step relies on
+    conditions_latex: list[str] = Field(default_factory=list)
+    verification: Verification | None = None
+    note: str = ""
+
+
+class Subterm(BaseModel):
+    """A part of an expression the user can choose. `path` indexes into the expression tree; `args`
+    selects some of the terms or factors of a sum or product."""
+
+    index: int
+    path: list[int]
+    args: list[int] | None = None
+    latex: str
+    text: str
+    highlight_latex: str  # the whole expression with this part boxed
+    occurrence: int = 1
+    occurrences: int = 1
+
+
+class StepResult(BaseModel):
+    status: Status
+    operation: Literal["rewrite", "substitute", "subterms"]
+    input_latex: str | None = None
+    result_latex: str | None = None
+    result_text: str | None = None
+    steps: list[Step] = Field(default_factory=list)
+    evidence: Evidence = "identity"
+    given: list[Premise] = Field(default_factory=list)
+    verification: Verification | None = None
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
+    conditions_latex: list[str] = Field(default_factory=list)
+    reason: Reason | None = None
+    # substitute: True if other orders of the relations give another result, None if not examined.
+    order_dependent: bool | None = None
+    subterms: list[Subterm] = Field(default_factory=list)
+    truncated: bool = False
+    diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     message: str = ""
     duration_ms: int = 0
