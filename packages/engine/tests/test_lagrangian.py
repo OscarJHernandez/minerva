@@ -1,8 +1,9 @@
 """Lagrangian analysis: equations of motion and verified constants of motion on classic systems."""
 
 import pytest
+import sympy as sp
 from minerva_engine import Engine, Limits, Status
-from minerva_engine.lagrangian import analyze_lagrangian
+from minerva_engine.lagrangian import analyze_lagrangian, derive
 
 L = Limits()
 
@@ -138,3 +139,25 @@ def test_unconfirmed_equations_are_not_shown(monkeypatch: pytest.MonkeyPatch) ->
     r = analyze(r"\frac12 m\dot{x}^2 - \frac12 k x^2", ["x"])
     assert r.status is Status.NOT_VERIFIED
     assert r.equations == [] and r.accelerations == [] and r.conserved == []
+
+
+def test_derive_expr_takes_explicit_symbols_and_matches_the_latex_route() -> None:
+    from minerva_engine.lagrangian import derive_expr
+
+    # Free particle on the plane in polar coordinates: L = (rdot^2 + r^2 thetadot^2) / 2.
+    r = sp.Symbol("r", positive=True)
+    th = sp.Symbol("theta", real=True)
+    rd, thd = sp.symbols("r_dot theta_dot", real=True)
+    lam = sp.Symbol("lam", real=True)  # the curve parameter is not a coordinate
+    L = (rd**2 + r**2 * thd**2) / 2
+    d = derive_expr(L, ["r", "theta"], "lam", q=[r, th], qd=[rd, thd], t=lam)
+    assert d.q == [r, th] and d.t == lam
+    assert sp.simplify(d.solution[d.qdd[0]] - r * thd**2) == 0
+    assert sp.simplify(d.solution[d.qdd[1]] + 2 * rd * thd / r) == 0
+    via_latex = derive(
+        r"\frac{1}{2}(\dot{r}^2 + r^2\dot{\theta}^2)", ["r", "theta"], "t", {}, Limits()
+    )
+    # Same formulas; the symbols differ only in their assumptions, so compare the printed form.
+    assert [str(sp.simplify(via_latex.solution[a])) for a in via_latex.qdd] == [
+        str(sp.simplify(d.solution[a])) for a in d.qdd
+    ]
