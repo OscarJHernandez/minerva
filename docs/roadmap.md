@@ -41,8 +41,8 @@ Ordering favours correctness infrastructure before breadth.
    commutes with itself, a verified numerical solution on a span the user gives otherwise; every result checked
    on random matrices and benchmarked in `docs/matrix-benchmark.md`). Next: time-ordered exponentials with
    truncated Dyson and Magnus expansions, higher derivatives of the exponential, integrals of time-dependent
-   matrices, matrix-valued functions beyond the exponential, integrals of sums of such terms as one equation, and
-   a matrix form in the workbench (today chat and API only).
+   matrices, matrix-valued functions beyond the exponential, and integrals of sums of such terms as one equation.
+   The workbench has a "Matrices" mode (declarations, plain text or LaTeX, saved runs that reopen with their declarations).
    Dirac delta and Heaviside calculus is done for one real variable (`distribution`: scaling, simple real roots of
    polynomial arguments, integration against deltas with an explicit limit convention, derivatives of steps; exact
    conditions plus a test-function pairing, benchmarked in `docs/distribution-benchmark.md`). Next: derivatives of
