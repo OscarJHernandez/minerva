@@ -226,7 +226,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
@@ -276,12 +276,40 @@ and explains; it never computes and never decides correctness.
   are ordinary user text. The picture is held in memory for the request only: never stored, never logged (the
   log line has status, duration and user id). Transcription quality depends on the model and is not scored yet.
 
+### Controlled transformation steps
+
+`steps.py` (choose a part, rewrite it), `substitute.py` (user relations), `isolate.py` (solve for a variable) and
+`ncverify.py` (noncommuting symbols) add operations that do **one** thing the user chose, as opposed to the search
+in `transform.py`. They reuse the parsers, `verify_equal`, `domain_restrictions` and the rule matcher
+(`ops.rule_rewrites`, with its `_unmet` and `_invents_structure` filters); nothing here has its own matcher.
+
+- **Parts.** A part is a path through the expression tree (plus, for a sum or product, a subset of its terms or
+  factors) together with the LaTeX it was chosen as. A stale choice is refused. Replacing rebuilds the ancestors of the
+  node, so one occurrence changes where `xreplace` would change every equal one.
+- **Evidence.** A step is `identity` (holds for all values) or `conditional` (holds given the user's relations, which are
+  *premises*: Minerva checks that a replacement reproduces the original expression, never that the relation is true).
+  A substitution is verified by congruence: replacing the occurrences by a placeholder `P` gives `T(P)`; `T(l)` must be the
+  original expression (verified), and `T(r)` is built by exact substitution, so `l = r` gives original = result.
+- **Isolate.** Every solution is substituted back into the original equation at sampled parameter values where its
+  conditions hold. Completeness is a separate check: the numerator's numerical roots must be exactly the solutions (less
+  those a denominator removes), or, when the unknown occurs once, the same peeling run on a free symbol must return a random
+  value of the unknown (wide values included, so a dropped `2πik` family is seen).
+- **Noncommuting symbols** are a declaration (`noncommutative`), accepted only by substitute, rewrite and subterms on polynomial
+  expressions. `Engine._run` refuses them for every other operation (`unsupported`), and `Builder` refuses them unless told
+  otherwise. Identities are checked on random matrices whose size follows the degree (Amitsur–Levitzki).
+- **Diagnostics.** Every result carries `Diagnostics`: phase durations, candidate counts, rejection reason codes, the
+  verification method and outcome. They are numbers and enum values only, so they go into the server log by default.
+  `MINERVA_DEBUG_COMPUTE=true` (development only) additionally returns the *rejected candidates* in the response; they are
+  never logged or saved.
+- **Benchmark.** `docs/transformations-benchmark.md`: hand-worked cases, scored for the existing operations (baseline) and the
+  new ones; `make bench` measures latency locally.
+
 ## API (`services/api`)
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
 limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,matrix,identities,tensor/canonicalize}`,
-`/v1/compute/apply-identity`, `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
+`/v1/compute/apply-identity`, `/v1/compute/{substitute,rewrite,subterms,isolate}` (controlled steps, see above), `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
 History rows contain user mathematics and are private to the account. A Workbench derivation is a
 `derivations` row plus the calculations saved with its id; each step may name the step it continued
 (`parent_id`). The server never accepts a result from the client: steps are written by the compute

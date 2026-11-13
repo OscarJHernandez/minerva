@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     llm_vision_model: str = ""
     image_max_bytes: int = Field(default=4_000_000, ge=10_000, le=20_000_000)
     image_rate_per_minute: int = 6
+    # Local debugging of the transformation operations: the response's diagnostics then also carry the
+    # candidates that were rejected (which may contain expressions). Never logged, never saved,
+    # development only.
+    debug_compute: bool = False
     # OpenRouter (cloud). Off for users unless byok is true or a server key is set; Ollama stays the
     # local-first default and there is never an automatic fallback between providers.
     openrouter_model: str = ""
@@ -133,6 +137,8 @@ class Settings(BaseSettings):
             )
         if self.llm_mode == "scripted" and self.env.lower() != "development":
             raise RuntimeError("the scripted stand-in model is for development only")
+        if self.debug_compute and self.env.lower() != "development":
+            raise RuntimeError("MINERVA_DEBUG_COMPUTE is for development only")
         if self.env.lower() == "development":
             return
         secret = self.session_secret.get_secret_value()

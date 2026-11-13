@@ -14,7 +14,7 @@ from typing import Any
 
 import sympy as sp
 
-from .errors import LimitError, ParseError
+from .errors import LimitError, ParseError, UnsupportedInput
 from .models import ALLOWED_ASSUMPTIONS, SYMBOL_NAME_MAX, Limits
 
 # Whitelisted functions: canonical name -> constructor taking one argument.
@@ -110,6 +110,8 @@ class Builder:
         functions: dict[str, tuple[str, ...]] | None = None,
         strict_calls: bool = False,
         notation: NotationLog | None = None,
+        *,
+        allow_noncommutative: bool = False,
     ) -> None:
         self.limits = limits or Limits()
         # Off (None) for every operation except `distribution`.
@@ -125,6 +127,15 @@ class Builder:
         self.strict_calls = strict_calls
         self._assumptions: dict[str, dict[str, bool]] = {}
         for name, items in (assumptions or {}).items():
+            if "noncommutative" in items:
+                if not allow_noncommutative:
+                    raise UnsupportedInput("noncommutative symbols are not supported here")
+                if len(items) > 1:
+                    raise ParseError(
+                        f"{name!r} cannot be noncommutative and carry other assumptions"
+                    )
+                self._assumptions[name] = {"commutative": False}
+                continue
             unknown = set(items) - ALLOWED_ASSUMPTIONS
             if unknown:
                 raise ParseError(f"unknown assumption(s): {sorted(unknown)}")

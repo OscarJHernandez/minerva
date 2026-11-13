@@ -46,6 +46,7 @@ class Outcome(StrEnum):
     KILLED = "killed"  # child died without answering (typically memory limit)
     ERROR = "error"  # child raised an unexpected exception
     BUSY = "busy"  # concurrency cap reached
+    UNSUPPORTED = "unsupported"  # refused before running: the operation does not take this input
 
 
 @dataclass

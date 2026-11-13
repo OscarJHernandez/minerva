@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { continuation } from "@/lib/derivation";
+import { continuations } from "@/lib/derivation";
 import type { DistributionNotation, HistoryItem } from "@/lib/types";
 import { StepCard } from "./step-card";
 
@@ -9,7 +9,7 @@ interface Props {
   steps: HistoryItem[];
   /** The step the editor is continuing, if any. */
   currentId: string | null;
-  onContinue: (item: HistoryItem, edit: boolean) => void;
+  onContinue: (item: HistoryItem, edit: boolean, which?: number) => void;
   onDelete: (item: HistoryItem) => void;
   onAnswerNotation?: (item: HistoryItem, notation: DistributionNotation) => Promise<void>;
 }
@@ -64,7 +64,7 @@ export function DerivationView({
             item={item}
             number={numbers.get(item.id) ?? 0}
             parentNumber={item.parent_id ? (numbers.get(item.parent_id) ?? null) : null}
-            current={item.id === currentId && continuation(item) !== null}
+            current={item.id === currentId && continuations(item).length > 0}
             onContinue={onContinue}
             onDelete={onDelete}
             onAnswerNotation={onAnswerNotation}

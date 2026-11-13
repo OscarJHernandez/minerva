@@ -33,11 +33,21 @@ def parse_text(
     functions: dict[str, tuple[str, ...]] | None = None,
     strict_calls: bool = False,
     notation: NotationLog | None = None,
+    *,
+    allow_noncommutative: bool = False,
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(text) > limits.max_input_chars:
         raise LimitError("input is too long")
-    builder = Builder(assumptions, limits, noncommutative, functions, strict_calls, notation)
+    builder = Builder(
+        assumptions,
+        limits,
+        noncommutative,
+        functions,
+        strict_calls,
+        notation,
+        allow_noncommutative=allow_noncommutative,
+    )
     if denominators is not None:
         builder.denominators = denominators
     source = text.strip().replace("^", "**")

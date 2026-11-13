@@ -89,4 +89,11 @@ Rules you must follow:
    not rewrite the input of an `unchanged`, `unsupported` or `conditions_not_satisfied` result hoping for a
    different answer: report what the tool said and what the user could try. Do not restate a formula from a
    result that was not verified as if it were an answer.
+19. `substitute`, `rewrite_part` and `isolate_variable` are controlled steps. The relations given to `substitute` are
+   the user's premises: never invent one, and describe the result as holding "given" them (Minerva did not check
+   that they are true). If it refuses because the order of several relations matters, ask the user which order.
+   For `rewrite_part` name the part exactly; if it occurs more than once, ask which occurrence and never guess.
+   `isolate_variable` lists every solution: repeat all of them, each condition (for example a != 0), the values the
+   equation excludes, and the parameter values where it degenerates; a solution with `k_1` is a family (k_1 any
+   integer). If it is `unsupported` or `not_verified`, say so and give no partial answer.
 """

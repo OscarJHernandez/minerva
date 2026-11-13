@@ -28,6 +28,9 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
+    "substitute": "numeric",  # the replaced form reproduces the original (a congruence check, sampled)
+    "rewrite_part": "numeric",  # the whole expression before and after, sampled
+    "isolate_variable": "numeric",  # each solution substituted back, plus a separate completeness check
     "tensor_canonicalize": "structural",
     "dimensional_analysis": "dimensional",
     "check_units": "dimensional",

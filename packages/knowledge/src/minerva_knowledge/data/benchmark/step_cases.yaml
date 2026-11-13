@@ -1,0 +1,157 @@
+# Hand-written cases for controlled symbolic transformations (substitute, collect, isolate, rewrite one part).
+# Written from worked mathematics, independently of the code under test; the expected forms were derived by
+# hand and are never copied from an engine run. The same file scores the existing functionality (the baseline,
+# `python -m minerva_knowledge step-benchmark --adapter existing`) and the new operations (`--adapter steps`).
+#
+# operation   substitute | collect | isolate | rewrite (apply `action` to one part of the input)
+# input       LaTeX. An expression, or for isolate an equation `lhs = rhs`.
+# status      expected outcome (default ok). Refusals are cases too: unsupported, unchanged, parse_error,
+#             conditions_not_satisfied.
+# results     accepted result forms, text syntax. Every operation except isolate.
+# solutions   isolate: the complete solution set, text syntax. `k_1` is the integer index of a solution family.
+# match       equivalent: same function (numeric check)  |  structural: same expression tree, i.e. the requested form.
+#             collect and rewrite are scored structurally: an equal but differently written result is a failure.
+# conditions  documentation of the conditions a correct answer must report (LaTeX); checked by the steps adapter.
+# pending     the capability is known to be missing: reported, never asserted, and a test fails if it starts passing
+#             (so it gets promoted).
+
+# ======================== substitute ========================
+- {id: sub_pythagoras, operation: substitute, domain: algebra, input: 'x^2+y^2', relations: ['y^2 = 1 - x^2'], results: ['1']}
+- {id: sub_energy_conservation, operation: substitute, domain: physics, input: '\frac{1}{2} m v^2 + m g h',
+   relations: ['v^2 = 2 g (H - h)'], results: ['m*g*H']}
+- {id: sub_ohm_power, operation: substitute, domain: physics, input: 'V j', relations: ['V = j R'], results: ['j**2*R']}
+- {id: sub_two_relations, operation: substitute, domain: algebra, input: 'a b + c', relations: ['a = 2 c', 'b = 3'], results: ['7*c']}
+- {id: sub_relativistic_invariant, operation: substitute, domain: physics, input: 'W^2 - p^2 c^2',
+   relations: ['W^2 = p^2 c^2 + m^2 c^4'], results: ['m**2*c**4']}
+- {id: sub_pendulum_energy, operation: substitute, domain: physics,
+   input: '\frac{1}{2} m L^2 \omega^2 - m g L \cos\theta', relations: ['\omega^2 = \frac{g}{L}'],
+   results: ['m*g*L/2 - m*g*L*cos(theta)']}
+- {id: sub_nested_in_functions, operation: substitute, domain: algebra, input: '\sin(y^2) + \cos(y^2)',
+   relations: ['y^2 = 1 - x^2'], results: ['sin(1 - x**2) + cos(1 - x**2)']}
+- {id: sub_partial_sum, operation: substitute, domain: algebra, input: 'a + b + c', relations: ['a + b = 5'], results: ['c + 5']}
+- {id: sub_keeps_domain_restriction, operation: substitute, domain: algebra, input: '\frac{y}{x}', relations: ['y = x^2'],
+   results: ['x'], conditions: ['x \neq 0'], note: 'the result is defined at x = 0 but the input was not'}
+- {id: sub_explicit_order, operation: substitute, domain: algebra, input: 'x + y', relations: ['x = y', 'y = 1'], order: given, results: ['2']}
+- {id: sub_order_dependent_refused, operation: substitute, domain: algebra, input: 'x + y', relations: ['x = y', 'y = 1'],
+   status: unsupported, note: 'x then y gives 2, y then x gives y + 1: the order must be stated'}
+- {id: sub_cyclic_refused, operation: substitute, domain: algebra, input: 'x + 1', relations: ['x = y', 'y = x'], status: unsupported}
+- {id: sub_false_premise_refused, operation: substitute, domain: algebra, input: 'x + 1', relations: ['x = x + 1'], status: unsupported}
+- {id: sub_constant_relation_refused, operation: substitute, domain: algebra, input: 'x + 2', relations: ['2 = 3'], status: unsupported}
+- {id: sub_pattern_absent, operation: substitute, domain: algebra, input: 'x + 1', relations: ['z = 2'], status: unchanged}
+- {id: sub_noncommutative_order, operation: substitute, domain: operators, tags: [noncommutative],
+   assumptions: {A: [noncommutative], B: [noncommutative], D: [noncommutative]},
+   input: 'A^2 B', relations: ['A B = D'], results: ['A*D'], match: structural}
+- {id: sub_noncommutative_wrong_order_unchanged, operation: substitute, domain: operators, tags: [noncommutative],
+   assumptions: {A: [noncommutative], B: [noncommutative], D: [noncommutative]},
+   input: 'B A', relations: ['A B = D'], status: unchanged, note: 'BA is not AB'}
+- {id: sub_pending_commutator_relation, operation: substitute, domain: operators, tags: [noncommutative], pending: true,
+   assumptions: {A: [noncommutative], B: [noncommutative]},
+   input: 'A B A - A A B', relations: ['A B - B A = 1'], results: ['-A'], match: structural,
+   note: 'needs the relation used as a commutation rule, not as a pattern: A(BA - AB) = -A'}
+
+# ======================== collect ========================
+- {id: collect_basic, operation: collect, domain: algebra, input: 'a x^2 + b x + c x^2 + d x', by: ['x'],
+   results: ['(a + c)*x**2 + (b + d)*x'], match: structural}
+- {id: collect_leaves_other_terms, operation: collect, domain: algebra, input: 'a x^2 y + b x y^2 + c x^2 + d y^2', by: ['x'],
+   results: ['b*x*y**2 + d*y**2 + x**2*(a*y + c)'], match: structural}
+- {id: collect_nested_coefficient, operation: collect, domain: algebra, input: 'a x y + b x + c y + d x y', by: ['x'],
+   results: ['c*y + x*(a*y + b + d*y)'], match: structural}
+- {id: collect_by_power, operation: collect, domain: algebra, input: 'a x^2 + b x^2 y + x', by: ['x^2'],
+   results: ['x**2*(a + b*y) + x'], match: structural}
+- {id: collect_common_mass, operation: collect, domain: physics, input: '\frac{1}{2} m u^2 + \frac{1}{2} m w^2 + m g y', by: ['m'],
+   results: ['m*(g*y + u**2/2 + w**2/2)'], match: structural}
+- {id: collect_dispersion_relation, operation: collect, domain: physics,
+   input: '\omega^2 + \beta \omega^2 - c^2 k^2 - \beta c^2 k^2', by: ['\omega'],
+   results: ['omega**2*(beta + 1) - beta*c**2*k**2 - c**2*k**2'], match: structural}
+- {id: collect_function_of_symbol, operation: collect, domain: algebra, input: 'a \sin x + b \sin x + c \cos x', by: ['\sin x'],
+   results: ['c*cos(x) + (a + b)*sin(x)'], match: structural}
+- {id: collect_symbol_absent, operation: collect, domain: algebra, input: 'x + 1', by: ['z'], status: unchanged}
+- {id: collect_noncommutative_order_kept, operation: collect, domain: operators, tags: [noncommutative],
+   assumptions: {A: [noncommutative], B: [noncommutative]},
+   input: 'x A B + y B A + x B A', by: ['x'], results: ['x*(A*B + B*A) + y*B*A'], match: structural}
+- {id: collect_by_noncommutative_refused, operation: collect, domain: operators, tags: [noncommutative],
+   assumptions: {A: [noncommutative], B: [noncommutative]},
+   input: 'A B + B A', by: ['A'], status: unsupported}
+
+# ======================== isolate ========================
+- {id: iso_linear, operation: isolate, domain: algebra, input: 'a x + b = c', variable: x,
+   solutions: ['(c - b)/a'], conditions: ['a \neq 0'], note: 'if a = 0 there is no solution unless b = c, when every x solves it'}
+- {id: iso_linear_nonzero_assumed, operation: isolate, domain: algebra, input: 'a x + b = c', variable: x,
+   assumptions: {a: [nonzero]}, solutions: ['(c - b)/a']}
+- {id: iso_ohm, operation: isolate, domain: physics, input: 'V = j R', variable: R, solutions: ['V/j'], conditions: ['j \neq 0']}
+- {id: iso_ideal_gas, operation: isolate, domain: physics, input: 'P V = n R T', variable: T,
+   solutions: ['P*V/(n*R)'], conditions: ['n \neq 0', 'R \neq 0']}
+- {id: iso_lens_equation, operation: isolate, domain: physics, input: '\frac{1}{f} = \frac{1}{u} + \frac{1}{v}', variable: v,
+   solutions: ['f*u/(u - f)'], conditions: ['u \neq f']}
+- {id: iso_kepler_third_law, operation: isolate, domain: physics, input: 'T^2 = \frac{4 \pi^2 a^3}{G M}', variable: M,
+   solutions: ['4*pi**2*a**3/(G*T**2)'], conditions: ['G \neq 0', 'T \neq 0']}
+- {id: iso_quadratic_numbers, operation: isolate, domain: algebra, input: 'x^2 - 5 x + 6 = 0', variable: x, solutions: ['2', '3']}
+- {id: iso_kinematics_time, operation: isolate, domain: physics, input: 's = u t + \frac{1}{2} a t^2', variable: t,
+   solutions: ['(-u + sqrt(u**2 + 2*a*s))/a', '(-u - sqrt(u**2 + 2*a*s))/a'], conditions: ['a \neq 0'],
+   note: 'if a = 0 the equation is linear: t = s/u'}
+- {id: iso_inverse_square_law, operation: isolate, domain: physics, input: 'F = \frac{G m n}{r^2}', variable: r,
+   solutions: ['sqrt(G*m*n/F)', '-sqrt(G*m*n/F)'], conditions: ['F \neq 0']}
+- {id: iso_relativistic_momentum, operation: isolate, domain: physics, input: 'W^2 = p^2 c^2 + m^2 c^4', variable: p,
+   solutions: ['sqrt(W**2 - m**2*c**4)/c', '-sqrt(W**2 - m**2*c**4)/c'], conditions: ['c \neq 0']}
+- {id: iso_square_of_shift, operation: isolate, domain: algebra, input: '(x + 1)^2 = 4', variable: x, solutions: ['1', '-3']}
+- {id: iso_cubic_numbers, operation: isolate, domain: algebra, input: 'x^3 - x = 0', variable: x, solutions: ['-1', '0', '1']}
+- {id: iso_cube_roots_of_two, operation: isolate, domain: algebra, input: 'x^3 = 2', variable: x,
+   solutions: ['2**(1/3)', '2**(1/3)*(-1/2 + sqrt(3)*I/2)', '2**(1/3)*(-1/2 - sqrt(3)*I/2)']}
+- {id: iso_rational_two_roots, operation: isolate, domain: algebra, input: '\frac{1}{x} + \frac{1}{x+1} = 1', variable: x,
+   solutions: ['(1 + sqrt(5))/2', '(1 - sqrt(5))/2'], conditions: ['x \neq 0', 'x \neq -1']}
+- {id: iso_rational_only_candidate_excluded, operation: isolate, domain: algebra, input: '\frac{x^2 - 1}{x - 1} = 2', variable: x,
+   solutions: [], note: 'x^2 - 2x + 1 = 0 gives x = 1, which makes the denominator zero: there is no solution'}
+- {id: iso_sqrt_candidate_extraneous, operation: isolate, domain: algebra, input: '\sqrt{x} = -2', variable: x,
+   solutions: [], note: 'squaring gives x = 4, but the principal square root is never -2'}
+- {id: iso_sqrt_conditional, operation: isolate, domain: physics, input: 'v = \sqrt{2 g h}', variable: h,
+   solutions: ['v**2/(2*g)'], conditions: ['g \neq 0', '-\frac{\pi}{2} < \arg v \le \frac{\pi}{2}']}
+- {id: iso_sqrt_positive_assumed, operation: isolate, domain: physics, input: 'v = \sqrt{2 g h}', variable: h,
+   assumptions: {v: [positive]}, solutions: ['v**2/(2*g)'], conditions: ['g \neq 0']}
+- {id: iso_exponential_decay, operation: isolate, domain: physics, input: 'N = M \exp(-r t)', variable: t,
+   solutions: ['-(log(N/M) + 2*pi*I*k_1)/r'], conditions: ['N \neq 0', 'M \neq 0', 'r \neq 0'],
+   note: 'a family: k_1 is any integer'}
+- {id: iso_arrhenius, operation: isolate, domain: applied, input: 'k = A \exp(-\frac{H}{R T})', variable: T,
+   solutions: ['-H/(R*(log(k/A) + 2*pi*I*k_1))'], conditions: ['k \neq 0', 'A \neq 0', '\log(k/A) + 2 \pi \mathrm{i} k_1 \neq 0']}
+- {id: iso_compound_interest, operation: isolate, domain: applied, input: 'A = P (1 + r)^n', variable: n,
+   assumptions: {r: [positive]}, solutions: ['(log(A/P) + 2*pi*I*k_1)/log(1 + r)'], conditions: ['A \neq 0', 'P \neq 0']}
+- {id: iso_log_inverse, operation: isolate, domain: applied, input: 'y = a \log x + b', variable: x,
+   solutions: ['exp((y - b)/a)'], conditions: ['a \neq 0', '-\pi < \operatorname{Im}\frac{y - b}{a} \le \pi']}
+- {id: iso_variable_absent_refused, operation: isolate, domain: algebra, input: 'a = b', variable: x, status: parse_error}
+- {id: iso_transcendental_refused, operation: isolate, domain: algebra, input: 'x + \log x = 1', variable: x, status: unsupported}
+- {id: iso_lambert_refused, operation: isolate, domain: algebra, input: 'x \exp(x) = 1', variable: x, status: unsupported}
+- {id: iso_quintic_refused, operation: isolate, domain: algebra, input: 'x^5 + a x + 1 = 0', variable: x, status: unsupported,
+   note: 'no general formula in radicals (Abel-Ruffini); a partial list of roots is never returned'}
+- {id: iso_noncommutative_refused, operation: isolate, domain: operators, tags: [noncommutative],
+   assumptions: {A: [noncommutative], B: [noncommutative]}, input: 'A x = B', variable: x, status: unsupported}
+- {id: iso_pending_periodic, operation: isolate, domain: algebra, pending: true, input: '\sin x = a', variable: x,
+   solutions: ['asin(a) + 2*pi*k_1', 'pi - asin(a) + 2*pi*k_1'], note: 'periodic inverses are not implemented'}
+- {id: iso_pending_real_branch, operation: isolate, domain: physics, pending: true, input: 'N = M \exp(-r t)', variable: t,
+   assumptions: {N: [positive], M: [positive], r: [positive], t: [positive]}, solutions: ['log(M/N)/r'],
+   note: 'declared real quantities would leave one branch; solutions are always taken over the complex numbers'}
+
+# ======================== rewrite one part ========================
+- {id: part_expand_one_factor, operation: rewrite, domain: algebra, input: '(x + 1)^2 (y + 1)^2', part: '(x + 1)^2', action: expand,
+   results: ['(x**2 + 2*x + 1)*(y + 1)**2'], match: structural}
+- {id: part_factor_sub_sum, operation: rewrite, domain: algebra, input: 'x^2 - 1 + y^2', part: 'x^2 - 1', action: factor,
+   results: ['(x - 1)*(x + 1) + y**2'], match: structural}
+- {id: part_factor_inside_root, operation: rewrite, domain: algebra, input: '\sqrt{x^2 + 2 x + 1} + x', part: 'x^2 + 2 x + 1', action: factor,
+   results: ['x + sqrt((x + 1)**2)'], match: structural}
+- {id: part_collect_inside_function, operation: rewrite, domain: algebra, input: 'a x + b x + \sin(c x + d x)', part: 'c x + d x',
+   action: collect, by: ['x'], results: ['a*x + b*x + sin(x*(c + d))'], match: structural}
+- {id: part_identity_second_term, operation: rewrite, domain: algebra, input: '\sin(2x) + \sin(2y)', part: '\sin(2y)',
+   action: rule, rule_id: trig.double_sin, results: ['2*sin(y)*cos(y) + sin(2*x)'], match: structural}
+- {id: part_identity_one_of_two_equal_places, operation: rewrite, domain: algebra, input: '\sin(2x) + y \sin(2x)', part: '\sin(2x)',
+   occurrence: 2, action: rule, rule_id: trig.double_sin, results: ['y*sin(2*x) + 2*sin(x)*cos(x)'], match: structural,
+   note: 'the same part occurs twice; only the chosen occurrence changes'}
+- {id: part_identity_nested_control, operation: rewrite, domain: algebra, input: '\cos(\sin^2 x + \cos^2 x)',
+   part: '\sin^2 x + \cos^2 x', action: rule, rule_id: trig.pythagorean, results: ['cos(1)'], match: structural,
+   note: 'control: acting on the whole expression gives the same result'}
+- {id: part_identity_blocked_without_assumptions, operation: rewrite, domain: algebra, input: '\log(x y) + \log(x z)', part: '\log(x y)',
+   action: rule, rule_id: log.product, status: conditions_not_satisfied}
+- {id: part_identity_with_assumptions, operation: rewrite, domain: algebra, input: '\log(x y) + \log(x z)', part: '\log(x y)',
+   assumptions: {x: [positive], y: [positive]}, action: rule, rule_id: log.product,
+   results: ['log(x) + log(y) + log(x*z)'], match: structural}
+- {id: part_stale_selection_refused, operation: rewrite, domain: algebra, input: '\sin x', part: '\tan x', action: expand, status: parse_error}
+- {id: part_noncommutative_expand, operation: rewrite, domain: operators, tags: [noncommutative],
+   assumptions: {A: [noncommutative], B: [noncommutative]}, input: '(A + B)^2 + x', part: '(A + B)^2', action: expand,
+   results: ['A**2 + A*B + B*A + B**2 + x'], match: structural}
