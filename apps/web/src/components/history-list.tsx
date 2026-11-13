@@ -17,6 +17,7 @@ const OPERATION_LABEL: Record<string, string> = {
   series: "Series",
   integrate: "Integrate",
   matrix_calculus: "Matrix calculus",
+  distribution: "Distributions",
   identities: "Identities",
 };
 

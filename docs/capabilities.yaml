@@ -15,6 +15,7 @@
 #   series       input, variable, point, order, assumptions
 #   matrix       input, matrices [{name, rows, cols | entries}], action (evaluate | simplify | differentiate |
 #                integrate), variable, lower, upper, commuting [[A, B]], invertible [names]
+#   distribution input, assumptions, action (simplify | integrate | differentiate), variable, lower, upper, endpoint
 #   identities   input, assumptions, show [rule ids to display]
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
@@ -308,6 +309,68 @@ capabilities:
           - { name: B, rows: 2 }
         action: differentiate
         variable: t
+
+  - id: distribution-calculus
+    title: Dirac delta and Heaviside calculus
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Simplify, integrate and differentiate expressions with Dirac delta and Heaviside functions. Equality is
+      as distributions (the same action on every test function), never pointwise: a delta has no values to
+      compare. Each step cites a handbook identity and the conditions that were established exactly (the
+      variable is real, a scale factor is nonzero, a root is real and simple, a delta lies inside the limits);
+      a result is shown only if an independent test-function pairing against a regularised input agrees.
+      Whatever cannot be decided is refused with a reason, never guessed.
+    limits:
+      - One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.
+      - A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.
+      - Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.
+      - The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}); \delta and \theta remain ordinary symbols.
+    examples:
+      - id: delta-shell-integral
+        title: An integral against a delta of a polynomial with two simple roots
+        op: distribution
+        input: 'x^2 \operatorname{DiracDelta}(x^2 - 4)'
+        action: integrate
+        variable: x
+        lower: "-oo"
+        upper: oo
+      - id: delta-scaling-parameter
+        title: Scaling by a parameter whose sign is known
+        op: distribution
+        input: '\operatorname{DiracDelta}(a x)'
+        assumptions: { a: [negative] }
+        action: simplify
+        variable: x
+      - id: heaviside-derivative
+        title: The derivative of a switched-on decay has a delta where it jumps
+        op: distribution
+        input: '\mathrm{e}^{-g x} \operatorname{Heaviside}(x)'
+        assumptions: { g: [positive] }
+        action: differentiate
+        variable: x
+      - id: delta-scale-sign-unknown
+        title: A scale factor of unknown sign is declined
+        op: distribution
+        input: '\operatorname{DiracDelta}(a x)'
+        assumptions: { a: [real] }
+        action: simplify
+        variable: x
+      - id: delta-on-a-limit
+        title: A delta on an integration limit is ambiguous until you choose a convention
+        op: distribution
+        input: '\operatorname{DiracDelta}(x - 1)'
+        action: integrate
+        variable: x
+        lower: "0"
+        upper: "1"
+      - id: delta-repeated-root
+        title: A repeated root is declined
+        op: distribution
+        input: '\operatorname{DiracDelta}(x^2)'
+        action: simplify
+        variable: x
 
   - id: identities
     title: Identity search with applicability checks

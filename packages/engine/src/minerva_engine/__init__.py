@@ -7,6 +7,16 @@ from .differentiate import (
     DifferentiateResult,
     DiffVariable,
 )
+from .distributions.models import (
+    Blocked,
+    Condition,
+    Diagnostics,
+    DistributionEvent,
+    DistributionInput,
+    DistributionResult,
+    DistributionStep,
+    DistributionVerification,
+)
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
@@ -51,16 +61,24 @@ from .textparse import parse_text
 
 __all__ = [
     "Applicability",
+    "Blocked",
     "BlockedMove",
     "ClaimCheck",
     "CompareRequest",
+    "Condition",
     "ConstantCandidate",
     "ConstantSuggestion",
     "DerivativeStep",
     "DerivativeVerification",
+    "Diagnostics",
     "DiffVariable",
     "DifferentiateResult",
     "DimensionalReport",
+    "DistributionEvent",
+    "DistributionInput",
+    "DistributionResult",
+    "DistributionStep",
+    "DistributionVerification",
     "Engine",
     "ExpansionReport",
     "ExpressionInput",

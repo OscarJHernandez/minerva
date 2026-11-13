@@ -40,6 +40,9 @@ FUNCTIONS: dict[str, Callable[[sp.Expr], sp.Expr]] = {
     "abs": sp.Abs,
     "gamma": sp.gamma,
     "factorial": sp.factorial,
+    # Distributions: only the `distribution` operation may work with these (see distributions/).
+    "DiracDelta": sp.DiracDelta,
+    "Heaviside": sp.Heaviside,
 }
 
 # Aliases accepted by the text parser.
@@ -150,7 +153,10 @@ class Builder:
         # SymPy evaluates factorial/gamma of integers eagerly; bound the work up front.
         if canonical in {"factorial", "gamma"} and argv[0].is_Integer and argv[0] > 3000:
             raise LimitError("argument too large")
-        return FUNCTIONS[canonical](argv[0])
+        try:
+            return FUNCTIONS[canonical](argv[0])
+        except (ValueError, TypeError) as exc:  # e.g. DiracDelta(I): not a real argument
+            raise ParseError(f"{name} needs a real argument") from exc
 
     def log_base(self, argument: sp.Expr, base: sp.Expr) -> sp.Expr:
         return sp.log(argument, base)

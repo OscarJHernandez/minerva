@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, Dirac delta and Heaviside distributions
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM client (Ollama), tool registry, agent loop, formula marking, scripted test model
@@ -52,6 +52,7 @@ uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
+uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
@@ -184,6 +185,21 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (a bare e is a symbol; write `\exp(tA)`). Do not loosen the numeric tolerance, add an unverified shortcut, or let
   `_invents_structure`-style filters be bypassed; the tests include wrong merges, reordered products, a wrong
   derivative and a 1e-6 error.
+- Distributions (`distributions/`, tool and endpoint `distribution`): a Dirac delta is 0 at every point a sampler can
+  draw, so pointwise sampling proves nothing about it. Every other operation refuses `DiracDelta` / `Heaviside` input as
+  `unsupported`, `verify_equal` never passes it, and the claim checker leaves such statements `unverified` (never
+  `fails`). Do not remove those guards or add a path that verifies a distribution by sampling. A result is shown only if
+  the exact conditions hold (variable and argument symbols real, scale provably nonzero, roots real and provably simple,
+  multiplier defined and continuous, positions decided) and an independent test-function pairing agrees; the two are
+  reported separately and the pairing is "supporting evidence, not a proof". Equality is "as distributions", never
+  "proved" or "sampled". A delta exactly on an integration limit counts only under an explicit `endpoint` convention
+  that the user chose (never default it, never let the model choose it). Repeated roots, undecided signs and
+  non-polynomial arguments are refused with an enumerated reason (`unsupported_distribution`, `singular_root`,
+  `assumptions_insufficient`, `integration_domain_ambiguous`, `verification_failed`, `resource_limit`). Input uses the
+  explicit names; `\delta` and `\theta` remain symbols. Handbook entries about distributions have level
+  `distributional` and no `rule`. Do not loosen the pairing tolerance (`pairing.TOLERANCE`): its tests include a 1e-6
+  relative error, a missing `1/|g'|`, a dropped root and a wrong jump. Logs carry stage events with enumerated reasons
+  only, never expressions.
 - Relations in claims (`claims.py`): an equation with a symbol on one side only or a time derivative (`\theta=\phi+\omega t`,
   `L=T`, `F=ma`, `m\ddot x=-kx`) is a *relation*, not an identity, and is never tested by independent sampling. Definitions
   stated earlier in the conversation (`symbol = expression`, from the user or the model, not verified by Minerva) are

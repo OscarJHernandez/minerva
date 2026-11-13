@@ -22,6 +22,7 @@ const OPERATIONS: { id: StepOperation | "identities"; label: string; needsSettin
   { id: "differentiate", label: "Differentiate", needsSettings: true },
   { id: "integrate", label: "Integrate", needsSettings: true },
   { id: "series", label: "Series", needsSettings: true },
+  { id: "distribution", label: "Deltas", needsSettings: true },
   { id: "identities", label: "Identities", needsSettings: false },
 ];
 
@@ -108,7 +109,21 @@ export function OperationBar({
             onRun(selected);
           }}
         >
-          <Field label="by">
+          {selected === "distribution" && (
+            <Field label="action">
+              <select
+                value={settings.distAction}
+                onChange={(e) => set({ distAction: e.target.value as Settings["distAction"] })}
+                aria-label="Distribution action"
+                className={FIELD}
+              >
+                <option value="simplify">simplify deltas</option>
+                <option value="integrate">integrate</option>
+                <option value="differentiate">differentiate steps</option>
+              </select>
+            </Field>
+          )}
+          <Field label={selected === "distribution" ? "variable (real)" : "by"}>
             <input
               value={settings.variable}
               onChange={(e) => set({ variable: e.target.value.trim() })}
@@ -134,14 +149,17 @@ export function OperationBar({
               />
             </Field>
           )}
-          {selected === "integrate" && (
+          {(selected === "integrate" ||
+            (selected === "distribution" && settings.distAction === "integrate")) && (
             <>
               <Field label="from">
                 <input
                   value={settings.lower}
                   onChange={(e) => set({ lower: e.target.value })}
-                  aria-label="Lower bound (optional)"
-                  placeholder="optional"
+                  aria-label={
+                    selected === "distribution" ? "Lower limit" : "Lower bound (optional)"
+                  }
+                  placeholder={selected === "distribution" ? "-oo" : "optional"}
                   maxLength={200}
                   className={`${FIELD} w-20 font-mono`}
                 />
@@ -150,13 +168,30 @@ export function OperationBar({
                 <input
                   value={settings.upper}
                   onChange={(e) => set({ upper: e.target.value })}
-                  aria-label="Upper bound (optional)"
-                  placeholder="optional"
+                  aria-label={
+                    selected === "distribution" ? "Upper limit" : "Upper bound (optional)"
+                  }
+                  placeholder={selected === "distribution" ? "oo" : "optional"}
                   maxLength={200}
                   className={`${FIELD} w-20 font-mono`}
                 />
               </Field>
             </>
+          )}
+          {selected === "distribution" && settings.distAction === "integrate" && (
+            <Field label="delta on a limit">
+              <select
+                value={settings.endpoint}
+                onChange={(e) => set({ endpoint: e.target.value as Settings["endpoint"] })}
+                aria-label="Convention for a delta on a limit"
+                className={FIELD}
+              >
+                <option value="">ask me</option>
+                <option value="half">counts half</option>
+                <option value="include">counts fully</option>
+                <option value="exclude">does not count</option>
+              </select>
+            </Field>
           )}
           {selected === "series" && (
             <>
