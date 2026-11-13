@@ -152,3 +152,47 @@ Normal (standard deviation or variance), Beta, Gamma (shape and rate), Cauchy an
 | families | 14 | 14 |
 
 Cumulative: 76 of 108 cases pass; the three refusing `mle` cases that depend only on reading the model now pass too.
+
+## Phase 4: complete derivations
+
+`statistical_model` gains `log_likelihood`, `score`, `mle`, `fisher_information` and `posterior`. Each action returns the
+steps of the derivation with the evidence for them, and anything that cannot be verified is a refusal with a reason.
+
+* **Likelihood.** A likelihood of several observations is a product only under independence, which the user must state
+  (`iid`); otherwise `independence_not_declared`. The logarithm is expanded with `expand_log(force=True)` and the
+  expansion is checked against a direct numerical sum of log densities.
+* **Maximum likelihood.** Sums over the data become symbols, the score is differentiated, and the score equations are
+  solved one parameter at a time (triangular systems only: `system_not_triangular`). The estimator is then checked on
+  explicit data against the *direct* log-likelihood: zero slope and a negative definite Hessian (second differences),
+  inside the parameter space. The variance estimate comes out as `sum (x_i - xbar)^2 / n`, derived, with the data
+  condition `sum (x_i - xbar)^2 > 0` stated.
+* **Optimum.** `global` only when concavity on the whole parameter space is proved (one parameter, Hessian provably
+  non-positive; Bernoulli uses `n - sum x >= 0` and `0 < p < 1`, Poisson `sum x >= 0`). The joint Gaussian
+  log-likelihood is not concave, so it is `local` (proved from the Hessian at the point given the admissibility
+  condition), and a stationary point that is not a maximum is never shown.
+* **Boundary and nonexistent estimates.** With concrete data whose estimate lies outside the parameter space (a Bernoulli
+  sample of all zeros or all ones, identical normal observations) the supremum is not attained:
+  `candidate_inadmissible`, no estimate shown. A family whose support depends on the parameter (Uniform(0, theta)) has no
+  score or information: `regularity_not_satisfied`.
+* **Fisher information** is `-E[Hessian of the log density]`, with the expectation taken from the family's *derived*
+  moments, and is checked against the variance of the score (quadrature or summation, numerically differentiated log
+  density) with the expected score equal to 0. For n independent observations it is n times that of one (a stated
+  premise). A Hessian that is not polynomial in the observation (Cauchy location) is `no_closed_form`. Note that a
+  result can contain `polygamma(1, alpha)` (the Gamma shape): the input parsers do not read it back.
+* **Posteriors** are found by matching the kernel of prior times likelihood (factors free of the parameter dropped and
+  recorded) against each family with the same support, solving for the parameters that make the derivative of the
+  difference vanish identically. There is no conjugacy table: a Beta prior on a Poisson rate is
+  `kernel_not_recognised`. The result is checked against prior times likelihood divided by its integral (quadrature) at
+  several values of the parameter, and it must integrate to 1. The prior is an assumption of the result and says so.
+
+| Group | Cases | Passing |
+| --- | --- | --- |
+| mle | 15 | 15 |
+| fisher | 11 | 11 |
+| posterior | 9 | 9 |
+
+**All 108 cases pass (51 supported, 28 refused as designed, 29 wrong answers rejected), and the five derivations of the
+minimum successful outcome are complete**: Gaussian mean and variance, Bernoulli, Beta-Binomial, Normal Fisher
+information and the multivariate Gaussian gradient. Latency: median 40 ms, p95 2.3 s (the slowest are Beta moments and
+Fisher information, a few seconds each, under the 10 s sandbox timeout; the tests run the five required derivations at
+the product's default limits).

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import random
 import time
-from dataclasses import dataclass
 
 import mpmath as mp
 import sympy as sp
@@ -19,9 +18,10 @@ from ..errors import LimitError, MinervaMathError, ParseError, RangeNotProvable,
 from ..latexprint import to_latex, to_text
 from ..models import ExpressionInput, Limits, Status
 from ..ops import parse_expression
+from . import fisher, mle, posterior
 from . import moments as mom
 from .domain import DESCRIPTIONS, decide
-from .families import FAMILIES, Family, Param
+from .families import FAMILIES
 from .models import (
     StatCheck,
     StatModelInput,
@@ -30,26 +30,9 @@ from .models import (
     StatStep,
 )
 from .numeric import DPS, REL_TOL, Numeric, sample_parameters
+from .statmodel_types import Reading, Refusal
 
 MOMENT_KEYS = ("mean", "variance", "second")
-
-
-class Refusal(MinervaMathError):
-    """A refusal with a status and an enumerated reason."""
-
-    def __init__(self, status: Status, reason: StatReason, message: str) -> None:
-        super().__init__(message)
-        self.status, self.reason = status, reason
-
-
-@dataclass
-class Reading:
-    family: Family
-    params: tuple[Param, ...]
-    exprs: dict[
-        str, sp.Expr
-    ]  # family parameter name -> the user's expression (or the unknown itself)
-    conditions: list[Condition]
 
 
 def _fail(
@@ -138,6 +121,16 @@ def stat_model(data: StatModelInput, limits: Limits) -> StatModelResult:
         reading = read_model(data, limits)
         if data.action == "moments":
             result = _moments(data, reading, deadline)
+        elif data.action == "log_likelihood":
+            result = mle.run_log_likelihood(data, reading, limits, deadline)
+        elif data.action == "score":
+            result = mle.run_score(data, reading, limits, deadline)
+        elif data.action == "fisher_information":
+            result = fisher.run_fisher(data, reading, limits, deadline)
+        elif data.action == "posterior":
+            result = posterior.run_posterior(data, reading, limits, deadline)
+        elif data.action == "mle":
+            result = mle.run_mle(data, reading, limits, deadline)
         else:
             raise UnsupportedInput(f"the action {data.action!r} is not available yet")
     except Refusal as exc:

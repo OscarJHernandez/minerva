@@ -567,7 +567,6 @@
     outputs: {"estimate:mu": "Sum(x[i], (i, 1, n))/n"}
     evidence: conditional
     optimum: global
-  pending: true
 
 - id: mle-gaussian-mean-and-variance
   group: mle
@@ -586,7 +585,6 @@
     has_conditions: true
   forbid:
     "estimate:v": ["Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/(n - 1)"]
-  pending: true
 
 - id: mle-bernoulli
   group: mle
@@ -601,7 +599,6 @@
     evidence: conditional
     optimum: global
     has_conditions: true
-  pending: true
 
 - id: mle-poisson
   group: mle
@@ -616,7 +613,6 @@
     evidence: conditional
     optimum: global
     has_conditions: true
-  pending: true
 
 - id: mle-bernoulli-all-zeros-has-no-maximiser
   group: mle
@@ -627,7 +623,6 @@
   vars: {}
   request: {family: bernoulli, parameters: {}, observation: x, sample_size: "4", iid: true, estimate: [p], action: mle, data: ["0", "0", "0", "0"]}
   expect: {status: conditions_not_satisfied, reason: candidate_inadmissible}
-  pending: true
 
 - id: mle-bernoulli-all-ones-has-no-maximiser
   group: mle
@@ -638,7 +633,6 @@
   vars: {}
   request: {family: bernoulli, parameters: {}, observation: x, sample_size: "3", iid: true, estimate: [p], action: mle, data: ["1", "1", "1"]}
   expect: {status: conditions_not_satisfied, reason: candidate_inadmissible}
-  pending: true
 
 - id: mle-gaussian-constant-data-degenerate-variance
   group: mle
@@ -649,7 +643,6 @@
   vars: {}
   request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: "3", iid: true, estimate: [mu, v], action: mle, data: ["2", "2", "2"]}
   expect: {status: conditions_not_satisfied, reason: candidate_inadmissible}
-  pending: true
 
 - id: mle-uniform-is-not-regular
   group: mle
@@ -660,7 +653,6 @@
   vars: {}
   request: {family: uniform_0_theta, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [theta], action: mle}
   expect: {status: unsupported, reason: regularity_not_satisfied}
-  pending: true
 
 - id: mle-independence-not-declared
   group: mle
@@ -671,7 +663,6 @@
   vars: {}
   request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, estimate: [mu], action: mle}
   expect: {status: conditions_not_satisfied, reason: independence_not_declared}
-  pending: true
 
 - id: mle-negative-known-variance
   group: mle
@@ -714,7 +705,6 @@
   request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [mu, v], action: mle}
   candidate: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/(n - 1)"}
   control: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/n"}
-  pending: true
 
 - id: mle-check-mean-denominator-n-plus-1
   group: mle
@@ -726,7 +716,6 @@
   request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
   candidate: {"estimate:mu": "Sum(x[i], (i, 1, n))/(n + 1)"}
   control: {"estimate:mu": "Sum(x[i], (i, 1, n))/n"}
-  pending: true
 
 - id: mle-check-variance-with-unsubstituted-mean
   group: mle
@@ -738,7 +727,6 @@
   request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [mu, v], action: mle}
   candidate: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - mu)**2, (i, 1, n))/n"}
   control: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/n"}
-  pending: true
 
 # ------------------------------------------------------------------ Fisher information (Phase 4)
 
@@ -752,7 +740,6 @@
   request: {family: normal, parameters: {sigma: sigma}, estimate: [mu], action: fisher_information}
   expect:
     matrix: [["1/sigma**2"]]
-  pending: true
 
 - id: fisher-normal-mean-and-sd
   group: fisher
@@ -766,7 +753,6 @@
     matrix: [["1/sigma**2", "0"], ["0", "2/sigma**2"]]
   forbid:
     "matrix[1][1]": ["1/sigma**2"]
-  pending: true
 
 - id: fisher-normal-mean-and-variance
   group: fisher
@@ -778,7 +764,6 @@
   request: {family: normal, parametrization: variance, parameters: {}, estimate: [mu, v], action: fisher_information}
   expect:
     matrix: [["1/v", "0"], ["0", "1/(2*v**2)"]]
-  pending: true
 
 - id: fisher-normal-n-observations
   group: fisher
@@ -791,7 +776,6 @@
   expect:
     matrix: [["n/sigma**2", "0"], ["0", "2*n/sigma**2"]]
     evidence: conditional
-  pending: true
 
 - id: fisher-bernoulli
   group: fisher
@@ -803,7 +787,6 @@
   request: {family: bernoulli, parameters: {}, estimate: [p], action: fisher_information}
   expect:
     matrix: [["1/(p*(1 - p))"]]
-  pending: true
 
 - id: fisher-poisson
   group: fisher
@@ -815,7 +798,6 @@
   request: {family: poisson, parameters: {}, estimate: [lam], action: fisher_information}
   expect:
     matrix: [["1/lam"]]
-  pending: true
 
 - id: fisher-uniform-is-not-regular
   group: fisher
@@ -826,7 +808,6 @@
   vars: {}
   request: {family: uniform_0_theta, parameters: {}, estimate: [theta], action: fisher_information}
   expect: {status: unsupported, reason: regularity_not_satisfied}
-  pending: true
 
 - id: fisher-check-sd-information-doubled
   group: fisher
@@ -838,7 +819,6 @@
   request: {family: normal, parameters: {}, estimate: [mu, sigma], action: fisher_information}
   candidate: {matrix: [["1/sigma**2", "0"], ["0", "1/sigma**2"]]}
   control: {matrix: [["1/sigma**2", "0"], ["0", "2/sigma**2"]]}
-  pending: true
 
 - id: fisher-check-nonzero-off-diagonal
   group: fisher
@@ -850,7 +830,6 @@
   request: {family: normal, parameters: {}, estimate: [mu, sigma], action: fisher_information}
   candidate: {matrix: [["1/sigma**2", "1/sigma"], ["1/sigma", "2/sigma**2"]]}
   control: {matrix: [["1/sigma**2", "0"], ["0", "2/sigma**2"]]}
-  pending: true
 
 - id: fisher-check-sd-matrix-under-variance
   group: fisher
@@ -862,7 +841,6 @@
   request: {family: normal, parametrization: variance, parameters: {}, estimate: [mu, v], action: fisher_information}
   candidate: {matrix: [["1/v", "0"], ["0", "2/v"]]}
   control: {matrix: [["1/v", "0"], ["0", "1/(2*v**2)"]]}
-  pending: true
 
 - id: fisher-check-perturbed-by-1e-6
   group: fisher
@@ -874,7 +852,6 @@
   request: {family: bernoulli, parameters: {}, estimate: [p], action: fisher_information}
   candidate: {matrix: [["1/(p*(1 - p)) + 1/1000000"]]}
   control: {matrix: [["1/(p*(1 - p))"]]}
-  pending: true
 
 # ------------------------------------------------------------------ Bayesian updates (Phase 4)
 
@@ -889,7 +866,6 @@
   expect:
     labels: {"posterior:family": beta}
     outputs: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n - k"}
-  pending: true
 
 - id: posterior-beta-bernoulli-sample
   group: posterior
@@ -905,7 +881,6 @@
       "posterior:alpha": "alpha + Sum(x[i], (i, 1, n))"
       "posterior:beta": "beta + n - Sum(x[i], (i, 1, n))"
     evidence: conditional
-  pending: true
 
 - id: posterior-gamma-poisson
   group: posterior
@@ -921,7 +896,6 @@
       "posterior:alpha": "alpha + Sum(x[i], (i, 1, n))"
       "posterior:beta": "beta + n"
     evidence: conditional
-  pending: true
 
 - id: posterior-normal-normal-known-variance
   group: posterior
@@ -937,7 +911,6 @@
       "posterior:mu": "(mu0/tau2 + Sum(x[i], (i, 1, n))/v)/(1/tau2 + n/v)"
       "posterior:v": "1/(1/tau2 + n/v)"
     evidence: conditional
-  pending: true
 
 - id: posterior-non-conjugate-kernel-not-recognised
   group: posterior
@@ -948,7 +921,6 @@
   vars: {}
   request: {family: poisson, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [lam], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
   expect: {status: unsupported, reason: kernel_not_recognised}
-  pending: true
 
 - id: posterior-invalid-prior-parameter
   group: posterior
@@ -959,7 +931,6 @@
   vars: {}
   request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: "-1", beta: beta}}, action: posterior}
   expect: {status: conditions_not_satisfied, reason: parameter_invalid}
-  pending: true
 
 - id: posterior-check-beta-not-updated
   group: posterior
@@ -971,7 +942,6 @@
   request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
   candidate: {"posterior:alpha": "alpha + k", "posterior:beta": "beta"}
   control: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n - k"}
-  pending: true
 
 - id: posterior-check-beta-adds-trials-not-failures
   group: posterior
@@ -983,7 +953,6 @@
   request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
   candidate: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n"}
   control: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n - k"}
-  pending: true
 
 - id: posterior-check-normal-prior-variance-not-updated
   group: posterior
@@ -995,7 +964,6 @@
   request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, iid: true, estimate: [mu], prior: {family: normal, parametrization: variance, parameters: {mu: mu0, v: tau2}}, action: posterior}
   candidate: {"posterior:mu": "(mu0/tau2 + Sum(x[i], (i, 1, n))/v)/(1/tau2 + n/v)", "posterior:v": "tau2"}
   control: {"posterior:mu": "(mu0/tau2 + Sum(x[i], (i, 1, n))/v)/(1/tau2 + n/v)", "posterior:v": "1/(1/tau2 + n/v)"}
-  pending: true
 
 # ------------------------------------------------------------------ matrix derivatives (Phase 2)
 # Text syntax: `*` is the matrix product, `transpose`, `inv`, `tr`, `det`, `logdet` (= log |det|; the

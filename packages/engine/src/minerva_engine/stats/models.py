@@ -173,6 +173,9 @@ class StatModelResult(BaseModel):
     steps: list[StatStep] = Field(default_factory=list)
     moments: dict[str, str] = Field(default_factory=dict)  # mean, variance, second (plain text)
     moments_latex: dict[str, str] = Field(default_factory=dict)
+    # log-likelihood and score: named expressions in plain text and LaTeX ("loglik", "score:mu")
+    expressions: dict[str, str] = Field(default_factory=dict)
+    expressions_latex: dict[str, str] = Field(default_factory=dict)
     estimates: list[Estimate] = Field(default_factory=list)
     matrix_text: list[list[str]] | None = None
     matrix_latex: list[list[str]] | None = None

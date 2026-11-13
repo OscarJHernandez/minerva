@@ -359,6 +359,19 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   "agrees" with a divergent integral; such a moment is `convergence_not_established`. Parameter constraints are decided by
   `stats/domain.py`: provably violated is `parameter_invalid`, undecidable (`0 < p < 1` cannot be an assumption) is a premise
   of the result, never silently true. `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
+- Statistical derivations (`stats/likelihood.py`, `mle.py`, `fisher.py`, `posterior.py`; operation `statistical_model`):
+  **independence is never assumed** (`iid` must be stated, else `independence_not_declared`, and a result that used it is
+  `conditional`); a prior is an assumption of the result and the result says so. Estimators are derived by solving the score
+  equations of the expanded log-likelihood (triangular systems only) and shown only if, on explicit data inside the support,
+  the score of the **direct** log-likelihood (sum of log densities, central differences) vanishes there, the point is inside
+  the parameter space and the Hessian is negative definite (second differences). `global` needs a symbolic proof of concavity
+  on the whole parameter space; otherwise `local` (proved at the point, or `measured`, saying so). A candidate estimator may
+  not depend on the unknowns it estimates, and a stationary point that is not a maximum is rejected. An estimate outside the
+  parameter space for the data is `candidate_inadmissible` (no MLE shown); a family whose support depends on the parameter
+  is `regularity_not_satisfied`. Fisher information is -E[Hessian] with derived moments, checked against the variance of the
+  score by quadrature (tolerance 1e-9: a 1e-6 error must be rejected). Posteriors are found by kernel matching, never from a
+  conjugacy table, and checked against prior x likelihood normalised by quadrature. Do not loosen those tolerances or add a
+  hardcoded estimator, information matrix or posterior; `docs/statistics-benchmark.md` and `stat-benchmark` measure them.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

@@ -36,6 +36,10 @@ class Family:
     # False when the support depends on a parameter: differentiation under the integral sign is not allowed
     regular: bool = True
     symbols: dict[str, sp.Symbol] = field(default_factory=dict)
+    # assumptions that hold for every observation of the family (its support), e.g. nonnegative integers
+    observation: dict[str, bool] = field(default_factory=lambda: {"real": True})
+    # the observations are in [0, 1]: n - sum(x) is a sum of nonnegative terms (used in second-order proofs)
+    unit_interval_data: bool = False
 
     def params(self, parametrization: str | None) -> tuple[Param, ...]:
         key = parametrization or next(iter(self.parametrization))
@@ -87,6 +91,8 @@ _register(
         support=lambda s: (sp.Integer(0), sp.Integer(1)),
         density=lambda s, t: s["p"] ** t * (1 - s["p"]) ** (1 - t),
         symbols=_symbols(("p", _POS)),
+        observation={"integer": True, "nonnegative": True},
+        unit_interval_data=True,
     )
 )
 _register(
@@ -98,6 +104,7 @@ _register(
         support=lambda s: (sp.Integer(0), s["n"]),
         density=lambda s, t: sp.binomial(s["n"], t) * s["p"] ** t * (1 - s["p"]) ** (s["n"] - t),
         symbols=_symbols(("n", _POSINT), ("p", _POS)),
+        observation={"integer": True, "nonnegative": True},
     )
 )
 _register(
@@ -109,6 +116,7 @@ _register(
         support=lambda s: (sp.Integer(0), sp.oo),
         density=lambda s, t: sp.exp(-s["lam"]) * s["lam"] ** t / sp.factorial(t),
         symbols=_symbols(("lam", _POS)),
+        observation={"integer": True, "nonnegative": True},
     )
 )
 _register(
@@ -122,6 +130,8 @@ _register(
             t ** (s["alpha"] - 1) * (1 - t) ** (s["beta"] - 1) / sp.beta(s["alpha"], s["beta"])
         ),
         symbols=_symbols(("alpha", _POS), ("beta", _POS)),
+        observation={"positive": True},
+        unit_interval_data=True,
     )
 )
 _register(
@@ -138,6 +148,7 @@ _register(
             / sp.gamma(s["alpha"])
         ),
         symbols=_symbols(("alpha", _POS), ("beta", _POS)),
+        observation={"positive": True},
     )
 )
 _register(

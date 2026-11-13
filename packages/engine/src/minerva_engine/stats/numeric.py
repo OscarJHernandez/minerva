@@ -153,3 +153,37 @@ class Numeric:
                 ):
                     return False
             return True
+
+
+def information_matrix(num: Numeric, positions: list[int]) -> tuple[mp.matrix, list[mp.mpf]]:
+    """Variance of the score by quadrature or summation: I_ab = E[s_a s_b], and E[s_a] (should be 0).
+
+    The score is a central difference of the log density in the parameter, so this does not use the
+    symbolic derivation it checks.
+    """
+    h = mp.mpf(10) ** -8
+
+    def log_density(t: mp.mpf, shifts: dict[int, mp.mpf]) -> mp.mpf:
+        args = list(num.args)
+        for position, delta in shifts.items():
+            args[position] = args[position] + delta
+        return mp.log(num._f(t, *args))
+
+    def score(t: mp.mpf, position: int) -> mp.mpf:
+        return (log_density(t, {position: h}) - log_density(t, {position: -h})) / (2 * h)
+
+    k = len(positions)
+
+    def mean_of(pa: int) -> mp.mpf:
+        return num.expectation(lambda t: score(t, pa))[0]
+
+    def product_of(pa: int, pb: int) -> mp.mpf:
+        return num.expectation(lambda t: score(t, pa) * score(t, pb))[0]
+
+    with mp.workdps(DPS):
+        info = mp.zeros(k, k)
+        means = [mean_of(pa) for pa in positions]
+        for a, pa in enumerate(positions):
+            for b, pb in enumerate(positions):
+                info[a, b] = info[b, a] if b < a else product_of(pa, pb)
+    return info, means
