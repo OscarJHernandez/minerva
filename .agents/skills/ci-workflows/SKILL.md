@@ -30,5 +30,7 @@ uvx zizmor .github/workflows
 actionlint
 ```
 
-Both must report nothing new. The `workflows` job in `ci.yml` runs the same tools.
+Both must report nothing new. The `lint` job in `ci.yml` runs the same tools. Test shards (`tests`, `tests-api`) must all be listed in `ci-ok.needs`
+and keep `fail-fast: false`; a shard count change goes in the matrix and in `MINERVA_TEST_SHARD` together. Each job is
+one runner pod, so the jobs of one run plus an overlapping Deploy must fit `maxRunners` in `homelab-kubernetes`.
 Use `oss-publication-review` before any change that publishes anything.
