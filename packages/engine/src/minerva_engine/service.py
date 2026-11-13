@@ -7,6 +7,7 @@ from typing import Any
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .discovery import BUDGETS, DiscoveryReport, Pins
 from .expansion import ExpansionReport
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
@@ -44,9 +45,14 @@ class Engine:
         self.limits = limits or Limits()
         self.sandbox = sandbox or Sandbox(self.limits)
 
-    def _run(self, op: str, payload: dict[str, Any]) -> tuple[SandboxResult, int]:
+    def _run(
+        self, op: str, payload: dict[str, Any], timeout: float | None = None
+    ) -> tuple[SandboxResult, int]:
         start = time.monotonic()
-        result = self.sandbox.run(op, {**payload, "limits": self.limits.model_dump()})
+        limits = self.limits.model_copy(
+            update={"timeout_seconds": timeout} if timeout is not None else {}
+        )
+        result = self.sandbox.run(op, {**payload, "limits": limits.model_dump()}, timeout=timeout)
         return result, int((time.monotonic() - start) * 1000)
 
     @staticmethod
@@ -358,6 +364,42 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return InvariantReport(status=status, message=message, duration_ms=ms)
         report = InvariantReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def discover_invariants(
+        self,
+        function: str,
+        coordinates: list[str],
+        system: str = "lagrangian",
+        momenta: list[str] | None = None,
+        angles: list[str] | None = None,
+        budget: str = "standard",
+        pins: Pins | None = None,
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+    ) -> DiscoveryReport:
+        """Adaptive search for conserved quantities of a Lagrangian or Hamiltonian, sandboxed."""
+        seconds = BUDGETS[budget].seconds if budget in BUDGETS else self.limits.timeout_seconds
+        outcome, ms = self._run(
+            "discover_invariants",
+            {
+                "system": system,
+                "function": function,
+                "coordinates": coordinates,
+                "momenta": momenta,
+                "angles": angles or [],
+                "budget": budget,
+                "pins": pins.model_dump() if pins else None,
+                "time": time,
+                "assumptions": assumptions or {},
+            },
+            timeout=seconds,
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DiscoveryReport(status=status, message=message, duration_ms=ms)
+        report = DiscoveryReport(**outcome.value)
         report.duration_ms = ms
         return report
 
