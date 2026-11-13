@@ -17,7 +17,7 @@ as it was before the reliability changes (commit `7b19980`, frozen, with the new
 *new* is the same cases after them (commit `abaeb9f`). Full reports:
 [baseline](benchmarks/agent-baseline.md), [new](benchmarks/agent-new.md),
 [comparison](benchmarks/agent-comparison.md) (JSON next to each). The case file has since gained five informational
-geometry and distribution cases (83 in total), so its digest no longer equals the one these runs recorded
+geometry and distribution cases (83 in total at that point; the case file now has 93, see "Changes after the 2026-11-13 runs"), so its digest no longer equals the one these runs recorded
 (`e89efb8efe53`); informational cases are not scored.
 
 | | pass rate | tool selection | valid arguments | completion | unsupported shown as verified | unnecessary calls |

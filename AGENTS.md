@@ -56,6 +56,7 @@ uv run python -m minerva_knowledge matrix-benchmark   # matrix calculus coverage
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
+uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)

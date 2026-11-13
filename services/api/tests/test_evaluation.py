@@ -805,7 +805,10 @@ def test_the_geometry_and_distribution_cases_are_part_of_the_benchmark() -> None
         "delta-on-a-limit-asks-for-a-convention",
     }
     assert ported <= set(BY_ID)
-    assert all(BY_ID[i].informational for i in ported)  # measured and reported, not scored
+    geometry = {i for i in ported if i.startswith("geometry")}
+    assert all(BY_ID[i].informational for i in geometry)  # measured and reported, not scored
+    deltas = ported - geometry  # these have an engine answer to compare with, so they are scored
+    assert all(not BY_ID[i].informational and BY_ID[i].reference for i in deltas)
     history = BY_ID["geometry-follow-up-resends-the-same-metric"].history
     assert (
         history[1]["tool_calls"][0]["id"] == history[2]["tool_call_id"]

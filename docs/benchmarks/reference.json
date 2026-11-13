@@ -1,0 +1,67 @@
+{
+  "problems": [
+    {
+      "id": "matrix-exp-product-noncommuting",
+      "category": "matrix",
+      "source": "Higham, Functions of Matrices (matrix exponential)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "matrix-exp-merge-refused",
+      "category": "matrix",
+      "source": "Higham, Functions of Matrices (matrix exponential: exp(A)exp(B) = exp(A+B) needs commuting A, B in general)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "matrix-frechet-derivative",
+      "category": "matrix",
+      "source": "Higham, Functions of Matrices (Frechet derivative of the exponential)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "delta-composition-two-roots",
+      "category": "distribution",
+      "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (delta of a function)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "delta-repeated-root-refused",
+      "category": "distribution",
+      "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (delta of a function with a repeated root is not defined)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "delta-on-the-limit-refused",
+      "category": "distribution",
+      "source": "convention of the integral at an endpoint (ambiguous without a stated one)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "substitution-with-premise",
+      "category": "substitution",
+      "source": "arithmetic",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "substitution-order-refused",
+      "category": "substitution",
+      "source": "arithmetic (the two orders differ)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "duffing-frequency-shift",
+      "category": "mechanics",
+      "source": "Landau and Lifshitz, Mechanics, section 28 (anharmonic oscillations)",
+      "expected": "correct",
+      "outcome": "correct"
+    }
+  ]
+}
