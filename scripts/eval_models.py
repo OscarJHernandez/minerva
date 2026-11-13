@@ -300,6 +300,43 @@ CASES = [
         args_check=lambda t, a: a.get("goal") == "factor",
         informational=True,
     ),
+    # Controlled steps: the model must use the user's relation as a premise, report every condition, and
+    # never answer an unsupported equation.
+    Case(
+        "substitute-names-the-premise",
+        r"Using $y^2 = 1 - x^2$, substitute into $x^2 + y^2$.",
+        {"substitute"},
+        forbid={"simplify"},
+        final_matches=re.compile(r"given|assum|premise|your relation|if ", re.I),
+        args_check=lambda t, a: bool(a.get("relations")),
+    ),
+    Case(
+        "isolate-reports-the-condition",
+        r"Solve $a x + b = c$ for $x$.",
+        {"isolate_variable"},
+        final_matches=re.compile(r"a\s*(\\neq|!=|≠|not equal)|nonzero|non-zero|a\s*=\s*0", re.I),
+    ),
+    Case(
+        "isolate-gives-both-roots",
+        r"Solve $s = u t + \frac{1}{2} a t^2$ for $t$.",
+        {"isolate_variable"},
+        final_matches=re.compile(r"\\pm|both|two|second|-\s*u\s*-", re.I),
+    ),
+    Case(
+        "isolate-unsupported-is-not-answered",
+        r"Solve $\sin x = a$ for $x$.",
+        {"isolate_variable"},
+        final_matches=re.compile(
+            r"not supported|unsupported|cannot|can't|could not|no solution", re.I
+        ),
+    ),
+    Case(
+        "rewrite-part-asks-which-occurrence",
+        r"In $\sin(2x) + y \sin(2x)$ apply the double angle formula to the part $\sin(2x)$.",
+        {"rewrite_part"},
+        final_matches=re.compile(r"which|occurrence|first|second|both|\?", re.I),
+        informational=True,
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

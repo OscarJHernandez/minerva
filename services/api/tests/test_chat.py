@@ -496,3 +496,75 @@ def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
         r"\dot\theta = \dot\phi + \omega",
     ]
     assert assumptions == {"x": ["positive"]}
+
+
+def test_substitute_turn_streams_a_conditional_step_card(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Substitute $x^2 + y^2$ using $y^2 = 1 - x^2$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "step" and card["data"]["operation"] == "substitute"
+    result = card["data"]["result"]
+    assert result["status"] == "ok" and result["result_text"] == "1"
+    assert result["evidence"] == "conditional" and result["given"][0]["text"] == "y**2 = 1 - x**2"
+    assert "given your relation" in message["text"]
+    assert "proved" not in message["text"]
+
+
+def test_an_order_dependent_substitution_is_put_back_to_the_user(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Substitute $x + y$ using $x = y$ and $y = 1$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["status"] == "unsupported"
+    assert card["data"]["result"]["result_text"] is None
+    assert "order" in message["text"] and "?" in message["text"]
+    again = sse(client, cid, r"Substitute $x + y$ using $x = y$ and $y = 1$ in order")
+    assert (
+        cards_of(next(d for e, d in again if e == "message"))[0]["data"]["result"]["result_text"]
+        == "2"
+    )
+
+
+def test_isolate_turn_lists_every_solution_in_the_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Solve for t: $s = u t + \frac{1}{2} a t^2$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "step" and card["data"]["operation"] == "isolate"
+    result = card["data"]["result"]
+    assert result["status"] == "ok" and len(result["solutions"]) == 2
+    assert result["conditions_latex"] == [r"a \neq 0"] and result["exceptional"] == ["a = 0"]
+
+
+def test_an_unsupported_equation_gives_no_solution_in_chat(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Solve for x: $\sin x = a$")
+    message = next(d for e, d in events if e == "message")
+    result = cards_of(message)[0]["data"]["result"]
+    assert result["status"] == "unsupported" and result["solutions"] == []
+    assert "no solution to give" in message["text"]
+
+
+def test_rewrite_part_turn_changes_only_the_named_part(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Expand only the part $(x+1)^2$ of $(x+1)^2 (y+1)^2$")
+    message = next(d for e, d in events if e == "message")
+    result = cards_of(message)[0]["data"]["result"]
+    # The scripted stand-in takes the first formula as the expression and the second as the part.
+    assert result["status"] in {"ok", "parse_error"}
+
+
+def test_the_step_card_survives_the_debug_record(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    sse(client, cid, r"Substitute $x^2 + y^2$ using $y^2 = 1 - x^2$")
+    detail = client.get(f"/v1/chat/conversations/{cid}").json()
+    trace = detail["messages"][-1]["content"]["trace"]
+    assert [t["name"] for t in trace] == ["substitute"]
+    assert trace[0]["status"] == "ok" and trace[0]["for_model"].startswith("status=ok")

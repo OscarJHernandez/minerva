@@ -197,3 +197,14 @@ def test_substituting_a_polynomial_relation_agrees_with_direct_evaluation(engine
         for x0 in (sp.Rational(1, 3), sp.Integer(2), sp.Rational(-5, 4)):
             y0 = sp.sqrt(g.subs(x, x0))
             assert sp.simplify(got.subs(x, x0) - e.subs({x: x0, y: y0})) == 0
+
+
+def test_other_orders_are_listed_only_when_debugging_is_requested(engine: Engine) -> None:
+    plain = engine.substitute(expr("x + y"), ["x = y", "y = 1"])
+    assert plain.diagnostics.detail == [], (
+        "by default nothing that could hold an expression is kept"
+    )
+    debug = engine.substitute(expr("x + y"), ["x = y", "y = 1"], debug=True)
+    assert any(line.startswith("order [1, 2]: 2") for line in debug.diagnostics.detail)
+    assert any(line.startswith("order [2, 1]:") for line in debug.diagnostics.detail)
+    assert debug.status is Status.UNSUPPORTED, "debugging never changes the outcome"

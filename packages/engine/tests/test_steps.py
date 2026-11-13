@@ -388,3 +388,30 @@ def test_every_listed_path_leads_to_the_listed_node() -> None:
         e = random_expression(rng)
         for path, node in walk(e):
             assert node_at(e, path) == node
+
+
+def test_the_rejected_candidate_is_kept_only_when_debugging_is_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    x = sp.Symbol("x")
+    monkeypatch.setattr(
+        steps_module,
+        "_builtin",
+        lambda *a, **k: steps_module._Move(x + 1, "builtin", "sympy.fake"),
+    )
+
+    def call(debug: bool) -> dict:  # type: ignore[type-arg]
+        return steps_module.op_rewrite_at(
+            {
+                "limits": Limits().model_dump(),
+                "expression": {"input": "x + 2*y", "format": "text", "assumptions": {}},
+                "action": "expand",
+                "part": "x",
+                "debug": debug,
+            }
+        )
+
+    assert call(False)["diagnostics"]["detail"] == []
+    detail = call(True)["diagnostics"]["detail"]
+    assert detail and "failed verification" in detail[0]
+    assert call(True)["status"] == "not_verified"

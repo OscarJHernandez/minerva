@@ -351,3 +351,30 @@ def test_planted_solutions_of_linear_equations(engine: Engine) -> None:
         a, b, c = (rng.choice([n for n in range(-9, 10) if n]) for _ in range(3))
         result = engine.isolate(eq(f"{a} x + {b} = {c}"), "x")
         assert values(result) == [sp.Rational(c - b, a)]
+
+
+def test_rejected_candidates_are_kept_only_when_debugging_is_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = isolate_module.solve_rational
+
+    def add_one(*args: object, **kwargs: object) -> isolate_module.Solved:
+        solved = real(*args, **kwargs)  # type: ignore[arg-type]
+        solved.states = [*solved.states, isolate_module.State(sp.Integer(7))]
+        return solved
+
+    monkeypatch.setattr(isolate_module, "solve_rational", add_one)
+
+    def call(debug: bool) -> dict[str, object]:
+        return isolate_module.op_isolate(
+            {
+                "limits": Limits(timeout_seconds=30).model_dump(),
+                "expression": {"input": "x**2 - 5*x + 6 = 0", "format": "text", "assumptions": {}},
+                "variable": "x",
+                "debug": debug,
+            }
+        )
+
+    assert call(False)["diagnostics"]["detail"] == []  # type: ignore[index]
+    detail = call(True)["diagnostics"]["detail"]  # type: ignore[index]
+    assert any("candidate: x = 7" in line for line in detail)

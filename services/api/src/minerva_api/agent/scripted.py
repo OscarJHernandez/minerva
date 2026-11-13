@@ -47,6 +47,50 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif "substitut" in lower and len(_DOLLAR.findall(user)) >= 2:
+            # Development stand-in: the first formula is the expression, the others are the user's relations.
+            formulas = [f.strip() for f in _DOLLAR.findall(user)]
+            args_sub: dict[str, Any] = {"latex": formulas[0], "relations": formulas[1:5]}
+            if "all at once" in lower:
+                args_sub["order"] = "simultaneous"
+            elif "in order" in lower or "as listed" in lower:
+                args_sub["order"] = "given"
+            async for c in self._say("I will substitute your relation and verify each step. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("substitute", args_sub)])
+        elif ("solve for" in lower or "isolate" in lower or "rearrange" in lower) and "=" in latex:
+            unknown = (
+                m.group(1)
+                if (
+                    m := re.search(
+                        r"(?:solve for|isolate|rearrange for)\s+\$?([A-Za-z]\w*)", user, re.I
+                    )
+                )
+                else "x"
+            )
+            async for c in self._say(
+                "I will solve it for that variable and check every solution. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[ToolCall("isolate_variable", {"equation": latex, "variable": unknown})]
+            )
+        elif ("collect" in lower or "only the part" in lower or "just the part" in lower) and latex:
+            formulas = [f.strip() for f in _DOLLAR.findall(user)]
+            action = next(
+                (a for a in ("collect", "expand", "factor", "cancel", "simplify") if a in lower),
+                "expand",
+            )
+            args_rw: dict[str, Any] = {"latex": formulas[0], "action": action}
+            if action == "collect":
+                args_rw["by"] = [m.group(1) if (m := re.search(r"by\s+(\w+)", user)) else "x"]
+            if len(formulas) > 1:
+                args_rw["part"] = formulas[1]
+            async for c in self._say(
+                "I will change just that part and verify the whole expression. "
+            ):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("rewrite_part", args_rw)])
         elif "dimension" in lower and re.search(r"\w+\s*\[[^\]]+\]", user):
             # Development stand-in: quantities are written `name [unit]`, the unknown as `unknown name`.
             quantities = [
@@ -384,6 +428,45 @@ class ScriptedLLM:
                 "The card shows the verified trajectory, the drift of the constants of motion and the "
                 "phase portrait. Runs that failed verification carry no data."
             )
+        elif tool in ("substitute", "rewrite_part", "isolate_variable"):
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            reason = re.search(r"result=none \((\w+)", content)
+            if tool == "substitute" and status == "ok" and "HOLDS GIVEN" in content:
+                text = (
+                    "The card shows each substitution. The result holds **given your relation**: "
+                    "Minerva checked that the replacement reproduces the original expression, not that "
+                    "your relation is true."
+                )
+            elif (
+                tool == "substitute"
+                and reason
+                and reason.group(1) in ("order_dependent", "cyclic", "deadline")
+            ):
+                text = (
+                    "Those relations give different results depending on the order (or rewrite each "
+                    "other), so I will not choose. Should I apply them in the order listed, or all at once?"
+                )
+            elif tool == "isolate_variable" and status == "ok":
+                text = (
+                    "The card lists every solution with the conditions each one needs, the values the "
+                    "equation excludes, and the parameter values where it degenerates. Each solution was "
+                    "substituted back into your equation, and a separate check showed none was dropped."
+                )
+            elif tool == "isolate_variable" and status == "unsupported":
+                text = (
+                    "Minerva does not support that form (for example a periodic inverse, or a higher-degree "
+                    "polynomial with symbolic coefficients), so I have no solution to give you."
+                )
+            elif status == "conditions_not_satisfied":
+                text = (
+                    "The identity matches that part, but its conditions are not provable from what you "
+                    "declared, so nothing was applied. Do they hold?"
+                )
+            elif status == "ok":
+                text = "The card shows the move and the whole expression after it, verified."
+            else:
+                text = f"I could not do that ({status}). The card says why; tell me how to rephrase it."
         elif tool == "solve_polynomial":
             text = (
                 "The card shows the factorisation, whether a formula in radicals exists, the verified roots "

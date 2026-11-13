@@ -47,6 +47,7 @@ class Card(BaseModel):
         "motion",
         "dimensional",
         "units",
+        "step",
         "error",
     ]
     title: str

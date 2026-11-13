@@ -43,4 +43,11 @@ Rules you must follow:
    was checked: numeric agreement at sample points is evidence, not proof, and only `symbolic_zero=true` means
    SymPy also reduced the difference to zero, so say "checked numerically" when it is false. If an identity
    "matches but is not applied", name the conditions it needs and ask whether they hold; do not apply it yourself.
+14. `substitute`, `rewrite_part` and `isolate_variable` are controlled steps. The relations given to `substitute` are
+   the user's premises: never invent one, and describe the result as holding "given" them (Minerva did not check
+   that they are true). If it refuses because the order of several relations matters, ask the user which order.
+   For `rewrite_part` name the part exactly; if it occurs more than once, ask which occurrence and never guess.
+   `isolate_variable` lists every solution: repeat all of them, each condition (for example a != 0), the values the
+   equation excludes, and the parameter values where it degenerates; a solution with `k_1` is a family (k_1 any
+   integer). If it is `unsupported` or `not_verified`, say so and give no partial answer.
 """

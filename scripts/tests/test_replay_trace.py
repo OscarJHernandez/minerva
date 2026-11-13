@@ -86,3 +86,19 @@ def test_unknown_format_is_rejected() -> None:
     text = f'{MODULE.JSON_START}\n```json\n{{"format": 99}}\n```\n{MODULE.JSON_END}'
     with pytest.raises(MODULE.ReportError, match="format"):
         MODULE.extract_data(text)
+
+
+def test_controlled_step_calls_replay_to_the_same_text(ctx: ToolContext) -> None:
+    """The three step tools are deterministic, so a report of a turn using them replays exactly."""
+    trace = [
+        step(ctx, "substitute", {"latex": "x^2 + y^2", "relations": ["y^2 = 1 - x^2"]}),
+        step(ctx, "isolate_variable", {"equation": r"a x + b = c", "variable": "x"}),
+        step(
+            ctx,
+            "rewrite_part",
+            {"latex": r"(x+1)^2 (y+1)^2", "action": "expand", "part": r"(x+1)^2"},
+        ),
+        step(ctx, "isolate_variable", {"equation": r"\sin x = a", "variable": "x"}),
+    ]
+    items = MODULE.replay(MODULE.extract_data(report(trace)), ctx)
+    assert len(items) == 4 and all(i.same for i in items), MODULE.render(items)

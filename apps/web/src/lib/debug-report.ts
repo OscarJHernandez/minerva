@@ -62,6 +62,24 @@ function cardSummary(card: Card | null | undefined): string[] {
     card.type === "units"
   ) {
     out.push(`- status: ${card.data.report.status}`, `- message: ${card.data.report.message}`);
+  } else if (card.type === "step") {
+    const r = card.data.result;
+    out.push(`- operation: ${card.data.operation}`, `- status: ${r.status}`);
+    if (card.data.operation === "isolate") {
+      out.push(`- solutions: ${card.data.result.solutions.length}`);
+      out.push(`- conditions on all: ${card.data.result.conditions_latex.join("; ") || "-"}`);
+    } else {
+      out.push(`- input as read: ${card.data.result.input_latex ?? "-"}`);
+      out.push(`- result: ${card.data.result.result_latex ?? "-"}`);
+      out.push(`- evidence: ${card.data.result.evidence}`);
+    }
+    const d = r.diagnostics;
+    out.push(
+      `- diagnostics: read ${d.parse_ms} ms, candidates ${d.candidates_ms} ms, transform ${d.transform_ms} ms, ` +
+        `verify ${d.verify_ms} ms; ${d.candidates} candidate(s); rejected ${JSON.stringify(d.rejected)}; ` +
+        `check ${d.verification_method}: ${d.verification_outcome}; restrictions ${d.restrictions_outcome}`,
+    );
+    out.push(`- engine message: ${r.message}`);
   } else if (card.type === "error") {
     out.push(`- message: ${card.data.message}`);
   } else if ("status" in card.data) {

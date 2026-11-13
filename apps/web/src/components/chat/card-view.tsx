@@ -14,6 +14,7 @@ import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
 import { UnitsCard } from "./units-card";
 import { ResultPanel, StatusPill } from "../result-panel";
+import { IsolatePanel, StepResultPanel } from "../step-result-panel";
 import type { Status } from "@/lib/types";
 
 /** Renders a tool result. The content comes from Minerva's own computation, never from the model. */
@@ -29,6 +30,12 @@ export function CardView({ card }: { card: Card }) {
       return <IntegralPanel result={card.data} />;
     case "identities":
       return <IdentitiesPanel result={card.data} />;
+    case "step":
+      return card.data.operation === "isolate" ? (
+        <IsolatePanel result={card.data.result} />
+      ) : (
+        <StepResultPanel result={card.data.result} />
+      );
     case "entries":
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>
