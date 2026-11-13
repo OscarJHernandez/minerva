@@ -161,3 +161,80 @@ def test_derive_expr_takes_explicit_symbols_and_matches_the_latex_route() -> Non
     assert [str(sp.simplify(via_latex.solution[a])) for a in via_latex.qdd] == [
         str(sp.simplify(d.solution[a])) for a in d.qdd
     ]
+
+
+# --- plain-text input: velocities are written q_dot -------------------------------------------
+def analyze_text(lag: str, coords: list[str]):  # type: ignore[no-untyped-def]
+    return analyze_lagrangian(lag, coords, "t", {}, L, "text")
+
+
+def _same_report(a, b) -> None:  # type: ignore[no-untyped-def]
+    """Two reports agree in everything but the timing."""
+    da, db = a.model_dump(mode="json"), b.model_dump(mode="json")
+    da.pop("duration_ms", None)
+    db.pop("duration_ms", None)
+    assert da == db
+
+
+@pytest.mark.parametrize(
+    ("latex", "text", "coordinates"),
+    [
+        (
+            r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}",
+            "m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r",
+            ["r", "theta"],
+        ),
+        (
+            r"\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}",
+            "m*(x_dot**2 + y_dot**2)/2 + k/sqrt(x**2 + y**2)",
+            ["x", "y"],
+        ),
+        (r"\frac12 m\dot{x}^2 - \frac12 k x^2 t", "m*x_dot^2/2 - k*x^2*t/2", ["x"]),
+    ],
+)
+def test_text_and_latex_give_the_same_verified_report(
+    latex: str, text: str, coordinates: list[str]
+) -> None:
+    from_text = analyze_text(text, coordinates)
+    assert from_text.status is Status.OK
+    _same_report(from_text, analyze(latex, coordinates))
+
+
+def test_text_lagrangian_is_still_verified_through_the_sandbox() -> None:
+    r = Engine().analyze_lagrangian(
+        "m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r", ["r", "theta"], format="text"
+    )
+    assert r.status is Status.OK and kinds(r) == ["cyclic", "energy"]
+    assert r.conserved[0].expression_latex == r"p_{\theta} = m r^{2} \dot{\theta}"
+
+
+def test_text_without_a_velocity_is_unsupported_and_names_both_spellings() -> None:
+    r = analyze_text("k*x^2/2", ["x"])
+    assert r.status is Status.UNSUPPORTED
+    assert "q_dot in text" in (r.message or "")
+
+
+def test_text_acceleration_is_refused_not_guessed() -> None:
+    r = analyze_text("m*x_dot^2/2 + x_ddot*x", ["x"])
+    assert r.status is Status.UNSUPPORTED
+    assert r.equations == []
+
+
+@pytest.mark.parametrize(
+    "bad", ["m*x_dot^2/2 +", "m*x_dot^2/2 + __import__('os')", r"\frac12 x_dot^2"]
+)
+def test_bad_text_is_a_parse_error(bad: str) -> None:
+    r = analyze_text(bad, ["x"])
+    assert r.status in {Status.PARSE_ERROR, Status.UNSUPPORTED}
+    assert r.equations == [] and r.conserved == []
+
+
+def test_latex_stays_the_default_and_text_syntax_is_not_read_as_latex() -> None:
+    # `m*x_dot^2/2` is not LaTeX (the star and the bare subscript word); the default must still be LaTeX.
+    assert analyze("m*x_dot^2/2", ["x"]).status is not Status.OK
+
+
+def test_the_note_names_the_capability_not_a_source_file() -> None:
+    r = analyze(r"\frac12 m\dot{x}^2", ["x"])
+    note = " ".join(r.notes)
+    assert "constants of motion" in note and "invariants.py" not in note

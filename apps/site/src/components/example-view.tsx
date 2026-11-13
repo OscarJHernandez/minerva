@@ -23,14 +23,27 @@ export function MathLine({ latex }: { latex: string }) {
   );
 }
 
-function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
+function Labelled({
+  label,
+  tag,
+  children,
+}: {
+  label: string;
+  tag?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-muted">
+        {label}
+        {tag && <span className="ml-2 normal-case tracking-normal text-muted/80">· {tag}</span>}
+      </dt>
       <dd className="mt-0.5">{children}</dd>
     </div>
   );
 }
+
+const SYNTAX_TAG = { text: "plain text", latex: "LaTeX" } as const;
 
 /** A recorded example: the input, what the engine returned, its status and verification. */
 export function ExampleView({ ex }: { ex: Example }) {
@@ -42,11 +55,23 @@ export function ExampleView({ ex }: { ex: Example }) {
       </div>
       <dl className="mt-4 space-y-3">
         {ex.input.map((line) => (
-          <Labelled key={line.label} label={line.label}>
+          <Labelled
+            key={line.label}
+            label={line.label}
+            tag={line.syntax ? SYNTAX_TAG[line.syntax] : undefined}
+          >
             {line.source ? (
               <code className="block overflow-x-auto whitespace-pre text-sm">{line.source}</code>
             ) : (
               <span className="text-sm">{line.text}</span>
+            )}
+            {line.latex && !ex.outputs.some((o) => o.label.startsWith("Read as")) && (
+              <div className="mt-1 flex items-center gap-2 text-muted">
+                <span className="text-xs uppercase tracking-wide">read as</span>
+                <div className="min-w-0 flex-1">
+                  <MathLine latex={line.latex} />
+                </div>
+              </div>
             )}
           </Labelled>
         ))}

@@ -28,7 +28,7 @@ coordinates, the velocities and (for declared angles) cos and sin. Anything else
 from __future__ import annotations
 
 import itertools
-from typing import Any
+from typing import Any, Literal
 
 import sympy as sp
 from pydantic import BaseModel, Field
@@ -97,6 +97,7 @@ def search_invariants(
     time: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
+    format: Literal["latex", "text"] = "latex",
 ) -> InvariantReport:
     if not coordinates or len(coordinates) > MAX_COORDINATES:
         return _fail(
@@ -112,7 +113,7 @@ def search_invariants(
     if not 1 <= harmonics <= MAX_HARMONICS:
         return _fail(Status.UNSUPPORTED, f"The number of harmonics is 1 to {MAX_HARMONICS}.")
     try:
-        d = derive(latex, coordinates, time, assumptions, limits)
+        d = derive(latex, coordinates, time, assumptions, limits, format)
     except DerivationError as exc:
         return _fail(exc.status, exc.message)
     show = d.show

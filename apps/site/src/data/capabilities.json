@@ -42,7 +42,7 @@
         "An identity that matches but whose conditions are not provable from your assumptions is reported with the unmet conditions and never applied.",
         "Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.",
         "If nothing better is found, the input is returned unchanged and the status says so.",
-        "Bare function arguments such as `\\sin 2x` and inverse notation such as `\\sin^{-1}` are rejected as ambiguous."
+        "In LaTeX, bare function arguments such as `\\sin 2x` and inverse notation such as `\\sin^{-1}` are rejected as ambiguous; plain text needs the parentheses, `sin(2*x)`."
       ],
       "examples": [
         {
@@ -53,7 +53,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\frac{\\sin(x)}{1+\\cos(x)} + \\frac{1+\\cos(x)}{\\sin(x)}"
+              "source": "sin(x)/(1+cos(x)) + (1+cos(x))/sin(x)",
+              "syntax": "text",
+              "latex": "\\frac{\\cos{\\left(x \\right)} + 1}{\\sin{\\left(x \\right)}} + \\frac{\\sin{\\left(x \\right)}}{\\cos{\\left(x \\right)} + 1}"
             }
           ],
           "assumptions": null,
@@ -81,7 +83,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\frac{\\sin^4(x) - \\cos^4(x)}{\\sin^2(x) - \\cos^2(x)}"
+              "source": "(sin(x)^4 - cos(x)^4)/(sin(x)^2 - cos(x)^2)",
+              "syntax": "text",
+              "latex": "\\frac{\\sin^{4}{\\left(x \\right)} - \\cos^{4}{\\left(x \\right)}}{\\sin^{2}{\\left(x \\right)} - \\cos^{2}{\\left(x \\right)}}"
             }
           ],
           "assumptions": null,
@@ -119,7 +123,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\frac{x^2-1}{x-1}"
+              "source": "(x^2-1)/(x-1)",
+              "syntax": "text",
+              "latex": "\\frac{x^{2} - 1}{x - 1}"
             }
           ],
           "assumptions": null,
@@ -149,7 +155,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sqrt{x^2}"
+              "source": "sqrt(x^2)",
+              "syntax": "text",
+              "latex": "\\sqrt{x^{2}}"
             }
           ],
           "assumptions": null,
@@ -181,7 +189,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sqrt{x^2}"
+              "source": "sqrt(x^2)",
+              "syntax": "text",
+              "latex": "\\left|{x}\\right|"
             }
           ],
           "assumptions": "x real",
@@ -205,7 +215,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "(x^a)^b"
+              "source": "(x^a)^b",
+              "syntax": "text",
+              "latex": "\\left(x^{a}\\right)^{b}"
             }
           ],
           "assumptions": null,
@@ -229,7 +241,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "(x^a)^b"
+              "source": "(x^a)^b",
+              "syntax": "text",
+              "latex": "x^{a b}"
             }
           ],
           "assumptions": "x positive; a real",
@@ -253,7 +267,8 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sin^2 x + \\cos^2 x + \\tan^2 x"
+              "source": "\\sin^2 x + \\cos^2 x + \\tan^2 x",
+              "syntax": "latex"
             }
           ],
           "assumptions": null,
@@ -288,7 +303,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\log(\\sin^2 t + \\cos^2 t + y)"
+              "source": "log(sin(t)^2 + cos(t)^2 + y)",
+              "syntax": "text",
+              "latex": "\\log{\\left(y + \\sin^{2}{\\left(t \\right)} + \\cos^{2}{\\left(t \\right)} \\right)}"
             }
           ],
           "assumptions": null,
@@ -316,7 +333,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\log x + \\log y"
+              "source": "log(x) + log(y)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x \\right)} + \\log{\\left(y \\right)}"
             }
           ],
           "assumptions": null,
@@ -344,7 +363,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\log x + \\log y"
+              "source": "log(x) + log(y)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x \\right)} + \\log{\\left(y \\right)}"
             }
           ],
           "assumptions": "x positive; y positive",
@@ -372,7 +393,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sin(3x)"
+              "source": "sin(3*x)",
+              "syntax": "text",
+              "latex": "\\sin{\\left(3 x \\right)}"
             }
           ],
           "assumptions": null,
@@ -400,7 +423,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "x^4 - y^4"
+              "source": "x^4 - y^4",
+              "syntax": "text",
+              "latex": "x^{4} - y^{4}"
             }
           ],
           "assumptions": null,
@@ -428,7 +453,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\tan x \\cos x"
+              "source": "tan(x)*cos(x)",
+              "syntax": "text",
+              "latex": "\\cos{\\left(x \\right)} \\tan{\\left(x \\right)}"
             }
           ],
           "assumptions": null,
@@ -456,7 +483,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sin x"
+              "source": "sin(x)",
+              "syntax": "text",
+              "latex": "\\sin{\\left(x \\right)}"
             }
           ],
           "assumptions": null,
@@ -479,7 +508,8 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sin 2x"
+              "source": "\\sin 2x",
+              "syntax": "latex"
             }
           ],
           "assumptions": null,
@@ -516,7 +546,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "x^3 \\sin(x)"
+              "source": "x^3*sin(x)",
+              "syntax": "text",
+              "latex": "x^{3} \\sin{\\left(x \\right)}"
             }
           ],
           "assumptions": null,
@@ -541,7 +573,8 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\exp(-x^2)"
+              "source": "\\exp(-x^2)",
+              "syntax": "latex"
             }
           ],
           "assumptions": null,
@@ -566,7 +599,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "x^2 y^3"
+              "source": "x^2*y^3",
+              "syntax": "text",
+              "latex": "x^{2} y^{3}"
             }
           ],
           "assumptions": null,
@@ -591,7 +626,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "|x|"
+              "source": "abs(x)",
+              "syntax": "text",
+              "latex": "\\left|{x}\\right|"
             }
           ],
           "assumptions": null,
@@ -630,7 +667,8 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\exponentialE^{x}"
+              "source": "\\exponentialE^{x}",
+              "syntax": "latex"
             }
           ],
           "assumptions": null,
@@ -655,7 +693,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "(1+x)^{a}"
+              "source": "(1+x)^a",
+              "syntax": "text",
+              "latex": "\\left(x + 1\\right)^{a}"
             }
           ],
           "assumptions": null,
@@ -680,7 +720,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\ln x"
+              "source": "log(x)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x \\right)}"
             }
           ],
           "assumptions": "x positive",
@@ -705,7 +747,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\frac{1}{x}"
+              "source": "1/x",
+              "syntax": "text",
+              "latex": "\\frac{1}{x}"
             }
           ],
           "assumptions": null,
@@ -745,7 +789,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(wA)\\exp(-wB)"
+              "source": "exp(w*A)*exp(-w*B)",
+              "syntax": "text"
             },
             {
               "label": "Matrix",
@@ -786,7 +831,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(-(x-y)(y-w)A)\\exp(-(w-z)(z-q)B)"
+              "source": "exp(-(x-y)*(y-w)*A)*exp(-(w-z)*(z-q)*B)",
+              "syntax": "text"
             },
             {
               "label": "Matrix",
@@ -805,7 +851,7 @@
             },
             {
               "label": "Verified equation",
-              "latex": "\\left(x - y\\right) A X + \\left(q - z\\right) X B = \\exp\\left(-\\left(- b + y\\right) \\left(x - y\\right) A\\right) \\exp\\left(-\\left(b - z\\right) \\left(- q + z\\right) B\\right) - \\exp\\left(-\\left(- a + y\\right) \\left(x - y\\right) A\\right) \\exp\\left(-\\left(a - z\\right) \\left(- q + z\\right) B\\right)"
+              "latex": "\\left(x - y\\right) A X + \\left(q - z\\right) X B = \\exp\\left(\\left(- b + y\\right) \\left(- x + y\\right) A\\right) \\exp\\left(\\left(- b + z\\right) \\left(- q + z\\right) B\\right) - \\exp\\left(\\left(- a + y\\right) \\left(- x + y\\right) A\\right) \\exp\\left(\\left(- a + z\\right) \\left(- q + z\\right) B\\right)"
             }
           ],
           "checks": [
@@ -826,7 +872,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(tA)\\exp(sB)"
+              "source": "exp(t*A)*exp(s*B)",
+              "syntax": "text"
             },
             {
               "label": "Matrix",
@@ -862,7 +909,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(A)\\exp(B)"
+              "source": "exp(A)*exp(B)",
+              "syntax": "text"
             },
             {
               "label": "Matrix",
@@ -889,7 +937,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(A)\\exp(B)"
+              "source": "\\exp(A)\\exp(B)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -925,7 +974,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(t^2 A + t B)"
+              "source": "exp(t^2*A + t*B)",
+              "syntax": "text"
             },
             {
               "label": "Matrix",
@@ -962,7 +1012,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(tA + t^2 B)"
+              "source": "\\exp(tA + t^2 B)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -998,7 +1049,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(t^2 A + t B)"
+              "source": "\\exp(t^2 A + t B)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1035,7 +1087,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(A(t))"
+              "source": "\\exp(A(t))",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1068,7 +1121,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp(A(t))"
+              "source": "\\exp(A(t))",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1101,7 +1155,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp((t-s)A) B \\exp(sA)"
+              "source": "\\exp((t-s)A) B \\exp(sA)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1141,7 +1196,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp((t-s)A) B \\exp(sA)"
+              "source": "\\exp((t-s)A) B \\exp(sA)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1181,7 +1237,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\exp((t-s)A) B \\exp(sA)"
+              "source": "\\exp((t-s)A) B \\exp(sA)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1218,7 +1275,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "tA + t^2 B"
+              "source": "tA + t^2 B",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1255,7 +1313,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "A(t)"
+              "source": "A(t)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1288,7 +1347,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "A(t)"
+              "source": "A(t)",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1320,7 +1380,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "tA + t^2 B"
+              "source": "tA + t^2 B",
+              "syntax": "latex"
             },
             {
               "label": "Matrix",
@@ -1357,7 +1418,7 @@
         "One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.",
         "A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.",
         "Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.",
-        "The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\\operatorname{DiracDelta}, \\operatorname{Heaviside}); \\delta and \\theta remain ordinary symbols."
+        "The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Write `delta(x)` or `\\delta(x)` (outside this operation they are ordinary symbols) and Minerva asks whether it is a Dirac delta, and `theta(x)` whether it is a step function, then computes nothing until you answer. The explicit names (\\operatorname{DiracDelta}, \\operatorname{Heaviside}) need no question."
       ],
       "examples": [
         {
@@ -1368,7 +1429,13 @@
           "input": [
             {
               "label": "Expression",
-              "source": "x^2 \\operatorname{DiracDelta}(x^2 - 4)"
+              "source": "x^2*delta(x^2 - 4)",
+              "syntax": "text",
+              "latex": "x^{2} \\operatorname{DiracDelta}\\left(x^{2} - 4\\right)"
+            },
+            {
+              "label": "You confirmed",
+              "text": "delta(…) is a Dirac delta"
             },
             {
               "label": "Limits",
@@ -1394,6 +1461,31 @@
           ]
         },
         {
+          "id": "delta-notation-asked",
+          "title": "Minerva asks whether delta is a Dirac delta",
+          "op": "distribution",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x^2*delta(x^2 - 4)",
+              "syntax": "text"
+            },
+            {
+              "label": "Limits",
+              "source": "-oo to oo"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (notation_unconfirmed).",
+            "Is delta(…) a Dirac delta or a step function? Outside this operation they are ordinary symbols, so nothing is computed until you say what it is.",
+            "Until you answer, delta(...) is an ordinary symbol times a bracket, so nothing is computed. The chat and the workbench show the question with buttons; the example above this one is the same integral after the answer \"yes, a Dirac delta\"."
+          ]
+        },
+        {
           "id": "delta-scaling-parameter",
           "title": "Scaling by a parameter whose sign is known",
           "op": "distribution",
@@ -1401,7 +1493,13 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\operatorname{DiracDelta}(a x)"
+              "source": "delta(a*x)",
+              "syntax": "text",
+              "latex": "\\operatorname{DiracDelta}\\left(a x\\right)"
+            },
+            {
+              "label": "You confirmed",
+              "text": "delta(…) is a Dirac delta"
             }
           ],
           "assumptions": "a negative",
@@ -1428,7 +1526,13 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\mathrm{e}^{-g x} \\operatorname{Heaviside}(x)"
+              "source": "exp(-g*x)*theta(x)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{- g x} \\operatorname{Heaviside}\\left(x\\right)"
+            },
+            {
+              "label": "You confirmed",
+              "text": "theta(…) is a step function"
             }
           ],
           "assumptions": "g positive",
@@ -1456,7 +1560,8 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\operatorname{DiracDelta}(a x)"
+              "source": "\\operatorname{DiracDelta}(a x)",
+              "syntax": "latex"
             }
           ],
           "assumptions": "a real",
@@ -1475,7 +1580,13 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\operatorname{DiracDelta}(x - 1)"
+              "source": "delta(x - 1)",
+              "syntax": "text",
+              "latex": "\\operatorname{DiracDelta}\\left(x - 1\\right)"
+            },
+            {
+              "label": "You confirmed",
+              "text": "delta(…) is a Dirac delta"
             },
             {
               "label": "Limits",
@@ -1498,7 +1609,13 @@
           "input": [
             {
               "label": "Expression",
-              "source": "\\operatorname{DiracDelta}(x^2)"
+              "source": "delta(x^2)",
+              "syntax": "text",
+              "latex": "\\operatorname{DiracDelta}\\left(x^{2}\\right)"
+            },
+            {
+              "label": "You confirmed",
+              "text": "delta(…) is a Dirac delta"
             }
           ],
           "assumptions": null,
@@ -1539,15 +1656,18 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "\\theta, \\phi"
+              "source": "theta, phi",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "a^2,  0"
+              "source": "a^2,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  a^2 \\sin^2\\theta"
+              "source": "0,  a^2*sin(theta)^2",
+              "syntax": "text"
             }
           ],
           "assumptions": "a positive",
@@ -1590,23 +1710,28 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "t, r, \\theta, \\phi"
+              "source": "t, r, \\theta, \\phi",
+              "syntax": "latex"
             },
             {
               "label": "Metric row 1",
-              "source": "-(1-2M/r),  0,  0,  0"
+              "source": "-(1-2M/r),  0,  0,  0",
+              "syntax": "latex"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  (1-2M/r)^{-1},  0,  0"
+              "source": "0,  (1-2M/r)^{-1},  0,  0",
+              "syntax": "latex"
             },
             {
               "label": "Metric row 3",
-              "source": "0,  0,  r^2,  0"
+              "source": "0,  0,  r^2,  0",
+              "syntax": "latex"
             },
             {
               "label": "Metric row 4",
-              "source": "0,  0,  0,  r^2 \\sin^2\\theta"
+              "source": "0,  0,  0,  r^2 \\sin^2\\theta",
+              "syntax": "latex"
             }
           ],
           "assumptions": "M positive; r positive",
@@ -1641,15 +1766,18 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "r, \\theta"
+              "source": "r, theta",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "1,  0"
+              "source": "1,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  r^2"
+              "source": "0,  r^2",
+              "syntax": "text"
             }
           ],
           "assumptions": "r positive",
@@ -1681,23 +1809,28 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "t, r, \\theta, \\phi"
+              "source": "t, r, theta, phi",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "-f(r),  0,  0,  0"
+              "source": "-f(r),  0,  0,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  1/f(r),  0,  0"
+              "source": "0,  1/f(r),  0,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 3",
-              "source": "0,  0,  r^2,  0"
+              "source": "0,  0,  r^2,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 4",
-              "source": "0,  0,  0,  r^2 \\sin^2\\theta"
+              "source": "0,  0,  0,  r^2*sin(theta)^2",
+              "syntax": "text"
             },
             {
               "label": "Functions",
@@ -1731,15 +1864,18 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "r, \\theta"
+              "source": "r, theta",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "1,  0"
+              "source": "1,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  r^2"
+              "source": "0,  r^2",
+              "syntax": "text"
             }
           ],
           "assumptions": "r positive",
@@ -1767,15 +1903,18 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "x, y"
+              "source": "x, y",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "1,  0"
+              "source": "1,  0",
+              "syntax": "text"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  0"
+              "source": "0,  0",
+              "syntax": "text"
             }
           ],
           "assumptions": null,
@@ -1794,18 +1933,20 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "r"
+              "source": "r",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "f(r)"
+              "source": "f(r)",
+              "syntax": "text"
             }
           ],
           "assumptions": null,
           "outputs": [],
           "checks": [],
           "notes": [
-            "f(…) is ambiguous: declare f as a function, or write f\\cdot(…) for a product"
+            "f(…) is not a known function: declare f as a function"
           ]
         },
         {
@@ -1816,15 +1957,18 @@
           "input": [
             {
               "label": "Coordinates",
-              "source": "x, y"
+              "source": "x, y",
+              "syntax": "text"
             },
             {
               "label": "Metric row 1",
-              "source": "1,  x"
+              "source": "1,  x",
+              "syntax": "text"
             },
             {
               "label": "Metric row 2",
-              "source": "0,  1"
+              "source": "0,  1",
+              "syntax": "text"
             }
           ],
           "assumptions": null,
@@ -1862,7 +2006,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\log(x y)"
+              "source": "log(x*y)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x y \\right)}"
             }
           ],
           "assumptions": null,
@@ -1885,7 +2031,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\log(x y)"
+              "source": "log(x*y)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x y \\right)}"
             }
           ],
           "assumptions": "x positive; y positive",
@@ -1908,7 +2056,8 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\sin(a)\\cos(b)"
+              "source": "\\sin(a)\\cos(b)",
+              "syntax": "latex"
             }
           ],
           "assumptions": null,
@@ -1950,7 +2099,9 @@
           "input": [
             {
               "label": "Input",
-              "source": "\\log(x y)"
+              "source": "log(x*y)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x y \\right)}"
             }
           ],
           "assumptions": "x positive; y positive",
@@ -2943,7 +3094,9 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}"
+              "source": "m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r",
+              "syntax": "text",
+              "latex": "\\frac{k}{r} + \\frac{m \\left(r^{2} \\dot{\\theta}^{2} + \\dot{r}^{2}\\right)}{2}"
             },
             {
               "label": "Coordinates",
@@ -2977,7 +3130,7 @@
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
           ]
         },
         {
@@ -2988,7 +3141,8 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) + \\frac{k}{\\sqrt{x^2+y^2}}"
+              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) + \\frac{k}{\\sqrt{x^2+y^2}}",
+              "syntax": "latex"
             },
             {
               "label": "Coordinates",
@@ -3022,7 +3176,7 @@
           ],
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
           ]
         },
         {
@@ -3033,7 +3187,9 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12 m\\dot{x}^2 - \\frac12 k x^2 t"
+              "source": "m*x_dot^2/2 - k*x^2*t/2",
+              "syntax": "text",
+              "latex": "- \\frac{k t x^{2}}{2} + \\frac{m \\dot{x}^{2}}{2}"
             },
             {
               "label": "Coordinates",
@@ -3051,7 +3207,7 @@
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
             "energy function: not conserved (L depends explicitly on time)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
           ]
         }
       ]
@@ -3307,7 +3463,9 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}"
+              "source": "m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r",
+              "syntax": "text",
+              "latex": "\\frac{k}{r} + \\frac{m \\left(r^{2} \\dot{\\theta}^{2} + \\dot{r}^{2}\\right)}{2}"
             },
             {
               "label": "Coordinates",
@@ -3349,7 +3507,9 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) - \\frac12 k(x^2 + y^2)"
+              "source": "m*(x_dot^2 + y_dot^2)/2 - k*(x^2 + y^2)/2",
+              "syntax": "text",
+              "latex": "- \\frac{k \\left(x^{2} + y^{2}\\right)}{2} + \\frac{m \\left(\\dot{x}^{2} + \\dot{y}^{2}\\right)}{2}"
             },
             {
               "label": "Coordinates",
@@ -3387,7 +3547,8 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12(\\dot{x}^2 + \\dot{y}^2) - \\frac12(x^2 + y^2) - x^2 y + \\frac13 y^3"
+              "source": "\\frac12(\\dot{x}^2 + \\dot{y}^2) - \\frac12(x^2 + y^2) - x^2 y + \\frac13 y^3",
+              "syntax": "latex"
             },
             {
               "label": "Coordinates",
@@ -3418,7 +3579,9 @@
           "input": [
             {
               "label": "Lagrangian",
-              "source": "\\frac12 m\\dot{x}^2 - \\frac12 k t x^2"
+              "source": "m*x_dot^2/2 - k*t*x^2/2",
+              "syntax": "text",
+              "latex": "- \\frac{k t x^{2}}{2} + \\frac{m \\dot{x}^{2}}{2}"
             },
             {
               "label": "Coordinates",

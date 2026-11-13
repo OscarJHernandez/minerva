@@ -16,7 +16,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from minerva_engine import MotionRequest, trace_scope
-from pydantic import BaseModel, Field
+from minerva_engine.distributions.models import NotationName, Reading, check_readings
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -26,7 +27,7 @@ from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_age
 from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
-from .agent.tools import GeometryArgs, PerturbationArgs, ToolContext, execute
+from .agent.tools import DistributionArgs, GeometryArgs, PerturbationArgs, ToolContext, execute
 from .agent.tracing import (
     AgentCompleted,
     Sink,
@@ -355,6 +356,7 @@ def _run_tool_directly(
     kb: Any,
     limiter: Any,
     settings: Any,
+    notation: dict[str, str] | None = None,
 ) -> MessageOut:
     """Run one tool with the user's own numbers (from a card's form), store it as an assistant message.
 
@@ -371,7 +373,9 @@ def _run_tool_directly(
     started = time.monotonic()
     try:
         with trace_scope(trace_id):
-            output = execute(name, arguments, ToolContext(engine=engine, kb=kb))
+            output = execute(
+                name, arguments, ToolContext(engine=engine, kb=kb, notation=dict(notation or {}))
+            )
     finally:
         deactivate(tracer)
     elapsed = int((time.monotonic() - started) * 1000)
@@ -407,7 +411,8 @@ def _run_tool_directly(
             TraceStep(
                 id=output.card.id,
                 name=name,
-                arguments=arguments,
+                # The user's answer is recorded next to the call so that a replay is faithful.
+                arguments={**arguments, "notation": notation} if notation else arguments,
                 for_model=output.for_model,
                 duration_ms=elapsed,
                 status=output.status,
@@ -534,6 +539,47 @@ def geometry_directly(
         kb,
         limiter,
         settings,
+    )
+
+
+class DistributionAnswer(DistributionArgs):
+    """The call of a distribution card with the user's answer to "is that a Dirac delta?"."""
+
+    notation: dict[NotationName, Reading] = Field(default_factory=dict)
+
+    @field_validator("notation")
+    @classmethod
+    def _sensible_readings(cls, value: dict[str, str]) -> dict[str, str]:
+        return check_readings(value)
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/distribution",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def distribution_directly(
+    conversation_id: uuid.UUID,
+    body: DistributionAnswer,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Run a distribution card again with what the user answered (the model is not involved)."""
+    return _run_tool_directly(
+        "distribution",
+        body.model_dump(mode="json", exclude={"notation"}),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+        notation={k: v for k, v in body.notation.items()},
     )
 
 
