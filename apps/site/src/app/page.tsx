@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Math } from "@minerva/ui/math";
+import { CapabilityRow } from "@/components/capability-row";
 import { MathLine, StatusBadge } from "@/components/example-view";
 import { Section } from "@/components/section";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { CAPABILITIES, example, inputSource, outputLatex, type Example } from "@/lib/capabilities";
-import { APP_URL, CONTRIBUTING_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
+import { APP_URL, CONTRIBUTING_URL, OPENROUTER_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
 
 const primary = "rounded bg-accent px-5 py-2.5 font-medium text-accent-ink hover:opacity-90";
 const secondary = "rounded border border-rule px-5 py-2.5 font-medium hover:bg-sunk";
@@ -105,8 +106,18 @@ export default function Home() {
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
             Explore mathematical identities, simplify symbolic expressions, and verify results under
-            explicit assumptions. Run Minerva on your own infrastructure, optionally with a language
-            model you host, and keep your mathematical work under your control.
+            explicit assumptions. Run Minerva on your own infrastructure and choose the language
+            model behind the chat: one you host, open-weight models paid per use through OpenRouter,
+            or none at all. The backend is switchable.
+          </p>
+          <p className="mt-4 max-w-2xl text-sm text-muted">
+            Open source does not mean private. A model reached through OpenRouter sees your
+            conversation and the results of the tools it calls, even if its weights are open. Only a
+            model you host yourself keeps them on your infrastructure.{" "}
+            <a href={OPENROUTER_URL} className="underline hover:text-ink">
+              OpenRouter setup and privacy
+            </a>
+            .
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <a href={APP_URL} className={primary}>
@@ -168,7 +179,7 @@ export default function Home() {
           </p>
         </Section>
 
-        <Section id="examples" title="What it does, and what it refuses to do">
+        <Section id="examples" title="Some examples of what it can do">
           <div className="grid gap-5 md:grid-cols-2">
             <Card
               title="Simplify, then verify"
@@ -256,28 +267,19 @@ export default function Home() {
           <div className="grid gap-12 md:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium uppercase tracking-wide text-ok">Available now</h3>
-              <dl className="mt-4 space-y-5">
+              <div className="mt-2 border-t border-rule">
                 {available.map((c) => (
-                  <div key={c.id}>
-                    <dt className="font-medium">{c.title}</dt>
-                    <dd className="text-sm text-muted">
-                      {c.summary}
-                      {c.needs_model && " Self-hosted; needs a model you connect."}
-                    </dd>
-                  </div>
+                  <CapabilityRow key={c.id} cap={c} />
                 ))}
-              </dl>
+              </div>
             </div>
             <div>
-              <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Planned</h3>
-              <dl className="mt-4 space-y-5">
+              <h3 className="text-sm font-medium uppercase tracking-wide text-warn">Planned</h3>
+              <div className="mt-2 border-t border-rule">
                 {planned.map((c) => (
-                  <div key={c.id}>
-                    <dt className="font-medium">{c.title}</dt>
-                    <dd className="text-sm text-muted">{c.summary}</dd>
-                  </div>
+                  <CapabilityRow key={c.id} cap={c} />
                 ))}
-              </dl>
+              </div>
             </div>
           </div>
           <p className="mt-10 max-w-2xl text-sm text-muted">
