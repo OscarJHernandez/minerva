@@ -29,7 +29,7 @@ import sympy as sp
 from pydantic import BaseModel, Field
 
 from .build import Builder
-from .errors import LimitError, MinervaMathError
+from .errors import LimitError, MinervaMathError, UnsupportedInput
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, _sample
@@ -374,6 +374,8 @@ def series(
         x0 = parse_expression(ExpressionInput(input=point, format="text"), limits)
     except LimitError as exc:
         return _fail(Status.RESOURCE_LIMIT, str(exc))
+    except UnsupportedInput as exc:
+        return _fail(Status.UNSUPPORTED, str(exc))
     except MinervaMathError as exc:
         return _fail(Status.PARSE_ERROR, str(exc))
 

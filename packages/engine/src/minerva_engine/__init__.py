@@ -8,6 +8,16 @@ from .differentiate import (
     DiffVariable,
 )
 from .discovery import DiscoveredConstant, DiscoveryReport, Pins, SearchEvent
+from .distributions.models import (
+    Blocked,
+    Condition,
+    Diagnostics,
+    DistributionEvent,
+    DistributionInput,
+    DistributionResult,
+    DistributionStep,
+    DistributionVerification,
+)
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
 from .independence import IndependenceReport, Relation
@@ -53,18 +63,26 @@ from .textparse import parse_text
 
 __all__ = [
     "Applicability",
+    "Blocked",
     "BlockedMove",
     "ClaimCheck",
     "CompareRequest",
+    "Condition",
     "ConstantCandidate",
     "ConstantSuggestion",
     "DerivativeStep",
     "DerivativeVerification",
+    "Diagnostics",
     "DiffVariable",
     "DifferentiateResult",
     "DimensionalReport",
     "DiscoveredConstant",
     "DiscoveryReport",
+    "DistributionEvent",
+    "DistributionInput",
+    "DistributionResult",
+    "DistributionStep",
+    "DistributionVerification",
     "Engine",
     "ExpansionReport",
     "ExpressionInput",

@@ -1,0 +1,880 @@
+{
+  "cases": [
+    {
+      "cited": [
+        "distributions.delta_scaling"
+      ],
+      "id": "point_source_scaled_coordinate",
+      "kind": "supported",
+      "milliseconds": 1545.6,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(x - 3)/2",
+      "retrieval_ranks": {
+        "distributions.delta_scaling": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling"
+      ],
+      "id": "reflected_coordinate",
+      "kind": "supported",
+      "milliseconds": 390.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(x - 2)/3",
+      "retrieval_ranks": {
+        "distributions.delta_scaling": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling"
+      ],
+      "id": "scale_parameter_nonzero",
+      "kind": "supported",
+      "milliseconds": 1259.8,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(x - x0)/Abs(k)",
+      "retrieval_ranks": {
+        "distributions.delta_scaling": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling"
+      ],
+      "id": "scale_parameter_negative",
+      "kind": "supported",
+      "milliseconds": 1118.6,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "-DiracDelta(x)/k",
+      "retrieval_ranks": {
+        "distributions.delta_scaling": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_times_function"
+      ],
+      "id": "delta_times_polynomial",
+      "kind": "supported",
+      "milliseconds": 405.6,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "9*DiracDelta(x - 3)",
+      "retrieval_ranks": {
+        "distributions.delta_times_function": 4
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_times_function"
+      ],
+      "id": "x_times_delta",
+      "kind": "supported",
+      "milliseconds": 360.6,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "0",
+      "retrieval_ranks": {
+        "distributions.delta_times_x": 2
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_composite_simple_roots"
+      ],
+      "id": "two_roots_shell",
+      "kind": "supported",
+      "milliseconds": 466.7,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(x - 2)/4 + DiracDelta(x + 2)/4",
+      "retrieval_ranks": {
+        "distributions.delta_composite_simple_roots": 5
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_composite_simple_roots"
+      ],
+      "id": "three_roots_cubic",
+      "kind": "supported",
+      "milliseconds": 527.2,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(x) + DiracDelta(x - 1)/2 + DiracDelta(x + 1)/2",
+      "retrieval_ranks": {
+        "distributions.delta_composite_simple_roots": 5
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_composite_simple_roots"
+      ],
+      "id": "shell_radius_parameter",
+      "kind": "supported",
+      "milliseconds": 1530.8,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(-a + x)/(2*a) + DiracDelta(a + x)/(2*a)",
+      "retrieval_ranks": {
+        "distributions.delta_composite_simple_roots": 5
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_composite_simple_roots",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "density_of_states_normalisation",
+      "kind": "supported",
+      "milliseconds": 52.4,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "2",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting"
+      ],
+      "id": "point_charge_normalisation",
+      "kind": "supported",
+      "milliseconds": 70.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "1",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "potential_at_source",
+      "kind": "supported",
+      "milliseconds": 127.9,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "exp(-a**2)",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_composite_simple_roots",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "cosine_on_two_roots",
+      "kind": "supported",
+      "milliseconds": 114.9,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "cos(1)",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_composite_simple_roots",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "odd_function_cancels",
+      "kind": "supported",
+      "milliseconds": 110.9,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "0",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "source_inside_window",
+      "kind": "supported",
+      "milliseconds": 42.5,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "1",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "source_outside_window",
+      "kind": "supported",
+      "milliseconds": 43.4,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "0",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting",
+        "distributions.delta_times_function"
+      ],
+      "id": "decaying_response_at_source",
+      "kind": "supported",
+      "milliseconds": 120.8,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "exp(-a)",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting"
+      ],
+      "id": "impulse_momentum_transfer",
+      "kind": "supported",
+      "milliseconds": 73.7,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "J",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting"
+      ],
+      "id": "limit_half_convention",
+      "kind": "supported",
+      "milliseconds": 40.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "1/2",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting"
+      ],
+      "id": "limit_include_convention",
+      "kind": "supported",
+      "milliseconds": 43.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "1",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.delta_sifting"
+      ],
+      "id": "limit_exclude_convention",
+      "kind": "supported",
+      "milliseconds": 35.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "0",
+      "retrieval_ranks": {
+        "distributions.delta_sifting": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "step_potential_force",
+      "kind": "supported",
+      "milliseconds": 1232.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "V0*DiracDelta(x)",
+      "retrieval_ranks": {
+        "distributions.heaviside_derivative": 2
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "continuous_causal_sine",
+      "kind": "supported",
+      "milliseconds": 553.9,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "cos(x)*Heaviside(x)",
+      "retrieval_ranks": {
+        "distributions.heaviside_product_rule": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "causal_decay_green_jump",
+      "kind": "supported",
+      "milliseconds": 1496.4,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "-g*exp(-g*x)*Heaviside(x) + DiracDelta(x)",
+      "retrieval_ranks": {
+        "distributions.heaviside_product_rule": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "rectangular_pulse",
+      "kind": "supported",
+      "milliseconds": 629.2,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "-DiracDelta(x - 1) + DiracDelta(x + 1)",
+      "retrieval_ranks": {
+        "distributions.heaviside_derivative": 2
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "reversed_step",
+      "kind": "supported",
+      "milliseconds": 431.9,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "-DiracDelta(x)",
+      "retrieval_ranks": {
+        "distributions.heaviside_affine_derivative": 1
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "stretched_step",
+      "kind": "supported",
+      "milliseconds": 514.1,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "DiracDelta(x - 2)",
+      "retrieval_ranks": {
+        "distributions.heaviside_affine_derivative": 1
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "ramp_function",
+      "kind": "supported",
+      "milliseconds": 462.4,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "Heaviside(x)",
+      "retrieval_ranks": {
+        "distributions.heaviside_product_rule": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [
+        "distributions.delta_scaling",
+        "distributions.heaviside_derivative"
+      ],
+      "id": "jump_with_coefficient",
+      "kind": "supported",
+      "milliseconds": 550.2,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": "3*DiracDelta(x - 1) + Heaviside(x - 1)",
+      "retrieval_ranks": {
+        "distributions.heaviside_product_rule": 3
+      },
+      "status": "ok",
+      "verified": true
+    },
+    {
+      "cited": [],
+      "id": "double_root_is_singular",
+      "kind": "unsupported",
+      "milliseconds": 20.2,
+      "passed": true,
+      "problems": [],
+      "reason": "singular_root",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "dirac_comb_argument",
+      "kind": "unsupported",
+      "milliseconds": 17.6,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "delta_squared",
+      "kind": "unsupported",
+      "milliseconds": 14.9,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "delta_times_step",
+      "kind": "unsupported",
+      "milliseconds": 18.9,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "delta_over_x",
+      "kind": "unsupported",
+      "milliseconds": 17.7,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "derivative_of_delta",
+      "kind": "unsupported",
+      "milliseconds": 13.7,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "delta_mixed_with_smooth_part",
+      "kind": "unsupported",
+      "milliseconds": 15.1,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "nonaffine_step",
+      "kind": "unsupported",
+      "milliseconds": 17.1,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "windowed_ordinary_integral",
+      "kind": "unsupported",
+      "milliseconds": 17.0,
+      "passed": true,
+      "problems": [],
+      "reason": "unsupported_distribution",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "unsupported",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "scale_sign_unknown",
+      "kind": "unsupported",
+      "milliseconds": 18.2,
+      "passed": true,
+      "problems": [],
+      "reason": "assumptions_insufficient",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "conditions_not_satisfied",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "shell_radius_sign_unknown",
+      "kind": "unsupported",
+      "milliseconds": 71.3,
+      "passed": true,
+      "problems": [],
+      "reason": "assumptions_insufficient",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "conditions_not_satisfied",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "source_position_unknown",
+      "kind": "unsupported",
+      "milliseconds": 26.8,
+      "passed": true,
+      "problems": [],
+      "reason": "assumptions_insufficient",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "conditions_not_satisfied",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "limit_without_convention",
+      "kind": "unsupported",
+      "milliseconds": 19.5,
+      "passed": true,
+      "problems": [],
+      "reason": "integration_domain_ambiguous",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "conditions_not_satisfied",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "step_slope_sign_unknown",
+      "kind": "unsupported",
+      "milliseconds": 17.4,
+      "passed": true,
+      "problems": [],
+      "reason": "assumptions_insufficient",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "conditions_not_satisfied",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "complex_variable",
+      "kind": "unsupported",
+      "milliseconds": 15.8,
+      "passed": true,
+      "problems": [],
+      "reason": "assumptions_insufficient",
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "conditions_not_satisfied",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_scaling_missing_factor",
+      "kind": "invalid_transform",
+      "milliseconds": 337.2,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_scaling_wrong_sign",
+      "kind": "invalid_transform",
+      "milliseconds": 1034.9,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_composite_no_jacobian",
+      "kind": "invalid_transform",
+      "milliseconds": 445.8,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_composite_dropped_root",
+      "kind": "invalid_transform",
+      "milliseconds": 449.5,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_product_not_evaluated",
+      "kind": "invalid_transform",
+      "milliseconds": 333.3,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_step_derivative_sign",
+      "kind": "invalid_transform",
+      "milliseconds": 490.4,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_step_derivative_position",
+      "kind": "invalid_transform",
+      "milliseconds": 523.6,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_sifting_value",
+      "kind": "invalid_transform",
+      "milliseconds": 15.0,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_sifting_wrong_window",
+      "kind": "invalid_transform",
+      "milliseconds": 5.5,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    },
+    {
+      "cited": [],
+      "id": "bad_limit_convention",
+      "kind": "invalid_transform",
+      "milliseconds": 11.2,
+      "passed": true,
+      "problems": [],
+      "reason": null,
+      "result_text": null,
+      "retrieval_ranks": {},
+      "status": "rejected",
+      "verified": null
+    }
+  ],
+  "format": 1,
+  "label": "v1 baseline",
+  "summary": {
+    "cases": 54,
+    "cases_passed": 54,
+    "coverage": 0.6591,
+    "failed_transformations": [],
+    "invalid_cases": 10,
+    "invalid_rejected": 10,
+    "latency_median_ms": 112.9,
+    "latency_p95_ms": 1496.4,
+    "refusal_reasons": {
+      "assumptions_insufficient": 5,
+      "integration_domain_ambiguous": 1,
+      "singular_root": 1,
+      "unsupported_distribution": 8
+    },
+    "retrieval_expected": 29,
+    "retrieval_mrr": 0.3799,
+    "retrieval_recall_at_1": 0.069,
+    "retrieval_recall_at_3": 0.8621,
+    "retrieval_recall_at_5": 1.0,
+    "supported_answered": 29,
+    "supported_cases": 29,
+    "supported_correct": 29,
+    "unsupported_cases": 15,
+    "unsupported_refused_correctly": 15,
+    "verification_success": 1.0
+  }
+}

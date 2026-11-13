@@ -14,7 +14,8 @@ from typing import Any
 import sympy as sp
 
 from .claims import check_claims, split_equation
-from .errors import LimitError, MinervaMathError, ParseError
+from .distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .features import expression_features
 from .latexparse import parse_latex
 from .latexprint import to_latex
@@ -46,17 +47,27 @@ def parse_expression(
     limits: Limits,
     denominators: list[sp.Expr] | None = None,
     noncommutative: Iterable[str] = (),
+    *,
+    allow_distributions: bool = False,
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        return parse_latex(data.input, data.assumptions, limits, denominators, noncommutative)
-    return parse_text(data.input, data.assumptions, limits, denominators, noncommutative)
+        expr = parse_latex(data.input, data.assumptions, limits, denominators, noncommutative)
+    else:
+        expr = parse_text(data.input, data.assumptions, limits, denominators, noncommutative)
+    if not allow_distributions and contains_distribution(expr):
+        # Pointwise sampling cannot tell distributions apart (a delta is 0 at every sample point),
+        # so every other operation refuses them rather than "verify" a wrong identity.
+        raise UnsupportedInput(DISTRIBUTION_REFUSAL)
+    return expr
 
 
 def _failure(exc: MinervaMathError) -> tuple[Status, str]:
     if isinstance(exc, LimitError):
         return Status.RESOURCE_LIMIT, str(exc)
+    if isinstance(exc, UnsupportedInput):
+        return Status.UNSUPPORTED, str(exc)
     return Status.PARSE_ERROR, str(exc)
 
 
@@ -173,6 +184,14 @@ def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
     from .matrix import MatrixCalculusInput, matrix_calculus
 
     result = matrix_calculus(MatrixCalculusInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
+def op_distribution(payload: dict[str, Any]) -> dict[str, Any]:
+    from .distributions.models import DistributionInput
+    from .distributions.operation import distribution
+
+    result = distribution(DistributionInput(**payload["input"]), Limits(**payload["limits"]))
     return result.model_dump(mode="json")
 
 
@@ -349,7 +368,8 @@ def op_features(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
     try:
-        expr = parse_expression(data, limits)
+        # Reading structure is not evaluating: features of a delta expression drive retrieval.
+        expr = parse_expression(data, limits, allow_distributions=True)
     except MinervaMathError as exc:
         status, message = _failure(exc)
         return {"status": status.value, "message": message, "features": [], "input_latex": None}
@@ -686,6 +706,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "differentiate": op_differentiate,
     "series": op_series,
     "integrate": op_integrate,
+    "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,

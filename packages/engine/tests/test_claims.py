@@ -233,3 +233,16 @@ def test_engine_batch_passes_relations_through_the_sandbox() -> None:
     )
     assert [r.status for r in results] == ["conditional", "conditional"]
     assert results[0].given == [r"\theta = \phi + \omega t"]
+
+
+def test_distribution_statements_are_never_contradicted() -> None:
+    # \theta(x) + \theta(-x) = 1 reads as theta*x - theta*x = 0 != 1: it must not be called false.
+    for claim in (
+        r"\theta(x) + \theta(-x) = 1",
+        r"\delta(-x) = \delta(x)",
+        r"\operatorname{Heaviside}(x) + \operatorname{Heaviside}(-x) = 1",
+        r"\operatorname{DiracDelta}(2x) = 5 \operatorname{DiracDelta}(x)",
+    ):
+        result = Engine().check_claims([claim], {"x": ["real"]})[0]
+        assert result.status == "unverified", claim
+        assert "distribution" in result.detail or "Dirac" in result.detail

@@ -26,7 +26,8 @@ import sympy as sp
 from pydantic import BaseModel, Field
 
 from .build import Builder
-from .errors import LimitError, MinervaMathError
+from .distributions.guard import contains_distribution
+from .errors import LimitError, MinervaMathError, UnsupportedInput
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, REL_TOL, SAMPLE_ATTEMPTS, _sample, verify_equal
@@ -204,6 +205,8 @@ def differentiate(
         symbols = [(builder.symbol(v.name), v.order) for v in variables]
     except LimitError as exc:
         return _fail(Status.RESOURCE_LIMIT, str(exc), variables=variables, total_order=total)
+    except UnsupportedInput as exc:
+        return _fail(Status.UNSUPPORTED, str(exc), variables=variables, total_order=total)
     except MinervaMathError as exc:
         return _fail(Status.PARSE_ERROR, str(exc), variables=variables, total_order=total)
 
@@ -270,10 +273,14 @@ def differentiate(
                 DerivativeStep(variable=symbol.name, order_so_far=done, latex=to_latex(nxt))
             )
 
-    if current.has(sp.DiracDelta, sp.Heaviside):
-        notes.append(
-            "The result contains a Dirac delta or step function: it holds away from the "
-            "points where the original function is not differentiable."
+    if contains_distribution(current):
+        # The numerical derivative check compares 0 with 0 away from the jump, so it proves
+        # nothing about a delta; such derivatives belong to the distribution operation.
+        return _fail(
+            Status.UNSUPPORTED,
+            "This derivative contains a Dirac delta or step function, which a pointwise "
+            "derivative check cannot verify. Use the distribution operation instead.",
+            **base,
         )
     final = current
     if (

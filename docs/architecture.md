@@ -80,7 +80,9 @@ one most likely to be wrong.
     of a derivative exists, and the report says so. A derivative that fails the check is
     `not_verified` and never shown; one that grows past the size cap is `resource_limit`. Input
     expressions are whatever the parsers accept (no undefined functions `f(x)`, integrals or `d/dx`
-    notation). A Dirac delta in the result (second derivative of `|x|`) carries a note.
+    notation). A derivative that contains a Dirac delta or step (second derivative of `|x|`) is
+    `unsupported`: the pointwise check compares 0 with 0 away from the jump and proves nothing about
+    a delta. Such results belong to `distribution`.
   - `apply_rules`: for each candidate rule, match its left-hand side against every subexpression
     (with a `rest` wildcard for sums/products), reject matches that invent structure, check the
     rule's conditions against the declared assumptions, rewrite, and verify the rewrite.
@@ -125,6 +127,29 @@ one most likely to be wrong.
     `unsupported`. Stored series are rounded to 10 significant digits and capped at about 20 000 numbers.
     Not covered: field Lagrangians, generalised forces (damping, driving not derived from L), constraints,
     stiff solvers, sweeping initial conditions.
+  - `distributions/` (`distribution`: simplify, integrate or differentiate with `DiracDelta` and `Heaviside`).
+    Pointwise sampling cannot see a delta (it is 0 at every sample point), so every other operation
+    refuses distribution input as `unsupported` (`ops.parse_expression`), `verify_equal` never passes it, and
+    the claim checker leaves such statements `unverified`. Input uses explicit names
+    (`\operatorname{DiracDelta}(x-a)`, `DiracDelta(x)` in text); `\delta` and `\theta` stay symbols. Two legs,
+    reported separately: (1) the exact conditions of each identity, decided symbolically from the declared
+    assumptions (`normal_form.py`): the variable and every symbol in an argument is real; `\delta(g(x))` for a
+    polynomial `g` needs all real roots in closed form, each provably simple (`g'(x_i)` nonzero), a scale factor
+    provably nonzero (sign decided or `|a|` kept), the multiplier defined and continuous at the root, each root
+    provably inside, outside or (with an explicit `endpoint` convention) on the limits. Repeated roots are
+    `singular_root`, undecided conditions `assumptions_insufficient`, a delta on a limit without a convention
+    `integration_domain_ambiguous`, other forms `unsupported_distribution`. (2) An independent pairing
+    (`pairing.py`): the input is regularised (Gaussian for the delta, erf for the step), integrated against
+    six Gaussian-windowed test functions with a fixed quadrature at three halving widths and Richardson
+    extrapolated; the limit must equal the action of the result, with delta positions taken from a numerical
+    root finder. Failure is `not_verified` and nothing is shown. Wording: "equal as distributions", never
+    "proved" or "sampled". The pairing is supporting evidence. Each step cites a handbook entry of verification
+    level `distributional` (`data/entries/distributions.yaml`, no `rule`: the pointwise rule search never
+    applies them). Stage events (parsed, identities identified, transformation selected, assumptions
+    evaluated, verification attempted, accepted or rejected, completed) travel in the result's
+    `diagnostics` because the sandbox child cannot log; the API turns them into allow-listed log lines (trace id,
+    operation, stage, status, duration, enumerated reason) and never logs expressions. Benchmark:
+    `docs/distribution-benchmark.md`.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 

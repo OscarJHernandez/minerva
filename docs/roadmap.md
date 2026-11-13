@@ -39,6 +39,12 @@ Ordering favours correctness infrastructure before breadth.
    reduction and block-matrix exponentials for integrals, every result checked on random matrices). Next:
    time-ordered exponentials and the Magnus expansion, Duhamel integrals for exponents that do not commute with
    their derivative, matrix-valued functions beyond the exponential, and integrals of sums of such terms as one equation.
+   Dirac delta and Heaviside calculus is done for one real variable (`distribution`: scaling, simple real roots of
+   polynomial arguments, integration against deltas with an explicit limit convention, derivatives of steps; exact
+   conditions plus a test-function pairing, benchmarked in `docs/distribution-benchmark.md`). Next: derivatives of
+   the delta and their sifting, deltas of non-polynomial arguments, products of steps, Heaviside-windowed integrals,
+   several variables, Fourier and Laplace transforms of distributions, and a retriever that reads the structure of
+   the argument (recall@1 of the handbook identities is 7 %).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported

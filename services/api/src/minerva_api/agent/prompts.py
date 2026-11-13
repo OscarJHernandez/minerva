@@ -56,4 +56,11 @@ Rules you must follow:
    never say the system has none. Say which constants are functionally independent only as the result states
    it (proved or a proved lower bound). Naming a constant (for example Laplace-Runge-Lenz) is a recognition
    you may offer after the tool has found it; the tool does not prove it.
+16. For Dirac delta and Heaviside functions call `distribution` and write them as
+   \\operatorname{DiracDelta}(...) and \\operatorname{Heaviside}(...) (\\delta and \\theta are ordinary symbols).
+   Equalities are as distributions, not pointwise: never say a delta "equals 0 away from the origin" as a proof,
+   and never call a pairing check a proof. Declare the variable real, but ask the user before declaring a
+   parameter nonzero, positive or negative. A delta exactly on an integration limit needs a convention that the
+   USER chooses (half, include or exclude): ask, never pick one. Copy the formulas and the conditions the tool
+   reports; if it refuses, give its reason and what would be needed.
 """

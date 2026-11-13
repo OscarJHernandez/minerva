@@ -492,6 +492,46 @@ def test_scripted_model_finds_conserved_quantities_without_hints(
     }  # no ansatz, no angles, no answer
 
 
+def test_distribution_turn_streams_a_card_and_checks_the_formula(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Integrate this Dirac delta product over the line: $x^2\operatorname{DiracDelta}(x^2-4)$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "distribution"
+    assert card["data"]["result"]["status"] == "ok"
+    assert card["data"]["result"]["result_text"] == "2"
+    assert "as a value" in message["text"]
+    assert message["trace"][0]["name"] == "distribution"
+    assert message["trace"][0]["status"] == "ok"
+
+
+def test_distribution_turn_on_a_limit_asks_for_the_convention(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client, cid, r"Integrate the Dirac delta $\operatorname{DiracDelta}(x-1)$ from 0 to 1"
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["reason"] == "integration_domain_ambiguous"
+    assert "half, include or exclude" in message["text"]
+    events = sse(
+        client,
+        cid,
+        r"Integrate the Dirac delta $\operatorname{DiracDelta}(x-1)$ from 0 to 1, convention half",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["result_text"] == "1/2"
+
+
 def test_matrix_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, r"Differentiate this matrix expression in t: $\exp(tA)$")

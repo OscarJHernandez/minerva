@@ -17,6 +17,7 @@ was verified; otherwise the status says why. Follow this checklist and stop to a
 | Definite integral / series | same, `check: {kind: integral\|series}` with `params` ranges | `numeric` |
 | Tensor symmetry | same, `check: {kind: tensor}` | `structural` (only monoterm symmetries) |
 | Physics equation | same, `check: {kind: equation, units}` | `dimensional` (units only: say so in notes) |
+| Identity of Dirac delta / Heaviside distributions | same, `check: {kind: distribution}` (one instance run through the `distribution` operation); no `rule` | `distributional` (never `symbolic`/`numeric`: pointwise sampling cannot see a delta) |
 | Literature fact the engine cannot check | same, `verification: stated` + `statement_latex` | `stated` (never applied) |
 | New engine operation | `packages/engine/src/minerva_engine/ops.py` + `service.py` + API route | explicit statuses, independent verification |
 

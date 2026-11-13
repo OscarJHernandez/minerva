@@ -37,7 +37,7 @@ from .differentiate import (
     _nodes,
     check_derivative,
 )
-from .errors import LimitError, MinervaMathError, ParseError
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, SAMPLE_ATTEMPTS, _sample
@@ -384,6 +384,8 @@ def integrate(
         high = _bound(upper, data, limits) if upper is not None else None
     except LimitError as exc:
         return _fail(Status.RESOURCE_LIMIT, str(exc), variable=variable)
+    except UnsupportedInput as exc:
+        return _fail(Status.UNSUPPORTED, str(exc), variable=variable)
     except MinervaMathError as exc:
         return _fail(Status.PARSE_ERROR, str(exc), variable=variable)
 

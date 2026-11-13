@@ -10,6 +10,8 @@ from minerva_engine import (
     Applicability,
     DifferentiateResult,
     DiscoveryReport,
+    DistributionInput,
+    DistributionResult,
     ExpressionInput,
     IntegrateResult,
     MatrixCalculusInput,
@@ -33,11 +35,13 @@ from pydantic import BaseModel, Field
 
 from .db import Calculation, Derivation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
+from .diagnostics import log_distribution
 from .logging import get_logger
 from .schemas import (
     ApplyIdentityRequest,
     ConservedRequest,
     DifferentiateRequest,
+    DistributionRequest,
     IdentitiesRequest,
     IntegrateRequest,
     Linked,
@@ -68,6 +72,10 @@ class IntegrateResponse(IntegrateResult):
 
 
 class MatrixCalculusResponse(MatrixCalculusResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class DistributionResponse(DistributionResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -318,6 +326,44 @@ def conserved_quantities(
         user_id=str(user.id),
     )
     return report
+
+
+@router.post("/distribution", response_model=DistributionResponse)
+def distribution(
+    body: DistributionRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> DistributionResponse:
+    _guard(user, limiter, settings, len(body.input))
+    _check_links(db, user, body)
+    request = DistributionInput(
+        expression=_expr(body),
+        action=body.action,
+        variable=body.variable,
+        lower=body.lower,
+        upper=body.upper,
+        endpoint=body.endpoint,
+    )
+    result = engine.distribution(request)
+    log.info(
+        "compute",
+        operation="distribution",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        reason=result.reason,
+        user_id=str(user.id),
+    )
+    log_distribution(result, str(user.id))
+    out = DistributionResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # Kept even on failure, so the workbench can restore the form.
+        saved["request"] = request.model_dump(mode="json", exclude={"expression"})
+        out.calculation_id = _save(db, user, "distribution", body, result.status.value, saved)
+    return out
 
 
 @router.post("/identities", response_model=IdentitiesResponse)
