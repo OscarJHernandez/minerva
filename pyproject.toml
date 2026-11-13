@@ -27,6 +27,7 @@ dev = [
   "minerva-engine",
   "minerva-knowledge",
   "minerva-api",
+  "hypothesis>=6.170.15",
 ]
 
 [tool.ruff]
