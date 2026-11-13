@@ -44,7 +44,7 @@ from .pi_groups import (
 from .sandbox import Outcome, Sandbox, SandboxResult
 from .series import SeriesResult
 from .solve import SolveReport
-from .stats.models import ExpectationInput, ExpectationResult
+from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
 
 # Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
 NONCOMMUTATIVE_OPERATIONS = frozenset({"substitute", "rewrite_at", "subterms"})
@@ -236,6 +236,23 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return IntegrateResult(status=status, message=message, duration_ms=ms)
         result = IntegrateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def statistical_model(self, request: StatModelInput) -> StatModelResult:
+        """Moments, likelihoods, estimators, Fisher information and posteriors of a probability
+        family, derived from its density; each result is shown only if an independent check passed."""
+        outcome, ms = self._run("statistical_model", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return StatModelResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = StatModelResult(**outcome.value)
         result.duration_ms = ms
         return result
 

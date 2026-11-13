@@ -126,3 +126,29 @@ SymPy terms cannot hold a transpose, an inverse, a trace or a determinant.
 
 Cumulative: 59 of 108 cases pass (sums 16, expectation 15, matrix 28); 49 of the later phases remain pending. The
 existing matrix benchmark is unchanged (`matrix-benchmark` still reports the same coverage).
+
+## Phase 3: probability families
+
+`statistical_model` with action `moments` (and `candidate`, to check an answer) covers Bernoulli, Binomial, Poisson,
+Normal (standard deviation or variance), Beta, Gamma (shape and rate), Cauchy and Uniform(0, theta). The registry
+(`stats/families.py`) holds only the parameters, their constraints, the support and the density.
+
+* Moments are **derived**: SymPy `integrate` for continuous families, `summation` for discrete ones. A size parameter
+  (Binomial's n) is fitted as a polynomial from exact sums at small n and verified at further n, because SymPy returns
+  a `Piecewise` with an unevaluated sum for symbolic n. A result with an unevaluated integral or sum is
+  `no_closed_form`, never shown.
+* Absolute convergence is established **before** a moment is trusted: quadrature of the Cauchy mean returns 0 with
+  an error estimate of 0, so the tails of `|x| f(x)` must shrink (they do not: the Cauchy tail stays near 20 across
+  five decades). Such a moment is `convergence_not_established`.
+* Each moment and the normalisation are checked by mpmath quadrature or summation of the density at sampled parameter
+  values; numerical agreement is evidence, not a proof. A wrong density fails the normalisation check
+  (`test_a_wrong_density_is_caught_by_the_normalisation_check`).
+* Parameter constraints are decided by `stats/domain.py`: a provable violation is `parameter_invalid`, a missing value
+  `parameter_missing`, and a constraint SymPy's assumptions cannot express (`0 < p < 1`) is shown as a premise of the
+  result, never silently assumed and never used to refuse.
+
+| Group | Cases | Passing |
+| --- | --- | --- |
+| families | 14 | 14 |
+
+Cumulative: 76 of 108 cases pass; the three refusing `mle` cases that depend only on reading the model now pass too.

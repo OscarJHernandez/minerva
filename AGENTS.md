@@ -351,6 +351,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`invertibility_not_declared`); declarations are checked against explicit entries; products are never reordered; a 1x1
   product is a scalar factor and an ambiguous grouping is refused. `logdet` means log |det|. The symbolic leg is not run.
   Matrix-valued functions have no gradient here (`non_scalar_gradient`).
+- Probability families (`stats/families.py`, operation `statistical_model`, action `moments`): a family is a parameter list
+  with constraints, a support and a density, nothing else; no estimator, moment or posterior is stored. Moments come from
+  `integrate`/`summation` (a size parameter is fitted from exact sums and verified at further sizes) and are shown only if
+  mpmath quadrature or summation of the density agrees at sampled parameters and the density normalises. **Absolute
+  convergence is established first** (`Numeric.absolute_moment_exists`: the tails of |x|^k f must shrink), because quadrature
+  "agrees" with a divergent integral; such a moment is `convergence_not_established`. Parameter constraints are decided by
+  `stats/domain.py`: provably violated is `parameter_invalid`, undecidable (`0 < p < 1` cannot be an assumption) is a premise
+  of the result, never silently true. `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

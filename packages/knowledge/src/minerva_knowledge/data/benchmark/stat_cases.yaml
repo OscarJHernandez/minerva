@@ -411,7 +411,6 @@
   request: {family: normal, parameters: {mu: mu, sigma: sigma}, action: moments}
   expect:
     outputs: {"moment:mean": "mu", "moment:variance": "sigma**2", "moment:second": "mu**2 + sigma**2"}
-  pending: true
 
 - id: family-bernoulli-moments
   group: families
@@ -423,7 +422,6 @@
   request: {family: bernoulli, parameters: {p: p}, action: moments}
   expect:
     outputs: {"moment:mean": "p", "moment:variance": "p*(1 - p)"}
-  pending: true
 
 - id: family-binomial-moments
   group: families
@@ -435,7 +433,6 @@
   request: {family: binomial, parameters: {n: n, p: p}, action: moments}
   expect:
     outputs: {"moment:mean": "n*p", "moment:variance": "n*p*(1 - p)"}
-  pending: true
 
 - id: family-poisson-moments
   group: families
@@ -447,7 +444,6 @@
   request: {family: poisson, parameters: {lam: lam}, action: moments}
   expect:
     outputs: {"moment:mean": "lam", "moment:variance": "lam", "moment:second": "lam**2 + lam"}
-  pending: true
 
 - id: family-beta-moments
   group: families
@@ -461,7 +457,6 @@
     outputs:
       "moment:mean": "alpha/(alpha + beta)"
       "moment:variance": "alpha*beta/((alpha + beta)**2*(alpha + beta + 1))"
-  pending: true
 
 - id: family-gamma-moments
   group: families
@@ -473,7 +468,6 @@
   request: {family: gamma, parameters: {alpha: alpha, beta: beta}, action: moments}
   expect:
     outputs: {"moment:mean": "alpha/beta", "moment:variance": "alpha/beta**2"}
-  pending: true
 
 - id: family-cauchy-mean-does-not-exist
   group: families
@@ -484,7 +478,6 @@
   vars: {}
   request: {family: cauchy, parameters: {}, action: moments}
   expect: {status: conditions_not_satisfied, reason: convergence_not_established}
-  pending: true
 
 - id: family-normal-negative-sd
   group: families
@@ -495,7 +488,6 @@
   vars: {}
   request: {family: normal, parameters: {mu: mu, sigma: "-1"}, action: moments}
   expect: {status: conditions_not_satisfied, reason: parameter_invalid}
-  pending: true
 
 - id: family-bernoulli-probability-above-one
   group: families
@@ -506,7 +498,6 @@
   vars: {}
   request: {family: bernoulli, parameters: {p: "3/2"}, action: moments}
   expect: {status: conditions_not_satisfied, reason: parameter_invalid}
-  pending: true
 
 - id: family-weibull-unsupported
   group: families
@@ -517,7 +508,6 @@
   vars: {}
   request: {family: weibull, parameters: {k: k, lam: lam}, action: moments}
   expect: {status: unsupported, reason: unsupported_family}
-  pending: true
 
 - id: family-check-gamma-mean-wrong
   group: families
@@ -529,7 +519,6 @@
   request: {family: gamma, parameters: {alpha: alpha, beta: beta}, action: moments}
   candidate: {"moment:mean": "alpha/beta**2"}
   control: {"moment:mean": "alpha/beta"}
-  pending: true
 
 - id: family-check-binomial-variance-wrong
   group: families
@@ -541,7 +530,6 @@
   request: {family: binomial, parameters: {n: n, p: p}, action: moments}
   candidate: {"moment:variance": "n*p"}
   control: {"moment:variance": "n*p*(1 - p)"}
-  pending: true
 
 - id: family-check-beta-mean-perturbed
   group: families
@@ -553,7 +541,6 @@
   request: {family: beta, parameters: {alpha: alpha, beta: beta}, action: moments}
   candidate: {"moment:mean": "alpha/(alpha + beta) + 1/1000000"}
   control: {"moment:mean": "alpha/(alpha + beta)"}
-  pending: true
 
 - id: family-check-poisson-second-moment-wrong
   group: families
@@ -565,7 +552,6 @@
   request: {family: poisson, parameters: {lam: lam}, action: moments}
   candidate: {"moment:second": "lam**2"}
   control: {"moment:second": "lam**2 + lam"}
-  pending: true
 
 # ------------------------------------------------------------------ maximum likelihood (Phase 4)
 
@@ -696,7 +682,6 @@
   vars: {}
   request: {family: normal, parametrization: variance, parameters: {v: "-2"}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
   expect: {status: conditions_not_satisfied, reason: parameter_invalid}
-  pending: true
 
 - id: mle-unsupported-family
   group: mle
@@ -707,7 +692,6 @@
   vars: {}
   request: {family: weibull, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [lam], action: mle}
   expect: {status: unsupported, reason: unsupported_family}
-  pending: true
 
 - id: mle-score-system-oversized
   group: mle
@@ -719,7 +703,6 @@
   inflate: {path: "parameters.v", unit: "+(a+1)*(b+2)", count: 400}
   request: {family: normal, parametrization: variance, parameters: {v: "1"}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
   expect: {status: resource_limit}
-  pending: true
 
 - id: mle-check-variance-denominator-n-minus-1
   group: mle

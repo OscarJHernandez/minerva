@@ -69,7 +69,13 @@ from .pi_groups import (
 from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
-from .stats.models import ExpectationInput, ExpectationResult, PmfVerification
+from .stats.models import (
+    ExpectationInput,
+    ExpectationResult,
+    PmfVerification,
+    StatModelInput,
+    StatModelResult,
+)
 from .textparse import parse_text
 
 __all__ = [
@@ -137,6 +143,8 @@ __all__ = [
     "SimplifyResult",
     "Solution",
     "SolveReport",
+    "StatModelInput",
+    "StatModelResult",
     "Status",
     "Step",
     "StepDiagnostics",

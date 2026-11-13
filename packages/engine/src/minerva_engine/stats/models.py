@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from ..distributions.models import Condition
 from ..indexed.models import SumStep
 from ..models import ExpressionInput, Status
 
@@ -74,5 +75,111 @@ class ExpectationResult(BaseModel):
     given: list[str] = Field(default_factory=list)
     steps: list[SumStep] = Field(default_factory=list)
     verification: PmfVerification | None = None
+    message: str = ""
+    duration_ms: float = 0.0
+
+
+# ---------------------------------------------------------------------------------- statistical models
+
+StatAction = Literal["moments", "log_likelihood", "score", "mle", "fisher_information", "posterior"]
+StatReason = Literal[
+    "unsupported_family",
+    "parameter_invalid",
+    "parameter_missing",
+    "assumptions_insufficient",
+    "independence_not_declared",
+    "regularity_not_satisfied",
+    "convergence_not_established",
+    "no_closed_form",
+    "system_not_triangular",
+    "candidate_inadmissible",
+    "kernel_not_recognised",
+    "verification_failed",
+    "parse_error",
+    "unsupported_form",
+    "resource_limit",
+]
+Optimum = Literal["global", "local", "stationary_only"]
+
+
+class PriorSpec(BaseModel):
+    family: str = Field(max_length=32)
+    parametrization: str | None = Field(default=None, max_length=16)
+    parameters: dict[str, str] = Field(default_factory=dict, max_length=8)
+
+
+class StatModelInput(BaseModel):
+    """A probability model, and what to derive from it."""
+
+    family: str = Field(max_length=32)
+    parametrization: str | None = Field(default=None, max_length=16)
+    # known parameters, as expressions; the others are the ones listed in `estimate`
+    parameters: dict[str, str] = Field(default_factory=dict, max_length=8)
+    observation: str | None = Field(default=None, max_length=32)  # name of the data, e.g. x
+    sample_size: str | None = Field(default=None, max_length=32)  # e.g. n
+    # Independence is never assumed: the user states it, or a likelihood of several observations
+    # is refused (`independence_not_declared`).
+    iid: bool | None = None
+    estimate: list[str] = Field(default_factory=list, max_length=4)
+    action: StatAction = "moments"
+    prior: PriorSpec | None = None
+    data: list[str] | None = Field(default=None, max_length=64)  # concrete observations
+    # check an answer instead of deriving one, keyed like the benchmark outputs
+    candidate: dict[str, str] | None = Field(default=None, max_length=16)
+    assumptions: dict[str, list[str]] = Field(default_factory=dict, max_length=32)
+
+
+class StatCheck(BaseModel):
+    """One independent check that a result had to pass."""
+
+    kind: Literal[
+        "normalisation", "moment_quadrature", "score", "second_order", "information", "posterior"
+    ]
+    method: str
+    points_checked: int = 0
+    points_agreed: int = 0
+    passed: bool = False
+    note: str = ""
+
+
+class StatStep(BaseModel):
+    title: str
+    before_latex: str = ""
+    after_latex: str
+    after_text: str = ""
+    evidence: Literal["definition", "identity", "conditional"] = "identity"
+
+
+class Estimate(BaseModel):
+    parameter: str
+    latex: str
+    text: str
+    optimum: Optimum | None = None
+    optimum_evidence: Literal["proved", "measured"] | None = None
+    admissible_if: list[Condition] = Field(default_factory=list)
+
+
+class PosteriorOut(BaseModel):
+    family: str
+    parameters: dict[str, str] = Field(default_factory=dict)
+    parameters_latex: dict[str, str] = Field(default_factory=dict)
+    dropped_factors_latex: list[str] = Field(default_factory=list)
+
+
+class StatModelResult(BaseModel):
+    status: Status
+    action: StatAction
+    reason: StatReason | None = None
+    steps: list[StatStep] = Field(default_factory=list)
+    moments: dict[str, str] = Field(default_factory=dict)  # mean, variance, second (plain text)
+    moments_latex: dict[str, str] = Field(default_factory=dict)
+    estimates: list[Estimate] = Field(default_factory=list)
+    matrix_text: list[list[str]] | None = None
+    matrix_latex: list[list[str]] | None = None
+    posterior: PosteriorOut | None = None
+    checks: list[StatCheck] = Field(default_factory=list)
+    premises: list[str] = Field(default_factory=list)  # e.g. "the observations are independent"
+    conditions: list[Condition] = Field(default_factory=list)
+    evidence: Literal["identity", "conditional"] | None = None
     message: str = ""
     duration_ms: float = 0.0

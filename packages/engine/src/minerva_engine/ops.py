@@ -256,6 +256,14 @@ def op_expectation(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_statistical_model(payload: dict[str, Any]) -> dict[str, Any]:
+    from .stats.models import StatModelInput
+    from .stats.statmodel import stat_model
+
+    result = stat_model(StatModelInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
     from .integrate import integrate
 
@@ -795,6 +803,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
     "sums": op_sums,
     "expectation": op_expectation,
+    "statistical_model": op_statistical_model,
     "identities": op_identities,
     "transform": op_transform,
     "features": op_features,
