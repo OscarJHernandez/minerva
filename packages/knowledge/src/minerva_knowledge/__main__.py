@@ -34,6 +34,32 @@ def _benchmark() -> int:
     return 1 if report.failures or chains.failures else 0
 
 
+def _matrix_benchmark(args: list[str]) -> int:
+    from pathlib import Path
+
+    from minerva_engine import Engine, Limits
+
+    from .matrix_benchmark import (
+        format_markdown,
+        format_report,
+        run_matrix_benchmark,
+        write_section,
+    )
+
+    def option(name: str, default: str) -> str:
+        return args[args.index(name) + 1] if name in args else default
+
+    repeat = int(option("--repeat", "1"))
+    engine = Engine(Limits(timeout_seconds=20, max_concurrency=2))
+    report = run_matrix_benchmark(engine, repeat=repeat)
+    print(format_report(report))
+    if "--out" in args:
+        label = option("--section", "current")
+        write_section(Path(option("--out", "")), label, format_markdown(report, label, repeat))
+        print(f"\nwrote section '{label}' to {option('--out', '')}")
+    return 1 if report.failures or report.stale_pending else 0
+
+
 def _generate(check: bool) -> int:
     from minerva_engine import Engine, Limits
 
@@ -63,11 +89,14 @@ def main(argv: list[str]) -> int:
     command = argv[0] if argv else "verify"
     if command == "benchmark":
         return _benchmark()
+    if command == "matrix-benchmark":
+        return _matrix_benchmark(argv[1:])
     if command == "generate":
         return _generate(check="--check" in argv[1:])
     if command != "verify":
         print(
-            "usage: python -m minerva_knowledge verify | benchmark | generate [--check]",
+            "usage: python -m minerva_knowledge verify | benchmark | matrix-benchmark "
+            "[--repeat N] [--section LABEL] [--out FILE] | generate [--check]",
             file=sys.stderr,
         )
         return 2

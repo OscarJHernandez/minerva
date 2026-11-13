@@ -8,6 +8,7 @@
 | [roadmap.md](roadmap.md) | What is planned, in order |
 | [model-evaluation.md](model-evaluation.md) | How candidate language models score on tool calling and honesty |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
+| [matrix-benchmark.md](matrix-benchmark.md) | Matrix calculus: coverage, method selection, verification and timing on hand-written cases, with a baseline |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |
 | [licensing.md](licensing.md) | Licence assessment, including the GPL-licensed integrations |
 | [security-publication.md](security-publication.md) | Security and publication notes |
