@@ -88,7 +88,14 @@ jobs:
           uv run alembic check
       - name: Agent files and skills are consistent
         run: uv run python scripts/check_agent_files.py
-      - run: uv run pytest
+      # Two invocations: the API tests drop and recreate the tables of one shared database in every test
+      # (`services/api/tests/conftest.py`), so they must not run in parallel on PostgreSQL. Everything else is
+      # independent and runs on 3 workers (pods have no CPU limit, so this uses idle cores; measured 108 s against
+      # 167 s with `--dist loadfile`, which is held up by its slowest file).
+      - name: Tests (engine, handbook, scripts), in parallel
+        run: uv run pytest -n 3 --dist load --ignore=services/api
+      - name: Tests (API, serial because of the shared database)
+        run: uv run pytest services/api
       - name: The API starts with production dependencies only (no dev tools)
         # The image installs `--no-dev`; a dependency declared only as a dev tool passes every test and then
         # crashes the container at import time.
@@ -124,31 +131,37 @@ jobs:
         env:
           MINERVA_API_URL: http://localhost:8100
 
-  chart:
-    name: Helm chart
+  # Helm chart checks and workflow lint share one job (one runner pod): each is seconds of work, and a pod per
+  # job made them wait minutes for a free pod whenever two runs overlapped. Each group keeps its own path filter.
+  lint:
+    name: Helm chart and workflow lint
     needs: changes
-    if: ${{ needs.changes.outputs.chart == 'true' }}
+    if: ${{ needs.changes.outputs.chart == 'true' || needs.changes.outputs.workflows == 'true' }}
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+      - if: ${{ needs.changes.outputs.chart == 'true' }}
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: v4.3.1
       - name: Lint and render the production overlay (fake digests)
+        if: ${{ needs.changes.outputs.chart == 'true' }}
         run: |
           D=sha256:$(printf 'a%.0s' {1..64})
           SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
           helm lint deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}"
           helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}" > /dev/null
       - name: Missing digests must be refused in production
+        if: ${{ needs.changes.outputs.chart == 'true' }}
         run: |
           if helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml > /dev/null 2>&1; then
             echo "::error::requireDigests did not reject a release without image digests"; exit 1
           fi
       - name: Chat model settings are rendered and validated
+        if: ${{ needs.changes.outputs.chart == 'true' }}
         run: |
           D=sha256:$(printf 'a%.0s' {1..64})
           SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
@@ -165,6 +178,7 @@ jobs:
             echo "::error::scripted mode must be refused in the chart"; exit 1
           fi
       - name: OpenRouter settings are rendered, reference a Secret and never carry a key value
+        if: ${{ needs.changes.outputs.chart == 'true' }}
         run: |
           D=sha256:$(printf 'a%.0s' {1..64})
           SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
@@ -188,9 +202,18 @@ jobs:
           if "${T[@]}" --set api.llm.openrouter.apiKey=sk-or-x > /dev/null 2>&1; then
             echo "::error::a literal API key in values must be refused"; exit 1
           fi
-      - run: |
+      - if: ${{ needs.changes.outputs.chart == 'true' }}
+        run: |
           bash -n scripts/build-image.sh
           bash -n scripts/deploy-preflight.sh
+      - if: ${{ needs.changes.outputs.workflows == 'true' }}
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Workflow lint (actionlint)
+        if: ${{ needs.changes.outputs.workflows == 'true' }}
+        run: uvx --from actionlint-py actionlint
+      - name: Static analysis of workflows (offline, no token needed)
+        if: ${{ needs.changes.outputs.workflows == 'true' }}
+        run: uvx zizmor --offline --config .github/zizmor.yml .github/workflows
 
   images:
     name: Build images (not pushed)
@@ -238,26 +261,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
 
-  workflows:
-    name: Workflow lint (actionlint, zizmor)
-    needs: changes
-    if: ${{ needs.changes.outputs.workflows == 'true' }}
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - run: uvx --from actionlint-py actionlint
-      - name: Static analysis of workflows (offline, no token needed)
-        run: uvx zizmor --offline --config .github/zizmor.yml .github/workflows
-
   # One stable name for branch protection: skipped jobs count as passing, failed or cancelled ones do not.
   ci-ok:
     name: CI OK
     if: always()
-    needs: [changes, python, web, chart, images, security, workflows]
+    needs: [changes, python, web, lint, images, security]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
