@@ -17,7 +17,7 @@ from typing import Any
 
 import sympy as sp
 
-from .build import CONSTANTS, TEXT_FUNCTION_ALIASES, Builder
+from .build import CONSTANTS, FUNCTIONS, TEXT_FUNCTION_ALIASES, Builder, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
 
@@ -32,6 +32,7 @@ def parse_text(
     noncommutative: Iterable[str] = (),
     functions: dict[str, tuple[str, ...]] | None = None,
     strict_calls: bool = False,
+    notation: NotationLog | None = None,
     *,
     allow_noncommutative: bool = False,
 ) -> sp.Expr:
@@ -44,6 +45,7 @@ def parse_text(
         noncommutative,
         functions,
         strict_calls,
+        notation,
         allow_noncommutative=allow_noncommutative,
     )
     if denominators is not None:
@@ -105,6 +107,13 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
         args = [_convert(a, b, d) for a in node.args]
         if name in b.functions:
             return b.declared_call(name, args)
+        if len(args) == 1:
+            reading = b.distribution_reading(name)
+            if reading in ("dirac_delta", "heaviside"):
+                return b.distribution_function(reading, args[0])
+            if reading == "unconfirmed":
+                # Placeholder so that parsing can finish: the operation asks before using it.
+                return b.symbol(name) * args[0]
         if name == "sqrt" and len(args) == 1:
             return b.root(args[0])
         if name == "root" and len(args) == 2:
@@ -114,6 +123,8 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
         if name == "log" and len(args) == 2:
             return b.log_base(args[0], args[1])
         canonical = TEXT_FUNCTION_ALIASES.get(name, name)
+        if b.strict_calls and canonical not in FUNCTIONS:
+            raise ParseError(f"{name}(…) is not a known function: declare {name} as a function")
         return b.function(canonical, args)
 
     raise ParseError(f"unsupported syntax: {type(node).__name__}")

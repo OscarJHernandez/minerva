@@ -28,6 +28,7 @@ from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
+from .textparse import parse_text
 from .verify import euler_lagrange_check, numeric_check
 
 MAX_COORDINATES = 8
@@ -122,10 +123,18 @@ def derive(
     time: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
+    format: Literal["latex", "text"] = "latex",
 ) -> Derivation:
+    """`latex` is the Lagrangian as typed, in the syntax `format` names (the argument keeps its old name).
+
+    In text a velocity is written `q_dot` (LaTeX: `\\dot{q}`, which the parser turns into the same symbol).
+    """
     _check_coordinates(coordinates)
     try:
-        L = parse_latex(latex, assumptions, limits)
+        if format == "text":
+            L = parse_text(latex, assumptions, limits)
+        else:
+            L = parse_latex(latex, assumptions, limits)
     except MinervaMathError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
     return derive_expr(L, coordinates, time)
@@ -174,7 +183,8 @@ def derive_expr(
     if not any(v in L.free_symbols for v in qd):
         raise DerivationError(
             Status.UNSUPPORTED,
-            "The Lagrangian does not depend on any velocity \\dot{q}; it is not a dynamical Lagrangian.",
+            "The Lagrangian does not depend on any velocity (\\dot{q} in LaTeX, q_dot in text); "
+            "it is not a dynamical Lagrangian.",
         )
     known = set(q) | set(qd) | {t}
     params = sorted(L.free_symbols - known, key=lambda s: s.name)
@@ -342,9 +352,10 @@ def analyze_lagrangian(
     time: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
+    format: Literal["latex", "text"] = "latex",
 ) -> LagrangianReport:
     try:
-        d = derive(latex, coordinates, time, assumptions, limits)
+        d = derive(latex, coordinates, time, assumptions, limits, format)
     except DerivationError as exc:
         return _fail(exc.status, exc.message)
     q, qdd, p, n, show = d.q, d.qdd, d.momenta, d.n, d.show
@@ -412,7 +423,7 @@ def analyze_lagrangian(
         "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. "
         "Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden "
         "symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; "
-        "the separate search for more constants of motion (`invariants.py`) looks for them in a declared family."
+        "the separate search for more constants of motion looks for them in a declared family."
     )
     unverified = [c for c in report.conserved if not c.verified]
     report.message = (

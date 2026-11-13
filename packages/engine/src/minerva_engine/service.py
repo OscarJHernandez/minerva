@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import re
 import time
-from typing import Any
+from typing import Any, Literal
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
@@ -454,8 +454,11 @@ class Engine:
         coordinates: list[str],
         time: str = "t",
         assumptions: dict[str, list[str]] | None = None,
+        format: Literal["latex", "text"] = "latex",
     ) -> LagrangianReport:
-        """Equations of motion and verified constants of motion of a Lagrangian (LaTeX), sandboxed."""
+        """Equations of motion and verified constants of motion of a Lagrangian, sandboxed.
+
+        LaTeX writes velocities `\\dot{q}`; in text they are `q_dot`."""
         outcome, ms = self._run(
             "lagrangian",
             {
@@ -463,6 +466,7 @@ class Engine:
                 "coordinates": coordinates,
                 "time": time,
                 "assumptions": assumptions or {},
+                "format": format,
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:
@@ -538,6 +542,7 @@ class Engine:
         harmonics: int = 1,
         time: str = "t",
         assumptions: dict[str, list[str]] | None = None,
+        format: Literal["latex", "text"] = "latex",
     ) -> InvariantReport:
         """Search a declared family for constants of motion beyond Noether's easy cases, sandboxed."""
         outcome, ms = self._run(
@@ -551,6 +556,7 @@ class Engine:
                 "harmonics": harmonics,
                 "time": time,
                 "assumptions": assumptions or {},
+                "format": format,
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:

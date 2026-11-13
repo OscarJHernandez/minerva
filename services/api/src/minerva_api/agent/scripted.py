@@ -178,7 +178,12 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("matrix_calculus", mat_args)])
-        elif ("dirac" in lower or "heaviside" in lower or "step function" in lower) and latex:
+        elif (
+            "dirac" in lower
+            or "heaviside" in lower
+            or "step function" in lower
+            or re.search(r"\\(?:delta|theta)\s*\(", user)
+        ) and latex:
             # Development stand-in: x is the real variable; the action comes from the wording. A limit
             # convention is passed only if the user wrote one ("convention half").
             dist_args: dict[str, Any] = {
@@ -600,6 +605,11 @@ class ScriptedLLM:
                     f"**Result ({kind}):** $${result.group(1)}$$\n\n"
                     "The card lists the handbook identity of each step, the conditions that were "
                     "established, and how many test-function pairings agreed."
+                )
+            elif reason and reason.group(1) == "notation_unconfirmed":
+                text = (
+                    "I am not sure that is a Dirac delta or a step function: outside this tool those "
+                    "names are ordinary symbols. The card asks you; answer there and I will continue."
                 )
             elif reason and reason.group(1) == "integration_domain_ambiguous":
                 text = (

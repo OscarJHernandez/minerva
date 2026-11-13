@@ -51,6 +51,14 @@ class ReportError(ValueError):
     """The text is not a debug report this script understands."""
 
 
+def _context_for(step: dict[str, Any], ctx: ToolContext) -> ToolContext:
+    """The context a recorded call ran in: a distribution card run with the user's answer carries it."""
+    notation = step["arguments"].get("notation") if step["name"] == "distribution" else None
+    if isinstance(notation, dict):
+        return ToolContext(engine=ctx.engine, kb=ctx.kb, notation=dict(notation))
+    return ctx
+
+
 @dataclass
 class Replayed:
     turn: int  # 1-based index of the message in the report
@@ -124,7 +132,7 @@ def replay(data: dict[str, Any], ctx: ToolContext) -> list[Replayed]:
                     )
                 )
                 continue
-            result = execute(step["name"], step["arguments"], ctx)
+            result = execute(step["name"], step["arguments"], _context_for(step, ctx))
             out.append(
                 Replayed(
                     turn=turn,

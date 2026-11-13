@@ -447,6 +447,7 @@ def distribution(
         lower=body.lower,
         upper=body.upper,
         endpoint=body.endpoint,
+        notation=body.notation,
     )
     result = engine.distribution(request)
     log.info(

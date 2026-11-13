@@ -13,6 +13,7 @@ import {
 import type {
   ApplyIdentityResult,
   DifferentiateResult,
+  DistributionNotation,
   DistributionResult,
   HistoryItem,
   IntegrateResult,
@@ -38,9 +39,17 @@ interface Props {
   /** `which`: for an equation, the index of the solution to continue with. */
   onContinue: (item: HistoryItem, edit: boolean, which?: number) => void;
   onDelete: (item: HistoryItem) => void;
+  /** The user's answer to "is that a Dirac delta?": runs the step again with it. */
+  onAnswerNotation?: (item: HistoryItem, notation: DistributionNotation) => Promise<void>;
 }
 
-function FullResult({ item }: { item: HistoryItem }) {
+function FullResult({
+  item,
+  onAnswerNotation,
+}: {
+  item: HistoryItem;
+  onAnswerNotation?: Props["onAnswerNotation"];
+}) {
   switch (item.operation) {
     case "simplify":
       return <ResultPanel result={item.result as SimplifyResult} />;
@@ -56,7 +65,12 @@ function FullResult({ item }: { item: HistoryItem }) {
     case "isolate":
       return <DiagnosticsView d={(item.result as unknown as IsolateResult).diagnostics} />;
     case "distribution":
-      return <DistributionPanel result={item.result as unknown as DistributionResult} />;
+      return (
+        <DistributionPanel
+          result={item.result as unknown as DistributionResult}
+          onAnswer={onAnswerNotation ? (notation) => onAnswerNotation(item, notation) : undefined}
+        />
+      );
     case "apply_identity": {
       const r = item.result as unknown as ApplyIdentityResult;
       return (
@@ -102,10 +116,22 @@ function Copy({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function StepCard({ item, number, parentNumber, current, onContinue, onDelete }: Props) {
+export function StepCard({
+  item,
+  number,
+  parentNumber,
+  current,
+  onContinue,
+  onDelete,
+  onAnswerNotation,
+}: Props) {
   const cont = continuation(item);
   const latex = resultLatex(item);
   const failed = item.status !== "ok" && item.status !== "unchanged";
+  // A delta step that is waiting for the user's answer shows its question open: nothing was computed.
+  const asking =
+    item.operation === "distribution" &&
+    (item.result as unknown as DistributionResult).reason === "notation_unconfirmed";
   const assumptions = assumptionsSummary(item.assumptions);
   const verified = verificationSummary(item);
   const message = (item.result as unknown as { message?: string }).message;
@@ -242,10 +268,12 @@ export function StepCard({ item, number, parentNumber, current, onContinue, onDe
         </button>
       </div>
 
-      <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-muted">Full verification</summary>
+      <details className="mt-3 text-sm" open={asking}>
+        <summary className="cursor-pointer text-muted">
+          {asking ? "Answer to continue" : "Full verification"}
+        </summary>
         <div className="mt-2">
-          <FullResult item={item} />
+          <FullResult item={item} onAnswerNotation={onAnswerNotation} />
         </div>
       </details>
     </li>
