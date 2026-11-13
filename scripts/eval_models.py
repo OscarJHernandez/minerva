@@ -8,13 +8,19 @@ stay honest when a tool says no, and does it avoid writing formulas that no tool
     uv run python scripts/eval_models.py --base-url http://HOST:11434 \\
         --models qwen3.5:35b,gemma4:26b --out docs/model-evaluation.md
 
-The host name is never written to the report. Nothing here changes any data: tools are pure.
+Models can name their provider: `ollama:qwen3.5:35b` (a bare name means Ollama) or
+`openrouter:openai/gpt-4.1-mini`. OpenRouter runs read the key from the OPENROUTER_API_KEY environment
+variable only (never an argument), cost real money, and need no --base-url. Both providers run the same
+cases through the same loop, so the table compares them directly.
+
+The host name and the key are never written to the report. Nothing here changes any data: tools are pure.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import re
 import statistics
 import sys
@@ -26,6 +32,7 @@ from typing import Any
 
 from minerva_api.agent.llm import LLMClient, LLMError, OllamaClient
 from minerva_api.agent.loop import AgentLimits, run_agent
+from minerva_api.agent.openrouter import OpenRouterClient
 from minerva_api.agent.tools import ToolContext
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
@@ -404,6 +411,14 @@ class Outcome:
     unchecked: int
     contradicted: int = 0
     reply: str = ""
+    first_token_ms: int | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    cost_usd: float | None = None
+    tool_calls: int = 0
+    tool_failures: int = 0  # tools that answered with an error card
+    unverified_results: int = 0  # tool results whose status was not `ok` (refused or not verified)
+    error_kind: str | None = None  # auth | credits | rate_limit | timeout | ...
 
 
 async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLimits) -> Outcome:
@@ -413,6 +428,7 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
     cards: list[dict[str, Any]] = []
     final: dict[str, Any] | None = None
     error = ""
+    error_kind: str | None = None
     async for event in run_agent(llm, history, ctx, limits):
         if event["event"] == "tool_call":
             calls.append((event["data"]["name"], event["data"]["arguments"]))
@@ -422,11 +438,21 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
             final = event["data"]
         elif event["event"] == "error":
             error = event["data"]["message"]
+            error_kind = (event["data"].get("debug") or {}).get("error_kind")
     seconds = time.monotonic() - started
     notes: list[str] = []
     tools = [name for name, _ in calls]
     if final is None:
-        return Outcome(case, False, [f"no reply ({error or 'unknown error'})"], seconds, tools, 0)
+        return Outcome(
+            case,
+            False,
+            [f"no reply ({error or 'unknown error'})"],
+            seconds,
+            tools,
+            0,
+            tool_calls=len(calls),
+            error_kind=error_kind,
+        )
 
     text = " ".join(
         s["value"] for b in final["blocks"] if b["kind"] == "text" for s in b["segments"]
@@ -472,26 +498,70 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
         notes.append(f"reply too long ({len(text.split())} words)")
     if final.get("truncated"):
         notes.append("hit the step or time limit")
-    return Outcome(case, not notes, notes, seconds, tools, unchecked, contradicted, text[:240])
+    llm_calls = (final.get("debug") or {}).get("llm_calls", [])
+
+    def total(field_name: str) -> int | None:
+        values = [c[field_name] for c in llm_calls if c.get(field_name) is not None]
+        return sum(values) if values else None
+
+    cost = [c["cost_usd"] for c in llm_calls if c.get("cost_usd") is not None]
+    first = [c["first_token_ms"] for c in llm_calls if c.get("first_token_ms") is not None]
+    statuses_ = [t.get("status") for t in final.get("trace", [])]
+    return Outcome(
+        case,
+        not notes,
+        notes,
+        seconds,
+        tools,
+        unchecked,
+        contradicted,
+        text[:240],
+        first_token_ms=first[0] if first else None,
+        prompt_tokens=total("prompt_tokens"),
+        completion_tokens=total("completion_tokens"),
+        cost_usd=sum(cost) if cost else None,
+        tool_calls=len(calls),
+        tool_failures=sum(1 for st in statuses_ if st == "error"),
+        unverified_results=sum(1 for st in statuses_ if st not in ("ok", "error", None)),
+    )
+
+
+def make_client(
+    spec: str, base_url: str, timeout: float, think: bool, strip: bool
+) -> tuple[str, str, LLMClient]:
+    """`provider:model` -> (provider, model, client). A bare name is an Ollama model."""
+    provider, _, rest = spec.partition(":")
+    if provider == "openrouter":
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            raise SystemExit(
+                "set OPENROUTER_API_KEY in the environment to evaluate OpenRouter models"
+            )
+        return "openrouter", rest, OpenRouterClient(key, rest, timeout_seconds=timeout)
+    model = rest if provider == "ollama" else spec
+    if not base_url:
+        raise SystemExit("--base-url is required for Ollama models")
+    return (
+        "ollama",
+        model,
+        OllamaClient(base_url, model, timeout_seconds=timeout, think=think, strip_thinking=strip),
+    )
 
 
 async def evaluate(
-    base_url: str,
+    llm: LLMClient,
     model: str,
     ctx: ToolContext,
     timeout: float,
-    think: bool,
-    strip: bool,
     parallel: int = 1,
 ) -> list[Outcome]:
-    llm = OllamaClient(base_url, model, timeout_seconds=timeout, think=think, strip_thinking=strip)
     limits = AgentLimits(max_steps=6, max_seconds=timeout * 2)
     # Warm-up: loads the model so load time is not counted against the first case.
     try:
         async for _ in llm.chat([{"role": "user", "content": "Say ok."}], []):
             pass
     except LLMError as exc:
-        print(f"  {model}: cannot use ({exc})", file=sys.stderr)
+        print(f"  {model}: cannot use ({exc})", file=sys.stderr)  # fixed text, no key or host
         return []
     gate = asyncio.Semaphore(max(1, parallel))
 
@@ -509,29 +579,44 @@ async def evaluate(
     return outcomes
 
 
+def _fmt(value: float | None, spec: str = ".0f") -> str:
+    return "n/a" if value is None else format(value, spec)
+
+
 def report(results: dict[str, list[Outcome]]) -> str:
     lines = [
         "# Model evaluation",
         "",
         f"Generated {date.today().isoformat()} by `scripts/eval_models.py`. Each prompt runs through the real agent loop "
-        "(real tools and verification) on the configured Ollama host. A case passes when the right tool is called with "
+        "(real tools and verification) against each listed provider (local Ollama or OpenRouter). A case passes when the right tool is called with "
         "valid arguments, the reply says what it should (for example that conditions or assumptions are needed), and "
         "the model does not write formulas that no tool produced where that would be wrong. Results vary from run to "
         "run; treat differences of one case as noise.",
         "",
-        "| Model | Passed | Median s/case | Slowest | Formulas the model wrote |",
-        "| --- | --- | --- | --- | --- |",
+        "| Model | Passed | Median s/case | Slowest | Median first token ms | Tool calls | Tool errors "
+        "| Results not verified | Tokens in/out | Cost USD | Rate limit / timeout | Formulas the model wrote |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for model, outs in results.items():
         if not outs:
-            lines.append(f"| {model} | not usable | | | |")
+            lines.append(f"| {model} | not usable | | | | | | | | | | |")
             continue
         times = [o.seconds for o in outs]
         scored = [o for o in outs if not o.case.informational]
+        firsts = [o.first_token_ms for o in outs if o.first_token_ms is not None]
+        tin = [o.prompt_tokens for o in outs if o.prompt_tokens is not None]
+        tout = [o.completion_tokens for o in outs if o.completion_tokens is not None]
+        costs = [o.cost_usd for o in outs if o.cost_usd is not None]
+        limited = sum(o.error_kind == "rate_limit" for o in outs)
+        timeouts = sum(o.error_kind == "timeout" for o in outs)
         lines.append(
             f"| {model} | {sum(o.passed for o in scored)}/{len(scored)} | {statistics.median(times):.1f} "
-            f"| {max(times):.1f} | {sum(o.unchecked for o in outs)} unchecked, "
-            f"{sum(o.contradicted for o in outs)} contradicted |"
+            f"| {max(times):.1f} | {_fmt(statistics.median(firsts) if firsts else None)} "
+            f"| {sum(o.tool_calls for o in outs)} | {sum(o.tool_failures for o in outs)} "
+            f"| {sum(o.unverified_results for o in outs)} "
+            f"| {sum(tin) if tin else 'n/a'} / {sum(tout) if tout else 'n/a'} "
+            f"| {_fmt(sum(costs) if costs else None, '.4f')} | {limited} / {timeouts} "
+            f"| {sum(o.unchecked for o in outs)} unchecked, {sum(o.contradicted for o in outs)} contradicted |"
         )
     lines += ["", "## Failures", ""]
     for model, outs in results.items():
@@ -552,8 +637,12 @@ async def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("--base-url", required=True)
-    parser.add_argument("--models", required=True, help="comma-separated model names")
+    parser.add_argument("--base-url", default="", help="Ollama host (only for Ollama models)")
+    parser.add_argument(
+        "--models",
+        required=True,
+        help="comma-separated: name, ollama:name or openrouter:vendor/model",
+    )
     parser.add_argument("--timeout", type=float, default=180.0, help="seconds per model call")
     parser.add_argument("--think", action="store_true", help="let reasoning models think first")
     parser.add_argument("--strip-thinking", action="store_true", help="drop leaked reasoning")
@@ -571,11 +660,13 @@ async def main() -> None:
     ctx = ToolContext(engine=Engine(Limits(timeout_seconds=30)), kb=KnowledgeBase.load())
     ctx.engine.warm_up()
     results: dict[str, list[Outcome]] = {}
-    for model in [m.strip() for m in args.models.split(",") if m.strip()]:
-        print(f"== {model}", flush=True)
-        results[model] = await evaluate(
-            args.base_url, model, ctx, args.timeout, args.think, args.strip_thinking, args.parallel
+    for spec in [m.strip() for m in args.models.split(",") if m.strip()]:
+        provider, model, llm = make_client(
+            spec, args.base_url, args.timeout, args.think, args.strip_thinking
         )
+        label = f"{provider}:{model}"
+        print(f"== {label}", flush=True)
+        results[label] = await evaluate(llm, label, ctx, args.timeout, args.parallel)
     text = report(results)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as handle:

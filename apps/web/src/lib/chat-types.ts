@@ -485,18 +485,29 @@ export interface TraceStep {
   /** Absent on messages stored before debug data existed. */
   duration_ms?: number | null;
   status?: string | null;
+  call_id?: string | null;
 }
 
 export interface TurnDebug {
   request_id: string;
   api_version: string;
   mode: string;
+  provider?: string;
+  error_kind?: string | null;
   model: string;
   prompt_sha: string;
   max_steps: number;
   max_seconds: number;
   duration_ms: number;
-  llm_calls: { ms: number; text_chars: number; tool_calls: number }[];
+  llm_calls: {
+    ms: number;
+    text_chars: number;
+    tool_calls: number;
+    first_token_ms?: number | null;
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    cost_usd?: number | null;
+  }[];
   claims: {
     value: string;
     status: string;
@@ -534,6 +545,36 @@ export interface ChatStatus {
   model: string;
   /** Formulas can be read from a picture ("Add image"). */
   images?: boolean;
+  providers?: ProviderStatus;
+}
+
+export interface ProviderStatus {
+  default: "ollama" | "openrouter";
+  ollama: { available: boolean; model: string; reachable?: boolean };
+  openrouter: {
+    available: boolean;
+    byok: boolean;
+    server_key_for_you: boolean;
+    default_model: string;
+    models: string[];
+    zdr: boolean;
+    data_collection: string;
+  };
+}
+
+/** What the browser sends to pick the provider for one turn. */
+export interface ProviderChoice {
+  kind: "ollama" | "openrouter";
+  model?: string;
+  api_key?: string;
+  cloud_consent?: boolean;
+}
+
+export interface ConnectionResult {
+  ok: boolean;
+  message: string;
+  credit_remaining?: number | null;
+  supports_tools?: boolean;
 }
 
 /** One formula transcribed from a picture, and how Minerva's parser reads it. */

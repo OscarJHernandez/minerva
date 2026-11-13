@@ -60,6 +60,7 @@ def _scripted_geometry(lower: str) -> dict[str, Any]:
 
 class ScriptedLLM:
     name = "scripted"
+    provider = "scripted"
 
     def __init__(self, delay: float = 0.0) -> None:
         self.delay = delay
@@ -339,7 +340,7 @@ class ScriptedLLM:
                 yield c
 
     async def _after_tool(self, messages: Sequence[dict[str, Any]]) -> AsyncIterator[Chunk]:
-        tool = messages[-1].get("tool_name", "")
+        tool = messages[-1].get("name", "")
         content = str(messages[-1]["content"])
         if tool == "simplify":
             result = re.search(r"result=\$([^$]*)\$", content)

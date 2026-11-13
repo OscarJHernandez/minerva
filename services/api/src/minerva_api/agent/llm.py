@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -10,24 +11,53 @@ from typing import Any, Protocol
 import httpx
 
 
+def new_call_id() -> str:
+    return "call_" + uuid.uuid4().hex[:16]
+
+
 @dataclass
 class ToolCall:
     name: str
     arguments: dict[str, Any]
+    id: str = field(default_factory=new_call_id)
+
+
+@dataclass
+class Usage:
+    """Token counts and cost as the provider reported them (None when it did not)."""
+
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    cost_usd: float | None = None
 
 
 @dataclass
 class Chunk:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
+    usage: Usage | None = None
 
 
 class LLMError(Exception):
-    """The model host could not be reached or answered badly (message is safe to show)."""
+    """The model host could not be reached or answered badly (message is safe to show).
+
+    `kind` is one of auth, credits, rate_limit, timeout, unavailable, bad_model, bad_reply, other.
+    """
+
+    def __init__(self, message: str, kind: str = "other") -> None:
+        super().__init__(message)
+        self.kind = kind
 
 
 class LLMClient(Protocol):
+    """Clients receive the neutral history and convert it to their wire format.
+
+    Neutral messages: `{"role": "assistant", "content", "tool_calls": [{"id", "name", "arguments": dict}]}`
+    and `{"role": "tool", "tool_call_id", "name", "content"}`.
+    """
+
     name: str
+    provider: str
 
     def chat(
         self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
@@ -70,6 +100,8 @@ class ThinkFilter:
 class OllamaClient:
     """Streams `/api/chat` from an Ollama-compatible server (your own model host)."""
 
+    provider = "ollama"
+
     def __init__(
         self,
         base_url: str,
@@ -94,7 +126,7 @@ class OllamaClient:
     ) -> AsyncIterator[Chunk]:
         payload = {
             "model": self.model,
-            "messages": list(messages),
+            "messages": ollama_messages(messages),
             "tools": list(tools),
             "stream": True,
             "think": self.think,
@@ -108,7 +140,10 @@ class OllamaClient:
                 client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response,
             ):
                 if response.status_code != 200:
-                    raise LLMError(f"The model host answered with status {response.status_code}.")
+                    raise LLMError(
+                        f"The model host answered with status {response.status_code}.",
+                        "unavailable",
+                    )
                 filter_ = ThinkFilter() if self.strip_thinking else None
                 async for line in response.aiter_lines():
                     if not line.strip():
@@ -116,12 +151,15 @@ class OllamaClient:
                     try:
                         data = json.loads(line)
                     except json.JSONDecodeError as exc:
-                        raise LLMError("The model host sent an unreadable reply.") from exc
+                        raise LLMError(
+                            "The model host sent an unreadable reply.", "bad_reply"
+                        ) from exc
                     message = data.get("message") or {}
                     calls = [
                         ToolCall(
                             name=str(c["function"]["name"]),
                             arguments=_arguments(c["function"].get("arguments")),
+                            id=str(c.get("id") or new_call_id()),
                         )
                         for c in message.get("tool_calls") or []
                     ]
@@ -132,8 +170,32 @@ class OllamaClient:
                         yield Chunk(text=text, tool_calls=calls)
                 if filter_ is not None and (rest := filter_.flush()):
                     yield Chunk(text=rest)
+        except httpx.TimeoutException as exc:
+            raise LLMError("The model host timed out.", "timeout") from exc
         except httpx.HTTPError as exc:
-            raise LLMError("The model host is not reachable.") from exc
+            raise LLMError("The model host is not reachable.", "unavailable") from exc
+
+
+def ollama_messages(messages: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Neutral history -> Ollama's shape (`function` wrapper, `tool_name`, no ids)."""
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        if m.get("role") == "assistant" and m.get("tool_calls"):
+            out.append(
+                {
+                    "role": "assistant",
+                    "content": m.get("content") or "",
+                    "tool_calls": [
+                        {"function": {"name": c["name"], "arguments": c["arguments"]}}
+                        for c in m["tool_calls"]
+                    ],
+                }
+            )
+        elif m.get("role") == "tool":
+            out.append({"role": "tool", "tool_name": m.get("name", ""), "content": m["content"]})
+        else:
+            out.append(dict(m))
+    return out
 
 
 def _arguments(raw: Any) -> dict[str, Any]:
