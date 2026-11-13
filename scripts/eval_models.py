@@ -372,7 +372,7 @@ async def run_case(llm: LLMClient, ctx: ToolContext, case: Case, limits: AgentLi
     if case.no_tools and calls:
         notes.append(f"called tools unexpectedly: {sorted(set(tools))}")
     if contradicted:
-        notes.append(f"{contradicted} equation(s) Minerva found to be false")
+        notes.append(f"{contradicted} equation(s) that do not hold as written")
     if case.expect_any and not (case.tools_optional and not calls):
         if not (case.expect_any & set(tools)):
             notes.append(

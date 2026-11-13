@@ -32,7 +32,7 @@ const MARKS: Record<
   contradicted: {
     label: "contradicted",
     title:
-      "Written by the language model. Minerva tested this equation numerically and it is false (at the stated assumptions, or for complex values if none were declared).",
+      "Written by the language model. Minerva tested this equation, as an identity (true for every value of its symbols) or against definitions stated earlier, and it does not hold. See the note for which.",
     underline: "border-b border-solid border-bad",
     box: "border-bad/50 bg-bad-soft/50",
     tone: "text-bad",
@@ -40,11 +40,17 @@ const MARKS: Record<
   unchecked: {
     label: "unchecked",
     title:
-      "Written by the language model. Minerva did not produce this formula and could not check it.",
+      "Written by the language model. Minerva did not produce this formula and could not check it. Not being checked is not a finding that it is wrong.",
     underline: "border-b border-dotted border-warn",
     box: "border-warn/50 bg-warn-soft/40",
     tone: "text-warn",
   },
+};
+
+/** The mark's explanation plus the reason Minerva gave for this particular formula, if any. */
+const explain = (seg: Segment) => {
+  const mark = MARKS[seg.status ?? "unchecked"];
+  return seg.note ? `${mark.title} ${seg.note}` : mark.title;
 };
 
 /** An equation or inequality is a claim Minerva can test; a lone symbol such as `r` or `\\theta` is not. */
@@ -117,7 +123,7 @@ function Formula({ seg }: { seg: Segment }) {
   const plain = status === "unchecked" && !isClaim(seg.value);
   return (
     <span
-      title={plain ? undefined : mark.title}
+      title={plain ? undefined : explain(seg)}
       data-status={plain ? "symbol" : status}
       className={plain ? undefined : mark.underline || undefined}
     >
@@ -143,8 +149,8 @@ function DisplayFormula({ seg }: { seg: Segment }) {
             : seg.status === "conditional"
               ? `Written by the model; ${seg.note ?? "true only under extra assumptions"}`
               : seg.status === "contradicted"
-                ? "Written by the model; Minerva's check says this is false"
-                : "Not verified by Minerva (written by the model)"}
+                ? `Written by the model; ${seg.note ?? "Minerva's check says this does not hold"}`
+                : `Not verified by Minerva (written by the model)${seg.note ? `: ${seg.note}` : ""}`}
         </div>
       )}
     </div>

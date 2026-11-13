@@ -13,7 +13,7 @@ from typing import Any
 
 import sympy as sp
 
-from .claims import ClaimCheck, check_claim, split_equation
+from .claims import check_claims, split_equation
 from .errors import LimitError, MinervaMathError, ParseError
 from .features import expression_features
 from .latexparse import parse_latex
@@ -296,15 +296,10 @@ def op_integrate_motion(payload: dict[str, Any]) -> dict[str, Any]:
 def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     assumptions: dict[str, list[str]] = payload.get("assumptions", {})
-    results: list[dict[str, Any]] = []
-    for latex in payload["formulas"]:
-        try:
-            results.append(check_claim(str(latex), assumptions, limits).model_dump())
-        except Exception:
-            results.append(
-                ClaimCheck(status="unparsed", detail="could not be checked").model_dump()
-            )
-    return {"results": results}
+    relations: list[str] = [str(r) for r in payload.get("relations", [])]
+    formulas = [str(f) for f in payload["formulas"]]
+    results = check_claims(formulas, assumptions, relations, limits)
+    return {"results": [r.model_dump() for r in results]}
 
 
 # --- formulas transcribed from an image ----------------------------------------------

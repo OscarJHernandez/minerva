@@ -8,6 +8,11 @@ is `not_identity`: Minerva cannot tell a false identity from an equation to solv
 equation of motion (`x^2 = 4x`, `F = ma`, `m\\ddot x = -kx`), so it does not call it contradicted.
 Anything else could not be decided. Conditions written next to the equation (`for x \\neq 1`) are ignored: the check is
 "equal as functions at generic points", which is what simplification claims mean.
+
+A *relation* (a symbol on one side only, or a time derivative: `\\theta = \\phi + \\omega t`, `F = ma`,
+`m\\ddot x = -kx`) is not tested as an identity at all. It is checked only against definitions stated earlier in the
+conversation, by substitution, and the result names them (`given`); Minerva has not verified those definitions.
+A relation that disagrees with them after substitution `fails`; one they cannot decide stays `unverified`.
 """
 
 from __future__ import annotations
@@ -31,9 +36,20 @@ ClaimStatus = Literal[
 _TRAILER = re.compile(r"\\q?quad\b.*$|\\text\{[^}]*\}.*$|,\s*(?:for|if|where|when)\b.*$", re.DOTALL)
 
 
+ClaimKind = Literal["identity", "relation"]
+
+MAX_DEFINITIONS = 100
+_SUBSTITUTION_ROUNDS = 20
+
+
 class ClaimCheck(BaseModel):
+    """`kind`: "identity" was tested for all values of its symbols; "relation" was not (see the module
+    docstring). `given`: definitions stated earlier that the result depends on (not verified by Minerva)."""
+
     status: ClaimStatus
     detail: str = ""
+    kind: ClaimKind | None = None
+    given: list[str] = []
 
 
 def split_equation(latex: str) -> list[str] | None:
@@ -62,18 +78,120 @@ def split_equation(latex: str) -> list[str] | None:
 
 
 def check_claim(latex: str, assumptions: dict[str, list[str]], limits: Limits) -> ClaimCheck:
-    sides = split_equation(latex)
-    if sides is None:
-        return ClaimCheck(status="not_an_equation")
-    denominators: list[sp.Expr] = []
-    try:
-        parsed = [parse_latex(side, assumptions, limits, denominators) for side in sides]
-    except MinervaMathError as exc:
-        return ClaimCheck(status="unparsed", detail=str(exc))
-    outcome, detail = _compare(parsed)
-    if outcome == "holds":
-        return _holds_with_domain(parsed, denominators, detail)
-    if outcome == "fails":
+    """Check one equation on its own (no definitions from earlier in the conversation)."""
+    return ClaimChecker(assumptions, limits).check(latex)
+
+
+def check_claims(
+    formulas: list[str],
+    assumptions: dict[str, list[str]],
+    relations: list[str],
+    limits: Limits,
+) -> list[ClaimCheck]:
+    """Check equations in order. `relations` are formulas stated earlier in the conversation: the
+    ones that are definitions (`\\theta = \\phi + \\omega t`) are used by substitution. Each checked
+    formula that is itself a definition is remembered for the ones after it."""
+    checker = ClaimChecker(assumptions, limits)
+    for relation in relations:
+        checker.learn(relation)
+    results: list[ClaimCheck] = []
+    for latex in formulas:
+        try:
+            result = checker.check(latex)
+        except Exception:
+            result = ClaimCheck(status="unparsed", detail="could not be checked")
+        results.append(result)
+        checker.learn(latex)
+    return results
+
+
+def _text(latex: str) -> str:
+    return _TRAILER.sub("", latex).strip().rstrip(" ,;.")
+
+
+def _definition(parsed: list[sp.Expr]) -> tuple[sp.Symbol, sp.Expr] | None:
+    """`symbol = expression` where the expression does not contain the symbol."""
+    if len(parsed) != 2:
+        return None
+    a, b = parsed
+    if isinstance(a, sp.Symbol) and a not in b.free_symbols:
+        return a, b
+    if isinstance(b, sp.Symbol) and b not in a.free_symbols:
+        return b, a
+    return None
+
+
+class ClaimChecker:
+    """Checks equations one after another against the definitions stated so far."""
+
+    def __init__(self, assumptions: dict[str, list[str]], limits: Limits) -> None:
+        self.assumptions = assumptions
+        self.limits = limits
+        # symbol -> (right side with earlier definitions substituted, its text, texts it was built on)
+        self.definitions: dict[sp.Symbol, tuple[sp.Expr, str, list[str]]] = {}
+
+    def _parse(self, latex: str) -> list[sp.Expr] | None:
+        sides = split_equation(latex)
+        if sides is None:
+            return None
+        try:
+            return [parse_latex(side, self.assumptions, self.limits) for side in sides]
+        except MinervaMathError:
+            return None
+
+    def learn(self, latex: str) -> None:
+        """Remember `latex` if it is a definition. A later definition of a symbol replaces the earlier
+        one; one that would define a symbol in terms of itself is ignored."""
+        parsed = self._parse(latex)
+        found = _definition(parsed) if parsed else None
+        if found is None:
+            return
+        symbol, rhs = found
+        (rhs,), used = self._substitute([rhs])
+        if symbol in rhs.free_symbols:
+            return
+        if symbol not in self.definitions and len(self.definitions) >= MAX_DEFINITIONS:
+            return
+        self.definitions[symbol] = (rhs, _text(latex), self._given(used))
+
+    def _given(self, used: list[sp.Symbol]) -> list[str]:
+        """Texts of the definitions in `used` and of those they were built on, each once."""
+        given: list[str] = []
+        for s in used:
+            for text in [*self.definitions[s][2], self.definitions[s][1]]:
+                if text not in given:
+                    given.append(text)
+        return given
+
+    def _substitute(self, exprs: list[sp.Expr]) -> tuple[list[sp.Expr], list[sp.Symbol]]:
+        used: list[sp.Symbol] = []
+        for _ in range(_SUBSTITUTION_ROUNDS):
+            present = {s for e in exprs for s in e.free_symbols if s in self.definitions}
+            if not present:
+                break
+            used.extend(s for s in sorted(present, key=lambda s: s.name) if s not in used)
+            mapping = {s: self.definitions[s][0] for s in present}
+            exprs = [e.xreplace(mapping) for e in exprs]
+        return exprs, used
+
+    def check(self, latex: str) -> ClaimCheck:
+        sides = split_equation(latex)
+        if sides is None:
+            return ClaimCheck(status="not_an_equation")
+        denominators: list[sp.Expr] = []
+        try:
+            parsed = [
+                parse_latex(side, self.assumptions, self.limits, denominators) for side in sides
+            ]
+        except MinervaMathError as exc:
+            return ClaimCheck(status="unparsed", detail=str(exc))
+        outcome, detail = _compare(parsed)
+        if outcome == "holds":
+            return _holds_with_domain(parsed, denominators, detail).model_copy(
+                update={"kind": "identity"}
+            )
+        if outcome != "fails":
+            return ClaimCheck(status="unverified", detail=detail)
         # Prose uses e and i for Euler's number and the imaginary unit; the parser keeps them as plain
         # symbols (see AGENTS.md). Give the claim the benefit of that reading, and say so.
         used = {s.name for p in parsed for s in p.free_symbols}
@@ -88,24 +206,58 @@ def check_claim(latex: str, assumptions: dict[str, list[str]], limits: Limits) -
                 return ClaimCheck(
                     status="holds",
                     detail="holds reading e as Euler's number and i as the imaginary unit",
+                    kind="identity",
                 )
         # The sides differ by the same nonzero number for every value: false whatever it means.
         if any(_nonzero_constant(parsed[0] - other) for other in parsed[1:]):
-            return ClaimCheck(status="fails", detail=detail)
-        # Definitions and equations of motion are not identities: say so instead of testing them.
+            return ClaimCheck(status="fails", detail=detail, kind="identity")
+        # Definitions, coordinate changes and equations of motion are not identities: do not test them
+        # as one. Use what the conversation stated about the symbols instead.
         kind = _not_an_identity_kind(parsed)
+        if kind is None and len({frozenset(p.free_symbols) for p in parsed}) > 1:
+            kind = "a relation between quantities"
         if kind is not None:
-            return ClaimCheck(status="unverified", detail=f"{kind}; not tested as an identity")
+            return self._check_relation(parsed, kind)
         # A claim that is false for complex symbols may be the usual real-variable statement whose
         # condition is written in the prose, not in the formula. Try the weakest natural assumptions.
-        conditional = _relaxed(sides, assumptions, limits)
+        conditional = _relaxed(sides, self.assumptions, self.limits)
         if conditional is not None:
-            return conditional
+            return conditional.model_copy(update={"kind": "identity"})
         return ClaimCheck(
             status="not_identity",
             detail=f"not an identity ({detail}); it may still be an equation to solve or a definition",
+            kind="identity",
         )
-    return ClaimCheck(status="unverified", detail=detail)
+
+    def _check_relation(self, parsed: list[sp.Expr], kind: str) -> ClaimCheck:
+        """Not an identity, so sampling the symbols independently proves nothing. Use the definitions
+        stated earlier; without them there is nothing to test."""
+        unchecked = ClaimCheck(
+            status="unverified", detail=f"{kind}; not tested as an identity", kind="relation"
+        )
+        substituted, used = self._substitute(parsed)
+        if not used:
+            return unchecked
+        given = self._given(used)
+        sets = [frozenset(p.free_symbols) for p in substituted]
+        if any(s != sets[0] for s in sets[1:]):
+            return unchecked
+        outcome, detail = _compare(substituted)
+        if outcome == "holds":
+            return ClaimCheck(
+                status="conditional",
+                detail="holds given " + "; ".join(given),
+                kind="relation",
+                given=given,
+            )
+        if outcome == "fails" and _definition(parsed) is None:
+            return ClaimCheck(
+                status="fails",
+                detail="does not agree with " + "; ".join(given) + f" ({detail})",
+                kind="relation",
+                given=given,
+            )
+        return unchecked
 
 
 def _compare(parsed: list[sp.Expr]) -> tuple[str, str]:

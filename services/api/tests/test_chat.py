@@ -507,3 +507,29 @@ def test_matrix_turn_blocked_merge_asks_about_commutation(
     message = next(d for e, d in events if e == "message")
     (card,) = cards_of(message)
     assert card["data"]["result"]["result_latex"] == r"\exp\left(A + B\right)"
+
+
+def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
+    from minerva_api.routers_chat import _claim_context
+
+    class Row:
+        def __init__(self, role: str, content: dict[str, object]) -> None:
+            self.role, self.content = role, content
+
+    rows = [
+        Row("user", {"text": r"Let $\theta = \phi + \omega t$."}),
+        Row(
+            "assistant",
+            {
+                "text": "Noted: $m \\ddot x = -kx$.",
+                "trace": [{"arguments": {"assumptions": {"x": ["positive"]}}}, {"arguments": {}}],
+            },
+        ),
+    ]
+    relations, assumptions = _claim_context(rows, r"and $\dot\theta = \dot\phi + \omega$")  # type: ignore[arg-type]
+    assert relations == [
+        r"\theta = \phi + \omega t",
+        r"m \ddot x = -kx",
+        r"\dot\theta = \dot\phi + \omega",
+    ]
+    assert assumptions == {"x": ["positive"]}

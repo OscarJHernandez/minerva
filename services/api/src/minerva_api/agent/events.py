@@ -15,8 +15,10 @@ class Segment(BaseModel):
     # Formulas only. "from_tool": appears in a tool result or handbook entry of this conversation.
     # "checked": an equation the model wrote that Minerva tested numerically and found true.
     # "conditional": false in general but true under extra assumptions (the condition is in `note`).
-    # "contradicted": an equation the model wrote that Minerva tested and found false.
-    # "unchecked": written by the model, and Minerva could not check it.
+    # "contradicted": an equation the model wrote that Minerva tested, as an identity or against
+    #   definitions stated earlier in the conversation (named in `note`), and found not to hold.
+    # "unchecked": written by the model, and Minerva could not check it. A definition, coordinate
+    #   change or equation to solve is not an identity: it stays unchecked, with the reason in `note`.
     status: Literal["from_tool", "checked", "conditional", "contradicted", "unchecked"] | None = (
         None
     )
@@ -86,6 +88,8 @@ class ClaimDebug(BaseModel):
     value: str
     status: str  # holds | conditional | fails | unverified
     detail: str = ""
+    kind: str | None = None  # identity | relation (a symbol on one side only)
+    given: list[str] = Field(default_factory=list)  # earlier definitions the result used
 
 
 class TurnDebug(BaseModel):

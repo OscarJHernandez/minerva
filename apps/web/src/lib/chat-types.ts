@@ -335,8 +335,10 @@ export interface SolveReport {
  * Formulas only. from_tool: appears in a tool result or handbook entry of this conversation.
  * checked: an equation the model wrote that Minerva tested numerically and found true.
  * conditional: false in general but true under extra assumptions (see `note`).
- * contradicted: an equation the model wrote that Minerva tested and found false.
- * unchecked: written by the model; Minerva could not check it.
+ * contradicted: an equation the model wrote that Minerva tested, as an identity or against
+ *   definitions stated earlier (named in `note`), and found not to hold.
+ * unchecked: written by the model; Minerva could not check it (a definition, coordinate change or
+ *   equation to solve is not an identity; the reason is in `note`). Never a finding that it is wrong.
  */
 export type FormulaStatus = "from_tool" | "checked" | "conditional" | "contradicted" | "unchecked";
 
@@ -344,7 +346,7 @@ export interface Segment {
   type: "text" | "math" | "display_math";
   value: string;
   status: FormulaStatus | null;
-  /** For conditional claims: what must hold, e.g. "false in general, but holds if x is positive". */
+  /** Why the mark: what must hold (conditional), what it disagrees with (contradicted), or why it was not checked. */
   note?: string | null;
 }
 
@@ -473,7 +475,13 @@ export interface TurnDebug {
   max_seconds: number;
   duration_ms: number;
   llm_calls: { ms: number; text_chars: number; tool_calls: number }[];
-  claims: { value: string; status: string; detail: string }[];
+  claims: {
+    value: string;
+    status: string;
+    detail: string;
+    kind?: string | null;
+    given?: string[];
+  }[];
   error: string | null;
 }
 

@@ -112,7 +112,7 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
   }
   for (const claim of d?.claims ?? []) {
     lines.push(
-      `- claim check ${claim.status}: \`${claim.value}\`${claim.detail ? ` (${claim.detail})` : ""}`,
+      `- claim check ${claim.status}${claim.kind ? ` [${claim.kind}]` : ""}: \`${claim.value}\`${claim.detail ? ` (${claim.detail})` : ""}${claim.given?.length ? ` given: ${claim.given.join("; ")}` : ""}`,
     );
   }
   if (c.truncated) lines.push("- the step or time limit ended this turn early");

@@ -1,5 +1,5 @@
 import pytest
-from minerva_engine import Engine, Limits, check_claim, split_equation
+from minerva_engine import Engine, Limits, check_claim, check_claims, split_equation
 
 
 @pytest.mark.parametrize(
@@ -118,3 +118,118 @@ def test_branch_and_range_errors_are_not_reported_as_holding(
 def test_declared_real_is_relaxed_to_positive() -> None:
     out = check_claim(r"\sqrt{x^2} = x", {"x": ["real"]}, L)
     assert out.status == "conditional" and "positive" in out.detail
+
+
+# --- relations: definitions, coordinate changes, constraints, equations of motion -------------
+REPORTED = [
+    r"L = T",
+    r"\theta = \phi + \omega t",
+    r"\dot\theta = \dot\phi + \omega",
+    r"L = \frac12 m (\dot r^2 + r^2 \dot\theta^2)",
+    r"F = m a",
+    r"m \ddot x = -k x",
+    r"x^2 + y^2 = r^2",
+]
+
+
+@pytest.mark.parametrize("latex", REPORTED)
+def test_relations_are_never_called_false_by_independent_sampling(latex: str) -> None:
+    result = check_claim(latex, {}, L)
+    assert result.status == "unverified"
+    assert result.kind == "relation"
+    assert "not tested as an identity" in result.detail
+
+
+def test_identities_are_still_judged_and_say_so() -> None:
+    wrong = check_claim(r"(x+1)^2 = x^2 + 1", {}, L)
+    assert (wrong.status, wrong.kind) == ("not_identity", "identity")
+    assert check_claim(r"\sin x = \cos x", {}, L).status == "not_identity"
+    assert check_claim(r"2 + 2 = 5", {}, L).status == "fails"
+    assert check_claim(r"x + x = 2x", {}, L).kind == "identity"
+
+
+def test_a_definition_from_earlier_is_used_by_substitution_and_named() -> None:
+    rot = [r"\theta = \phi + \omega t"]
+    good = check_claims(
+        [r"\cos\theta = \cos\phi\cos(\omega t) - \sin\phi\sin(\omega t)"], {}, rot, L
+    )[0]
+    assert (good.status, good.kind) == ("conditional", "relation")
+    assert good.given == rot and "holds given" in good.detail
+    bad = check_claims([r"\cos\theta = \cos\phi + \cos(\omega t)"], {}, rot, L)[0]
+    assert (bad.status, bad.kind) == ("fails", "relation")
+    assert bad.given == rot and "does not agree with" in bad.detail
+
+
+def test_definitions_chain_through_the_claims_of_one_message() -> None:
+    results = check_claims(
+        [
+            r"\dot\theta = \dot\phi + \omega",
+            r"L = \frac12 m (\dot r^2 + r^2 \dot\theta^2)",
+            r"L = \frac12 m (\dot r^2 + r^2 (\dot\phi + \omega)^2)",
+        ],
+        {},
+        [],
+        L,
+    )
+    assert [r.status for r in results] == ["unverified", "unverified", "conditional"]
+    assert results[2].given == [
+        r"\dot\theta = \dot\phi + \omega",
+        r"L = \frac12 m (\dot r^2 + r^2 \dot\theta^2)",
+    ]
+    assert not any(r.status == "fails" for r in results)
+
+
+def test_a_new_definition_is_never_a_contradiction() -> None:
+    redefined = check_claims([r"\theta = \phi - \omega t"], {}, [r"\theta = \phi + \omega t"], L)[0]
+    assert (redefined.status, redefined.kind) == ("unverified", "relation")
+    # ...and it replaces the old one for what follows.
+    after = check_claims(
+        [
+            r"\theta = \phi - \omega t",
+            r"\cos\theta = \cos\phi\cos(\omega t) + \sin\phi\sin(\omega t)",
+        ],
+        {},
+        [r"\theta = \phi + \omega t"],
+        L,
+    )
+    assert after[1].status == "conditional"
+    assert after[1].given == [r"\theta = \phi - \omega t"]
+
+
+def test_restating_a_definition_is_consistent_with_it() -> None:
+    again = check_claims([r"\phi + \omega t = \theta"], {}, [r"\theta = \phi + \omega t"], L)[0]
+    assert again.status == "conditional" and again.given == [r"\theta = \phi + \omega t"]
+
+
+def test_a_stale_definition_does_not_rescue_a_false_identity() -> None:
+    result = check_claims([r"(x+1)^2 = x^2 + 1"], {}, [r"x = 0"], L)[0]
+    assert (result.status, result.kind, result.given) == ("not_identity", "identity", [])
+
+
+def test_cyclic_and_unusable_definitions_are_ignored() -> None:
+    results = check_claims(
+        [r"a = b + 1", r"b = a", r"a + b = 2 a - 1"], {}, [r"\foo = 1", r"x = x + 1", "y"], L
+    )
+    # `b = a` would define b through itself once a is substituted: skipped, not an error.
+    assert results[0].status == "unverified"
+    assert results[1].status == "unverified"
+    assert results[2].status in ("conditional", "unverified")
+
+
+def test_unrelated_definitions_leave_relations_unchecked() -> None:
+    result = check_claims([r"F = m a"], {}, [r"\theta = \phi + \omega t"], L)[0]
+    assert (result.status, result.given) == ("unverified", [])
+
+
+def test_engine_batch_passes_relations_through_the_sandbox() -> None:
+    engine = Engine(Limits(timeout_seconds=30))
+    results = engine.check_claims(
+        [
+            r"\cos\theta = \cos\phi\cos(\omega t) - \sin\phi\sin(\omega t)",
+            r"\theta = \phi + \omega t",
+        ],
+        {},
+        [r"\theta = \phi + \omega t"],
+    )
+    assert [r.status for r in results] == ["conditional", "conditional"]
+    assert results[0].given == [r"\theta = \phi + \omega t"]

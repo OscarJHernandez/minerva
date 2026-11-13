@@ -184,6 +184,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (a bare e is a symbol; write `\exp(tA)`). Do not loosen the numeric tolerance, add an unverified shortcut, or let
   `_invents_structure`-style filters be bypassed; the tests include wrong merges, reordered products, a wrong
   derivative and a 1e-6 error.
+- Relations in claims (`claims.py`): an equation with a symbol on one side only or a time derivative (`\theta=\phi+\omega t`,
+  `L=T`, `F=ma`, `m\ddot x=-kx`) is a *relation*, not an identity, and is never tested by independent sampling. Definitions
+  stated earlier in the conversation (`symbol = expression`, from the user or the model, not verified by Minerva) are
+  substituted into it; a result that used them names them (`given`), and one that disagrees with them after
+  substitution is `fails` ("does not agree with …"), not "false". A new definition is never a contradiction, and a
+  stale definition never rescues a false identity. "Could not check" must never be worded as "false".
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope and must be reported as such.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are
