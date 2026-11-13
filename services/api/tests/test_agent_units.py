@@ -1290,6 +1290,7 @@ def test_matrix_tool_reports_a_frechet_derivative_as_a_representation(ctx: ToolC
     assert "method=exp_frechet_derivative" in out.for_model
     assert "evaluated=NO (do not call this an evaluated result)" in out.for_model
     assert "NOT APPLIED" in out.for_model and "X'" in out.for_model
+    assert "method.matrix.frechet_derivative" in out.for_model  # the handbook entry is retrieved
     result = out.card.data["result"]
     assert result["result_latex"] in out.known_latex
     assert any(b["latex"] in out.known_latex for b in result["blocked"] if b["latex"])

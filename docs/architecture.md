@@ -58,19 +58,30 @@ one most likely to be wrong.
     inside the interval. A quadrature with a large error estimate, or a non-finite or huge integrand on an
     interior grid, never counts as agreement; SymPy's convergence conditions that the declared assumptions
     do not imply give `conditions_not_satisfied`; divergent or undefined results show no value.
-  - `matrix_calculus` (`matrix/`, `Engine.matrix_calculus`): evaluate, simplify, differentiate or integrate an
-    expression in declared, noncommuting matrices (an abstract size or explicit entries) and their exponentials.
+  - `matrix_calculus` (`matrix/`, `Engine.matrix_calculus`): evaluate, simplify, differentiate, integrate or
+    evolve an expression in declared, noncommuting matrices (an abstract size or explicit entries) and their
+    exponentials. A matrix may depend on the variable (`depends_on`, or visible in explicit entries; `A(t)` is
+    never read as `t` times `A`).
     `expressions.py` turns the parsed SymPy tree (declared names are noncommutative symbols) into a normal form
     (sum of scalar x ordered product of matrices and exponentials of sums of scalar multiples of matrices) and
     rejects everything else as `unsupported`; dimensions are checked on every product and sum. `methods.py` is a
     deterministic registry tried in a fixed order: `exp_explicit`, `exp_merge_commuting`, `exp_derivative`,
-    `integrate_polynomial`, `exp_integral_invertible`, `sylvester_reduction` (the equation
+    `exp_frechet_derivative` (`frechet.py`: d/dt exp(X) as the Frechet integral when X and X' are not known to
+    commute, never rewritten as X' exp(X)), `evolution_commuting` and `evolution_numeric` (`evolution.py`:
+    dU/dt = A(t)U, U(t0) = I, the closed form exp(integral of A) only for a generator that commutes with itself
+    at all times, else a verified numerical solution on a span the user gives),
+    `integrate_polynomial`, `exp_integral_invertible`, `duhamel` (`duhamel.py`: e^{(as+b)A} M e^{(-as+d)A} ds, a
+    closed form when M commutes with A, else the block-matrix form; its Sylvester equation is singular and never
+    solved), `sylvester_reduction` (the equation
     `aPX + cXQ = F(b) - F(a)` for `X = int e^{(at+b)P} C e^{(ct+d)Q}`, solved when the Kronecker operator is
     provably invertible), `block_exponential` (Van Loan: `X` from one block-matrix exponential, no invertibility
     or diagonalisability) and, last, the equation alone. Each method states its pattern, requirements and limits
     and verifies its own result with `verify.py` (numeric leg decides; exact series leg reported separately).
     The language model only fills in the declarations and explains the card; handbook `method.matrix.*` entries
-    (stated) document the techniques and are retrieved by the features the engine emits (`matrix:*`).
+    (stated) document the techniques and are retrieved by the features the engine emits (`matrix:*`). Every
+    result carries `MatrixDiagnostics` (methods tried and what each answered, sizes, where commutation came from,
+    stage times, precision, tolerance, largest residual, fallback and failure codes, `trace_id`) and never any
+    name, entry, expression or bound; the API passes its `request_id` (in chat, plus the tool call id) as the trace id.
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -154,6 +165,12 @@ one most likely to be wrong.
   expression → expected/forbidden identities, retrieval rank/recall/MRR over the same cases, and multi-step
   cases (goal, accepted forms, rules that must or must not appear, SymPy-simplify-only baseline), run with
   `python -m minerva_knowledge benchmark`; results and limits in `docs/handbook-benchmark.md`.
+- Matrix benchmark (`matrix_benchmark.py`, `data/benchmark/matrix_cases.yaml`): hand-written matrix calculus cases
+  (existing behaviour, Frechet derivatives, Duhamel integrals, evolution operators, known-unsupported cases, limits)
+  → status, method, result kind, `evaluated`; reports coverage per group, verification success, method-selection
+  accuracy, median/p95/max time, resource limits, residuals and the observed order of the RK4 cross-check, with
+  `python -m minerva_knowledge matrix-benchmark [--repeat N] [--trace] [--convergence] [--section L --out F]`;
+  baseline and after in `docs/matrix-benchmark.md`.
 
 ## C. The conversational agent (`services/api/src/minerva_api/agent/`)
 
@@ -187,7 +204,9 @@ and explains; it never computes and never decides correctness.
   shows this and copies a Markdown report ending in a JSON block; `scripts/replay_trace.py` re-runs the recorded tool
   calls, and the `chat-trace-triage` skill says how to classify the result. This is shown only to the account that owns
   the conversation. The server log still holds no content: `chat_turn` adds `steps`, `tool_calls` and `tool_errors`
-  counts, and the `request_id` in the report matches the `X-Request-ID` response header.
+  counts, and the `request_id` in the report matches the `X-Request-ID` response header. Matrix
+  calculus adds counters and enums only (`matrix_method`, `result_kind`, `commutation`, `verify_ms`, `reason`,
+  `trace_id`); its card in the report lists the engine diagnostics (still without names or entries).
 - **Models:** `MINERVA_LLM_MODE` is `off`, `ollama` (your own host: `MINERVA_LLM_BASE_URL`, `MINERVA_LLM_MODEL`) or
   `scripted` (deterministic stand-in for tests and UI work, development only). `scripts/eval_models.py` measures a
   model's tool-calling and honesty through the real loop; results in `docs/model-evaluation.md`.

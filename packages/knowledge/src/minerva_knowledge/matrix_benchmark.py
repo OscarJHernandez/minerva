@@ -218,6 +218,7 @@ def run_case(engine: Engine, case: MatrixCase, repeat: int = 1) -> CaseResult:
         engine.matrix_calculus(request)
         times.append((time.monotonic() - started) * 1000)
     v = result.verification
+    diagnostics = getattr(result, "diagnostics", None)  # absent in older engines
     return CaseResult(
         case=case,
         status=result.status.value,
@@ -227,7 +228,7 @@ def run_case(engine: Engine, case: MatrixCase, repeat: int = 1) -> CaseResult:
         verified=v.passed if v is not None else None,
         exact_leg=v.symbolic_zero if v is not None else None,
         residual=_residual(result),
-        diagnostics=result.diagnostics.model_dump() if result.diagnostics else None,
+        diagnostics=diagnostics.model_dump() if diagnostics else None,
         milliseconds=times,
     )
 
@@ -311,7 +312,10 @@ A case passes when status, and where given method, result kind and the `evaluate
 `pending` cases are known gaps: reported, never asserted. A pending case that already passes fails the
 test suite until `pending` is removed. A request the engine cannot express (for example a field that
 does not exist yet) is reported as `not_expressible`, so the final case file can be run against an
-older commit for the "before" run. Each `## Run:` section below is one run of the same case file.
+older commit for the "before" run. Each `## Run:` section below is one run of the same case file; the
+"before" run was made by exporting commit `7b19980` (the code before this work), copying the final
+benchmark module and case file into it and running that engine, so both runs measure the same cases.
+There the new-capability cases show as failing, which is the measured gap, not a stale `pending` flag.
 
 Limits of this evidence: timings are medians over the repeats on one machine (the first call in a
 process is excluded, forking the sandbox is included), are noisy and are never asserted; the cases are
@@ -384,4 +388,63 @@ def write_section(path: Path, label: str, section: str) -> None:
     if not replaced:
         out.append((label, section))
     body = "\n".join(text.rstrip("\n") + "\n" for _, text in out)
-    path.write_text(HEADER + "\n" + body, encoding="utf-8")
+    comparison = _comparison([(n, t) for n, t in out])
+    path.write_text(HEADER + "\n" + comparison + body, encoding="utf-8")
+
+
+def _measures(section: str) -> dict[str, str]:
+    """The first table of a run section: measure -> value."""
+    rows: dict[str, str] = {}
+    for line in section.splitlines():
+        if line.startswith("| Group |") or line.startswith("| Case |"):
+            break
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 2 and cells[0] not in ("Measure", "---"):
+            rows[cells[0]] = cells[1]
+    return rows
+
+
+def _comparison(sections: list[tuple[str, str]]) -> str:
+    """A before/after table when the file holds a 'Before...' run and an 'After...' run."""
+    before = next(((n, t) for n, t in sections if n.startswith("Before")), None)
+    after = next(((n, t) for n, t in sections if n.startswith("After")), None)
+    if before is None or after is None:
+        return ""
+    b, a = _measures(before[1]), _measures(after[1])
+    lines = [
+        "## Before and after",
+        "",
+        f"`{before[0]}` against `{after[0]}`, the same case file.",
+        "",
+        "| Measure | Before | After |",
+        "| --- | --- | --- |",
+    ]
+    lines += [f"| {k} | {b.get(k, '-')} | {a.get(k, '-')} |" for k in a]
+    gb, ga = _groups(before[1]), _groups(after[1])
+    lines += [
+        "",
+        "Cases passing per group (the `existing` group is the regression check against the "
+        "implementation before this work):",
+        "",
+        "| Group | Cases | Passing before | Passing after |",
+        "| --- | --- | --- | --- |",
+    ]
+    lines += [f"| {g} | {ga[g][0]} | {gb.get(g, ('-', '-'))[1]} | {ga[g][1]} |" for g in ga]
+    return "\n".join(lines) + "\n\n"
+
+
+def _groups(section: str) -> dict[str, tuple[str, str]]:
+    """Second table of a run section: group -> (cases, passing)."""
+    rows: dict[str, tuple[str, str]] = {}
+    inside = False
+    for line in section.splitlines():
+        if line.startswith("| Group |"):
+            inside = True
+            continue
+        if inside:
+            if not line.startswith("|"):
+                break
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) == 4 and cells[0] != "---":
+                rows[cells[0]] = (cells[1], cells[2])
+    return rows

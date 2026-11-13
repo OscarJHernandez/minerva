@@ -269,13 +269,15 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 
 *Available in:* chat, HTTP API.
 
-Ordered products of matrix exponentials with declared matrices (a size, or explicit entries). Minerva recognises the structure and picks the technique: the ordered product rule, merging exponentials only where commutation is declared or visible in the entries, a closed form for an invertible matrix, a Sylvester equation for integrals of products such as e^(wA) e^(-wB), or a block-matrix exponential. A result is shown only if independent numerical checks agree, and an equation or a representation is never presented as an evaluated integral.
+Ordered products of matrix exponentials with declared matrices (a size, or explicit entries), also matrices that depend on a variable, A(t). Minerva recognises the structure and picks the technique: the ordered product rule; the Frechet derivative of exp(X(t)) when X and X' do not commute (never assumed to equal X' exp(X)); merging exponentials only where commutation is declared or visible in the entries; a closed form for an invertible matrix; Duhamel integrals of e^((t-s)A) B e^(sA); a Sylvester equation or a block-matrix exponential for other integrals; and evolution operators dU/dt = A(t) U, U(0) = I. A result is shown only if independent checks agree. An equation, a representation or a numerical approximation is never presented as an evaluated result.
 
 **Limits**
 
-- Matrices are constant; the variable is scalar. No time-ordered exponentials, Magnus expansion or Duhamel integrals.
-- Matrices are never assumed to commute or to be invertible; both must be declared, or be visible in explicit entries.
-- Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4).
+- The variable is scalar. A matrix depends on it only if declared (or visible in explicit entries), and A(t) is never read as t times A; integrals of time-dependent matrices are not supported.
+- Matrices are never assumed to commute (also with their own derivative or at other times) or to be invertible; each must be declared, or be visible in explicit entries.
+- Time-ordered exponentials, Dyson series and Magnus expansions are not supported. An abstract generator that does not commute with itself at all times is declined; explicit entries with a numeric span are solved numerically.
+- A numerical solution (up to 4 by 4, double precision) is a measurement on the span you give, checked by a second method, by integrating backwards and by Liouville's formula; the end of the span is a number only you can choose.
+- Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4) whose closed form SymPy finds in time.
 - The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately.
 
 #### An integral of a product of noncommuting exponentials
@@ -290,7 +292,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - **Check:** exact check through degree 4: passed
 - Method: Sylvester equation for ∫ e^{(at+b)P} C e^{(ct+d)Q} dt (sylvester_reduction).
 - Assumes: the Sylvester operator X -> aPX + cXQ is invertible (its Kronecker determinant is nonzero).
-- Assumes: all matrices are constant in w.
+- Assumes: A, B are constant in w.
 - Evaluated and verified.
 
 #### The same structure with abstract matrices gives a verified equation, not entries
@@ -299,13 +301,13 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
-- **Exact representation (not an evaluated integral):** $\exp\left(-\left(x y - y^{2}\right) A\right) \left(\exp\left(\left(b x - b y\right) A\right)\left[\exp\left(b\,\begin{pmatrix} -\left(x - y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12} - \exp\left(\left(a x - a y\right) A\right)\left[\exp\left(a\,\begin{pmatrix} -\left(x - y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12}\right) \exp\left(-\left(q z - z^{2}\right) B\right)$
+- **Exact representation (not evaluated):** $\exp\left(\left(- x y + y^{2}\right) A\right) \left(\exp\left(\left(b x - b y\right) A\right)\left[\exp\left(b\,\begin{pmatrix} \left(- x + y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12} - \exp\left(\left(a x - a y\right) A\right)\left[\exp\left(a\,\begin{pmatrix} \left(- x + y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12}\right) \exp\left(\left(- q z + z^{2}\right) B\right)$
 - **Verified equation:** $\left(x - y\right) A X + \left(q - z\right) X B = \exp\left(-\left(- b + y\right) \left(x - y\right) A\right) \exp\left(-\left(b - z\right) \left(- q + z\right) B\right) - \exp\left(-\left(- a + y\right) \left(x - y\right) A\right) \exp\left(-\left(a - z\right) \left(- q + z\right) B\right)$
 - **Check:** numeric check agreed at 8 of 8 random samples
 - **Check:** exact check through degree 4: passed
 - Method: Block-matrix exponential representation (block_exponential).
-- Assumes: all matrices are constant in w.
-- Written exactly through a block-matrix exponential and verified; it is a representation, not an evaluated result.
+- Assumes: A, B are constant in w.
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
 
 #### Derivative of a product keeps the order
 
@@ -317,7 +319,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - **Check:** numeric check agreed at 8 of 8 random samples
 - **Check:** exact check through degree 4: passed
 - Method: Ordered product rule for exponentials (exp_derivative).
-- Assumes: all matrices are constant in t.
+- Assumes: A, B are constant in t.
 - Transformed and verified.
 
 #### Exponentials of matrices that may not commute are not merged
@@ -342,13 +344,162 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - Assumes: AB = BA (declared).
 - Transformed and verified.
 
-#### A derivative that needs a time-ordered exponential is declined
+#### The derivative of an exponential whose exponent does not commute with its derivative
 
 - **Expression:** `\exp(t^2 A + t B)`
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\int_0^1 \exp\left((1-\sigma) \left(t^{2} A + t B\right)\right) \left(2 t A + B\right) \exp\left(\sigma \left(t^{2} A + t B\right)\right) d\sigma$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Frechet derivative of the exponential (exp_frechet_derivative).
+- Assumes: A, B are constant in t.
+- Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### The same derivative with explicit entries is evaluated
+
+- **Expression:** `\exp(tA + t^2 B)`
+- **Matrix:** `A = [0, 1; 0, 0]`
+- **Matrix:** `B = [0, 0; 1, 0]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}\frac{3 \sqrt{t^{3}} \sinh{\left(\sqrt{t^{3}} \right)}}{2 t} & \frac{\left(3 t^{3} \mathrm{e}^{2 \sqrt{t^{3}}} + 3 t^{3} - \sqrt{t^{3}} \mathrm{e}^{2 \sqrt{t^{3}}} + \sqrt{t^{3}}\right) \mathrm{e}^{- \sqrt{t^{3}}}}{4 t^{3}}\\\frac{\left(3 t^{3} \mathrm{e}^{2 \sqrt{t^{3}}} + 3 t^{3} + \sqrt{t^{3}} \mathrm{e}^{2 \sqrt{t^{3}}} - \sqrt{t^{3}}\right) \mathrm{e}^{- \sqrt{t^{3}}}}{4 t^{2}} & \frac{3 \sqrt{t^{3}} \sinh{\left(\sqrt{t^{3}} \right)}}{2 t}\end{matrix}\right]$
+- **Check:** numeric check agreed at 20 of 20 random samples
+- Method: Frechet derivative of the exponential (exp_frechet_derivative).
+- Assumes: A, B are constant in t.
+- Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).
+- Evaluated and verified.
+
+#### With commutation declared it is the familiar product
+
+- **Expression:** `\exp(t^2 A + t B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $2 t A \exp\left(t^{2} A + t B\right) + B \exp\left(t^{2} A + t B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Ordered product rule for exponentials (exp_derivative).
+- Assumes: AB = BA (declared).
+- Assumes: A, B are constant in t.
+- Transformed and verified.
+
+#### A time-dependent matrix that commutes with itself at all times
+
+- **Expression:** `\exp(A(t))`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $A' \exp\left(A\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Ordered product rule for exponentials (exp_derivative).
+- Assumes: A(t1) A(t2) = A(t2) A(t1) at all times (declared).
+- Assumes: A depends on t.
+- Transformed and verified.
+
+#### A time-dependent matrix without that declaration gives the Frechet integral
+
+- **Expression:** `\exp(A(t))`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\int_0^1 \exp\left((1-\sigma) A\right) A' \exp\left(\sigma A\right) d\sigma$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Frechet derivative of the exponential (exp_frechet_derivative).
+- Assumes: A depends on t.
+- Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### A Duhamel integral with explicit matrices
+
+- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Matrix:** `A = [0, 1; 0, 0]`
+- **Matrix:** `B = [0, 0; 1, 0]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}\frac{t^{2}}{2} & \frac{t^{3}}{6}\\t & \frac{t^{2}}{2}\end{matrix}\right]$
+- **Verified equation:** $-A X + X A = B \exp\left(t A\right) - \exp\left(t A\right) B$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).
+- Assumes: A, B are constant in s.
+- Evaluated and verified.
+
+#### With abstract matrices it is an exact representation, not an evaluated integral
+
+- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\exp\left(t A\right) \left(\exp\left(-t A\right)\left[\exp\left(t\,\begin{pmatrix} A & B \\ 0 & A \end{pmatrix}\right)\right]_{12}\right)$
+- **Verified equation:** $-A X + X A = B \exp\left(t A\right) - \exp\left(t A\right) B$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).
+- Assumes: A, B are constant in s.
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### When B commutes with A the integral is a closed form
+
+- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $t B \exp\left(t A\right)$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).
+- Assumes: AB = BA (declared).
+- Assumes: A, B are constant in s.
+- Transformed and verified.
+
+#### An evolution operator for a generator whose matrices commute
+
+- **Expression:** `tA + t^2 B`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $\exp\left(\frac{t^{2}}{2} A + \frac{t^{3}}{3} B\right)$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Evolution operator exp(∫A) for a generator that commutes with itself (evolution_commuting).
+- Assumes: AB = BA (declared).
+- Assumes: A, B are constant in t.
+- Transformed and verified.
+
+#### An evolution operator from explicit entries that commute with themselves
+
+- **Expression:** `A(t)`
+- **Matrix:** `A = [t, 0; 0, 2t]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}\mathrm{e}^{\frac{t^{2}}{2}} & 0\\0 & \mathrm{e}^{t^{2}}\end{matrix}\right]$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Evolution operator exp(∫A) for a generator that commutes with itself (evolution_commuting).
+- Assumes: A(t1) A(t2) = A(t2) A(t1) at all times (from the entries).
+- Assumes: A depends on t.
+- Evaluated and verified.
+
+#### A generator that does not commute with itself is solved numerically on a span you choose
+
+- **Expression:** `A(t)`
+- **Matrix:** `A = [0, 1; -t, 0]`
+- **Status:** `ok`
+- **Numerical approximation (not a closed form):** $\begin{pmatrix} 0.497889578953 & 1.1107815151 \\ -0.889078135871 & 0.0249622440802 \end{pmatrix}$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- Method: Numerical solution of dU/dt = A(t) U (evolution_numeric).
+- Assumes: A depends on t.
+- Not applied: U(t) = exp of the integral of the generator needs A(t1) A(t2) = A(t2) A(t1) at all times (not established for these entries).
+- Computed numerically on the stated span and verified by independent checks; this is a numerical approximation, not a closed form.
+
+#### An abstract generator that does not commute with itself is declined
+
+- **Expression:** `tA + t^2 B`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `unsupported`
-- The exponent mixes A and B, which do not commute, with coefficients that are not proportional; the derivative then needs the Duhamel integral (or a time-ordered exponential), which is not supported.
+- Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).
+- The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution).
 
 ### Polynomial equations
 

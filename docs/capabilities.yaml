@@ -13,8 +13,9 @@
 #   simplify     input, assumptions, goal (simplify | expand | factor | rewrite), target [function names]
 #   differentiate input, variables [{name, order}], assumptions
 #   series       input, variable, point, order, assumptions
-#   matrix       input, matrices [{name, rows, cols | entries}], action (evaluate | simplify | differentiate |
-#                integrate), variable, lower, upper, commuting [[A, B]], invertible [names]
+#   matrix       input, matrices [{name, rows, cols | entries, depends_on}], action (evaluate | simplify |
+#                differentiate | integrate | evolve), variable, lower, upper, commuting [[A, B]],
+#                invertible [names], self_commuting [names]
 #   identities   input, assumptions, show [rule ids to display]
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
@@ -239,16 +240,20 @@ capabilities:
     group: math
     where: [chat, api]
     summary: >-
-      Ordered products of matrix exponentials with declared matrices (a size, or explicit entries). Minerva
-      recognises the structure and picks the technique: the ordered product rule, merging exponentials only
-      where commutation is declared or visible in the entries, a closed form for an invertible matrix, a
-      Sylvester equation for integrals of products such as e^(wA) e^(-wB), or a block-matrix exponential. A
-      result is shown only if independent numerical checks agree, and an equation or a representation is never
-      presented as an evaluated integral.
+      Ordered products of matrix exponentials with declared matrices (a size, or explicit entries), also
+      matrices that depend on a variable, A(t). Minerva recognises the structure and picks the technique: the
+      ordered product rule; the Frechet derivative of exp(X(t)) when X and X' do not commute (never assumed to
+      equal X' exp(X)); merging exponentials only where commutation is declared or visible in the entries; a
+      closed form for an invertible matrix; Duhamel integrals of e^((t-s)A) B e^(sA); a Sylvester equation or a
+      block-matrix exponential for other integrals; and evolution operators dU/dt = A(t) U, U(0) = I. A result
+      is shown only if independent checks agree. An equation, a representation or a numerical approximation is
+      never presented as an evaluated result.
     limits:
-      - Matrices are constant; the variable is scalar. No time-ordered exponentials, Magnus expansion or Duhamel integrals.
-      - Matrices are never assumed to commute or to be invertible; both must be declared, or be visible in explicit entries.
-      - Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4).
+      - The variable is scalar. A matrix depends on it only if declared (or visible in explicit entries), and A(t) is never read as t times A; integrals of time-dependent matrices are not supported.
+      - Matrices are never assumed to commute (also with their own derivative or at other times) or to be invertible; each must be declared, or be visible in explicit entries.
+      - Time-ordered exponentials, Dyson series and Magnus expansions are not supported. An abstract generator that does not commute with itself at all times is declined; explicit entries with a numeric span are solved numerically.
+      - A numerical solution (up to 4 by 4, double precision) is a measurement on the span you give, checked by a second method, by integrating backwards and by Liouville's formula; the end of the span is a number only you can choose.
+      - Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4) whose closed form SymPy finds in time.
       - The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately.
     examples:
       - id: matrix-integral-explicit
@@ -299,14 +304,120 @@ capabilities:
           - { name: B, rows: 2 }
         commuting: [[A, B]]
         action: simplify
-      - id: matrix-time-ordered
-        title: A derivative that needs a time-ordered exponential is declined
+      - id: matrix-frechet
+        title: The derivative of an exponential whose exponent does not commute with its derivative
         op: matrix
         input: '\exp(t^2 A + t B)'
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
         action: differentiate
+        variable: t
+      - id: matrix-frechet-explicit
+        title: The same derivative with explicit entries is evaluated
+        op: matrix
+        input: '\exp(tA + t^2 B)'
+        matrices:
+          - { name: A, entries: [["0", "1"], ["0", "0"]] }
+          - { name: B, entries: [["0", "0"], ["1", "0"]] }
+        action: differentiate
+        variable: t
+      - id: matrix-frechet-commuting
+        title: With commutation declared it is the familiar product
+        op: matrix
+        input: '\exp(t^2 A + t B)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        commuting: [[A, B]]
+        action: differentiate
+        variable: t
+      - id: matrix-time-dependent
+        title: A time-dependent matrix that commutes with itself at all times
+        op: matrix
+        input: '\exp(A(t))'
+        matrices:
+          - { name: A, rows: 2, depends_on: t }
+        self_commuting: [A]
+        action: differentiate
+        variable: t
+      - id: matrix-time-dependent-undeclared
+        title: A time-dependent matrix without that declaration gives the Frechet integral
+        op: matrix
+        input: '\exp(A(t))'
+        matrices:
+          - { name: A, rows: 2, depends_on: t }
+        action: differentiate
+        variable: t
+      - id: matrix-duhamel-explicit
+        title: A Duhamel integral with explicit matrices
+        op: matrix
+        input: '\exp((t-s)A) B \exp(sA)'
+        matrices:
+          - { name: A, entries: [["0", "1"], ["0", "0"]] }
+          - { name: B, entries: [["0", "0"], ["1", "0"]] }
+        action: integrate
+        variable: s
+        lower: "0"
+        upper: t
+      - id: matrix-duhamel-abstract
+        title: With abstract matrices it is an exact representation, not an evaluated integral
+        op: matrix
+        input: '\exp((t-s)A) B \exp(sA)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        action: integrate
+        variable: s
+        lower: "0"
+        upper: t
+      - id: matrix-duhamel-commuting
+        title: When B commutes with A the integral is a closed form
+        op: matrix
+        input: '\exp((t-s)A) B \exp(sA)'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        commuting: [[A, B]]
+        action: integrate
+        variable: s
+        lower: "0"
+        upper: t
+      - id: matrix-evolution-commuting
+        title: An evolution operator for a generator whose matrices commute
+        op: matrix
+        input: 'tA + t^2 B'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        commuting: [[A, B]]
+        action: evolve
+        variable: t
+      - id: matrix-evolution-explicit
+        title: An evolution operator from explicit entries that commute with themselves
+        op: matrix
+        input: 'A(t)'
+        matrices:
+          - { name: A, entries: [["t", "0"], ["0", "2t"]] }
+        action: evolve
+        variable: t
+      - id: matrix-evolution-numeric
+        title: A generator that does not commute with itself is solved numerically on a span you choose
+        op: matrix
+        input: 'A(t)'
+        matrices:
+          - { name: A, entries: [["0", "1"], ["-t", "0"]] }
+        action: evolve
+        variable: t
+        upper: "1.5"
+      - id: matrix-time-ordered
+        title: An abstract generator that does not commute with itself is declined
+        op: matrix
+        input: 'tA + t^2 B'
+        matrices:
+          - { name: A, rows: 2 }
+          - { name: B, rows: 2 }
+        action: evolve
         variable: t
 
   - id: identities

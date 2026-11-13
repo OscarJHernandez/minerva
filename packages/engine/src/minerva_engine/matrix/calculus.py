@@ -671,6 +671,11 @@ def _features(p: Problem, used: set[str]) -> list[str]:
         feats.append("matrix:explicit")
     if "reduction" in p.scratch and not isinstance(p.scratch["reduction"], str):
         feats.append("matrix:sylvester-form")
+    selected = {m for m, o in p.scratch.get("tried", []) if o == "selected"}
+    if "exp_frechet_derivative" in selected:
+        feats.append("matrix:frechet")
+    if "duhamel" in selected:
+        feats.append("matrix:duhamel")
     if p.setup.dependent:
         feats.append("matrix:parameter-dependent")
     if p.action == "evolve":

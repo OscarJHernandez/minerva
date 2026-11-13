@@ -51,6 +51,7 @@ uv run ruff check . && uv run ruff format --check .
 uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
+uv run python -m minerva_knowledge matrix-benchmark   # matrix calculus coverage, methods, verification, time (docs/matrix-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
@@ -171,19 +172,37 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   must not become a way around `_invents_structure`: `rule_rewrites` is the one place that decides what matches.
 - Matrix calculus (`matrix/`, tool and endpoint `matrix`) treats declared matrices as noncommutative symbols and
   shows a result only if its method's own checks pass: random complex matrices of the declared sizes (declared
-  commuting groups sampled as polynomials of one matrix; explicit entries at sampled parameters), exponentials by
+  commuting groups sampled as polynomials of one matrix; explicit entries at sampled parameters; a matrix that
+  depends on the variable as a quadratic polynomial in it, honouring the declared commutation), exponentials by
   `mpmath.expm`, integrals by quadrature and derivatives by a central difference, none of which uses the route that
   produced the result. The exact leg (formal power series through degree 4, modulo the declared commutations, or
   the explicit result substituted into the Sylvester equation) is reported separately; a failed exact leg is
-  `not_verified`. Matrices are never reordered and never assumed to commute or to be invertible: a merge or a
-  closed form that needs either is `blocked` and reported, unless the commutation or invertibility is declared or
-  visible in explicit entries (a declaration contradicted by the entries is an error). A Sylvester equation
-  `aPX + cXQ = F(b) - F(a)` or a block-matrix representation is **never** presented as an evaluated integral
-  (`evaluated=false`, `result_kind` equation or representation); entries exist only for explicit matrices. No
-  Duhamel integral, time-ordered exponential or Magnus term: those are `unsupported`. `e^{tA}` is a `parse_error`
+  `not_verified`, an exact residual that SymPy cannot simplify to zero is inconclusive (`None`), never a refutation.
+  Matrices are never reordered and never assumed to commute or to be invertible: a merge or a closed form that needs
+  either is `blocked` and reported, unless the commutation or invertibility is declared or visible in explicit
+  entries (a declaration contradicted by the entries is an error). A commutation declared for a time-dependent
+  matrix holds at all times, so it also covers its derivative; `self_commuting` states `A(t1)A(t2) = A(t2)A(t1)`.
+  `A(t)` is read as the matrix only if `A` is declared to depend on `t`; otherwise it is a `parse_error`, never `t*A`.
+  d/dt exp(X) is `X' exp(X)` only if X and X' commute; otherwise it is the Frechet integral (`exp_frechet_derivative`),
+  a representation, never rewritten. A Sylvester equation, a block-matrix or integral representation is **never**
+  presented as an evaluated result (`evaluated=false`, `result_kind` equation or representation); entries exist only
+  for explicit matrices whose closed form SymPy finds in time (`symbolic_budget`; larger ones fall back to the
+  representation, recorded as a fallback). Duhamel integrals (`duhamel`): the singular Sylvester equation is never
+  solved. Evolution operators (`evolve`): `exp(integral of A)` only for a generator that commutes with itself at all
+  times; explicit entries that do not are solved numerically (`evolution_numeric`, `result_kind` numeric,
+  `evaluated=false`) only on an end time the user gave, shown only if RK4 agrees, integrating backwards returns I and
+  Liouville's formula holds, and always described as a numerical approximation on that span. Time-ordered
+  exponentials, Dyson series and Magnus terms for abstract generators are `unsupported`. `e^{tA}` is a `parse_error`
   (a bare e is a symbol; write `\exp(tA)`). Do not loosen the numeric tolerance, add an unverified shortcut, or let
-  `_invents_structure`-style filters be bypassed; the tests include wrong merges, reordered products, a wrong
-  derivative and a 1e-6 error.
+  `_invents_structure`-style filters be bypassed; the tests include wrong merges, reordered products, wrong
+  derivatives (`X' exp(X)` for non-commuting X), `exp(integral A)` for a non-commuting generator and 1e-6 errors.
+  Every result has `diagnostics` (`MatrixDiagnostics`): ids, enums and numbers only, never names, entries, expressions
+  or bounds; the server log gets the same kind of fields and a test enforces it. `docs/matrix-benchmark.md` and
+  `python -m minerva_knowledge matrix-benchmark` measure coverage, method selection, verification, time and
+  residuals; a pending case that now passes fails the suite.
+- Claims about matrices: names declared in `matrix_calculus` calls of the conversation are passed to `check_claims`;
+  an equation that mentions one is `unverified` (never "checked" by sampling numbers, which treats matrices as
+  commuting scalars).
 - Relations in claims (`claims.py`): an equation with a symbol on one side only or a time derivative (`\theta=\phi+\omega t`,
   `L=T`, `F=ma`, `m\ddot x=-kx`) is a *relation*, not an identity, and is never tested by independent sampling. Definitions
   stated earlier in the conversation (`symbol = expression`, from the user or the model, not verified by Minerva) are
