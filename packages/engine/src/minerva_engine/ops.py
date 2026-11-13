@@ -349,7 +349,8 @@ def op_features(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
     try:
-        expr = parse_expression(data, limits)
+        # Reading structure is not evaluating: features of a delta expression drive retrieval.
+        expr = parse_expression(data, limits, allow_distributions=True)
     except MinervaMathError as exc:
         status, message = _failure(exc)
         return {"status": status.value, "message": message, "features": [], "input_latex": None}

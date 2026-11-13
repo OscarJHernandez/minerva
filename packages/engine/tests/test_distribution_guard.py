@@ -79,3 +79,12 @@ def test_a_derivative_that_produces_a_delta_is_not_verified_pointwise(engine: En
     assert (
         engine.differentiate(data, [DiffVariable(name="x", order=1)]).status is Status.UNSUPPORTED
     )
+
+
+def test_features_of_a_distribution_expression_are_still_read(engine: Engine) -> None:
+    # Retrieval needs `f:diracdelta`; reading the structure is not evaluating the expression.
+    status, _, features, _ = engine.features(
+        ExpressionInput(input=r"\operatorname{DiracDelta}(x-1)", assumptions={"x": ["real"]})
+    )
+    assert status is Status.OK
+    assert "f:diracdelta" in features
