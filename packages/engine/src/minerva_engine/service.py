@@ -9,6 +9,7 @@ from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
 from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
+from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -124,6 +125,23 @@ class Engine:
                 status=status, action=request.action, message=message, duration_ms=ms
             )
         result = MatrixCalculusResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def geometry(
+        self, request: GeometryInput, *, max_dimension: int = MAX_DIMENSION
+    ) -> GeometryResult:
+        """Metric, connection, curvature, geodesics and tensor operations in explicit coordinates.
+
+        Every quantity is shown only if its independent numerical check passed; conventions,
+        assumptions, domain restrictions and per-stage diagnostics are part of the result."""
+        outcome, ms = self._run(
+            "geometry", {"input": request.model_dump(), "max_dimension": max_dimension}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return GeometryResult(status=status, message=message, duration_ms=ms)
+        result = GeometryResult(**outcome.value)
         result.duration_ms = ms
         return result
 

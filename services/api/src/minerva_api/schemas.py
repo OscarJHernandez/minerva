@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from minerva_engine import DiffVariable, ExpressionInput, MatrixDecl
+from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl
 from minerva_engine.matrix.models import MAX_MATRICES, Action
 from pydantic import BaseModel, EmailStr, Field
 
@@ -21,12 +21,16 @@ class UserOut(BaseModel):
     email: str
 
 
-class Linked(ExpressionInput):
-    """An expression request that may be saved as a step of a Workbench derivation."""
+class Links(BaseModel):
+    """Whether and where a result is saved as a step of a Workbench derivation."""
 
     save: bool = True
     derivation_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
+
+
+class Linked(ExpressionInput, Links):
+    """An expression request that may be saved as a step of a Workbench derivation."""
 
 
 class IntegrateRequest(Linked):
@@ -72,6 +76,10 @@ class MatrixCalculusRequest(Linked):
     variable: str | None = Field(default=None, min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class GeometryRequest(GeometryInput, Links):
+    """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
 
 
 class DistributionRequest(Linked):

@@ -1,0 +1,1835 @@
+{
+  "deterministic": {
+    "cases": {
+      "de_sitter": {
+        "correct": true,
+        "correct_by_quantity": {
+          "einstein": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true
+        },
+        "dimension": 4,
+        "quantities": {
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 24,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 22,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "euclid3": {
+        "correct": true,
+        "correct_by_quantity": {
+          "christoffel": true,
+          "einstein": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true,
+          "riemann": true
+        },
+        "diffgeom_agrees": true,
+        "dimension": 3,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "riemann": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 0,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "flrw": {
+        "correct": true,
+        "correct_by_quantity": {
+          "einstein": true,
+          "ricci_scalar": true
+        },
+        "dimension": 4,
+        "quantities": {
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 44,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 13,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "minkowski": {
+        "correct": true,
+        "correct_by_quantity": {
+          "christoffel": true,
+          "einstein": true,
+          "geodesics": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true,
+          "riemann": true
+        },
+        "dimension": 4,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "geodesics": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 2,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "riemann": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 0,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "polar": {
+        "correct": true,
+        "correct_by_quantity": {
+          "christoffel": true,
+          "einstein": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true,
+          "riemann": true
+        },
+        "diffgeom_agrees": true,
+        "dimension": 2,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 3,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "riemann": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 0,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "reissner_nordstrom": {
+        "correct": true,
+        "correct_by_quantity": {
+          "kretschmann": true,
+          "ricci_scalar": true
+        },
+        "dimension": 4,
+        "quantities": {
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 14,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "schwarzschild": {
+        "correct": true,
+        "correct_by_quantity": {
+          "christoffel": true,
+          "einstein": true,
+          "geodesics": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true
+        },
+        "diffgeom_agrees": true,
+        "dimension": 4,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 35,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "geodesics": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 53,
+            "status": "ok",
+            "symbolic_checks": 2,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 4,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "riemann": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": 110,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "skew_flat": {
+        "correct": true,
+        "correct_by_quantity": {
+          "christoffel": true,
+          "einstein": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true,
+          "riemann": true
+        },
+        "dimension": 2,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "riemann": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "sphere2": {
+        "correct": true,
+        "correct_by_quantity": {
+          "christoffel": true,
+          "einstein": true,
+          "geodesics": true,
+          "kretschmann": true,
+          "ricci": true,
+          "ricci_scalar": true,
+          "riemann": true
+        },
+        "diffgeom_agrees": true,
+        "dimension": 2,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 6,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "geodesics": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 10,
+            "status": "ok",
+            "symbolic_checks": 2,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "riemann": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": 6,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 1,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "sphere3": {
+        "correct": true,
+        "correct_by_quantity": {
+          "kretschmann": true,
+          "ricci_scalar": true
+        },
+        "dimension": 3,
+        "quantities": {
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "sphere_sheared": {
+        "correct": true,
+        "correct_by_quantity": {
+          "einstein": true,
+          "kretschmann": true,
+          "ricci_scalar": true
+        },
+        "dimension": 2,
+        "quantities": {
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 0,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "kretschmann": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 2,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 1,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "static_f": {
+        "correct": true,
+        "correct_by_quantity": {
+          "ricci_scalar": true
+        },
+        "dimension": 4,
+        "quantities": {
+          "christoffel": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 40,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "einstein": {
+            "numeric_checks": 2,
+            "numeric_passed": true,
+            "ops": 42,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          },
+          "ricci_scalar": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": 15,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      }
+    },
+    "coverage": {
+      "computed_and_correct": 12,
+      "corpus": 12,
+      "refusal_cases": 8,
+      "refusals_as_expected": 8
+    },
+    "refusals": {
+      "asymmetric": {
+        "as_expected": true,
+        "status": "parse_error"
+      },
+      "degenerate": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "hidden_degenerate": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "not_square": {
+        "as_expected": true,
+        "status": "parse_error"
+      },
+      "reserved_velocity_name": {
+        "as_expected": true,
+        "status": "parse_error"
+      },
+      "tensor_missing": {
+        "as_expected": true,
+        "status": "parse_error"
+      },
+      "too_many_dimensions": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "undeclared_function": {
+        "as_expected": true,
+        "status": "parse_error"
+      }
+    }
+  },
+  "environment": {
+    "platform": "Darwin arm64",
+    "python": "3.13.16",
+    "repeats": 5,
+    "sympy": "1.14.0"
+  },
+  "format": 1,
+  "measurements": {
+    "latency_ms": {
+      "de_sitter": {
+        "median": 987.0,
+        "p95": 1015.0,
+        "runs": [
+          1015.0,
+          987.0,
+          991.0,
+          967.9,
+          845.9
+        ]
+      },
+      "euclid3": {
+        "median": 61.9,
+        "p95": 75.2,
+        "runs": [
+          75.2,
+          61.9,
+          59.6,
+          65.3,
+          58.8
+        ]
+      },
+      "flrw": {
+        "median": 334.3,
+        "p95": 374.9,
+        "runs": [
+          374.9,
+          331.1,
+          334.3,
+          324.9,
+          366.2
+        ]
+      },
+      "minkowski": {
+        "median": 183.9,
+        "p95": 202.8,
+        "runs": [
+          189.1,
+          174.3,
+          182.2,
+          202.8,
+          183.9
+        ]
+      },
+      "polar": {
+        "median": 26.2,
+        "p95": 28.7,
+        "runs": [
+          28.7,
+          28.4,
+          26.2,
+          24.9,
+          24.6
+        ]
+      },
+      "reissner_nordstrom": {
+        "median": 1281.0,
+        "p95": 1372.6,
+        "runs": [
+          1372.6,
+          1281.0,
+          1233.6,
+          1240.6,
+          1298.0
+        ]
+      },
+      "schwarzschild": {
+        "median": 1583.0,
+        "p95": 2733.5,
+        "runs": [
+          2733.5,
+          1520.7,
+          1535.6,
+          1583.0,
+          1653.7
+        ]
+      },
+      "skew_flat": {
+        "median": 131.0,
+        "p95": 179.7,
+        "runs": [
+          67.6,
+          179.7,
+          131.0,
+          93.8,
+          150.4
+        ]
+      },
+      "sphere2": {
+        "median": 323.3,
+        "p95": 389.8,
+        "runs": [
+          389.8,
+          331.6,
+          313.2,
+          323.3,
+          302.4
+        ]
+      },
+      "sphere3": {
+        "median": 792.0,
+        "p95": 867.0,
+        "runs": [
+          867.0,
+          776.5,
+          786.7,
+          792.0,
+          797.5
+        ]
+      },
+      "sphere_sheared": {
+        "median": 741.5,
+        "p95": 808.6,
+        "runs": [
+          808.6,
+          689.2,
+          690.7,
+          741.5,
+          747.8
+        ]
+      },
+      "static_f": {
+        "median": 380.2,
+        "p95": 390.5,
+        "runs": [
+          390.2,
+          390.5,
+          368.7,
+          341.1,
+          380.2
+        ]
+      }
+    },
+    "memory_mb": {
+      "de_sitter": 0.8,
+      "euclid3": 0.2,
+      "flrw": 1.0,
+      "minkowski": 0.5,
+      "polar": 0.2,
+      "reissner_nordstrom": 1.0,
+      "schwarzschild": 1.3,
+      "skew_flat": 0.2,
+      "sphere2": 0.7,
+      "sphere3": 0.6,
+      "sphere_sheared": 0.6,
+      "static_f": 1.1
+    },
+    "scaling": [
+      {
+        "expected_ricci_scalar": "2/a**2",
+        "failed_stage": null,
+        "median_ms": 101.8,
+        "n": 2,
+        "p95_ms": 131.2,
+        "peak_traced_mb": 0.3,
+        "ricci_scalar": "2/a**2",
+        "stage_ops": {
+          "christoffel": 6,
+          "determinant": 4,
+          "inverse_metric": 7,
+          "ricci": 2,
+          "ricci_scalar": 2,
+          "riemann": 6
+        },
+        "status": "ok"
+      },
+      {
+        "expected_ricci_scalar": "6/a**2",
+        "failed_stage": null,
+        "median_ms": 521.5,
+        "n": 3,
+        "p95_ms": 544.2,
+        "peak_traced_mb": 0.6,
+        "ricci_scalar": "6/a**2",
+        "stage_ops": {
+          "christoffel": 21,
+          "determinant": 7,
+          "inverse_metric": 15,
+          "ricci": 9,
+          "ricci_scalar": 2,
+          "riemann": 34
+        },
+        "status": "ok"
+      },
+      {
+        "expected_ricci_scalar": "12/a**2",
+        "failed_stage": null,
+        "median_ms": 1347.7,
+        "n": 4,
+        "p95_ms": 1397.0,
+        "peak_traced_mb": 1.0,
+        "ricci_scalar": "12/a**2",
+        "stage_ops": {
+          "christoffel": 48,
+          "determinant": 10,
+          "inverse_metric": 26,
+          "ricci": 18,
+          "ricci_scalar": 2,
+          "riemann": 102
+        },
+        "status": "ok"
+      },
+      {
+        "expected_ricci_scalar": "20/a**2",
+        "failed_stage": null,
+        "median_ms": 3739.3,
+        "n": 5,
+        "p95_ms": 4052.9,
+        "peak_traced_mb": 3.3,
+        "ricci_scalar": "20/a**2",
+        "stage_ops": {
+          "christoffel": 90,
+          "determinant": 13,
+          "inverse_metric": 40,
+          "ricci": 30,
+          "ricci_scalar": 2,
+          "riemann": 228
+        },
+        "status": "ok"
+      },
+      {
+        "expected_ricci_scalar": "30/a**2",
+        "failed_stage": null,
+        "median_ms": 7358.8,
+        "n": 6,
+        "p95_ms": 7370.9,
+        "peak_traced_mb": 6.8,
+        "ricci_scalar": "30/a**2",
+        "stage_ops": {
+          "christoffel": 150,
+          "determinant": 16,
+          "inverse_metric": 57,
+          "ricci": 45,
+          "ricci_scalar": 2,
+          "riemann": 430
+        },
+        "status": "ok"
+      }
+    ],
+    "stages": {
+      "de_sitter": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 5,
+          "stage": "determinant"
+        },
+        {
+          "ms": 12,
+          "ops": 17,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 63,
+          "ops": 44,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 142,
+          "ops": 120,
+          "stage": "riemann"
+        },
+        {
+          "ms": 155,
+          "ops": 22,
+          "stage": "ricci"
+        },
+        {
+          "ms": 99,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 2,
+          "ops": 2,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 23,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 18,
+          "ops": 24,
+          "stage": "einstein"
+        },
+        {
+          "ms": 27,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 174,
+          "ops": 158,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 485,
+          "ops": 2,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 9,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        }
+      ],
+      "euclid3": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "determinant"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 7,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 1,
+          "ops": 0,
+          "stage": "riemann"
+        },
+        {
+          "ms": 33,
+          "ops": null,
+          "stage": "riemann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 10,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        }
+      ],
+      "flrw": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 8,
+          "stage": "determinant"
+        },
+        {
+          "ms": 11,
+          "ops": 17,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 43,
+          "ops": 58,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 110,
+          "ops": 138,
+          "stage": "riemann"
+        },
+        {
+          "ms": 134,
+          "ops": 40,
+          "stage": "ricci"
+        },
+        {
+          "ms": 136,
+          "ops": 13,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 102,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 54,
+          "ops": 44,
+          "stage": "einstein"
+        },
+        {
+          "ms": 44,
+          "ops": null,
+          "stage": "einstein:verify"
+        }
+      ],
+      "minkowski": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 0,
+          "ops": 1,
+          "stage": "determinant"
+        },
+        {
+          "ms": 0,
+          "ops": 1,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 1,
+          "ops": 0,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 14,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 1,
+          "ops": 0,
+          "stage": "riemann"
+        },
+        {
+          "ms": 120,
+          "ops": null,
+          "stage": "riemann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci"
+        },
+        {
+          "ms": 3,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 3,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 23,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 5,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "geodesics"
+        },
+        {
+          "ms": 12,
+          "ops": null,
+          "stage": "geodesics:verify"
+        }
+      ],
+      "polar": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 1,
+          "ops": 1,
+          "stage": "determinant"
+        },
+        {
+          "ms": 0,
+          "ops": 2,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 1,
+          "ops": 3,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 4,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "riemann"
+        },
+        {
+          "ms": 9,
+          "ops": null,
+          "stage": "riemann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci"
+        },
+        {
+          "ms": 1,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 4,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        }
+      ],
+      "reissner_nordstrom": [
+        {
+          "ms": 1,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 5,
+          "stage": "determinant"
+        },
+        {
+          "ms": 14,
+          "ops": 24,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 52,
+          "ops": 73,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 181,
+          "ops": 246,
+          "stage": "riemann"
+        },
+        {
+          "ms": 200,
+          "ops": 30,
+          "stage": "ricci"
+        },
+        {
+          "ms": 200,
+          "ops": 0,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 76,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 302,
+          "ops": 290,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 978,
+          "ops": 14,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 13,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        }
+      ],
+      "schwarzschild": [
+        {
+          "ms": 1,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 12,
+          "ops": 5,
+          "stage": "determinant"
+        },
+        {
+          "ms": 12,
+          "ops": 14,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 39,
+          "ops": 35,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 42,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 77,
+          "ops": 110,
+          "stage": "riemann"
+        },
+        {
+          "ms": 221,
+          "ops": null,
+          "stage": "riemann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci"
+        },
+        {
+          "ms": 43,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 23,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 25,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 176,
+          "ops": 128,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 531,
+          "ops": 4,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 11,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        },
+        {
+          "ms": 1,
+          "ops": 53,
+          "stage": "geodesics"
+        },
+        {
+          "ms": 607,
+          "ops": null,
+          "stage": "geodesics:verify"
+        }
+      ],
+      "skew_flat": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 1,
+          "ops": 2,
+          "stage": "determinant"
+        },
+        {
+          "ms": 14,
+          "ops": 14,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 23,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "riemann"
+        },
+        {
+          "ms": 23,
+          "ops": null,
+          "stage": "riemann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 3,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 64,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 5,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        }
+      ],
+      "sphere2": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 9,
+          "ops": 4,
+          "stage": "determinant"
+        },
+        {
+          "ms": 9,
+          "ops": 7,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 13,
+          "ops": 6,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 19,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 13,
+          "ops": 6,
+          "stage": "riemann"
+        },
+        {
+          "ms": 19,
+          "ops": null,
+          "stage": "riemann:verify"
+        },
+        {
+          "ms": 5,
+          "ops": 2,
+          "stage": "ricci"
+        },
+        {
+          "ms": 18,
+          "ops": null,
+          "stage": "ricci:verify"
+        },
+        {
+          "ms": 1,
+          "ops": 2,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 11,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 4,
+          "ops": null,
+          "stage": "einstein:verify"
+        },
+        {
+          "ms": 33,
+          "ops": 18,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 98,
+          "ops": 2,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 10,
+          "stage": "geodesics"
+        },
+        {
+          "ms": 79,
+          "ops": null,
+          "stage": "geodesics:verify"
+        }
+      ],
+      "sphere3": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 18,
+          "ops": 7,
+          "stage": "determinant"
+        },
+        {
+          "ms": 24,
+          "ops": 15,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 54,
+          "ops": 21,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 139,
+          "ops": 34,
+          "stage": "riemann"
+        },
+        {
+          "ms": 161,
+          "ops": 9,
+          "stage": "ricci"
+        },
+        {
+          "ms": 161,
+          "ops": 2,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 62,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 154,
+          "ops": 78,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 525,
+          "ops": 2,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 5,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        }
+      ],
+      "sphere_sheared": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 9,
+          "ops": 4,
+          "stage": "determinant"
+        },
+        {
+          "ms": 24,
+          "ops": 11,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 119,
+          "ops": 33,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 251,
+          "ops": 21,
+          "stage": "riemann"
+        },
+        {
+          "ms": 280,
+          "ops": 11,
+          "stage": "ricci"
+        },
+        {
+          "ms": 290,
+          "ops": 2,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 109,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 82,
+          "ops": 18,
+          "stage": "riemann_lowered"
+        },
+        {
+          "ms": 304,
+          "ops": 2,
+          "stage": "kretschmann"
+        },
+        {
+          "ms": 3,
+          "ops": null,
+          "stage": "kretschmann:verify"
+        },
+        {
+          "ms": 0,
+          "ops": 0,
+          "stage": "einstein"
+        },
+        {
+          "ms": 7,
+          "ops": null,
+          "stage": "einstein:verify"
+        }
+      ],
+      "static_f": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 5,
+          "stage": "determinant"
+        },
+        {
+          "ms": 12,
+          "ops": 11,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 32,
+          "ops": 40,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 47,
+          "ops": null,
+          "stage": "christoffel:verify"
+        },
+        {
+          "ms": 67,
+          "ops": 137,
+          "stage": "riemann"
+        },
+        {
+          "ms": 94,
+          "ops": 38,
+          "stage": "ricci"
+        },
+        {
+          "ms": 98,
+          "ops": 15,
+          "stage": "ricci_scalar"
+        },
+        {
+          "ms": 96,
+          "ops": null,
+          "stage": "ricci_scalar:verify"
+        },
+        {
+          "ms": 30,
+          "ops": 42,
+          "stage": "einstein"
+        },
+        {
+          "ms": 47,
+          "ops": null,
+          "stage": "einstein:verify"
+        }
+      ]
+    },
+    "vs_diffgeom": [
+      {
+        "diffgeom_ms": 172.5,
+        "id": "euclid3",
+        "ours_symbolic_only_ms": 0,
+        "ours_verified_ms": 42.4
+      },
+      {
+        "diffgeom_ms": 57.2,
+        "id": "polar",
+        "ours_symbolic_only_ms": 1,
+        "ours_verified_ms": 17.4
+      },
+      {
+        "diffgeom_ms": 59.0,
+        "id": "sphere2",
+        "ours_symbolic_only_ms": 55,
+        "ours_verified_ms": 115.7
+      },
+      {
+        "diffgeom_ms": 921.2,
+        "id": "schwarzschild",
+        "ours_symbolic_only_ms": 148,
+        "ours_verified_ms": 454.1
+      }
+    ]
+  }
+}

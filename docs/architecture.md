@@ -71,6 +71,21 @@ one most likely to be wrong.
     and verifies its own result with `verify.py` (numeric leg decides; exact series leg reported separately).
     The language model only fills in the declarations and explains the card; handbook `method.matrix.*` entries
     (stated) document the techniques and are retrieved by the features the engine emits (`matrix:*`).
+  - `geometry` (`geometry/`, `Engine.geometry`, `POST /v1/compute/geometry`, chat tool `geometry`): metric,
+    inverse, determinant, Christoffel symbols, Riemann/Ricci/Einstein tensors, Ricci scalar, Kretschmann and
+    Ricci-squared invariants, symbolic geodesic equations, covariant derivatives and index raising/lowering of
+    a tensor field, in explicit coordinates (at most 4) with real coordinates and optional declared functions
+    of them (`Builder.functions`, `strict_calls`). `setup.py` parses and validates (square, symmetric,
+    non-degenerate); `compute.py` runs memoised, timed stages with size and deadline guards before every
+    uninterruptible `simplify`; `numeric.py` is a second, independent route (lambdified metric at 50 digits,
+    central differences, formulas written again); `verify.py` decides what is shown: a quantity needs all its
+    numeric legs (agreement with the numerical recomputation, metric compatibility, curvature symmetries and
+    Bianchi identities, a divergence-free Einstein tensor, Euler-Lagrange equations for geodesics through
+    `lagrangian.derive_expr`), while symbolic legs (for example `R_{abcd}` from second derivatives of the metric)
+    are reported separately. Conventions, assumptions, signature (only if decided), restrictions (`domain.py`)
+    and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
+    server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
+    (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -188,7 +203,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that

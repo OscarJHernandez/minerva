@@ -47,15 +47,33 @@ def parse_expression(
     limits: Limits,
     denominators: list[sp.Expr] | None = None,
     noncommutative: Iterable[str] = (),
+    functions: dict[str, tuple[str, ...]] | None = None,
+    strict_calls: bool = False,
     *,
     allow_distributions: bool = False,
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
     if data.format == "latex":
-        expr = parse_latex(data.input, data.assumptions, limits, denominators, noncommutative)
+        expr = parse_latex(
+            data.input,
+            data.assumptions,
+            limits,
+            denominators,
+            noncommutative,
+            functions,
+            strict_calls,
+        )
     else:
-        expr = parse_text(data.input, data.assumptions, limits, denominators, noncommutative)
+        expr = parse_text(
+            data.input,
+            data.assumptions,
+            limits,
+            denominators,
+            noncommutative,
+            functions,
+            strict_calls,
+        )
     if not allow_distributions and contains_distribution(expr):
         # Pointwise sampling cannot tell distributions apart (a delta is 0 at every sample point),
         # so every other operation refuses them rather than "verify" a wrong identity.
@@ -175,6 +193,17 @@ def op_series(payload: dict[str, Any]) -> dict[str, Any]:
         str(payload.get("point", "0")),
         int(payload["order"]),
         Limits(**payload["limits"]),
+    )
+    return result.model_dump(mode="json")
+
+
+def op_geometry(payload: dict[str, Any]) -> dict[str, Any]:
+    from .geometry import MAX_DIMENSION, GeometryInput, geometry
+
+    result = geometry(
+        GeometryInput(**payload["input"]),
+        Limits(**payload["limits"]),
+        max_dimension=int(payload.get("max_dimension", MAX_DIMENSION)),
     )
     return result.model_dump(mode="json")
 
@@ -689,6 +718,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "integrate": op_integrate,
     "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
+    "geometry": op_geometry,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
     "perturbation_solve": op_perturbation_solve,

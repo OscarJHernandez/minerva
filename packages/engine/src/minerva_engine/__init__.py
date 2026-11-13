@@ -19,6 +19,7 @@ from .distributions.models import (
 )
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
+from .geometry import GeometryInput, GeometryResult
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -83,6 +84,8 @@ __all__ = [
     "ExpansionReport",
     "ExpressionInput",
     "FormulaReading",
+    "GeometryInput",
+    "GeometryResult",
     "IdentitiesResult",
     "IntegrateResult",
     "IntegrateVerification",

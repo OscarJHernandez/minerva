@@ -8,6 +8,7 @@ import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
+import type { GeometryRequest } from "@/lib/types";
 import type {
   AssistantContent,
   Card,
@@ -52,6 +53,7 @@ const TOOL_LABEL: Record<string, string> = {
   get_entry: "Reading a handbook entry",
   tensor_canonicalize: "Canonicalizing the tensor expression",
   matrix_calculus: "Running the matrix calculus and verifying the result",
+  geometry: "Computing the geometry and checking it independently",
   distribution: "Applying delta and step identities and pairing with test functions",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
@@ -244,6 +246,22 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** The geometry card's buttons: more quantities for the same metric, without the model. */
+  const runGeometry = useCallback(
+    async (request: GeometryRequest) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.geometry(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   const busy = pending !== null;
   const title = conversations.find((c) => c.id === activeId)?.title ?? "";
 
@@ -271,7 +289,9 @@ export function ChatApp() {
   }
 
   return (
-    <MotionRunnerProvider value={{ run: runMotion, perturb: runPerturbation }}>
+    <MotionRunnerProvider
+      value={{ run: runMotion, perturb: runPerturbation, geometry: runGeometry }}
+    >
       <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
         <aside className="hidden w-60 shrink-0 py-4 md:block">
           <ConversationList

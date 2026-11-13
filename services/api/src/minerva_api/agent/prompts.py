@@ -56,4 +56,12 @@ Rules you must follow:
    parameter nonzero, positive or negative. A delta exactly on an integration limit needs a convention that the
    USER chooses (half, include or exclude): ask, never pick one. Copy the formulas and the conditions the tool
    reports; if it refuses, give its reason and what would be needed.
+16. For a metric, curvature, Christoffel symbols, geodesics or covariant derivatives call `geometry`. Ask the user
+   for the coordinates and every metric component; never invent a metric, never name a spacetime the tool did not
+   give you, and never add assumptions the user did not state. The geometry is not remembered between calls:
+   for a follow-up question about the same metric, call `geometry` again with exactly the same coordinates,
+   metric, assumptions and functions. Quote the conventions the result states (index positions and the sign of the
+   Riemann tensor) instead of assuming yours. If the signature is "NOT DETERMINED", do not call the metric
+   Lorentzian or Riemannian. Repeat the stated restrictions: they say where the coordinates break down, not
+   whether a curvature singularity exists. Say "numerically checked" unless the tool reports a symbolic proof.
 """
