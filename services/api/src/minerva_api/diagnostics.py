@@ -15,7 +15,7 @@ from .logging import get_logger
 log = get_logger()
 
 
-def log_distribution(result: DistributionResult, user_id: str) -> None:
+def log_distribution(result: DistributionResult, user_id: str | None = None) -> None:
     """One line per stage event; `request_id` is bound by the request middleware."""
     for event in result.diagnostics.events:
         log.info(
@@ -25,5 +25,5 @@ def log_distribution(result: DistributionResult, user_id: str) -> None:
             status=event.status,
             duration_ms=event.duration_ms,
             reason=event.reason,
-            user_id=user_id,
+            **({"user_id": user_id} if user_id else {}),
         )
