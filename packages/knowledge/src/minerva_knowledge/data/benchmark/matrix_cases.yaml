@@ -297,7 +297,6 @@
   lower: '0'
   upper: t
   matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
-  pending: true
   expect_status: ok
   expect_method: duhamel
   expect_kind: representation
@@ -311,7 +310,6 @@
   upper: t
   matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
   commuting: [[A, B]]
-  pending: true
   expect_status: ok
   expect_method: duhamel
   expect_kind: expression
@@ -326,7 +324,6 @@
   matrices:
     - {name: A, entries: [['0', '1'], ['0', '0']]}
     - {name: B, entries: [['0', '0'], ['1', '0']]}
-  pending: true
   expect_status: ok
   expect_method: duhamel
   expect_kind: explicit
@@ -341,7 +338,6 @@
   matrices:
     - {name: A, entries: [['1', '0'], ['0', '2']]}
     - {name: B, entries: [['0', '1'], ['1', '0']]}
-  pending: true
   expect_status: ok
   expect_method: duhamel
   expect_kind: explicit
@@ -356,7 +352,6 @@
   matrices:
     - {name: A, entries: [['2', '1'], ['0', '2']]}
     - {name: B, entries: [['0', '0'], ['1', '0']]}
-  pending: true
   expect_status: ok
   expect_method: duhamel
   expect_kind: explicit

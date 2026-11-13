@@ -51,6 +51,7 @@ from .verify import (
     close,
     expand_dependent,
     letter,
+    make_env,
     poly_add,
     poly_diff,
     poly_equal,
@@ -62,6 +63,7 @@ from .verify import (
 )
 
 UNKNOWN = "__X__"  # the unknown matrix of a Sylvester equation
+MAX_CLOSED_FORM_OPS = 3000  # larger SymPy closed forms are too slow to verify and unreadable
 
 
 @dataclass
@@ -1120,8 +1122,14 @@ def run_block_exponential(p: Problem) -> Attempt:
     symbolic_method = red.outcome.symbolic_method
     if _all_explicit(names | matrices_in(p.terms), p.explicit):
         try:
-            explicit = _evaluate_block_explicit(p, red)
-        except (NotImplementedError, ValueError, sp.matrices.exceptions.MatrixError):
+            with symbolic_budget(p):
+                explicit = _evaluate_block_explicit(p, red)
+        except (
+            NotImplementedError,
+            ValueError,
+            sp.matrices.exceptions.MatrixError,
+            SymbolicTimeout,
+        ):
             explicit = None
         if explicit is not None:
             x0e, residual_zero = explicit
@@ -1167,7 +1175,7 @@ def run_block_exponential(p: Problem) -> Attempt:
     )
 
 
-def _evaluate_block_explicit(p: Problem, red: Reduction) -> tuple[sp.Matrix, bool] | None:
+def _evaluate_block_explicit(p: Problem, red: Reduction) -> tuple[sp.Matrix, bool | None] | None:
     assert p.lower is not None and p.upper is not None  # noqa: S101
     tmpl = red.tmpl
     pm = p.explicit[red.p_name]
@@ -1191,13 +1199,39 @@ def _evaluate_block_explicit(p: Problem, red: Reduction) -> tuple[sp.Matrix, boo
     x0 = (beta1 * pm).exp() * (i_of(p.upper) - i_of(p.lower))
     if len(tmpl.exps) == 2:
         x0 = x0 * (tmpl.exps[1][3] * qm).exp()
+    if sum(sp.count_ops(e) for e in x0) > MAX_CLOSED_FORM_OPS:
+        return None  # eigenvalues without a short closed form: keep the exact representation
     x0 = _simplified(x0)
     rhs = explicit_value(_core_value_at(p, red.core, p.upper), p.explicit, n) - explicit_value(
         _core_value_at(p, red.core, p.lower), p.explicit, n
     )
     lhs = red.alpha * pm * x0 + (x0 * qm * red.gamma if red.q_name else sp.zeros(*x0.shape))
     residual = _simplified(lhs - rhs)
-    return x0, residual == sp.zeros(*residual.shape)
+    return x0, _residual_is_zero(p, residual)
+
+
+def _residual_is_zero(p: Problem, residual: sp.Matrix) -> bool | None:
+    """True when every entry is exactly zero; None when SymPy could not simplify an entry to zero
+    but it vanishes numerically at sampled parameters (inconclusive, never a refutation); False
+    when it is clearly not zero."""
+    if residual == sp.zeros(*residual.shape):
+        return True
+    import random
+
+    rng = random.Random(20260102)  # noqa: S311 - test points, not security
+    with mp.workdps(30):
+        for _ in range(3):
+            env = make_env(p.setup, p.ev, rng)
+            for e in residual:
+                if e == 0:
+                    continue
+                try:
+                    value = p.ev.scalar(sp.sympify(e), env.scalars)
+                except (ArithmeticError, ValueError, ZeroDivisionError):
+                    return False
+                if abs(value) > 1e-15:
+                    return False
+    return None
 
 
 def run_equation_only(p: Problem) -> Attempt:
@@ -1208,6 +1242,12 @@ def run_equation_only(p: Problem) -> Attempt:
 
 
 # -- the registry -----------------------------------------------------------------------------
+def _run_duhamel(p: Problem) -> Attempt:
+    from .duhamel import run_duhamel  # duhamel imports this module
+
+    return run_duhamel(p)
+
+
 def _run_frechet(p: Problem) -> Attempt:
     from .frechet import run_frechet_derivative  # frechet imports this module
 
@@ -1271,6 +1311,17 @@ METHODS: tuple[Method, ...] = (
         "A declared invertible (or visibly invertible from its entries) and a provably nonzero",
         "one exponential of one matrix, affine in the variable",
         run_integral_invertible,
+    ),
+    Method(
+        "duhamel",
+        "Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds",
+        ("integrate",),
+        "one matrix A in both exponentials, exponents in the variable that cancel (a + c = 0)",
+        "none for the representation; M commuting with A (declared or from entries) gives the "
+        "closed form (upper - lower) M e^{(b+d)A}",
+        "a definite integral of a single term with affine exponents; the Sylvester equation of "
+        "this form is singular and is never solved; the representation is not an evaluated result",
+        _run_duhamel,
     ),
     Method(
         "sylvester_reduction",
