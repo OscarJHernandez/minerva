@@ -98,3 +98,31 @@ every pointwise checker refuses them (`tests/test_sum_guard.py`). The reason is 
 | expectation | 15 | 15 |
 
 All 31 pass against the independent oracle; 77 cases of the later phases remain pending.
+
+## Phase 2: gradients, Jacobians and Hessians of matrix functions
+
+The `matrix_calculus` operation gained the actions `gradient`, `jacobian` and `hessian` (plain-text syntax:
+`tr`, `det`, `logdet`, `transpose`, `inv`, `*` as the matrix product), and the declarations `symmetric` and
+`positive_definite`. They use their own small expression tree (`matrix/mexpr.py`) because the existing noncommutative
+SymPy terms cannot hold a transpose, an inverse, a trace or a determinant.
+
+* The derivative is built by differentials, not by SymPy's matrix-expression `diff`, which was measured to return 0
+  for `log det X` and for the Gaussian log-density.
+* It is shown only if central differences of the original function at random real matrices of the declared sizes
+  agree. For a symmetric variable the candidate must also be symmetric: on symmetric directions the unconstrained
+  gradient has the same directional derivatives as its symmetric part, so a directional check alone cannot tell them
+  apart (`test_the_symmetry_requirement_is_what_rejects_it`). The result is the gradient within the symmetric matrices
+  (Frobenius); the independent-entries form `2G - diag(G)` is verified separately and labelled.
+* Real field only (a transpose, not a conjugate transpose); `logdet` is `log |det|`. A matrix is never assumed
+  invertible: `inv`, `logdet` and the derivative of `det` need a declared invertible matrix (`invertibility_not_declared`),
+  declarations are checked against explicit entries, and a 1x1 product is a scalar factor (refused as ambiguous if it
+  could be grouped two ways). The exact (symbolic) leg is not run: `symbolic_zero` is `None`.
+* Not covered: LaTeX input for these actions, derivatives of matrix-valued functions by a matrix (a fourth-order
+  tensor), solving the stationarity equation for a matrix, Hermitian or Wirtinger derivatives.
+
+| Group | Cases | Passing |
+| --- | --- | --- |
+| matrix | 28 | 28 |
+
+Cumulative: 59 of 108 cases pass (sums 16, expectation 15, matrix 28); 49 of the later phases remain pending. The
+existing matrix benchmark is unchanged (`matrix-benchmark` still reports the same coverage).

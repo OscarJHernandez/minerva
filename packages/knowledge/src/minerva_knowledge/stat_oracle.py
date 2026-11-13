@@ -210,6 +210,10 @@ class _Eval:
                         return mp.factorial(_as_int(x))
             except (ValueError, ZeroDivisionError) as exc:
                 raise OracleError(f"{name}: {exc}") from exc
+        if name == "eye":
+            if len(values) != 1 or isinstance(values[0], mp.matrix | list):
+                raise OracleError("eye takes one size")
+            return mp.eye(_as_int(values[0]))
         if name in ("binomial", "beta"):
             if len(values) != 2 or any(isinstance(v, mp.matrix | list) for v in values):
                 raise OracleError(f"{name} takes two scalars")

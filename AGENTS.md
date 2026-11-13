@@ -341,6 +341,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   the only source of it, a result that used one is `conditional` ("holds given ...") and Minerva never checks the premise,
   and a result is shown only if it agrees with the original on explicit finite joint distributions with exact weights that
   are dependent unless independence was declared (`stats.pmf_check`). Only one independence group is modelled.
+- Gradients of matrix functions (`matrix/mexpr.py`, `matrix/gradient.py`; actions `gradient`, `jacobian`, `hessian` of
+  `matrix_calculus`, plain-text syntax only): built by differentials (never SymPy's matrix `diff`, which returns 0 for
+  `log det`), over the **reals**, and shown only if central differences of the original function at random matrices of the
+  declared sizes agree. A symmetric or positive definite variable gets the gradient *within the symmetric matrices*
+  (Frobenius), the candidate must itself be symmetric (a directional check cannot tell the unconstrained gradient from its
+  symmetric part), and `2G - diag(G)` is a separately verified, labelled alternative; the unconstrained gradient is never
+  returned for a symmetric variable. `inv`, `logdet` and the derivative of `det` of a matrix need it declared invertible
+  (`invertibility_not_declared`); declarations are checked against explicit entries; products are never reordered; a 1x1
+  product is a scalar factor and an ambiguous grouping is refused. `logdet` means log |det|. The symbolic leg is not run.
+  Matrix-valued functions have no gradient here (`non_scalar_gradient`).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

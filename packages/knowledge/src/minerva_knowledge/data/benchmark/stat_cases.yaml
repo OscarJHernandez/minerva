@@ -1029,7 +1029,6 @@
   request: {action: gradient, variable: X}
   expect:
     outputs: {result: "transpose(A)*transpose(B)"}
-  pending: true
 
 - id: matrix-gradient-trace-quadratic
   group: matrix
@@ -1042,7 +1041,6 @@
   request: {action: gradient, variable: X}
   expect:
     outputs: {result: "A*X + transpose(A)*X"}
-  pending: true
 
 - id: matrix-gradient-quadratic-form
   group: matrix
@@ -1055,7 +1053,6 @@
   request: {action: gradient, variable: x}
   expect:
     outputs: {result: "(A + transpose(A))*x"}
-  pending: true
 
 - id: matrix-gradient-trace-of-inverse
   group: matrix
@@ -1068,7 +1065,6 @@
   request: {action: gradient, variable: X, invertible: [X]}
   expect:
     outputs: {result: "-transpose(inv(X))*transpose(A)*transpose(inv(X))"}
-  pending: true
 
 - id: matrix-gradient-logdet
   group: matrix
@@ -1081,7 +1077,6 @@
   request: {action: gradient, variable: X, invertible: [X]}
   expect:
     outputs: {result: "transpose(inv(X))"}
-  pending: true
 
 - id: matrix-gradient-det
   group: matrix
@@ -1094,7 +1089,6 @@
   request: {action: gradient, variable: X, invertible: [X]}
   expect:
     outputs: {result: "det(X)*transpose(inv(X))"}
-  pending: true
 
 - id: matrix-gradient-logdet-gram
   group: matrix
@@ -1107,7 +1101,6 @@
   request: {action: gradient, variable: X}
   expect:
     outputs: {result: "2*X*inv(transpose(X)*X)"}
-  pending: true
 
 - id: matrix-gaussian-gradient-mean
   group: matrix
@@ -1120,7 +1113,6 @@
   request: {action: gradient, variable: mu}
   expect:
     outputs: {result: "inv(S)*(x - mu)"}
-  pending: true
 
 - id: matrix-gaussian-gradient-mean-general-covariance
   group: matrix
@@ -1133,7 +1125,6 @@
   request: {action: gradient, variable: mu, invertible: [S]}
   expect:
     outputs: {result: "1/2*(inv(S) + transpose(inv(S)))*(x - mu)"}
-  pending: true
 
 - id: matrix-gaussian-gradient-covariance-unconstrained
   group: matrix
@@ -1148,7 +1139,6 @@
     outputs:
       result: "-1/2*transpose(inv(S)) + 1/2*transpose(inv(S))*(x - mu)*transpose(x - mu)*transpose(inv(S))"
     labels: {constraint: none, convention: unconstrained}
-  pending: true
 
 - id: matrix-gaussian-gradient-covariance-symmetric
   group: matrix
@@ -1164,7 +1154,6 @@
       result: "-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S)"
       "alternative:entrywise": "2*(-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S)) - diagpart(-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S))"
     labels: {constraint: positive_definite, convention: symmetric_frobenius}
-  pending: true
 
 - id: matrix-gaussian-loglikelihood-scatter
   group: matrix
@@ -1177,7 +1166,6 @@
   request: {action: gradient, variable: S}
   expect:
     outputs: {result: "-n/2*inv(S) + 1/2*inv(S)*T*inv(S)"}
-  pending: true
 
 - id: matrix-hessian-quadratic-form
   group: matrix
@@ -1190,7 +1178,6 @@
   request: {action: hessian, variable: x}
   expect:
     outputs: {result: "A + transpose(A)"}
-  pending: true
 
 - id: matrix-hessian-gaussian-mean
   group: matrix
@@ -1203,7 +1190,6 @@
   request: {action: hessian, variable: mu}
   expect:
     outputs: {result: "-inv(S)"}
-  pending: true
 
 - id: matrix-jacobian-linear-map
   group: matrix
@@ -1216,7 +1202,6 @@
   request: {action: jacobian, variable: x}
   expect:
     outputs: {result: "A"}
-  pending: true
 
 - id: matrix-inverse-not-declared-invertible
   group: matrix
@@ -1228,7 +1213,6 @@
   vars: {}
   request: {action: gradient, variable: X}
   expect: {status: conditions_not_satisfied, reason: invertibility_not_declared}
-  pending: true
 
 - id: matrix-determinant-not-declared-invertible
   group: matrix
@@ -1240,7 +1224,6 @@
   vars: {}
   request: {action: gradient, variable: X}
   expect: {status: conditions_not_satisfied, reason: invertibility_not_declared}
-  pending: true
 
 - id: matrix-valued-function-has-no-gradient
   group: matrix
@@ -1252,7 +1235,6 @@
   vars: {}
   request: {action: gradient, variable: X}
   expect: {status: unsupported, reason: non_scalar_gradient}
-  pending: true
 
 - id: matrix-shape-mismatch
   group: matrix
@@ -1264,7 +1246,6 @@
   vars: {}
   request: {action: gradient, variable: X}
   expect: {status: parse_error}
-  pending: true
 
 - id: matrix-trace-of-non-square
   group: matrix
@@ -1276,7 +1257,6 @@
   vars: {}
   request: {action: gradient, variable: A}
   expect: {status: parse_error}
-  pending: true
 
 - id: matrix-singular-covariance-declared-invertible
   group: matrix
@@ -1288,7 +1268,6 @@
   vars: {}
   request: {action: gradient, variable: mu, invertible: [S]}
   expect: {status: parse_error}
-  pending: true
 
 - id: matrix-nonsymmetric-covariance-declared-symmetric
   group: matrix
@@ -1300,7 +1279,6 @@
   vars: {}
   request: {action: gradient, variable: mu}
   expect: {status: parse_error}
-  pending: true
 
 - id: matrix-check-missing-transposed-term
   group: matrix
@@ -1313,7 +1291,6 @@
   request: {action: gradient, variable: X}
   candidate: {result: "A*X"}
   control: {result: "A*X + transpose(A)*X"}
-  pending: true
 
 - id: matrix-check-inverse-for-inverse-transpose
   group: matrix
@@ -1326,7 +1303,6 @@
   request: {action: gradient, variable: X, invertible: [X]}
   candidate: {result: "inv(X)"}
   control: {result: "transpose(inv(X))"}
-  pending: true
 
 - id: matrix-check-quadratic-form-half-gradient
   group: matrix
@@ -1339,7 +1315,6 @@
   request: {action: gradient, variable: x}
   candidate: {result: "A*x"}
   control: {result: "(A + transpose(A))*x"}
-  pending: true
 
 - id: matrix-check-unconstrained-gradient-for-symmetric-variable
   group: matrix
@@ -1352,7 +1327,6 @@
   request: {action: gradient, variable: S}
   candidate: {result: "-inv(S)*transpose(A)*inv(S)"}
   control: {result: "-1/2*inv(S)*(A + transpose(A))*inv(S)"}
-  pending: true
 
 - id: matrix-check-reordered-product
   group: matrix
@@ -1365,7 +1339,6 @@
   request: {action: gradient, variable: X}
   candidate: {result: "transpose(B)*transpose(A)"}
   control: {result: "transpose(A)*transpose(B)"}
-  pending: true
 
 - id: matrix-check-gradient-perturbed-by-1e-6
   group: matrix
@@ -1378,4 +1351,3 @@
   request: {action: gradient, variable: mu}
   candidate: {result: "1000001/1000000*inv(S)*(x - mu)"}
   control: {result: "inv(S)*(x - mu)"}
-  pending: true
