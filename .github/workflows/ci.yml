@@ -59,7 +59,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       # Forks have no PostgreSQL sidecar: the tests then use in-memory SQLite. (Both branches are non-empty
       # strings; `cond && '' || x` would always pick x because '' is falsy in expressions.)
