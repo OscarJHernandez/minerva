@@ -307,6 +307,7 @@ async def _run_turn(
         request_id=info.request_id,
         api_version=info.api_version,
         mode=info.mode,
+        provider=getattr(llm, "provider", ""),
         model=llm.name,
         prompt_sha=prompt_sha(),
         max_steps=limits.max_steps,
@@ -318,6 +319,7 @@ async def _run_turn(
     seen: dict[str, str] = {}
     stop = StopReason.COMPLETED
     failure: str | None = None
+    failure_kind: str | None = None  # LLMError.kind, or `internal`
     failure_category: ErrorCategory | None = None
     tool_calls_made = repeats = unproductive = malformed_streak = 0
     host_retried = False
@@ -359,8 +361,9 @@ async def _run_turn(
                     tool_calls=len(result.calls),
                     first_token_ms=result.first_token_ms,
                     finish_reason=_finish(result),
-                    tokens_in=usage.tokens_in if usage else None,
-                    tokens_out=usage.tokens_out if usage else None,
+                    prompt_tokens=usage.prompt_tokens if usage else None,
+                    completion_tokens=usage.completion_tokens if usage else None,
+                    cost_usd=usage.cost_usd if usage else None,
                 )
             )
             tracer.emit(
@@ -372,8 +375,8 @@ async def _run_turn(
                 tool_calls=len(result.calls),
                 proposed_tool=_sanitized(result.calls[0].name) if result.calls else None,
                 text_chars=len(result.text),
-                tokens_in=usage.tokens_in if usage else None,
-                tokens_out=usage.tokens_out if usage else None,
+                tokens_in=usage.prompt_tokens if usage else None,
+                tokens_out=usage.completion_tokens if usage else None,
             )
             text, calls = result.text, result.calls
 
@@ -397,6 +400,7 @@ async def _run_turn(
                     continue
                 stop = StopReason.MODEL_ERROR
                 failure = str(result.error)
+                failure_kind = result.error.kind
                 failure_category = ErrorCategory.MODEL_HOST
                 if text:
                     full_text.append(text)
@@ -434,7 +438,7 @@ async def _run_turn(
                     "role": "assistant",
                     "content": text,
                     "tool_calls": [
-                        {"function": {"name": c.name, "arguments": c.arguments}} for c in calls
+                        {"id": c.id, "name": c.name, "arguments": c.arguments} for c in calls
                     ],
                 }
             )
@@ -449,6 +453,7 @@ async def _run_turn(
                     trace.append(
                         TraceStep(
                             id=call_id,
+                            call_id=call.id,
                             name=call.name or "unknown",
                             arguments=call.arguments,
                             for_model=CAP_MESSAGE,
@@ -465,7 +470,12 @@ async def _run_turn(
                         error_category=ErrorCategory.LIMIT_REACHED,
                     )
                     messages.append(
-                        {"role": "tool", "tool_name": call.name, "content": CAP_MESSAGE}
+                        {
+                            "role": "tool",
+                            "tool_call_id": call.id,
+                            "name": call.name,
+                            "content": CAP_MESSAGE,
+                        }
                     )
                     continue
                 tool_calls_made += 1
@@ -497,6 +507,7 @@ async def _run_turn(
                     trace.append(
                         TraceStep(
                             id=call_id,
+                            call_id=call.id,
                             name=call.name,
                             arguments=arguments,
                             for_model=REPEAT_MESSAGE,
@@ -523,7 +534,12 @@ async def _run_turn(
                         error_category=ErrorCategory.REPEATED_CALL,
                     )
                     messages.append(
-                        {"role": "tool", "tool_name": call.name, "content": REPEAT_MESSAGE}
+                        {
+                            "role": "tool",
+                            "tool_call_id": call.id,
+                            "name": call.name,
+                            "content": REPEAT_MESSAGE,
+                        }
                     )
                     continue
 
@@ -586,6 +602,7 @@ async def _run_turn(
                 trace.append(
                     TraceStep(
                         id=call_id,
+                        call_id=call.id,
                         name=call.name,
                         arguments=arguments,
                         for_model=output.for_model,
@@ -635,7 +652,9 @@ async def _run_turn(
                 unproductive = 0 if accepted else unproductive + 1
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
                 content = output.for_model + (f"\n{store.note_for(result_id)}" if result_id else "")
-                messages.append({"role": "tool", "tool_name": call.name, "content": content})
+                messages.append(
+                    {"role": "tool", "tool_call_id": call.id, "name": call.name, "content": content}
+                )
 
             if all_malformed:
                 malformed_streak += 1
@@ -682,8 +701,9 @@ async def _run_turn(
                     finish_reason=_finish(summary)
                     if summary.error or summary.timed_out
                     else "stop",
-                    tokens_in=summary.usage.tokens_in if summary.usage else None,
-                    tokens_out=summary.usage.tokens_out if summary.usage else None,
+                    prompt_tokens=summary.usage.prompt_tokens if summary.usage else None,
+                    completion_tokens=summary.usage.completion_tokens if summary.usage else None,
+                    cost_usd=summary.usage.cost_usd if summary.usage else None,
                 )
             )
             tracer.emit(
@@ -693,8 +713,8 @@ async def _run_turn(
                 first_token_ms=summary.first_token_ms,
                 finish_reason=_finish(summary),
                 text_chars=len(summary.text),
-                tokens_in=summary.usage.tokens_in if summary.usage else None,
-                tokens_out=summary.usage.tokens_out if summary.usage else None,
+                tokens_in=summary.usage.prompt_tokens if summary.usage else None,
+                tokens_out=summary.usage.completion_tokens if summary.usage else None,
             )
             if summary.text and not looks_like_tool_call(summary.text):
                 full_text.append(summary.text)
@@ -702,6 +722,7 @@ async def _run_turn(
     except Exception:
         stop = StopReason.INTERNAL_ERROR
         failure = "The assistant hit an internal error."
+        failure_kind = "internal"
         failure_category = ErrorCategory.TOOL_FAILURE
 
     # ---- the end of the turn: one place builds the message, whatever way the turn ended ----------
@@ -745,9 +766,10 @@ async def _run_turn(
         )
     debug.duration_ms = _ms(started)
     debug.error = failure
+    debug.error_kind = failure_kind
     debug.stop_reason = stop.value
-    in_tokens = [c.tokens_in for c in debug.llm_calls if c.tokens_in is not None]
-    out_tokens = [c.tokens_out for c in debug.llm_calls if c.tokens_out is not None]
+    in_tokens = [c.prompt_tokens for c in debug.llm_calls if c.prompt_tokens is not None]
+    out_tokens = [c.completion_tokens for c in debug.llm_calls if c.completion_tokens is not None]
     tracer.emit(
         AgentStopped,
         reason=stop,

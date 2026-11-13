@@ -21,8 +21,50 @@ class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
             return r"\mathrm{e}"
         return str(super()._print(expr, **kwargs))
 
+    # Applied undefined functions print as f(r), their derivatives as f'(r), f''(r), f^{(n)}(r).
+    # The parser reads f(r) back when f is declared (geometry); other operations never produce them.
+    def _print_Function(self, expr: sp.Basic, exp: Any = None) -> str:
+        if not isinstance(type(expr), sp.core.function.UndefinedFunction):
+            return str(super()._print_Function(expr, exp=exp))
+        args = ", ".join(str(self._print(a)) for a in expr.args)
+        tex = rf"{self._print_Symbol(sp.Symbol(type(expr).__name__))}\left({args}\right)"
+        return str(self._do_exponent(tex, exp))
+
+    def _print_Derivative(self, expr: sp.Derivative) -> str:
+        function = expr.expr
+        if (
+            isinstance(function, sp.Basic)
+            and isinstance(type(function), sp.core.function.UndefinedFunction)
+            and len(function.args) == 1
+            and len(expr.variable_count) == 1
+            and expr.variable_count[0][0] == function.args[0]
+        ):
+            order = int(expr.variable_count[0][1])
+            name = str(self._print_Symbol(sp.Symbol(type(function).__name__)))
+            args = str(self._print(function.args[0]))
+            mark = "'" * order if order <= 3 else rf"^{{({order})}}"
+            return rf"{name}{mark}\left({args}\right)"
+        return str(super()._print_Derivative(expr))
+
     def _print_ExpBase(self, expr: sp.Basic, exp: Any = None) -> str:
         tex = rf"\mathrm{{e}}^{{{self._print(expr.args[0])}}}"
+        return str(self._do_exponent(tex, exp))
+
+    # Distributions print with the explicit names the parsers read back (\delta and \theta are
+    # ordinary symbols in Minerva's input, so the SymPy defaults would not survive a round trip).
+    def _print_DiracDelta(self, expr: sp.Basic, exp: Any = None) -> str:
+        if len(expr.args) > 1:  # derivative order: not supported as input, shown honestly
+            tex = rf"\operatorname{{DiracDelta}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+        else:
+            tex = rf"\operatorname{{DiracDelta}}\left({self._print(expr.args[0])}\right)"
+        return str(self._do_exponent(tex, exp))
+
+    def _print_Heaviside(self, expr: sp.Basic, exp: Any = None) -> str:
+        # SymPy stores the value at 0 (default 1/2) as a second argument; show it only if it differs.
+        if len(expr.args) > 1 and expr.args[1] != sp.S.Half:
+            tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+        else:
+            tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}\right)"
         return str(self._do_exponent(tex, exp))
 
 

@@ -76,6 +76,7 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
 
     tokens_in = [r.tokens_in for r in scored if r.tokens_in is not None]
     tokens_out = [r.tokens_out for r in scored if r.tokens_out is not None]
+    costs = [r.cost_usd for r in scored if r.cost_usd is not None]
     return {
         "runs": len(scored),
         "cases": len(by_case),
@@ -98,6 +99,12 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
         "latency_seconds": _dist([r.seconds for r in scored]),
         "llm_ms": _dist([r.llm_ms for r in scored if r.llm_calls]),
         "tool_ms": _dist([r.tool_ms for r in scored if r.calls]),
+        "tool_failures": sum(r.tool_failures for r in scored),
+        "unverified_results": sum(r.unverified_results for r in scored),
+        "cost_usd": sum(costs) if costs else None,
+        "first_token_ms": _dist([r.first_token_ms for r in scored if r.first_token_ms is not None]),
+        "rate_limited": sum(r.error_kind == "rate_limit" for r in scored),
+        "timeouts": sum(r.error_kind == "timeout" for r in scored),
         "tokens_in": sum(tokens_in) if tokens_in else None,
         "tokens_out": sum(tokens_out) if tokens_out else None,
         "per_category": per_category,
@@ -226,6 +233,8 @@ def render_markdown(doc: dict[str, Any]) -> str:
             "",
             f"Tokens in/out: {s['tokens_in'] if s['tokens_in'] is not None else 'not reported by the host'} / "
             f"{s['tokens_out'] if s['tokens_out'] is not None else 'not reported by the host'}.",
+            "",
+            _extras_line(s),
             "",
             "### Failures by class",
             "",
@@ -371,3 +380,15 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
             "model; use repeats before reading a change into them.",
         ]
     return "\n".join(lines) + "\n"
+
+
+def _extras_line(s: dict[str, Any]) -> str:
+    """Provider-facing numbers; read defensively so a summary saved by an older version still renders."""
+    first = (s.get("first_token_ms") or {}).get("median")
+    cost = s.get("cost_usd")
+    return (
+        f"First output after {_num(first, 0)} ms (median) · tool calls that errored: "
+        f"{s.get('tool_failures', 'n/a')} · tool results not verified: {s.get('unverified_results', 'n/a')} · "
+        f"provider rate limits / timeouts: {s.get('rate_limited', 'n/a')} / {s.get('timeouts', 'n/a')} · "
+        f"cost: {'n/a' if cost is None else f'{cost:.4f} USD'}."
+    )

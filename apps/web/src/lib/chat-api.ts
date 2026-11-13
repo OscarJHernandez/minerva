@@ -1,6 +1,9 @@
 import { ApiError, extractDetail } from "./api";
+import type { GeometryRequest } from "./types";
 import type {
   ChatStatus,
+  ConnectionResult,
+  ProviderChoice,
   ConversationSummary,
   ExtractedFormula,
   MotionRequest,
@@ -34,11 +37,23 @@ export const chatApi = {
       method: "POST",
       body: JSON.stringify(request),
     }),
+  /** Asks for more about the geometry on a card; its whole request is posted back unchanged. */
+  geometry: (id: string, request: GeometryRequest) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/geometry`, {
+      method: "POST",
+      body: JSON.stringify({ ...request, format: undefined }),
+    }),
   /** Solves again with the comparison numbers the user typed; the reply is the stored card message. */
   perturbationSolve: (id: string, request: PerturbationRequest) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/perturbation_solve`, {
       method: "POST",
       body: JSON.stringify(request),
+    }),
+  /** Checks a key and model without a paid completion. The key is sent once and not stored. */
+  testOpenRouter: (apiKey: string | undefined, model: string) =>
+    json<ConnectionResult>("/v1/chat/providers/openrouter/test", {
+      method: "POST",
+      body: JSON.stringify({ api_key: apiKey || undefined, model }),
     }),
   remove: (id: string) => json<void>(`/v1/chat/conversations/${id}`, { method: "DELETE" }),
 };
@@ -62,12 +77,13 @@ export async function sendMessage(
   content: string,
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
+  provider?: ProviderChoice,
 ): Promise<void> {
   const response = await fetch(`/api/v1/chat/conversations/${conversationId}/messages`, {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(provider ? { content, provider } : { content }),
     signal,
   });
   if (!response.ok || !response.body) {

@@ -8,6 +8,7 @@ import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
+import type { GeometryRequest } from "@/lib/types";
 import type {
   AssistantContent,
   Card,
@@ -20,7 +21,10 @@ import type {
   ToolRun,
 } from "@/lib/chat-types";
 import { CardView } from "./card-view";
+import { modelSettings, providerChoice } from "@/lib/model-settings";
 import { Composer } from "./composer";
+import { ModelPicker } from "./model-picker";
+import { ModelSettingsPanel } from "./model-settings-panel";
 import { CopyButton } from "./debug-panel";
 import { ConversationList } from "./conversation-list";
 import { MessageView } from "./message-view";
@@ -52,6 +56,8 @@ const TOOL_LABEL: Record<string, string> = {
   get_entry: "Reading a handbook entry",
   tensor_canonicalize: "Canonicalizing the tensor expression",
   matrix_calculus: "Running the matrix calculus and verifying the result",
+  geometry: "Computing the geometry and checking it independently",
+  distribution: "Applying delta and step identities and pairing with test functions",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
   integrate_motion: "Integrating the equations of motion and verifying the run",
@@ -78,6 +84,8 @@ export function ChatApp() {
   const [listOpen, setListOpen] = useState(false);
   const [debugOn, setDebugOn] = useDebugMode();
   const [lastError, setLastError] = useState<LastError | null>(null);
+  const [modelOpen, setModelOpen] = useState(false);
+  const cloudConfirmed = useRef<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -142,6 +150,19 @@ export function ChatApp() {
     }
   }
 
+  /** Moving a conversation that already has turns to the cloud needs one explicit yes. */
+  function confirmCloud(): boolean {
+    const choice = providerChoice(modelSettings.get());
+    if (choice?.kind !== "openrouter" || !activeId || messages.length === 0) return true;
+    if (cloudConfirmed.current.has(activeId)) return true;
+    const ok = window.confirm(
+      "Send this conversation to OpenRouter? Its earlier messages and Minerva's tool results " +
+        "will be transmitted to OpenRouter and the model's provider. Your local model keeps nothing of it.",
+    );
+    if (ok) cloudConfirmed.current.add(activeId);
+    return ok;
+  }
+
   async function send(text: string) {
     setError(null);
     setLastError(null);
@@ -200,6 +221,7 @@ export function ChatApp() {
           }
         },
         controller.signal,
+        providerChoice(modelSettings.get()),
       );
       await refreshList();
     } catch (e) {
@@ -243,6 +265,22 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** The geometry card's buttons: more quantities for the same metric, without the model. */
+  const runGeometry = useCallback(
+    async (request: GeometryRequest) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.geometry(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   const busy = pending !== null;
   const title = conversations.find((c) => c.id === activeId)?.title ?? "";
 
@@ -270,7 +308,9 @@ export function ChatApp() {
   }
 
   return (
-    <MotionRunnerProvider value={{ run: runMotion, perturb: runPerturbation }}>
+    <MotionRunnerProvider
+      value={{ run: runMotion, perturb: runPerturbation, geometry: runGeometry }}
+    >
       <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
         <aside className="hidden w-60 shrink-0 py-4 md:block">
           <ConversationList
@@ -344,6 +384,21 @@ export function ChatApp() {
             <Composer
               disabled={!status}
               imagesEnabled={status?.images === true}
+              beforeSend={confirmCloud}
+              toolbar={
+                status?.providers ? (
+                  <ModelPicker
+                    status={status}
+                    open={modelOpen}
+                    onToggle={() => setModelOpen((o) => !o)}
+                  />
+                ) : null
+              }
+              panel={
+                modelOpen && status ? (
+                  <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
+                ) : null
+              }
               busy={busy}
               onSend={send}
               onStop={() => abortRef.current?.abort()}

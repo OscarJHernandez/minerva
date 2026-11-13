@@ -1,0 +1,97 @@
+# Definitions behind Minerva's coordinate-based differential geometry. They are literature records
+# (`stated`): never applied, never machine-checked as entries. The engine holds the computation
+# (packages/engine/src/minerva_engine/geometry/) and verifies every result it returns itself, numerically,
+# against these relations: metric compatibility, curvature symmetries, Bianchi identities, geodesics.
+- id: geometry.christoffel
+  title: Christoffel symbols of the Levi-Civita connection
+  kind: equation
+  chapter: math.differential_geometry
+  section: connection
+  verification: stated
+  statement_latex: '\Gamma^{\rho}{}_{\mu\nu}=\tfrac12\,g^{\rho\sigma}\left(\partial_\mu g_{\sigma\nu}+\partial_\nu g_{\sigma\mu}-\partial_\sigma g_{\mu\nu}\right)'
+  validity: "A symmetric, non-degenerate metric g_{\\mu\\nu} that is differentiable in the coordinates. Nothing is assumed about its signature."
+  notes: "Minerva checks a result by metric compatibility and symmetry in the lower indices (numerically, with finite differences of the metric), which determine the connection uniquely."
+  reference: {source: "Standard differential geometry texts", locator: "Levi-Civita connection"}
+  keywords: [christoffel, levi-civita, connection, metric, coordinates]
+- id: geometry.compatibility
+  title: Metric compatibility and torsion-freeness
+  kind: theorem
+  chapter: math.differential_geometry
+  section: connection
+  verification: stated
+  statement_latex: '\nabla_\sigma g_{\mu\nu}=\partial_\sigma g_{\mu\nu}-\Gamma^{\lambda}{}_{\sigma\mu}g_{\lambda\nu}-\Gamma^{\lambda}{}_{\sigma\nu}g_{\mu\lambda}=0,\qquad \Gamma^{\rho}{}_{\mu\nu}=\Gamma^{\rho}{}_{\nu\mu}'
+  validity: "Exactly one connection has both properties (the fundamental theorem of Riemannian geometry), for any non-degenerate metric."
+  reference: {source: "Standard differential geometry texts", locator: "Fundamental theorem of Riemannian geometry"}
+  keywords: [metric compatibility, torsion, levi-civita, connection]
+- id: geometry.covariant_derivative
+  title: Covariant derivative of a vector and of a covector
+  kind: equation
+  chapter: math.differential_geometry
+  section: connection
+  verification: stated
+  statement_latex: '\nabla_\mu V^{\nu}=\partial_\mu V^{\nu}+\Gamma^{\nu}{}_{\mu\rho}V^{\rho},\qquad \nabla_\mu \omega_{\nu}=\partial_\mu \omega_{\nu}-\Gamma^{\rho}{}_{\mu\nu}\omega_{\rho}'
+  validity: "The derivative index is written first: (\\nabla T)[\\mu, ...] = \\nabla_\\mu T^{...}. Each upper index adds a term with +\\Gamma, each lower index a term with -\\Gamma."
+  reference: {source: "Standard differential geometry texts", locator: "Covariant derivative"}
+  keywords: [covariant derivative, vector, covector, tensor, connection]
+- id: geometry.riemann
+  title: Riemann curvature tensor (Minerva's convention)
+  kind: equation
+  chapter: math.differential_geometry
+  section: curvature
+  verification: stated
+  statement_latex: 'R^{\rho}{}_{\sigma\mu\nu}=\partial_\mu\Gamma^{\rho}{}_{\nu\sigma}-\partial_\nu\Gamma^{\rho}{}_{\mu\sigma}+\Gamma^{\rho}{}_{\mu\lambda}\Gamma^{\lambda}{}_{\nu\sigma}-\Gamma^{\rho}{}_{\nu\lambda}\Gamma^{\lambda}{}_{\mu\sigma}'
+  validity: "This sign and index order is fixed: a sphere of radius a has positive scalar curvature 2/a^2. Texts that define the Riemann tensor with the opposite sign or another index order give differently signed components."
+  notes: "Minerva checks a result against the same tensor rebuilt from finite differences of the Christoffel symbols, against the symmetries below, and against the second-derivative formula for R_{abcd}."
+  reference: {source: "Standard differential geometry texts", locator: "Riemann curvature tensor"}
+  keywords: [riemann, curvature, convention, sign, christoffel]
+- id: geometry.curvature_symmetries
+  title: Symmetries of the Riemann tensor and the second Bianchi identity
+  kind: theorem
+  chapter: math.differential_geometry
+  section: curvature
+  verification: stated
+  statement_latex: 'R_{\rho\sigma\mu\nu}=-R_{\sigma\rho\mu\nu}=-R_{\rho\sigma\nu\mu}=R_{\mu\nu\rho\sigma},\qquad R_{\rho[\sigma\mu\nu]}=0,\qquad \nabla_{[\lambda}R_{|\rho\sigma|\mu\nu]}=0'
+  validity: "The Levi-Civita connection of a smooth metric."
+  notes: "Minerva checks all of these numerically for every Riemann tensor it returns, using finite differences of the result for the covariant derivative."
+  reference: {source: "Standard differential geometry texts", locator: "Bianchi identities"}
+  keywords: [riemann, symmetries, bianchi, cyclic identity, curvature]
+- id: geometry.ricci_einstein
+  title: Ricci tensor, Ricci scalar and Einstein tensor
+  kind: equation
+  chapter: math.differential_geometry
+  section: curvature
+  verification: stated
+  statement_latex: 'R_{\mu\nu}=R^{\rho}{}_{\mu\rho\nu},\qquad R=g^{\mu\nu}R_{\mu\nu},\qquad G_{\mu\nu}=R_{\mu\nu}-\tfrac12 g_{\mu\nu}R'
+  validity: "Contraction of the first and third index of R^{\\rho}{}_{\\sigma\\mu\\nu}. In n dimensions g^{\\mu\\nu}G_{\\mu\\nu}=(1-n/2)R, and in two dimensions G vanishes identically."
+  reference: {source: "Standard differential geometry texts", locator: "Ricci curvature"}
+  keywords: [ricci, einstein tensor, scalar curvature, contraction]
+- id: geometry.contracted_bianchi
+  title: Contracted Bianchi identity
+  kind: theorem
+  chapter: math.differential_geometry
+  section: curvature
+  verification: stated
+  statement_latex: '\nabla^{\mu}G_{\mu\nu}=0'
+  validity: "The Levi-Civita connection. Minerva checks it numerically on every Einstein tensor it returns; a tensor with the wrong trace term fails it."
+  reference: {source: "Standard differential geometry texts", locator: "Contracted Bianchi identity"}
+  keywords: [bianchi, einstein tensor, divergence, conservation]
+- id: geometry.geodesic
+  title: Geodesic equation
+  kind: equation
+  chapter: math.differential_geometry
+  section: geodesics
+  verification: stated
+  statement_latex: '\frac{d^2x^{\mu}}{d\lambda^2}+\Gamma^{\mu}{}_{\alpha\beta}\frac{dx^{\alpha}}{d\lambda}\frac{dx^{\beta}}{d\lambda}=0'
+  validity: "An affine parameter. The same equations are the Euler-Lagrange equations of L = (1/2) g_{\\mu\\nu} \\dot x^\\mu \\dot x^\\nu, which is how Minerva checks them; g_{\\mu\\nu}\\dot x^\\mu\\dot x^\\nu is then constant along the curve."
+  reference: {source: "Standard differential geometry texts", locator: "Geodesics"}
+  keywords: [geodesic, euler-lagrange, affine parameter, christoffel]
+- id: geometry.sphere_curvature
+  title: Curvature of the round n-sphere
+  kind: equation
+  chapter: math.differential_geometry
+  section: curvature
+  verification: stated
+  statement_latex: 'R_{\mu\nu}=\frac{n-1}{a^2}\,g_{\mu\nu},\qquad R=\frac{n(n-1)}{a^2},\qquad R_{\rho\sigma\mu\nu}R^{\rho\sigma\mu\nu}=\frac{2n(n-1)}{a^4}'
+  validity: "The sphere of radius a in n dimensions, in Minerva's sign convention."
+  reference: {source: "Standard differential geometry texts", locator: "Constant curvature spaces"}
+  keywords: [sphere, constant curvature, ricci scalar, kretschmann]

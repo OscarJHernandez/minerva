@@ -22,6 +22,7 @@ from minerva_engine.verify import verify_equal
 from .models import (
     AntiderivativeCheck,
     DerivativeCheck,
+    DistributionCheck,
     Entry,
     EquationCheck,
     IntegralCheck,
@@ -175,6 +176,50 @@ def _check_constant(entry: Entry) -> CheckReport:
     return CheckReport(entry.id, "constant", True, "well-formed (value is stated, not derived)")
 
 
+def _check_distribution(entry: Entry, c: DistributionCheck) -> CheckReport:
+    """Run the instance through the distribution operation and compare with the stated result."""
+    from minerva_engine import DistributionInput, ExpressionInput, Limits
+    from minerva_engine.distributions.operation import distribution
+
+    assumptions = {**c.assumptions}
+    assumptions[c.variable] = sorted({*assumptions.get(c.variable, []), "real"})
+    result = distribution(
+        DistributionInput(
+            expression=ExpressionInput(input=c.input, format="text", assumptions=assumptions),
+            action=c.action,
+            variable=c.variable,
+            lower=c.lower,
+            upper=c.upper,
+            endpoint=c.endpoint,
+        ),
+        Limits(timeout_seconds=60),
+    )
+    if result.status.value != "ok" or result.result_text is None:
+        return CheckReport(
+            entry.id, "distributional", False, f"{result.status.value}: {result.message}"
+        )
+    verification = result.verification
+    if verification is None or not (verification.passed and verification.conditions_established):
+        return CheckReport(entry.id, "distributional", False, "pairing or conditions failed")
+    try:
+        got = parse_text(result.result_text, assumptions)
+        want = parse_text(c.expected, assumptions)
+    except ParseError as exc:
+        return CheckReport(entry.id, "distributional", False, f"unreadable result: {exc}")
+    # Terms are compared as expressions: DiracDelta/Heaviside are inert symbols to simplify.
+    if sp.simplify(sp.expand(got - want)) != 0:
+        return CheckReport(
+            entry.id, "distributional", False, f"result {result.result_text} != {c.expected}"
+        )
+    return CheckReport(
+        entry.id,
+        "distributional",
+        True,
+        f"{verification.pairings_agreed}/{verification.pairings_checked} test-function pairings "
+        "agree; conditions established exactly",
+    )
+
+
 def run_check(entry: Entry) -> CheckReport:
     """Run the checker matching the entry's content; `stated` entries report as such."""
     if entry.verification == "stated":
@@ -200,4 +245,6 @@ def run_check(entry: Entry) -> CheckReport:
         return _check_tensor(entry, c)
     if isinstance(c, EquationCheck):
         return _check_equation(entry, c)
+    if isinstance(c, DistributionCheck):
+        return _check_distribution(entry, c)
     return CheckReport(entry.id, "none", False, "entry has nothing to verify")

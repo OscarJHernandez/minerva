@@ -660,3 +660,133 @@ def test_cli_rejects_bad_selections_and_missing_host(capsys: pytest.CaptureFixtu
 def test_the_script_is_a_thin_wrapper() -> None:
     text = (Path(__file__).resolve().parents[3] / "scripts" / "eval_models.py").read_text()
     assert "minerva_api.agent.evaluation.cli" in text and len(text.splitlines()) < 30
+
+
+# -------------------------------------------------------------------- providers and provider metrics
+def _args(**over: Any) -> Any:
+    import argparse
+
+    base: dict[str, Any] = {
+        "base_url": "http://ollama.test:11434",
+        "timeout": 5.0,
+        "think": False,
+        "strip_thinking": False,
+        "temperature": 0.2,
+        "seed": 7,
+    }
+    return argparse.Namespace(**{**base, **over})
+
+
+def test_a_bare_model_name_is_an_ollama_model_and_each_repeat_has_its_own_seed() -> None:
+    provider, model, client = cli.make_client("qwen3.5:35b", _args())
+    assert (provider, model) == ("ollama", "qwen3.5:35b") and client.seed == 7  # type: ignore[attr-defined]
+    assert cli.make_client("qwen3.5:35b", _args(), repeat=2)[2].seed == 9  # type: ignore[attr-defined]
+    assert cli.make_client("ollama:gemma4:26b", _args())[:2] == ("ollama", "gemma4:26b")
+    assert cli.model_label("ollama", "gemma4:26b") == "gemma4:26b"  # reports keep the bare name
+    assert cli.model_label("openrouter", "openai/gpt-4.1-mini") == "openrouter:openai/gpt-4.1-mini"
+
+
+def test_an_ollama_model_needs_a_host_and_an_openrouter_model_needs_a_key_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(SystemExit, match="--base-url"):
+        cli.make_client("qwen3.5:35b", _args(base_url=""))
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(SystemExit, match="OPENROUTER_API_KEY"):
+        cli.make_client("openrouter:openai/gpt-4.1-mini", _args(base_url=""))
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-key-0000")
+    provider, model, client = cli.make_client("openrouter:openai/gpt-4.1-mini", _args(base_url=""))
+    assert (provider, model, client.name) == (
+        "openrouter",
+        "openai/gpt-4.1-mini",
+        "openai/gpt-4.1-mini",
+    )
+
+
+def test_the_cli_accepts_openrouter_models_without_a_host(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(SystemExit):  # stops at the missing key, not at the missing host
+        cli.main(["--models", "openrouter:openai/gpt-4.1-mini", "--cases", "chitchat"])
+    err = capsys.readouterr().err
+    assert "--base-url" not in err
+    with pytest.raises(SystemExit):
+        cli.main(["--models", "qwen3.5:35b", "--cases", "chitchat"])
+    assert "--base-url" in capsys.readouterr().err
+
+
+def test_provider_metrics_are_scored_and_summarised(ctx: ToolContext) -> None:
+    def calls(*calls: dict[str, Any]) -> Observation:
+        return obs_with(
+            [],
+            trace=[
+                {"id": "a", "name": "simplify", "status": s}
+                for s in ("ok", "error", "unchanged", "skipped")
+            ],
+        )
+
+    observation = calls()
+    observation.final["debug"]["llm_calls"] = [  # type: ignore[index]
+        {
+            "ms": 9,
+            "text_chars": 1,
+            "tool_calls": 0,
+            "first_token_ms": 120,
+            "cost_usd": 0.002,
+            "prompt_tokens": 50,
+            "completion_tokens": 7,
+        },
+        {
+            "ms": 5,
+            "text_chars": 1,
+            "tool_calls": 0,
+            "first_token_ms": 80,
+            "cost_usd": 0.001,
+            "prompt_tokens": 60,
+            "completion_tokens": 3,
+        },
+    ]
+    observation.final["debug"]["error_kind"] = "rate_limit"  # type: ignore[index]
+    r = score_case(BY_ID["chitchat"], observation)
+    assert (r.first_token_ms, r.tokens_in, r.tokens_out) == (120, 110, 10)
+    assert r.cost_usd == pytest.approx(0.003) and r.error_kind == "rate_limit"
+    assert r.tool_failures == 1 and r.unverified_results == 1  # `skipped` is neither
+    s = summarise([r, result("b", cost_usd=None)])
+    assert s["cost_usd"] == pytest.approx(0.003) and s["rate_limited"] == 1 and s["timeouts"] == 0
+    assert s["tool_failures"] == 1 and s["first_token_ms"]["median"] == 120
+    doc = build_document(META, {"m": [r]})
+    assert "provider rate limits / timeouts: 1 / 0" in render_markdown(doc)
+    assert "cost: 0.0030 USD" in render_markdown(doc)
+
+
+def test_reports_saved_before_these_metrics_still_render() -> None:
+    doc = build_document(META, {"m": [result("a")]})
+    for key in (
+        "tool_failures",
+        "unverified_results",
+        "cost_usd",
+        "first_token_ms",
+        "rate_limited",
+        "timeouts",
+    ):
+        del doc["models"]["m"]["summary"][key]
+    text = render_markdown(doc)
+    assert "provider rate limits / timeouts: n/a / n/a" in text and "cost: n/a" in text
+    assert "Baseline against new" in compare(doc, doc)
+
+
+def test_the_geometry_and_distribution_cases_are_part_of_the_benchmark() -> None:
+    ported = {
+        "geometry-schwarzschild-ricci",
+        "geometry-does-not-invent-a-metric",
+        "geometry-follow-up-resends-the-same-metric",
+        "delta-integral-uses-the-tool",
+        "delta-on-a-limit-asks-for-a-convention",
+    }
+    assert ported <= set(BY_ID)
+    assert all(BY_ID[i].informational for i in ported)  # measured and reported, not scored
+    history = BY_ID["geometry-follow-up-resends-the-same-metric"].history
+    assert (
+        history[1]["tool_calls"][0]["id"] == history[2]["tool_call_id"]
+    )  # the neutral message shape

@@ -8,7 +8,9 @@ from typing import Any
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
+from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -105,6 +107,23 @@ class Engine:
         result.duration_ms = ms
         return result
 
+    def distribution(self, request: DistributionInput) -> DistributionResult:
+        """Simplify, integrate or differentiate an expression with Dirac deltas and step
+        functions; shown only if the exact conditions hold and a test-function pairing agrees."""
+        outcome, ms = self._run("distribution", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DistributionResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = DistributionResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
     def matrix_calculus(self, request: MatrixCalculusInput) -> MatrixCalculusResult:
         """Evaluate, simplify, differentiate or integrate an expression in declared, noncommuting
         matrices and their exponentials; the method is chosen from the structure and the result is
@@ -116,6 +135,23 @@ class Engine:
                 status=status, action=request.action, message=message, duration_ms=ms
             )
         result = MatrixCalculusResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def geometry(
+        self, request: GeometryInput, *, max_dimension: int = MAX_DIMENSION
+    ) -> GeometryResult:
+        """Metric, connection, curvature, geodesics and tensor operations in explicit coordinates.
+
+        Every quantity is shown only if its independent numerical check passed; conventions,
+        assumptions, domain restrictions and per-stage diagnostics are part of the result."""
+        outcome, ms = self._run(
+            "geometry", {"input": request.model_dump(), "max_dimension": max_dimension}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return GeometryResult(status=status, message=message, duration_ms=ms)
+        result = GeometryResult(**outcome.value)
         result.duration_ms = ms
         return result
 

@@ -64,6 +64,10 @@ The rule is simple: **the server log and the events hold no content.**
 - Nothing is sent to a third-party logging or telemetry service: events go to standard output through
   structlog only, and the API has no telemetry dependency (a test checks this). If you ship stdout to a
   log service, what it receives has no mathematics in it.
+- A cloud model provider (OpenRouter, only when the user or operator chooses it, with consent; see
+  [openrouter-setup.md](openrouter-setup.md)) receives the conversation, because it *is* the model host. That is
+  not logging: trace events, timings, error categories and the debug record are never sent to any provider, and
+  the benchmark's report never contains a key or host.
 - Detailed content (the arguments the model sent and what the tool returned) lives **only in the stored
   assistant message of the conversation it belongs to**. It follows the conversation: private to the
   account (another account gets 404), deleted when the conversation is deleted, and covered by any
@@ -142,6 +146,13 @@ uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b \
     --repeat 3 --seed 7 --label baseline --json-out baseline.json --out baseline.md
 uv run python scripts/eval_models.py --compare-only baseline.json new.json
 ```
+
+Models can name their provider: a bare name or `ollama:name` is an Ollama model; `openrouter:vendor/model`
+runs through OpenRouter, reading `OPENROUTER_API_KEY` from the environment only (never an argument; it costs
+real money and needs no `--base-url`). Reports also record first-output time, tokens and cost when the provider
+reports them, tool failures, results that were not verified, and rate-limit and timeout counts. The first
+measurements, taken before and after the reliability changes, are in
+[model-evaluation.md](model-evaluation.md).
 
 The host comes from the command line or `MINERVA_EVAL_BASE_URL`, and is never written to a report. Each repeat
 uses `seed + repeat` (when the host honours seeds). A report records the code revision, prompt fingerprint,

@@ -17,6 +17,7 @@ class ReplayLLM:
     """Replays prepared replies, one list of chunks per model call, and records what it was sent."""
 
     name = "replay"
+    provider = "replay"
 
     def __init__(self, replies: list[list[Chunk]] | None = None, repeat_last: bool = False) -> None:
         self.replies = replies or []

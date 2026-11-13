@@ -70,6 +70,13 @@ class CaseResult(BaseModel):
     llm_calls: int = 0
     tokens_in: int | None = None
     tokens_out: int | None = None
+    first_token_ms: int | None = None  # of the first model call
+    cost_usd: float | None = None  # as the provider reported it
+    error_kind: str | None = (
+        None  # auth | credits | rate_limit | timeout | ... when the model host failed
+    )
+    tool_failures: int = 0  # tools that answered with an error
+    unverified_results: int = 0  # tool results whose status was not `ok` (refused or not verified)
     stop_reason: str | None = None
     reply: str = ""
 
@@ -207,13 +214,30 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
     result.llm_ms = sum(int(c.get("ms", 0)) for c in debug.get("llm_calls") or [])
     result.tool_ms = sum(int(s.get("duration_ms") or 0) for s in trace)
     ins = [
-        c.get("tokens_in") for c in debug.get("llm_calls") or [] if c.get("tokens_in") is not None
+        c.get("prompt_tokens")
+        for c in debug.get("llm_calls") or []
+        if c.get("prompt_tokens") is not None
     ]
     outs = [
-        c.get("tokens_out") for c in debug.get("llm_calls") or [] if c.get("tokens_out") is not None
+        c.get("completion_tokens")
+        for c in debug.get("llm_calls") or []
+        if c.get("completion_tokens") is not None
     ]
     result.tokens_in = sum(ins) if ins else None
     result.tokens_out = sum(outs) if outs else None
+    firsts = [
+        c["first_token_ms"]
+        for c in debug.get("llm_calls") or []
+        if c.get("first_token_ms") is not None
+    ]
+    result.first_token_ms = firsts[0] if firsts else None
+    costs = [c["cost_usd"] for c in debug.get("llm_calls") or [] if c.get("cost_usd") is not None]
+    result.cost_usd = sum(costs) if costs else None
+    result.error_kind = debug.get("error_kind")
+    result.tool_failures = sum(1 for s in trace if s.get("status") == "error")
+    result.unverified_results = sum(
+        1 for s in trace if s.get("status") not in ("ok", "error", "skipped", None)
+    )
 
     flags = {
         "no_reply": False,

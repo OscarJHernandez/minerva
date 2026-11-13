@@ -137,7 +137,7 @@ def test_token_usage_and_finish_reason_come_from_the_last_line() -> None:
     chunks = asyncio.run(collect(client_for(body)))
     assert "".join(c.text for c in chunks) == "Hello"
     usage = chunks[-1].usage
-    assert usage is not None and (usage.tokens_in, usage.tokens_out) == (120, 7)
+    assert usage is not None and (usage.prompt_tokens, usage.completion_tokens) == (120, 7)
     assert usage.finish_reason == "stop"
     assert all(c.usage is None for c in chunks[:-1])
 
@@ -150,7 +150,7 @@ def test_usage_arrives_on_its_own_chunk_when_the_last_line_has_no_content() -> N
     chunks = asyncio.run(collect(client_for(body)))
     assert chunks[-1].text == "" and chunks[-1].usage is not None
     assert chunks[-1].usage.finish_reason == "length"
-    assert (chunks[-1].usage.tokens_in, chunks[-1].usage.tokens_out) == (None, 3)
+    assert (chunks[-1].usage.prompt_tokens, chunks[-1].usage.completion_tokens) == (None, 3)
 
 
 def test_usage_is_absent_when_the_host_reports_none() -> None:
@@ -164,7 +164,7 @@ def test_a_non_integer_count_is_not_trusted() -> None:
         {"message": {"content": "ok"}, "done": True, "eval_count": "many", "done_reason": "weird"}
     )
     usage = asyncio.run(collect(client_for(body)))[-1].usage
-    assert usage is not None and usage.tokens_out is None and usage.finish_reason == "other"
+    assert usage is not None and usage.completion_tokens is None and usage.finish_reason == "other"
 
 
 def test_unusable_tool_calls_are_marked_not_guessed() -> None:

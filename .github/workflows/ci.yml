@@ -164,7 +164,33 @@ jobs:
             --set api.llm.mode=scripted > /dev/null 2>&1; then
             echo "::error::scripted mode must be refused in the chart"; exit 1
           fi
-      - run: bash -n scripts/build-image.sh
+      - name: OpenRouter settings are rendered, reference a Secret and never carry a key value
+        run: |
+          D=sha256:$(printf 'a%.0s' {1..64})
+          SET=(--set api.image.digest=$D --set web.image.digest=$D --set site.image.digest=$D)
+          T=(helm template minerva deploy/helm/minerva -f deploy/helm/minerva/values-production.yaml "${SET[@]}")
+          OUT=$("${T[@]}" --set api.llm.mode=ollama --set api.llm.baseUrl=http://ollama.example:11440 \
+            --set api.llm.model=minerva --set api.llm.openrouter.byok=true \
+            --set api.llm.openrouter.existingSecret=minerva-openrouter --set api.llm.openrouter.keyUsers=owner@example.org)
+          echo "$OUT" | grep -q 'MINERVA_LLM_MODE, value: "ollama"' || { echo "::error::Ollama default lost"; exit 1; }
+          echo "$OUT" | grep -q 'MINERVA_OPENROUTER_BYOK, value: "true"' || { echo "::error::BYOK not rendered"; exit 1; }
+          echo "$OUT" | grep -q 'secretKeyRef: { name: "minerva-openrouter", key: "api-key" }' || { echo "::error::key must come from the Secret"; exit 1; }
+          # Without openrouter settings there is no key reference at all (existing installs are unchanged).
+          if "${T[@]}" | grep -q MINERVA_OPENROUTER_API_KEY; then
+            echo "::error::an API key reference was rendered without existingSecret"; exit 1
+          fi
+          if "${T[@]}" --set api.llm.mode=openrouter > /dev/null 2>&1; then
+            echo "::error::openrouter mode without a model must be refused"; exit 1
+          fi
+          if "${T[@]}" --set api.llm.mode=openrouter --set api.llm.openrouter.model=a/b > /dev/null 2>&1; then
+            echo "::error::openrouter mode without byok or a Secret must be refused"; exit 1
+          fi
+          if "${T[@]}" --set api.llm.openrouter.apiKey=sk-or-x > /dev/null 2>&1; then
+            echo "::error::a literal API key in values must be refused"; exit 1
+          fi
+      - run: |
+          bash -n scripts/build-image.sh
+          bash -n scripts/deploy-preflight.sh
 
   images:
     name: Build images (not pushed)

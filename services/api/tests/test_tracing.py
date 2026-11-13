@@ -438,7 +438,7 @@ def test_a_failed_turn_is_stored_with_its_trace(chat: tuple[TestClient, str]) ->
     client, cid = chat
     llm = ReplayLLM([call("simplify", SIMPLIFY)])
     llm.fail_on = {1: LLMError("The model host is not reachable."), 2: LLMError("again")}
-    client.app.state.llm = llm  # type: ignore[attr-defined]
+    client.app.state.local_llm = llm  # type: ignore[attr-defined]
     events = sse(client, cid, "simplify something")
     kinds = [e for e, _ in events]
     assert kinds[-3:] == ["error", "message", "done"]
@@ -456,7 +456,7 @@ def test_failed_turns_are_logged_as_errors(capsys: pytest.CaptureFixture[str]) -
         cid = client.post("/v1/chat/conversations", json={}).json()["id"]
         llm = ReplayLLM()
         llm.error = LLMError("The model host is not reachable.")
-        client.app.state.llm = llm  # type: ignore[attr-defined]
+        client.app.state.local_llm = llm  # type: ignore[attr-defined]
         capsys.readouterr()
         sse(client, cid, "hello")
     turn = next(r for r in json_lines(capsys.readouterr().out) if r["event"] == "chat_turn")
@@ -467,9 +467,9 @@ def test_verified_marks_and_references_carry_into_the_next_turn(
     chat: tuple[TestClient, str],
 ) -> None:
     client, cid = chat
-    client.app.state.llm = ReplayLLM([call("simplify", SIMPLIFY), say("ok")])  # type: ignore[attr-defined]
+    client.app.state.local_llm = ReplayLLM([call("simplify", SIMPLIFY), say("ok")])  # type: ignore[attr-defined]
     sse(client, cid, "first")
-    client.app.state.llm = ReplayLLM(  # type: ignore[attr-defined]
+    client.app.state.local_llm = ReplayLLM(  # type: ignore[attr-defined]
         [
             call("differentiate", {"latex": "@r1", "variables": [{"name": "x"}]}),
             say("Before: $x + 1$."),

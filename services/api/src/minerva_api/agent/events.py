@@ -38,6 +38,8 @@ class Card(BaseModel):
         "series",
         "integrate",
         "matrix",
+        "geometry",
+        "distribution",
         "identities",
         "entries",
         "entry",
@@ -108,6 +110,7 @@ class TraceStep(BaseModel):
     for_model: str
     # Debugging aids, absent on messages stored before they existed.
     duration_ms: int | None = None
+    call_id: str | None = None  # the provider's tool-call id, replayed when history is rebuilt
     status: str | None = None  # the tool's own status (`ok`, `parse_error`, ...) or `error`
     evidence: Evidence | None = None
     arguments_valid: bool | None = None
@@ -141,8 +144,9 @@ class LLMCallDebug(BaseModel):
     tool_calls: int
     first_token_ms: int | None = None
     finish_reason: str | None = None  # stop | length | tool_calls | other | error | timeout
-    tokens_in: int | None = None  # as reported by the model host; absent when it reports none
-    tokens_out: int | None = None
+    prompt_tokens: int | None = None  # as reported by the provider, when it reports them
+    completion_tokens: int | None = None
+    cost_usd: float | None = None
 
 
 class ClaimDebug(BaseModel):
@@ -161,7 +165,9 @@ class TurnDebug(BaseModel):
     request_id: str = ""
     api_version: str = ""
     mode: str = ""
+    provider: str = ""  # ollama | openrouter | scripted (never a key or host)
     model: str = ""
+    error_kind: str | None = None
     prompt_sha: str = ""  # system prompt + tool schemas; changes when either is edited
     max_steps: int = 0
     max_seconds: float = 0

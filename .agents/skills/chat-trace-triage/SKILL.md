@@ -49,7 +49,7 @@ Read in this order and stop at the first that applies.
 | A valid definition, coordinate change or equation of motion marked `contradicted` | Claim checker | `claim check ... [identity]` means it was tested as an identity; `[relation]` should never be `fails` without `given` definitions. `engine/claims.py`, with a regression test in `test_claims.py` |
 | Model prose contradicts the card (a different result, a "verified" claim with no tool) | Model honesty | prompt wording; `scripts/eval_models.py` case |
 | Card data is right, the screen is wrong (clipped, unrendered, overflowing) | UI | `apps/web`, `ui-check` skill |
-| Stop reason `repeated_calls`, `repeated` steps, many calls with status `unchanged`/`unsupported` | Model loop | the model could not make progress or ignored a result: tool descriptions and prompt rules 15-16; consider whether the tool should say more |
+| Stop reason `repeated_calls`, `repeated` steps, many calls with status `unchanged`/`unsupported` | Model loop | the model could not make progress or ignored a result: tool descriptions and prompt rules 17-18; consider whether the tool should say more |
 | Category `malformed_model_output`, a tool call written as prose, `arguments_not_json` | Model output format | the model or its template does not make real tool calls; try another model |
 | `assumptions_dropped` on a call, or an assumption the user never stated in `arguments` | Missing or invented assumptions | prompt wording; the model must carry the user's assumptions and never add its own |
 | Formula marked `quoted` | Expected | the user's input, a stated handbook entry or an identity that was not applied; not a verification failure |

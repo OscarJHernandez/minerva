@@ -25,7 +25,7 @@ Status: **●** has entries, **○** planned.
 | ○ | Differential equations | Standard forms and solution families |
 | ○ | Probability and statistics | Distributions, moments, generating functions |
 | ○ | Group theory | Lie algebra relations, representation tables |
-| ○ | Differential geometry | Connections, curvature identities, coordinate systems |
+| ● | Differential geometry | Connections, curvature and geodesics in coordinates (stated definitions the geometry tool checks against) |
 | ● | Tensor calculus | Index symmetries and contractions; Riemann symmetries; Bianchi (stated) |
 
 ## Physics
@@ -43,5 +43,6 @@ Status: **●** has entries, **○** planned.
 ## Entry quality levels
 
 `symbolic` (SymPy proves it) > `numeric` (sampled) > `structural` (tensor canonicaliser) >
-`dimensional` (units only) > `stated` (literature record, never applied). Promotion towards stronger
+`distributional` (equality as distributions: exact conditions plus a test-function pairing, since a
+pointwise sample cannot see a Dirac delta) > `dimensional` (units only) > `stated` (literature record, never applied). Promotion towards stronger
 levels is a goal as backends improve.

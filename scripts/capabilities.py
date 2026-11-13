@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from minerva_engine import Engine
+from minerva_engine import DistributionInput, Engine, GeometryInput, Limits
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
@@ -455,11 +455,119 @@ def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+_GEOMETRY_ENGINE: Engine | None = None
+
+
+def run_geometry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    # Schwarzschild takes a few seconds: use a roomy budget so the generated page never depends on speed.
+    global _GEOMETRY_ENGINE
+    if _GEOMETRY_ENGINE is None:
+        _GEOMETRY_ENGINE = Engine(Limits(timeout_seconds=120, max_concurrency=1))
+    request = GeometryInput(
+        coordinates=spec["coordinates"],
+        metric=spec["metric"],
+        format=spec.get("format", "latex"),
+        assumptions=spec.get("assumptions") or {},
+        functions=spec.get("functions") or [],
+        quantities=spec["quantities"],
+        tensor=spec.get("tensor"),
+        tensor_index=spec.get("tensor_index", 0),
+    )
+    r = _GEOMETRY_ENGINE.geometry(request)
+    inputs = [
+        {"label": "Coordinates", "source": ", ".join(spec["coordinates"])},
+        *(
+            {"label": f"Metric row {i}", "source": ",  ".join(row)}
+            for i, row in enumerate(spec["metric"], start=1)
+        ),
+    ]
+    if spec.get("functions"):
+        decls = ", ".join(f"{f['name']}({', '.join(f['args'])})" for f in spec["functions"])
+        inputs.append({"label": "Functions", "source": decls})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    for q in r.quantities:
+        if q.status.value != "ok":
+            notes.append(f"{q.kind}: {q.status.value}. {q.message}")
+            continue
+        if q.scalar_latex is not None:
+            outputs.append({"label": q.title, "latex": q.scalar_latex})
+        elif q.all_zero and q.kind != "geodesics":
+            outputs.append({"label": q.title, "latex": "0 \\text{ (every component)}"})
+        for c in q.components:
+            text = c.latex if q.kind == "geodesics" else f"{c.label_latex} = {c.latex}"
+            outputs.append({"label": q.title.split(" (")[0], "latex": text})
+        v = q.verification
+        if v is not None:
+            numeric = [c for c in v.checks if c.kind == "numeric"]
+            proof = {True: "proved", False: "not proved", None: "not attempted"}[v.symbolic_zero]
+            checks.append(
+                f"{q.kind}: {len(numeric)} independent numeric checks passed; symbolic proof {proof}"
+            )
+    if r.signature:
+        notes.append(f"Signature {r.signature}, decided from the declared assumptions.")
+    elif r.dimension and r.status.value == "ok":
+        notes.append("Signature not determined: " + r.signature_note)
+    if r.restrictions_latex:
+        notes.append(
+            "Valid only where "
+            + ", ".join(f"${x}$" for x in r.restrictions_latex)
+            + " (the coordinates "
+            "break down there; this is not a statement about curvature singularities)."
+        )
+    notes += [f"Assumes: {a}." for a in r.assumptions_used[:-1]]
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_distribution(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    variable = spec["variable"]
+    assumptions = dict(spec.get("assumptions") or {})
+    assumptions[variable] = sorted({*assumptions.get(variable, []), "real"})
+    r = engine.distribution(
+        DistributionInput(
+            expression=ExpressionInput(input=spec["input"], assumptions=assumptions),
+            action=spec["action"],
+            variable=variable,
+            lower=spec.get("lower"),
+            upper=spec.get("upper"),
+            endpoint=spec.get("endpoint"),
+        )
+    )
+    inputs = [{"label": "Expression", "source": spec["input"]}]
+    if spec["action"] == "integrate":
+        inputs.append({"label": "Limits", "source": f"{spec.get('lower')} to {spec.get('upper')}"})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        label = "Value" if r.equality == "value" else "Result (as distributions)"
+        outputs.append({"label": label, "latex": r.result_latex})
+        notes += [f"Step: {s.title} ({s.entry_id})." for s in r.steps]
+        if r.verification:
+            v = r.verification
+            checks.append(
+                "conditions established exactly: " + ("yes" if v.conditions_established else "no")
+            )
+            checks.append(
+                f"{v.pairings_agreed} of {v.pairings_checked} test-function pairings agree "
+                "(supporting evidence, not a proof)"
+            )
+    elif r.reason:
+        notes.append(f"Refused ({r.reason}).")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
     "series": run_series,
     "matrix": run_matrix,
+    "geometry": run_geometry,
+    "distribution": run_distribution,
     "identities": run_identities,
     "tensor": run_tensor,
     "solve": run_solve,

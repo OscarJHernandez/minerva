@@ -238,6 +238,8 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "series",
         "integrate",
         "matrix_calculus",
+        "geometry",
+        "distribution",
         "find_identities",
         "tensor_canonicalize",
         "solve_polynomial",
@@ -1207,3 +1209,150 @@ def test_definitions_from_earlier_turns_and_earlier_assumptions_are_used(ctx: To
         )
     )
     assert next(s for s in segments_of(msg) if s["type"] == "math")["status"] == "checked"
+
+
+SPHERE_ARGS = {
+    "coordinates": ["theta", "phi"],
+    "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+    "assumptions": {"a": ["positive"]},
+    "quantities": ["ricci_scalar", "christoffel"],
+}
+
+
+def test_geometry_tool_returns_a_card_and_a_checkable_summary(ctx: ToolContext) -> None:
+    out = execute("geometry", SPHERE_ARGS, ctx)
+    assert out.status == "ok" and out.card.type == "geometry"
+    assert out.card.data["request"]["coordinates"] == [
+        "theta",
+        "phi",
+    ]  # the card carries the problem
+    text = out.for_model
+    assert "status=ok" in text and "convention:" in text and "Levi-Civita" in text
+    assert r"value=$\frac{2}{a^{2}}$" in text
+    assert "NOT DETERMINED" in text  # sin^2 theta is not known to be strictly positive
+    # every formula the model may quote is registered as coming from the tool
+    assert normalize(r"\frac{2}{a^{2}}") in {normalize(x) for x in out.known_latex}
+    assert any(r"\Gamma^{\theta}{}_{\phi \phi}" in x for x in out.known_latex)
+    assert any("sin" in r for r in out.known_latex)  # the restriction sin(theta) != 0
+
+
+def test_geometry_tool_failures_are_explained_not_decorated(ctx: ToolContext) -> None:
+    out = execute("geometry", {**SPHERE_ARGS, "metric": [["1", "0"], ["0", "0"]]}, ctx)
+    assert out.status == "unsupported" and "degenerate" in out.for_model
+    assert "value=" not in out.for_model
+    out = execute("geometry", {**SPHERE_ARGS, "quantities": ["levitation"]}, ctx)
+    assert out.status == "error"
+    out = execute("geometry", {**SPHERE_ARGS, "coordinates": []}, ctx)
+    assert out.status == "error"
+    out = execute("geometry", {**SPHERE_ARGS, "metric": [["f(r)", "0"], ["0", "1"]]}, ctx)
+    assert out.status == "parse_error" and "declare" in out.for_model
+
+
+def test_geometry_tool_never_leaks_a_state_between_calls(ctx: ToolContext) -> None:
+    # the geometry is resent each time: a second call with other quantities gives the same metric
+    first = execute("geometry", SPHERE_ARGS, ctx)
+    second = execute("geometry", {**SPHERE_ARGS, "quantities": ["riemann"]}, ctx)
+    assert first.card.data["result"]["metric_latex"] == second.card.data["result"]["metric_latex"]
+    assert [q["kind"] for q in second.card.data["result"]["quantities"]] == ["riemann"]
+
+
+def test_geometry_formulas_are_marked_from_the_tool_and_invented_ones_are_not(
+    ctx: ToolContext,
+) -> None:
+    llm = FakeLLM(
+        [
+            [Chunk(tool_calls=[ToolCall("geometry", SPHERE_ARGS)])],
+            [
+                Chunk(
+                    text=r"The Ricci scalar is $\frac{2}{a^{2}}$, not $\frac{3}{a^{2}}$ "
+                    r"and the restriction is $\sin{\left(\theta \right)} \neq 0$."
+                )
+            ],
+        ]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "curvature of the sphere"}]))
+    marks = {s["value"]: s["status"] for s in segments_of(msg) if s["type"] != "text"}
+    assert marks[r"\frac{2}{a^{2}}"] == "from_tool"
+    assert marks[r"\sin{\left(\theta \right)} \neq 0"] == "from_tool"
+    assert marks[r"\frac{3}{a^{2}}"] != "from_tool"  # not in any tool result
+
+
+def test_distribution_tool_reports_steps_conditions_and_evidence(ctx: ToolContext) -> None:
+    out = execute(
+        "distribution",
+        {
+            "latex": r"x^2\operatorname{DiracDelta}(x^2-4)",
+            "assumptions": {"x": ["real"]},
+            "action": "integrate",
+            "variable": "x",
+            "lower": "-oo",
+            "upper": "oo",
+        },
+        ctx,
+    )
+    assert out.card.type == "distribution" and out.status == "ok"
+    result = out.card.data["result"]
+    assert result["result_text"] == "2" and result["equality"] == "value"
+    assert "distributions.delta_sifting" in out.for_model
+    assert "conditions established exactly: yes" in out.for_model
+    assert "supporting evidence, not a proof" in out.for_model
+    assert f"result=${result['result_latex']}$" in out.for_model
+    assert result["result_latex"] in out.known_latex
+    assert any(m["id"] == "distributions.delta_sifting" for m in out.card.data["methods"])
+    assert out.card.data["request"]["action"] == "integrate"
+
+
+def test_distribution_tool_says_the_equality_is_distributional(ctx: ToolContext) -> None:
+    out = execute(
+        "distribution",
+        {
+            "latex": r"\operatorname{Heaviside}(x-1)",
+            "assumptions": {"x": ["real"]},
+            "action": "differentiate",
+        },
+        ctx,
+    )
+    assert out.status == "ok"
+    assert "equality=AS DISTRIBUTIONS (not pointwise)" in out.for_model
+    assert "distributions.heaviside_derivative" in out.for_model
+
+
+def test_distribution_tool_refusals_name_the_reason_and_show_no_result(ctx: ToolContext) -> None:
+    unknown = execute(
+        "distribution",
+        {"latex": r"\operatorname{DiracDelta}(ax)", "assumptions": {"x": ["real"], "a": ["real"]}},
+        ctx,
+    )
+    assert unknown.status == "conditions_not_satisfied"
+    assert "reason=assumptions_insufficient" in unknown.for_model
+    assert "result=" not in unknown.for_model
+    assert "NOT APPLIED (distributions.delta_scaling)" in unknown.for_model
+
+    boundary = execute(
+        "distribution",
+        {
+            "latex": r"\operatorname{DiracDelta}(x-1)",
+            "assumptions": {"x": ["real"]},
+            "action": "integrate",
+            "lower": "0",
+            "upper": "1",
+        },
+        ctx,
+    )
+    assert "reason=integration_domain_ambiguous" in boundary.for_model
+    assert "endpoint_convention" not in boundary.for_model  # the tool never picks one
+
+
+def test_distribution_tool_keeps_delta_and_theta_as_symbols(ctx: ToolContext) -> None:
+    out = execute("distribution", {"latex": r"\delta(x)", "assumptions": {"x": ["real"]}}, ctx)
+    assert out.status == "unsupported"  # no distribution was written: \delta(x) is delta times x
+
+
+def test_distribution_tool_is_deterministic_for_trace_replay(ctx: ToolContext) -> None:
+    args = {
+        "latex": r"\operatorname{DiracDelta}(a x)",
+        "assumptions": {"x": ["real"], "a": ["real", "nonzero"]},
+    }
+    first = execute("distribution", args, ctx)
+    second = execute("distribution", args, ctx)
+    assert first.status == "ok" and first.for_model == second.for_model

@@ -1,7 +1,7 @@
 # Shortcuts for humans and agents. CI calls the underlying commands directly (see .github/workflows/ci.yml);
 # `make check` runs the same set. Run `make help` for the list.
 .DEFAULT_GOAL := help
-.PHONY: help setup check check-py check-web test handbook fmt dev
+.PHONY: help setup check check-py check-web test handbook fmt dev bench-geometry
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -27,6 +27,9 @@ check-py: ## Ruff, mypy, handbook verification, agent files, pytest
 	uv run python -m minerva_knowledge verify
 	uv run python scripts/check_agent_files.py
 	uv run pytest
+
+bench-geometry: ## Re-run the geometry benchmark and rewrite docs/benchmarks/geometry.json and the report
+	uv run python -m minerva_engine.geometry.benchmark
 
 check-web: ## Prettier, eslint, tsc, vitest, production build
 	pnpm format:check

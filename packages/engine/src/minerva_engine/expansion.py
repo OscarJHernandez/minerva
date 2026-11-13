@@ -32,7 +32,7 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel, Field
 
-from .errors import LimitError, MinervaMathError
+from .errors import LimitError, MinervaMathError, UnsupportedInput
 from .lagrangian import Derivation, DerivationError, check_equations, derive
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status, Verification
@@ -208,6 +208,8 @@ def prepare(
             q0.append(value)
     except LimitError as exc:
         return Refusal(Status.RESOURCE_LIMIT, str(exc), base)
+    except UnsupportedInput as exc:
+        return Refusal(Status.UNSUPPORTED, str(exc), base)
     except MinervaMathError as exc:
         return Refusal(Status.PARSE_ERROR, str(exc), base)
     base["equilibrium"] = [

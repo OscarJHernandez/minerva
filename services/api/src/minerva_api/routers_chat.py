@@ -23,9 +23,10 @@ from sqlalchemy.orm import Session
 from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
+from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
-from .agent.tools import PerturbationArgs, ToolContext, execute
+from .agent.tools import GeometryArgs, PerturbationArgs, ToolContext, execute
 from .agent.tracing import (
     AgentCompleted,
     Sink,
@@ -36,9 +37,17 @@ from .agent.tracing import (
     tool_status,
 )
 from .agent.vision import FormulaReader, clean_candidates
-from .db import ChatMessage, Conversation, utcnow
-from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
+from .db import ChatMessage, Conversation, User, utcnow
+from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep, current_user
 from .logging import get_logger
+from .providers import (
+    OpenRouterTest,
+    ProviderChoice,
+    ollama_reachable,
+    provider_status,
+    resolve_llm,
+    server_key_allowed,
+)
 
 router = APIRouter(prefix="/v1/chat", tags=["chat"])
 log = get_logger()
@@ -73,6 +82,7 @@ class StatusOut(BaseModel):
     mode: str
     model: str
     images: bool = False  # can formulas be read from a picture ("Add image")
+    providers: dict[str, Any] = Field(default_factory=dict)
 
 
 class ImageIn(BaseModel):
@@ -113,6 +123,14 @@ class NewConversation(BaseModel):
 
 class SendMessage(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
+    provider: ProviderChoice | None = None  # absent: the server's default provider
+
+
+class ConnectionOut(BaseModel):
+    ok: bool
+    message: str
+    credit_remaining: float | None = None
+    supports_tools: bool = False
 
 
 def _llm(request: Request) -> LLMClient | None:
@@ -135,13 +153,69 @@ def _owned(db: Session, conversation_id: uuid.UUID, user_id: uuid.UUID) -> Conve
 
 
 @router.get("/status", response_model=StatusOut)
-def chat_status(request: Request, settings: SettingsDep) -> StatusOut:
+async def chat_status(request: Request, db: DbDep, settings: SettingsDep) -> StatusOut:
     llm = _llm(request)
+    try:  # public endpoint; the per-user flag is added only when a session exists
+        user: User | None = current_user(request, db, settings)
+    except HTTPException:
+        user = None
+    providers = provider_status(settings, user)
+    providers["ollama"]["reachable"] = (
+        await ollama_reachable(request, settings) if settings.llm_mode != "scripted" else True
+    )
+    default_model = (
+        settings.openrouter_model
+        if settings.llm_mode == "openrouter"
+        else (llm.name if llm else "")
+    )
     return StatusOut(
-        enabled=llm is not None,
+        enabled=settings.llm_mode != "off",
         mode=settings.llm_mode,
-        model=llm.name if llm else "",
+        model=default_model,
         images=llm is not None and _vision(request) is not None,
+        providers=providers,
+    )
+
+
+@router.post("/providers/openrouter/test", response_model=ConnectionOut)
+async def test_openrouter(
+    body: OpenRouterTest,
+    request: Request,
+    user: UserDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> ConnectionOut:
+    """Test Connection: checks the key and model without a paid completion. The key is not stored."""
+    if not settings.openrouter_available:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "OpenRouter is not enabled on this server."
+        )
+    if not limiter.allow(f"ortest:{user.id}", 10):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tests; slow down.")
+    if body.api_key and body.api_key.get_secret_value():
+        if not settings.openrouter_byok:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Personal OpenRouter keys are not enabled on this server.",
+            )
+        key = body.api_key.get_secret_value()
+    elif server_key_allowed(settings, user):
+        key = settings.openrouter_api_key.get_secret_value()
+    else:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Add your own OpenRouter API key to test the connection."
+        )
+    report = await check_connection(
+        key,
+        body.model,
+        transport=getattr(request.app.state, "openrouter_transport", None),
+    )
+    log.info("provider_test", provider="openrouter", status="ok" if report.ok else "failed")
+    return ConnectionOut(
+        ok=report.ok,
+        message=report.message,
+        credit_remaining=report.credit_remaining,
+        supports_tools=report.supports_tools,
     )
 
 
@@ -434,6 +508,35 @@ def perturbation_solve_directly(
     )
 
 
+@router.post(
+    "/conversations/{conversation_id}/tools/geometry",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def geometry_directly(
+    conversation_id: uuid.UUID,
+    body: GeometryArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Ask for more about the geometry on a card (its request is posted back unchanged)."""
+    return _run_tool_directly(
+        "geometry",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
+
+
 LEGACY_QUOTED = "from an earlier tool result; how it was verified was not recorded"
 
 
@@ -461,12 +564,13 @@ def _history(
             if b.get("kind") == "card" and isinstance(b.get("card"), dict)
         }
         for step in m.content.get("trace", []):
+            call_id = str(step.get("call_id") or f"call_{step.get('id', uuid.uuid4().hex[:8])}")
             out.append(
                 {
                     "role": "assistant",
                     "content": "",
                     "tool_calls": [
-                        {"function": {"name": step["name"], "arguments": step["arguments"]}}
+                        {"id": call_id, "name": step["name"], "arguments": step["arguments"]}
                     ],
                 }
             )
@@ -477,7 +581,14 @@ def _history(
                 latex = cards.get(step["id"], {}).get("data", {}).get("result_latex")
                 if isinstance(latex, str) and latex:
                     results[result_id] = latex
-            out.append({"role": "tool", "tool_name": step["name"], "content": content})
+            out.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "name": step["name"],
+                    "content": content,
+                }
+            )
             if "verified_latex" in step or "quoted" in step:
                 known.update(normalize(x) for x in step.get("verified_latex", []))
                 quoted.update(step.get("quoted", {}))
@@ -540,14 +651,14 @@ async def send_message(
     limiter: LimiterDep,
     settings: SettingsDep,
 ) -> StreamingResponse:
-    llm = _llm(request)
-    if llm is None:
+    if settings.llm_mode == "off":
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE, "The chat assistant is not configured."
         )
     if not limiter.allow(f"chat:{user.id}", settings.chat_rate_per_minute):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many messages; slow down.")
     conversation = _owned(db, conversation_id, user.id)
+    llm, provider_label = resolve_llm(request, settings, user, limiter, body.provider)
     previous = list(
         db.scalars(
             select(ChatMessage)
@@ -584,11 +695,18 @@ async def send_message(
         trace_id=trace_id,
         sink=_event_sink(settings.agent_events),
     )
+    model_label = (
+        llm.name
+        if provider_label != "openrouter"
+        or llm.name in settings.openrouter_model_list
+        or llm.name == settings.openrouter_model
+        else "custom"
+    )
 
     async def stream() -> AsyncIterator[str]:
         started = time.monotonic()
         outcome = "error"
-        counts = {"steps": 0, "tool_calls": 0, "tool_errors": 0}  # numbers only, never content
+        counts: dict[str, Any] = {"steps": 0, "tool_calls": 0, "tool_errors": 0}  # numbers only
         stop_reason = "error"
         try:
             async for event in run_agent(
@@ -607,11 +725,35 @@ async def send_message(
                     stop_reason = str(event["data"].get("stop_reason") or "completed")
                     outcome = "error" if stop_reason in ("model_error", "internal_error") else "ok"
                     trace = event["data"]["trace"]
+                    calls = event["data"]["debug"]["llm_calls"]
+                    first = [
+                        c["first_token_ms"] for c in calls if c.get("first_token_ms") is not None
+                    ]
+                    prompt = [
+                        c["prompt_tokens"] for c in calls if c.get("prompt_tokens") is not None
+                    ]
+                    done_ = [
+                        c["completion_tokens"]
+                        for c in calls
+                        if c.get("completion_tokens") is not None
+                    ]
+                    cost = [c["cost_usd"] for c in calls if c.get("cost_usd") is not None]
                     counts = {
-                        "steps": len(event["data"]["debug"]["llm_calls"]),
+                        "steps": len(calls),
                         "tool_calls": len(trace),
                         "tool_errors": sum(1 for t in trace if t.get("status") == "error"),
                     }
+                    if first:
+                        counts["first_token_ms"] = first[0]
+                    if prompt:
+                        counts["prompt_tokens"] = sum(prompt)
+                    if done_:
+                        counts["completion_tokens"] = sum(done_)
+                    if cost:
+                        counts["cost_usd"] = round(sum(cost), 6)
+                elif event["event"] == "error":
+                    counts["error_kind"] = event["data"].get("debug", {}).get("error_kind")
+                if event["event"] == "message":
                     with session_factory() as session:
                         session.add(
                             ChatMessage(
@@ -638,6 +780,8 @@ async def send_message(
                 user_id=str(user_id),
                 trace_id=trace_id,
                 stop_reason=stop_reason,
+                provider=provider_label,
+                model=model_label,
                 **counts,
             )
 

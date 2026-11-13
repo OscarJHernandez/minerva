@@ -5,7 +5,10 @@
     uv run python scripts/eval_models.py --compare-only baseline.json new.json
     uv run python scripts/eval_models.py --check-cases        # the benchmark's own ground truth
 
-The host name is read from the command line or MINERVA_EVAL_BASE_URL and is never written to a report.
+Models can name their provider: `ollama:qwen3.5:35b` (a bare name means Ollama) or
+`openrouter:openai/gpt-4.1-mini`; OpenRouter reads OPENROUTER_API_KEY from the environment only and costs
+real money. The host name is read from the command line or MINERVA_EVAL_BASE_URL; neither it nor a key is ever
+written to a report.
 Expensive: every case is a real model run. The fast deterministic checks live in the test suite.
 """
 
@@ -27,8 +30,9 @@ import sympy
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 
-from ..llm import LLMError, OllamaClient
+from ..llm import LLMClient, LLMError, OllamaClient
 from ..loop import AgentLimits, prompt_sha
+from ..openrouter import OpenRouterClient
 from ..tools import ToolContext
 from .cases import EvalCase, cases_digest, load_cases
 from .reference import check_reference
@@ -88,36 +92,69 @@ def _meta(args: argparse.Namespace, cases: list[EvalCase], limits: AgentLimits) 
         "python": platform.python_version(),
         "sympy": sympy.__version__,
         "platform": f"{platform.system()} {platform.machine()}",
-        "ollama": _ollama_version(args.base_url),
+        "ollama": _ollama_version(args.base_url) if args.base_url else None,
     }
 
 
-async def _evaluate_model(
-    args: argparse.Namespace,
-    model: str,
-    ctx: ToolContext,
-    cases: list[EvalCase],
-    limits: AgentLimits,
-) -> list[CaseResult] | None:
-    def client(repeat: int) -> OllamaClient:
-        seed = None if args.seed is None else args.seed + repeat
-        return OllamaClient(
+def make_client(spec: str, args: argparse.Namespace, repeat: int = 0) -> tuple[str, str, LLMClient]:
+    """`provider:model` -> (provider, model, client). A bare name is an Ollama model.
+
+    OpenRouter runs read the key from OPENROUTER_API_KEY only (never an argument), cost real money and need
+    no --base-url. Neither the key nor the host name is ever written to a report.
+    """
+    provider, _, rest = spec.partition(":")
+    if provider == "openrouter":
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            raise SystemExit(
+                "set OPENROUTER_API_KEY in the environment to evaluate OpenRouter models"
+            )
+        return "openrouter", rest, OpenRouterClient(key, rest, timeout_seconds=args.timeout)
+    model = rest if provider == "ollama" else spec
+    if not args.base_url:
+        raise SystemExit("--base-url is required for Ollama models")
+    return (
+        "ollama",
+        model,
+        OllamaClient(
             args.base_url,
             model,
             timeout_seconds=args.timeout,
             think=args.think,
             strip_thinking=args.strip_thinking,
             temperature=args.temperature,
-            seed=seed,
-        )
+            seed=None
+            if args.seed is None
+            else args.seed + repeat,  # each repeat samples differently
+        ),
+    )
+
+
+def model_label(provider: str, model: str) -> str:
+    """The name a model has in a report: bare for Ollama, `openrouter:vendor/model` otherwise."""
+    return model if provider == "ollama" else f"{provider}:{model}"
+
+
+async def _evaluate_model(
+    args: argparse.Namespace,
+    spec: str,
+    ctx: ToolContext,
+    cases: list[EvalCase],
+    limits: AgentLimits,
+) -> tuple[str, list[CaseResult] | None]:
+    provider, model_name, _ = make_client(spec, args)
+    model = model_label(provider, model_name)
+
+    def client(repeat: int) -> LLMClient:
+        return make_client(spec, args, repeat)[2]
 
     # Warm-up: loads the model so load time is not counted against the first case.
     try:
         async for _ in client(0).chat([{"role": "user", "content": "Say ok."}], []):
             pass
     except LLMError as exc:
-        print(f"  {model}: cannot use ({exc})", file=sys.stderr)
-        return None
+        print(f"  {model}: cannot use ({exc})", file=sys.stderr)  # fixed text: no key, no host
+        return model, None
 
     def progress(result: CaseResult) -> None:
         mark = "pass" if result.passed else "FAIL"
@@ -140,15 +177,23 @@ async def _evaluate_model(
             parallel=args.parallel,
             on_result=progress,
         )
-    return results
+    return model, results
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument("--base-url", default=os.environ.get("MINERVA_EVAL_BASE_URL", ""))
-    parser.add_argument("--models", default=os.environ.get("MINERVA_EVAL_MODELS", ""))
+    parser.add_argument(
+        "--base-url",
+        default=os.environ.get("MINERVA_EVAL_BASE_URL", ""),
+        help="Ollama host (only for Ollama models)",
+    )
+    parser.add_argument(
+        "--models",
+        default=os.environ.get("MINERVA_EVAL_MODELS", ""),
+        help="comma-separated: name, ollama:name or openrouter:vendor/model",
+    )
     parser.add_argument("--label", default="run", help="name of this run, recorded in the report")
     parser.add_argument(
         "--code-ref", default="", help="what code was measured, when it is not a git checkout"
@@ -235,19 +280,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{len(cases)} cases, {refs} reference calls, {bad} problem(s)")
         return 1 if bad else 0
 
-    if not args.base_url or not args.models:
-        parser.error(
-            "--base-url and --models are required (or MINERVA_EVAL_BASE_URL / MINERVA_EVAL_MODELS)"
-        )
+    specs = [m.strip() for m in args.models.split(",") if m.strip()]
+    if not specs:
+        parser.error("--models is required (or MINERVA_EVAL_MODELS)")
+    if not args.base_url and any(not m.startswith("openrouter:") for m in specs):
+        parser.error("--base-url (or MINERVA_EVAL_BASE_URL) is required for Ollama models")
     if args.repeat < 1:
         parser.error("--repeat must be at least 1")
     limits = AgentLimits(max_steps=6, max_seconds=args.case_timeout or args.timeout * 2)
     ctx = _context()
     meta = _meta(args, cases, limits)
     results: dict[str, list[CaseResult] | None] = {}
-    for model in [m.strip() for m in args.models.split(",") if m.strip()]:
-        print(f"== {model}", flush=True)
-        results[model] = asyncio.run(_evaluate_model(args, model, ctx, cases, limits))
+    for spec in specs:
+        print(f"== {spec}", flush=True)
+        label, outcome = asyncio.run(_evaluate_model(args, spec, ctx, cases, limits))
+        results[label] = outcome
     doc = build_document(meta, results)
     text = render_markdown(doc)
     if args.json_out:

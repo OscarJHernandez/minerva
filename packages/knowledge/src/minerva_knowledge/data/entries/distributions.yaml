@@ -1,0 +1,171 @@
+# Identities of the Dirac delta and Heaviside distributions. Equality here is equality as
+# distributions (the same action on every test function), never pointwise: a delta is 0 at every
+# point a sampler can draw. Each checked entry is verified by running one concrete instance through
+# the engine's `distribution` operation (exact conditions + test-function pairing) and comparing the
+# result with the hand-written one. Entries carry no `rule`, so the pointwise rule search never
+# applies them; the distribution operation cites them by id.
+- id: distributions.delta_scaling
+  title: Scaling and translation of the delta
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: distributional
+  applies_to: ["f:diracdelta", "distribution:simplify", "distribution:integrate"]
+  validity: "a real and nonzero, b real, x real. For a = 0 the left side is not defined; a real parameter that is not declared nonzero is refused."
+  statement_latex: '\operatorname{DiracDelta}(a x + b) = \frac{1}{|a|}\operatorname{DiracDelta}\left(x + \frac{b}{a}\right)'
+  check:
+    kind: distribution
+    action: simplify
+    input: "DiracDelta(a*x + b)"
+    expected: "DiracDelta(x + b/a)/Abs(a)"
+    assumptions: {a: [real, nonzero], b: [real]}
+  reference: {source: DLMF, locator: "§1.16(iii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, scaling, translation, delta of a linear argument, delta of ax]
+- id: distributions.delta_composite_simple_roots
+  title: Delta of a polynomial with simple real roots
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: distributional
+  applies_to: ["f:diracdelta", "distribution:simplify", "distribution:integrate"]
+  validity: "g a polynomial in x with real coefficients whose real roots x_i are all simple (g'(x_i) nonzero). A repeated real root is refused; complex roots carry no delta. Checked on the instance g = x^2 - a^2 with a > 0."
+  statement_latex: '\operatorname{DiracDelta}\left(g(x)\right) = \sum_i \frac{1}{|g^{\prime}(x_i)|}\operatorname{DiracDelta}(x - x_i)'
+  check:
+    kind: distribution
+    action: simplify
+    input: "DiracDelta(x**2 - a**2)"
+    expected: "DiracDelta(x - a)/(2*a) + DiracDelta(x + a)/(2*a)"
+    assumptions: {a: [positive]}
+  reference: {source: DLMF, locator: "§1.16(iii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, composite argument, delta of a function, simple roots, delta of x squared minus a squared]
+- id: distributions.delta_composite_smooth
+  title: Delta of a smooth function with simple zeros
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: stated
+  applies_to: ["f:diracdelta"]
+  validity: "g continuously differentiable with isolated simple zeros. Not applied by Minerva (only polynomial arguments are supported); recorded because the polynomial case above is a special case."
+  statement_latex: '\operatorname{DiracDelta}\left(g(x)\right) = \sum_i \frac{1}{|g^{\prime}(x_i)|}\operatorname{DiracDelta}(x - x_i)'
+  reference: {source: DLMF, locator: "§1.16(iii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, composite argument, smooth function, simple zeros]
+- id: distributions.delta_times_function
+  title: A continuous factor takes its value at the delta
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: distributional
+  applies_to: ["f:diracdelta", "distribution:simplify", "distribution:integrate"]
+  validity: "f defined and continuous at a. A coefficient that is undefined there, or a step function jumping there, makes the product undefined and is refused."
+  statement_latex: 'f(x)\operatorname{DiracDelta}(x - a) = f(a)\operatorname{DiracDelta}(x - a)'
+  check:
+    kind: distribution
+    action: simplify
+    input: "exp(x)*DiracDelta(x - a)"
+    expected: "exp(a)*DiracDelta(x - a)"
+    assumptions: {a: [real]}
+  reference: {source: DLMF, locator: "§1.16(ii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, product with a function, multiplication, x delta of x is zero]
+- id: distributions.delta_times_x
+  title: x times the delta at zero vanishes
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: distributional
+  applies_to: ["f:diracdelta", "distribution:simplify"]
+  validity: "x real."
+  statement_latex: 'x\operatorname{DiracDelta}(x) = 0'
+  check:
+    kind: distribution
+    action: simplify
+    input: "x*DiracDelta(x)"
+    expected: "0"
+  reference: {source: DLMF, locator: "§1.16(ii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, x delta, annihilator, zero distribution]
+- id: distributions.delta_sifting
+  title: Integration against a delta (sifting)
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: distributional
+  applies_to: ["f:diracdelta", "distribution:integrate"]
+  validity: "f continuous at a and a strictly inside the limits (the value is 0 if it is outside). A delta exactly on a limit counts only under an explicit convention (half, include or exclude), which Minerva never chooses for you."
+  statement_latex: '\int_{p}^{q} f(x)\operatorname{DiracDelta}(x - a)\,dx = f(a), \quad p < a < q'
+  check:
+    kind: distribution
+    action: integrate
+    input: "sin(x)*DiracDelta(x - a)"
+    expected: "sin(a)"
+    assumptions: {a: [positive]}
+    lower: "-1"
+    upper: "oo"
+  reference: {source: DLMF, locator: "§1.16(iii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, sifting property, integration against delta, evaluation, integral of f delta]
+- id: distributions.delta_even
+  title: The delta is even
+  kind: identity
+  chapter: math.distributions
+  section: delta
+  verification: distributional
+  applies_to: ["f:diracdelta", "distribution:simplify"]
+  validity: "x and b real."
+  statement_latex: '\operatorname{DiracDelta}(b - x) = \operatorname{DiracDelta}(x - b)'
+  check:
+    kind: distribution
+    action: simplify
+    input: "DiracDelta(b - x)"
+    expected: "DiracDelta(x - b)"
+    assumptions: {b: [real]}
+  reference: {source: DLMF, locator: "§1.16(iii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [dirac delta, even, symmetric, reflection]
+- id: distributions.heaviside_derivative
+  title: Derivative of the Heaviside function
+  kind: identity
+  chapter: math.distributions
+  section: step
+  verification: distributional
+  applies_to: ["f:heaviside", "distribution:differentiate"]
+  validity: "The derivative is the distributional one. The value of the step at the jump never matters to a distribution, so Minerva does not assign one."
+  statement_latex: '\frac{d}{dx}\operatorname{Heaviside}(x - a) = \operatorname{DiracDelta}(x - a)'
+  check:
+    kind: distribution
+    action: differentiate
+    input: "Heaviside(x - a)"
+    expected: "DiracDelta(x - a)"
+    assumptions: {a: [real]}
+  reference: {source: DLMF, locator: "§1.16(iv)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [heaviside, step function, derivative of the step, delta, distributional derivative]
+- id: distributions.heaviside_affine_derivative
+  title: Derivative of a step of an affine argument
+  kind: identity
+  chapter: math.distributions
+  section: step
+  verification: distributional
+  applies_to: ["f:heaviside", "distribution:differentiate"]
+  validity: "a real and nonzero, b real. The sign of a decides the sign of the delta."
+  statement_latex: '\frac{d}{dx}\operatorname{Heaviside}(a x + b) = a\operatorname{DiracDelta}(a x + b) = \frac{a}{|a|}\operatorname{DiracDelta}\left(x + \frac{b}{a}\right)'
+  check:
+    kind: distribution
+    action: differentiate
+    input: "Heaviside(a*x + b)"
+    expected: "a*DiracDelta(x + b/a)/Abs(a)"
+    assumptions: {a: [real, nonzero], b: [real]}
+  reference: {source: DLMF, locator: "§1.16(iv)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [heaviside, step function, chain rule, reversed step, delta]
+- id: distributions.heaviside_product_rule
+  title: Product rule for a smooth function times a step
+  kind: identity
+  chapter: math.distributions
+  section: step
+  verification: distributional
+  applies_to: ["f:heaviside", "distribution:differentiate"]
+  validity: "f smooth on the whole real line. A factor that is not smooth (|x|, 1/x) is refused."
+  statement_latex: '\frac{d}{dx}\left[f(x)\operatorname{Heaviside}(x - a)\right] = f^{\prime}(x)\operatorname{Heaviside}(x - a) + f(a)\operatorname{DiracDelta}(x - a)'
+  check:
+    kind: distribution
+    action: differentiate
+    input: "exp(x)*Heaviside(x - a)"
+    expected: "exp(x)*Heaviside(x - a) + exp(a)*DiracDelta(x - a)"
+    assumptions: {a: [real]}
+  reference: {source: DLMF, locator: "§1.16(ii)", url: "https://dlmf.nist.gov/1.16"}
+  keywords: [heaviside, product rule, jump, causal function, green function jump]

@@ -25,6 +25,8 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "search_invariants": "numeric",
     "integrate_motion": "numeric",
     "find_identities": "numeric",
+    "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
+    "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
     "tensor_canonicalize": "structural",
     "dimensional_analysis": "dimensional",
     "check_units": "dimensional",

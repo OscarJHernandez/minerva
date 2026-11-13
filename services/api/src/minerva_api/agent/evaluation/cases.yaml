@@ -816,3 +816,60 @@
   reply_matches: 'complex|negative|sign|abs|branch|real|positive'
   max_unchecked: 2
   source: "an explanation of a result already obtained needs no new computation"
+
+# ----------------------------------------------------------------------------- geometry and distributions
+# Ported from the earlier inline benchmark (informational: they measure the geometry and distribution tools).
+- id: geometry-schwarzschild-ricci
+  category: tensor_matrix
+  prompt: 'For the metric $ds^2 = -(1-2M/r)\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\theta^2 + r^2\sin^2\theta\, d\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Ricci tensor.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [t, r, theta, phi], quantities: [ricci]}}
+  reply_matches: 'zero|vanish|Ricci-flat|0'
+  informational: true
+  source: "general relativity: the Schwarzschild metric is a vacuum solution, so its Ricci tensor vanishes"
+
+- id: geometry-does-not-invent-a-metric
+  category: ambiguous
+  prompt: 'Compute the Christoffel symbols of my metric.'
+  expected_tool: none
+  informational: true
+  source: "AGENTS.md (the model never invents a metric: it asks for the coordinates and every component)"
+
+- id: geometry-follow-up-resends-the-same-metric
+  category: followup
+  prompt: 'Now compute its Ricci scalar.'
+  history:
+    - {role: user, content: 'Christoffel symbols of $ds^2 = a^2 d\theta^2 + a^2\sin^2\theta\, d\phi^2$, a > 0.'}
+    - role: assistant
+      content: ''
+      tool_calls:
+        - id: call_geometry_1
+          name: geometry
+          arguments:
+            coordinates: [theta, phi]
+            metric: [['a^2', '0'], ['0', 'a^2 \sin^2\theta']]
+            assumptions: {a: [positive]}
+            quantities: [christoffel]
+    - {role: tool, tool_call_id: call_geometry_1, name: geometry, content: 'status=ok; dimension=2; the Christoffel symbols were computed and verified.'}
+    - {role: assistant, content: 'The card lists them.'}
+  expected_tool: geometry
+  args: {equals: {coordinates: [theta, phi]}, includes: {quantities: [ricci_scalar]}}
+  informational: true
+  source: "tool description of geometry (the geometry is not remembered: a follow-up resends the same metric)"
+
+- id: delta-integral-uses-the-tool
+  category: calculus
+  prompt: 'Evaluate the integral of $x^2\operatorname{DiracDelta}(x^2-4)$ over the whole real line.'
+  expected_tool: distribution
+  args: {equals: {action: integrate}}
+  informational: true
+  source: "distribution tool: delta integrals go through the engine, never the model"
+
+- id: delta-on-a-limit-asks-for-a-convention
+  category: calculus
+  prompt: 'Integrate $\operatorname{DiracDelta}(x-1)$ from 0 to 1.'
+  expected_tool: distribution
+  args: {absent: [endpoint]}
+  reply_matches: 'convention|half|include|exclude|ambiguous'
+  informational: true
+  source: "AGENTS.md rule 15 (a delta on an integration limit needs a convention that only the user chooses)"

@@ -550,10 +550,14 @@ def test_nothing_to_check_is_not_a_failure(ctx: ToolContext) -> None:
 def test_token_usage_and_finish_reason_are_recorded_when_the_host_reports_them(
     ctx: ToolContext,
 ) -> None:
-    reply = [Chunk(text="Hello.", usage=Usage(tokens_in=120, tokens_out=7, finish_reason="stop"))]
+    reply = [
+        Chunk(
+            text="Hello.", usage=Usage(prompt_tokens=120, completion_tokens=7, finish_reason="stop")
+        )
+    ]
     msg = final(play(ReplayLLM([reply]), ctx))
     c = msg["debug"]["llm_calls"][0]
-    assert (c["tokens_in"], c["tokens_out"], c["finish_reason"]) == (120, 7, "stop")
+    assert (c["prompt_tokens"], c["completion_tokens"], c["finish_reason"]) == (120, 7, "stop")
     assert c["first_token_ms"] is not None
     done = msg["debug"]["events"][-1]
     assert done["tokens_in"] == 120 and done["tokens_out"] == 7
@@ -562,7 +566,7 @@ def test_token_usage_and_finish_reason_are_recorded_when_the_host_reports_them(
 def test_missing_usage_stays_missing(ctx: ToolContext) -> None:
     msg = final(play(ReplayLLM([say("Hello.")]), ctx))
     c = msg["debug"]["llm_calls"][0]
-    assert c["tokens_in"] is None and c["tokens_out"] is None
+    assert c["prompt_tokens"] is None and c["completion_tokens"] is None
     assert msg["debug"]["events"][-1]["tokens_in"] is None
 
 

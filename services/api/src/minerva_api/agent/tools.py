@@ -17,8 +17,10 @@ from typing import Any, Literal
 from minerva_engine import (
     CompareRequest,
     DiffVariable,
+    DistributionInput,
     Engine,
     ExpressionInput,
+    GeometryInput,
     MatrixCalculusInput,
     MatrixDecl,
     MotionRequest,
@@ -26,6 +28,7 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
 )
+from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
@@ -36,6 +39,8 @@ from minerva_knowledge.identities import (
 )
 from pydantic import BaseModel, Field, ValidationError
 
+from ..diagnostics import log_distribution
+from ..geometry_log import log_geometry
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .segments import normalize
@@ -157,6 +162,79 @@ class MatrixCalculusArgs(SimplifyArgs):
         default_factory=list,
         max_length=6,
         description="Matrices the USER says are invertible. Never add one on your own.",
+    )
+
+
+class GeometryArgs(BaseModel):
+    """Arguments of `geometry`. The whole geometry is sent every time: nothing is remembered between calls."""
+
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description="Coordinate names in order, plain names as the LaTeX parser reads them: "
+        '["t", "r", "theta", "phi"]. They are real symbols.',
+    )
+    metric: list[list[str]] = Field(
+        min_length=1,
+        max_length=4,
+        description="The metric components g_{mu nu} as an n by n grid of LaTeX strings, one row per "
+        'coordinate, e.g. [["-(1-2M/r)", "0"], ["0", "(1-2M/r)^{-1}"]]. Use \\sin^2\\theta, '
+        "not \\sin 2\\theta. Ask the user for the metric; never invent one.",
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of symbols (e.g. {"M": ["positive"]}). Coordinates are real already. '
+        "Do not add assumptions the user did not state.",
+    )
+    functions: list[FunctionDecl] = Field(
+        default_factory=list,
+        max_length=6,
+        description='Unspecified real functions of coordinates used in the metric, e.g. [{"name": "f", '
+        '"args": ["r"]}] for f(r). A function must be declared before it is written f(r).',
+    )
+    quantities: list[Literal[*QUANTITIES]] = Field(  # type: ignore[valid-type]
+        min_length=1,
+        max_length=len(QUANTITIES),
+        description="What to compute: inverse_metric, determinant, christoffel, riemann, ricci, ricci_scalar, "
+        "einstein, kretschmann, ricci_squared, geodesics (symbolic geodesic equations), "
+        "covariant_derivative, raise_index, lower_index. The last three need `tensor`.",
+    )
+    tensor: TensorField | None = Field(
+        default=None,
+        description="A tensor field given by variance (up/down per index) and its n**rank components, "
+        "row-major, as LaTeX strings. Only for covariant_derivative, raise_index and lower_index.",
+    )
+    tensor_index: int = Field(
+        default=0,
+        ge=0,
+        le=2,
+        description="Which index (0-based) raise_index or lower_index acts on",
+    )
+
+
+class DistributionArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description="Expression with Dirac delta or Heaviside functions, written with explicit names: "
+        "\\operatorname{DiracDelta}(x-a) and \\operatorname{Heaviside}(x). \\delta(x) and \\theta(x) are "
+        "NOT read as distributions. For integrate give only the integrand (no \\int, no dx).",
+    )
+    action: Literal["simplify", "integrate", "differentiate"] = Field(
+        default="simplify",
+        description="simplify: normal form sum c_i delta(x - x_i). integrate: needs `lower` and `upper` "
+        "(numbers, oo, -oo). differentiate: the distributional derivative of steps and smooth terms.",
+    )
+    variable: str = Field(
+        default="x",
+        max_length=32,
+        description="The real variable. Declare it real in `assumptions`; distributions need a real line.",
+    )
+    lower: str | None = Field(default=None, max_length=64, description="Lower limit (integrate)")
+    upper: str | None = Field(default=None, max_length=64, description="Upper limit (integrate)")
+    endpoint: Literal["half", "include", "exclude"] | None = Field(
+        default=None,
+        description="How a delta exactly on an integration limit counts. Set it ONLY if the USER chose "
+        "one; never choose it yourself. Without it such an integral is reported as ambiguous.",
     )
 
 
@@ -562,6 +640,95 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, known, result.status.value)
 
 
+def geometry_request(args: GeometryArgs) -> GeometryInput:
+    return GeometryInput(**args.model_dump(), format="latex")
+
+
+def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
+    request = geometry_request(args)
+    result = ctx.engine.geometry(request)
+    log_geometry(result)  # stage names and counters only
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="geometry",
+        type="geometry",
+        title="Differential geometry",
+        data={
+            "result": result.model_dump(mode="json"),
+            # the whole problem, so that the card's buttons can ask for more about the same geometry
+            "request": request.model_dump(mode="json"),
+        },
+    )
+    head = f"status={result.status.value}; dimension={result.dimension}; "
+    known: list[str] = []
+    if result.metric_latex:
+        head += f"metric=${result.metric_latex}$; "
+        known.append(result.metric_latex)
+    if result.signature:
+        head += f"signature={result.signature}; "
+    elif result.status.value == "ok":
+        head += "signature=NOT DETERMINED (do not call the metric Lorentzian or Riemannian); "
+    lines = [head + result.message]
+    if result.status.value == "ok" or result.quantities:
+        lines.extend(f"- convention: {c}" for c in result.conventions)
+        lines.extend(f"- assumption: {a}" for a in result.assumptions_used)
+        if result.restrictions_latex:
+            lines.append(
+                "- the coordinate expressions are valid only where "
+                + ", ".join(f"${r}$" for r in result.restrictions_latex)
+                + (
+                    ""
+                    if result.restrictions_complete
+                    else " (and possibly elsewhere: root, logarithm and branch domains were not analysed)"
+                )
+                + ". This says where the coordinates break down, not whether the geometry is singular."
+            )
+            known.extend(result.restrictions_latex)
+        elif not result.restrictions_complete:
+            lines.append("- domain restrictions could not be fully determined")
+        if result.signature is None and result.signature_note:
+            lines.append(f"- signature: {result.signature_note}")
+    for q in result.quantities:
+        evidence = ""
+        v = q.verification
+        if v is not None and q.status.value == "ok":
+            numeric = [c for c in v.checks if c.kind == "numeric"]
+            points = min((c.points_agreed for c in numeric), default=0)
+            evidence = f"; numerically checked ({len(numeric)} independent checks, at least {points} points each)"
+            if v.symbolic_zero is True:
+                evidence += "; also proved by a symbolic zero test"
+            else:
+                evidence += "; NO symbolic proof (say 'numerically checked', never 'proved')"
+        lines.append(
+            f"- {q.kind}: status={q.status.value}{evidence}"
+            + (f"; {q.message}" if q.message else "")
+        )
+        if q.status.value != "ok":
+            continue
+        if q.scalar_latex is not None:
+            lines.append(f"  value=${q.scalar_latex}$")
+            known.append(q.scalar_latex)
+        elif q.all_zero and q.kind != "geodesics":
+            lines.append("  every component is zero")
+        for c in q.components[:40]:
+            statement = c.latex if q.kind == "geodesics" else f"{c.label_latex} = {c.latex}"
+            lines.append(f"  ${statement}$")
+            known.extend([statement, c.latex.split(" = ")[-1]])
+        if len(q.components) > 40:
+            lines.append(f"  ... and {len(q.components) - 40} more components (see the card)")
+        if q.symmetry_note and q.kind != "geodesics":
+            lines.append(f"  ({q.symmetry_note})")
+        lines.extend(f"  note: {n}" for n in q.notes)
+    slow = [d for d in result.diagnostics if d.status == "failed"]
+    if slow:
+        lines.append("- failed stage(s): " + ", ".join(f"{d.stage} ({d.failure})" for d in slow))
+    lines.append(
+        "to compute more about THIS geometry, call geometry again with the same coordinates, metric, "
+        "assumptions and functions."
+    )
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
+
+
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
     request = MatrixCalculusInput(
         expression=_expr(args),
@@ -653,6 +820,78 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
     return ToolOutput(
         card, "\n".join(lines), known, result.status.value, quoted_latex=quoted_blocked
     )
+
+
+def run_distribution(args: DistributionArgs, ctx: ToolContext) -> ToolOutput:
+    request = DistributionInput(
+        expression=_expr(args),
+        action=args.action,
+        variable=args.variable,
+        lower=args.lower,
+        upper=args.upper,
+        endpoint=args.endpoint,
+    )
+    result = ctx.engine.distribution(request)
+    log_distribution(result)
+    cited = list(
+        dict.fromkeys([s.entry_id for s in result.steps] + [b.entry_id for b in result.blocked])
+    )
+    entries = [e for entry_id in cited if (e := ctx.kb.get(entry_id)) is not None]
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in entries]
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="distribution",
+        type="distribution",
+        title="Delta and step functions",
+        data={
+            "result": result.model_dump(mode="json"),
+            "methods": method_data,
+            "request": request.model_dump(mode="json", exclude={"expression"}),
+        },
+    )
+    shown = result.status.value == "ok"
+    head = f"status={result.status.value}; action={result.action}; "
+    if result.reason:
+        head += f"reason={result.reason}; "
+    if result.input_latex:
+        head += f"input_as_read=${result.input_latex}$; "
+    if shown:
+        head += f"result=${result.result_latex}$; "
+        head += (
+            "equality=value (an ordinary number or expression); "
+            if result.equality == "value"
+            else "equality=AS DISTRIBUTIONS (not pointwise); "
+        )
+        if result.endpoint:
+            head += f"endpoint_convention={result.endpoint} (chosen by the user); "
+    v = result.verification
+    if v and shown:
+        head += (
+            "conditions established exactly: "
+            + ("yes" if v.conditions_established else "NO")
+            + f"; {v.pairings_agreed}/{v.pairings_checked} test-function pairings agree "
+            "(supporting evidence, not a proof); "
+        )
+    lines = [head + result.message]
+    known: list[str] = [x for x in (result.input_latex, result.result_latex) if x]
+    if shown:
+        for s in result.steps:
+            lines.append(
+                f"- step ({s.entry_id}): {s.title}: ${s.before_latex}$ -> ${s.after_latex}$"
+            )
+            known.extend([s.before_latex, s.after_latex])
+            for c in s.conditions:
+                lines.append(f"  - condition ${c.latex}$ ({c.how})")
+                known.append(c.latex)
+    lines.extend(f"- NOT APPLIED ({b.entry_id}): {b.detail} [{b.reason}]" for b in result.blocked)
+    lines.extend(f"- note: {n}" for n in result.notes)
+    if method_data:
+        lines.append(
+            "handbook entries: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data if m.get("statement_latex"))
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 
 def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
@@ -1283,6 +1522,33 @@ TOOLS: dict[str, Tool] = {
             run_matrix_calculus,
         ),
         Tool(
+            "geometry",
+            "Differential geometry in explicit coordinates: give the coordinates and the metric once and "
+            "ask for the inverse metric, determinant, Christoffel symbols, Riemann, Ricci and Einstein "
+            "tensors, the Ricci scalar, Kretschmann and Ricci-squared invariants, symbolic geodesic "
+            "equations, and covariant derivatives or index raising/lowering of a tensor field. Conventions "
+            "are fixed and returned. Every quantity is shown only if independent numerical checks pass "
+            "(metric compatibility, curvature symmetries, Bianchi identities, Euler-Lagrange); a symbolic "
+            "proof is reported separately. The signature is never assumed, a degenerate or asymmetric "
+            "metric is refused, and where the coordinates break down is reported. The geometry is not "
+            "remembered: resend it with every call.",
+            GeometryArgs,
+            run_geometry,
+        ),
+        Tool(
+            "distribution",
+            "Calculus with Dirac delta and Heaviside (step) functions: simplify a delta of a polynomial "
+            "(scaling, translation, several simple roots, a continuous factor taking its value), integrate "
+            "against deltas over given limits, or differentiate steps (d/dx of a step is a delta). Equality "
+            "is as distributions, never pointwise. Each step cites a handbook identity with the conditions "
+            "that were established; the result is shown only if independent test-function pairings agree. "
+            "Declare the variable and every symbol in a delta or step real. Refuses (with a reason) repeated "
+            "roots, unknown signs or zero scales, a delta on an integration limit without a convention the "
+            "USER chose, products of distributions and derivatives of deltas.",
+            DistributionArgs,
+            run_distribution,
+        ),
+        Tool(
             "solve_polynomial",
             "Solve a polynomial equation: factors it, says whether a formula in radicals exists "
             "(Galois criterion, Abel-Ruffini), gives exact roots where possible and verified numerical "
@@ -1421,7 +1687,7 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
 
 # Fields of a result that hold the user's own input as Minerva read it (not something it computed).
 # `equation_latex` is an input for solve and check_units, but a computed result for matrix_calculus.
-_INPUT_FIELDS = ("input_latex", "lagrangian_latex", "notation_latex")
+_INPUT_FIELDS = ("input_latex", "lagrangian_latex", "notation_latex", "metric_latex")
 _EQUATION_IS_INPUT = frozenset({"solve_polynomial", "check_units"})
 QUOTED_INPUT = "your input, as read by Minerva"
 QUOTED_STATED = "a handbook entry that is only stated, not machine-checked"

@@ -115,7 +115,7 @@ Check that the API accepted the settings. This endpoint needs no login and does 
 
 ```bash
 curl -s http://127.0.0.1:8100/v1/chat/status
-# {"enabled":true,"mode":"ollama","model":"minerva"}
+# {"enabled":true,"mode":"ollama","model":"minerva","images":false,"providers":{...}}
 ```
 
 Open <http://localhost:3000> and ask something such as "simplify sin(x)/(1+cos(x)) + (1+cos(x))/sin(x)".
@@ -165,6 +165,13 @@ export MINERVA_LLM_MODE=ollama
 export MINERVA_LLM_BASE_URL=http://127.0.0.1:11434
 export MINERVA_LLM_MODEL=minerva
 ```
+
+### Optional: OpenRouter (cloud models)
+
+Ollama stays the default. To let users switch to OpenRouter models in the chat with their own key, add
+`MINERVA_OPENROUTER_BYOK=true` to `.env` and run `docker compose up -d api`. Keys never leave the user's
+browser tab and the API's memory. Full guide, privacy notes and the Kubernetes procedure:
+[openrouter-setup.md](openrouter-setup.md).
 
 ## 4. Kubernetes
 

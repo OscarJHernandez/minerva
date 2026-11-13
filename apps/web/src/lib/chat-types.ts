@@ -3,6 +3,10 @@ import type {
   SeriesResult,
   EntrySummary,
   IdentitiesResult,
+  GeometryRequest,
+  GeometryResult,
+  DistributionRequest,
+  DistributionResult,
   IntegrateResult,
   MatrixCalculusResult,
   MatrixRequest,
@@ -365,6 +369,24 @@ export type Card =
       title: string;
       data: { result: MatrixCalculusResult; methods: EntrySummary[]; request: MatrixRequest };
     }
+  | {
+      id: string;
+      tool: string;
+      type: "geometry";
+      title: string;
+      data: { result: GeometryResult; request: GeometryRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "distribution";
+      title: string;
+      data: {
+        result: DistributionResult;
+        methods: EntrySummary[];
+        request: DistributionRequest;
+      };
+    }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {
       id: string;
@@ -487,6 +509,8 @@ export interface TraceStep {
   /** Absent on messages stored before debug data existed. */
   duration_ms?: number | null;
   status?: string | null;
+  /** The provider's tool-call id, replayed when history is rebuilt. */
+  call_id?: string | null;
   /** Added with tracing; absent on older messages. */
   evidence?: Evidence | null;
   arguments_valid?: boolean | null;
@@ -505,8 +529,10 @@ export interface LLMCall {
   tool_calls: number;
   first_token_ms?: number | null;
   finish_reason?: string | null;
-  tokens_in?: number | null;
-  tokens_out?: number | null;
+  /** As reported by the provider; absent when it reports none. */
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+  cost_usd?: number | null;
 }
 
 /** One content-free trace event (see docs/observability.md); fields vary by `event`. */
@@ -523,6 +549,8 @@ export interface TurnDebug {
   request_id: string;
   api_version: string;
   mode: string;
+  provider?: string;
+  error_kind?: string | null;
   model: string;
   prompt_sha: string;
   max_steps: number;
@@ -577,6 +605,36 @@ export interface ChatStatus {
   model: string;
   /** Formulas can be read from a picture ("Add image"). */
   images?: boolean;
+  providers?: ProviderStatus;
+}
+
+export interface ProviderStatus {
+  default: "ollama" | "openrouter";
+  ollama: { available: boolean; model: string; reachable?: boolean };
+  openrouter: {
+    available: boolean;
+    byok: boolean;
+    server_key_for_you: boolean;
+    default_model: string;
+    models: string[];
+    zdr: boolean;
+    data_collection: string;
+  };
+}
+
+/** What the browser sends to pick the provider for one turn. */
+export interface ProviderChoice {
+  kind: "ollama" | "openrouter";
+  model?: string;
+  api_key?: string;
+  cloud_consent?: boolean;
+}
+
+export interface ConnectionResult {
+  ok: boolean;
+  message: string;
+  credit_remaining?: number | null;
+  supports_tools?: boolean;
 }
 
 /** One formula transcribed from a picture, and how Minerva's parser reads it. */
