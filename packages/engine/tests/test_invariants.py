@@ -155,3 +155,28 @@ def test_a_wrong_candidate_fails_the_verification_used_by_the_search() -> None:
     wrong = d.params[1] * r**3 * thd**2 * sp.cos(th) + r**2 * rd * thd * sp.sin(th)
     ok, _ = verify_constant(d, wrong)
     assert not ok
+
+
+# --- plain-text input ------------------------------------------------------------------------
+def run_text(text: str, coordinates: list[str], angles: list[str] | None = None) -> InvariantReport:
+    return search_invariants(text, coordinates, angles or [], 2, 3, 1, "t", {}, LIMITS, "text")
+
+
+def test_text_oscillator_matches_the_latex_search() -> None:
+    from_text = run_text("m*(x_dot^2 + y_dot^2)/2 - k*(x^2 + y^2)/2", ["x", "y"])
+    from_latex = run(OSCILLATOR, ["x", "y"])
+    assert from_text.status is Status.OK
+    a, b = from_text.model_dump(mode="json"), from_latex.model_dump(mode="json")
+    a.pop("duration_ms", None)
+    b.pop("duration_ms", None)
+    assert a == b
+
+
+def test_text_time_dependent_lagrangian_is_still_refused() -> None:
+    r = run_text("m*x_dot^2/2 - k*t*x^2/2", ["x"])
+    assert r.status is Status.UNSUPPORTED and r.found == []
+
+
+def test_text_without_velocities_is_unsupported() -> None:
+    r = run_text("k*x^2/2", ["x"])
+    assert r.status is Status.UNSUPPORTED and r.found == []
