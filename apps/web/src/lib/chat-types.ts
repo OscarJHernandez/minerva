@@ -3,6 +3,10 @@ import type {
   SeriesResult,
   EntrySummary,
   IdentitiesResult,
+  GeometryRequest,
+  GeometryResult,
+  DistributionRequest,
+  DistributionResult,
   IntegrateResult,
   MatrixCalculusResult,
   MatrixRequest,
@@ -361,6 +365,24 @@ export type Card =
       type: "matrix";
       title: string;
       data: { result: MatrixCalculusResult; methods: EntrySummary[]; request: MatrixRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "geometry";
+      title: string;
+      data: { result: GeometryResult; request: GeometryRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "distribution";
+      title: string;
+      data: {
+        result: DistributionResult;
+        methods: EntrySummary[];
+        request: DistributionRequest;
+      };
     }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {

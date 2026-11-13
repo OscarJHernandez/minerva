@@ -36,6 +36,8 @@ class Card(BaseModel):
         "series",
         "integrate",
         "matrix",
+        "geometry",
+        "distribution",
         "identities",
         "entries",
         "entry",

@@ -323,6 +323,80 @@ CASES = [
         final_matches=re.compile(r"not evaluated|equation|representation", re.I),
         informational=True,
     ),
+    Case(
+        "geometry-schwarzschild-ricci",
+        r"For the metric $ds^2 = -(1-2M/r)\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\theta^2 + r^2\sin^2\theta\, d\phi^2$ "
+        "in the coordinates t, r, theta, phi, with M and r positive, compute the Ricci tensor.",
+        {"geometry"},
+        args_check=lambda t, a: (
+            len(a.get("coordinates", [])) == 4
+            and "ricci" in a.get("quantities", [])
+            and set(a.get("assumptions") or {}) <= {"M", "r"}
+        ),
+        final_matches=re.compile(r"zero|vanish|Ricci-flat|0", re.I),
+        informational=True,
+    ),
+    Case(
+        "geometry-does-not-invent-a-metric",
+        "Compute the Christoffel symbols of my metric.",
+        no_tools=True,
+        informational=True,
+    ),
+    Case(
+        "geometry-follow-up-resends-the-same-metric",
+        "Now compute its Ricci scalar.",
+        {"geometry"},
+        args_check=lambda t, a: (
+            a.get("coordinates") == ["theta", "phi"]
+            and "ricci_scalar" in a.get("quantities", [])
+            and a.get("metric", [[]])[0][0].replace(" ", "") == "a^2"
+        ),
+        history=[
+            {
+                "role": "user",
+                "content": r"Christoffel symbols of $ds^2 = a^2 d\theta^2 + a^2\sin^2\theta\, d\phi^2$, a > 0.",
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": "geometry",
+                            "arguments": {
+                                "coordinates": ["theta", "phi"],
+                                "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+                                "assumptions": {"a": ["positive"]},
+                                "quantities": ["christoffel"],
+                            },
+                        }
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_name": "geometry",
+                "content": "status=ok; dimension=2; the Christoffel symbols were computed and verified.",
+            },
+            {"role": "assistant", "content": "The card lists them."},
+        ],
+        informational=True,
+    ),
+    Case(
+        "delta-integral-uses-the-tool",
+        r"Evaluate the integral of $x^2\operatorname{DiracDelta}(x^2-4)$ over the whole real line.",
+        {"distribution"},
+        args_check=lambda t, a: a.get("action") == "integrate",
+        informational=True,
+    ),
+    Case(
+        "delta-on-a-limit-asks-for-a-convention",
+        r"Integrate $\operatorname{DiracDelta}(x-1)$ from 0 to 1.",
+        {"distribution"},
+        args_check=lambda t, a: not a.get("endpoint"),
+        final_matches=re.compile(r"convention|half|include|exclude|ambiguous", re.I),
+        informational=True,
+    ),
     Case("no-tool-chitchat", "Thanks, that is all.", no_tools=True),
 ]
 

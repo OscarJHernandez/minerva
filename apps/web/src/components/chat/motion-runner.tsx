@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
+import type { GeometryRequest } from "@/lib/types";
 
 /**
  * Lets a card start a numerical solution in the open conversation. Provided by the chat app; absent
@@ -11,6 +12,8 @@ export interface MotionRunner {
   run: (request: MotionRequest) => Promise<void>;
   /** Solves a perturbation problem again with the user's comparison numbers. */
   perturb?: (request: PerturbationRequest) => Promise<void>;
+  /** Asks for more quantities of the geometry on a card. */
+  geometry?: (request: GeometryRequest) => Promise<void>;
 }
 
 const MotionRunnerContext = createContext<MotionRunner | null>(null);

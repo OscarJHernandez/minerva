@@ -14,6 +14,7 @@ from collections.abc import Callable, Sequence
 import mpmath
 import sympy as sp
 
+from .distributions.guard import contains_distribution
 from .models import Verification
 
 MIN_VALID_POINTS = 4
@@ -153,6 +154,16 @@ def verify_equal(
     `MIN_VALID_POINTS`) lowers the sample size for the many screening checks of a search; the
     reported chain is re-verified with the default.
     """
+    if contains_distribution(original) or contains_distribution(candidate):
+        # Sampling cannot see a delta (it is 0 at every sample), so it proves nothing here.
+        return Verification(
+            symbolic_zero=False,
+            numeric_points_checked=0,
+            numeric_points_agreed=0,
+            numeric_points_skipped=0,
+            passed=False,
+            note="distributions cannot be verified by sampling; use the distribution operation",
+        )
     checked, agreed, skipped = numeric_detail(
         original, candidate, max_points=max(max_points, MIN_VALID_POINTS)
     )

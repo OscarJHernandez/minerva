@@ -25,7 +25,7 @@ from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, run_agent
 from .agent.openrouter import check_connection
 from .agent.segments import normalize, split_segments
-from .agent.tools import PerturbationArgs, ToolContext, execute
+from .agent.tools import GeometryArgs, PerturbationArgs, ToolContext, execute
 from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, User, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep, current_user
@@ -416,6 +416,35 @@ def perturbation_solve_directly(
         )
     return _run_tool_directly(
         "perturbation_solve",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/geometry",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def geometry_directly(
+    conversation_id: uuid.UUID,
+    body: GeometryArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Ask for more about the geometry on a card (its request is posted back unchanged)."""
+    return _run_tool_directly(
+        "geometry",
         body.model_dump(mode="json"),
         conversation_id,
         user,

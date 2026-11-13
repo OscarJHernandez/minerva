@@ -1,4 +1,5 @@
 import type {
+  DistributionResult,
   HistoryItem,
   DifferentiateResult,
   IdentitiesResult,
@@ -313,3 +314,72 @@ export function step(
     ...extra,
   };
 }
+
+export const okDistributionIntegral: DistributionResult = {
+  status: "ok",
+  action: "integrate",
+  reason: null,
+  input_latex: "x^{2} \\operatorname{DiracDelta}\\left(x^{2} - 4\\right)",
+  variable: "x",
+  lower_latex: "-\\infty",
+  upper_latex: "\\infty",
+  endpoint: null,
+  result_latex: "2",
+  result_text: "2",
+  equality: "value",
+  steps: [
+    {
+      entry_id: "distributions.delta_composite_simple_roots",
+      title: "Delta of a polynomial with simple real roots",
+      before_latex: "x^{2} \\operatorname{DiracDelta}\\left(x^{2} - 4\\right)",
+      after_latex: "\\frac{x^{2}}{4} \\operatorname{DiracDelta}\\left(x - 2\\right)",
+      conditions: [
+        {
+          latex: "g'(2) = 4 \\neq 0",
+          established: true,
+          how: "exact: the slope is nonzero under the declared assumptions, so the root is simple",
+        },
+      ],
+    },
+    {
+      entry_id: "distributions.delta_sifting",
+      title: "Integrating against a delta picks out the value",
+      before_latex: "\\operatorname{DiracDelta}\\left(x - 2\\right)",
+      after_latex: "2",
+      conditions: [
+        { latex: "x = 2", established: true, how: "strictly inside the limits: contributes fully" },
+      ],
+    },
+  ],
+  blocked: [],
+  verification: {
+    method: "pairing with test functions",
+    test_functions: ["indicator of the integration interval"],
+    pairings_checked: 1,
+    pairings_agreed: 1,
+    parameter_samples: 1,
+    widths: [0.02, 0.01, 0.005],
+    convergence_observed: true,
+    conditions_established: true,
+    passed: true,
+    note: "equal as distributions on every test function tried",
+  },
+  diagnostics: {
+    reason: null,
+    events: [
+      { stage: "parsed", status: "ok", duration_ms: 1.2, reason: null },
+      { stage: "completed", status: "ok", duration_ms: 0.1, reason: null },
+    ],
+  },
+  notes: [],
+  message: "Integrated with handbook identities under conditions that were established exactly.",
+  duration_ms: 88,
+};
+
+export const okDistributionSimplify: DistributionResult = {
+  ...okDistributionIntegral,
+  action: "simplify",
+  result_latex: "\\frac{1}{2} \\operatorname{DiracDelta}\\left(x - 3\\right)",
+  result_text: "DiracDelta(x - 3)/2",
+  equality: "distributional",
+};

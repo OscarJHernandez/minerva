@@ -472,6 +472,46 @@ def test_scripted_model_searches_for_hidden_constants_of_motion(
     assert message["trace"][0]["arguments"]["angles"] == ["theta"]
 
 
+def test_distribution_turn_streams_a_card_and_checks_the_formula(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Integrate this Dirac delta product over the line: $x^2\operatorname{DiracDelta}(x^2-4)$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "distribution"
+    assert card["data"]["result"]["status"] == "ok"
+    assert card["data"]["result"]["result_text"] == "2"
+    assert "as a value" in message["text"]
+    assert message["trace"][0]["name"] == "distribution"
+    assert message["trace"][0]["status"] == "ok"
+
+
+def test_distribution_turn_on_a_limit_asks_for_the_convention(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client, cid, r"Integrate the Dirac delta $\operatorname{DiracDelta}(x-1)$ from 0 to 1"
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["reason"] == "integration_domain_ambiguous"
+    assert "half, include or exclude" in message["text"]
+    events = sse(
+        client,
+        cid,
+        r"Integrate the Dirac delta $\operatorname{DiracDelta}(x-1)$ from 0 to 1, convention half",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["result_text"] == "1/2"
+
+
 def test_matrix_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, r"Differentiate this matrix expression in t: $\exp(tA)$")
@@ -533,3 +573,68 @@ def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
         r"\dot\theta = \dot\phi + \omega",
     ]
     assert assumptions == {"x": ["positive"]}
+
+
+def test_geometry_turn_streams_a_verified_card_and_a_follow_up_reuses_the_problem(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, "Compute the Christoffel symbols of the sphere metric")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "geometry" and card["data"]["result"]["status"] == "ok"
+    assert [q["kind"] for q in card["data"]["result"]["quantities"]] == ["christoffel"]
+    assert message["trace"][0]["name"] == "geometry"
+    # the card's request is posted back unchanged, asking for more about the same geometry
+    request = {**card["data"]["request"], "quantities": ["ricci_scalar"]}
+    r = client.post(f"/v1/chat/conversations/{cid}/tools/geometry", json=request)
+    assert r.status_code == 201
+    follow = cards_of(r.json()["content"])[0]
+    assert follow["data"]["result"]["metric_latex"] == card["data"]["result"]["metric_latex"]
+    (q,) = follow["data"]["result"]["quantities"]
+    assert q["scalar_text"] == "2/a**2"
+
+
+def test_geometry_turn_for_a_flat_plane_reports_zero_curvature(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, "Riemann curvature of the polar plane metric")
+    message = next(d for e, d in events if e == "message")
+    assert cards_of(message)[0]["data"]["result"]["quantities"][0]["all_zero"] is True
+    assert "error" not in [e for e, _ in events]
+
+
+def test_geometry_form_endpoint_validation_privacy_and_no_model() -> None:
+    body = {
+        "coordinates": ["r", "theta"],
+        "metric": [["1", "0"], ["0", "r^2"]],
+        "assumptions": {"r": ["positive"]},
+        "quantities": ["christoffel"],
+    }
+    app = build_app(llm_mode="scripted")
+    with TestClient(app) as a, TestClient(app) as b:
+        register(a, "a@example.com")
+        register(b, "b@example.com")
+        cid = a.post("/v1/chat/conversations", json={}).json()["id"]
+        url = f"/v1/chat/conversations/{cid}/tools/geometry"
+        assert b.post(url, json=body).status_code == 404
+        assert a.post(url, json={**body, "quantities": []}).status_code == 422
+        assert a.post(url, json=body).status_code == 201
+        assert TestClient(app).post(url, json=body).status_code == 401
+    with TestClient(build_app()) as c:  # llm_mode off: the form route still works
+        register(c)
+        cid = c.post("/v1/chat/conversations", json={}).json()["id"]
+        assert c.post(f"/v1/chat/conversations/{cid}/tools/geometry", json=body).status_code == 201
+
+
+def test_chat_geometry_logs_stage_counters_without_content(capsys) -> None:  # type: ignore[no-untyped-def]
+    app = build_app(llm_mode="scripted")
+    with TestClient(app) as client:
+        register(client)
+        cid = client.post("/v1/chat/conversations", json={}).json()["id"]
+        sse(client, cid, "Compute the Christoffel symbols of the sphere metric")
+    out = capsys.readouterr().out
+    assert '"geometry_stage"' in out and '"christoffel:verify"' in out
+    assert "sin" not in out and "theta" not in out and "phi" not in out
+    assert "Christoffel symbols of the sphere" not in out

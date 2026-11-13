@@ -21,6 +21,12 @@ const LABELS: Record<Verified, { text: string; title: string; tone: string }> = 
     title: "Both sides have the same physical dimensions. This does not prove the equation.",
     tone: "bg-warn-soft text-warn",
   },
+  distributional: {
+    text: "Verified as distributions",
+    title:
+      "Equal as distributions: exact conditions were established and a test-function pairing agreed. This is not a pointwise check.",
+    tone: "bg-ok-soft text-ok",
+  },
   stated: {
     text: "Stated, not machine-checked",
     title: "Recorded from the literature. Minerva has not verified it and never applies it.",

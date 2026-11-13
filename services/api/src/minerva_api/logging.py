@@ -26,6 +26,7 @@ ALLOWED_FIELDS = frozenset(
         "operation",
         "status",
         "user_id",
+        "reason",
         "steps",
         "tool_calls",
         "tool_errors",
@@ -36,6 +37,11 @@ ALLOWED_FIELDS = frozenset(
         "completion_tokens",
         "cost_usd",
         "error_kind",
+        "dimension",  # geometry: counters and enumerated names only, never content
+        "stage",
+        "ops",
+        "failure",
+        "quantities",
         "logger",
     }
 )

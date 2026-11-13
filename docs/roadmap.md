@@ -38,6 +38,12 @@ Ordering favours correctness infrastructure before breadth.
    reduction and block-matrix exponentials for integrals, every result checked on random matrices). Next:
    time-ordered exponentials and the Magnus expansion, Duhamel integrals for exponents that do not commute with
    their derivative, matrix-valued functions beyond the exponential, and integrals of sums of such terms as one equation.
+   Dirac delta and Heaviside calculus is done for one real variable (`distribution`: scaling, simple real roots of
+   polynomial arguments, integration against deltas with an explicit limit convention, derivatives of steps; exact
+   conditions plus a test-function pairing, benchmarked in `docs/distribution-benchmark.md`). Next: derivatives of
+   the delta and their sifting, deltas of non-polynomial arguments, products of steps, Heaviside-windowed integrals,
+   several variables, Fourier and Laplace transforms of distributions, and a retriever that reads the structure of
+   the argument (recall@1 of the handbook identities is 7 %).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
@@ -57,10 +63,19 @@ analysis without a model; unit conversion and prefixes; searching three or more 
   where possible (explicit index ranges), otherwise labelled unverified.
 - Multi-term identities (Bianchi, Schouten) and gamma-matrix algebra via Cadabra.
 
-## Differential geometry (SageManifolds)
+## Differential geometry
 
-- Optional backend for charts, metrics, connections and curvature on explicit manifolds; results verified by
-  component-wise checks. Same licensing approach as Cadabra.
+Done: coordinate-based geometry with SymPy (`geometry`: metric, Christoffel symbols, curvature, invariants,
+symbolic geodesics, covariant derivatives, index operations, declared functions of the coordinates), in chat, the
+API and the workbench, with a reproducible benchmark. Next, in order of value:
+
+- Numerical geodesics (needs initial conditions the user chooses; reuse the verified integrator).
+- Conformal and coordinate changes as an operation (transform a metric and check the tensor laws).
+- Weyl tensor, geodesic deviation, Killing vector search (a finite ansatz, as `search_invariants`).
+- A tensor input for connections other than Levi-Civita (torsion, non-metricity), reported as such.
+- More than four coordinates, if the expression-growth measurements allow it.
+- Optional SageManifolds backend for abstract manifolds, charts and atlases, only as an out-of-process backend
+  with the same licensing approach as Cadabra (GPL; see `licensing.md`). Not needed for anything above.
 
 ## Mathematical RAG
 

@@ -1,4 +1,5 @@
 import { ApiError, extractDetail } from "./api";
+import type { GeometryRequest } from "./types";
 import type {
   ChatStatus,
   ConnectionResult,
@@ -35,6 +36,12 @@ export const chatApi = {
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/integrate_motion`, {
       method: "POST",
       body: JSON.stringify(request),
+    }),
+  /** Asks for more about the geometry on a card; its whole request is posted back unchanged. */
+  geometry: (id: string, request: GeometryRequest) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/geometry`, {
+      method: "POST",
+      body: JSON.stringify({ ...request, format: undefined }),
     }),
   /** Solves again with the comparison numbers the user typed; the reply is the stored card message. */
   perturbationSolve: (id: string, request: PerturbationRequest) =>

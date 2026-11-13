@@ -86,3 +86,27 @@ def test_unknown_format_is_rejected() -> None:
     text = f'{MODULE.JSON_START}\n```json\n{{"format": 99}}\n```\n{MODULE.JSON_END}'
     with pytest.raises(MODULE.ReportError, match="format"):
         MODULE.extract_data(text)
+
+
+GEOMETRY_ARGS = {
+    "coordinates": ["theta", "phi"],
+    "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+    "assumptions": {"a": ["positive"]},
+    "quantities": ["christoffel", "ricci_scalar"],
+}
+
+
+def test_a_geometry_call_replays_exactly_from_its_arguments(ctx: ToolContext) -> None:
+    # The geometry travels in the arguments (nothing is stored server-side), and the text the model read
+    # has no timings in it, so a recorded call reproduces byte for byte.
+    trace = [step(ctx, "geometry", GEOMETRY_ARGS)]
+    assert "status=ok" in trace[0]["for_model"] and "ms" not in trace[0]["for_model"]
+    items = MODULE.replay(MODULE.extract_data(report(trace)), ctx)
+    assert len(items) == 1 and items[0].name == "geometry" and items[0].same
+
+
+def test_a_geometry_call_whose_result_changed_is_reported(ctx: ToolContext) -> None:
+    recorded = step(ctx, "geometry", GEOMETRY_ARGS)
+    recorded["for_model"] = recorded["for_model"].replace("2}{a^{2}}", "3}{a^{2}}")
+    items = MODULE.replay(MODULE.extract_data(report([recorded])), ctx)
+    assert not items[0].same and "DIFFERENT" in MODULE.render(items)
