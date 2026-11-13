@@ -62,6 +62,27 @@ function cardSummary(card: Card | null | undefined): string[] {
     card.type === "units"
   ) {
     out.push(`- status: ${card.data.report.status}`, `- message: ${card.data.report.message}`);
+  } else if (card.type === "matrix") {
+    const r = card.data.result;
+    out.push(`- status: ${r.status}`, `- action: ${r.action ?? "-"}`);
+    out.push(
+      `- method: ${r.method ?? "-"}; kind: ${r.result_kind ?? "-"}; evaluated: ${r.evaluated}`,
+    );
+    if (r.verification) {
+      out.push(
+        `- verification: numeric ${r.verification.points_agreed}/${r.verification.points_checked}, exact leg ${r.verification.symbolic_zero ?? "not run"}`,
+      );
+    }
+    const d = r.diagnostics;
+    if (d) {
+      const tried = d.methods_tried.map((m) => `${m.id}:${m.outcome}`).join(", ");
+      const stages = d.stages.map((s) => `${s.name} ${s.ms.toFixed(0)} ms`).join(", ");
+      out.push(
+        `- diagnostics: trace ${d.trace_id ?? "-"}; tried [${tried}]; commutation ${d.commutation}; ` +
+          `digits ${d.digits ?? "-"}, tolerance ${d.tolerance ?? "-"}, residual ${d.max_residual ?? "-"}; ` +
+          `fallbacks [${d.fallbacks.join(", ")}]; failure ${d.failure_reason ?? "-"}; ${stages}`,
+      );
+    }
   } else if (card.type === "error") {
     out.push(`- message: ${card.data.message}`);
   } else if ("status" in card.data) {

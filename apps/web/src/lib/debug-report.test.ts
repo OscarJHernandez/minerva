@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { matrixFrechet } from "@/test/fixtures";
 import type { StoredMessage } from "./chat-types";
 import {
   JSON_END,
@@ -172,5 +173,37 @@ describe("buildTurnReport", () => {
     const out = buildTurnReport({ title: "t", status: null, now: NOW }, [user, assistant], 1);
     expect(out).toContain("### 1. User");
     expect(out).toContain("### 2. Assistant");
+  });
+});
+
+describe("matrix cards in a debug report", () => {
+  it("states the method, evaluated flag, checks and the content-free diagnostics", () => {
+    const matrix: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        blocks: [
+          {
+            kind: "card",
+            segments: [],
+            card: {
+              id: "t1",
+              tool: "matrix_calculus",
+              type: "matrix",
+              title: "Matrix calculus",
+              data: { result: matrixFrechet, methods: [], request: {} as never },
+            },
+          },
+        ],
+      },
+    };
+    const report = buildDebugReport({ ...input, messages: [user, matrix] });
+    expect(report).toContain("- card: matrix");
+    expect(report).toContain(
+      "- method: exp_frechet_derivative; kind: representation; evaluated: false",
+    );
+    expect(report).toContain("- verification: numeric 4/4, exact leg true");
+    expect(report).toContain("trace req0123-card0123; tried [integrate_polynomial:no_match");
+    expect(report).toContain("fallbacks []");
   });
 });
