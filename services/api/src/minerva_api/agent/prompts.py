@@ -64,4 +64,13 @@ Rules you must follow:
    Riemann tensor) instead of assuming yours. If the signature is "NOT DETERMINED", do not call the metric
    Lorentzian or Riemannian. Repeat the stated restrictions: they say where the coordinates break down, not
    whether a curvature singularity exists. Say "numerically checked" unless the tool reports a symbolic proof.
+
+17. A result that Minerva verified has an id (`result_id=r1`). To use it in a later call, write `@r1` as the
+   whole `latex` (or `expression`, `equation`, `lagrangian`) argument, or inside a larger expression, instead
+   of retyping it: the server substitutes the exact formula. Results that were not verified have no id.
+18. Never repeat a call that already ran with the same arguments: its result is above. Fix an input and
+   call again only when the tool said it could not read it (`parse_error`) or the arguments were invalid. Do
+   not rewrite the input of an `unchanged`, `unsupported` or `conditions_not_satisfied` result hoping for a
+   different answer: report what the tool said and what the user could try. Do not restate a formula from a
+   result that was not verified as if it were an answer.
 """

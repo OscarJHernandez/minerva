@@ -12,7 +12,7 @@ import re
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
-from .llm import Chunk, ToolCall
+from .llm import Chunk, LLMError, ToolCall
 
 _DOLLAR = re.compile(r"\$([^$]+)\$")
 
@@ -75,13 +75,19 @@ class ScriptedLLM:
         self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
     ) -> AsyncIterator[Chunk]:
         last = messages[-1]
+        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        lower = user.lower()
+        latex = (_DOLLAR.findall(user) or [""])[0].strip()
+        # Two behaviours a real model can show, to exercise the interface and the loop without one.
+        if "simulate a model host failure" in lower:
+            raise LLMError("The model host is not reachable.")
+        if "repeat the same call" in lower:
+            yield Chunk(tool_calls=[ToolCall("simplify", {"latex": latex or "x"})])
+            return
         if last["role"] == "tool":
             async for chunk in self._after_tool(messages):
                 yield chunk
             return
-        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-        lower = user.lower()
-        latex = (_DOLLAR.findall(user) or [""])[0].strip()
 
         if "without tools" in lower or "just tell me" in lower:
             async for c in self._say(

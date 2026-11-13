@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import Any
 
@@ -27,6 +28,7 @@ from .models import (
     TransformResult,
 )
 from .motion import MotionReport, MotionRequest
+from .observe import Observer, SandboxCall, current_trace_id
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
@@ -45,11 +47,19 @@ class Engine:
     def __init__(self, limits: Limits | None = None, sandbox: Sandbox | None = None) -> None:
         self.limits = limits or Limits()
         self.sandbox = sandbox or Sandbox(self.limits)
+        # Told about every sandbox call (see observe.py); None by default, and never allowed to fail a call.
+        self.observer: Observer | None = None
 
     def _run(self, op: str, payload: dict[str, Any]) -> tuple[SandboxResult, int]:
         start = time.monotonic()
         result = self.sandbox.run(op, {**payload, "limits": self.limits.model_dump()})
-        return result, int((time.monotonic() - start) * 1000)
+        ms = int((time.monotonic() - start) * 1000)
+        observer = self.observer
+        if observer is not None:
+            # Observing must never change a computation: whatever the observer does, the result stands.
+            with contextlib.suppress(Exception):
+                observer(SandboxCall(op, result.outcome.value, ms, current_trace_id()))
+        return result, ms
 
     @staticmethod
     def _failure_status(outcome: Outcome) -> tuple[Status, str]:

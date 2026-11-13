@@ -190,7 +190,11 @@ def test_a_failing_cloud_provider_is_reported_and_never_falls_back_to_local() ->
     err = next(d for e, d in events if e == "error")
     assert "credits" in err["message"] and KEY not in json.dumps(events)
     assert err["debug"]["error_kind"] == "credits"
-    assert not any(e == "message" for e, _ in events)
+    # The failed turn is delivered (so its trace is stored), but it holds no answer, and it was the
+    # cloud provider that failed: nothing fell back to the local model.
+    reply = next(d for e, d in events if e == "message")
+    assert reply["stop_reason"] == "model_error" and reply["debug"]["provider"] == "openrouter"
+    assert reply["trace"] == [] and reply["text"].startswith("I stopped here")
 
 
 def test_a_failing_local_model_never_falls_back_to_the_cloud() -> None:

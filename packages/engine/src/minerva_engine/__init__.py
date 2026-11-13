@@ -46,6 +46,7 @@ from .models import (
     Verification,
 )
 from .motion import MotionReport, MotionRequest, Sweep
+from .observe import SandboxCall, current_trace_id, trace_scope
 from .ops import apply_rule, parse_expression, verify_rule
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
@@ -106,6 +107,7 @@ __all__ = [
     "Rule",
     "RuleApplication",
     "RuleCondition",
+    "SandboxCall",
     "SeriesResult",
     "SeriesTerm",
     "SeriesVerification",
@@ -124,9 +126,11 @@ __all__ = [
     "apply_rule",
     "check_claim",
     "check_claims",
+    "current_trace_id",
     "parse_expression",
     "parse_latex",
     "parse_text",
     "split_equation",
+    "trace_scope",
     "verify_rule",
 ]

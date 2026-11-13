@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     openrouter_timeout_seconds: float = Field(default=120.0, gt=0, le=900)
     agent_max_steps: int = Field(default=6, ge=1, le=12)
     agent_max_seconds: float = Field(default=180.0, gt=0, le=900)
+    agent_max_tool_calls: int = Field(default=12, ge=1, le=40)
+    # What the agent writes to the server log per request: "off" nothing beyond the request lines,
+    # "summary" one `agent.completed` event, "all" every trace event. Events never hold content
+    # (expressions, tool arguments or results, model text); see docs/observability.md.
+    agent_events: Literal["off", "summary", "all"] = "summary"
     chat_rate_per_minute: int = 20
 
     @field_validator("allowed_origins")

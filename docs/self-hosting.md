@@ -139,8 +139,11 @@ delays streaming).
 | Replies time out | Raise `MINERVA_LLM_TIMEOUT_SECONDS`, or use a smaller or faster model |
 | Chat works but some formulas are marked "unchecked" | Intended: the model wrote a formula no tool produced. The engine's cards are the results; treat unchecked text as the model's prose |
 
-The chat debug mode (footer checkbox, or `?debug=1`) shows every tool call and result, and copies a report
-you can attach to an issue.
+The chat debug mode (footer checkbox, or `?debug=1`) shows a timeline of what the agent did (what it chose,
+whether the arguments were valid, what was verified, why it stopped), every tool call and result, and copies a
+report you can attach to an issue. The report contains your conversation: share it only where you would share
+the conversation. Every request has a trace id (`X-Trace-ID`); see [observability.md](observability.md) for what the
+server log holds (`MINERVA_AGENT_EVENTS`, never content) and how to read a trace.
 
 ### Security
 
@@ -149,7 +152,8 @@ you can attach to an issue.
 - Minerva sends the conversation, the tool descriptions and tool results to the model host you configured,
   and to nothing else. If that host is your own machine, nothing leaves your network.
 - Conversations are stored in your PostgreSQL database, private to each account. Server logs carry
-  counters and request ids, never expressions, messages or credentials.
+  counters, request and trace ids, never expressions, messages or credentials; Minerva itself sends nothing to a
+  log or telemetry service.
 
 ## 3. Without Docker
 

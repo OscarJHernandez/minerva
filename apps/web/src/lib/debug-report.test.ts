@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { okDistributionIntegral } from "@/test/fixtures";
-import type { StoredMessage } from "./chat-types";
+import type { StoredMessage, TraceEvent } from "./chat-types";
 import { sphere, sphereRequest } from "../test/geometry-fixtures";
 import {
+  CONTENT_NOTICE,
   JSON_END,
+  REPORT_FORMAT,
   JSON_START,
   buildDebugReport,
   buildTurnReport,
@@ -284,5 +286,178 @@ describe("buildTurnReport", () => {
     expect(report).toContain("- stage riemann: 4100 ms, 2300 ops, ok");
     expect(report).toContain("- stage einstein: 0 ms, resource_limit");
     expect(report).toContain("signature: not determined; restrictions: 1");
+  });
+});
+
+const events: TraceEvent[] = [
+  { event: "agent.started", trace_id: "tr1", seq: 1, t_ms: 0, step: null, model: "some-model" },
+  {
+    event: "tool.started",
+    trace_id: "tr1",
+    seq: 2,
+    t_ms: 10,
+    step: 1,
+    tool: "simplify",
+    call_id: "t1",
+    arguments_valid: true,
+  },
+  {
+    event: "tool.completed",
+    trace_id: "tr1",
+    seq: 3,
+    t_ms: 40,
+    step: 1,
+    tool: "simplify",
+    call_id: "t1",
+    status: "ok",
+    duration_ms: 30,
+  },
+  {
+    event: "agent.stopped",
+    trace_id: "tr1",
+    seq: 4,
+    t_ms: 90,
+    step: null,
+    reason: "repeated_calls",
+    steps: 2,
+    tool_calls: 1,
+  },
+  {
+    event: "agent.completed",
+    trace_id: "tr1",
+    seq: 5,
+    t_ms: 95,
+    step: null,
+    status: "ok",
+    total_ms: 95,
+    llm_ms: 50,
+    tool_ms: 30,
+    engine_ms: 25,
+    verify_ms: 5,
+  },
+];
+
+const traced: StoredMessage = {
+  ...assistant,
+  content: {
+    ...assistant.content,
+    stop_reason: "repeated_calls",
+    truncated: true,
+    trace: [
+      {
+        id: "t1",
+        name: "simplify",
+        arguments: { latex: "x+1" },
+        model_arguments: { latex: "@r1" },
+        for_model: "status=ok",
+        duration_ms: 30,
+        status: "ok",
+        arguments_valid: true,
+        engine_ms: 25,
+        result_id: "r2",
+        error_category: null,
+        evidence: {
+          check: "symbolic_zero",
+          accepted: true,
+          reason: "verified",
+          points_checked: 20,
+          points_agreed: 20,
+          symbolic_zero: true,
+          restrictions: 1,
+        },
+        assumptions_dropped: ["x"],
+      },
+    ],
+    debug: {
+      ...assistant.content.debug!,
+      trace_id: "tr1",
+      stop_reason: "repeated_calls",
+      events,
+      evidence_pct: 50,
+      formulas: 2,
+      formulas_with_evidence: 1,
+      claim_check: "timeout",
+      llm_calls: [
+        {
+          ms: 50,
+          text_chars: 0,
+          tool_calls: 1,
+          prompt_tokens: 120,
+          completion_tokens: 9,
+          finish_reason: "tool_calls",
+        },
+      ],
+    },
+  },
+};
+
+describe("buildDebugReport, format 2", () => {
+  const report = buildDebugReport({ ...input, messages: [user, traced] });
+
+  it("says what it contains and how it is shaped", () => {
+    expect(REPORT_FORMAT).toBe(2);
+    expect(report).toContain("format 2 ·");
+    expect(report).toContain(CONTENT_NOTICE);
+    expect(CONTENT_NOTICE).toMatch(/conversation content/);
+    const json = JSON.parse(
+      report
+        .slice(report.indexOf(JSON_START) + JSON_START.length, report.indexOf(JSON_END))
+        .replace(/```json|```/g, ""),
+    );
+    expect(json.format).toBe(2);
+    expect(json.contains_conversation_content).toBe(true);
+    expect(json.messages[1].debug.events).toHaveLength(5);
+    expect(json.messages[1].stop_reason).toBe("repeated_calls");
+    // The prose is rebuilt with its formula delimiters, so a turn can be replayed from the report.
+    expect(json.messages[1].prose).toEqual(["$x = 2$"]);
+    expect(json.messages[0].prose).toEqual([]);
+  });
+
+  it("gives the trace id, stop reason, stage timings, tokens and evidence", () => {
+    expect(report).toContain("trace tr1 · request req123");
+    expect(report).toContain("stop reason: repeated_calls (the model kept repeating calls");
+    expect(report).toContain("| total | 95 |");
+    expect(report).toContain("| model calls | 50 |");
+    expect(report).toContain("| of which in the sandbox | 25 |");
+    expect(report).toContain("| claim check | 5 |");
+    expect(report).toContain("tokens: 120 in, 9 out (as reported by the model host)");
+    expect(report).toContain("formulas with engine evidence: 1/2 (50%)");
+    expect(report).toContain("claim check: timeout");
+  });
+
+  it("tells the story of the turn in order", () => {
+    const at = (needle: string) => report.indexOf(needle);
+    expect(at("Timeline:")).toBeGreaterThan(-1);
+    expect(at("- 0 ms · Turn started")).toBeLessThan(at("- 40 ms · Tool simplify: status ok"));
+    expect(at("- 40 ms · Tool simplify: status ok")).toBeLessThan(
+      at("- 90 ms · Stopped: repeated calls"),
+    );
+    expect(report).toContain("this turn ended early (repeated_calls)");
+  });
+
+  it("describes each tool call: validity, category, evidence, references, dropped assumptions", () => {
+    expect(report).toContain("- arguments valid: true");
+    expect(report).toContain("result id r2");
+    expect(report).toContain("25 ms in the sandbox");
+    expect(report).toContain(
+      "- evidence: symbolic_zero, accepted (verified), 20/20 points, 1 restriction(s)",
+    );
+    expect(report).toContain("- declared earlier but not repeated in this call: x");
+    expect(report).toContain('"latex": "@r1"'); // what the model wrote
+    expect(report).toContain("After replacing references to earlier results:");
+    expect(report).toContain('"latex": "x+1"');
+  });
+
+  it("holds no email address or host name", () => {
+    expect(report).not.toMatch(/@(?!r\d)[a-z]|https?:\/\//);
+  });
+
+  it("still reports messages stored before tracing, with no invented fields", () => {
+    const old = buildDebugReport({ ...input, messages: [user, assistant] });
+    expect(old).toContain("format 2");
+    expect(old).not.toContain("stop reason:");
+    expect(old).not.toContain("Timeline:");
+    expect(old).not.toContain("- evidence:");
+    expect(old).toContain("trace - · request req123");
   });
 });

@@ -7,6 +7,7 @@
 | [self-hosting.md](self-hosting.md) | Build the Docker images, run your own instance, connect your own Ollama model |
 | [architecture.md](architecture.md) | How the engine, handbook, API, agent and web app fit together |
 | [roadmap.md](roadmap.md) | What is planned, in order |
+| [observability.md](observability.md) | Traces, structured events, debug reports, replay, the agent benchmark, troubleshooting and what is never logged |
 | [model-evaluation.md](model-evaluation.md) | How candidate language models score on tool calling and honesty |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
 | [geometry-benchmark.md](geometry-benchmark.md) | Differential geometry: correctness against closed forms and `sympy.diffgeom`, latency, expression growth and memory (generated; data in [benchmarks/geometry.json](benchmarks/geometry.json)) |

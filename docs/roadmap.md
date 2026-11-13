@@ -113,7 +113,7 @@ confirm, and raising the evaluation pass rate (14 of 21 cases for every model tr
 ## Platform
 
 - Shared rate limiting, account deletion/export, email verification and password reset.
-- Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`); observability.
+- Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`). Per-request tracing and the agent benchmark exist ([observability.md](observability.md)); metrics export and dashboards are not planned until a need is shown.
 - Playwright end-to-end tests in CI; accessibility audit of the math editor.
 
 ## Agentic CI (deferred, needs an LLM API budget)
