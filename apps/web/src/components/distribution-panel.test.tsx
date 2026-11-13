@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { okDistributionIntegral, okDistributionSimplify } from "@/test/fixtures";
 import type { DistributionResult } from "@/lib/types";
 import { DistributionPanel } from "./distribution-panel";
@@ -91,5 +92,61 @@ describe("DistributionPanel", () => {
     expect(screen.getByText(/Not applied/)).toBeInTheDocument();
     // said once, not again as the general message
     expect(screen.getAllByText(/The slope a is not proved nonzero\./)).toHaveLength(1);
+  });
+
+  describe("asking whether a name is a Dirac delta", () => {
+    const asked: DistributionResult = {
+      ...okDistributionIntegral,
+      status: "conditions_not_satisfied",
+      reason: "notation_unconfirmed",
+      result_latex: null,
+      result_text: null,
+      equality: null,
+      steps: [],
+      verification: null,
+      questions: [{ name: "delta", candidate: "dirac_delta" }],
+      message: "Is \\delta(…) a Dirac delta or a step function?",
+    };
+
+    it("offers the two answers and sends the one the user picks", async () => {
+      const onAnswer = vi.fn();
+      render(<DistributionPanel result={asked} onAnswer={onAnswer} />);
+      expect(screen.queryByLabelText("Result")).not.toBeInTheDocument();
+      expect(screen.getByTestId("notation-questions")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: /delta\(…\) is a Dirac delta/ }));
+      expect(onAnswer).toHaveBeenCalledExactlyOnceWith({ delta: "dirac_delta" });
+    });
+
+    it("lets the user say it is just a symbol", async () => {
+      const onAnswer = vi.fn();
+      render(<DistributionPanel result={asked} onAnswer={onAnswer} />);
+      await userEvent.click(screen.getByRole("button", { name: /ordinary symbol/ }));
+      expect(onAnswer).toHaveBeenCalledExactlyOnceWith({ delta: "symbol" });
+    });
+
+    it("asks nothing, and sends nothing, until every name is answered", async () => {
+      const onAnswer = vi.fn();
+      const both: DistributionResult = {
+        ...asked,
+        questions: [
+          { name: "delta", candidate: "dirac_delta" },
+          { name: "theta", candidate: "heaviside" },
+        ],
+      };
+      render(<DistributionPanel result={both} onAnswer={onAnswer} />);
+      await userEvent.click(screen.getByRole("button", { name: /delta\(…\) is a Dirac delta/ }));
+      expect(onAnswer).not.toHaveBeenCalled();
+      await userEvent.click(screen.getByRole("button", { name: /theta\(…\) is a step function/ }));
+      expect(onAnswer).toHaveBeenCalledExactlyOnceWith({
+        delta: "dirac_delta",
+        theta: "heaviside",
+      });
+    });
+
+    it("shows no buttons where the answer cannot be sent, only the reason", () => {
+      render(<DistributionPanel result={asked} />);
+      expect(screen.queryByTestId("notation-questions")).not.toBeInTheDocument();
+      expect(screen.getByTestId("refusal-reason")).toHaveTextContent(/Dirac delta or a step/);
+    });
   });
 });

@@ -274,7 +274,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   that the user chose (never default it, never let the model choose it). Repeated roots, undecided signs and
   non-polynomial arguments are refused with an enumerated reason (`unsupported_distribution`, `singular_root`,
   `assumptions_insufficient`, `integration_domain_ambiguous`, `verification_failed`, `resource_limit`). Input uses the
-  explicit names; `\delta` and `\theta` remain symbols. Handbook entries about distributions have level
+  explicit names (`\operatorname{DiracDelta}`, `DiracDelta(x)`). `\delta(...)`, `\theta(...)` and `\Theta(...)` (text
+  `delta(...)`) are ordinary symbols in every other operation and in the model's tool calls; inside `distribution`
+  they are read as distributions only for a reading the USER confirmed (`DistributionInput.notation`, filled from the
+  card's buttons through `POST /v1/chat/conversations/{id}/tools/distribution`, or the workbench). Without an answer
+  the result is `notation_unconfirmed` with `questions` and nothing is computed; `DistributionArgs` has no `notation`
+  field and `ToolContext.notation` is set only by that route, never by the agent loop. A confirmed reading goes
+  through the same exact conditions and pairing as the explicit names. Handbook entries about distributions have level
   `distributional` and no `rule`. Do not loosen the pairing tolerance (`pairing.TOLERANCE`): its tests include a 1e-6
   relative error, a missing `1/|g'|`, a dropped root and a wrong jump. Logs carry stage events with enumerated reasons
   only, never expressions.

@@ -9,10 +9,11 @@ from __future__ import annotations
 import time
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import sympy as sp
 
+from .build import NotationLog
 from .claims import check_claims, split_equation
 from .distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
 from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
@@ -51,6 +52,7 @@ def parse_expression(
     strict_calls: bool = False,
     *,
     allow_distributions: bool = False,
+    notation: NotationLog | None = None,
     allow_noncommutative: bool = False,
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
@@ -64,6 +66,7 @@ def parse_expression(
             noncommutative,
             functions,
             strict_calls,
+            notation,
             allow_noncommutative=allow_noncommutative,
         )
     else:
@@ -75,6 +78,7 @@ def parse_expression(
             noncommutative,
             functions,
             strict_calls,
+            notation,
             allow_noncommutative=allow_noncommutative,
         )
     if not allow_distributions and contains_distribution(expr):
@@ -241,6 +245,11 @@ def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # --- lagrangian ------------------------------------------------------------------------
+def _syntax(payload: dict[str, Any]) -> Literal["latex", "text"]:
+    """The syntax a payload names; anything but "text" is LaTeX (the default)."""
+    return "text" if payload.get("format") == "text" else "latex"
+
+
 def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     from .lagrangian import analyze_lagrangian
 
@@ -250,6 +259,7 @@ def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
         str(payload.get("time", "t")),
         payload.get("assumptions", {}),
         Limits(**payload["limits"]),
+        _syntax(payload),
     )
     return report.model_dump(mode="json")
 
@@ -304,6 +314,7 @@ def op_search_invariants(payload: dict[str, Any]) -> dict[str, Any]:
         str(payload.get("time", "t")),
         payload.get("assumptions", {}),
         Limits(**payload["limits"]),
+        _syntax(payload),
     )
     return report.model_dump(mode="json")
 

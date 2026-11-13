@@ -137,6 +137,8 @@ describe("distribution cards in a report", () => {
                   lower: "-oo",
                   upper: "oo",
                   endpoint: null,
+                  latex: String.raw`x^2 \operatorname{DiracDelta}(x^2-4)`,
+                  assumptions: { x: ["real"] },
                 },
               },
             },

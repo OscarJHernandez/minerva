@@ -59,6 +59,9 @@ class ToolContext:
     # Names this conversation declared as matrices or operators (set by the loop before each call).
     # Tools that treat symbols as commuting numbers refuse expressions that mention one.
     matrices: frozenset[str] = frozenset()
+    # What the USER answered on a card (`delta(...)` is a Dirac delta). Only the direct-post route fills
+    # it; the agent loop never does, so the model cannot make such an answer.
+    notation: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -240,9 +243,11 @@ class GeometryArgs(BaseModel):
 class DistributionArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
-        description="Expression with Dirac delta or Heaviside functions, written with explicit names: "
-        "\\operatorname{DiracDelta}(x-a) and \\operatorname{Heaviside}(x). \\delta(x) and \\theta(x) are "
-        "NOT read as distributions. For integrate give only the integrand (no \\int, no dx).",
+        description="Expression with Dirac delta or Heaviside functions, as the user wrote it: "
+        "\\delta(x-a), \\theta(x), or the explicit \\operatorname{DiracDelta}(x-a) and "
+        "\\operatorname{Heaviside}(x). \\delta(...) and \\theta(...) are read as distributions only after "
+        "the USER confirms it on the card; do not rewrite them yourself. For integrate give only the "
+        "integrand (no \\int, no dx).",
     )
     action: Literal["simplify", "integrate", "differentiate"] = Field(
         default="simplify",
@@ -924,6 +929,7 @@ def run_distribution(args: DistributionArgs, ctx: ToolContext) -> ToolOutput:
         lower=args.lower,
         upper=args.upper,
         endpoint=args.endpoint,
+        notation=ctx.notation,
     )
     result = ctx.engine.distribution(request)
     log_distribution(result)
@@ -940,11 +946,29 @@ def run_distribution(args: DistributionArgs, ctx: ToolContext) -> ToolOutput:
         data={
             "result": result.model_dump(mode="json"),
             "methods": method_data,
-            "request": request.model_dump(mode="json", exclude={"expression"}),
+            # Everything a card button needs to ask again with the user's answer (the expression too).
+            "request": {
+                **request.model_dump(mode="json", exclude={"expression", "notation"}),
+                "latex": args.latex,
+                "assumptions": args.assumptions,
+            },
         },
     )
     shown = result.status.value == "ok"
     head = f"status={result.status.value}; action={result.action}; "
+    if result.questions:
+        names = ", ".join(q.name for q in result.questions)
+        head += (
+            f"needs_user_confirmation={names} (is it a Dirac delta or step function? ONLY the user "
+            "answers, with the buttons on the card; do not answer for them and do not rewrite the "
+            "input with the explicit names unless they said so in words); "
+        )
+    if result.notation:
+        head += (
+            "notation_confirmed_by_user="
+            + ",".join(f"{n}:{r}" for n, r in sorted(result.notation.items()))
+            + "; "
+        )
     if result.reason:
         head += f"reason={result.reason}; "
     if result.input_latex:
@@ -1967,7 +1991,9 @@ TOOLS: dict[str, Tool] = {
             "that were established; the result is shown only if independent test-function pairings agree. "
             "Declare the variable and every symbol in a delta or step real. Refuses (with a reason) repeated "
             "roots, unknown signs or zero scales, a delta on an integration limit without a convention the "
-            "USER chose, products of distributions and derivatives of deltas.",
+            "USER chose, products of distributions and derivatives of deltas. If the input uses \\delta(...) "
+            "or \\theta(...) the card asks the user whether it is a Dirac delta or a step function and "
+            "nothing is computed until they answer.",
             DistributionArgs,
             run_distribution,
         ),

@@ -30,11 +30,11 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 - An identity that matches but whose conditions are not provable from your assumptions is reported with the unmet conditions and never applied.
 - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are left alone until you say so.
 - If nothing better is found, the input is returned unchanged and the status says so.
-- Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
+- In LaTeX, bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous; plain text needs the parentheses, `sin(2*x)`.
 
 #### Rational trigonometric expression
 
-- **Input:** `\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}`
+- **Input:** `sin(x)/(1+cos(x)) + (1+cos(x))/sin(x)` (plain text), read as $\frac{\cos{\left(x \right)} + 1}{\sin{\left(x \right)}} + \frac{\sin{\left(x \right)}}{\cos{\left(x \right)} + 1}$
 - **Status:** `ok`
 - **Result:** $\frac{2}{\sin{\left(x \right)}}$
 - **Step 1: sympy.simplify:** $\frac{\cos{\left(x \right)} + 1}{\sin{\left(x \right)}} + \frac{\sin{\left(x \right)}}{\cos{\left(x \right)} + 1} = \frac{2}{\sin{\left(x \right)}}$
@@ -43,7 +43,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Difference of fourth powers
 
-- **Input:** `\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}`
+- **Input:** `(sin(x)^4 - cos(x)^4)/(sin(x)^2 - cos(x)^2)` (plain text), read as $\frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\sin^{2}{\left(x \right)} - \cos^{2}{\left(x \right)}}$
 - **Status:** `ok`
 - **Result:** $1$
 - **Step 1: Difference of squares (alg.difference_of_squares):** $\frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\sin^{2}{\left(x \right)} - \cos^{2}{\left(x \right)}} = \frac{\sin^{4}{\left(x \right)} - \cos^{4}{\left(x \right)}}{\left(\sin{\left(x \right)} - \cos{\left(x \right)}\right) \left(\sin{\left(x \right)} + \cos{\left(x \right)}\right)}$
@@ -56,7 +56,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Cancelling a factor keeps its restriction
 
-- **Input:** `\frac{x^2-1}{x-1}`
+- **Input:** `(x^2-1)/(x-1)` (plain text), read as $\frac{x^{2} - 1}{x - 1}$
 - **Status:** `ok`
 - **Result:** $x + 1$
 - **Step 1: Difference of squares (alg.difference_of_squares):** $\frac{x^{2} - 1}{x - 1} = x + 1$
@@ -66,7 +66,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Square root of a square, no assumptions
 
-- **Input:** `\sqrt{x^2}`
+- **Input:** `sqrt(x^2)` (plain text), read as $\sqrt{x^{2}}$
 - **Status:** `conditions_not_satisfied`
 - **Read as:** $\sqrt{x^{2}}$
 - **Not applied: Square root of a square (real):** radical.sqrt_square_abs matches but needs a real
@@ -76,7 +76,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### The same, with x declared real
 
-- **Input:** `\sqrt{x^2}`
+- **Input:** `sqrt(x^2)` (plain text), read as $\left|{x}\right|$
 - **Assumptions:** x real
 - **Status:** `unchanged`
 - **Read as:** $\left|{x}\right|$
@@ -85,7 +85,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Power of a power, no assumptions
 
-- **Input:** `(x^a)^b`
+- **Input:** `(x^a)^b` (plain text), read as $\left(x^{a}\right)^{b}$
 - **Status:** `unchanged`
 - **Read as:** $\left(x^{a}\right)^{b}$
 - No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
@@ -93,7 +93,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### The same, with x positive and a real
 
-- **Input:** `(x^a)^b`
+- **Input:** `(x^a)^b` (plain text), read as $x^{a b}$
 - **Assumptions:** x positive; a real
 - **Status:** `unchanged`
 - **Read as:** $x^{a b}$
@@ -102,7 +102,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Two identities in a row
 
-- **Input:** `\sin^2 x + \cos^2 x + \tan^2 x`
+- **Input:** `\sin^2 x + \cos^2 x + \tan^2 x` (LaTeX)
 - **Status:** `ok`
 - **Result:** $\sec^{2}{\left(x \right)}$
 - **Step 1: Pythagorean identity (trig.pythagorean):** $\sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)} + \tan^{2}{\left(x \right)} = \tan^{2}{\left(x \right)} + 1$
@@ -114,7 +114,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### An identity inside a larger expression
 
-- **Input:** `\log(\sin^2 t + \cos^2 t + y)`
+- **Input:** `log(sin(t)^2 + cos(t)^2 + y)` (plain text), read as $\log{\left(y + \sin^{2}{\left(t \right)} + \cos^{2}{\left(t \right)} \right)}$
 - **Status:** `ok`
 - **Result:** $\log{\left(y + 1 \right)}$
 - **Step 1: Pythagorean identity (trig.pythagorean):** $\log{\left(y + \sin^{2}{\left(t \right)} + \cos^{2}{\left(t \right)} \right)} = \log{\left(y + 1 \right)}$
@@ -123,7 +123,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Matches, but its conditions are not provable
 
-- **Input:** `\log x + \log y`
+- **Input:** `log(x) + log(y)` (plain text), read as $\log{\left(x \right)} + \log{\left(y \right)}$
 - **Status:** `conditions_not_satisfied`
 - **Read as:** $\log{\left(x \right)} + \log{\left(y \right)}$
 - **Not applied: Logarithm of a product:** log.product matches but needs a positive, b positive
@@ -132,7 +132,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### The same, with x and y declared positive
 
-- **Input:** `\log x + \log y`
+- **Input:** `log(x) + log(y)` (plain text), read as $\log{\left(x \right)} + \log{\left(y \right)}$
 - **Assumptions:** x positive; y positive
 - **Status:** `ok`
 - **Result:** $\log{\left(x y \right)}$
@@ -142,7 +142,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Expand a multiple angle
 
-- **Input:** `\sin(3x)`
+- **Input:** `sin(3*x)` (plain text), read as $\sin{\left(3 x \right)}$
 - **Status:** `ok`
 - **Result:** $- 4 \sin^{3}{\left(x \right)} + 3 \sin{\left(x \right)}$
 - **Step 1: Triple-angle formula for sine (trig.triple_sin):** $\sin{\left(3 x \right)} = - 4 \sin^{3}{\left(x \right)} + 3 \sin{\left(x \right)}$
@@ -151,7 +151,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Factor a difference of fourth powers
 
-- **Input:** `x^4 - y^4`
+- **Input:** `x^4 - y^4` (plain text), read as $x^{4} - y^{4}$
 - **Status:** `ok`
 - **Result:** $\left(x - y\right) \left(x + y\right) \left(x^{2} + y^{2}\right)$
 - **Step 1: Difference of fourth powers (alg.difference_of_fourth_powers):** $x^{4} - y^{4} = \left(x - y\right) \left(x + y\right) \left(x^{2} + y^{2}\right)$
@@ -160,7 +160,7 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Rewrite in terms of sine and cosine
 
-- **Input:** `\tan x \cos x`
+- **Input:** `tan(x)*cos(x)` (plain text), read as $\cos{\left(x \right)} \tan{\left(x \right)}$
 - **Status:** `ok`
 - **Result:** $\sin{\left(x \right)}$
 - **Step 1: Tangent as a ratio (trig.tan_ratio):** $\cos{\left(x \right)} \tan{\left(x \right)} = \sin{\left(x \right)}$
@@ -169,14 +169,14 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 
 #### Nothing to improve
 
-- **Input:** `\sin x`
+- **Input:** `sin(x)` (plain text), read as $\sin{\left(x \right)}$
 - **Status:** `unchanged`
 - **Read as:** $\sin{\left(x \right)}$
 - No verified chain of up to 4 steps improves this expression for the goal 'simplify'. This does not show that none exists.
 
 #### Ambiguous input is refused
 
-- **Input:** `\sin 2x`
+- **Input:** `\sin 2x` (LaTeX)
 - **Status:** `parse_error`
 - ambiguous argument of \sin: use parentheses
 
@@ -193,7 +193,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 
 #### Product rule
 
-- **Input:** `x^3 \sin(x)`
+- **Input:** `x^3*sin(x)` (plain text), read as $x^{3} \sin{\left(x \right)}$
 - **Status:** `ok`
 - **Derivative:** $\frac{d}{d x} x^{3} \sin{\left(x \right)} = x^{2} \left(x \cos{\left(x \right)} + 3 \sin{\left(x \right)}\right)$
 - **Check:** 1 step(s) checked against a numerical derivative; agreed at 12 of 12 points
@@ -201,7 +201,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 
 #### Third derivative of a Gaussian
 
-- **Input:** `\exp(-x^2)`
+- **Input:** `\exp(-x^2)` (LaTeX)
 - **Status:** `ok`
 - **Derivative:** $\frac{d^{3}}{d x^{3}} \mathrm{e}^{- x^{2}} = \left(- 8 x^{3} + 12 x\right) \mathrm{e}^{- x^{2}}$
 - **Check:** 3 step(s) checked against a numerical derivative; agreed at 36 of 36 points
@@ -209,7 +209,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 
 #### Mixed partial derivative
 
-- **Input:** `x^2 y^3`
+- **Input:** `x^2*y^3` (plain text), read as $x^{2} y^{3}$
 - **Status:** `ok`
 - **Derivative:** $\frac{\partial^{2}}{\partial y\partial x} x^{2} y^{3} = 6 x y^{2}$
 - **Check:** 2 step(s) checked against a numerical derivative; agreed at 24 of 24 points
@@ -217,7 +217,7 @@ Differentiates symbolically with respect to one or more variables, to any order 
 
 #### No complex derivative
 
-- **Input:** `|x|`
+- **Input:** `abs(x)` (plain text), read as $\left|{x}\right|$
 - **Status:** `unsupported`
 - This expression has no complex derivative with respect to x (for example |z|, re z, im z or conjugates). If the variable is real, declare it real and try again.
 - Declare x real to differentiate |x|.
@@ -236,7 +236,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 
 #### Exponential about zero
 
-- **Input:** `\exponentialE^{x}`
+- **Input:** `\exponentialE^{x}` (LaTeX)
 - **Status:** `ok`
 - **Series:** $1 + x + \frac{x^{2}}{2} + \frac{x^{3}}{6} + \frac{x^{4}}{24} + \frac{x^{5}}{120} + O\left(x^{6}\right)$
 - **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 6 (1 parameter set(s))
@@ -244,7 +244,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 
 #### Binomial series with a symbolic exponent
 
-- **Input:** `(1+x)^{a}`
+- **Input:** `(1+x)^a` (plain text), read as $\left(x + 1\right)^{a}$
 - **Status:** `ok`
 - **Series:** $1 + a x + \frac{a x^{2} \left(-1 + a\right)}{2} + \frac{a x^{3} \left(2 - 3 a + a^{2}\right)}{6} + O\left(x^{4}\right)$
 - **Check:** coefficients agree with a Cauchy-integral estimate and the remainder shrinks at order 4 (4 parameter set(s))
@@ -252,7 +252,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 
 #### Logarithm about 1
 
-- **Input:** `\ln x`
+- **Input:** `log(x)` (plain text), read as $\log{\left(x \right)}$
 - **Assumptions:** x positive
 - **Status:** `ok`
 - **Series:** $\left(x - 1\right) - \frac{\left(x - 1\right)^{2}}{2} + \frac{\left(x - 1\right)^{3}}{3} - \frac{\left(x - 1\right)^{4}}{4} + O\left(\left(x - 1\right)^{5}\right)$
@@ -261,7 +261,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 
 #### A pole has no Taylor series
 
-- **Input:** `\frac{1}{x}`
+- **Input:** `1/x` (plain text), read as $\frac{1}{x}$
 - **Status:** `unsupported`
 - The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported.
 
@@ -282,7 +282,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### An integral of a product of noncommuting exponentials
 
-- **Expression:** `\exp(wA)\exp(-wB)`
+- **Expression:** `exp(w*A)*exp(-w*B)` (plain text)
 - **Matrix:** `A = [1, 0; 0, 2]`
 - **Matrix:** `B = [0, 1; 0, 0]`
 - **Status:** `ok`
@@ -297,12 +297,12 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### The same structure with abstract matrices gives a verified equation, not entries
 
-- **Expression:** `\exp(-(x-y)(y-w)A)\exp(-(w-z)(z-q)B)`
+- **Expression:** `exp(-(x-y)*(y-w)*A)*exp(-(w-z)*(z-q)*B)` (plain text)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
 - **Exact representation (not evaluated):** $\exp\left(\left(- x y + y^{2}\right) A\right) \left(\exp\left(\left(b x - b y\right) A\right)\left[\exp\left(b\,\begin{pmatrix} \left(- x + y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12} - \exp\left(\left(a x - a y\right) A\right)\left[\exp\left(a\,\begin{pmatrix} \left(- x + y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12}\right) \exp\left(\left(- q z + z^{2}\right) B\right)$
-- **Verified equation:** $\left(x - y\right) A X + \left(q - z\right) X B = \exp\left(-\left(- b + y\right) \left(x - y\right) A\right) \exp\left(-\left(b - z\right) \left(- q + z\right) B\right) - \exp\left(-\left(- a + y\right) \left(x - y\right) A\right) \exp\left(-\left(a - z\right) \left(- q + z\right) B\right)$
+- **Verified equation:** $\left(x - y\right) A X + \left(q - z\right) X B = \exp\left(\left(- b + y\right) \left(- x + y\right) A\right) \exp\left(\left(- b + z\right) \left(- q + z\right) B\right) - \exp\left(\left(- a + y\right) \left(- x + y\right) A\right) \exp\left(\left(- a + z\right) \left(- q + z\right) B\right)$
 - **Check:** numeric check agreed at 8 of 8 random samples
 - **Check:** exact check through degree 4: passed
 - Method: Block-matrix exponential representation (block_exponential).
@@ -311,7 +311,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### Derivative of a product keeps the order
 
-- **Expression:** `\exp(tA)\exp(sB)`
+- **Expression:** `exp(t*A)*exp(s*B)` (plain text)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -324,7 +324,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### Exponentials of matrices that may not commute are not merged
 
-- **Expression:** `\exp(A)\exp(B)`
+- **Expression:** `exp(A)*exp(B)` (plain text)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `conditions_not_satisfied`
@@ -333,7 +333,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### Merged once commutation is declared
 
-- **Expression:** `\exp(A)\exp(B)`
+- **Expression:** `\exp(A)\exp(B)` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -346,7 +346,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### The derivative of an exponential whose exponent does not commute with its derivative
 
-- **Expression:** `\exp(t^2 A + t B)`
+- **Expression:** `exp(t^2*A + t*B)` (plain text)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -360,7 +360,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### The same derivative with explicit entries is evaluated
 
-- **Expression:** `\exp(tA + t^2 B)`
+- **Expression:** `\exp(tA + t^2 B)` (LaTeX)
 - **Matrix:** `A = [0, 1; 0, 0]`
 - **Matrix:** `B = [0, 0; 1, 0]`
 - **Status:** `ok`
@@ -373,7 +373,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### With commutation declared it is the familiar product
 
-- **Expression:** `\exp(t^2 A + t B)`
+- **Expression:** `\exp(t^2 A + t B)` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -387,7 +387,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### A time-dependent matrix that commutes with itself at all times
 
-- **Expression:** `\exp(A(t))`
+- **Expression:** `\exp(A(t))` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Status:** `ok`
 - **Result:** $A' \exp\left(A\right)$
@@ -400,7 +400,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### A time-dependent matrix without that declaration gives the Frechet integral
 
-- **Expression:** `\exp(A(t))`
+- **Expression:** `\exp(A(t))` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Status:** `ok`
 - **Exact representation (not evaluated):** $\int_0^1 \exp\left((1-\sigma) A\right) A' \exp\left(\sigma A\right) d\sigma$
@@ -413,7 +413,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### A Duhamel integral with explicit matrices
 
-- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Expression:** `\exp((t-s)A) B \exp(sA)` (LaTeX)
 - **Matrix:** `A = [0, 1; 0, 0]`
 - **Matrix:** `B = [0, 0; 1, 0]`
 - **Status:** `ok`
@@ -427,7 +427,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### With abstract matrices it is an exact representation, not an evaluated integral
 
-- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Expression:** `\exp((t-s)A) B \exp(sA)` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -441,7 +441,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### When B commutes with A the integral is a closed form
 
-- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Expression:** `\exp((t-s)A) B \exp(sA)` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -455,7 +455,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### An evolution operator for a generator whose matrices commute
 
-- **Expression:** `tA + t^2 B`
+- **Expression:** `tA + t^2 B` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `ok`
@@ -469,7 +469,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### An evolution operator from explicit entries that commute with themselves
 
-- **Expression:** `A(t)`
+- **Expression:** `A(t)` (LaTeX)
 - **Matrix:** `A = [t, 0; 0, 2t]`
 - **Status:** `ok`
 - **Result:** $\left[\begin{matrix}\mathrm{e}^{\frac{t^{2}}{2}} & 0\\0 & \mathrm{e}^{t^{2}}\end{matrix}\right]$
@@ -482,7 +482,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### A generator that does not commute with itself is solved numerically on a span you choose
 
-- **Expression:** `A(t)`
+- **Expression:** `A(t)` (LaTeX)
 - **Matrix:** `A = [0, 1; -t, 0]`
 - **Status:** `ok`
 - **Numerical approximation (not a closed form):** $\begin{pmatrix} 0.497889578953 & 1.1107815151 \\ -0.889078135871 & 0.0249622440802 \end{pmatrix}$
@@ -494,7 +494,7 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 
 #### An abstract generator that does not commute with itself is declined
 
-- **Expression:** `tA + t^2 B`
+- **Expression:** `tA + t^2 B` (LaTeX)
 - **Matrix:** `A: 2 by 2, entries not given`
 - **Matrix:** `B: 2 by 2, entries not given`
 - **Status:** `unsupported`
@@ -512,11 +512,12 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 - One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.
 - A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.
 - Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.
-- The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}); \delta and \theta remain ordinary symbols.
+- The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Write `delta(x)` or `\delta(x)` (outside this operation they are ordinary symbols) and Minerva asks whether it is a Dirac delta, and `theta(x)` whether it is a step function, then computes nothing until you answer. The explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}) need no question.
 
 #### An integral against a delta of a polynomial with two simple roots
 
-- **Expression:** `x^2 \operatorname{DiracDelta}(x^2 - 4)`
+- **Expression:** `x^2*delta(x^2 - 4)` (plain text), read as $x^{2} \operatorname{DiracDelta}\left(x^{2} - 4\right)$
+- **You confirmed:** delta(…) is a Dirac delta
 - **Limits:** `-oo to oo`
 - **Status:** `ok`
 - **Value:** $2$
@@ -527,9 +528,19 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 - Step: Integrating against a delta picks out the value (distributions.delta_sifting).
 - Integrated with handbook identities under conditions that were established exactly; 1 of 1 test-function pairings agree (supporting evidence, not a proof).
 
+#### Minerva asks whether delta is a Dirac delta
+
+- **Expression:** `x^2*delta(x^2 - 4)` (plain text)
+- **Limits:** `-oo to oo`
+- **Status:** `conditions_not_satisfied`
+- Refused (notation_unconfirmed).
+- Is delta(…) a Dirac delta or a step function? Outside this operation they are ordinary symbols, so nothing is computed until you say what it is.
+- Until you answer, delta(...) is an ordinary symbol times a bracket, so nothing is computed. The chat and the workbench show the question with buttons; the example above this one is the same integral after the answer "yes, a Dirac delta".
+
 #### Scaling by a parameter whose sign is known
 
-- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Expression:** `delta(a*x)` (plain text), read as $\operatorname{DiracDelta}\left(a x\right)$
+- **You confirmed:** delta(…) is a Dirac delta
 - **Assumptions:** a negative
 - **Status:** `ok`
 - **Result (as distributions):** $- \frac{\operatorname{DiracDelta}\left(x\right)}{a}$
@@ -540,7 +551,8 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 
 #### The derivative of a switched-on decay has a delta where it jumps
 
-- **Expression:** `\mathrm{e}^{-g x} \operatorname{Heaviside}(x)`
+- **Expression:** `exp(-g*x)*theta(x)` (plain text), read as $\mathrm{e}^{- g x} \operatorname{Heaviside}\left(x\right)$
+- **You confirmed:** theta(…) is a step function
 - **Assumptions:** g positive
 - **Status:** `ok`
 - **Result (as distributions):** $- g \mathrm{e}^{- g x} \operatorname{Heaviside}\left(x\right) + \operatorname{DiracDelta}\left(x\right)$
@@ -552,7 +564,7 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 
 #### A scale factor of unknown sign is declined
 
-- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Expression:** `\operatorname{DiracDelta}(a x)` (LaTeX)
 - **Assumptions:** a real
 - **Status:** `conditions_not_satisfied`
 - Refused (assumptions_insufficient).
@@ -560,7 +572,8 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 
 #### A delta on an integration limit is ambiguous until you choose a convention
 
-- **Expression:** `\operatorname{DiracDelta}(x - 1)`
+- **Expression:** `delta(x - 1)` (plain text), read as $\operatorname{DiracDelta}\left(x - 1\right)$
+- **You confirmed:** delta(…) is a Dirac delta
 - **Limits:** `0 to 1`
 - **Status:** `conditions_not_satisfied`
 - Refused (integration_domain_ambiguous).
@@ -568,7 +581,8 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 
 #### A repeated root is declined
 
-- **Expression:** `\operatorname{DiracDelta}(x^2)`
+- **Expression:** `delta(x^2)` (plain text), read as $\operatorname{DiracDelta}\left(x^{2}\right)$
+- **You confirmed:** delta(…) is a Dirac delta
 - **Status:** `unsupported`
 - Refused (singular_root).
 - The root 0 is a repeated root, where the delta of a function is not a combination of simple deltas.
@@ -589,9 +603,9 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 #### The 2-sphere, with its curvature invariants
 
-- **Coordinates:** `\theta, \phi`
-- **Metric row 1:** `a^2,  0`
-- **Metric row 2:** `0,  a^2 \sin^2\theta`
+- **Coordinates:** `theta, phi` (plain text)
+- **Metric row 1:** `a^2,  0` (plain text)
+- **Metric row 2:** `0,  a^2*sin(theta)^2` (plain text)
 - **Assumptions:** a positive
 - **Status:** `ok`
 - **Christoffel symbols:** $\Gamma^{\theta}{}_{\phi \phi} = - \sin{\left(\theta \right)} \cos{\left(\theta \right)}$
@@ -609,11 +623,11 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 #### Schwarzschild spacetime is Ricci-flat
 
-- **Coordinates:** `t, r, \theta, \phi`
-- **Metric row 1:** `-(1-2M/r),  0,  0,  0`
-- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0`
-- **Metric row 3:** `0,  0,  r^2,  0`
-- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Coordinates:** `t, r, \theta, \phi` (LaTeX)
+- **Metric row 1:** `-(1-2M/r),  0,  0,  0` (LaTeX)
+- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0` (LaTeX)
+- **Metric row 3:** `0,  0,  r^2,  0` (LaTeX)
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta` (LaTeX)
 - **Assumptions:** M positive; r positive
 - **Status:** `ok`
 - **Ricci tensor (symmetric; one of each pair shown):** $0 \text{ (every component)}$
@@ -629,9 +643,9 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 #### Geodesic equations of the plane in polar coordinates
 
-- **Coordinates:** `r, \theta`
-- **Metric row 1:** `1,  0`
-- **Metric row 2:** `0,  r^2`
+- **Coordinates:** `r, theta` (plain text)
+- **Metric row 1:** `1,  0` (plain text)
+- **Metric row 2:** `0,  r^2` (plain text)
 - **Assumptions:** r positive
 - **Status:** `ok`
 - **Geodesic equations:** $\ddot{r} = r \dot{\theta}^{2}$
@@ -644,11 +658,11 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 #### An unspecified function in the metric
 
-- **Coordinates:** `t, r, \theta, \phi`
-- **Metric row 1:** `-f(r),  0,  0,  0`
-- **Metric row 2:** `0,  1/f(r),  0,  0`
-- **Metric row 3:** `0,  0,  r^2,  0`
-- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Coordinates:** `t, r, theta, phi` (plain text)
+- **Metric row 1:** `-f(r),  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1/f(r),  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  r^2,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  r^2*sin(theta)^2` (plain text)
 - **Functions:** `f(r)`
 - **Assumptions:** r positive
 - **Status:** `ok`
@@ -663,9 +677,9 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 #### The covariant derivative of the radial vector field
 
-- **Coordinates:** `r, \theta`
-- **Metric row 1:** `1,  0`
-- **Metric row 2:** `0,  r^2`
+- **Coordinates:** `r, theta` (plain text)
+- **Metric row 1:** `1,  0` (plain text)
+- **Metric row 2:** `0,  r^2` (plain text)
 - **Assumptions:** r positive
 - **Status:** `ok`
 - **Covariant derivative of the tensor:** $\nabla T_{\theta}{}^{\theta} = \frac{1}{r}$
@@ -677,25 +691,25 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 #### A degenerate metric is declined
 
-- **Coordinates:** `x, y`
-- **Metric row 1:** `1,  0`
-- **Metric row 2:** `0,  0`
+- **Coordinates:** `x, y` (plain text)
+- **Metric row 1:** `1,  0` (plain text)
+- **Metric row 2:** `0,  0` (plain text)
 - **Status:** `unsupported`
 - Assumes: coordinates are real: x, y.
 - The metric is degenerate (its determinant is identically zero), so it has no inverse and no Levi-Civita connection.
 
 #### An undeclared function is refused instead of being read as a product
 
-- **Coordinates:** `r`
-- **Metric row 1:** `f(r)`
+- **Coordinates:** `r` (plain text)
+- **Metric row 1:** `f(r)` (plain text)
 - **Status:** `parse_error`
-- f(…) is ambiguous: declare f as a function, or write f\cdot(…) for a product
+- f(…) is not a known function: declare f as a function
 
 #### A metric that is not symmetric is declined
 
-- **Coordinates:** `x, y`
-- **Metric row 1:** `1,  x`
-- **Metric row 2:** `0,  1`
+- **Coordinates:** `x, y` (plain text)
+- **Metric row 1:** `1,  x` (plain text)
+- **Metric row 2:** `0,  1` (plain text)
 - **Status:** `parse_error`
 - The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
 
@@ -1075,7 +1089,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 
 #### Kepler problem in polar coordinates
 
-- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Lagrangian:** `m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r` (plain text), read as $\frac{k}{r} + \frac{m \left(r^{2} \dot{\theta}^{2} + \dot{r}^{2}\right)}{2}$
 - **Coordinates:** r, theta
 - **Status:** `ok`
 - **Equation of motion (r):** $\frac{k}{r^{2}} - m r \dot{\theta}^{2} + m \ddot{r} = 0$
@@ -1085,11 +1099,11 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
 
 #### The same problem in Cartesian coordinates
 
-- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}`
+- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}` (LaTeX)
 - **Coordinates:** x, y
 - **Status:** `ok`
 - **Equation of motion (x):** $\frac{k x}{\left(x^{2} + y^{2}\right)^{\frac{3}{2}}} + m \ddot{x} = 0$
@@ -1099,17 +1113,17 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - cyclic coordinates: none (every coordinate appears in L)
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
 
 #### Explicit time dependence removes the energy
 
-- **Lagrangian:** `\frac12 m\dot{x}^2 - \frac12 k x^2 t`
+- **Lagrangian:** `m*x_dot^2/2 - k*x^2*t/2` (plain text), read as $- \frac{k t x^{2}}{2} + \frac{m \dot{x}^{2}}{2}$
 - **Coordinates:** x
 - **Status:** `ok`
 - **Equation of motion (x):** $k t x + m \ddot{x} = 0$
 - cyclic coordinates: none (every coordinate appears in L)
 - energy function: not conserved (L depends explicitly on time)
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
 
 ### Find the conserved quantities of a system
 
@@ -1211,7 +1225,7 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 
 #### Kepler problem, with the angle declared
 
-- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Lagrangian:** `m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r` (plain text), read as $\frac{k}{r} + \frac{m \left(r^{2} \dot{\theta}^{2} + \dot{r}^{2}\right)}{2}$
 - **Coordinates:** r, theta
 - **Angles:** theta
 - **Status:** `ok`
@@ -1227,7 +1241,7 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 
 #### Isotropic oscillator in the plane
 
-- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) - \frac12 k(x^2 + y^2)`
+- **Lagrangian:** `m*(x_dot^2 + y_dot^2)/2 - k*(x^2 + y^2)/2` (plain text), read as $- \frac{k \left(x^{2} + y^{2}\right)}{2} + \frac{m \left(\dot{x}^{2} + \dot{y}^{2}\right)}{2}$
 - **Coordinates:** x, y
 - **Status:** `ok`
 - **Constant of motion 1:** $C_{1} = k x y + m \dot{x} \dot{y}$
@@ -1242,7 +1256,7 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 
 #### Hénon–Heiles, none in this family
 
-- **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3`
+- **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3` (LaTeX)
 - **Coordinates:** x, y
 - **Status:** `ok`
 - **Result:** no new constant in the searched family
@@ -1254,7 +1268,7 @@ Looks for constants of motion beyond cyclic coordinates, energy and rotations, s
 
 #### Explicit time dependence is refused
 
-- **Lagrangian:** `\frac12 m\dot{x}^2 - \frac12 k t x^2`
+- **Lagrangian:** `m*x_dot^2/2 - k*t*x^2/2` (plain text), read as $- \frac{k t x^{2}}{2} + \frac{m \dot{x}^{2}}{2}$
 - **Coordinates:** x
 - **Status:** `unsupported`
 - The Lagrangian depends explicitly on time; the search covers autonomous systems only.
@@ -1277,14 +1291,14 @@ Retrieval proposes handbook identities that may fit an expression. The engine th
 
 #### The identity is found but not applied
 
-- **Input:** `\log(x y)`
+- **Input:** `log(x*y)` (plain text), read as $\log{\left(x y \right)}$
 - **Status:** `conditions_not_satisfied`
 - **Logarithm of a product:** not applied; not provable from the declared assumptions: a positive, b positive (the pattern's variables)
 - The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
 
 #### Applied once x and y are declared positive
 
-- **Input:** `\log(x y)`
+- **Input:** `log(x*y)` (plain text), read as $\log{\left(x y \right)}$
 - **Assumptions:** x positive; y positive
 - **Status:** `applicable`
 - **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
@@ -1292,7 +1306,7 @@ Retrieval proposes handbook identities that may fit an expression. The engine th
 
 #### Product to sum
 
-- **Input:** `\sin(a)\cos(b)`
+- **Input:** `\sin(a)\cos(b)` (LaTeX)
 - **Status:** `applicable`
 - **Product of sine and cosine:** $\frac{\sin{\left(a - b \right)}}{2} + \frac{\sin{\left(a + b \right)}}{2}$
 - **Check:** symbolic zero test not established; numeric check agreed at 20 of 20 points
@@ -1343,7 +1357,7 @@ Builds a derivation step by step without a language model. Each step is an opera
 
 #### Applying a handbook identity as a step
 
-- **Input:** `\log(x y)`
+- **Input:** `log(x*y)` (plain text), read as $\log{\left(x y \right)}$
 - **Assumptions:** x positive; y positive
 - **Status:** `applicable`
 - **Logarithm of a product:** $\log{\left(x \right)} + \log{\left(y \right)}$
