@@ -25,7 +25,7 @@ Status: **●** has entries, **○** planned.
 | ○ | Differential equations | Standard forms and solution families |
 | ○ | Probability and statistics | Distributions, moments, generating functions |
 | ○ | Group theory | Lie algebra relations, representation tables |
-| ○ | Differential geometry | Connections, curvature identities, coordinate systems |
+| ● | Differential geometry | Connections, curvature and geodesics in coordinates (stated definitions the geometry tool checks against) |
 | ● | Tensor calculus | Index symmetries and contractions; Riemann symmetries; Bianchi (stated) |
 
 ## Physics

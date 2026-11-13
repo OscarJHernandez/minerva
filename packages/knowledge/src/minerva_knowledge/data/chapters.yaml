@@ -74,7 +74,14 @@
 - {id: math.differential_equations, book: mathematics, title: Differential equations, planned: true}
 - {id: math.probability, book: mathematics, title: Probability and statistics, planned: true}
 - {id: math.group_theory, book: mathematics, title: Group theory, planned: true}
-- {id: math.differential_geometry, book: mathematics, title: Differential geometry, planned: true}
+- id: math.differential_geometry
+  book: mathematics
+  title: Differential geometry
+  summary: Connections, curvature and geodesics in coordinates (what Minerva's geometry tool computes and checks).
+  sections:
+    - {id: connection, title: Connection and covariant derivative}
+    - {id: curvature, title: Curvature}
+    - {id: geodesics, title: Geodesics}
 - id: physics.mechanics
   book: physics
   title: Classical mechanics

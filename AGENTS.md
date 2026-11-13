@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM client (Ollama), tool registry, agent loop, formula marking, scripted test model
@@ -52,6 +52,7 @@ uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
+uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
@@ -190,8 +191,35 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   substituted into it; a result that used them names them (`given`), and one that disagrees with them after
   substitution is `fails` ("does not agree with …"), not "false". A new definition is never a contradiction, and a
   stale definition never rescues a false identity. "Could not check" must never be worded as "false".
+- Differential geometry (`geometry/`, tool and endpoint `geometry`) is coordinate-based, for an explicit symmetric
+  metric (at most 4 coordinates) and an optional tensor field, with functions of the coordinates declared by the
+  user (`f(r)`: the parser reads an undeclared `f(r)` as the product f*r everywhere else, so geometry parses with
+  `strict_calls` and refuses it). The conventions are fixed and returned with every result (Christoffel symbols of
+  the Levi-Civita connection, `R^r_{smn} = d_m G^r_{ns} - d_n G^r_{ms} + G^r_{ml} G^l_{ns} - G^r_{nl} G^l_{ms}`,
+  Ricci = contraction of the first and third index, `G = Ric - g R / 2`): do not change them silently. A quantity is
+  shown only if every *numeric* leg passed: `numeric.py` evaluates the lambdified metric with mpmath and
+  differentiates by central differences only (no SymPy differentiation), and compares with an independent numerical
+  recomputation and with identities the result must satisfy (metric compatibility and no torsion, the Riemann
+  symmetries, first and second Bianchi, a divergence-free Einstein tensor, the Euler-Lagrange equations of
+  `g(x', x')/2` for geodesics). Identity checks measure their residual against the size of the terms that cancel
+  (a residual of 1e-9 from terms of size 1e3 is noise), a point is skipped, never failed, when the values move when
+  the step is doubled, and `STABLE_TOL` must stay below `AGREE_TOL / 3`: a property test found the false
+  "not verified" that this prevents. Symbolic legs (including the second-derivative formula for `R_{abcd}`) are
+  reported separately and never veto; "proved" is only used when they all passed, and a leg too large to try is
+  "not run". Signature is never assumed (only a diagonal metric whose entry signs the declared assumptions decide);
+  coordinates are real, other symbols complex unless declared; a degenerate metric (determinant identically 0) is
+  `unsupported`, an asymmetric or mis-shaped one `parse_error`; zeros of `det g` and of denominators are reported as
+  restrictions about the *coordinates*, never as a statement about curvature singularities, and branch-cut domains
+  (roots, logarithms) are not analysed. Geodesics are symbolic; there is no numerical integration of them. The
+  geometry is not stored anywhere on the server: every request carries the coordinates, metric, assumptions and
+  functions, which keeps tool calls replayable (`scripts/replay_trace.py`). Per-stage diagnostics (time, operation
+  count, failure category) are returned and logged (`geometry_stage`: names and counters only, never content).
+  `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
+  add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
+  connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
-  identities (Bianchi) are out of scope and must be reported as such.
+  identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
+  components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are
   `latexparse.py` and `textparse.py`, building SymPy trees through `build.Builder`.
 - All computation runs in the sandbox (`sandbox.py`): child process, wall-clock timeout, rlimits,

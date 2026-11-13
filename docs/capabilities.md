@@ -350,6 +350,132 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - **Status:** `unsupported`
 - The exponent mixes A and B, which do not commute, with coefficients that are not proportional; the derivative then needs the Duhamel integral (or a time-ordered exponential), which is not supported.
 
+### Differential geometry in coordinates
+
+*Available in:* workbench, chat, HTTP API.
+
+Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed.
+
+**Limits**
+
+- Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
+- Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
+- The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
+- Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
+- Geodesic equations are symbolic; they are not integrated numerically.
+
+#### The 2-sphere, with its curvature invariants
+
+- **Coordinates:** `\theta, \phi`
+- **Metric row 1:** `a^2,  0`
+- **Metric row 2:** `0,  a^2 \sin^2\theta`
+- **Assumptions:** a positive
+- **Status:** `ok`
+- **Christoffel symbols:** $\Gamma^{\theta}{}_{\phi \phi} = - \sin{\left(\theta \right)} \cos{\left(\theta \right)}$
+- **Christoffel symbols:** $\Gamma^{\phi}{}_{\theta \phi} = \cot{\left(\theta \right)}$
+- **Ricci scalar R:** $\frac{2}{a^{2}}$
+- **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{4}{a^{4}}$
+- **Check:** christoffel: 2 independent numeric checks passed; symbolic proof proved
+- **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature not determined: The sign of g_(phi,phi) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: theta, phi.
+- Assumes: a: positive.
+- 3 of 3 requested quantities computed and numerically verified.
+
+#### Schwarzschild spacetime is Ricci-flat
+
+- **Coordinates:** `t, r, \theta, \phi`
+- **Metric row 1:** `-(1-2M/r),  0,  0,  0`
+- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0`
+- **Metric row 3:** `0,  0,  r^2,  0`
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Ricci tensor (symmetric; one of each pair shown):** $0 \text{ (every component)}$
+- **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{48 M^{2}}{r^{6}}$
+- **Check:** ricci: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $- 2 M + r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: M: positive.
+- Assumes: r: positive.
+- 2 of 2 requested quantities computed and numerically verified.
+
+#### Geodesic equations of the plane in polar coordinates
+
+- **Coordinates:** `r, \theta`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  r^2`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Geodesic equations:** $\ddot{r} = r \dot{\theta}^{2}$
+- **Geodesic equations:** $\ddot{\theta} = - \frac{2 \dot{r} \dot{\theta}}{r}$
+- **Check:** geodesics: 2 independent numeric checks passed; symbolic proof proved
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, theta.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### An unspecified function in the metric
+
+- **Coordinates:** `t, r, \theta, \phi`
+- **Metric row 1:** `-f(r),  0,  0,  0`
+- **Metric row 2:** `0,  1/f(r),  0,  0`
+- **Metric row 3:** `0,  0,  r^2,  0`
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Functions:** `f(r)`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Ricci scalar R:** $\frac{- r^{2} f''\left(r\right) - 4 r f'\left(r\right) - 2 f\left(r\right) + 2}{r^{2}}$
+- **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $\sin{\left(\theta \right)} \neq 0$, $f\left(r\right) \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: r: positive.
+- Assumes: f(r) is an unspecified real function.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### The covariant derivative of the radial vector field
+
+- **Coordinates:** `r, \theta`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  r^2`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Covariant derivative of the tensor:** $\nabla T_{\theta}{}^{\theta} = \frac{1}{r}$
+- **Check:** covariant_derivative: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, theta.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### A degenerate metric is declined
+
+- **Coordinates:** `x, y`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  0`
+- **Status:** `unsupported`
+- Assumes: coordinates are real: x, y.
+- The metric is degenerate (its determinant is identically zero), so it has no inverse and no Levi-Civita connection.
+
+#### An undeclared function is refused instead of being read as a product
+
+- **Coordinates:** `r`
+- **Metric row 1:** `f(r)`
+- **Status:** `parse_error`
+- f(…) is ambiguous: declare f as a function, or write f\cdot(…) for a product
+
+#### A metric that is not symmetric is declined
+
+- **Coordinates:** `x, y`
+- **Metric row 1:** `1,  x`
+- **Metric row 2:** `0,  1`
+- **Status:** `parse_error`
+- The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
+
 ### Polynomial equations
 
 *Available in:* chat.
@@ -675,7 +801,7 @@ Attach a photo or screenshot of an equation in the chat. A vision model you host
 Not implemented. Listed so that nobody mistakes them for features.
 
 - **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
-- **SageManifolds integration** (Mathematics): Differential geometry on explicit manifolds, as an optional backend.
+- **Abstract manifolds (SageManifolds)** (Mathematics): Charts, atlases and abstract manifolds as an optional out-of-process backend; coordinate-based geometry is available today.
 - **Integrals and limits** (Mathematics): In the workbench, with the same verification discipline as derivatives. Taylor series are available.
 - **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
 - **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.
