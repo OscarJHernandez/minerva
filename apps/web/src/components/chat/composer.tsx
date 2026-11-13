@@ -121,7 +121,7 @@ export function Composer({ disabled, busy, onSend, onStop, imagesEnabled = false
             aria-pressed={formula}
             title="Insert a formula"
             aria-label="Insert a formula"
-            className="h-9 shrink-0 rounded-lg px-2.5 text-sm text-muted hover:bg-sunk hover:text-ink"
+            className="-ml-1 h-9 shrink-0 rounded-lg px-2.5 text-sm text-muted hover:bg-sunk hover:text-ink"
           >
             ∑<span className="hidden sm:inline"> Formula</span>
           </button>
