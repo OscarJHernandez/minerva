@@ -34,12 +34,18 @@ from .numeric import (
 )
 from .tensors import Tensor
 
-Pairs = list[tuple[Any, Any]]
+# (result, reference) or (result, reference, scale of the terms that cancel)
+Pairs = list[tuple[Any, ...]]
 PairFn = Callable[[Evaluator, Point, Any], Pairs]
 
-STABLE_TOL = 1e-8  # the numerical value must not move when the step is doubled
-AGREE_TOL = 1e-9
-SYMBOLIC_MAX_OPS = 1500  # a symbolic zero test is only attempted below this size
+# A second-order difference moves by about 3 times its error when the step is doubled, so a value that is
+# stable to STABLE_TOL has an error below about STABLE_TOL / 3: keep that below AGREE_TOL, or a point could
+# pass the stability test and still fail the agreement test (a false "not verified").
+STABLE_TOL = 1e-9
+AGREE_TOL = 1e-8
+SYMBOLIC_MAX_OPS = (
+    600  # a symbolic zero test is only attempted below this size (cancel is not interruptible)
+)
 MAX_ATTEMPTS = 60
 
 NUMERIC_METHOD = (
@@ -52,6 +58,7 @@ class Verifier:
     def __init__(self, ws: Workspace, seed: int = 20260101) -> None:
         self.ws = ws
         self.geo = ws.geo
+        self.seed = seed
         self.rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
         self.evaluators = make_evaluators(self.geo, self.rng, 3)
         self._alt: dict[tuple[int, int, int, int], sp.Expr] = {}
@@ -60,9 +67,12 @@ class Verifier:
     def numeric(self, name: str, fn: PairFn, *, want: int = 8, tol: float = AGREE_TOL) -> Check:
         """Run `fn` at random points. `fn(evaluator, point, h)` returns (result, reference) pairs.
 
-        A point counts only if the metric is well conditioned there and every value is unchanged
-        (to `STABLE_TOL`) when the finite-difference step is doubled; unstable points are skipped,
-        so a branch cut or pole near a point cannot make a correct result fail.
+        The sample points are the same for every leg (they depend only on the attempt number), so the
+        expensive numerical curvature is computed once per point. A point where everything agrees counts
+        at once. A point that disagrees counts as a disagreement only if its values are unchanged (to
+        `STABLE_TOL`) when the finite-difference step is doubled: near a pole or a branch cut the
+        finite differences themselves are wrong, and such a point is skipped instead of failing a
+        correct result.
         """
         checked = agreed = 0
         count = len(self.evaluators)
@@ -73,19 +83,24 @@ class Verifier:
             self.ws.check_deadline(name)
             ev = self.evaluators[attempt % count]
             with mp.workdps(DPS):
-                point = sample_point(self.geo, self.rng)
+                point = sample_point(
+                    self.geo,
+                    random.Random(self.seed * 7919 + attempt),  # noqa: S311 - deterministic
+                )
                 if not ev.is_regular(point):
                     continue
                 try:
                     h = step()
                     first = fn(ev, point, h)
-                    second = fn(ev, point, 2 * h)
+                    if not all(mp.isfinite(v) for p in first for v in p[:2]):
+                        continue
+                    holds = all(close(p[0], p[1], tol, _scale(p)) for p in first)
+                    if not holds and not _usable(first, fn(ev, point, 2 * h)):
+                        continue
                 except (ZeroDivisionError, ValueError, ArithmeticError, TypeError, OverflowError):
                     continue
-                if not _usable(first, second):
-                    continue
                 checked += 1
-                if all(close(a, b, tol) for a, b in first):
+                if holds:
                     agreed += 1
         passed = checked >= MIN_VALID_POINTS and agreed == checked
         if checked < MIN_VALID_POINTS:
@@ -230,10 +245,15 @@ class Verifier:
                 for m in range(n):
                     for v in range(n):
                         residual = dg[s][m][v]
+                        size = abs(residual)
                         for lam in range(n):
-                            residual -= gam.get((lam, s, m), 0) * g[lam][v]
-                            residual -= gam.get((lam, s, v), 0) * g[m][lam]
-                        out.append((residual, mp.mpf(0)))
+                            first, second = (
+                                gam.get((lam, s, m), 0) * g[lam][v],
+                                gam.get((lam, s, v), 0) * g[m][lam],
+                            )
+                            residual -= first + second
+                            size += abs(first) + abs(second)
+                        out.append((residual, mp.mpf(0), size))
                         # torsion-free: symmetric in the lower indices
                         out.append((gam.get((s, m, v), 0), gam.get((s, v, m), 0)))
             return out
@@ -266,7 +286,6 @@ class Verifier:
     def riemann(self) -> GeometryVerification:
         geo, n = self.geo, self.geo.n
         riem = self.ws.riemann()
-        gamma = self.ws.christoffel()
 
         def lowered(ev: Evaluator, point: Point, at: list[Any] | None = None) -> dict[Any, Any]:
             x, p = point
@@ -294,9 +313,16 @@ class Verifier:
             zero = mp.mpf(0)
             out: Pairs = []
             for r, s, m, v in low:
-                out.append((low[(r, s, m, v)] + low[(s, r, m, v)], zero))
-                out.append((low[(r, s, m, v)] - low[(m, v, r, s)], zero))
-                out.append((low[(r, s, m, v)] + low[(r, m, v, s)] + low[(r, v, s, m)], zero))
+                a, b, c, e = (
+                    low[(r, s, m, v)],
+                    low[(s, r, m, v)],
+                    low[(m, v, r, s)],
+                    low[(r, m, v, s)],
+                )
+                f = low[(r, v, s, m)]
+                out.append((a + b, zero, abs(a) + abs(b)))
+                out.append((a - c, zero, abs(a) + abs(c)))
+                out.append((a + e + f, zero, abs(a) + abs(e) + abs(f)))
             return out
 
         def second_bianchi(ev: Evaluator, point: Point, h: Any) -> Pairs:
@@ -309,14 +335,19 @@ class Verifier:
                 minus = lowered(ev, point, ev._shift(x, lam, -h))
                 d.append({k: (plus[k] - minus[k]) / (2 * h) for k in plus})
 
-            def nabla(lam: int, r: int, s: int, m: int, v: int) -> Any:
+            def nabla(lam: int, r: int, s: int, m: int, v: int) -> tuple[Any, Any]:
                 total = d[lam][(r, s, m, v)]
+                size = abs(total)
                 for k in range(n):
-                    total -= gam.data[(k, lam, r)] * base[(k, s, m, v)]
-                    total -= gam.data[(k, lam, s)] * base[(r, k, m, v)]
-                    total -= gam.data[(k, lam, m)] * base[(r, s, k, v)]
-                    total -= gam.data[(k, lam, v)] * base[(r, s, m, k)]
-                return total
+                    for term in (
+                        gam.data[(k, lam, r)] * base[(k, s, m, v)],
+                        gam.data[(k, lam, s)] * base[(r, k, m, v)],
+                        gam.data[(k, lam, m)] * base[(r, s, k, v)],
+                        gam.data[(k, lam, v)] * base[(r, s, m, k)],
+                    ):
+                        total -= term
+                        size += abs(term)
+                return total, size
 
             out: Pairs = []
             for r in range(n):
@@ -324,12 +355,18 @@ class Verifier:
                     for lam in range(n):
                         for m in range(n):
                             for v in range(m + 1, n):
-                                cyc = (
-                                    nabla(lam, r, s, m, v)
-                                    + nabla(m, r, s, v, lam)
-                                    + nabla(v, r, s, lam, m)
+                                parts = (
+                                    nabla(lam, r, s, m, v),
+                                    nabla(m, r, s, v, lam),
+                                    nabla(v, r, s, lam, m),
                                 )
-                                out.append((cyc, mp.mpf(0)))
+                                out.append(
+                                    (
+                                        sum((t for t, _ in parts), mp.mpf(0)),
+                                        mp.mpf(0),
+                                        sum((z for _, z in parts), mp.mpf(0)),
+                                    )
+                                )
             return out
 
         def alt_route() -> list[sp.Expr]:
@@ -355,7 +392,6 @@ class Verifier:
             ),
             self.symbolic("agrees with the second-derivative formula for R_{abcd}", alt_route),
         ]
-        del gamma
         return _combine(NUMERIC_METHOD, checks)
 
     def _numeric_curvature_leg(
@@ -371,7 +407,7 @@ class Verifier:
         return self.numeric(name, fn, want=want)
 
     def ricci(self) -> GeometryVerification:
-        geo, n = self.geo, self.geo.n
+        n = self.geo.n
         ric = self.ws.ricci()
         ginv = self.ws.inverse()
 
@@ -405,13 +441,11 @@ class Verifier:
                 "agrees with the contraction of the second-derivative formula", alt_ricci
             ),
         ]
-        del geo
         return _combine(NUMERIC_METHOD, checks)
 
     def ricci_scalar(self) -> GeometryVerification:
         n = self.geo.n
         scalar = self.ws.ricci_scalar()
-        ric = self.ws.ricci()
         ginv = self.ws.inverse()
 
         def compare(ev: Evaluator, ctx: Any) -> Pairs:
@@ -435,7 +469,6 @@ class Verifier:
             )
             return [scalar - total]
 
-        del ric
         checks = [
             self._numeric_curvature_leg("agrees with the numerical Ricci scalar", compare),
             self.symbolic(
@@ -445,7 +478,7 @@ class Verifier:
         return _combine(NUMERIC_METHOD, checks)
 
     def einstein(self) -> GeometryVerification:
-        geo, n = self.geo, self.geo.n
+        n = self.geo.n
         ein = self.ws.einstein()
         scalar = self.ws.ricci_scalar()
         ginv = self.ws.inverse()
@@ -481,12 +514,18 @@ class Verifier:
             out: Pairs = []
             for v in range(n):
                 total = mp.mpf(0)
+                size = mp.mpf(0)
                 for m in range(n):
                     total += d[m][m, v]
+                    size += abs(d[m][m, v])
                     for lam in range(n):
-                        total += gam.data[(m, m, lam)] * base[lam, v]
-                        total += gam.data[(v, m, lam)] * base[m, lam]
-                out.append((total, mp.mpf(0)))
+                        for term in (
+                            gam.data[(m, m, lam)] * base[lam, v],
+                            gam.data[(v, m, lam)] * base[m, lam],
+                        ):
+                            total += term
+                            size += abs(term)
+                out.append((total, mp.mpf(0), size))
             return out
 
         def trace() -> list[sp.Expr]:
@@ -495,7 +534,6 @@ class Verifier:
             )
             return [total - (1 - sp.Rational(n, 2)) * scalar]
 
-        del geo
         checks = [
             self._numeric_curvature_leg("agrees with the numerical Einstein tensor", compare),
             self.numeric(
@@ -595,14 +633,19 @@ class Verifier:
             items = [(i, a) for i, a in enumerate(acc)]
             values = ev.candidate("accelerations", items, point, v, vel)
             total = mp.mpf(0)
+            size = mp.mpf(0)
             for s in range(n):
                 for a in range(n):
                     for b in range(n):
-                        total += dg[s][a][b] * vel[s] * vel[a] * vel[b]
+                        term = dg[s][a][b] * vel[s] * vel[a] * vel[b]
+                        total += term
+                        size += abs(term)
             for a in range(n):
                 for b in range(n):
-                    total += 2 * gm[a][b] * values[a] * vel[b]
-            return [(total, mp.mpf(0))]
+                    term = 2 * gm[a][b] * values[a] * vel[b]
+                    total += term
+                    size += abs(term)
+            return [(total, mp.mpf(0), size)]
 
         def derive_route() -> list[sp.Expr]:
             d = derive_expr(
@@ -659,15 +702,18 @@ class Verifier:
             for a in range(n):
                 for idx in t.indices():
                     total = dt[a][idx]
+                    size = abs(total)
                     for k, var in enumerate(t.variance):
                         for lam in range(n):
                             probe = (*idx[:k], lam, *idx[k + 1 :])
                             comp = tc.get(probe, 0)
                             if var == "up":
-                                total += gam.data[(idx[k], a, lam)] * comp
+                                term = gam.data[(idx[k], a, lam)] * comp
                             else:
-                                total -= gam.data[(lam, a, idx[k])] * comp
-                    out.append((cand.get((a, *idx), 0), total))
+                                term = -gam.data[(lam, a, idx[k])] * comp
+                            total += term
+                            size += abs(term)
+                    out.append((cand.get((a, *idx), 0), total, size))
             return out
 
         checks = [
@@ -723,13 +769,19 @@ class Verifier:
         return _combine(NUMERIC_METHOD, checks)
 
 
+def _scale(pair: tuple[Any, ...]) -> Any:
+    return pair[2] if len(pair) > 2 else 0
+
+
 def _usable(first: Pairs, second: Pairs) -> bool:
+    """Every value is finite and unchanged (to `STABLE_TOL`, measured against the size of its terms)."""
     if len(first) != len(second):
         return False
-    for (a1, b1), (a2, b2) in zip(first, second, strict=True):
-        if not all(mp.isfinite(v) for v in (a1, b1, a2, b2)):
+    for p, q in zip(first, second, strict=True):
+        scale = max(abs(_scale(p)), abs(_scale(q)))
+        if not all(mp.isfinite(v) for v in (p[0], p[1], q[0], q[1])):
             return False
-        if not (close(a1, a2, STABLE_TOL) and close(b1, b2, STABLE_TOL)):
+        if not (close(p[0], q[0], STABLE_TOL, scale) and close(p[1], q[1], STABLE_TOL, scale)):
             return False
     return True
 

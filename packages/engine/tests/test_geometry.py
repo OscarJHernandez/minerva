@@ -204,6 +204,21 @@ def test_flrw_with_a_general_scale_factor() -> None:
     assert sp.simplify(ein.get((1, 1)) + 2 * a * a.diff(t, 2) + a.diff(t) ** 2) == 0
 
 
+def test_a_correct_einstein_tensor_is_not_rejected_for_numerical_noise() -> None:
+    # Found by the property tests: the contracted Bianchi residual (terms of size ~1e2 cancelling to ~0)
+    # used to be compared with zero on an absolute scale of 1 and failed at one sample point.
+    grid = [
+        ["x - y^2/2 + z + 3", "0", "0"],
+        ["0", "x - z + 3", "0"],
+        ["0", "0", "-2*x + y^2/2 + 3"],
+    ]
+    r = run(["x", "y", "z"], grid, ["einstein"], format="text")
+    q = quantity(r, "einstein")
+    assert q.status is Status.OK and q.verification is not None
+    bianchi = next(c for c in q.verification.checks if "Bianchi" in c.name)
+    assert bianchi.passed and bianchi.points_agreed == bianchi.points_checked >= 4
+
+
 def test_conventions_are_stated_in_every_result() -> None:
     r = run(["x"], [["1"]], ["christoffel"])
     text = " ".join(r.conventions)

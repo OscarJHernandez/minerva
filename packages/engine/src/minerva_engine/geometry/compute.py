@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import Any
 
 import sympy as sp
+from sympy.core.function import AppliedUndef
 
 from ..errors import LimitError
 from ..latexprint import to_latex
@@ -53,6 +54,12 @@ def _score(e: sp.Expr) -> tuple[int, int]:
     return int(sp.count_ops(e)) + 2 * multi, len(str(e))
 
 
+def _needs_simplify(e: sp.Expr) -> bool:
+    if any(not isinstance(a, AppliedUndef) for a in e.atoms(sp.Function)):
+        return True
+    return any(not p.exp.is_Integer for p in e.atoms(sp.Pow))
+
+
 def _cotangent(e: sp.Expr) -> sp.Expr:
     """Write tan(x)**-n as cot(x)**n."""
     out = e.replace(
@@ -63,7 +70,8 @@ def _cotangent(e: sp.Expr) -> sp.Expr:
 
 
 CANCEL_MAX_OPS = 4000  # beyond this a stage is stopped as expression growth (resource_limit)
-SIMPLIFY_MAX_OPS = 400  # simplify() is not interruptible: only run it on expressions this small
+FACTOR_MAX_OPS = 400
+SIMPLIFY_MAX_OPS = 200  # simplify() is not interruptible: only run it on expressions this small
 
 
 class Workspace:
@@ -141,7 +149,9 @@ class Workspace:
         self.check_deadline()
         with contextlib.suppress(sp.PolynomialError, NotImplementedError, TypeError, ValueError):
             e = sp.cancel(e)
-        if sp.count_ops(e) <= SIMPLIFY_MAX_OPS:
+        # `cancel` is already canonical for rational functions; `simplify` is only worth its (large and
+        # uninterruptible) cost where trigonometric, exponential or fractional-power atoms may combine.
+        if sp.count_ops(e) <= SIMPLIFY_MAX_OPS and _needs_simplify(e):
             self.check_deadline()
             best = sp.simplify(e)
             if best.has(*_TRIG) and sp.count_ops(best) <= SIMPLIFY_MAX_OPS:
@@ -155,6 +165,15 @@ class Workspace:
                     if _score(alt) < _score(best):
                         best = alt
             e = best
+        elif sp.count_ops(e) <= FACTOR_MAX_OPS:
+            # a factored denominator shows where the expression is singular: r (r - 2M), not r^2 - 2Mr
+            self.check_deadline()
+            with contextlib.suppress(
+                sp.PolynomialError, NotImplementedError, TypeError, ValueError
+            ):
+                factored = sp.factor(e)
+                if _score(factored) <= _score(e):
+                    e = factored
         return _cotangent(e)
 
     # -- stages ----------------------------------------------------------------------------

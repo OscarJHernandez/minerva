@@ -63,12 +63,7 @@ def geometry(
     soft = started + SOFT_DEADLINE_FRACTION * limits.timeout_seconds
     diagnostics: list[StageDiagnostic] = []
     try:
-        geo = _timed(
-            diagnostics,
-            "setup",
-            lambda: build_geometry(data, limits, max_dimension),
-            lambda g: None,
-        )
+        geo = _timed(diagnostics, "setup", lambda: build_geometry(data, limits, max_dimension))
     except GeometryError as exc:
         return _fail(diagnostics, exc.status, exc.message)
     except MinervaMathError as exc:
@@ -362,7 +357,6 @@ def _timed(
     diagnostics: list[StageDiagnostic],
     name: str,
     fn: Callable[[], Geometry],
-    measure: Callable[[Geometry], Any],
 ) -> Geometry:
     start = time.perf_counter()
     try:
@@ -380,7 +374,6 @@ def _timed(
     diagnostics.append(
         StageDiagnostic(stage=name, duration_ms=round((time.perf_counter() - start) * 1000))
     )
-    del measure
     return value
 
 

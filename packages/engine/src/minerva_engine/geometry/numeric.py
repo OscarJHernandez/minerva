@@ -48,6 +48,7 @@ class Evaluator:
         self.n = geo.n
         self.assignment = assignment or {}
         self._compiled: dict[str, Callable[..., Any]] = {}
+        self._riemann: dict[Any, Tensor] = {}
         self._metric = self._compile("metric", list(geo.g))
 
     # -- compiling -----------------------------------------------------------------------
@@ -141,7 +142,13 @@ class Evaluator:
         return out
 
     def riemann(self, x: list[Any], p: list[Any], h: Any) -> Tensor:
-        """`R^r_{smn}` from central differences of the numerical Christoffel symbols."""
+        """`R^r_{smn}` from central differences of the numerical Christoffel symbols (cached per point)."""
+        key = (tuple(x), tuple(p), h)
+        if key not in self._riemann:
+            self._riemann[key] = self._riemann_at(x, p, h)
+        return self._riemann[key]
+
+    def _riemann_at(self, x: list[Any], p: list[Any], h: Any) -> Tensor:
         n = self.n
         gam = self.christoffel(x, p, h)
         dgam = []
@@ -224,9 +231,14 @@ def make_evaluators(geo: Geometry, rng: random.Random, count: int) -> list[Evalu
     return evaluators
 
 
-def close(a: Any, b: Any, tol: float) -> bool:
+def close(a: Any, b: Any, tol: float, scale: Any = 0) -> bool:
+    """`|a - b| <= tol * max(1, |a|, |b|, scale)`.
+
+    `scale` is the size of the terms that cancel in an identity: a residual of 1e-9 is noise when it
+    is the difference of terms of size 1e3, and is only measured against 1 when nothing else is known.
+    """
     try:
-        scale = max(1.0, float(abs(a)), float(abs(b)))
-        return bool(abs(a - b) <= tol * scale)
+        size = max(1.0, float(abs(a)), float(abs(b)), float(abs(scale)))
+        return bool(abs(a - b) <= tol * size)
     except (TypeError, ValueError, OverflowError):
         return False
