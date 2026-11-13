@@ -119,6 +119,10 @@ export function StepCard({
   const cont = continuation(item);
   const latex = resultLatex(item);
   const failed = item.status !== "ok" && item.status !== "unchanged";
+  // A delta step that is waiting for the user's answer shows its question open: nothing was computed.
+  const asking =
+    item.operation === "distribution" &&
+    (item.result as unknown as DistributionResult).reason === "notation_unconfirmed";
   const assumptions = assumptionsSummary(item.assumptions);
   const verified = verificationSummary(item);
   const message = (item.result as unknown as { message?: string }).message;
@@ -236,8 +240,10 @@ export function StepCard({
         </button>
       </div>
 
-      <details className="mt-3 text-sm">
-        <summary className="cursor-pointer text-muted">Full verification</summary>
+      <details className="mt-3 text-sm" open={asking}>
+        <summary className="cursor-pointer text-muted">
+          {asking ? "Answer to continue" : "Full verification"}
+        </summary>
         <div className="mt-2">
           <FullResult item={item} onAnswerNotation={onAnswerNotation} />
         </div>

@@ -125,8 +125,12 @@ def _ask_notation(data: DistributionInput, trace: _Trace, log: NotationLog) -> D
     return failed
 
 
+_GREEK = {"delta": "δ", "theta": "θ", "Theta": "Θ"}
+
+
 def _written(data: DistributionInput, name: str) -> str:
-    return f"\\{name}(…)" if data.expression.format == "latex" else f"{name}(…)"
+    """The name as the user wrote it, readable in plain text (a LaTeX `\\delta` is shown as δ)."""
+    return f"{_GREEK[name]}(…)" if data.expression.format == "latex" else f"{name}(…)"
 
 
 def _bound(text: str, data: DistributionInput, limits: Limits) -> sp.Expr:
