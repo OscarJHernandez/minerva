@@ -291,7 +291,7 @@ VerificationMethod = Literal[
 ]
 
 
-class Diagnostics(BaseModel):
+class StepDiagnostics(BaseModel):
     """What a transformation did and why it ended as it did. Durations, counts and codes only: nothing
     here can hold an expression, so it is safe to log by default. Shown under the result and carried in
     the saved step and the chat debug report."""
@@ -411,7 +411,7 @@ class StepResult(BaseModel):
     order_dependent: bool | None = None
     subterms: list[Subterm] = Field(default_factory=list)
     truncated: bool = False
-    diagnostics: Diagnostics = Field(default_factory=Diagnostics)
+    diagnostics: StepDiagnostics = Field(default_factory=StepDiagnostics)
     message: str = ""
     duration_ms: int = 0
 
@@ -454,6 +454,6 @@ class IsolateResult(BaseModel):
     completeness_note: str = ""
     assumption_note: str = ""
     reason: Reason | None = None
-    diagnostics: Diagnostics = Field(default_factory=Diagnostics)
+    diagnostics: StepDiagnostics = Field(default_factory=StepDiagnostics)
     message: str = ""
     duration_ms: int = 0

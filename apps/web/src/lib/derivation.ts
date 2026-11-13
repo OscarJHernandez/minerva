@@ -3,6 +3,9 @@ import type {
   ApplyIdentityResult,
   Assumptions,
   DifferentiateResult,
+  DistributionAction,
+  DistributionEndpoint,
+  DistributionResult,
   HistoryItem,
   IntegrateResult,
   IsolateResult,
@@ -15,7 +18,14 @@ import { MAX_DERIVATIVE_ORDER, MAX_SERIES_ORDER } from "./types";
 
 /** Operations that run on the current expression and add a step. */
 export type StepOperation =
-  "simplify" | "differentiate" | "integrate" | "series" | "substitute" | "collect" | "isolate";
+  | "simplify"
+  | "differentiate"
+  | "integrate"
+  | "series"
+  | "distribution"
+  | "substitute"
+  | "collect"
+  | "isolate";
 
 export interface Settings {
   variable: string;
@@ -32,6 +42,10 @@ export interface Settings {
   collectBy: string;
   /** The unknown to solve for. */
   solveFor: string;
+  /** Distribution step: what to do with the deltas and steps. */
+  distAction: DistributionAction;
+  /** A delta on an integration limit counts only under a convention the user chose. */
+  endpoint: DistributionEndpoint | "";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -45,6 +59,8 @@ export const DEFAULT_SETTINGS: Settings = {
   relationOrder: "",
   collectBy: "x",
   solveFor: "x",
+  distAction: "simplify",
+  endpoint: "",
 };
 
 export const MAX_RELATIONS = 4;
@@ -97,6 +113,12 @@ export function validateSettings(operation: StepOperation, s: Settings): string 
   }
   if (!VARIABLE_PATTERN.test(s.variable)) {
     return "Enter the variable, for example x.";
+  }
+  if (operation === "distribution" && s.distAction === "integrate") {
+    if (s.lower.trim() === "" || s.upper.trim() === "") {
+      return "Give both limits (use -oo and oo for the whole line).";
+    }
+    return null;
   }
   if (operation === "integrate" && (s.lower.trim() === "") !== (s.upper.trim() === "")) {
     return "Give both bounds for a definite integral, or leave both empty.";
@@ -192,6 +214,16 @@ export function stepLabel(item: HistoryItem): string {
       const point = r.point_requested ? ` about ${r.point_requested}` : "";
       return `Taylor polynomial${about}${point}${r.order ? `, order ${r.order}` : ""}`;
     }
+    case "distribution": {
+      const r = item.result as unknown as DistributionResult;
+      return (
+        {
+          simplify: "Simplify deltas",
+          integrate: "Integrate against deltas",
+          differentiate: "Differentiate steps (distributional)",
+        }[r.action ?? "simplify"] ?? "Distributions"
+      );
+    }
     case "apply_identity":
       return (item.result as unknown as ApplyIdentityResult).entry?.title ?? "Identity";
     case "substitute": {
@@ -228,6 +260,12 @@ export function verificationSummary(item: HistoryItem): string | null {
   const r = item.result as unknown as Record<string, unknown>;
   const v = r.verification as Record<string, unknown> | null | undefined;
   if (!v) return null;
+  if (item.operation === "distribution") {
+    if (typeof v.pairings_checked !== "number") return null;
+    return `${v.pairings_agreed}/${v.pairings_checked} test-function pairings agree (not a proof)${
+      v.conditions_established ? "; conditions established exactly" : ""
+    }`;
+  }
   const agreed = v.points_agreed ?? v.numeric_points_agreed;
   const checked = v.points_checked ?? v.numeric_points_checked;
   if (item.operation === "series") {
@@ -236,6 +274,12 @@ export function verificationSummary(item: HistoryItem): string | null {
   if (typeof agreed !== "number" || typeof checked !== "number") return null;
   const symbolic = v.symbolic_zero === true ? "; difference simplifies to 0" : "";
   return `${agreed}/${checked} sample points agree${symbolic}`;
+}
+
+/** The variable of a distribution is a point on the real line: declare it real, visibly, in the request. */
+export function withRealVariable(a: Assumptions, variable: string): Assumptions {
+  const list = a[variable] ?? [];
+  return list.includes("real") ? a : { ...a, [variable]: [...list, "real"] };
 }
 
 export function assumptionsSummary(a: Assumptions): string | null {

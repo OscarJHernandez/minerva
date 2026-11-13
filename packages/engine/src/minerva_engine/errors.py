@@ -9,9 +9,9 @@ class ParseError(MinervaMathError):
     """The input is not valid or not supported syntax."""
 
 
-class UnsupportedError(MinervaMathError):
-    """Valid input that this operation does not support (for example noncommuting symbols)."""
-
-
 class LimitError(MinervaMathError):
     """The input exceeds a static safety limit (size, depth, magnitude)."""
+
+
+class UnsupportedInput(MinervaMathError):
+    """The input parses but belongs to a different operation (reported as `unsupported`)."""

@@ -12,7 +12,7 @@ place. Replacing rebuilds the ancestors of the chosen node, so exactly one occur
 `xreplace`, which changes every equal one).
 
 Everything here is deterministic and independent of the language model. Reasons and counts go to
-`Diagnostics`; expressions never do.
+`StepDiagnostics`; expressions never do.
 """
 
 from __future__ import annotations
@@ -25,16 +25,16 @@ from typing import Any
 import sympy as sp
 
 from .claims import split_equation
-from .errors import LimitError, MinervaMathError, ParseError, UnsupportedError
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .latexprint import to_latex
 from .models import (
-    Diagnostics,
     ExpressionInput,
     Limits,
     Reason,
     Rule,
     Status,
     Step,
+    StepDiagnostics,
     StepResult,
     Subterm,
     Verification,
@@ -193,7 +193,7 @@ def _subterms(
 def read_expression(
     data: ExpressionInput,
     limits: Limits,
-    diag: Diagnostics,
+    diag: StepDiagnostics,
     denominators: list[sp.Expr] | None = None,
 ) -> sp.Expr:
     """Parse an expression (noncommuting symbols allowed). Equations belong to `isolate`."""
@@ -203,7 +203,7 @@ def read_expression(
     with diag.timed("parse_ms"):
         expr = parse_expression(data, limits, denominators, allow_noncommutative=True)
         if noncommuting_symbols(expr):
-            nc_degree(expr)  # outside the polynomial subset: UnsupportedError
+            nc_degree(expr)  # outside the polynomial subset: UnsupportedInput
     return expr
 
 
@@ -220,7 +220,7 @@ def _read_part(text: str, data: ExpressionInput, limits: Limits) -> sp.Expr:
 
 
 def _error(
-    operation: str, exc: MinervaMathError, diag: Diagnostics, started: float
+    operation: str, exc: MinervaMathError, diag: StepDiagnostics, started: float
 ) -> dict[str, Any]:
     status, message = _failure(exc)
     return StepResult(
@@ -239,7 +239,7 @@ def op_subterms(payload: dict[str, Any]) -> dict[str, Any]:
     started = time.monotonic()
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
-    diag = Diagnostics(collect_detail=bool(payload.get("debug")))
+    diag = StepDiagnostics(collect_detail=bool(payload.get("debug")))
     try:
         expr = read_expression(data, limits, diag)
         deadline = started + 0.7 * limits.timeout_seconds
@@ -251,7 +251,7 @@ def op_subterms(payload: dict[str, Any]) -> dict[str, Any]:
                 rule = Rule(**payload["rule"])
                 reverse = bool(payload.get("reverse", False))
                 if reverse and not can_reverse(rule):
-                    raise UnsupportedError("this identity cannot be applied right to left")
+                    raise UnsupportedInput("this identity cannot be applied right to left")
                 matches = []
                 for path, node in walk(expr):
                     if time.monotonic() > deadline:
@@ -315,7 +315,7 @@ def _collect_targets(texts: list[str], data: ExpressionInput, limits: Limits) ->
         if not target.free_symbols:
             raise ParseError("collect by a variable or a part of the expression, not a number")
         if noncommuting_symbols(target):
-            raise UnsupportedError("collecting by a noncommuting symbol is not supported")
+            raise UnsupportedInput("collecting by a noncommuting symbol is not supported")
     return targets
 
 
@@ -323,7 +323,7 @@ def _builtin(
     piece: sp.Expr, action: str, texts: list[str], data: ExpressionInput, limits: Limits
 ) -> _Move:
     if noncommuting_symbols(piece) and action not in _NC_ACTIONS:
-        raise UnsupportedError(
+        raise UnsupportedInput(
             f"only expand and collect keep the order of noncommuting factors; {action} is not supported"
         )
     if action == "collect":
@@ -344,7 +344,7 @@ def _builtin(
 
 def _rule_move(piece: sp.Expr, rule: Rule, reverse: bool) -> _Move:
     if reverse and not can_reverse(rule):
-        raise UnsupportedError("this identity cannot be applied right to left")
+        raise UnsupportedInput("this identity cannot be applied right to left")
     # The rule is matched on the chosen part alone, so it cannot reach outside it. `strict` makes a sum
     # or product pattern match only a sum or product, not a term with the rest absorbed.
     hits = [
@@ -359,7 +359,11 @@ def _rule_move(piece: sp.Expr, rule: Rule, reverse: bool) -> _Move:
 
 
 def _resolve(
-    expr: sp.Expr, payload: dict[str, Any], data: ExpressionInput, limits: Limits, diag: Diagnostics
+    expr: sp.Expr,
+    payload: dict[str, Any],
+    data: ExpressionInput,
+    limits: Limits,
+    diag: StepDiagnostics,
 ) -> Chosen | StepResult:
     """The chosen part, or a refusal that tells the user what to do."""
     selection = payload.get("selection")
@@ -428,7 +432,7 @@ def op_rewrite_at(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
     action = str(payload["action"])
-    diag = Diagnostics(collect_detail=bool(payload.get("debug")))
+    diag = StepDiagnostics(collect_detail=bool(payload.get("debug")))
     denominators: list[sp.Expr] = []
 
     def finish(result: StepResult) -> dict[str, Any]:
@@ -559,7 +563,7 @@ def op_rewrite_at(payload: dict[str, Any]) -> dict[str, Any]:
         return _error("rewrite", exc, diag, started)
 
 
-def _verify(before: sp.Expr, after: sp.Expr, diag: Diagnostics) -> Verification:
+def _verify(before: sp.Expr, after: sp.Expr, diag: StepDiagnostics) -> Verification:
     with diag.timed("verify_ms"):
         if noncommuting_symbols(before, after):
             diag.verification_method = "matrix"

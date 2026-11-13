@@ -186,6 +186,185 @@ export interface IntegrateResult {
   calculation_id?: string | null;
 }
 
+export type MatrixAction = "evaluate" | "simplify" | "differentiate" | "integrate" | "evolve";
+export type MatrixResultKind =
+  "explicit" | "expression" | "equation" | "representation" | "numeric";
+
+/** A declared matrix: a size (abstract) or explicit entries (LaTeX expressions). */
+export interface MatrixDecl {
+  name: string;
+  rows?: number | null;
+  cols?: number | null;
+  entries?: string[][] | null;
+  /** The variable this matrix is a function of, A(t); absent for a constant matrix. */
+  depends_on?: string | null;
+}
+
+export interface MatrixRequest {
+  matrices: MatrixDecl[];
+  commuting: [string, string][];
+  invertible: string[];
+  /** Time-dependent matrices declared to commute with themselves at all times. */
+  self_commuting?: string[];
+  action: MatrixAction;
+  variable: string | null;
+  lower: string | null;
+  upper: string | null;
+}
+
+export interface MatrixStep {
+  method: string;
+  title: string;
+  before_latex: string | null;
+  after_latex: string | null;
+  note: string;
+}
+
+export interface MatrixBlocked {
+  method: string;
+  title: string;
+  needs: string;
+  latex: string | null;
+}
+
+export interface MatrixVerification {
+  method: string;
+  points_checked: number;
+  points_agreed: number;
+  passed: boolean;
+  symbolic_zero: boolean | null;
+  symbolic_method: string;
+  note: string;
+}
+
+export type MatrixSource = "not_used" | "declared" | "from_entries" | "mixed";
+
+/** How a result was reached. Contains no names, entries, expressions or bounds. */
+export interface MatrixDiagnostics {
+  trace_id: string | null;
+  method: string | null;
+  methods_tried: { id: string; outcome: "selected" | "blocked" | "unsupported" | "no_match" }[];
+  dimensions: [number, number][];
+  matrices: number;
+  explicit: number;
+  time_dependent: number;
+  commutation: MatrixSource;
+  invertibility: MatrixSource;
+  stages: { name: string; ms: number }[];
+  digits: number | null;
+  tolerance: number | null;
+  max_residual: number | null;
+  points_checked: number;
+  points_agreed: number;
+  verification: string;
+  fallbacks: string[];
+  failure_reason: string | null;
+}
+
+export interface MatrixCalculusResult {
+  status: Status;
+  action: MatrixAction | null;
+  input_latex: string | null;
+  structure: string;
+  features: string[];
+  method: string | null;
+  method_title: string | null;
+  result_kind: MatrixResultKind | null;
+  result_latex: string | null;
+  result_entries: string[][] | null;
+  equation_latex: string | null;
+  evaluated: boolean;
+  assumptions_used: string[];
+  steps: MatrixStep[];
+  blocked: MatrixBlocked[];
+  verification: MatrixVerification | null;
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  diagnostics?: MatrixDiagnostics | null;
+  calculation_id?: string | null;
+  /** Only in saved history items: the declarations the result was computed from. */
+  request?: MatrixRequest;
+}
+
+export type DistributionAction = "simplify" | "integrate" | "differentiate";
+export type DistributionEndpoint = "half" | "include" | "exclude";
+export type DistributionReason =
+  | "unsupported_distribution"
+  | "singular_root"
+  | "assumptions_insufficient"
+  | "verification_failed"
+  | "integration_domain_ambiguous"
+  | "resource_limit"
+  | "parse_error";
+
+export interface DistributionRequest {
+  action: DistributionAction;
+  variable: string;
+  lower: string | null;
+  upper: string | null;
+  endpoint: DistributionEndpoint | null;
+}
+
+export interface DistributionCondition {
+  latex: string;
+  established: boolean;
+  how: string;
+}
+
+export interface DistributionStep {
+  entry_id: string;
+  title: string;
+  before_latex: string;
+  after_latex: string;
+  conditions: DistributionCondition[];
+}
+
+export interface DistributionVerification {
+  method: string;
+  test_functions: string[];
+  pairings_checked: number;
+  pairings_agreed: number;
+  parameter_samples: number;
+  widths: number[];
+  convergence_observed: boolean;
+  conditions_established: boolean;
+  passed: boolean;
+  note: string;
+}
+
+export interface DistributionResult {
+  status: Status;
+  action: DistributionAction | null;
+  reason: DistributionReason | null;
+  input_latex: string | null;
+  variable: string | null;
+  lower_latex: string | null;
+  upper_latex: string | null;
+  endpoint: DistributionEndpoint | null;
+  result_latex: string | null;
+  result_text: string | null;
+  equality: "distributional" | "value" | null;
+  steps: DistributionStep[];
+  blocked: { entry_id: string; reason: DistributionReason; detail: string }[];
+  verification: DistributionVerification | null;
+  diagnostics: {
+    reason: DistributionReason | null;
+    events: {
+      stage: string;
+      status: "ok" | "failed";
+      duration_ms: number;
+      reason: string | null;
+    }[];
+  };
+  notes: string[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  /** Only in saved history items: the request the result was computed from. */
+  request?: DistributionRequest;
+}
+
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
 export interface RuleCondition {
@@ -211,7 +390,8 @@ export interface Reference {
   url?: string | null;
 }
 
-export type Verified = "symbolic" | "numeric" | "structural" | "dimensional" | "stated";
+export type Verified =
+  "symbolic" | "numeric" | "structural" | "dimensional" | "distributional" | "stated";
 
 export interface EntrySummary {
   id: string;
@@ -377,6 +557,9 @@ export type Operation =
   | "series"
   | "integrate"
   | "apply_identity"
+  | "matrix_calculus"
+  | "geometry"
+  | "distribution"
   | "rewrite"
   | "substitute"
   | "isolate";
@@ -431,4 +614,112 @@ export interface TocChapter {
   summary: string;
   entry_count: number;
   sections: { id: string; title: string; entry_count: number }[];
+}
+
+// --- differential geometry ------------------------------------------------------------------
+
+export type GeometryQuantity =
+  | "inverse_metric"
+  | "determinant"
+  | "christoffel"
+  | "riemann"
+  | "ricci"
+  | "ricci_scalar"
+  | "einstein"
+  | "kretschmann"
+  | "ricci_squared"
+  | "geodesics"
+  | "covariant_derivative"
+  | "raise_index"
+  | "lower_index";
+
+export type GeometryVariance = "up" | "down";
+
+export interface GeometryFunction {
+  name: string;
+  args: string[];
+}
+
+export interface GeometryTensor {
+  variance: GeometryVariance[];
+  components: string[];
+}
+
+/** The whole geometric problem. It is sent with every request: nothing is remembered server-side. */
+export interface GeometryRequest {
+  coordinates: string[];
+  metric: string[][];
+  format?: "latex" | "text";
+  assumptions: Assumptions;
+  functions: GeometryFunction[];
+  quantities: GeometryQuantity[];
+  tensor: GeometryTensor | null;
+  tensor_index: number;
+}
+
+export interface GeometryComponent {
+  indices: number[];
+  label_latex: string;
+  latex: string;
+  text: string;
+}
+
+export interface GeometryCheck {
+  name: string;
+  kind: "numeric" | "symbolic";
+  passed: boolean | null;
+  points_checked: number;
+  points_agreed: number;
+  note: string;
+}
+
+export interface GeometryVerification {
+  method: string;
+  numeric_passed: boolean;
+  symbolic_zero: boolean | null;
+  checks: GeometryCheck[];
+  note: string;
+}
+
+export interface GeometryQuantityResult {
+  kind: GeometryQuantity;
+  status: Status;
+  title: string;
+  variance: GeometryVariance[];
+  components: GeometryComponent[];
+  all_zero: boolean;
+  scalar_latex: string | null;
+  scalar_text: string | null;
+  symmetry_note: string;
+  verification: GeometryVerification | null;
+  notes: string[];
+  message: string;
+}
+
+export interface GeometryStage {
+  stage: string;
+  duration_ms: number;
+  ops: number | null;
+  components: number | null;
+  status: "ok" | "failed" | "skipped";
+  failure: string | null;
+}
+
+export interface GeometryResult {
+  status: Status;
+  dimension: number;
+  coordinates_latex: string[];
+  metric_latex: string | null;
+  signature: string | null;
+  signature_note: string;
+  conventions: string[];
+  assumptions_used: string[];
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  quantities: GeometryQuantityResult[];
+  diagnostics: GeometryStage[];
+  peak_memory_mb: number | null;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
 }

@@ -6,7 +6,8 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from minerva_engine import DiffVariable, ExpressionInput
+from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl, Pins
+from minerva_engine.matrix.models import MAX_MATRICES, Action
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
@@ -20,12 +21,16 @@ class UserOut(BaseModel):
     email: str
 
 
-class Linked(ExpressionInput):
-    """An expression request that may be saved as a step of a Workbench derivation."""
+class Links(BaseModel):
+    """Whether and where a result is saved as a step of a Workbench derivation."""
 
     save: bool = True
     derivation_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
+
+
+class Linked(ExpressionInput, Links):
+    """An expression request that may be saved as a step of a Workbench derivation."""
 
 
 class IntegrateRequest(Linked):
@@ -119,6 +124,34 @@ class IsolateRequest(Linked):
     variable: str = Field(min_length=1, max_length=32)
 
 
+class MatrixCalculusRequest(Linked):
+    """An expression in declared matrices (`input` uses `\\exp(tA)` for exponentials)."""
+
+    matrices: list[MatrixDecl] = Field(min_length=1, max_length=MAX_MATRICES)
+    commuting: list[tuple[str, str]] = Field(default_factory=list, max_length=16)
+    invertible: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
+    self_commuting: list[str] = Field(default_factory=list, max_length=MAX_MATRICES)
+    action: Action = "simplify"
+    variable: str | None = Field(default=None, min_length=1, max_length=32)
+    lower: str | None = Field(default=None, min_length=1, max_length=200)
+    upper: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class GeometryRequest(GeometryInput, Links):
+    """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
+
+
+class DistributionRequest(Linked):
+    """An expression with `DiracDelta` / `Heaviside` (text or `\\operatorname{...}` LaTeX)."""
+
+    action: Literal["simplify", "integrate", "differentiate"] = "simplify"
+    variable: str = Field(min_length=1, max_length=32)
+    lower: str | None = Field(default=None, min_length=1, max_length=200)
+    upper: str | None = Field(default=None, min_length=1, max_length=200)
+    # How a delta exactly on a limit counts. Chosen by the user, never by Minerva.
+    endpoint: Literal["half", "include", "exclude"] | None = None
+
+
 class HistoryItem(BaseModel):
     id: uuid.UUID
     operation: str
@@ -163,3 +196,23 @@ class EntryOut(BaseModel):
     notes: str
     applicable_as_rule: bool
     conditions: list[dict[str, str]]
+
+
+class ConservedRequest(BaseModel):
+    """Find the conserved quantities of a Lagrangian or Hamiltonian (the workbench panel)."""
+
+    function: str = Field(min_length=1, max_length=2000)
+    system: Literal["lagrangian", "hamiltonian"] = "lagrangian"
+    coordinates: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
+        min_length=1, max_length=3
+    )
+    momenta: list[Annotated[str, Field(min_length=1, max_length=32)]] | None = Field(
+        default=None, max_length=3
+    )
+    angles: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
+        default_factory=list, max_length=3
+    )
+    budget: Literal["quick", "standard", "thorough"] = "standard"
+    pins: Pins | None = None
+    time: str = Field(default="t", min_length=1, max_length=16)
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)

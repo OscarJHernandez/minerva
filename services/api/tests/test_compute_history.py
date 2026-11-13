@@ -1,4 +1,7 @@
+import json
+
 from fastapi.testclient import TestClient
+from minerva_api.logging import ALLOWED_FIELDS
 
 from .conftest import PASSWORD, build_app, register
 
@@ -380,3 +383,419 @@ def test_integrate_definite_and_history(authed: TestClient) -> None:
         json={"input": "x", "format": "text", "variable": "x", "lower": "0"},
     ).json()
     assert half["status"] == "parse_error"
+
+
+MATRIX_REGRESSION = {
+    "input": r"\exp(wA)\exp(-wB)",
+    "matrices": [
+        {"name": "A", "entries": [["1", "0"], ["0", "2"]]},
+        {"name": "B", "entries": [["0", "1"], ["0", "0"]]},
+    ],
+    "action": "integrate",
+    "variable": "w",
+    "lower": "0",
+    "upper": "1",
+}
+
+
+def test_matrix_calculus_regression_and_history(authed: TestClient) -> None:
+    r = authed.post("/v1/compute/matrix", json=MATRIX_REGRESSION)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["result_kind"] == "explicit" and body["evaluated"] is True
+    assert body["result_entries"][0][1] == "-1"
+    assert body["verification"]["passed"] is True
+    assert body["method"] == "sylvester_reduction"
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "matrix_calculus"
+    assert item["id"] == body["calculation_id"]
+    # the declarations are stored so that the workbench can restore the form
+    assert item["result"]["request"]["variable"] == "w"
+    assert [m["name"] for m in item["result"]["request"]["matrices"]] == ["A", "B"]
+
+
+def test_matrix_calculus_reports_a_reduction_as_not_evaluated(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp(tP)\exp(tQ)",
+            "matrices": [{"name": "P", "rows": 2}, {"name": "Q", "rows": 2}],
+            "action": "integrate",
+            "variable": "t",
+            "lower": "0",
+            "upper": "1",
+        },
+    ).json()
+    assert body["status"] == "ok"
+    assert body["evaluated"] is False and body["result_kind"] == "representation"
+    assert body["equation_latex"]
+
+
+def test_matrix_calculus_failures_and_validation(authed: TestClient) -> None:
+    mats = [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]
+    body = authed.post(
+        "/v1/compute/matrix", json={"input": r"\exp(A)\exp(B)", "matrices": mats}
+    ).json()
+    assert body["status"] == "conditions_not_satisfied" and body["result_latex"] is None
+    body = authed.post(
+        "/v1/compute/matrix",
+        json={"input": "AB", "matrices": [{"name": "A", "rows": 2, "cols": 3}, mats[1]]},
+    ).json()
+    assert body["status"] == "parse_error"
+    assert authed.post("/v1/compute/matrix", json={"input": "A", "matrices": []}).status_code == 422
+    assert (
+        authed.post(
+            "/v1/compute/matrix", json={"input": "A", "matrices": [{"name": "A"}]}
+        ).status_code
+        == 422
+    )
+    assert (
+        authed.post(
+            "/v1/compute/matrix",
+            json={"input": "A", "matrices": mats, "action": "invert"},
+        ).status_code
+        == 422
+    )
+
+
+def test_matrix_calculus_requires_authentication(client: TestClient) -> None:
+    assert client.post("/v1/compute/matrix", json=MATRIX_REGRESSION).status_code == 401
+
+
+def test_matrix_calculus_logs_no_user_input(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzMATRIXMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        c.post(
+            "/v1/compute/matrix",
+            json={"input": rf"\exp(t{marker})", "matrices": [{"name": marker, "rows": 2}]},
+        )
+    out = capsys.readouterr().out
+    assert "compute" in out and marker not in out
+
+
+# -- matrix calculus: Frechet derivative, Duhamel integral, evolution operator, diagnostics ---------
+def test_matrix_frechet_derivative_and_trace_id(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp(t^2 A + t B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "differentiate",
+            "variable": "t",
+            "trace_id": "client-supplied-id",  # never accepted from the client
+        },
+    )
+    body = r.json()
+    assert body["status"] == "ok" and body["method"] == "exp_frechet_derivative"
+    assert body["result_kind"] == "representation" and body["evaluated"] is False
+    assert body["blocked"] and body["verification"]["passed"] is True
+    diagnostics = body["diagnostics"]
+    assert diagnostics["trace_id"] == r.headers["X-Request-ID"] != "client-supplied-id"
+    assert diagnostics["method"] == "exp_frechet_derivative"
+    assert [m["id"] for m in diagnostics["methods_tried"]][-1] == "exp_frechet_derivative"
+
+
+def test_matrix_duhamel_and_time_dependent_requests(authed: TestClient) -> None:
+    mats = [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp((t-s)A) B \exp(sA)",
+            "matrices": mats,
+            "commuting": [["A", "B"]],
+            "action": "integrate",
+            "variable": "s",
+            "lower": "0",
+            "upper": "t",
+        },
+    ).json()
+    assert r["status"] == "ok" and r["method"] == "duhamel" and r["result_kind"] == "expression"
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"\exp(A(t))",
+            "matrices": [{"name": "A", "rows": 2, "depends_on": "t"}],
+            "self_commuting": ["A"],
+            "action": "differentiate",
+            "variable": "t",
+        },
+    ).json()
+    assert r["status"] == "ok" and r["method"] == "exp_derivative"
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"A(t)",
+            "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+            "action": "evolve",
+            "variable": "t",
+            "upper": "1",
+            "save": True,
+        },
+    ).json()
+    assert r["status"] == "ok" and r["result_kind"] == "numeric" and r["evaluated"] is False
+    assert r["verification"]["symbolic_zero"] is None  # never described as proved
+    assert r["diagnostics"]["verification"] == "rk4+backward+liouville"
+    item = next(i for i in authed.get("/v1/history").json() if i["id"] == r["calculation_id"])
+    assert item["result"]["request"]["action"] == "evolve"
+    assert "trace_id" not in item["result"]["request"]
+    # the end of the span is never chosen for the user
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": r"A(t)",
+            "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+            "action": "evolve",
+            "variable": "t",
+        },
+    ).json()
+    assert r["status"] == "unsupported" and "end time" in r["message"]
+
+
+def test_matrix_calculus_checks_links_like_the_other_operations(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/matrix",
+        json={
+            "input": "A",
+            "matrices": [{"name": "A", "rows": 2}],
+            "save": True,
+            "derivation_id": "00000000-0000-0000-0000-000000000000",
+        },
+    )
+    assert r.status_code in (404, 422)
+
+
+def test_matrix_calculus_logs_diagnostic_counters_only(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzDIAGMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        response = c.post(
+            "/v1/compute/matrix",
+            json={
+                "input": f"exp(t**2*{marker} + t*B)",
+                "format": "text",
+                "matrices": [{"name": marker, "rows": 2}, {"name": "B", "rows": 2}],
+                "action": "differentiate",
+                "variable": "t",
+            },
+        )
+    out = capsys.readouterr().out
+    assert response.json()["status"] == "ok" and marker not in out
+    compute = next(
+        json.loads(line)
+        for line in out.splitlines()
+        if line.startswith("{") and '"event": "compute"' in line
+    )
+    assert compute["matrix_method"] == "exp_frechet_derivative"
+    assert compute["result_kind"] == "representation" and compute["commutation"] == "not_used"
+    assert compute["trace_id"] == response.headers["X-Request-ID"]
+    assert isinstance(compute["verify_ms"], int)
+    assert set(compute) <= ALLOWED_FIELDS
+
+
+def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        r = c.post(
+            "/v1/compute/conserved",
+            json={
+                "function": rf"\frac{{1}}{{2}}m(\dot{{r}}^2+r^2\dot{{\theta}}^2)+\frac{{k_{{{marker}}}}}{{r}}",
+                "coordinates": ["r", "theta"],
+            },
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["status"] == "ok"
+        assert sum(k["kind"] == "new" for k in body["constants"]) == 2
+        assert body["independence"]["rank_lower"] == 3
+        bad = c.post(
+            "/v1/compute/conserved",
+            json={"function": "x", "coordinates": ["a", "b", "c", "d"]},
+        )
+        assert bad.status_code == 422
+    out = capsys.readouterr().out
+    assert "invariant_search.started" in out and "invariant_search.completed" in out
+    assert "invariant_search.nullspace_computed" in out and '"rank"' in out
+    assert marker not in out and "theta" not in out and "\\frac" not in out
+    assert "request_id" in out  # the trace id that ties the stages together
+    assert "ada@example.com" not in out
+
+
+def test_conserved_quantities_requires_login(client: TestClient) -> None:
+    r = client.post("/v1/compute/conserved", json={"function": "x", "coordinates": ["x"]})
+    assert r.status_code == 401
+
+
+GEOMETRY_POLAR = {
+    "coordinates": ["r", "theta"],
+    "metric": [["1", "0"], ["0", "r^2"]],
+    "format": "text",
+    "assumptions": {"r": ["positive"]},
+    "quantities": ["christoffel", "ricci_scalar", "geodesics"],
+}
+
+
+def test_geometry_regression_and_history(authed: TestClient) -> None:
+    r = authed.post("/v1/compute/geometry", json=GEOMETRY_POLAR)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok" and body["dimension"] == 2
+    by_kind = {q["kind"]: q for q in body["quantities"]}
+    assert by_kind["ricci_scalar"]["scalar_text"] == "0"
+    assert {c["text"] for c in by_kind["geodesics"]["components"]} == {
+        "r_ddot = r*theta_dot**2",
+        "theta_ddot = -2*r_dot*theta_dot/r",
+    }
+    assert all(q["verification"]["numeric_passed"] for q in body["quantities"])
+    assert body["conventions"] and body["diagnostics"]
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "geometry" and item["id"] == body["calculation_id"]
+    # the whole problem is stored so that the workbench can restore the form
+    assert item["result"]["request"]["metric"] == GEOMETRY_POLAR["metric"]
+    assert item["result"]["request"]["coordinates"] == ["r", "theta"]
+    assert "save" not in item["result"]["request"]
+
+
+def test_geometry_the_same_problem_can_be_sent_again_for_other_quantities(
+    authed: TestClient,
+) -> None:
+    first = authed.post("/v1/compute/geometry", json=GEOMETRY_POLAR).json()
+    again = authed.post(
+        "/v1/compute/geometry", json={**GEOMETRY_POLAR, "quantities": ["riemann", "einstein"]}
+    ).json()
+    assert again["status"] == "ok" and again["metric_latex"] == first["metric_latex"]
+    assert [q["kind"] for q in again["quantities"]] == ["riemann", "einstein"]
+
+
+def test_geometry_failures_are_statuses_and_bad_shapes_are_422(authed: TestClient) -> None:
+    degenerate = {**GEOMETRY_POLAR, "metric": [["1", "0"], ["0", "0"]]}
+    body = authed.post("/v1/compute/geometry", json=degenerate).json()
+    assert body["status"] == "unsupported" and "degenerate" in body["message"]
+    asymmetric = {**GEOMETRY_POLAR, "metric": [["1", "x"], ["0", "1"]]}
+    assert authed.post("/v1/compute/geometry", json=asymmetric).json()["status"] == "parse_error"
+    undeclared = {**GEOMETRY_POLAR, "metric": [["f(r)", "0"], ["0", "1"]]}
+    assert authed.post("/v1/compute/geometry", json=undeclared).json()["status"] == "parse_error"
+    for bad in (
+        {**GEOMETRY_POLAR, "quantities": []},
+        {**GEOMETRY_POLAR, "quantities": ["levitation"]},
+        {**GEOMETRY_POLAR, "coordinates": []},
+        {**GEOMETRY_POLAR, "metric": [["x" * 400, "0"], ["0", "1"]]},
+    ):
+        assert authed.post("/v1/compute/geometry", json=bad).status_code == 422
+
+
+def test_geometry_supports_declared_functions_and_tensor_fields(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/geometry",
+        json={
+            "coordinates": ["t", "x"],
+            "metric": [["-1", "0"], ["0", "a(t)^2"]],
+            "format": "text",
+            "functions": [{"name": "a", "args": ["t"]}],
+            "quantities": ["ricci_scalar", "covariant_derivative"],
+            "tensor": {"variance": ["up"], "components": ["1", "0"]},
+        },
+    ).json()
+    assert body["status"] == "ok"
+    kinds = {q["kind"]: q for q in body["quantities"]}
+    assert kinds["covariant_derivative"]["components"][0]["indices"] == [1, 1]
+
+
+def test_geometry_does_not_save_into_another_users_derivation(
+    authed: TestClient, client: TestClient
+) -> None:
+    other = TestClient(client.app)
+    register(other, "grace@example.com")
+    derivation = other.post("/v1/derivations", json={}).json()["id"]
+    r = authed.post("/v1/compute/geometry", json={**GEOMETRY_POLAR, "derivation_id": derivation})
+    assert r.status_code == 404
+
+
+def test_geometry_requires_authentication(client: TestClient) -> None:
+    assert client.post("/v1/compute/geometry", json=GEOMETRY_POLAR).status_code == 401
+
+
+def test_geometry_logs_no_user_input(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzGEOMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        c.post(
+            "/v1/compute/geometry",
+            json={
+                "coordinates": ["x", marker],
+                "metric": [["1", "0"], ["0", f"({marker})^2 + 1"]],
+                "format": "text",
+                "quantities": ["christoffel"],
+                "functions": [{"name": "fzzFUNCzz", "args": [marker]}],
+            },
+        )
+    out = capsys.readouterr().out
+    assert "compute" in out and marker not in out and "fzzFUNCzz" not in out
+
+
+def _events(out: str) -> list[dict]:  # type: ignore[type-arg]
+    import json
+
+    events = []
+    for line in out.splitlines():
+        try:
+            events.append(json.loads(line))
+        except ValueError:
+            continue
+    return events
+
+
+def test_geometry_logs_one_event_per_stage_with_counters_only(capsys) -> None:  # type: ignore[no-untyped-def]
+    from minerva_api.logging import ALLOWED_FIELDS
+
+    marker = "zzGEOSTAGEzz"
+    with TestClient(build_app()) as c:
+        register(c)
+        c.post(
+            "/v1/compute/geometry",
+            json={
+                "coordinates": ["r", "theta"],
+                "metric": [["1", "0"], ["0", f"r^2 + 0*{marker}"]],
+                "format": "text",
+                "assumptions": {"r": ["positive"]},
+                "quantities": ["christoffel", "riemann"],
+            },
+        )
+    out = capsys.readouterr().out
+    assert marker not in out and "theta" not in out and "r^2" not in out
+    events = _events(out)
+    stages = [e for e in events if e.get("event") == "geometry_stage"]
+    names = {e["stage"] for e in stages}
+    assert {"setup", "determinant", "christoffel", "christoffel:verify", "riemann"} <= names
+    for e in stages:
+        assert set(e) <= ALLOWED_FIELDS  # nothing outside the allow-list reaches the log
+        assert e["operation"] == "geometry" and e["dimension"] == 2
+        assert isinstance(e["duration_ms"], int) and e["status"] in {"ok", "failed", "skipped"}
+        assert e.get("request_id")  # the stage can be tied to the request
+    summary = next(e for e in events if e.get("event") == "geometry")
+    assert summary["quantities"] == ["christoffel", "riemann"] and summary["dimension"] == 2
+
+
+def test_a_failed_stage_is_logged_with_its_failure_category(capsys) -> None:  # type: ignore[no-untyped-def]
+    with TestClient(build_app()) as c:
+        register(c)
+        c.post(
+            "/v1/compute/geometry",
+            json={
+                "coordinates": ["x", "y"],
+                "metric": [["1", "0"], ["0", "0"]],
+                "format": "text",
+                "quantities": ["christoffel"],
+            },
+        )
+    stages = [e for e in _events(capsys.readouterr().out) if e.get("event") == "geometry_stage"]
+    failed = [e for e in stages if e["status"] == "failed"]
+    assert (
+        failed and failed[0]["stage"] == "inverse_metric" and failed[0]["failure"] == "unsupported"
+    )

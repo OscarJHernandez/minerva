@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, type ComputeInput } from "@/lib/api";
@@ -9,12 +10,14 @@ import {
   continuation,
   relationLines,
   validateSettings,
+  withRealVariable,
   type Settings,
   type StepOperation,
 } from "@/lib/derivation";
 import type {
   Assumptions,
   DerivationSummary,
+  GeometryRequest,
   HistoryItem,
   IdentitiesResult,
   IdentityMatch,
@@ -24,6 +27,7 @@ import type {
 import { AssumptionsEditor } from "../assumptions-editor";
 import { DerivationView } from "./derivation-view";
 import { ExpressionEditor, type EditorFormat } from "./expression-editor";
+import { GeometryWorkbench } from "./geometry-workbench";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
 import { PartPicker, type PartAction } from "./part-picker";
@@ -98,6 +102,11 @@ export function Workbench() {
   const [earlier, setEarlier] = useState<HistoryItem[]>([]);
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
+  const [mode, setMode] = useState<"expression" | "geometry">("expression");
+  const [geometryRestore, setGeometryRestore] = useState<{
+    request: GeometryRequest;
+    nonce: number;
+  } | null>(null);
 
   const value = format === "latex" ? latex : text;
   const key = JSON.stringify([value, format, assumptions]);
@@ -216,6 +225,20 @@ export function Workbench() {
             : undefined,
         ),
       );
+    else if (operation === "distribution")
+      void addStep(operation, (c) =>
+        api.distribution(
+          { ...c, assumptions: withRealVariable(c.assumptions, by) },
+          {
+            action: settings.distAction,
+            variable: by,
+            lower: settings.distAction === "integrate" ? settings.lower.trim() : null,
+            upper: settings.distAction === "integrate" ? settings.upper.trim() : null,
+            endpoint:
+              settings.distAction === "integrate" && settings.endpoint ? settings.endpoint : null,
+          },
+        ),
+      );
     else void addStep(operation, (c) => api.series(c, by, settings.point, settings.seriesOrder));
   }
 
@@ -328,6 +351,16 @@ export function Workbench() {
   }
 
   function openEarlier(item: HistoryItem) {
+    if (item.operation === "geometry") {
+      // the whole problem was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: GeometryRequest }).request;
+      if (request) {
+        setMode("geometry");
+        setGeometryRestore({ request, nonce: Date.now() });
+      }
+      return;
+    }
+    setMode("expression");
     reset();
     setFormat(item.format);
     if (item.format === "latex") setLatex(item.input);
@@ -361,59 +394,86 @@ export function Workbench() {
   return (
     <div className="grid gap-x-8 gap-y-6 pb-16 pt-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr]">
       <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-1">
-        <ExpressionEditor
-          format={format}
-          latex={latex}
-          text={text}
-          onLatex={setLatex}
-          onText={setText}
-          onFormat={setFormat}
-          onSubmit={() => run(selected ?? "simplify")}
-          continuing={
-            fromStep && fromResult
-              ? {
-                  step: steps.findIndex((s) => s.id === fromStep.id) + 1,
-                  latex: fromResult.latex,
-                  intact,
-                }
-              : null
-          }
-          onClear={() => {
-            setFromId(null);
-            if (format === "latex") setLatex("");
-            else setText("");
-          }}
-          focusSignal={focusSignal}
-        />
-        <OperationBar
-          selected={selected}
-          onSelect={setSelected}
-          settings={settings}
-          onSettings={setSettings}
-          onRun={run}
-          onFind={find}
-          partOpen={partOpen}
-          onTogglePart={() => setPartOpen((o) => !o)}
-          partChosen={chosenPart !== null}
-          empty={!value.trim()}
-          busy={busy}
-        />
-        {partOpen && (
-          <PartPicker
-            result={partsFresh}
-            stale={parts !== null && partsFresh === null}
-            searching={busy === "parts"}
-            chosen={chosenPart}
-            disabled={!value.trim() || busy !== null}
-            onList={listParts}
-            onChoose={(part) => setChosen(part ? { key, part } : null)}
-            onRun={runPart}
-          />
-        )}
-        {error && (
-          <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-            {error}
-          </p>
+        <p className="text-xs text-muted">
+          Working with a Lagrangian or Hamiltonian?{" "}
+          <Link href="/workbench/conserved" className="text-accent hover:underline">
+            Find its conserved quantities
+          </Link>
+        </p>
+        <div role="group" aria-label="Workbench mode" className="flex gap-2">
+          {(["expression", "geometry"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+              className={`rounded border px-3 py-1.5 text-sm ${
+                mode === m
+                  ? "border-accent bg-accent text-accent-ink"
+                  : "border-rule bg-raised text-ink hover:bg-sunk"
+              }`}
+            >
+              {m === "expression" ? "Expression" : "Geometry"}
+            </button>
+          ))}
+        </div>
+        {mode === "expression" && (
+          <>
+            <ExpressionEditor
+              format={format}
+              latex={latex}
+              text={text}
+              onLatex={setLatex}
+              onText={setText}
+              onFormat={setFormat}
+              onSubmit={() => run(selected ?? "simplify")}
+              continuing={
+                fromStep && fromResult
+                  ? {
+                      step: steps.findIndex((s) => s.id === fromStep.id) + 1,
+                      latex: fromResult.latex,
+                      intact,
+                    }
+                  : null
+              }
+              onClear={() => {
+                setFromId(null);
+                if (format === "latex") setLatex("");
+                else setText("");
+              }}
+              focusSignal={focusSignal}
+            />
+            <OperationBar
+              selected={selected}
+              onSelect={setSelected}
+              settings={settings}
+              onSettings={setSettings}
+              onRun={run}
+              onFind={find}
+              partOpen={partOpen}
+              onTogglePart={() => setPartOpen((o) => !o)}
+              partChosen={chosenPart !== null}
+              empty={!value.trim()}
+              busy={busy}
+            />
+            {partOpen && (
+              <PartPicker
+                result={partsFresh}
+                stale={parts !== null && partsFresh === null}
+                searching={busy === "parts"}
+                chosen={chosenPart}
+                disabled={!value.trim() || busy !== null}
+                onList={listParts}
+                onChoose={(part) => setChosen(part ? { key, part } : null)}
+                onRun={runPart}
+              />
+            )}
+            {error && (
+              <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                {error}
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -421,30 +481,34 @@ export function Workbench() {
         aria-label="Identities, assumptions and saved work"
         className="space-y-3 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-l lg:border-rule lg:pl-6"
       >
-        <Section
-          id="identities"
-          title="Identities"
-          open={open.identities}
-          onToggle={() => toggle("identities")}
-        >
-          <IdentityPicker
-            result={lookupFresh}
-            stale={lookup !== null && lookupFresh === null}
-            searching={busy === "identities"}
-            applying={busy !== null && busy !== "identities" ? busy : null}
-            disabled={!value.trim() || busy !== null}
-            onFind={find}
-            onApply={apply}
-          />
-        </Section>
-        <Section
-          id="assumptions"
-          title="Assumptions"
-          open={open.assumptions}
-          onToggle={() => toggle("assumptions")}
-        >
-          <AssumptionsEditor value={assumptions} onChange={setAssumptions} />
-        </Section>
+        {mode === "expression" && (
+          <>
+            <Section
+              id="identities"
+              title="Identities"
+              open={open.identities}
+              onToggle={() => toggle("identities")}
+            >
+              <IdentityPicker
+                result={lookupFresh}
+                stale={lookup !== null && lookupFresh === null}
+                searching={busy === "identities"}
+                applying={busy !== null && busy !== "identities" ? busy : null}
+                disabled={!value.trim() || busy !== null}
+                onFind={find}
+                onApply={apply}
+              />
+            </Section>
+            <Section
+              id="assumptions"
+              title="Assumptions"
+              open={open.assumptions}
+              onToggle={() => toggle("assumptions")}
+            >
+              <AssumptionsEditor value={assumptions} onChange={setAssumptions} />
+            </Section>
+          </>
+        )}
         <Section id="saved" title="Saved" open={open.saved} onToggle={() => toggle("saved")}>
           <SavedPanel
             derivations={saved}
@@ -461,12 +525,20 @@ export function Workbench() {
       </aside>
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-        <DerivationView
-          steps={steps}
-          currentId={fromId}
-          onContinue={continueFrom}
-          onDelete={deleteStep}
-        />
+        {mode === "geometry" ? (
+          <GeometryWorkbench
+            restore={geometryRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+          />
+        ) : (
+          <DerivationView
+            steps={steps}
+            currentId={fromId}
+            onContinue={continueFrom}
+            onDelete={deleteStep}
+          />
+        )}
       </div>
     </div>
   );

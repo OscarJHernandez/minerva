@@ -8,36 +8,13 @@ from typing import Any
 import pytest
 from minerva_api.agent.llm import Chunk, LLMError, ToolCall
 from minerva_api.agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
+from minerva_api.agent.replay import ReplayLLM
 from minerva_api.agent.segments import normalize, split_segments
 from minerva_api.agent.tools import ToolContext, execute
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 
-
-class FakeLLM:
-    """Replays prepared replies, one list of chunks per model call, and records what it was sent."""
-
-    name = "fake"
-
-    def __init__(self, replies: list[list[Chunk]] | None = None, repeat_last: bool = False) -> None:
-        self.replies = replies or []
-        self.repeat_last = repeat_last
-        self.seen: list[list[dict[str, Any]]] = []
-        self.error: LLMError | None = None
-
-    async def chat(
-        self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
-    ) -> AsyncIterator[Chunk]:
-        self.seen.append([dict(m) for m in messages])
-        if self.error:
-            raise self.error
-        index = len(self.seen) - 1
-        if index >= len(self.replies):
-            if not self.repeat_last:
-                return
-            index = len(self.replies) - 1
-        for chunk in self.replies[index]:
-            yield chunk
+FakeLLM = ReplayLLM  # the shared replay model; the old name is kept for the tests below
 
 
 @pytest.fixture(scope="module")
@@ -101,14 +78,18 @@ def test_formula_not_from_a_tool_is_marked_unverified(ctx: ToolContext) -> None:
 
 
 def test_step_cap_stops_a_looping_model(ctx: ToolContext) -> None:
-    call = [Chunk(tool_calls=[ToolCall("search_handbook", {"query": "gaussian"})])]
-    llm = FakeLLM([call], repeat_last=True)
+    # Different calls every step (an identical one would be recognised as a repeat, not run again).
+    calls = [
+        [Chunk(tool_calls=[ToolCall("search_handbook", {"query": q})])]
+        for q in ("gaussian", "euler", "planck", "zeta")
+    ]
+    llm = FakeLLM(calls)
     msg = final(
         collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_steps=3))
     )
-    assert msg["truncated"] is True
+    assert msg["truncated"] is True and msg["stop_reason"] == "step_limit"
     assert len(cards_of(msg)) == 3
-    assert "limit" in msg["text"]
+    assert "step limit" in msg["text"]
 
 
 def test_time_cap_stops_the_turn(ctx: ToolContext) -> None:
@@ -117,6 +98,7 @@ def test_time_cap_stops_the_turn(ctx: ToolContext) -> None:
         collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=-1))
     )
     assert msg["truncated"] is True and llm.seen == []
+    assert msg["stop_reason"] == "time_limit" and "time limit" in msg["text"]
 
 
 def test_unknown_tool_and_bad_arguments_become_errors_the_model_can_read(ctx: ToolContext) -> None:
@@ -152,8 +134,12 @@ def test_tool_arguments_are_bounded(ctx: ToolContext) -> None:
 def test_model_host_failure_is_an_error_event_without_a_message(ctx: ToolContext) -> None:
     llm = FakeLLM()
     llm.error = LLMError("The model host is not reachable.")
-    events = collect(llm, ctx, [{"role": "user", "content": "q"}])
-    assert [e["event"] for e in events] == ["error"]
+    events = collect(
+        llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(retry_delay_seconds=0)
+    )
+    # The error is reported first; the turn is still delivered as a message so its trace can be stored.
+    assert [e["event"] for e in events] == ["error", "message"]
+    assert len(llm.seen) == 2  # the one retry of a call that failed outright
 
 
 def test_model_host_failure_carries_debug_and_partial_trace(ctx: ToolContext) -> None:
@@ -166,7 +152,7 @@ def test_model_host_failure_carries_debug_and_partial_trace(ctx: ToolContext) ->
     assert data["trace"] == []
     debug = data["debug"]
     assert debug["error"] == data["message"]
-    assert (debug["request_id"], debug["mode"], debug["model"]) == ("abc", "ollama", "fake")
+    assert (debug["request_id"], debug["mode"], debug["model"]) == ("abc", "ollama", "replay")
     assert len(debug["prompt_sha"]) == 12
 
 
@@ -183,7 +169,7 @@ def test_turn_records_debug_timings_statuses_and_claim_checks(ctx: ToolContext) 
     debug = msg["debug"]
     assert len(debug["llm_calls"]) == 2
     assert debug["llm_calls"][0]["tool_calls"] == 1 and debug["llm_calls"][1]["text_chars"] > 0
-    assert debug["max_steps"] == 6 and debug["model"] == "fake"
+    assert debug["max_steps"] == 6 and debug["model"] == "replay"
     by_value = {c["value"]: c["status"] for c in debug["claims"]}
     assert by_value["x^2 = 5x"] in (
         "not_identity",
@@ -251,6 +237,9 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "differentiate",
         "series",
         "integrate",
+        "matrix_calculus",
+        "geometry",
+        "distribution",
         "find_identities",
         "substitute",
         "rewrite_part",
@@ -261,6 +250,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "expand_motion",
         "perturbation_solve",
         "search_invariants",
+        "find_conserved_quantities",
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
@@ -436,6 +426,74 @@ def test_invariants_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None
     assert too_many.card.type == "error"
     bad_degree = execute("search_invariants", {**KEPLER_ARGS, "degree": 3}, ctx)
     assert bad_degree.card.type == "error"
+
+
+def test_discovery_tool_finds_the_kepler_constants_from_the_lagrangian_alone(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {"lagrangian": KEPLER_ARGS["lagrangian"], "coordinates": ["r", "theta"]},
+        ctx,
+    )
+    assert out.card.type == "discovery" and out.status == "ok"
+    report = out.card.data["report"]
+    assert [c["kind"] for c in report["constants"]].count("new") == 2
+    assert report["independence"]["rank_proved"] and report["independence"]["rank_lower"] == 3
+    assert "algebraic relation (exact)" in out.for_model
+    assert "functionally independent: 3 (proved)" in out.for_model
+    assert all(c["expression_latex"] in out.known_latex for c in report["constants"])
+    assert "searched " in out.for_model and "families" in out.for_model
+
+
+def test_discovery_tool_takes_a_hamiltonian_and_states_the_limits(ctx: ToolContext) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {
+            "hamiltonian": r"\frac{p_x^2+p_y^2}{2m}+\frac{k}{2}(x^2+y^2)",
+            "coordinates": ["x", "y"],
+            "momenta": ["p_x", "p_y"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and out.card.data["report"]["system"] == "hamiltonian"
+    assert "limit: " in out.for_model
+
+
+def test_discovery_tool_never_claims_the_system_has_no_other_constants(ctx: ToolContext) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {
+            "lagrangian": r"\frac12(\dot{x}^2+\dot{y}^2)-\frac12(x^2+y^2)-x^2 y+\frac13 y^3",
+            "coordinates": ["x", "y"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and not [
+        c for c in out.card.data["report"]["constants"] if c["kind"] == "new"
+    ]
+    assert "within the explored families" in out.for_model
+    assert "does not mean the system has none" in out.for_model
+
+
+def test_discovery_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None:
+    cartesian = execute(
+        "find_conserved_quantities",
+        {
+            "lagrangian": r"\frac12 m(\dot{x}^2+\dot{y}^2)+\frac{k}{\sqrt{x^2+y^2}}",
+            "coordinates": ["x", "y"],
+        },
+        ctx,
+    )
+    assert cartesian.status == "unsupported" and cartesian.card.type == "discovery"
+    both = execute(
+        "find_conserved_quantities",
+        {"lagrangian": "x", "hamiltonian": "y", "coordinates": ["x"]},
+        ctx,
+    )
+    assert both.card.type == "error"
+    neither = execute("find_conserved_quantities", {"coordinates": ["x"]}, ctx)
+    assert neither.card.type == "error"
 
 
 OSC_ARGS = {
@@ -674,7 +732,9 @@ def test_series_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) -> None
     assert pole.card.data["status"] == "unsupported"
     assert pole.card.data["result_latex"] is None
     assert "series=" not in pole.for_model
-    assert pole.known_latex == [pole.card.data["input_latex"]]
+    # Nothing was verified, so nothing is vouched for; the input is only quoted.
+    assert pole.known_latex == []
+    assert [key for key, _ in pole.quoted_latex] == [normalize(pole.card.data["input_latex"])]
     modulus = execute("series", {"latex": r"\left|x\right|", "variable": "x", "point": "1"}, ctx)
     assert modulus.card.data["status"] == "unsupported"
 
@@ -877,17 +937,101 @@ def test_integrate_tool_definite_integral_and_conditions(ctx: ToolContext) -> No
     assert ok.status == "ok"
 
 
+REGRESSION_MATRICES = [
+    {"name": "A", "entries": [["1", "0"], ["0", "2"]]},
+    {"name": "B", "entries": [["0", "1"], ["0", "0"]]},
+]
+
+
+def test_matrix_calculus_tool_reports_an_evaluated_integral(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(wA)\exp(-wB)",
+            "matrices": REGRESSION_MATRICES,
+            "action": "integrate",
+            "variable": "w",
+            "lower": "0",
+            "upper": "1",
+        },
+        ctx,
+    )
+    assert out.card.type == "matrix" and out.status == "ok"
+    result = out.card.data["result"]
+    assert result["result_kind"] == "explicit" and result["evaluated"] is True
+    assert result["result_entries"][0][0] in ("-1 + E", "E - 1")
+    assert "evaluated=yes" in out.for_model and "verified: numeric" in out.for_model
+    assert f"result=${result['result_latex']}$" in out.for_model
+    assert result["result_latex"] in out.known_latex
+    assert result["equation_latex"] in out.known_latex
+    assert any(m["id"].startswith("method.matrix.") for m in out.card.data["methods"])
+
+
+def test_matrix_calculus_tool_never_calls_a_reduction_an_evaluation(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(tP)\exp(tQ)",
+            "matrices": [{"name": "P", "rows": 2}, {"name": "Q", "rows": 2}],
+            "action": "integrate",
+            "variable": "t",
+            "lower": "0",
+            "upper": "1",
+        },
+        ctx,
+    )
+    assert out.status == "ok"
+    assert "evaluated=NO" in out.for_model and "evaluated=yes" not in out.for_model
+    assert out.card.data["result"]["evaluated"] is False
+
+
+def test_matrix_calculus_tool_reports_what_was_not_applied(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(A)\exp(B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "simplify",
+        },
+        ctx,
+    )
+    assert out.status == "conditions_not_satisfied"
+    assert "NOT APPLIED" in out.for_model and "result=" not in out.for_model
+    declared = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(A)\exp(B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "commuting": [["A", "B"]],
+        },
+        ctx,
+    )
+    assert declared.status == "ok" and "AB = BA (declared)" in declared.for_model
+
+
+def test_matrix_calculus_tool_rejects_bad_arguments_without_raising(ctx: ToolContext) -> None:
+    out = execute("matrix_calculus", {"latex": "A", "matrices": []}, ctx)
+    assert out.card.type == "error" and out.status == "error"
+    out = execute("matrix_calculus", {"latex": "A", "matrices": [{"name": "A"}]}, ctx)
+    assert out.card.type == "error"
+
+
 # --- bounds and failures ------------------------------------------------------------------------
 def test_total_tool_calls_are_capped_whatever_the_steps(ctx: ToolContext) -> None:
-    many = [Chunk(tool_calls=[ToolCall("search_handbook", {"query": "gaussian"})] * 3)]
-    llm = FakeLLM([many], repeat_last=True)
+    def batch(*queries: str) -> list[Chunk]:
+        return [Chunk(tool_calls=[ToolCall("search_handbook", {"query": q}) for q in queries])]
+
+    llm = FakeLLM([batch("gaussian", "euler", "planck"), batch("zeta", "bessel", "gamma")])
     limits = AgentLimits(max_steps=6, max_tool_calls=4)
     msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}], limits=limits))
     assert msg["truncated"] is True and "limit" in msg["text"]
+    assert msg["stop_reason"] == "tool_call_limit"
     assert len(cards_of(msg)) == 4
     assert len(llm.seen) == 2  # the cap ends the turn: no further model call
     refused = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"][4:]
     assert all("not run" in r for r in refused)
+    skipped = [t for t in msg["trace"] if t["status"] == "skipped"]
+    assert len(skipped) == 2 and all(t["error_category"] == "limit_reached" for t in skipped)
 
 
 def test_a_tool_that_raises_becomes_an_error_card_not_a_broken_stream(
@@ -996,7 +1140,7 @@ def test_an_unexpected_model_client_error_is_an_error_event(ctx: ToolContext) ->
             yield Chunk()
 
     events = collect(Broken(), ctx, [{"role": "user", "content": "q"}])
-    assert [e["event"] for e in events] == ["error"]
+    assert [e["event"] for e in events] == ["error", "message"]
     assert "secret" not in str(events)
 
 
@@ -1137,3 +1281,274 @@ def test_definitions_from_earlier_turns_and_earlier_assumptions_are_used(ctx: To
         )
     )
     assert next(s for s in segments_of(msg) if s["type"] == "math")["status"] == "checked"
+
+
+# -- the claim checker and matrices declared by tool calls -------------------------------------------
+def test_matrix_names_come_from_matrix_tool_calls_only() -> None:
+    from minerva_api.agent.events import TraceStep
+    from minerva_api.agent.loop import matrix_names
+
+    trace = [
+        TraceStep(
+            id="a",
+            name="matrix_calculus",
+            arguments={"matrices": [{"name": "A", "rows": 2}, {"name": "Bx", "rows": 2}]},
+            for_model="",
+        ),
+        TraceStep(id="b", name="simplify", arguments={"matrices": [{"name": "Z"}]}, for_model=""),
+    ]
+    assert matrix_names(trace) == {"A", "Bx"}
+    assert matrix_names(
+        [{"name": "matrix_calculus", "arguments": {"matrices": [{"name": "Q"}]}}]
+    ) == {"Q"}
+    assert matrix_names([{"name": "matrix_calculus", "arguments": {"matrices": "bad"}}]) == set()
+
+
+def test_a_model_written_matrix_equation_is_not_called_checked(ctx: ToolContext) -> None:
+    from minerva_api.agent.events import Block, Segment, TraceStep
+    from minerva_api.agent.loop import check_model_claims
+
+    trace = [
+        TraceStep(
+            id="a",
+            name="matrix_calculus",
+            arguments={"matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]},
+            for_model="",
+        )
+    ]
+
+    def block() -> Block:
+        return Block(
+            kind="text",
+            segments=[
+                Segment(type="math", value=r"\exp(A)\exp(B) = \exp(A+B)", status="unchecked"),
+                Segment(type="math", value=r"\exp(s)\exp(u) = \exp(s+u)", status="unchecked"),
+            ],
+        )
+
+    with_matrices = block()
+    asyncio.run(check_model_claims([with_matrices], ctx, trace))
+    matrix_claim, scalar_claim = with_matrices.segments
+    assert matrix_claim.status == "unchecked"  # never "checked" for matrices
+    assert scalar_claim.status == "checked"
+    # an earlier turn's declaration protects this turn too
+    later = block()
+    asyncio.run(check_model_claims([later], ctx, [], prior_matrices=["A", "B"]))
+    assert later.segments[0].status == "unchecked" and later.segments[1].status == "checked"
+    # without any declaration the formula is tested as a scalar identity, as before
+    plain = block()
+    asyncio.run(check_model_claims([plain], ctx, []))
+    assert plain.segments[0].status == "checked"
+
+
+# -- matrix calculus tool: new capabilities -------------------------------------------------------
+def test_matrix_tool_reports_a_frechet_derivative_as_a_representation(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(t^2 A + t B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "differentiate",
+            "variable": "t",
+        },
+        ctx,
+    )
+    assert out.card.type == "matrix" and out.status == "ok"
+    assert "method=exp_frechet_derivative" in out.for_model
+    assert "evaluated=NO (do not call this an evaluated result)" in out.for_model
+    assert "NOT APPLIED" in out.for_model and "X'" in out.for_model
+    assert "method.matrix.frechet_derivative" in out.for_model  # the handbook entry is retrieved
+    result = out.card.data["result"]
+    assert result["result_latex"] in out.known_latex
+    # the form that was NOT applied may be quoted, never shown as verified
+    assert all(b["latex"] not in out.known_latex for b in result["blocked"] if b["latex"])
+    assert any("not applied" in why for _, why in out.quoted_latex)
+
+
+def test_matrix_tool_labels_a_numerical_solution_an_approximation(ctx: ToolContext) -> None:
+    arguments = {
+        "latex": "A(t)",
+        "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+        "action": "evolve",
+        "variable": "t",
+        "upper": "1",
+    }
+    out = execute("matrix_calculus", arguments, ctx)
+    assert out.status == "ok" and "kind=numeric" in out.for_model
+    assert "numerical approximation" in out.for_model and "not a closed form" in out.for_model
+    assert "evaluated=yes" not in out.for_model
+    without_span = execute("matrix_calculus", {**arguments, "upper": None}, ctx)
+    assert without_span.status == "unsupported" and "end time" in without_span.for_model
+
+
+def test_matrix_diagnostics_take_the_active_trace_id(ctx: ToolContext) -> None:
+    from minerva_engine import trace_scope
+
+    arguments = {"latex": "A", "matrices": [{"name": "A", "rows": 2}]}
+    with trace_scope("abcd1234ef567890"):
+        out = execute("matrix_calculus", arguments, ctx)
+    assert out.card.data["result"]["diagnostics"]["trace_id"] == "abcd1234ef567890"
+    assert "trace_id" not in out.card.data["request"]
+    with trace_scope("not a valid id!"):  # never copied into the diagnostics
+        out = execute("matrix_calculus", arguments, ctx)
+    assert out.card.data["result"]["diagnostics"]["trace_id"] is None
+    out = execute("matrix_calculus", arguments, ctx)  # no active trace
+    assert out.card.data["result"]["diagnostics"]["trace_id"] is None
+
+
+def test_matrix_tool_schema_asks_for_numbers_the_user_chooses(ctx: ToolContext) -> None:
+    from minerva_api.agent.tools import schemas
+
+    schema = next(s for s in schemas() if s["function"]["name"] == "matrix_calculus")
+    properties = schema["function"]["parameters"]["properties"]
+    assert "evolve" in properties["action"]["enum"]
+    assert "USER" in properties["upper"]["description"]
+    assert "USER" in properties["self_commuting"]["description"]
+    assert "depends_on" in str(schema["function"]["parameters"])
+
+
+SPHERE_ARGS = {
+    "coordinates": ["theta", "phi"],
+    "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+    "assumptions": {"a": ["positive"]},
+    "quantities": ["ricci_scalar", "christoffel"],
+}
+
+
+def test_geometry_tool_returns_a_card_and_a_checkable_summary(ctx: ToolContext) -> None:
+    out = execute("geometry", SPHERE_ARGS, ctx)
+    assert out.status == "ok" and out.card.type == "geometry"
+    assert out.card.data["request"]["coordinates"] == [
+        "theta",
+        "phi",
+    ]  # the card carries the problem
+    text = out.for_model
+    assert "status=ok" in text and "convention:" in text and "Levi-Civita" in text
+    assert r"value=$\frac{2}{a^{2}}$" in text
+    assert "NOT DETERMINED" in text  # sin^2 theta is not known to be strictly positive
+    # every formula the model may quote is registered as coming from the tool
+    assert normalize(r"\frac{2}{a^{2}}") in {normalize(x) for x in out.known_latex}
+    assert any(r"\Gamma^{\theta}{}_{\phi \phi}" in x for x in out.known_latex)
+    assert any("sin" in r for r in out.known_latex)  # the restriction sin(theta) != 0
+
+
+def test_geometry_tool_failures_are_explained_not_decorated(ctx: ToolContext) -> None:
+    out = execute("geometry", {**SPHERE_ARGS, "metric": [["1", "0"], ["0", "0"]]}, ctx)
+    assert out.status == "unsupported" and "degenerate" in out.for_model
+    assert "value=" not in out.for_model
+    out = execute("geometry", {**SPHERE_ARGS, "quantities": ["levitation"]}, ctx)
+    assert out.status == "error"
+    out = execute("geometry", {**SPHERE_ARGS, "coordinates": []}, ctx)
+    assert out.status == "error"
+    out = execute("geometry", {**SPHERE_ARGS, "metric": [["f(r)", "0"], ["0", "1"]]}, ctx)
+    assert out.status == "parse_error" and "declare" in out.for_model
+
+
+def test_geometry_tool_never_leaks_a_state_between_calls(ctx: ToolContext) -> None:
+    # the geometry is resent each time: a second call with other quantities gives the same metric
+    first = execute("geometry", SPHERE_ARGS, ctx)
+    second = execute("geometry", {**SPHERE_ARGS, "quantities": ["riemann"]}, ctx)
+    assert first.card.data["result"]["metric_latex"] == second.card.data["result"]["metric_latex"]
+    assert [q["kind"] for q in second.card.data["result"]["quantities"]] == ["riemann"]
+
+
+def test_geometry_formulas_are_marked_from_the_tool_and_invented_ones_are_not(
+    ctx: ToolContext,
+) -> None:
+    llm = FakeLLM(
+        [
+            [Chunk(tool_calls=[ToolCall("geometry", SPHERE_ARGS)])],
+            [
+                Chunk(
+                    text=r"The Ricci scalar is $\frac{2}{a^{2}}$, not $\frac{3}{a^{2}}$ "
+                    r"and the restriction is $\sin{\left(\theta \right)} \neq 0$."
+                )
+            ],
+        ]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "curvature of the sphere"}]))
+    marks = {s["value"]: s["status"] for s in segments_of(msg) if s["type"] != "text"}
+    assert marks[r"\frac{2}{a^{2}}"] == "from_tool"
+    assert marks[r"\sin{\left(\theta \right)} \neq 0"] == "from_tool"
+    assert marks[r"\frac{3}{a^{2}}"] != "from_tool"  # not in any tool result
+
+
+def test_distribution_tool_reports_steps_conditions_and_evidence(ctx: ToolContext) -> None:
+    out = execute(
+        "distribution",
+        {
+            "latex": r"x^2\operatorname{DiracDelta}(x^2-4)",
+            "assumptions": {"x": ["real"]},
+            "action": "integrate",
+            "variable": "x",
+            "lower": "-oo",
+            "upper": "oo",
+        },
+        ctx,
+    )
+    assert out.card.type == "distribution" and out.status == "ok"
+    result = out.card.data["result"]
+    assert result["result_text"] == "2" and result["equality"] == "value"
+    assert "distributions.delta_sifting" in out.for_model
+    assert "conditions established exactly: yes" in out.for_model
+    assert "supporting evidence, not a proof" in out.for_model
+    assert f"result=${result['result_latex']}$" in out.for_model
+    assert result["result_latex"] in out.known_latex
+    assert any(m["id"] == "distributions.delta_sifting" for m in out.card.data["methods"])
+    assert out.card.data["request"]["action"] == "integrate"
+
+
+def test_distribution_tool_says_the_equality_is_distributional(ctx: ToolContext) -> None:
+    out = execute(
+        "distribution",
+        {
+            "latex": r"\operatorname{Heaviside}(x-1)",
+            "assumptions": {"x": ["real"]},
+            "action": "differentiate",
+        },
+        ctx,
+    )
+    assert out.status == "ok"
+    assert "equality=AS DISTRIBUTIONS (not pointwise)" in out.for_model
+    assert "distributions.heaviside_derivative" in out.for_model
+
+
+def test_distribution_tool_refusals_name_the_reason_and_show_no_result(ctx: ToolContext) -> None:
+    unknown = execute(
+        "distribution",
+        {"latex": r"\operatorname{DiracDelta}(ax)", "assumptions": {"x": ["real"], "a": ["real"]}},
+        ctx,
+    )
+    assert unknown.status == "conditions_not_satisfied"
+    assert "reason=assumptions_insufficient" in unknown.for_model
+    assert "result=" not in unknown.for_model
+    assert "NOT APPLIED (distributions.delta_scaling)" in unknown.for_model
+
+    boundary = execute(
+        "distribution",
+        {
+            "latex": r"\operatorname{DiracDelta}(x-1)",
+            "assumptions": {"x": ["real"]},
+            "action": "integrate",
+            "lower": "0",
+            "upper": "1",
+        },
+        ctx,
+    )
+    assert "reason=integration_domain_ambiguous" in boundary.for_model
+    assert "endpoint_convention" not in boundary.for_model  # the tool never picks one
+
+
+def test_distribution_tool_keeps_delta_and_theta_as_symbols(ctx: ToolContext) -> None:
+    out = execute("distribution", {"latex": r"\delta(x)", "assumptions": {"x": ["real"]}}, ctx)
+    assert out.status == "unsupported"  # no distribution was written: \delta(x) is delta times x
+
+
+def test_distribution_tool_is_deterministic_for_trace_replay(ctx: ToolContext) -> None:
+    args = {
+        "latex": r"\operatorname{DiracDelta}(a x)",
+        "assumptions": {"x": ["real"], "a": ["real", "nonzero"]},
+    }
+    first = execute("distribution", args, ctx)
+    second = execute("distribution", args, ctx)
+    assert first.status == "ok" and first.for_model == second.for_model

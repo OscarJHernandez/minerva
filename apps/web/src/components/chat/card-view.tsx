@@ -5,7 +5,11 @@ import { EntryCard } from "../entry-card";
 import { IdentitiesPanel } from "../identities-panel";
 import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
+import { DistributionPanel } from "../distribution-panel";
+import { MatrixPanel } from "../matrix-panel";
 import { DimensionalCard } from "./dimensional-card";
+import { DiscoveryCard } from "./discovery-card";
+import { GeometryCard } from "./geometry-card";
 import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
@@ -28,6 +32,12 @@ export function CardView({ card }: { card: Card }) {
       return <SeriesPanel result={card.data} />;
     case "integrate":
       return <IntegralPanel result={card.data} />;
+    case "matrix":
+      return <MatrixPanel result={card.data.result} methods={card.data.methods} />;
+    case "geometry":
+      return <GeometryCard result={card.data.result} request={card.data.request} />;
+    case "distribution":
+      return <DistributionPanel result={card.data.result} methods={card.data.methods} />;
     case "identities":
       return <IdentitiesPanel result={card.data} />;
     case "step":
@@ -70,6 +80,8 @@ export function CardView({ card }: { card: Card }) {
       return <PerturbationCard report={card.data.report} request={card.data.request} />;
     case "invariants":
       return <InvariantsCard report={card.data.report} />;
+    case "discovery":
+      return <DiscoveryCard report={card.data.report} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":

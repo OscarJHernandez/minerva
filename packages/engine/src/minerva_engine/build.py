@@ -13,7 +13,7 @@ from typing import Any
 
 import sympy as sp
 
-from .errors import LimitError, ParseError, UnsupportedError
+from .errors import LimitError, ParseError, UnsupportedInput
 from .models import ALLOWED_ASSUMPTIONS, SYMBOL_NAME_MAX, Limits
 
 # Whitelisted functions: canonical name -> constructor taking one argument.
@@ -40,6 +40,9 @@ FUNCTIONS: dict[str, Callable[[sp.Expr], sp.Expr]] = {
     "abs": sp.Abs,
     "gamma": sp.gamma,
     "factorial": sp.factorial,
+    # Distributions: only the `distribution` operation may work with these (see distributions/).
+    "DiracDelta": sp.DiracDelta,
+    "Heaviside": sp.Heaviside,
 }
 
 # Aliases accepted by the text parser.
@@ -66,6 +69,8 @@ RESERVED_NAMES = (
     }
 )
 
+MAX_FUNCTION_ARGS = 4
+
 _SYMBOL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -76,15 +81,27 @@ class Builder:
         self,
         assumptions: dict[str, list[str]] | None = None,
         limits: Limits | None = None,
+        noncommutative: Iterable[str] = (),
+        functions: dict[str, tuple[str, ...]] | None = None,
+        strict_calls: bool = False,
         *,
         allow_noncommutative: bool = False,
     ) -> None:
         self.limits = limits or Limits()
+        # Names that stand for matrices: their products keep their order (matrix calculus only).
+        self.noncommutative = frozenset(noncommutative)
+        # Declared real functions of named symbols, e.g. {"f": ("r",)} (differential geometry only).
+        self.functions: dict[str, tuple[str, ...]] = {}
+        for fname, fargs in (functions or {}).items():
+            self._declare_function(fname, tuple(fargs))
+        # When set, `name(` for a name that is not a declared function is an error instead of the
+        # implicit product `name * (...)`, so an undeclared `f(r)` is never silently read as f*r.
+        self.strict_calls = strict_calls
         self._assumptions: dict[str, dict[str, bool]] = {}
         for name, items in (assumptions or {}).items():
             if "noncommutative" in items:
                 if not allow_noncommutative:
-                    raise UnsupportedError("noncommutative symbols are not supported here")
+                    raise UnsupportedInput("noncommutative symbols are not supported here")
                 if len(items) > 1:
                     raise ParseError(
                         f"{name!r} cannot be noncommutative and carry other assumptions"
@@ -114,12 +131,46 @@ class Builder:
         except (ValueError, TypeError) as exc:
             raise ParseError("invalid number") from exc
 
+    def _declare_function(self, name: str, args: tuple[str, ...]) -> None:
+        if len(name) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(name) or "__" in name:
+            raise ParseError(f"invalid function name {name!r}")
+        if name in RESERVED_NAMES:
+            raise ParseError(f"{name!r} is a reserved function or constant name")
+        if not 1 <= len(args) <= MAX_FUNCTION_ARGS or len(set(args)) != len(args):
+            raise ParseError(f"function {name!r} needs 1 to {MAX_FUNCTION_ARGS} distinct arguments")
+        if name in args:
+            raise ParseError(f"{name!r} cannot be both a function and one of its arguments")
+        for arg in args:
+            if len(arg) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(arg) or arg in RESERVED_NAMES:
+                raise ParseError(f"invalid argument name {arg!r} for function {name!r}")
+        self.functions[name] = args
+
+    def declared_call(self, name: str, args: Iterable[sp.Expr]) -> sp.Expr:
+        """`name(args)` for a declared function: a real-valued undefined function of its symbols."""
+        declared = self.functions[name]
+        argv = list(args)
+        expected = [self.symbol(a) for a in declared]
+        if argv != expected:
+            raise ParseError(
+                f"{name} is declared as {name}({', '.join(declared)}); "
+                "it can only be written with exactly those arguments"
+            )
+        return sp.Function(name, real=True)(*expected)
+
     def symbol(self, name: str) -> sp.Symbol:
         if len(name) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(name) or "__" in name:
             raise ParseError(f"invalid symbol name {name!r}")
         if name in RESERVED_NAMES:
             raise ParseError(f"{name!r} is a reserved function or constant name")
+        if name in self.functions:
+            args = ", ".join(self.functions[name])
+            raise ParseError(f"{name!r} is a declared function; write {name}({args})")
         if name not in self.symbols:
+            if name in self.noncommutative:
+                if self._assumptions.get(name):
+                    raise ParseError(f"{name!r} is a matrix and cannot carry scalar assumptions")
+                self.symbols[name] = sp.Symbol(name, commutative=False)
+                return self.symbols[name]
             try:
                 self.symbols[name] = sp.Symbol(name, **self._assumptions.get(name, {}))
             except ValueError as exc:  # sympy's InconsistentAssumptions is a ValueError
@@ -153,7 +204,10 @@ class Builder:
         # SymPy evaluates factorial/gamma of integers eagerly; bound the work up front.
         if canonical in {"factorial", "gamma"} and argv[0].is_Integer and argv[0] > 3000:
             raise LimitError("argument too large")
-        return FUNCTIONS[canonical](argv[0])
+        try:
+            return FUNCTIONS[canonical](argv[0])
+        except (ValueError, TypeError) as exc:  # e.g. DiracDelta(I): not a real argument
+            raise ParseError(f"{name} needs a real argument") from exc
 
     def log_base(self, argument: sp.Expr, base: sp.Expr) -> sp.Expr:
         return sp.log(argument, base)

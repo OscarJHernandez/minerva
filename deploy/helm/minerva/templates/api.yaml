@@ -55,14 +55,35 @@ spec:
             - { name: MINERVA_COMPUTE_MAX_CONCURRENCY, value: {{ .Values.api.compute.maxConcurrency | quote }} }
             {{- /* Mirrors the startup checks in settings.py; "scripted" is development only and is refused here. */}}
             {{- $llm := .Values.api.llm }}
-            {{- if not (has $llm.mode (list "off" "ollama")) }}{{ fail (printf "api.llm.mode must be off or ollama, got %q" $llm.mode) }}{{ end }}
+            {{- $or := $llm.openrouter | default dict }}
+            {{- if not (has $llm.mode (list "off" "ollama" "openrouter")) }}{{ fail (printf "api.llm.mode must be off, ollama or openrouter, got %q" $llm.mode) }}{{ end }}
             {{- if eq $llm.mode "ollama" }}{{ $_ := required "api.llm.baseUrl is required when api.llm.mode=ollama" $llm.baseUrl }}{{ $_ := required "api.llm.model is required when api.llm.mode=ollama" $llm.model }}{{ end }}
+            {{- if hasKey $or "apiKey" }}{{ fail "api.llm.openrouter.apiKey is not allowed: store the key in a Kubernetes Secret and set api.llm.openrouter.existingSecret" }}{{ end }}
+            {{- if eq $llm.mode "openrouter" }}
+            {{- $_ := required "api.llm.openrouter.model is required when api.llm.mode=openrouter" $or.model }}
+            {{- if not (or $or.byok $or.existingSecret) }}{{ fail "api.llm.mode=openrouter needs api.llm.openrouter.byok=true or api.llm.openrouter.existingSecret" }}{{ end }}
+            {{- end }}
             - { name: MINERVA_LLM_MODE, value: {{ $llm.mode | quote }} }
             - { name: MINERVA_LLM_BASE_URL, value: {{ $llm.baseUrl | quote }} }
             - { name: MINERVA_LLM_MODEL, value: {{ $llm.model | quote }} }
             - { name: MINERVA_LLM_TIMEOUT_SECONDS, value: {{ $llm.timeoutSeconds | quote }} }
             - { name: MINERVA_LLM_THINK, value: {{ $llm.think | quote }} }
             - { name: MINERVA_LLM_STRIP_THINKING, value: {{ $llm.stripThinking | quote }} }
+            - { name: MINERVA_OPENROUTER_BYOK, value: {{ $or.byok | default false | quote }} }
+            - { name: MINERVA_OPENROUTER_MODEL, value: {{ $or.model | default "" | quote }} }
+            {{- with $or.models }}
+            - { name: MINERVA_OPENROUTER_MODELS, value: {{ join "," . | quote }} }
+            {{- end }}
+            - { name: MINERVA_OPENROUTER_KEY_USERS, value: {{ $or.keyUsers | default "" | quote }} }
+            - { name: MINERVA_OPENROUTER_DAILY_TURNS, value: {{ $or.dailyTurns | default 50 | quote }} }
+            - { name: MINERVA_OPENROUTER_MAX_TOKENS, value: {{ $or.maxTokens | default 4096 | quote }} }
+            - { name: MINERVA_OPENROUTER_DATA_COLLECTION, value: {{ $or.dataCollection | default "deny" | quote }} }
+            - { name: MINERVA_OPENROUTER_ZDR, value: {{ $or.zdr | default false | quote }} }
+            - { name: MINERVA_OPENROUTER_TIMEOUT_SECONDS, value: {{ $or.timeoutSeconds | default 120 | quote }} }
+            {{- if $or.existingSecret }}
+            - name: MINERVA_OPENROUTER_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ $or.existingSecret | quote }}, key: {{ $or.secretKey | default "api-key" | quote }} } }
+            {{- end }}
           readinessProbe: { httpGet: { path: /readyz, port: http }, periodSeconds: 10 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 20, failureThreshold: 6 }
           startupProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 3, failureThreshold: 40 }

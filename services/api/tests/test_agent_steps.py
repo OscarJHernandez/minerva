@@ -32,11 +32,13 @@ def test_substitute_tells_the_model_the_result_holds_given_the_users_relation(
     assert text.startswith("status=ok")
     assert "evidence=conditional" in text and "HOLDS GIVEN" in text
     assert "never 'proved'" in text and "result=$1$" in text
-    # What the model may quote: the premise, its sides, the input and the result.
+    # What the model may quote: the result and the premise (with its sides). The input is not evidence.
     from minerva_api.agent.segments import normalize
 
-    for formula in ("1", "x^{2} + y^{2}", "y^{2} = 1 - x^{2}"):
+    for formula in ("1", "y^{2} = 1 - x^{2}"):
         assert normalize(formula) in known(out), formula
+    assert normalize("x^{2} + y^{2}") not in known(out)
+    assert out.evidence is not None and out.evidence.accepted and out.evidence.check == "numeric"
 
 
 def test_a_refused_substitution_asks_for_the_order_and_gives_no_result(ctx: ToolContext) -> None:

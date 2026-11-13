@@ -27,6 +27,8 @@ dev = [
   "minerva-engine",
   "minerva-knowledge",
   "minerva-api",
+  "hypothesis>=6.170.15",
+  "pytest-xdist>=3.8",
 ]
 
 [tool.ruff]

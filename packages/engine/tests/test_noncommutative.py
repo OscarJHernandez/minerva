@@ -9,7 +9,7 @@ from minerva_engine import (
     ExpressionInput,
     LimitError,
     Status,
-    UnsupportedError,
+    UnsupportedInput,
     parse_latex,
     parse_text,
 )
@@ -35,9 +35,9 @@ def test_order_of_factors_is_kept_by_both_parsers() -> None:
 
 
 def test_a_parser_not_told_to_accept_them_refuses() -> None:
-    with pytest.raises(UnsupportedError):
+    with pytest.raises(UnsupportedInput):
         parse_text("A*B", NC)
-    with pytest.raises(UnsupportedError):
+    with pytest.raises(UnsupportedInput):
         parse_latex("A B", NC)
 
 
@@ -90,7 +90,7 @@ def test_degree_and_size() -> None:
 
 @pytest.mark.parametrize("text", ["sin(A)", "1/A", "A**(-1)", "A**x", "exp(A)"])
 def test_functions_inverses_and_symbolic_powers_of_them_are_outside_the_subset(text: str) -> None:
-    with pytest.raises(UnsupportedError):
+    with pytest.raises(UnsupportedInput):
         nc_degree(read(text))
 
 

@@ -9,7 +9,7 @@ smaller matrices an identity like Hall's would pass. The size follows the degree
 Admissible expressions are sums, products and nonnegative integer powers of the noncommuting symbols,
 with arbitrary commuting coefficients (numbers, other symbols, functions of them). Anything else
 (a function of a noncommuting symbol, an inverse, a symbolic exponent) is outside the supported subset:
-`nc_degree` raises `UnsupportedError` and no result is produced. Agreement at all sampled points is
+`nc_degree` raises `UnsupportedInput` and no result is produced. Agreement at all sampled points is
 numerical evidence, as everywhere else in Minerva; the symbolic test (`expand(a - b) == 0`) is
 reported separately.
 """
@@ -22,7 +22,7 @@ from typing import Any
 import mpmath
 import sympy as sp
 
-from .errors import LimitError, UnsupportedError
+from .errors import LimitError, UnsupportedInput
 from .models import Verification
 from .verify import _POLE, MIN_VALID_POINTS, _evaluate_ex, _sample
 
@@ -40,7 +40,7 @@ def noncommuting_symbols(*exprs: sp.Expr) -> set[sp.Symbol]:
 
 
 def nc_degree(expr: sp.Expr, nc: set[sp.Symbol] | None = None) -> int:
-    """Total degree in the noncommuting symbols; `UnsupportedError` outside the polynomial subset."""
+    """Total degree in the noncommuting symbols; `UnsupportedInput` outside the polynomial subset."""
     nc = noncommuting_symbols(expr) if nc is None else nc
 
     def deg(node: sp.Basic) -> int:
@@ -54,7 +54,7 @@ def nc_degree(expr: sp.Expr, nc: set[sp.Symbol] | None = None) -> int:
             return sum(deg(a) for a in node.args)
         if node.is_Pow and node.exp.is_Integer and node.exp >= 0:
             return int(node.exp) * deg(node.base)
-        raise UnsupportedError(
+        raise UnsupportedInput(
             "noncommuting symbols are supported only in sums, products and nonnegative integer "
             "powers; functions of them, inverses and symbolic exponents are not"
         )
@@ -110,7 +110,7 @@ def _evaluate(
     if node.is_Pow:
         base = _evaluate(node.base, matrices, scalars, n)
         return base ** int(node.exp)
-    raise UnsupportedError("outside the supported noncommutative polynomial subset")
+    raise UnsupportedInput("outside the supported noncommutative polynomial subset")
 
 
 def _random_matrix(n: int, rng: random.Random) -> mpmath.matrix:

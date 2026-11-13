@@ -58,6 +58,45 @@ one most likely to be wrong.
     inside the interval. A quadrature with a large error estimate, or a non-finite or huge integrand on an
     interior grid, never counts as agreement; SymPy's convergence conditions that the declared assumptions
     do not imply give `conditions_not_satisfied`; divergent or undefined results show no value.
+  - `matrix_calculus` (`matrix/`, `Engine.matrix_calculus`): evaluate, simplify, differentiate, integrate or
+    evolve an expression in declared, noncommuting matrices (an abstract size or explicit entries) and their
+    exponentials. A matrix may depend on the variable (`depends_on`, or visible in explicit entries; `A(t)` is
+    never read as `t` times `A`).
+    `expressions.py` turns the parsed SymPy tree (declared names are noncommutative symbols) into a normal form
+    (sum of scalar x ordered product of matrices and exponentials of sums of scalar multiples of matrices) and
+    rejects everything else as `unsupported`; dimensions are checked on every product and sum. `methods.py` is a
+    deterministic registry tried in a fixed order: `exp_explicit`, `exp_merge_commuting`, `exp_derivative`,
+    `exp_frechet_derivative` (`frechet.py`: d/dt exp(X) as the Frechet integral when X and X' are not known to
+    commute, never rewritten as X' exp(X)), `evolution_commuting` and `evolution_numeric` (`evolution.py`:
+    dU/dt = A(t)U, U(t0) = I, the closed form exp(integral of A) only for a generator that commutes with itself
+    at all times, else a verified numerical solution on a span the user gives),
+    `integrate_polynomial`, `exp_integral_invertible`, `duhamel` (`duhamel.py`: e^{(as+b)A} M e^{(-as+d)A} ds, a
+    closed form when M commutes with A, else the block-matrix form; its Sylvester equation is singular and never
+    solved), `sylvester_reduction` (the equation
+    `aPX + cXQ = F(b) - F(a)` for `X = int e^{(at+b)P} C e^{(ct+d)Q}`, solved when the Kronecker operator is
+    provably invertible), `block_exponential` (Van Loan: `X` from one block-matrix exponential, no invertibility
+    or diagonalisability) and, last, the equation alone. Each method states its pattern, requirements and limits
+    and verifies its own result with `verify.py` (numeric leg decides; exact series leg reported separately).
+    The language model only fills in the declarations and explains the card; handbook `method.matrix.*` entries
+    (stated) document the techniques and are retrieved by the features the engine emits (`matrix:*`). Every
+    result carries `MatrixDiagnostics` (methods tried and what each answered, sizes, where commutation came from,
+    stage times, precision, tolerance, largest residual, fallback and failure codes, `trace_id`) and never any
+    name, entry, expression or bound; the API passes its `request_id` (in chat, plus the tool call id) as the trace id.
+  - `geometry` (`geometry/`, `Engine.geometry`, `POST /v1/compute/geometry`, chat tool `geometry`): metric,
+    inverse, determinant, Christoffel symbols, Riemann/Ricci/Einstein tensors, Ricci scalar, Kretschmann and
+    Ricci-squared invariants, symbolic geodesic equations, covariant derivatives and index raising/lowering of
+    a tensor field, in explicit coordinates (at most 4) with real coordinates and optional declared functions
+    of them (`Builder.functions`, `strict_calls`). `setup.py` parses and validates (square, symmetric,
+    non-degenerate); `compute.py` runs memoised, timed stages with size and deadline guards before every
+    uninterruptible `simplify`; `numeric.py` is a second, independent route (lambdified metric at 50 digits,
+    central differences, formulas written again); `verify.py` decides what is shown: a quantity needs all its
+    numeric legs (agreement with the numerical recomputation, metric compatibility, curvature symmetries and
+    Bianchi identities, a divergence-free Einstein tensor, Euler-Lagrange equations for geodesics through
+    `lagrangian.derive_expr`), while symbolic legs (for example `R_{abcd}` from second derivatives of the metric)
+    are reported separately. Conventions, assumptions, signature (only if decided), restrictions (`domain.py`)
+    and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
+    server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
+    (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -67,7 +106,9 @@ one most likely to be wrong.
     of a derivative exists, and the report says so. A derivative that fails the check is
     `not_verified` and never shown; one that grows past the size cap is `resource_limit`. Input
     expressions are whatever the parsers accept (no undefined functions `f(x)`, integrals or `d/dx`
-    notation). A Dirac delta in the result (second derivative of `|x|`) carries a note.
+    notation). A derivative that contains a Dirac delta or step (second derivative of `|x|`) is
+    `unsupported`: the pointwise check compares 0 with 0 away from the jump and proves nothing about
+    a delta. Such results belong to `distribution`.
   - `apply_rules`: for each candidate rule, match its left-hand side against every subexpression
     (with a `rest` wildcard for sums/products), reject matches that invent structure, check the
     rule's conditions against the declared assumptions, rewrite, and verify the rewrite.
@@ -97,6 +138,9 @@ one most likely to be wrong.
     points); anything that fails is dropped. It reports the exact family searched and that finding none proves
     nothing beyond it. Autonomous Lagrangians with rational accelerations only (square roots are `unsupported`),
     at most 3 coordinates and 500 unknowns (`resource_limit` above).
+  - `flow.py`, `discovery.py`, `independence.py` (`discover_invariants`): the adaptive generalisation, for a
+    Lagrangian or a Hamiltonian; see [conserved-quantities.md](conserved-quantities.md). `invariants.py` stays as the
+    fixed-ansatz baseline.
   - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
     initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive
     Dormand–Prince 5(4) (relative tolerance 1e-12; no SciPy). A run keeps its trajectory only if (1) a fixed-step
@@ -109,6 +153,29 @@ one most likely to be wrong.
     `unsupported`. Stored series are rounded to 10 significant digits and capped at about 20 000 numbers.
     Not covered: field Lagrangians, generalised forces (damping, driving not derived from L), constraints,
     stiff solvers, sweeping initial conditions.
+  - `distributions/` (`distribution`: simplify, integrate or differentiate with `DiracDelta` and `Heaviside`).
+    Pointwise sampling cannot see a delta (it is 0 at every sample point), so every other operation
+    refuses distribution input as `unsupported` (`ops.parse_expression`), `verify_equal` never passes it, and
+    the claim checker leaves such statements `unverified`. Input uses explicit names
+    (`\operatorname{DiracDelta}(x-a)`, `DiracDelta(x)` in text); `\delta` and `\theta` stay symbols. Two legs,
+    reported separately: (1) the exact conditions of each identity, decided symbolically from the declared
+    assumptions (`normal_form.py`): the variable and every symbol in an argument is real; `\delta(g(x))` for a
+    polynomial `g` needs all real roots in closed form, each provably simple (`g'(x_i)` nonzero), a scale factor
+    provably nonzero (sign decided or `|a|` kept), the multiplier defined and continuous at the root, each root
+    provably inside, outside or (with an explicit `endpoint` convention) on the limits. Repeated roots are
+    `singular_root`, undecided conditions `assumptions_insufficient`, a delta on a limit without a convention
+    `integration_domain_ambiguous`, other forms `unsupported_distribution`. (2) An independent pairing
+    (`pairing.py`): the input is regularised (Gaussian for the delta, erf for the step), integrated against
+    six Gaussian-windowed test functions with a fixed quadrature at three halving widths and Richardson
+    extrapolated; the limit must equal the action of the result, with delta positions taken from a numerical
+    root finder. Failure is `not_verified` and nothing is shown. Wording: "equal as distributions", never
+    "proved" or "sampled". The pairing is supporting evidence. Each step cites a handbook entry of verification
+    level `distributional` (`data/entries/distributions.yaml`, no `rule`: the pointwise rule search never
+    applies them). Stage events (parsed, identities identified, transformation selected, assumptions
+    evaluated, verification attempted, accepted or rejected, completed) travel in the result's
+    `diagnostics` because the sandbox child cannot log; the API turns them into allow-listed log lines (trace id,
+    operation, stage, status, duration, enumerated reason) and never logs expressions. Benchmark:
+    `docs/distribution-benchmark.md`.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 
@@ -141,6 +208,12 @@ one most likely to be wrong.
   expression → expected/forbidden identities, retrieval rank/recall/MRR over the same cases, and multi-step
   cases (goal, accepted forms, rules that must or must not appear, SymPy-simplify-only baseline), run with
   `python -m minerva_knowledge benchmark`; results and limits in `docs/handbook-benchmark.md`.
+- Matrix benchmark (`matrix_benchmark.py`, `data/benchmark/matrix_cases.yaml`): hand-written matrix calculus cases
+  (existing behaviour, Frechet derivatives, Duhamel integrals, evolution operators, known-unsupported cases, limits)
+  → status, method, result kind, `evaluated`; reports coverage per group, verification success, method-selection
+  accuracy, median/p95/max time, resource limits, residuals and the observed order of the RK4 cross-check, with
+  `python -m minerva_knowledge matrix-benchmark [--repeat N] [--trace] [--convergence] [--section L --out F]`;
+  baseline and after in `docs/matrix-benchmark.md`.
 
 ## C. The conversational agent (`services/api/src/minerva_api/agent/`)
 
@@ -150,8 +223,8 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
+  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
   posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with
@@ -168,16 +241,28 @@ and explains; it never computes and never decides correctness.
   by substitution (the note names them).
 - **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
   (prose and cards) and the tool trace so later turns have the same context.
-- **Debug report:** each stored assistant message carries `trace` (tool name, the arguments the model sent, the text it
-  read back, tool status and duration) and `debug` (`request_id`, model, mode, a fingerprint of the system prompt and
-  tool schemas, per-call timings, and how each equation the model wrote was tested). With "Debug mode" on, the chat
-  shows this and copies a Markdown report ending in a JSON block; `scripts/replay_trace.py` re-runs the recorded tool
-  calls, and the `chat-trace-triage` skill says how to classify the result. This is shown only to the account that owns
-  the conversation. The server log still holds no content: `chat_turn` adds `steps`, `tool_calls` and `tool_errors`
-  counts, and the `request_id` in the report matches the `X-Request-ID` response header.
+- **Trace and debug report:** every agent request has a `trace_id` (header `X-Trace-ID`, every stream event, the stored
+  message, the log). The loop records typed, content-free events (`agent/tracing.py`: `agent.started`, `llm.request`,
+  `llm.response`, `tool.started`, `tool.completed`, `verification.completed`, `agent.retry`, `agent.stopped`,
+  `agent.completed`) with monotonic timings, token counts when the host reports them, and a stop reason. Each stored
+  assistant message carries `trace` (tool name, the arguments the model sent and the ones after `@rN` references were
+  replaced, the text it read back, status, duration, an `evidence` record, an error category) and `debug` (trace id,
+  model, prompt fingerprint, per-call timings, the events, how each equation the model wrote was tested). Failed turns
+  are stored too. With "Debug mode" on, the chat shows a timeline and copies a Markdown report ending in a JSON block;
+  `scripts/replay_trace.py` re-runs the recorded tool calls, or a whole turn with `--llm`, and the `chat-trace-triage`
+  skill says how to classify the result. This is conversation content: it is shown and stored only with the
+  conversation, under its access and deletion rules. The server log holds no content at any setting: `chat_turn` and
+  the events carry identifiers, counts, durations and fixed vocabulary. See [observability.md](observability.md).
+- **Reliability of the loop:** a turn ends with an explicit stop reason; an identical call is not run twice; a model call
+  that fails before any output is retried once; unusable tool calls get one correction; verified results can be reused
+  as `@rN` instead of being retyped; a formula is marked verified only if a verified result produced it (the user's own
+  input, handbook entries that are only stated and identities that were not applied are marked *quoted*).
+  Matrix calculus results add `MatrixDiagnostics` (methods tried, stage times, tolerance, residual, fallback and failure codes) without names or entries; the engine takes its `trace_id` from the active trace (or, for `POST /v1/compute/matrix`, the request id), and the log fields it adds are enums and numbers only.
 - **Models:** `MINERVA_LLM_MODE` is `off`, `ollama` (your own host: `MINERVA_LLM_BASE_URL`, `MINERVA_LLM_MODEL`) or
   `scripted` (deterministic stand-in for tests and UI work, development only). `scripts/eval_models.py` measures a
-  model's tool-calling and honesty through the real loop; results in `docs/model-evaluation.md`.
+  model's tool-calling and honesty through the real loop on a fixed benchmark (`agent/evaluation/`: cases as data, scoring,
+  failure classes, JSON and Markdown reports, baseline comparison; see [observability.md](observability.md)); interpretation
+  in `docs/model-evaluation.md`.
 - **Transport:** `POST /v1/chat/conversations/{id}/messages` streams server-sent events (`text`, `tool_call`, `card`,
   `message`, `error`, `done`).
 - **Add image** (`vision.py`, `POST /v1/chat/formula-image`): the composer can read formulas from a picture. The
@@ -220,8 +305,8 @@ in `transform.py`. They reuse the parsers, `verify_equal`, `domain_restrictions`
 
 FastAPI with OpenAPI docs at `/docs`. Auth: Argon2id passwords, random session tokens stored as HMAC
 digests, `HttpOnly` `SameSite=Lax` cookie, same-origin check on unsafe methods, per-process rate
-limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,identities,tensor/canonicalize}`,
-`/v1/compute/apply-identity`, `/v1/compute/{substitute,rewrite,subterms,isolate}` (controlled steps, see below), `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
+limits. Endpoints: `/v1/auth/*`, `/v1/compute/{simplify (with `goal`, `target`),differentiate,integrate,series,matrix,identities,tensor/canonicalize}`,
+`/v1/compute/apply-identity`, `/v1/compute/{substitute,rewrite,subterms,isolate}` (controlled steps, see above), `/v1/derivations`, `/v1/reference/*` (public, read-only), `/v1/history`.
 History rows contain user mathematics and are private to the account. A Workbench derivation is a
 `derivations` row plus the calculations saved with its id; each step may name the step it continued
 (`parent_id`). The server never accepts a result from the client: steps are written by the compute

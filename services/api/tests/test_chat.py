@@ -247,8 +247,10 @@ def test_messages_stored_before_debug_existed_still_work() -> None:
             "trace": [{"id": "a", "name": "simplify", "arguments": {}, "for_model": "r=$x$"}],
         }
 
-    history, known = _history([Row()])  # type: ignore[list-item]
-    assert history[1]["content"] == "r=$x$" and "x" in known
+    history, known, quoted, results = _history([Row()])  # type: ignore[list-item]
+    assert history[1]["content"] == "r=$x$"
+    # How it was verified was not recorded, so the formula is quoted and never vouched for.
+    assert "x" not in known and "x" in quoted and results == {}
 
 
 def test_chat_logs_contain_no_message_content(capsys) -> None:  # type: ignore[no-untyped-def]
@@ -472,6 +474,103 @@ def test_scripted_model_searches_for_hidden_constants_of_motion(
     assert message["trace"][0]["arguments"]["angles"] == ["theta"]
 
 
+def test_scripted_model_finds_conserved_quantities_without_hints(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    latex = r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}"
+    events = sse(client, cid, f"find the conserved quantities of ${latex}$")
+    message = next(d for e, d in events if e == "message")
+    card = cards_of(message)[0]
+    assert card["type"] == "discovery"
+    report = card["data"]["report"]
+    assert sum(c["kind"] == "new" for c in report["constants"]) == 2
+    assert report["independence"]["rank_lower"] == 3 and report["independence"]["rank_proved"]
+    step = message["trace"][0]
+    assert step["name"] == "find_conserved_quantities"
+    assert set(step["arguments"]) <= {
+        "lagrangian",
+        "coordinates",
+    }  # no ansatz, no angles, no answer
+
+
+def test_distribution_turn_streams_a_card_and_checks_the_formula(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client,
+        cid,
+        r"Integrate this Dirac delta product over the line: $x^2\operatorname{DiracDelta}(x^2-4)$",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "distribution"
+    assert card["data"]["result"]["status"] == "ok"
+    assert card["data"]["result"]["result_text"] == "2"
+    assert "as a value" in message["text"]
+    assert message["trace"][0]["name"] == "distribution"
+    assert message["trace"][0]["status"] == "ok"
+
+
+def test_distribution_turn_on_a_limit_asks_for_the_convention(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(
+        client, cid, r"Integrate the Dirac delta $\operatorname{DiracDelta}(x-1)$ from 0 to 1"
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["reason"] == "integration_domain_ambiguous"
+    assert "half, include or exclude" in message["text"]
+    events = sse(
+        client,
+        cid,
+        r"Integrate the Dirac delta $\operatorname{DiracDelta}(x-1)$ from 0 to 1, convention half",
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["result_text"] == "1/2"
+
+
+def test_matrix_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Differentiate this matrix expression in t: $\exp(tA)$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "matrix"
+    assert card["data"]["result"]["status"] == "ok"
+    assert card["data"]["result"]["verification"]["passed"] is True
+
+
+def test_matrix_turn_for_a_reduction_says_it_was_not_evaluated(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Matrix integral of $\exp(tP)\exp(tQ)$ from 0 to 1")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["evaluated"] is False
+    assert "not evaluated" in message["text"]
+
+
+def test_matrix_turn_blocked_merge_asks_about_commutation(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Simplify this matrix product $\exp(A)\exp(B)$")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["status"] == "conditions_not_satisfied"
+    events = sse(
+        client, cid, r"Simplify this matrix product $\exp(A)\exp(B)$ where A and B commute"
+    )
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["data"]["result"]["result_latex"] == r"\exp\left(A + B\right)"
+
+
 def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
     from minerva_api.routers_chat import _claim_context
 
@@ -568,3 +667,103 @@ def test_the_step_card_survives_the_debug_record(chat_client: tuple[TestClient, 
     trace = detail["messages"][-1]["content"]["trace"]
     assert [t["name"] for t in trace] == ["substitute"]
     assert trace[0]["status"] == "ok" and trace[0]["for_model"].startswith("status=ok")
+
+
+def test_matrix_turn_for_a_noncommuting_derivative_is_a_representation(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Differentiate the matrix expression $\exp(t^2 A + t B)$ in t")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    result = card["data"]["result"]
+    assert result["method"] == "exp_frechet_derivative"
+    assert result["evaluated"] is False and result["result_kind"] == "representation"
+    assert "not evaluated" in message["text"]
+    # the engine operation carries the turn's trace id, which also joins the stored trace and the log
+    assert message["debug"]["trace_id"]
+    assert result["diagnostics"]["trace_id"] == message["debug"]["trace_id"]
+
+
+def test_scripted_model_can_simulate_a_host_failure_and_a_repeat_loop() -> None:
+    """Development stand-ins for failure modes, so the interface can be checked without a real model."""
+    with TestClient(build_app(llm_mode="scripted")) as c:
+        register(c)
+        cid = c.post("/v1/chat/conversations", json={}).json()["id"]
+        failed = sse(c, cid, "Please simulate a model host failure")
+        assert [e for e, _ in failed][-3:] == ["error", "message", "done"]
+        reply = dict(failed)["message"]
+        assert reply["stop_reason"] == "model_error" and reply["debug"]["error"]
+
+        looping = sse(c, cid, r"Repeat the same call: simplify $\frac{x^2-1}{x-1}$")
+        message = dict(looping)["message"]
+        assert message["stop_reason"] == "repeated_calls"
+        assert [t["repeated"] for t in message["trace"]] == [False, True, True]
+        assert len(cards_of(message)) == 1
+        stored = c.get(f"/v1/chat/conversations/{cid}").json()["messages"]
+        assert [m["role"] for m in stored] == ["user", "assistant", "user", "assistant"]
+
+
+def test_geometry_turn_streams_a_verified_card_and_a_follow_up_reuses_the_problem(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, "Compute the Christoffel symbols of the sphere metric")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    assert card["type"] == "geometry" and card["data"]["result"]["status"] == "ok"
+    assert [q["kind"] for q in card["data"]["result"]["quantities"]] == ["christoffel"]
+    assert message["trace"][0]["name"] == "geometry"
+    # the card's request is posted back unchanged, asking for more about the same geometry
+    request = {**card["data"]["request"], "quantities": ["ricci_scalar"]}
+    r = client.post(f"/v1/chat/conversations/{cid}/tools/geometry", json=request)
+    assert r.status_code == 201
+    follow = cards_of(r.json()["content"])[0]
+    assert follow["data"]["result"]["metric_latex"] == card["data"]["result"]["metric_latex"]
+    (q,) = follow["data"]["result"]["quantities"]
+    assert q["scalar_text"] == "2/a**2"
+
+
+def test_geometry_turn_for_a_flat_plane_reports_zero_curvature(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, "Riemann curvature of the polar plane metric")
+    message = next(d for e, d in events if e == "message")
+    assert cards_of(message)[0]["data"]["result"]["quantities"][0]["all_zero"] is True
+    assert "error" not in [e for e, _ in events]
+
+
+def test_geometry_form_endpoint_validation_privacy_and_no_model() -> None:
+    body = {
+        "coordinates": ["r", "theta"],
+        "metric": [["1", "0"], ["0", "r^2"]],
+        "assumptions": {"r": ["positive"]},
+        "quantities": ["christoffel"],
+    }
+    app = build_app(llm_mode="scripted")
+    with TestClient(app) as a, TestClient(app) as b:
+        register(a, "a@example.com")
+        register(b, "b@example.com")
+        cid = a.post("/v1/chat/conversations", json={}).json()["id"]
+        url = f"/v1/chat/conversations/{cid}/tools/geometry"
+        assert b.post(url, json=body).status_code == 404
+        assert a.post(url, json={**body, "quantities": []}).status_code == 422
+        assert a.post(url, json=body).status_code == 201
+        assert TestClient(app).post(url, json=body).status_code == 401
+    with TestClient(build_app()) as c:  # llm_mode off: the form route still works
+        register(c)
+        cid = c.post("/v1/chat/conversations", json={}).json()["id"]
+        assert c.post(f"/v1/chat/conversations/{cid}/tools/geometry", json=body).status_code == 201
+
+
+def test_chat_geometry_logs_stage_counters_without_content(capsys) -> None:  # type: ignore[no-untyped-def]
+    app = build_app(llm_mode="scripted")
+    with TestClient(app) as client:
+        register(client)
+        cid = client.post("/v1/chat/conversations", json={}).json()["id"]
+        sse(client, cid, "Compute the Christoffel symbols of the sphere metric")
+    out = capsys.readouterr().out
+    assert '"geometry_stage"' in out and '"christoffel:verify"' in out
+    assert "sin" not in out and "theta" not in out and "phi" not in out
+    assert "Christoffel symbols of the sphere" not in out

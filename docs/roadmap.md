@@ -18,8 +18,9 @@ Ordering favours correctness infrastructure before breadth.
 2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
    `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial
    conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
-   The search for hidden constants of motion (`search_invariants`) covers rational, autonomous systems; next:
-   square roots (Cartesian Kepler), time-dependent ansätze and symmetries up to a total derivative.
+   The adaptive search for conserved quantities (`discover_invariants`) covers rational Lagrangians and Hamiltonians,
+   with powers of t; next: square roots (Cartesian Kepler, as an adjoined algebraic element), Killing-tensor
+   structure labels, nonlinear canonical maps in the benchmark generator and symmetries up to a total derivative.
 3. **More operations in the workspace:** integrals, limits, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
    Antiderivatives and definite integrals are done (`integrate`: candidate from SymPy; antiderivatives are
@@ -33,6 +34,21 @@ Ordering favours correctness infrastructure before breadth.
    one coordinate, checked by residual order and against the verified numerical integrator). The card has a form for the
    comparison numbers. Next: multiple scales for damping and driving (needs generalised forces first), and
    several coordinates.
+   Matrix calculus is done (`matrix_calculus`: ordered products of matrix exponentials, the product rule, merging
+   only under declared commutation, closed forms for invertible matrices, Sylvester reduction and block-matrix
+   exponentials for integrals, the Frechet derivative of exp(X(t)) when X and X' do not commute, time-dependent
+   matrices A(t), Duhamel integrals, and evolution operators dU/dt = A(t)U: a closed form when the generator
+   commutes with itself, a verified numerical solution on a span the user gives otherwise; every result checked
+   on random matrices and benchmarked in `docs/matrix-benchmark.md`). Next: time-ordered exponentials with
+   truncated Dyson and Magnus expansions, higher derivatives of the exponential, integrals of time-dependent
+   matrices, matrix-valued functions beyond the exponential, integrals of sums of such terms as one equation, and
+   a matrix form in the workbench (today chat and API only).
+   Dirac delta and Heaviside calculus is done for one real variable (`distribution`: scaling, simple real roots of
+   polynomial arguments, integration against deltas with an explicit limit convention, derivatives of steps; exact
+   conditions plus a test-function pairing, benchmarked in `docs/distribution-benchmark.md`). Next: derivatives of
+   the delta and their sifting, deltas of non-polynomial arguments, products of steps, Heaviside-windowed integrals,
+   several variables, Fourier and Laplace transforms of distributions, and a retriever that reads the structure of
+   the argument (recall@1 of the handbook identities is 7 %).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
@@ -52,10 +68,19 @@ analysis without a model; unit conversion and prefixes; searching three or more 
   where possible (explicit index ranges), otherwise labelled unverified.
 - Multi-term identities (Bianchi, Schouten) and gamma-matrix algebra via Cadabra.
 
-## Differential geometry (SageManifolds)
+## Differential geometry
 
-- Optional backend for charts, metrics, connections and curvature on explicit manifolds; results verified by
-  component-wise checks. Same licensing approach as Cadabra.
+Done: coordinate-based geometry with SymPy (`geometry`: metric, Christoffel symbols, curvature, invariants,
+symbolic geodesics, covariant derivatives, index operations, declared functions of the coordinates), in chat, the
+API and the workbench, with a reproducible benchmark. Next, in order of value:
+
+- Numerical geodesics (needs initial conditions the user chooses; reuse the verified integrator).
+- Conformal and coordinate changes as an operation (transform a metric and check the tensor laws).
+- Weyl tensor, geodesic deviation, Killing vector search (a finite ansatz, as `search_invariants`).
+- A tensor input for connections other than Levi-Civita (torsion, non-metricity), reported as such.
+- More than four coordinates, if the expression-growth measurements allow it.
+- Optional SageManifolds backend for abstract manifolds, charts and atlases, only as an out-of-process backend
+  with the same licensing approach as Cadabra (GPL; see `licensing.md`). Not needed for anything above.
 
 ## Mathematical RAG
 
@@ -93,7 +118,7 @@ confirm, and raising the evaluation pass rate (14 of 21 cases for every model tr
 ## Platform
 
 - Shared rate limiting, account deletion/export, email verification and password reset.
-- Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`); observability.
+- Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`). Per-request tracing and the agent benchmark exist ([observability.md](observability.md)); metrics export and dashboards are not planned until a need is shown.
 - Playwright end-to-end tests in CI; accessibility audit of the math editor.
 
 ## Agentic CI (deferred, needs an LLM API budget)

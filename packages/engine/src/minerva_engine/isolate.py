@@ -39,10 +39,9 @@ import mpmath
 import sympy as sp
 
 from .claims import split_equation
-from .errors import LimitError, MinervaMathError, ParseError, UnsupportedError
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .latexprint import to_latex
 from .models import (
-    Diagnostics,
     ExpressionInput,
     IsolateResult,
     Limits,
@@ -50,6 +49,7 @@ from .models import (
     Solution,
     Status,
     Step,
+    StepDiagnostics,
     Verification,
 )
 from .ops import _failure, parse_expression
@@ -211,7 +211,7 @@ def _split(G: sp.Expr, x: sp.Symbol) -> tuple[str, sp.Expr, sp.Expr]:
         return "exp", G.args[0], sp.Integer(0)
     if isinstance(G, sp.log) and len(G.args) == 1:
         return "log", G.args[0], sp.Integer(0)
-    raise UnsupportedError(
+    raise UnsupportedInput(
         "the unknown is inside a form this version cannot invert (only sums, products, powers, "
         "roots, exp and log around it are supported; periodic functions are not)"
     )
@@ -219,7 +219,7 @@ def _split(G: sp.Expr, x: sp.Symbol) -> tuple[str, sp.Expr, sp.Expr]:
 
 def _roots_of(h: sp.Expr, n: int) -> list[sp.Expr]:
     if n > MAX_ROOT_ORDER:
-        raise UnsupportedError(f"roots of order above {MAX_ROOT_ORDER} are not supported")
+        raise UnsupportedInput(f"roots of order above {MAX_ROOT_ORDER} are not supported")
     principal = h ** sp.Rational(1, n)
     return [
         principal * (sp.cos(2 * sp.pi * j / n) + sp.I * sp.sin(2 * sp.pi * j / n)) for j in range(n)
@@ -276,12 +276,12 @@ def _apply_layer(
         if extra.is_Rational and extra.p == 1 and 2 <= extra.q <= MAX_ROOT_ORDER:
             q = int(extra.q)
             return [_with(state, h**q, Cond("principal", h, q))], "power"
-        raise UnsupportedError(
+        raise UnsupportedInput(
             "only integer powers and principal roots of the unknown are supported"
         )
     if kind == "exponential":
         if extra.is_positive is not True:
-            raise UnsupportedError(
+            raise UnsupportedInput(
                 "the unknown is in an exponent whose base is not known to be positive; declare it"
             )
         k = _fresh_integer(taken)
@@ -385,7 +385,7 @@ def _closed_roots(factor: sp.Poly, x: sp.Symbol) -> tuple[list[sp.Expr], list[Co
         found = sp.roots(factor.as_expr(), x, cubics=True, quartics=True)
         if sum(found.values()) == degree:
             return list(found), conds
-    raise UnsupportedError(
+    raise UnsupportedInput(
         "no closed form is produced for a factor of this degree with these coefficients: a general "
         "polynomial of degree 5 or more has none (Abel-Ruffini), and cubics and quartics are solved "
         "here only with rational coefficients"
@@ -397,9 +397,9 @@ def solve_rational(L: sp.Expr, R: sp.Expr, x: sp.Symbol, recorded: list[sp.Expr]
     try:
         poly = sp.Poly(sp.expand(numerator), x)
     except sp.PolynomialError as exc:
-        raise UnsupportedError("the equation is not polynomial or rational in the unknown") from exc
+        raise UnsupportedInput("the equation is not polynomial or rational in the unknown") from exc
     if poly.is_zero:
-        raise UnsupportedError(
+        raise UnsupportedInput(
             "the equation holds for every value of the unknown where it is defined"
         )
     steps = [
@@ -677,7 +677,7 @@ def _count(expr: sp.Expr, x: sp.Symbol) -> int:
     return sum(1 for node in sp.preorder_traversal(expr) if node == x)
 
 
-def _finish(result: IsolateResult, diag: Diagnostics, started: float) -> dict[str, Any]:
+def _finish(result: IsolateResult, diag: StepDiagnostics, started: float) -> dict[str, Any]:
     result.diagnostics = diag
     result.duration_ms = int((time.monotonic() - started) * 1000)
     return result.model_dump(mode="json")
@@ -688,7 +688,7 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
     variable = str(payload.get("variable", ""))
-    diag = Diagnostics(
+    diag = StepDiagnostics(
         assumptions_declared=len(data.assumptions), collect_detail=bool(payload.get("debug"))
     )
     denominators: list[sp.Expr] = []
@@ -860,7 +860,7 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
         )
     except MinervaMathError as exc:
         status, message = _failure(exc)
-        reason = Reason.FORM if isinstance(exc, UnsupportedError) else None
+        reason = Reason.FORM if isinstance(exc, UnsupportedInput) else None
         if reason is not None:
             diag.reject(reason)
         return _finish(IsolateResult(status=status, message=message, reason=reason), diag, started)

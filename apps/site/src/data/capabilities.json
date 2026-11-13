@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 149,
+  "handbook_entries": 179,
   "groups": [
     {
       "id": "math",
@@ -713,6 +713,1125 @@
           "checks": [],
           "notes": [
             "The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "matrix-calculus",
+      "title": "Noncommutative matrix calculus",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Ordered products of matrix exponentials with declared matrices (a size, or explicit entries), also matrices that depend on a variable, A(t). Minerva recognises the structure and picks the technique: the ordered product rule; the Frechet derivative of exp(X(t)) when X and X' do not commute (never assumed to equal X' exp(X)); merging exponentials only where commutation is declared or visible in the entries; a closed form for an invertible matrix; Duhamel integrals of e^((t-s)A) B e^(sA); a Sylvester equation or a block-matrix exponential for other integrals; and evolution operators dU/dt = A(t) U, U(0) = I. A result is shown only if independent checks agree. An equation, a representation or a numerical approximation is never presented as an evaluated result.",
+      "limits": [
+        "The variable is scalar. A matrix depends on it only if declared (or visible in explicit entries), and A(t) is never read as t times A; integrals of time-dependent matrices are not supported.",
+        "Matrices are never assumed to commute (also with their own derivative or at other times) or to be invertible; each must be declared, or be visible in explicit entries.",
+        "Time-ordered exponentials, Dyson series and Magnus expansions are not supported. An abstract generator that does not commute with itself at all times is declined; explicit entries with a numeric span are solved numerically.",
+        "A numerical solution (up to 4 by 4, double precision) is a measurement on the span you give, checked by a second method, by integrating backwards and by Liouville's formula; the end of the span is a number only you can choose.",
+        "Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4) whose closed form SymPy finds in time.",
+        "The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately."
+      ],
+      "examples": [
+        {
+          "id": "matrix-integral-explicit",
+          "title": "An integral of a product of noncommuting exponentials",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(wA)\\exp(-wB)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A = [1, 0; 0, 2]"
+            },
+            {
+              "label": "Matrix",
+              "source": "B = [0, 1; 0, 0]"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]"
+            },
+            {
+              "label": "Verified equation",
+              "latex": "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Sylvester equation for ∫ e^{(at+b)P} C e^{(ct+d)Q} dt (sylvester_reduction).",
+            "Assumes: the Sylvester operator X -> aPX + cXQ is invertible (its Kronecker determinant is nonzero).",
+            "Assumes: A, B are constant in w.",
+            "Evaluated and verified."
+          ]
+        },
+        {
+          "id": "matrix-integral-abstract",
+          "title": "The same structure with abstract matrices gives a verified equation, not entries",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(-(x-y)(y-w)A)\\exp(-(w-z)(z-q)B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Exact representation (not evaluated)",
+              "latex": "\\exp\\left(\\left(- x y + y^{2}\\right) A\\right) \\left(\\exp\\left(\\left(b x - b y\\right) A\\right)\\left[\\exp\\left(b\\,\\begin{pmatrix} \\left(- x + y\\right) A & I \\\\ 0 & \\left(q - z\\right) B \\end{pmatrix}\\right)\\right]_{12} - \\exp\\left(\\left(a x - a y\\right) A\\right)\\left[\\exp\\left(a\\,\\begin{pmatrix} \\left(- x + y\\right) A & I \\\\ 0 & \\left(q - z\\right) B \\end{pmatrix}\\right)\\right]_{12}\\right) \\exp\\left(\\left(- q z + z^{2}\\right) B\\right)"
+            },
+            {
+              "label": "Verified equation",
+              "latex": "\\left(x - y\\right) A X + \\left(q - z\\right) X B = \\exp\\left(-\\left(- b + y\\right) \\left(x - y\\right) A\\right) \\exp\\left(-\\left(b - z\\right) \\left(- q + z\\right) B\\right) - \\exp\\left(-\\left(- a + y\\right) \\left(x - y\\right) A\\right) \\exp\\left(-\\left(a - z\\right) \\left(- q + z\\right) B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Block-matrix exponential representation (block_exponential).",
+            "Assumes: A, B are constant in w.",
+            "Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result."
+          ]
+        },
+        {
+          "id": "matrix-derivative",
+          "title": "Derivative of a product keeps the order",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(tA)\\exp(sB)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "A \\exp\\left(t A\\right) \\exp\\left(s B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Ordered product rule for exponentials (exp_derivative).",
+            "Assumes: A, B are constant in t.",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-merge-blocked",
+          "title": "Exponentials of matrices that may not commute are not merged",
+          "op": "matrix",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(A)\\exp(B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Not applied: Merge exponentials into one needs AB = BA (not declared).",
+            "Nothing was changed because a step needs a condition that is not established: Merge exponentials into one needs AB = BA (not declared). Declare it if it holds."
+          ]
+        },
+        {
+          "id": "matrix-merge-declared",
+          "title": "Merged once commutation is declared",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(A)\\exp(B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\exp\\left(A + B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Merge exponentials of commuting matrices (exp_merge_commuting).",
+            "Assumes: AB = BA (declared).",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-frechet",
+          "title": "The derivative of an exponential whose exponent does not commute with its derivative",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(t^2 A + t B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Exact representation (not evaluated)",
+              "latex": "\\int_0^1 \\exp\\left((1-\\sigma) \\left(t^{2} A + t B\\right)\\right) \\left(2 t A + B\\right) \\exp\\left(\\sigma \\left(t^{2} A + t B\\right)\\right) d\\sigma"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 12 of 12 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Frechet derivative of the exponential (exp_frechet_derivative).",
+            "Assumes: A, B are constant in t.",
+            "Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).",
+            "Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result."
+          ]
+        },
+        {
+          "id": "matrix-frechet-explicit",
+          "title": "The same derivative with explicit entries is evaluated",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(tA + t^2 B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A = [0, 1; 0, 0]"
+            },
+            {
+              "label": "Matrix",
+              "source": "B = [0, 0; 1, 0]"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\left[\\begin{matrix}\\frac{3 \\sqrt{t^{3}} \\sinh{\\left(\\sqrt{t^{3}} \\right)}}{2 t} & \\frac{\\left(3 t^{3} \\mathrm{e}^{2 \\sqrt{t^{3}}} + 3 t^{3} - \\sqrt{t^{3}} \\mathrm{e}^{2 \\sqrt{t^{3}}} + \\sqrt{t^{3}}\\right) \\mathrm{e}^{- \\sqrt{t^{3}}}}{4 t^{3}}\\\\\\frac{\\left(3 t^{3} \\mathrm{e}^{2 \\sqrt{t^{3}}} + 3 t^{3} + \\sqrt{t^{3}} \\mathrm{e}^{2 \\sqrt{t^{3}}} - \\sqrt{t^{3}}\\right) \\mathrm{e}^{- \\sqrt{t^{3}}}}{4 t^{2}} & \\frac{3 \\sqrt{t^{3}} \\sinh{\\left(\\sqrt{t^{3}} \\right)}}{2 t}\\end{matrix}\\right]"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 20 of 20 random samples"
+          ],
+          "notes": [
+            "Method: Frechet derivative of the exponential (exp_frechet_derivative).",
+            "Assumes: A, B are constant in t.",
+            "Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).",
+            "Evaluated and verified."
+          ]
+        },
+        {
+          "id": "matrix-frechet-commuting",
+          "title": "With commutation declared it is the familiar product",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(t^2 A + t B)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "2 t A \\exp\\left(t^{2} A + t B\\right) + B \\exp\\left(t^{2} A + t B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Ordered product rule for exponentials (exp_derivative).",
+            "Assumes: AB = BA (declared).",
+            "Assumes: A, B are constant in t.",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-time-dependent",
+          "title": "A time-dependent matrix that commutes with itself at all times",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(A(t))"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "A' \\exp\\left(A\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Ordered product rule for exponentials (exp_derivative).",
+            "Assumes: A(t1) A(t2) = A(t2) A(t1) at all times (declared).",
+            "Assumes: A depends on t.",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-time-dependent-undeclared",
+          "title": "A time-dependent matrix without that declaration gives the Frechet integral",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp(A(t))"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Exact representation (not evaluated)",
+              "latex": "\\int_0^1 \\exp\\left((1-\\sigma) A\\right) A' \\exp\\left(\\sigma A\\right) d\\sigma"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 12 of 12 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Frechet derivative of the exponential (exp_frechet_derivative).",
+            "Assumes: A depends on t.",
+            "Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).",
+            "Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result."
+          ]
+        },
+        {
+          "id": "matrix-duhamel-explicit",
+          "title": "A Duhamel integral with explicit matrices",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp((t-s)A) B \\exp(sA)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A = [0, 1; 0, 0]"
+            },
+            {
+              "label": "Matrix",
+              "source": "B = [0, 0; 1, 0]"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\left[\\begin{matrix}\\frac{t^{2}}{2} & \\frac{t^{3}}{6}\\\\t & \\frac{t^{2}}{2}\\end{matrix}\\right]"
+            },
+            {
+              "label": "Verified equation",
+              "latex": "-A X + X A = B \\exp\\left(t A\\right) - \\exp\\left(t A\\right) B"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).",
+            "Assumes: A, B are constant in s.",
+            "Evaluated and verified."
+          ]
+        },
+        {
+          "id": "matrix-duhamel-abstract",
+          "title": "With abstract matrices it is an exact representation, not an evaluated integral",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp((t-s)A) B \\exp(sA)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Exact representation (not evaluated)",
+              "latex": "\\exp\\left(t A\\right) \\left(\\exp\\left(-t A\\right)\\left[\\exp\\left(t\\,\\begin{pmatrix} A & B \\\\ 0 & A \\end{pmatrix}\\right)\\right]_{12}\\right)"
+            },
+            {
+              "label": "Verified equation",
+              "latex": "-A X + X A = B \\exp\\left(t A\\right) - \\exp\\left(t A\\right) B"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).",
+            "Assumes: A, B are constant in s.",
+            "Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result."
+          ]
+        },
+        {
+          "id": "matrix-duhamel-commuting",
+          "title": "When B commutes with A the integral is a closed form",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\exp((t-s)A) B \\exp(sA)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "t B \\exp\\left(t A\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).",
+            "Assumes: AB = BA (declared).",
+            "Assumes: A, B are constant in s.",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-evolution-commuting",
+          "title": "An evolution operator for a generator whose matrices commute",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "tA + t^2 B"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\exp\\left(\\frac{t^{2}}{2} A + \\frac{t^{3}}{3} B\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 12 of 12 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Evolution operator exp(∫A) for a generator that commutes with itself (evolution_commuting).",
+            "Assumes: AB = BA (declared).",
+            "Assumes: A, B are constant in t.",
+            "Transformed and verified."
+          ]
+        },
+        {
+          "id": "matrix-evolution-explicit",
+          "title": "An evolution operator from explicit entries that commute with themselves",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "A(t)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A = [t, 0; 0, 2t]"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\left[\\begin{matrix}\\mathrm{e}^{\\frac{t^{2}}{2}} & 0\\\\0 & \\mathrm{e}^{t^{2}}\\end{matrix}\\right]"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 12 of 12 random samples",
+            "exact check through degree 4: passed"
+          ],
+          "notes": [
+            "Method: Evolution operator exp(∫A) for a generator that commutes with itself (evolution_commuting).",
+            "Assumes: A(t1) A(t2) = A(t2) A(t1) at all times (from the entries).",
+            "Assumes: A depends on t.",
+            "Evaluated and verified."
+          ]
+        },
+        {
+          "id": "matrix-evolution-numeric",
+          "title": "A generator that does not commute with itself is solved numerically on a span you choose",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "A(t)"
+            },
+            {
+              "label": "Matrix",
+              "source": "A = [0, 1; -t, 0]"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Numerical approximation (not a closed form)",
+              "latex": "\\begin{pmatrix} 0.497889578953 & 1.1107815151 \\\\ -0.889078135871 & 0.0249622440802 \\end{pmatrix}"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 8 of 8 random samples"
+          ],
+          "notes": [
+            "Method: Numerical solution of dU/dt = A(t) U (evolution_numeric).",
+            "Assumes: A depends on t.",
+            "Not applied: U(t) = exp of the integral of the generator needs A(t1) A(t2) = A(t2) A(t1) at all times (not established for these entries).",
+            "Computed numerically on the stated span and verified by independent checks; this is a numerical approximation, not a closed form."
+          ]
+        },
+        {
+          "id": "matrix-time-ordered",
+          "title": "An abstract generator that does not commute with itself is declined",
+          "op": "matrix",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "tA + t^2 B"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 2 by 2, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "B: 2 by 2, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).",
+            "The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "distribution-calculus",
+      "title": "Dirac delta and Heaviside calculus",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Simplify, integrate and differentiate expressions with Dirac delta and Heaviside functions. Equality is as distributions (the same action on every test function), never pointwise: a delta has no values to compare. Each step cites a handbook identity and the conditions that were established exactly (the variable is real, a scale factor is nonzero, a root is real and simple, a delta lies inside the limits); a result is shown only if an independent test-function pairing against a regularised input agrees. Whatever cannot be decided is refused with a reason, never guessed.",
+      "limits": [
+        "One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.",
+        "A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.",
+        "Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.",
+        "The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\\operatorname{DiracDelta}, \\operatorname{Heaviside}); \\delta and \\theta remain ordinary symbols."
+      ],
+      "examples": [
+        {
+          "id": "delta-shell-integral",
+          "title": "An integral against a delta of a polynomial with two simple roots",
+          "op": "distribution",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x^2 \\operatorname{DiracDelta}(x^2 - 4)"
+            },
+            {
+              "label": "Limits",
+              "source": "-oo to oo"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Value",
+              "latex": "2"
+            }
+          ],
+          "checks": [
+            "conditions established exactly: yes",
+            "1 of 1 test-function pairings agree (supporting evidence, not a proof)"
+          ],
+          "notes": [
+            "Step: Delta of a polynomial with simple real roots (distributions.delta_composite_simple_roots).",
+            "Step: A continuous factor takes its value at the delta (distributions.delta_times_function).",
+            "Step: Integrating against a delta picks out the value (distributions.delta_sifting).",
+            "Integrated with handbook identities under conditions that were established exactly; 1 of 1 test-function pairings agree (supporting evidence, not a proof)."
+          ]
+        },
+        {
+          "id": "delta-scaling-parameter",
+          "title": "Scaling by a parameter whose sign is known",
+          "op": "distribution",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\operatorname{DiracDelta}(a x)"
+            }
+          ],
+          "assumptions": "a negative",
+          "outputs": [
+            {
+              "label": "Result (as distributions)",
+              "latex": "- \\frac{\\operatorname{DiracDelta}\\left(x\\right)}{a}"
+            }
+          ],
+          "checks": [
+            "conditions established exactly: yes",
+            "18 of 18 test-function pairings agree (supporting evidence, not a proof)"
+          ],
+          "notes": [
+            "Step: Scaling and translation of the delta argument (distributions.delta_scaling).",
+            "Simplified with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof)."
+          ]
+        },
+        {
+          "id": "heaviside-derivative",
+          "title": "The derivative of a switched-on decay has a delta where it jumps",
+          "op": "distribution",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\mathrm{e}^{-g x} \\operatorname{Heaviside}(x)"
+            }
+          ],
+          "assumptions": "g positive",
+          "outputs": [
+            {
+              "label": "Result (as distributions)",
+              "latex": "- g \\mathrm{e}^{- g x} \\operatorname{Heaviside}\\left(x\\right) + \\operatorname{DiracDelta}\\left(x\\right)"
+            }
+          ],
+          "checks": [
+            "conditions established exactly: yes",
+            "18 of 18 test-function pairings agree (supporting evidence, not a proof)"
+          ],
+          "notes": [
+            "Step: The derivative of a step function is a delta at its jump (distributions.heaviside_derivative).",
+            "Step: Scaling of the delta and the value of its coefficient at the jump (distributions.delta_scaling).",
+            "Differentiated with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof)."
+          ]
+        },
+        {
+          "id": "delta-scale-sign-unknown",
+          "title": "A scale factor of unknown sign is declined",
+          "op": "distribution",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\operatorname{DiracDelta}(a x)"
+            }
+          ],
+          "assumptions": "a real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (assumptions_insufficient).",
+            "The slope a of the argument at the root 0 is not proved nonzero from the declared assumptions (declare the parameter nonzero, positive or negative)."
+          ]
+        },
+        {
+          "id": "delta-on-a-limit",
+          "title": "A delta on an integration limit is ambiguous until you choose a convention",
+          "op": "distribution",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\operatorname{DiracDelta}(x - 1)"
+            },
+            {
+              "label": "Limits",
+              "source": "0 to 1"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (integration_domain_ambiguous).",
+            "A delta sits exactly on an integration limit (at 1). Its contribution depends on a convention that you must choose: half, include or exclude."
+          ]
+        },
+        {
+          "id": "delta-repeated-root",
+          "title": "A repeated root is declined",
+          "op": "distribution",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\operatorname{DiracDelta}(x^2)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (singular_root).",
+            "The root 0 is a repeated root, where the delta of a function is not a combination of simple deltas."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "differential-geometry",
+      "title": "Differential geometry in coordinates",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed.",
+      "limits": [
+        "Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.",
+        "Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.",
+        "The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.",
+        "Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.",
+        "Geodesic equations are symbolic; they are not integrated numerically."
+      ],
+      "examples": [
+        {
+          "id": "geometry-sphere",
+          "title": "The 2-sphere, with its curvature invariants",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "\\theta, \\phi"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "a^2,  0"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  a^2 \\sin^2\\theta"
+            }
+          ],
+          "assumptions": "a positive",
+          "outputs": [
+            {
+              "label": "Christoffel symbols",
+              "latex": "\\Gamma^{\\theta}{}_{\\phi \\phi} = - \\sin{\\left(\\theta \\right)} \\cos{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Christoffel symbols",
+              "latex": "\\Gamma^{\\phi}{}_{\\theta \\phi} = \\cot{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Ricci scalar R",
+              "latex": "\\frac{2}{a^{2}}"
+            },
+            {
+              "label": "Kretschmann scalar (full contraction of the Riemann tensor with itself)",
+              "latex": "\\frac{4}{a^{4}}"
+            }
+          ],
+          "checks": [
+            "christoffel: 2 independent numeric checks passed; symbolic proof proved",
+            "ricci_scalar: 1 independent numeric checks passed; symbolic proof proved",
+            "kretschmann: 1 independent numeric checks passed; symbolic proof not attempted"
+          ],
+          "notes": [
+            "Signature not determined: The sign of g_(phi,phi) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).",
+            "Valid only where $\\sin{\\left(\\theta \\right)} \\neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).",
+            "Assumes: coordinates are real: theta, phi.",
+            "Assumes: a: positive.",
+            "3 of 3 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-schwarzschild",
+          "title": "Schwarzschild spacetime is Ricci-flat",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, r, \\theta, \\phi"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-(1-2M/r),  0,  0,  0"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  (1-2M/r)^{-1},  0,  0"
+            },
+            {
+              "label": "Metric row 3",
+              "source": "0,  0,  r^2,  0"
+            },
+            {
+              "label": "Metric row 4",
+              "source": "0,  0,  0,  r^2 \\sin^2\\theta"
+            }
+          ],
+          "assumptions": "M positive; r positive",
+          "outputs": [
+            {
+              "label": "Ricci tensor (symmetric; one of each pair shown)",
+              "latex": "0 \\text{ (every component)}"
+            },
+            {
+              "label": "Kretschmann scalar (full contraction of the Riemann tensor with itself)",
+              "latex": "\\frac{48 M^{2}}{r^{6}}"
+            }
+          ],
+          "checks": [
+            "ricci: 1 independent numeric checks passed; symbolic proof proved",
+            "kretschmann: 1 independent numeric checks passed; symbolic proof not attempted"
+          ],
+          "notes": [
+            "Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).",
+            "Valid only where $- 2 M + r \\neq 0$, $\\sin{\\left(\\theta \\right)} \\neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).",
+            "Assumes: coordinates are real: t, r, theta, phi.",
+            "Assumes: M: positive.",
+            "Assumes: r: positive.",
+            "2 of 2 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-geodesics",
+          "title": "Geodesic equations of the plane in polar coordinates",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "r, \\theta"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "1,  0"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  r^2"
+            }
+          ],
+          "assumptions": "r positive",
+          "outputs": [
+            {
+              "label": "Geodesic equations",
+              "latex": "\\ddot{r} = r \\dot{\\theta}^{2}"
+            },
+            {
+              "label": "Geodesic equations",
+              "latex": "\\ddot{\\theta} = - \\frac{2 \\dot{r} \\dot{\\theta}}{r}"
+            }
+          ],
+          "checks": [
+            "geodesics: 2 independent numeric checks passed; symbolic proof proved"
+          ],
+          "notes": [
+            "Signature (+, +), decided from the declared assumptions.",
+            "Assumes: coordinates are real: r, theta.",
+            "Assumes: r: positive.",
+            "1 of 1 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-function",
+          "title": "An unspecified function in the metric",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, r, \\theta, \\phi"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-f(r),  0,  0,  0"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  1/f(r),  0,  0"
+            },
+            {
+              "label": "Metric row 3",
+              "source": "0,  0,  r^2,  0"
+            },
+            {
+              "label": "Metric row 4",
+              "source": "0,  0,  0,  r^2 \\sin^2\\theta"
+            },
+            {
+              "label": "Functions",
+              "source": "f(r)"
+            }
+          ],
+          "assumptions": "r positive",
+          "outputs": [
+            {
+              "label": "Ricci scalar R",
+              "latex": "\\frac{- r^{2} f''\\left(r\\right) - 4 r f'\\left(r\\right) - 2 f\\left(r\\right) + 2}{r^{2}}"
+            }
+          ],
+          "checks": [
+            "ricci_scalar: 1 independent numeric checks passed; symbolic proof proved"
+          ],
+          "notes": [
+            "Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).",
+            "Valid only where $\\sin{\\left(\\theta \\right)} \\neq 0$, $f\\left(r\\right) \\neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).",
+            "Assumes: coordinates are real: t, r, theta, phi.",
+            "Assumes: r: positive.",
+            "Assumes: f(r) is an unspecified real function.",
+            "1 of 1 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-covariant",
+          "title": "The covariant derivative of the radial vector field",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "r, \\theta"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "1,  0"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  r^2"
+            }
+          ],
+          "assumptions": "r positive",
+          "outputs": [
+            {
+              "label": "Covariant derivative of the tensor",
+              "latex": "\\nabla T_{\\theta}{}^{\\theta} = \\frac{1}{r}"
+            }
+          ],
+          "checks": [
+            "covariant_derivative: 1 independent numeric checks passed; symbolic proof not attempted"
+          ],
+          "notes": [
+            "Signature (+, +), decided from the declared assumptions.",
+            "Assumes: coordinates are real: r, theta.",
+            "Assumes: r: positive.",
+            "1 of 1 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-degenerate",
+          "title": "A degenerate metric is declined",
+          "op": "geometry",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "x, y"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "1,  0"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  0"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Assumes: coordinates are real: x, y.",
+            "The metric is degenerate (its determinant is identically zero), so it has no inverse and no Levi-Civita connection."
+          ]
+        },
+        {
+          "id": "geometry-undeclared-function",
+          "title": "An undeclared function is refused instead of being read as a product",
+          "op": "geometry",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "r"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "f(r)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "f(…) is ambiguous: declare f as a function, or write f\\cdot(…) for a product"
+          ]
+        },
+        {
+          "id": "geometry-asymmetric",
+          "title": "A metric that is not symmetric is declined",
+          "op": "geometry",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "x, y"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "1,  x"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  1"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal)."
           ]
         }
       ]
@@ -1938,6 +3057,232 @@
       ]
     },
     {
+      "id": "discovery",
+      "title": "Find the conserved quantities of a system",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva derives the equations of motion (confirmed by numerical differentiation), then searches a deterministic ladder of larger and larger families of candidates: polynomials in the velocities or momenta times powers of the coordinates, cos and sin of angles (declared, detected, or cyclic) and powers of t. In each family the conservation condition is solved exactly; a candidate is shown only if it is verified on the equations of motion, and products of what is already known are not counted as discoveries. It then reports which constants are functionally independent (an exact Jacobian rank, with the algebraic relations that tie the rest to them) and exactly which families were and were not searched. You do not choose an ansatz, a power bound or the angles.",
+      "limits": [
+        "Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.",
+        "Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported. At most 3 coordinates.",
+        "Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.",
+        "Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.",
+        "Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.",
+        "A name such as Runge–Lenz is a recognition the model may offer afterwards; the search never uses it."
+      ],
+      "examples": [
+        {
+          "id": "discovery-kepler",
+          "title": "Kepler problem, from the Lagrangian alone",
+          "op": "discovery",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "r, theta"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "C1, momentum conjugate to theta",
+              "latex": "C1 = m r^{2} \\dot{\\theta}"
+            },
+            {
+              "label": "C2, energy function",
+              "latex": "C2 = - \\frac{k}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
+            },
+            {
+              "label": "C3, newly found",
+              "latex": "C3 = - k \\cos{\\left(\\theta \\right)} + m r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "C4, newly found",
+              "latex": "C4 = k \\sin{\\left(\\theta \\right)} - m r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Exact relation",
+              "latex": "2 C_{1}^{2} C_{2} - C_{3}^{2} m - C_{4}^{2} m + k^{2} m = 0"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
+          ],
+          "notes": [
+            "Functionally independent: 3 (proved).",
+            "8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).",
+            "Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)",
+            "No angle, power bound or invariant is given. The search expands until both components of the Laplace–Runge–Lenz vector appear, and reports that, with the energy and angular momentum, only three of the four are functionally independent, with the exact relation between them."
+          ]
+        },
+        {
+          "id": "discovery-kepler-hamiltonian",
+          "title": "The same system as a Hamiltonian",
+          "op": "discovery",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Hamiltonian",
+              "source": "\\frac{p_r^2}{2m} + \\frac{p_\\theta^2}{2 m r^2} - \\frac{k}{r}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "r, theta"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "C1, momentum conjugate to theta",
+              "latex": "C1 = p_{\\theta}"
+            },
+            {
+              "label": "C2, energy function",
+              "latex": "C2 = - \\frac{k}{r} + \\frac{p_{r}^{2}}{2 m} + \\frac{p_{\\theta}^{2}}{2 m r^{2}}"
+            },
+            {
+              "label": "C3, newly found",
+              "latex": "C3 = - k m \\sin{\\left(\\theta \\right)} - p_{r} p_{\\theta} \\cos{\\left(\\theta \\right)} + \\frac{p_{\\theta}^{2} \\sin{\\left(\\theta \\right)}}{r}"
+            },
+            {
+              "label": "C4, newly found",
+              "latex": "C4 = - k m \\cos{\\left(\\theta \\right)} + p_{r} p_{\\theta} \\sin{\\left(\\theta \\right)} + \\frac{p_{\\theta}^{2} \\cos{\\left(\\theta \\right)}}{r}"
+            },
+            {
+              "label": "Exact relation",
+              "latex": "2 C_{1}^{2} C_{2} m - C_{3}^{2} - C_{4}^{2} + k^{2} m^{2} = 0"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
+          ],
+          "notes": [
+            "Functionally independent: 3 (proved).",
+            "8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).",
+            "Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)"
+          ]
+        },
+        {
+          "id": "discovery-resonant",
+          "title": "A resonant oscillator has an extra invariant",
+          "op": "discovery",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Hamiltonian",
+              "source": "\\frac{p_1^2 + q_1^2}{2} + \\frac{p_2^2 + 4 q_2^2}{2}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "q_1, q_2"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "C1, energy function",
+              "latex": "C1 = \\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{2} + 2 q_{2}^{2}"
+            },
+            {
+              "label": "C2, newly found",
+              "latex": "C2 = p_{1}^{2} + q_{1}^{2}"
+            },
+            {
+              "label": "C3, newly found",
+              "latex": "C3 = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}"
+            },
+            {
+              "label": "C4, newly found",
+              "latex": "C4 = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}"
+            },
+            {
+              "label": "Exact relation",
+              "latex": "- 2 C_{1} C_{2}^{2} + C_{2}^{3} + 4 C_{3}^{2} + C_{4}^{2} = 0"
+            }
+          ],
+          "checks": [
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)",
+            "time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)"
+          ],
+          "notes": [
+            "Functionally independent: 3 (proved).",
+            "7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).",
+            "Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)",
+            "With frequencies in the ratio 1 : 2 a constant of degree 3 in the momenta appears; the search reaches it by raising the degree by itself."
+          ]
+        },
+        {
+          "id": "discovery-henon-heiles",
+          "title": "Hénon–Heiles, none within the explored families",
+          "op": "discovery",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12(\\dot{x}^2 + \\dot{y}^2) - \\frac12(x^2 + y^2) - x^2 y + \\frac13 y^3"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "C1, energy function",
+              "latex": "C1 = x^{2} y + \\frac{x^{2}}{2} + \\frac{\\dot{x}^{2}}{2} - \\frac{y^{3}}{3} + \\frac{y^{2}}{2} + \\frac{\\dot{y}^{2}}{2}"
+            },
+            {
+              "label": "Result",
+              "text": "no additional constant within the explored families"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Functionally independent: 1 (proved).",
+            "7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).",
+            "Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)",
+            "Only the energy is known; nothing else is found. This says nothing about families that were not searched."
+          ]
+        },
+        {
+          "id": "discovery-cartesian-kepler",
+          "title": "A square root is refused",
+          "op": "discovery",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 m(\\dot{x}^2 + \\dot{y}^2) + \\frac{k}{\\sqrt{x^2 + y^2}}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "x, y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The equations of motion are not rational in the coordinates, the velocities or momenta and the cos and sin of the angles (square roots and the like are not searched)."
+          ]
+        }
+      ]
+    },
+    {
       "id": "invariants",
       "title": "Search for hidden constants of motion",
       "status": "available",
@@ -2384,12 +3729,12 @@
     },
     {
       "id": "sagemanifolds",
-      "title": "SageManifolds integration",
+      "title": "Abstract manifolds (SageManifolds)",
       "status": "planned",
       "group": "math",
       "where": [],
       "needs_model": false,
-      "summary": "Differential geometry on explicit manifolds, as an optional backend.",
+      "summary": "Charts, atlases and abstract manifolds as an optional out-of-process backend; coordinate-based geometry is available today.",
       "limits": [],
       "examples": []
     },

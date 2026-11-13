@@ -109,4 +109,27 @@ describe("RichText", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(container.textContent).toContain("<img src=x onerror=alert(1)>");
   });
+
+  it("shows a quoted formula as quoted, not as verified, and says why", () => {
+    const { container } = render(
+      <RichText
+        segments={[
+          seg("text", "You gave "),
+          { ...seg("math", "x^2", "quoted"), note: "your input, as read by Minerva" },
+          seg("text", " and the result is "),
+          seg("math", "x+1", "from_tool"),
+          { ...seg("display_math", "a=b", "quoted"), note: "a handbook entry that is only stated" },
+        ]}
+      />,
+    );
+    expect(container.querySelectorAll('[data-status="quoted"]')).toHaveLength(2);
+    expect(screen.getByText("quoted")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Quoted from a tool result, not a verified result: a handbook entry/),
+    ).toBeInTheDocument();
+    const inline = container.querySelector('span[data-status="quoted"]');
+    expect(inline?.getAttribute("title")).toContain("your input as read by Minerva");
+    expect(inline?.getAttribute("title")).toContain("It is not marked as checked");
+    expect(container.querySelectorAll('[data-status="from_tool"]')).toHaveLength(1);
+  });
 });

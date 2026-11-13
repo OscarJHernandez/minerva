@@ -265,6 +265,440 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - **Status:** `unsupported`
 - The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported.
 
+### Noncommutative matrix calculus
+
+*Available in:* chat, HTTP API.
+
+Ordered products of matrix exponentials with declared matrices (a size, or explicit entries), also matrices that depend on a variable, A(t). Minerva recognises the structure and picks the technique: the ordered product rule; the Frechet derivative of exp(X(t)) when X and X' do not commute (never assumed to equal X' exp(X)); merging exponentials only where commutation is declared or visible in the entries; a closed form for an invertible matrix; Duhamel integrals of e^((t-s)A) B e^(sA); a Sylvester equation or a block-matrix exponential for other integrals; and evolution operators dU/dt = A(t) U, U(0) = I. A result is shown only if independent checks agree. An equation, a representation or a numerical approximation is never presented as an evaluated result.
+
+**Limits**
+
+- The variable is scalar. A matrix depends on it only if declared (or visible in explicit entries), and A(t) is never read as t times A; integrals of time-dependent matrices are not supported.
+- Matrices are never assumed to commute (also with their own derivative or at other times) or to be invertible; each must be declared, or be visible in explicit entries.
+- Time-ordered exponentials, Dyson series and Magnus expansions are not supported. An abstract generator that does not commute with itself at all times is declined; explicit entries with a numeric span are solved numerically.
+- A numerical solution (up to 4 by 4, double precision) is a measurement on the span you give, checked by a second method, by integrating backwards and by Liouville's formula; the end of the span is a number only you can choose.
+- Integrals need exponents that are affine in the variable and at most two exponentials depending on it. Abstract matrices give an exact equation or representation, entries only for explicit matrices (at most 4 by 4) whose closed form SymPy finds in time.
+- The numerical check is evidence, not proof. The exact check compares formal power series through degree 4 and is reported separately.
+
+#### An integral of a product of noncommuting exponentials
+
+- **Expression:** `\exp(wA)\exp(-wB)`
+- **Matrix:** `A = [1, 0; 0, 2]`
+- **Matrix:** `B = [0, 1; 0, 0]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}-1 + \mathrm{e} & -1\\0 & - \frac{1}{2} + \frac{\mathrm{e}^{2}}{2}\end{matrix}\right]$
+- **Verified equation:** $A X - X B = \exp\left(A\right) \exp\left(-B\right) - I$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Sylvester equation for ∫ e^{(at+b)P} C e^{(ct+d)Q} dt (sylvester_reduction).
+- Assumes: the Sylvester operator X -> aPX + cXQ is invertible (its Kronecker determinant is nonzero).
+- Assumes: A, B are constant in w.
+- Evaluated and verified.
+
+#### The same structure with abstract matrices gives a verified equation, not entries
+
+- **Expression:** `\exp(-(x-y)(y-w)A)\exp(-(w-z)(z-q)B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\exp\left(\left(- x y + y^{2}\right) A\right) \left(\exp\left(\left(b x - b y\right) A\right)\left[\exp\left(b\,\begin{pmatrix} \left(- x + y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12} - \exp\left(\left(a x - a y\right) A\right)\left[\exp\left(a\,\begin{pmatrix} \left(- x + y\right) A & I \\ 0 & \left(q - z\right) B \end{pmatrix}\right)\right]_{12}\right) \exp\left(\left(- q z + z^{2}\right) B\right)$
+- **Verified equation:** $\left(x - y\right) A X + \left(q - z\right) X B = \exp\left(-\left(- b + y\right) \left(x - y\right) A\right) \exp\left(-\left(b - z\right) \left(- q + z\right) B\right) - \exp\left(-\left(- a + y\right) \left(x - y\right) A\right) \exp\left(-\left(a - z\right) \left(- q + z\right) B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Block-matrix exponential representation (block_exponential).
+- Assumes: A, B are constant in w.
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### Derivative of a product keeps the order
+
+- **Expression:** `\exp(tA)\exp(sB)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $A \exp\left(t A\right) \exp\left(s B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Ordered product rule for exponentials (exp_derivative).
+- Assumes: A, B are constant in t.
+- Transformed and verified.
+
+#### Exponentials of matrices that may not commute are not merged
+
+- **Expression:** `\exp(A)\exp(B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `conditions_not_satisfied`
+- Not applied: Merge exponentials into one needs AB = BA (not declared).
+- Nothing was changed because a step needs a condition that is not established: Merge exponentials into one needs AB = BA (not declared). Declare it if it holds.
+
+#### Merged once commutation is declared
+
+- **Expression:** `\exp(A)\exp(B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $\exp\left(A + B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Merge exponentials of commuting matrices (exp_merge_commuting).
+- Assumes: AB = BA (declared).
+- Transformed and verified.
+
+#### The derivative of an exponential whose exponent does not commute with its derivative
+
+- **Expression:** `\exp(t^2 A + t B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\int_0^1 \exp\left((1-\sigma) \left(t^{2} A + t B\right)\right) \left(2 t A + B\right) \exp\left(\sigma \left(t^{2} A + t B\right)\right) d\sigma$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Frechet derivative of the exponential (exp_frechet_derivative).
+- Assumes: A, B are constant in t.
+- Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### The same derivative with explicit entries is evaluated
+
+- **Expression:** `\exp(tA + t^2 B)`
+- **Matrix:** `A = [0, 1; 0, 0]`
+- **Matrix:** `B = [0, 0; 1, 0]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}\frac{3 \sqrt{t^{3}} \sinh{\left(\sqrt{t^{3}} \right)}}{2 t} & \frac{\left(3 t^{3} \mathrm{e}^{2 \sqrt{t^{3}}} + 3 t^{3} - \sqrt{t^{3}} \mathrm{e}^{2 \sqrt{t^{3}}} + \sqrt{t^{3}}\right) \mathrm{e}^{- \sqrt{t^{3}}}}{4 t^{3}}\\\frac{\left(3 t^{3} \mathrm{e}^{2 \sqrt{t^{3}}} + 3 t^{3} + \sqrt{t^{3}} \mathrm{e}^{2 \sqrt{t^{3}}} - \sqrt{t^{3}}\right) \mathrm{e}^{- \sqrt{t^{3}}}}{4 t^{2}} & \frac{3 \sqrt{t^{3}} \sinh{\left(\sqrt{t^{3}} \right)}}{2 t}\end{matrix}\right]$
+- **Check:** numeric check agreed at 20 of 20 random samples
+- Method: Frechet derivative of the exponential (exp_frechet_derivative).
+- Assumes: A, B are constant in t.
+- Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).
+- Evaluated and verified.
+
+#### With commutation declared it is the familiar product
+
+- **Expression:** `\exp(t^2 A + t B)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $2 t A \exp\left(t^{2} A + t B\right) + B \exp\left(t^{2} A + t B\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Ordered product rule for exponentials (exp_derivative).
+- Assumes: AB = BA (declared).
+- Assumes: A, B are constant in t.
+- Transformed and verified.
+
+#### A time-dependent matrix that commutes with itself at all times
+
+- **Expression:** `\exp(A(t))`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $A' \exp\left(A\right)$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Ordered product rule for exponentials (exp_derivative).
+- Assumes: A(t1) A(t2) = A(t2) A(t1) at all times (declared).
+- Assumes: A depends on t.
+- Transformed and verified.
+
+#### A time-dependent matrix without that declaration gives the Frechet integral
+
+- **Expression:** `\exp(A(t))`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\int_0^1 \exp\left((1-\sigma) A\right) A' \exp\left(\sigma A\right) d\sigma$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Frechet derivative of the exponential (exp_frechet_derivative).
+- Assumes: A depends on t.
+- Not applied: Use d/dt exp(X) = X' exp(X) needs X X' = X' X for the exponent X (not established).
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### A Duhamel integral with explicit matrices
+
+- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Matrix:** `A = [0, 1; 0, 0]`
+- **Matrix:** `B = [0, 0; 1, 0]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}\frac{t^{2}}{2} & \frac{t^{3}}{6}\\t & \frac{t^{2}}{2}\end{matrix}\right]$
+- **Verified equation:** $-A X + X A = B \exp\left(t A\right) - \exp\left(t A\right) B$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).
+- Assumes: A, B are constant in s.
+- Evaluated and verified.
+
+#### With abstract matrices it is an exact representation, not an evaluated integral
+
+- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Exact representation (not evaluated):** $\exp\left(t A\right) \left(\exp\left(-t A\right)\left[\exp\left(t\,\begin{pmatrix} A & B \\ 0 & A \end{pmatrix}\right)\right]_{12}\right)$
+- **Verified equation:** $-A X + X A = B \exp\left(t A\right) - \exp\left(t A\right) B$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).
+- Assumes: A, B are constant in s.
+- Written exactly (for example through a block-matrix exponential or an integral) and verified; it is a representation, not an evaluated result.
+
+#### When B commutes with A the integral is a closed form
+
+- **Expression:** `\exp((t-s)A) B \exp(sA)`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $t B \exp\left(t A\right)$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Duhamel integral ∫ e^{(as+b)A} M e^{(-as+d)A} ds (duhamel).
+- Assumes: AB = BA (declared).
+- Assumes: A, B are constant in s.
+- Transformed and verified.
+
+#### An evolution operator for a generator whose matrices commute
+
+- **Expression:** `tA + t^2 B`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `ok`
+- **Result:** $\exp\left(\frac{t^{2}}{2} A + \frac{t^{3}}{3} B\right)$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Evolution operator exp(∫A) for a generator that commutes with itself (evolution_commuting).
+- Assumes: AB = BA (declared).
+- Assumes: A, B are constant in t.
+- Transformed and verified.
+
+#### An evolution operator from explicit entries that commute with themselves
+
+- **Expression:** `A(t)`
+- **Matrix:** `A = [t, 0; 0, 2t]`
+- **Status:** `ok`
+- **Result:** $\left[\begin{matrix}\mathrm{e}^{\frac{t^{2}}{2}} & 0\\0 & \mathrm{e}^{t^{2}}\end{matrix}\right]$
+- **Check:** numeric check agreed at 12 of 12 random samples
+- **Check:** exact check through degree 4: passed
+- Method: Evolution operator exp(∫A) for a generator that commutes with itself (evolution_commuting).
+- Assumes: A(t1) A(t2) = A(t2) A(t1) at all times (from the entries).
+- Assumes: A depends on t.
+- Evaluated and verified.
+
+#### A generator that does not commute with itself is solved numerically on a span you choose
+
+- **Expression:** `A(t)`
+- **Matrix:** `A = [0, 1; -t, 0]`
+- **Status:** `ok`
+- **Numerical approximation (not a closed form):** $\begin{pmatrix} 0.497889578953 & 1.1107815151 \\ -0.889078135871 & 0.0249622440802 \end{pmatrix}$
+- **Check:** numeric check agreed at 8 of 8 random samples
+- Method: Numerical solution of dU/dt = A(t) U (evolution_numeric).
+- Assumes: A depends on t.
+- Not applied: U(t) = exp of the integral of the generator needs A(t1) A(t2) = A(t2) A(t1) at all times (not established for these entries).
+- Computed numerically on the stated span and verified by independent checks; this is a numerical approximation, not a closed form.
+
+#### An abstract generator that does not commute with itself is declined
+
+- **Expression:** `tA + t^2 B`
+- **Matrix:** `A: 2 by 2, entries not given`
+- **Matrix:** `B: 2 by 2, entries not given`
+- **Status:** `unsupported`
+- Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).
+- The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution).
+
+### Dirac delta and Heaviside calculus
+
+*Available in:* workbench, chat, HTTP API.
+
+Simplify, integrate and differentiate expressions with Dirac delta and Heaviside functions. Equality is as distributions (the same action on every test function), never pointwise: a delta has no values to compare. Each step cites a handbook identity and the conditions that were established exactly (the variable is real, a scale factor is nonzero, a root is real and simple, a delta lies inside the limits); a result is shown only if an independent test-function pairing against a regularised input agrees. Whatever cannot be decided is refused with a reason, never guessed.
+
+**Limits**
+
+- One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.
+- A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.
+- Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.
+- The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}); \delta and \theta remain ordinary symbols.
+
+#### An integral against a delta of a polynomial with two simple roots
+
+- **Expression:** `x^2 \operatorname{DiracDelta}(x^2 - 4)`
+- **Limits:** `-oo to oo`
+- **Status:** `ok`
+- **Value:** $2$
+- **Check:** conditions established exactly: yes
+- **Check:** 1 of 1 test-function pairings agree (supporting evidence, not a proof)
+- Step: Delta of a polynomial with simple real roots (distributions.delta_composite_simple_roots).
+- Step: A continuous factor takes its value at the delta (distributions.delta_times_function).
+- Step: Integrating against a delta picks out the value (distributions.delta_sifting).
+- Integrated with handbook identities under conditions that were established exactly; 1 of 1 test-function pairings agree (supporting evidence, not a proof).
+
+#### Scaling by a parameter whose sign is known
+
+- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Assumptions:** a negative
+- **Status:** `ok`
+- **Result (as distributions):** $- \frac{\operatorname{DiracDelta}\left(x\right)}{a}$
+- **Check:** conditions established exactly: yes
+- **Check:** 18 of 18 test-function pairings agree (supporting evidence, not a proof)
+- Step: Scaling and translation of the delta argument (distributions.delta_scaling).
+- Simplified with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof).
+
+#### The derivative of a switched-on decay has a delta where it jumps
+
+- **Expression:** `\mathrm{e}^{-g x} \operatorname{Heaviside}(x)`
+- **Assumptions:** g positive
+- **Status:** `ok`
+- **Result (as distributions):** $- g \mathrm{e}^{- g x} \operatorname{Heaviside}\left(x\right) + \operatorname{DiracDelta}\left(x\right)$
+- **Check:** conditions established exactly: yes
+- **Check:** 18 of 18 test-function pairings agree (supporting evidence, not a proof)
+- Step: The derivative of a step function is a delta at its jump (distributions.heaviside_derivative).
+- Step: Scaling of the delta and the value of its coefficient at the jump (distributions.delta_scaling).
+- Differentiated with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof).
+
+#### A scale factor of unknown sign is declined
+
+- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Assumptions:** a real
+- **Status:** `conditions_not_satisfied`
+- Refused (assumptions_insufficient).
+- The slope a of the argument at the root 0 is not proved nonzero from the declared assumptions (declare the parameter nonzero, positive or negative).
+
+#### A delta on an integration limit is ambiguous until you choose a convention
+
+- **Expression:** `\operatorname{DiracDelta}(x - 1)`
+- **Limits:** `0 to 1`
+- **Status:** `conditions_not_satisfied`
+- Refused (integration_domain_ambiguous).
+- A delta sits exactly on an integration limit (at 1). Its contribution depends on a convention that you must choose: half, include or exclude.
+
+#### A repeated root is declined
+
+- **Expression:** `\operatorname{DiracDelta}(x^2)`
+- **Status:** `unsupported`
+- Refused (singular_root).
+- The root 0 is a repeated root, where the delta of a function is not a combination of simple deltas.
+
+### Differential geometry in coordinates
+
+*Available in:* workbench, chat, HTTP API.
+
+Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed.
+
+**Limits**
+
+- Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
+- Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
+- The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
+- Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
+- Geodesic equations are symbolic; they are not integrated numerically.
+
+#### The 2-sphere, with its curvature invariants
+
+- **Coordinates:** `\theta, \phi`
+- **Metric row 1:** `a^2,  0`
+- **Metric row 2:** `0,  a^2 \sin^2\theta`
+- **Assumptions:** a positive
+- **Status:** `ok`
+- **Christoffel symbols:** $\Gamma^{\theta}{}_{\phi \phi} = - \sin{\left(\theta \right)} \cos{\left(\theta \right)}$
+- **Christoffel symbols:** $\Gamma^{\phi}{}_{\theta \phi} = \cot{\left(\theta \right)}$
+- **Ricci scalar R:** $\frac{2}{a^{2}}$
+- **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{4}{a^{4}}$
+- **Check:** christoffel: 2 independent numeric checks passed; symbolic proof proved
+- **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature not determined: The sign of g_(phi,phi) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: theta, phi.
+- Assumes: a: positive.
+- 3 of 3 requested quantities computed and numerically verified.
+
+#### Schwarzschild spacetime is Ricci-flat
+
+- **Coordinates:** `t, r, \theta, \phi`
+- **Metric row 1:** `-(1-2M/r),  0,  0,  0`
+- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0`
+- **Metric row 3:** `0,  0,  r^2,  0`
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Ricci tensor (symmetric; one of each pair shown):** $0 \text{ (every component)}$
+- **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{48 M^{2}}{r^{6}}$
+- **Check:** ricci: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $- 2 M + r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: M: positive.
+- Assumes: r: positive.
+- 2 of 2 requested quantities computed and numerically verified.
+
+#### Geodesic equations of the plane in polar coordinates
+
+- **Coordinates:** `r, \theta`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  r^2`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Geodesic equations:** $\ddot{r} = r \dot{\theta}^{2}$
+- **Geodesic equations:** $\ddot{\theta} = - \frac{2 \dot{r} \dot{\theta}}{r}$
+- **Check:** geodesics: 2 independent numeric checks passed; symbolic proof proved
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, theta.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### An unspecified function in the metric
+
+- **Coordinates:** `t, r, \theta, \phi`
+- **Metric row 1:** `-f(r),  0,  0,  0`
+- **Metric row 2:** `0,  1/f(r),  0,  0`
+- **Metric row 3:** `0,  0,  r^2,  0`
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Functions:** `f(r)`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Ricci scalar R:** $\frac{- r^{2} f''\left(r\right) - 4 r f'\left(r\right) - 2 f\left(r\right) + 2}{r^{2}}$
+- **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $\sin{\left(\theta \right)} \neq 0$, $f\left(r\right) \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: r: positive.
+- Assumes: f(r) is an unspecified real function.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### The covariant derivative of the radial vector field
+
+- **Coordinates:** `r, \theta`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  r^2`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Covariant derivative of the tensor:** $\nabla T_{\theta}{}^{\theta} = \frac{1}{r}$
+- **Check:** covariant_derivative: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, theta.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### A degenerate metric is declined
+
+- **Coordinates:** `x, y`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  0`
+- **Status:** `unsupported`
+- Assumes: coordinates are real: x, y.
+- The metric is degenerate (its determinant is identically zero), so it has no inverse and no Levi-Civita connection.
+
+#### An undeclared function is refused instead of being read as a product
+
+- **Coordinates:** `r`
+- **Metric row 1:** `f(r)`
+- **Status:** `parse_error`
+- f(…) is ambiguous: declare f as a function, or write f\cdot(…) for a product
+
+#### A metric that is not symmetric is declined
+
+- **Coordinates:** `x, y`
+- **Metric row 1:** `1,  x`
+- **Metric row 2:** `0,  1`
+- **Status:** `parse_error`
+- The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
+
 ### Substituting relations
 
 *Available in:* workbench, chat, HTTP API.
@@ -677,6 +1111,91 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - energy function: not conserved (L depends explicitly on time)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
 
+### Find the conserved quantities of a system
+
+*Available in:* workbench, chat, HTTP API.
+
+Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva derives the equations of motion (confirmed by numerical differentiation), then searches a deterministic ladder of larger and larger families of candidates: polynomials in the velocities or momenta times powers of the coordinates, cos and sin of angles (declared, detected, or cyclic) and powers of t. In each family the conservation condition is solved exactly; a candidate is shown only if it is verified on the equations of motion, and products of what is already known are not counted as discoveries. It then reports which constants are functionally independent (an exact Jacobian rank, with the algebraic relations that tie the rest to them) and exactly which families were and were not searched. You do not choose an ansatz, a power bound or the angles.
+
+**Limits**
+
+- Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.
+- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported. At most 3 coordinates.
+- Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
+- Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.
+- Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.
+- A name such as Runge–Lenz is a recognition the model may offer afterwards; the search never uses it.
+
+#### Kepler problem, from the Lagrangian alone
+
+- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **C1, momentum conjugate to theta:** $C1 = m r^{2} \dot{\theta}$
+- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$
+- **C3, newly found:** $C3 = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
+- **C4, newly found:** $C4 = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
+- **Exact relation:** $2 C_{1}^{2} C_{2} - C_{3}^{2} m - C_{4}^{2} m + k^{2} m = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)
+- No angle, power bound or invariant is given. The search expands until both components of the Laplace–Runge–Lenz vector appear, and reports that, with the energy and angular momentum, only three of the four are functionally independent, with the exact relation between them.
+
+#### The same system as a Hamiltonian
+
+- **Hamiltonian:** `\frac{p_r^2}{2m} + \frac{p_\theta^2}{2 m r^2} - \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **C1, momentum conjugate to theta:** $C1 = p_{\theta}$
+- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{p_{r}^{2}}{2 m} + \frac{p_{\theta}^{2}}{2 m r^{2}}$
+- **C3, newly found:** $C3 = - k m \sin{\left(\theta \right)} - p_{r} p_{\theta} \cos{\left(\theta \right)} + \frac{p_{\theta}^{2} \sin{\left(\theta \right)}}{r}$
+- **C4, newly found:** $C4 = - k m \cos{\left(\theta \right)} + p_{r} p_{\theta} \sin{\left(\theta \right)} + \frac{p_{\theta}^{2} \cos{\left(\theta \right)}}{r}$
+- **Exact relation:** $2 C_{1}^{2} C_{2} m - C_{3}^{2} - C_{4}^{2} + k^{2} m^{2} = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)
+
+#### A resonant oscillator has an extra invariant
+
+- **Hamiltonian:** `\frac{p_1^2 + q_1^2}{2} + \frac{p_2^2 + 4 q_2^2}{2}`
+- **Coordinates:** q_1, q_2
+- **Status:** `ok`
+- **C1, energy function:** $C1 = \frac{p_{1}^{2}}{2} + \frac{p_{2}^{2}}{2} + \frac{q_{1}^{2}}{2} + 2 q_{2}^{2}$
+- **C2, newly found:** $C2 = p_{1}^{2} + q_{1}^{2}$
+- **C3, newly found:** $C3 = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}$
+- **C4, newly found:** $C4 = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}$
+- **Exact relation:** $- 2 C_{1} C_{2}^{2} + C_{2}^{3} + 4 C_{3}^{2} + C_{4}^{2} = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
+- With frequencies in the ratio 1 : 2 a constant of degree 3 in the momenta appears; the search reaches it by raising the degree by itself.
+
+#### Hénon–Heiles, none within the explored families
+
+- **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3`
+- **Coordinates:** x, y
+- **Status:** `ok`
+- **C1, energy function:** $C1 = x^{2} y + \frac{x^{2}}{2} + \frac{\dot{x}^{2}}{2} - \frac{y^{3}}{3} + \frac{y^{2}}{2} + \frac{\dot{y}^{2}}{2}$
+- **Result:** no additional constant within the explored families
+- Functionally independent: 1 (proved).
+- 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
+- Only the energy is known; nothing else is found. This says nothing about families that were not searched.
+
+#### A square root is refused
+
+- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2 + y^2}}`
+- **Coordinates:** x, y
+- **Status:** `unsupported`
+- The equations of motion are not rational in the coordinates, the velocities or momenta and the cos and sin of the angles (square roots and the like are not searched).
+
 ### Search for hidden constants of motion
 
 *Available in:* chat.
@@ -876,7 +1395,7 @@ Attach a photo or screenshot of an equation in the chat. A vision model you host
 Not implemented. Listed so that nobody mistakes them for features.
 
 - **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
-- **SageManifolds integration** (Mathematics): Differential geometry on explicit manifolds, as an optional backend.
+- **Abstract manifolds (SageManifolds)** (Mathematics): Charts, atlases and abstract manifolds as an optional out-of-process backend; coordinate-based geometry is available today.
 - **Integrals and limits** (Mathematics): In the workbench, with the same verification discipline as derivatives. Taylor series are available.
 - **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
 - **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.

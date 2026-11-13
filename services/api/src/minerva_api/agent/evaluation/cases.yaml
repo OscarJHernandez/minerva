@@ -1,0 +1,948 @@
+# Benchmark cases for the chat agent (see cases.py for the schema and docs/observability.md for use).
+#
+# Expected outcomes come from hand-written expectations (engine tests, handbook benchmark) or from
+# textbook mathematics, never from what an agent produced. `reference` is a correct call for the prompt;
+# the test suite runs it against the real engine and requires it to meet `expect_card`.
+# Each case's `source` says where the expectation comes from.
+#
+# Editing this file changes the case-set digest recorded in every report: reports with different
+# digests are not directly comparable.
+
+# ----------------------------------------------------------------------------- symbolic
+- id: simplify-rational
+  category: symbolic
+  prompt: 'Simplify $\frac{x^2-1}{x-1}$'
+  expected_tool: simplify
+  max_unchecked: 0
+  expect_card: {status: ok, result_text: "x + 1"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^2-1}{x-1}'}}
+  source: "engine test_simplify.py"
+
+- id: simplify-trig
+  category: symbolic
+  prompt: 'Simplify $\sin^2 x + \cos^2 x$'
+  expected_tool: simplify
+  also_ok: [find_identities]
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: simplify, arguments: {latex: '\sin^2 x + \cos^2 x'}}
+  source: "engine test_simplify.py"
+
+- id: sqrt-no-assumptions
+  category: symbolic
+  prompt: 'Simplify $\sqrt{x^2}$'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: simplify, arguments: {latex: '\sqrt{x^2}'}}
+  reply_matches: 'unchanged|no simpler|assum|real|positive|non-?negative'
+  wrong_formulas: ['\sqrt{x^2} = x', '\sqrt{x^2} = \left|x\right|', '\sqrt{x^2} = |x|']
+  source: "AGENTS.md (symbols are complex unless declared) and engine test_simplify.py"
+
+- id: sqrt-positive
+  category: symbolic
+  prompt: 'x is positive. Simplify $\sqrt{x^2}$'
+  expected_tool: simplify
+  args: {assumes: {x: positive}}
+  # With x positive the reader already folds sqrt(x^2) to x, so the engine reports "unchanged".
+  expect_card: {status: unchanged, result_text: "x"}
+  reference: {tool: simplify, arguments: {latex: '\sqrt{x^2}', assumptions: {x: [positive]}}}
+  source: "textbook (the square root of a square of a positive number)"
+
+- id: hyperbolic
+  category: symbolic
+  prompt: 'Is $\cosh^2 x - \sinh^2 x$ equal to 1?'
+  expected_tool: simplify
+  also_ok: [find_identities, search_handbook]
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: simplify, arguments: {latex: '\cosh^2 x - \sinh^2 x'}}
+  source: "engine test_simplify.py"
+
+- id: factor-fourth-powers
+  category: symbolic
+  prompt: 'Factor $x^4 - y^4$.'
+  expected_tool: simplify
+  args: {equals: {goal: factor}}
+  expect_card: {status: ok, result_text: "(x - y)*(x + y)*(x**2 + y**2)"}
+  reference: {tool: simplify, arguments: {latex: 'x^4 - y^4', goal: factor}}
+  source: "handbook benchmark transform_cases.yaml (factor_fourth_powers)"
+
+- id: expand-binomial
+  category: symbolic
+  prompt: 'Expand $(x+1)^3$.'
+  expected_tool: simplify
+  args: {equals: {goal: expand}}
+  expect_card: {status: ok, result_text: "x**3 + 3*x**2 + 3*x + 1"}
+  reference: {tool: simplify, arguments: {latex: '(x+1)^3', goal: expand}}
+  source: "binomial theorem"
+
+- id: solve-reducible
+  category: symbolic
+  prompt: 'Solve $x^3 + x^2 + x + 1 = 0$.'
+  expected_tool: solve_polynomial
+  max_unchecked: 3
+  expect_card: {status: ok}
+  reference: {tool: solve_polynomial, arguments: {equation: 'x^3+x^2+x+1=0'}}
+  source: "engine test_solve.py (roots -1, i, -i)"
+
+- id: solve-quintic
+  category: symbolic
+  prompt: 'Solve $x^5 - x - 1 = 0$. Is there a closed formula for the roots?'
+  expected_tool: solve_polynomial
+  reply_matches: 'radical|closed|formula|Galois|Abel|numeric'
+  expect_card: {status: ok}
+  reference: {tool: solve_polynomial, arguments: {equation: 'x^5-x-1=0'}}
+  source: "engine test_solve.py (quintic has no radical solution)"
+
+# ----------------------------------------------------------------------------- multistep
+- id: chain-pyth-tan
+  category: multistep
+  prompt: 'Simplify $\sin^2 x + \cos^2 x + \tan^2 x$ and tell me which handbook identities you used.'
+  expected_tool: simplify
+  reply_matches: 'trig\.|pythagorean|tangent and secant|sec'
+  expect_card: {status: ok, result_text: "sec(x)**2"}
+  reference: {tool: simplify, arguments: {latex: '\sin^2 x + \cos^2 x + \tan^2 x'}}
+  source: "handbook benchmark transform_cases.yaml (pyth_then_tan_secant)"
+
+- id: chain-hyperbolic-trig
+  category: multistep
+  prompt: 'Simplify $\cosh^2 x - \sinh^2 x + \sin^2 t + \cos^2 t$.'
+  expected_tool: simplify
+  expect_card: {status: ok, result_text: "2"}
+  reference: {tool: simplify, arguments: {latex: '\cosh^2 x - \sinh^2 x + \sin^2 t + \cos^2 t'}}
+  source: "handbook benchmark transform_cases.yaml (hyperbolic_then_trig)"
+
+- id: integrate-then-check
+  category: multistep
+  prompt: 'Find an antiderivative of $x \cos x$ and then differentiate it to check.'
+  expected_tool: integrate
+  sequence: [integrate, differentiate]
+  max_calls: 2
+  expect_card: {status: ok, result_text: "x*sin(x) + cos(x)"}
+  reference: {tool: integrate, arguments: {latex: 'x \cos x', variable: x}}
+  source: "engine test_integrate.py"
+
+- id: differentiate-then-series
+  category: multistep
+  prompt: 'Differentiate $x^3 \sin x$ with respect to x, then give the Taylor series of that derivative about 0 up to order 3.'
+  expected_tool: differentiate
+  sequence: [differentiate, series]
+  max_calls: 2
+  expect_card: {status: ok, result_text: "x**2*(x*cos(x) + 3*sin(x))"}
+  reference: {tool: differentiate, arguments: {latex: 'x^3 \sin x', variables: [{name: x}]}}
+  source: "product rule"
+
+- id: simplify-then-differentiate
+  category: multistep
+  prompt: 'Simplify $\frac{x^2-1}{x-1}$ and then differentiate the result with respect to x.'
+  expected_tool: simplify
+  sequence: [simplify, differentiate]
+  max_calls: 2
+  expect_card: {status: ok, result_text: "x + 1"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^2-1}{x-1}'}}
+  source: "engine test_simplify.py"
+
+- id: definite-by-tool
+  category: multistep
+  prompt: 'Compute $\int_0^1 x e^{x}\,dx$.'
+  expected_tool: integrate
+  args: {present: [lower, upper]}
+  max_unchecked: 0
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: integrate, arguments: {latex: 'x \exp(x)', variable: x, lower: '0', upper: '1'}}
+  source: "integration by parts, [(x-1)e^x] from 0 to 1 equals 1"
+
+- id: lagrangian-then-numbers
+  category: multistep
+  prompt: 'Find the equations of motion of $\frac12 m\dot{x}^2 - \frac12 k x^2$ and then integrate them numerically.'
+  expected_tool: analyze_lagrangian
+  forbid: [integrate_motion]
+  reply_matches: '\?|which|what|value|initial|choose|provide|give'
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m\dot{x}^2 - \frac12 k x^2', coordinates: [x]}
+  source: "AGENTS.md (integrate_motion needs numbers only the user may choose)"
+
+- id: expand-pendulum
+  category: multistep
+  prompt: 'Expand the equations of motion of the pendulum Lagrangian $\frac12 m l^2\dot{\theta}^2 + m g l \cos\theta$ about the bottom position theta = 0 to third order.'
+  expected_tool: expand_motion
+  also_ok: [analyze_lagrangian]
+  args: {includes: {coordinates: [theta]}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: expand_motion
+    arguments:
+      lagrangian: '\frac12 m l^2\dot{\theta}^2 + m g l \cos\theta'
+      coordinates: [theta]
+      equilibrium: {theta: '0'}
+      order: 3
+  source: "engine test_expansion.py (pendulum)"
+
+# ----------------------------------------------------------------------------- calculus
+- id: differentiate-first
+  category: calculus
+  prompt: 'What is the derivative of $x^x$ with respect to x?'
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x}]}}
+  max_unchecked: 0
+  expect_card: {status: ok, result_text: "x**x*(log(x) + 1)"}
+  reference: {tool: differentiate, arguments: {latex: 'x^x', variables: [{name: x}]}}
+  source: "engine test_differentiate.py"
+
+- id: differentiate-second
+  category: calculus
+  prompt: 'Differentiate $\sin x \, e^{x}$ twice with respect to x.'
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x, order: 2}]}}
+  expect_card: {status: ok, result_text: "2*exp(x)*cos(x)"}
+  reference: {tool: differentiate, arguments: {latex: '\sin x \exp(x)', variables: [{name: x, order: 2}]}}
+  source: "engine test_differentiate.py (derivatives of sin(x) exp(x))"
+
+- id: differentiate-mixed
+  category: calculus
+  prompt: 'Find the mixed partial derivative of $x^2 y^3$, first in x and then in y.'
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x}, {name: y}]}}
+  expect_card: {status: ok, result_text: "6*x*y**2"}
+  reference: {tool: differentiate, arguments: {latex: 'x^2 y^3', variables: [{name: x}, {name: y}]}}
+  source: "engine test_differentiate.py (mixed partial)"
+
+- id: differentiate-product
+  category: calculus
+  prompt: 'Differentiate $x^3 \sin x$.'
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x}]}}
+  max_unchecked: 1
+  expect_card: {status: ok, result_text: "x**2*(x*cos(x) + 3*sin(x))"}
+  reference: {tool: differentiate, arguments: {latex: 'x^3 \sin x', variables: [{name: x}]}}
+  source: "product rule (this case used to demand a refusal; differentiate now handles it)"
+
+- id: integrate-indefinite
+  category: calculus
+  prompt: 'Find an antiderivative of $x \cos x$.'
+  expected_tool: integrate
+  args: {equals: {variable: x}}
+  max_unchecked: 0
+  expect_card: {status: ok, result_text: "x*sin(x) + cos(x)"}
+  reference: {tool: integrate, arguments: {latex: 'x \cos x', variable: x}}
+  source: "engine test_integrate.py"
+
+- id: integrate-definite
+  category: calculus
+  prompt: 'Compute $\int_0^\pi \sin x \, dx$.'
+  expected_tool: integrate
+  args: {present: [lower, upper]}
+  max_unchecked: 0
+  expect_card: {status: ok, result_text: "2"}
+  reference: {tool: integrate, arguments: {latex: '\sin x', variable: x, lower: '0', upper: '\pi'}}
+  source: "engine test_integrate.py (sin from 0 to pi)"
+
+- id: integrate-gaussian
+  category: calculus
+  prompt: 'Find an antiderivative of $e^{-x^2}$.'
+  expected_tool: integrate
+  expect_card: {status: ok, result_text: "sqrt(pi)*erf(x)/2"}
+  reference: {tool: integrate, arguments: {latex: '\exp(-x^2)', variable: x}}
+  source: "engine test_integrate.py"
+
+- id: integrate-log
+  category: calculus
+  prompt: 'Compute $\int_0^1 \ln x \, dx$.'
+  expected_tool: integrate
+  args: {present: [lower, upper]}
+  expect_card: {status: ok, result_text: "-1"}
+  reference: {tool: integrate, arguments: {latex: '\log x', variable: x, lower: '0', upper: '1'}}
+  source: "engine test_integrate.py (log from 0 to 1)"
+
+- id: integrate-improper
+  category: calculus
+  prompt: 'Compute $\int_0^\infty e^{-x}\,dx$.'
+  expected_tool: integrate
+  args: {present: [lower, upper]}
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: integrate, arguments: {latex: '\exp(-x)', variable: x, lower: '0', upper: 'oo'}}
+  source: "engine test_integrate.py (exp(-x) from 0 to infinity)"
+
+- id: series-tan
+  category: calculus
+  prompt: 'Expand $\tan x$ in a Taylor series about 0 up to order 5.'
+  expected_tool: series
+  args: {equals: {variable: x}}
+  expect_card: {status: ok, result_text: "x + x**3/3 + 2*x**5/15"}
+  reference: {tool: series, arguments: {latex: '\tan x', variable: x, point: '0', order: 5}}
+  source: "engine test_series.py"
+
+- id: integrate-needs-assumptions
+  category: calculus
+  prompt: 'Compute $\int_0^\infty e^{-a x}\,dx$ with respect to x.'
+  expected_tool: integrate
+  args: {absent: [assumptions]}
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: integrate, arguments: {latex: '\exp(-a x)', variable: x, lower: '0', upper: 'oo'}}
+  reply_matches: 'positive|assum|condition|Re'
+  source: "AGENTS.md (convergence conditions are never assumed) and engine test_integrate.py"
+
+# ----------------------------------------------------------------------------- retrieval
+- id: handbook-gaussian
+  category: retrieval
+  prompt: 'What is the formula for the Gaussian integral?'
+  expected_tool: search_handbook
+  also_ok: [get_entry]
+  expect_card: {status: ok}
+  reference: {tool: search_handbook, arguments: {query: Gaussian integral}}
+  source: "handbook entry int.gaussian"
+
+- id: handbook-euler
+  category: retrieval
+  prompt: 'State Euler''s formula and where it is valid.'
+  expected_tool: search_handbook
+  also_ok: [get_entry]
+  expect_card: {status: ok}
+  reference: {tool: search_handbook, arguments: {query: Euler formula exponential cosine sine}}
+  source: "handbook"
+
+- id: handbook-constant
+  category: retrieval
+  prompt: 'What is the exact value of the Planck constant?'
+  expected_tool: search_handbook
+  also_ok: [get_entry]
+  expect_card: {status: ok}
+  reference: {tool: search_handbook, arguments: {query: Planck constant}}
+  source: "handbook constants"
+
+- id: handbook-by-id
+  category: retrieval
+  prompt: 'Show me handbook entry trig.pythagorean.'
+  expected_tool: get_entry
+  args: {equals: {id: trig.pythagorean}}
+  expect_card: {status: ok}
+  reference: {tool: get_entry, arguments: {id: trig.pythagorean}}
+  source: "handbook entry trig.pythagorean"
+
+- id: identities-with-assumptions
+  category: retrieval
+  prompt: 'Which identities apply to $\log(xy)$ if x and y are positive?'
+  expected_tool: find_identities
+  args: {assumes: {x: positive, y: positive}}
+  expect_card: {status: ok}
+  reference:
+    tool: find_identities
+    arguments: {latex: '\log(xy)', assumptions: {x: [positive], y: [positive]}}
+  source: "handbook entry log.product (needs positive factors)"
+
+- id: identities-blocked
+  category: retrieval
+  prompt: 'Can I split $\log(xy)$ into $\log x + \log y$?'
+  expected_tool: find_identities
+  also_ok: [simplify, search_handbook]
+  reply_matches: 'positive|condition|assum|only if|not (always|generally)'
+  wrong_formulas: ['\log(xy) = \log x + \log y', '\log(x y) = \log(x) + \log(y)']
+  source: "AGENTS.md (log(ab) = log a + log b needs a, b > 0)"
+
+- id: identity-compound-argument
+  category: retrieval
+  prompt: 'Which identities apply to $\sin^2(2t)+\cos^2(2t)$?'
+  expected_tool: find_identities
+  also_ok: [simplify]
+  expect_card: {status: ok}
+  reference: {tool: find_identities, arguments: {latex: '\sin^2(2t)+\cos^2(2t)'}}
+  source: "handbook entry trig.pythagorean"
+
+- id: identity-gamma-ratio
+  category: retrieval
+  prompt: 'Simplify $\Gamma(x+1)/\Gamma(x)$.'
+  expected_tool: simplify
+  also_ok: [find_identities]
+  expect_card: {status: ok, result_text: "x"}
+  reference: {tool: simplify, arguments: {latex: '\Gamma(x+1)/\Gamma(x)'}}
+  source: "handbook benchmark transform_cases.yaml (gamma_ratio)"
+
+- id: identity-tan-secant
+  category: retrieval
+  prompt: 'Which identity relates $\tan^2 x$ and $\sec^2 x$?'
+  expected_tool: find_identities
+  also_ok: [search_handbook, simplify]
+  expect_card: {status: ok}
+  reference: {tool: find_identities, arguments: {latex: '1 + \tan^2 x'}}
+  source: "handbook entry trig.tan_secant"
+
+# ----------------------------------------------------------------------------- tensor_matrix
+- id: tensor-contraction
+  category: tensor_matrix
+  prompt: 'S has two symmetric indices and A two antisymmetric ones. Is $S_{ab}A^{ab}$ zero?'
+  expected_tool: tensor_canonicalize
+  reply_matches: '\b(zero|0|vanish)'
+  expect_card: {status: ok}
+  reference:
+    tool: tensor_canonicalize
+    arguments:
+      expression: 'S(a,b)*A(-a,-b)'
+      tensors: {S: {rank: 2, symmetry: symmetric}, A: {rank: 2, symmetry: antisymmetric}}
+  source: "engine test_tensor.py (symmetric x antisymmetric contraction vanishes)"
+
+- id: tensor-riemann-pair-symmetry
+  category: tensor_matrix
+  prompt: 'R is a Riemann tensor. Simplify $R_{abcd} - R_{cdab}$.'
+  expected_tool: tensor_canonicalize
+  reply_matches: '\b(zero|0|vanish)'
+  expect_card: {status: ok}
+  reference:
+    tool: tensor_canonicalize
+    arguments:
+      expression: 'R(-a,-b,-c,-d) - R(-c,-d,-a,-b)'
+      tensors: {R: {rank: 4, symmetry: riemann}}
+  source: "engine test_tensor.py (pair symmetry of the Riemann tensor)"
+
+- id: matrix-merge-needs-commutation
+  category: tensor_matrix
+  prompt: 'Simplify $\exp(A)\exp(B)$ for two 2x2 matrices A and B.'
+  expected_tool: matrix_calculus
+  args: {absent: [commuting]}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '\exp(A)\exp(B)'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: simplify
+  reply_matches: 'commut'
+  wrong_formulas: ['\exp(A)\exp(B) = \exp(A + B)', '\exp(A)\exp(B) = \exp(A+B)']
+  source: "engine test_matrix_calculus.py (undeclared commutation is refused)"
+
+- id: matrix-commuting-declared
+  category: tensor_matrix
+  prompt: 'A and B are 2x2 matrices and they commute. Simplify $\exp(A)\exp(B)$.'
+  expected_tool: matrix_calculus
+  args: {includes: {commuting: [[A, B]]}}
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '\exp(A)\exp(B)'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: simplify
+      commuting: [[A, B]]
+  source: "engine test_matrix_calculus.py (declared commutation merges the exponentials)"
+
+- id: matrix-integral-not-evaluated
+  category: tensor_matrix
+  prompt: 'Integrate $\exp(tP)\exp(tQ)$ in t from 0 to 1, where P and Q are 2x2 matrices.'
+  expected_tool: matrix_calculus
+  args: {equals: {action: integrate}, absent: [invertible]}
+  reply_matches: 'not evaluated|equation|representation|commut|cannot|unsupported|blocked'
+  source: "AGENTS.md (a Sylvester equation is never presented as an evaluated integral)"
+
+- id: matrix-frechet-not-rewritten
+  category: tensor_matrix
+  prompt: 'Differentiate $\exp(t^2 A + t B)$ in t, where A and B are 2x2 matrices.'
+  expected_tool: matrix_calculus
+  args: {equals: {action: differentiate}, absent: [commuting]}
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '\exp(t^2 A + t B)'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: differentiate
+      variable: t
+  reply_matches: 'integral|representation|commut'
+  wrong_formulas: ['\frac{d}{dt}\exp(t^2 A + t B) = (2tA + B)\exp(t^2 A + t B)']
+  source: "engine test_matrix_frechet.py (X' exp(X) is wrong when X and X' do not commute)"
+
+- id: matrix-evolution-asks-for-the-span
+  category: tensor_matrix
+  prompt: 'Solve dU/dt = A(t) U with U(0) = I for the 2x2 matrix A(t) = [[0, t], [-1, 0]].'
+  expected_tool: ask
+  reply_matches: 'end|until|span|how long|up to|which time|what time'
+  source: "AGENTS.md (the end of a numerical span is a number only the user may choose)"
+
+# ----------------------------------------------------------------------------- physics
+- id: lagrangian-kepler
+  category: physics
+  prompt: 'Find the equations of motion and the conserved quantities of the Lagrangian $\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}$ in the coordinates r and theta.'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [r, theta]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}', coordinates: [r, theta]}
+  source: "engine test_lagrangian.py (Kepler in polar coordinates)"
+
+- id: motion-values-given
+  category: physics
+  prompt: 'Integrate the motion of the Lagrangian $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically with m = 1, k = 4, starting at x = 1 with zero velocity, from t = 0 to t = 10.'
+  expected_tool: integrate_motion
+  args:
+    equals: {parameters: {m: 1, k: 4}, initial_positions: [1], t_end: 10}
+  expect_card: {status: ok}
+  reference:
+    tool: integrate_motion
+    arguments:
+      lagrangian: '\frac12 m\dot{x}^2 - \frac12 k x^2'
+      coordinates: [x]
+      parameters: {m: 1, k: 4}
+      initial_positions: [1]
+      initial_velocities: [0]
+      t_end: 10
+  source: "AGENTS.md (the numbers are the user's) and engine test_motion.py"
+
+- id: motion-values-missing
+  category: physics
+  prompt: 'Solve the equations of motion of $\frac12 m\dot{x}^2 - \frac12 k x^2$ numerically.'
+  expected_tool: ask
+  forbid: [integrate_motion]
+  reply_matches: '\?|which|what|value|initial|choose|provide|give'
+  source: "AGENTS.md (integrate_motion needs numbers only the user may choose)"
+
+- id: perturbation-duffing
+  category: physics
+  prompt: 'Find the frequency correction of the anharmonic oscillator $\frac12\dot{x}^2 - \frac12 x^2 - \frac14 b x^4$ to second order in the small parameter b.'
+  expected_tool: perturbation_solve
+  args: {equals: {small_parameter: b}}
+  expect_card: {status: ok}
+  reference:
+    tool: perturbation_solve
+    arguments:
+      lagrangian: '\frac12\dot{x}^2 - \frac12 x^2 - \frac14 b x^4'
+      coordinates: [x]
+      small_parameter: b
+      order: 2
+  source: "engine test_perturbation.py (Duffing frequency)"
+
+- id: dimensional-pendulum
+  category: physics
+  prompt: 'A pendulum has length L (metres), mass m (kg) and swings in gravity g (m/s^2). Which dimensionless groups does its period T (seconds) depend on?'
+  expected_tool: dimensional_analysis
+  args: {equals: {unknown: T}}
+  expect_card: {status: ok}
+  reference:
+    tool: dimensional_analysis
+    arguments:
+      quantities: [{name: L, unit: m}, {name: m, unit: kg}, {name: g, unit: 'm/s^2'}, {name: T, unit: s}]
+      unknown: T
+  source: "engine test_dimensional.py (pendulum: the mass cannot enter)"
+
+- id: dimensional-missing
+  category: physics
+  prompt: 'I know a mass m in kg and want an energy E in joules. Can I get E from m using units alone?'
+  expected_tool: dimensional_analysis
+  reply_matches: 'missing|velocity|speed|m/s|c\b|constant'
+  expect_card: {status: ok}
+  reference:
+    tool: dimensional_analysis
+    arguments:
+      quantities: [{name: m, unit: kg}, {name: W, unit: J}]
+      unknown: W
+  source: "engine test_dimensional.py (energy from mass is missing a velocity squared)"
+
+- id: units-check
+  category: physics
+  prompt: 'Are the units consistent in $W = m v$ if W is in joules, m in kg and v in m/s?'
+  expected_tool: check_units
+  reply_matches: 'not|inconsist|differ|missing|1/s|s\^?-1'
+  expect_card: {status: ok}
+  reference:
+    tool: check_units
+    arguments:
+      equation: 'W = m v'
+      quantities: [{name: W, unit: J}, {name: m, unit: kg}, {name: v, unit: 'm/s'}]
+  source: "dimensional analysis (kg m/s is a momentum, not an energy)"
+
+- id: assumptions-carried
+  category: physics
+  prompt: 'k and m are positive. Simplify $\sqrt{\frac{k}{m}}\sqrt{\frac{m}{k}}$.'
+  expected_tool: simplify
+  args: {assumes: {k: positive, m: positive}}
+  # With k and m positive the reader already folds the product to 1, so the engine reports "unchanged".
+  expect_card: {status: unchanged, result_text: "1"}
+  reference:
+    tool: simplify
+    arguments:
+      latex: '\sqrt{\frac{k}{m}}\sqrt{\frac{m}{k}}'
+      assumptions: {k: [positive], m: [positive]}
+  source: "textbook (product of square roots of positive numbers)"
+
+- id: assumptions-not-invented
+  category: physics
+  prompt: 'Simplify $\sqrt{\frac{k}{m}}\sqrt{\frac{m}{k}}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  reply_matches: 'unchanged|assum|positive|condition|real'
+  source: "AGENTS.md (the model never decides assumptions)"
+
+# ----------------------------------------------------------------------------- ambiguous
+- id: ask-when-ambiguous
+  category: ambiguous
+  prompt: 'Help me with my integral.'
+  expected_tool: none
+  reply_matches: '\?'
+  source: "system prompt rule 5 (ask when the problem is ambiguous)"
+
+- id: ambiguous-simplify
+  category: ambiguous
+  prompt: 'Simplify it.'
+  expected_tool: none
+  reply_matches: '\?'
+  source: "system prompt rule 5"
+
+- id: ambiguous-variable
+  category: ambiguous
+  prompt: 'Differentiate $a x + b y$.'
+  expected_tool: ask
+  forbid: [differentiate]
+  reply_matches: '\?|which variable|with respect to'
+  source: "the variable of differentiation is essential information"
+
+- id: ambiguous-numerical-pendulum
+  category: ambiguous
+  prompt: 'Simulate a pendulum for me.'
+  expected_tool: ask
+  forbid: [integrate_motion]
+  reply_matches: '\?|which|what|value|length|initial|choose|provide|give'
+  source: "AGENTS.md (integrate_motion needs numbers only the user may choose)"
+
+- id: ambiguous-matrix-sizes
+  category: ambiguous
+  prompt: 'Simplify $\exp(A)\exp(B)$ where A and B are matrices.'
+  expected_tool: ask
+  forbid: [matrix_calculus]
+  reply_matches: '\?|size|dimension|rows|commut'
+  source: "tool description of matrix_calculus (ask the user for sizes; never invent them)"
+
+- id: chitchat
+  category: ambiguous
+  prompt: 'Thanks, that is all.'
+  expected_tool: none
+  source: "no computation is requested"
+
+# ----------------------------------------------------------------------------- controlled steps
+- id: substitute-names-the-premise
+  category: multistep
+  prompt: 'Using $y^2 = 1 - x^2$, substitute into $x^2 + y^2$.'
+  expected_tool: substitute
+  forbid: [simplify]
+  args: {present: [relations]}
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: substitute, arguments: {latex: 'x^2 + y^2', relations: ['y^2 = 1 - x^2']}}
+  reply_matches: 'given|assum|premise|your relation|if '
+  source: "engine test_substitute.py (the result holds given the user's relation)"
+
+- id: isolate-reports-the-condition
+  category: symbolic
+  prompt: 'Solve $a x + b = c$ for $x$.'
+  expected_tool: isolate_variable
+  expect_card: {status: ok}
+  reference: {tool: isolate_variable, arguments: {equation: 'a x + b = c', variable: 'x'}}
+  reply_matches: 'a\s*(\\neq|!=|≠|not equal)|nonzero|non-zero|a\s*=\s*0'
+  source: "engine test_isolate.py (a must not be zero; a = 0 degenerates)"
+
+- id: isolate-gives-both-roots
+  category: physics
+  prompt: 'Solve $s = u t + \frac{1}{2} a t^2$ for $t$.'
+  expected_tool: isolate_variable
+  expect_card: {status: ok}
+  reference: {tool: isolate_variable, arguments: {equation: 's = u t + \frac{1}{2} a t^2', variable: 't'}}
+  reply_matches: '\\pm|both|two|second|-\s*u\s*-'
+  source: "engine test_isolate.py (a quadratic has two roots)"
+
+- id: isolate-unsupported-is-not-answered
+  category: unsupported
+  prompt: 'Solve $\sin x = a$ for $x$.'
+  expected_tool: isolate_variable
+  expect_card: {status: unsupported}
+  reference: {tool: isolate_variable, arguments: {equation: '\sin x = a', variable: 'x'}}
+  reply_matches: 'not supported|unsupported|cannot|can.t|could not|no solution'
+  source: "engine test_isolate.py (periodic inverses are unsupported; no partial answer)"
+
+- id: rewrite-part-asks-which-occurrence
+  category: ambiguous
+  prompt: 'In $\sin(2x) + y \sin(2x)$ apply the double angle formula to the part $\sin(2x)$.'
+  expected_tool: rewrite_part
+  expect_card: {status: parse_error}
+  reference: {tool: rewrite_part, arguments: {latex: '\sin(2x) + y \sin(2x)', action: rule, rule_id: trig.double_sin, part: '\sin(2x)'}}
+  reply_matches: 'which|occurrence|first|second|both|\?'
+  informational: true
+  source: "engine test_steps.py (a part that occurs twice needs an occurrence)"
+
+# ----------------------------------------------------------------------------- unsupported
+- id: unsupported-derivative-abs
+  category: unsupported
+  prompt: 'Differentiate $|z|$ with respect to the complex variable z.'
+  expected_tool: differentiate
+  expect_card: {status: unsupported}
+  reference: {tool: differentiate, arguments: {latex: '|z|', variables: [{name: z}]}}
+  reply_matches: 'no (complex )?derivative|not (complex[- ])?(differentiable|analytic|holomorphic)|unsupported|cannot|can.t|real'
+  wrong_formulas: ['\frac{d}{dz}|z| = \frac{z}{|z|}', '\frac{d}{dz}\left|z\right| = \frac{z}{\left|z\right|}']
+  source: "AGENTS.md (a derivative with no complex derivative is unsupported, never a formula)"
+
+- id: unsupported-no-closed-form
+  category: unsupported
+  prompt: 'Find an antiderivative of $e^{x^x}$.'
+  expected_tool: integrate
+  expect_card: {status: unsupported}
+  reference: {tool: integrate, arguments: {latex: '\exp(x^x)', variable: x}}
+  reply_matches: 'closed|unsupported|cannot|can.t|not (able|found|supported)|no antiderivative was found'
+  reply_forbids: 'does not exist|has no (closed|elementary)|impossible|cannot be (expressed|written)'
+  source: "AGENTS.md (no closed form found is never a claim that none exists)"
+
+- id: unsupported-series-pole
+  category: unsupported
+  prompt: 'Give the Taylor series of $1/x$ about 0 up to order 4.'
+  expected_tool: series
+  expect_card: {status: unsupported}
+  reference: {tool: series, arguments: {latex: '1/x', variable: x, point: '0', order: 4}}
+  reply_matches: 'pole|singular|laurent|unsupported|cannot|can.t|not (defined|supported)|infinite'
+  source: "engine test_series.py (poles are unsupported; no Laurent fallback)"
+
+- id: unsupported-transcendental
+  category: unsupported
+  prompt: 'Solve $\sin x = x$.'
+  expected_tool: solve_polynomial
+  expect_card: {status: unsupported}
+  reference: {tool: solve_polynomial, arguments: {equation: '\sin x = x'}}
+  reply_matches: 'polynomial|unsupported|cannot|can.t|not (supported|able)|transcendental'
+  source: "engine test_solve.py (only polynomial equations)"
+
+- id: unsupported-magnus
+  category: unsupported
+  prompt: 'Give me the Magnus expansion of the time-ordered exponential of a matrix A(t).'
+  expected_tool: matrix_calculus
+  tools_optional: true
+  reply_matches: 'unsupported|cannot|can.t|not (supported|available|able)|no tool'
+  max_unchecked: 2
+  source: "AGENTS.md (no Duhamel integral, time-ordered exponential or Magnus term)"
+
+- id: unsupported-quantum
+  category: unsupported
+  prompt: 'Solve the Schrodinger equation for the hydrogen atom and give the energy levels.'
+  expected_tool: search_handbook
+  tools_optional: true
+  reply_matches: 'cannot|can.t|no tool|not (supported|available|able)|handbook|do not have|don.t have'
+  max_unchecked: 2
+  source: "no tool solves partial differential equations; the model must say so"
+
+# ----------------------------------------------------------------------------- false_claim
+- id: false-square
+  category: false_claim
+  prompt: 'Please confirm that $(x+1)^2 = x^2 + 1$.'
+  expected_tool: simplify
+  also_ok: [find_identities]
+  args: {equals: {goal: expand}}
+  max_calls: 2
+  expect_card: {status: ok, result_text: "x**2 + 2*x + 1"}
+  reference: {tool: simplify, arguments: {latex: '(x+1)^2', goal: expand}}
+  reply_matches: 'not|false|incorrect|does not|isn.t|differs|2x|2 x'
+  reply_forbids: 'confirmed|that is correct|yes,? (it|this) (is|holds)'
+  wrong_formulas: ['(x+1)^2 = x^2 + 1']
+  source: "engine test_claims.py ((x+1)^2 = x^2+1 is not an identity)"
+
+- id: false-pythagoras
+  category: false_claim
+  prompt: 'Confirm that $\sin^2 x + \cos^2 x = 2$.'
+  expected_tool: simplify
+  also_ok: [find_identities, search_handbook]
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: simplify, arguments: {latex: '\sin^2 x + \cos^2 x'}}
+  reply_matches: 'not|false|incorrect|does not|isn.t|equals 1|= 1|is 1'
+  reply_forbids: 'confirmed|that is correct'
+  wrong_formulas: ['\sin^2 x + \cos^2 x = 2']
+  source: "engine test_claims.py (sin^2 + cos^2 = 2 is contradicted)"
+
+- id: false-log-sum
+  category: false_claim
+  prompt: 'Confirm that $\log(x+y) = \log x + \log y$.'
+  expected_tool: find_identities
+  also_ok: [simplify, search_handbook]
+  reply_matches: 'not|false|incorrect|does not|isn.t|only|product'
+  reply_forbids: 'confirmed|that is correct'
+  wrong_formulas: ['\log(x+y) = \log x + \log y']
+  source: "textbook (the logarithm of a sum is not the sum of logarithms)"
+
+- id: false-sqrt-square
+  category: false_claim
+  prompt: 'Is $\sqrt{x^2} = x$ for every complex x?'
+  expected_tool: simplify
+  also_ok: [find_identities]
+  reply_matches: 'not|no\b|only|positive|assum|sign|branch|abs'
+  wrong_formulas: ['\sqrt{x^2} = x']
+  source: "AGENTS.md (symbols are complex unless declared; sqrt(x^2) = x needs x >= 0)"
+
+- id: false-divergent-integral
+  category: false_claim
+  prompt: 'Compute $\int_{-1}^{1} x^{-2}\,dx$.'
+  expected_tool: integrate
+  args: {present: [lower, upper]}
+  reply_forbids: '=\s*-\s*2\b|equals\s*-\s*2\b|is\s*-\s*2\b'
+  wrong_formulas: ['\int_{-1}^{1} x^{-2}\,dx = -2']
+  source: "AGENTS.md (definite integrals are verified by quadrature, not by the fundamental theorem)"
+
+- id: false-log-exp
+  category: false_claim
+  prompt: 'Does $\log(\exp(z)) = z$ hold for every complex z?'
+  expected_tool: simplify
+  also_ok: [find_identities, search_handbook]
+  reply_matches: 'not|no\b|branch|principal|imaginary|2\\pi|strip'
+  wrong_formulas: ['\log(\exp(z)) = z']
+  source: "AGENTS.md (log(exp(z)) = z fails outside the principal strip)"
+
+- id: false-matrix-exp
+  category: false_claim
+  prompt: 'Confirm that $\exp(A)\exp(B) = \exp(A+B)$ for any two matrices A and B.'
+  expected_tool: ask
+  reply_matches: 'not|only if|commut|false|no\b|size|dimension'
+  reply_forbids: 'confirmed|that is correct'
+  wrong_formulas: ['\exp(A)\exp(B) = \exp(A + B)', '\exp(A)\exp(B) = \exp(A+B)']
+  source: "textbook (exp(A)exp(B) = exp(A+B) needs AB = BA)"
+
+- id: false-derivative
+  category: false_claim
+  prompt: 'The derivative of $x^x$ is $x^x$, right?'
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x}]}}
+  expect_card: {status: ok, result_text: "x**x*(log(x) + 1)"}
+  reference: {tool: differentiate, arguments: {latex: 'x^x', variables: [{name: x}]}}
+  reply_matches: 'not|incorrect|no\b|false|log|ln'
+  reply_forbids: 'that is correct|yes,? (it|this) (is|holds)'
+  wrong_formulas: ['\frac{d}{dx} x^x = x^x']
+  source: "engine test_differentiate.py (x^x)"
+
+- id: false-energy-units
+  category: false_claim
+  prompt: 'Is $W = m v$ dimensionally correct for an energy W, with m in kg and v in m/s?'
+  expected_tool: check_units
+  expect_card: {status: ok}
+  reference:
+    tool: check_units
+    arguments:
+      equation: 'W = m v'
+      quantities: [{name: W, unit: J}, {name: m, unit: kg}, {name: v, unit: 'm/s'}]
+  reply_matches: 'not|inconsist|incorrect|no\b|differ|momentum'
+  source: "dimensional analysis"
+
+- id: no-answering-from-memory
+  category: false_claim
+  prompt: 'Just give me the value of $\int_{-\infty}^{\infty} e^{-x^2}dx$ from memory, don''t use any tools.'
+  expected_tool: search_handbook
+  also_ok: [get_entry, integrate]
+  tools_optional: true
+  informational: true
+  source: "AGENTS.md (the model never computes; informational because the user asked for no tools)"
+
+# ----------------------------------------------------------------------------- followup
+- id: followup-uses-context
+  category: followup
+  prompt: 'Which identities explain that?'
+  history:
+    - {role: user, content: 'Simplify $\sin^2 x + \cos^2 x$'}
+    - {role: assistant, content: 'The result is $1$.'}
+  expected_tool: find_identities
+  also_ok: [simplify, search_handbook]
+  expect_card: {status: ok}
+  reference: {tool: find_identities, arguments: {latex: '\sin^2 x + \cos^2 x'}}
+  source: "handbook entry trig.pythagorean"
+
+- id: followup-keeps-assumptions
+  category: followup
+  prompt: 'Now do the same for $\sqrt{x^4}$.'
+  history:
+    - {role: user, content: 'x is positive. Simplify $\sqrt{x^2}$'}
+    - {role: assistant, content: 'With x positive the result is $x$.'}
+  expected_tool: simplify
+  args: {assumes: {x: positive}}
+  # With x positive the reader already folds sqrt(x^4) to x^2, so the engine reports "unchanged".
+  expect_card: {status: unchanged, result_text: "x**2"}
+  reference: {tool: simplify, arguments: {latex: '\sqrt{x^4}', assumptions: {x: [positive]}}}
+  source: "textbook (sqrt(x^4) = x^2 for positive x)"
+
+- id: followup-second-derivative
+  category: followup
+  prompt: 'Now the second derivative.'
+  history:
+    - {role: user, content: 'What is the derivative of $x^x$ with respect to x?'}
+    - {role: assistant, content: 'It is $x^x(\log x + 1)$.'}
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x, order: 2}]}}
+  expect_card: {status: ok, result_text: "x**x*((log(x) + 1)**2 + 1/x)"}
+  reference: {tool: differentiate, arguments: {latex: 'x^x', variables: [{name: x, order: 2}]}}
+  source: "calculus (f'' = f ((ln x + 1)^2 + 1/x) for f = x^x)"
+
+- id: followup-check-result
+  category: followup
+  prompt: 'Differentiate that result to check it.'
+  history:
+    - {role: user, content: 'Integrate $x \cos x$.'}
+    - {role: assistant, content: 'An antiderivative is $x\sin x + \cos x$.'}
+  expected_tool: differentiate
+  expect_card: {status: ok, result_text: "x*cos(x)"}
+  reference: {tool: differentiate, arguments: {latex: 'x \sin x + \cos x', variables: [{name: x}]}}
+  source: "calculus (the derivative of an antiderivative is the integrand)"
+
+- id: followup-explain-no-tool
+  category: followup
+  prompt: 'Why does it need an assumption?'
+  history:
+    - {role: user, content: 'Simplify $\sqrt{x^2}$'}
+    - {role: assistant, content: 'Minerva could not simplify it: the result depends on an assumption about x.'}
+  expected_tool: none
+  reply_matches: 'complex|negative|sign|abs|branch|real|positive'
+  max_unchecked: 2
+  source: "an explanation of a result already obtained needs no new computation"
+
+# ----------------------------------------------------------------------------- geometry and distributions
+# Ported from the earlier inline benchmark (informational: they measure the geometry and distribution tools).
+- id: geometry-schwarzschild-ricci
+  category: tensor_matrix
+  prompt: 'For the metric $ds^2 = -(1-2M/r)\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\theta^2 + r^2\sin^2\theta\, d\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Ricci tensor.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [t, r, theta, phi], quantities: [ricci]}}
+  reply_matches: 'zero|vanish|Ricci-flat|0'
+  informational: true
+  source: "general relativity: the Schwarzschild metric is a vacuum solution, so its Ricci tensor vanishes"
+
+- id: geometry-does-not-invent-a-metric
+  category: ambiguous
+  prompt: 'Compute the Christoffel symbols of my metric.'
+  expected_tool: none
+  informational: true
+  source: "AGENTS.md (the model never invents a metric: it asks for the coordinates and every component)"
+
+- id: geometry-follow-up-resends-the-same-metric
+  category: followup
+  prompt: 'Now compute its Ricci scalar.'
+  history:
+    - {role: user, content: 'Christoffel symbols of $ds^2 = a^2 d\theta^2 + a^2\sin^2\theta\, d\phi^2$, a > 0.'}
+    - role: assistant
+      content: ''
+      tool_calls:
+        - id: call_geometry_1
+          name: geometry
+          arguments:
+            coordinates: [theta, phi]
+            metric: [['a^2', '0'], ['0', 'a^2 \sin^2\theta']]
+            assumptions: {a: [positive]}
+            quantities: [christoffel]
+    - {role: tool, tool_call_id: call_geometry_1, name: geometry, content: 'status=ok; dimension=2; the Christoffel symbols were computed and verified.'}
+    - {role: assistant, content: 'The card lists them.'}
+  expected_tool: geometry
+  args: {equals: {coordinates: [theta, phi]}, includes: {quantities: [ricci_scalar]}}
+  informational: true
+  source: "tool description of geometry (the geometry is not remembered: a follow-up resends the same metric)"
+
+- id: delta-integral-uses-the-tool
+  category: calculus
+  prompt: 'Evaluate the integral of $x^2\operatorname{DiracDelta}(x^2-4)$ over the whole real line.'
+  expected_tool: distribution
+  args: {equals: {action: integrate}}
+  informational: true
+  source: "distribution tool: delta integrals go through the engine, never the model"
+
+- id: delta-on-a-limit-asks-for-a-convention
+  category: calculus
+  prompt: 'Integrate $\operatorname{DiracDelta}(x-1)$ from 0 to 1.'
+  expected_tool: distribution
+  args: {absent: [endpoint]}
+  reply_matches: 'convention|half|include|exclude|ambiguous'
+  informational: true
+  source: "AGENTS.md rule 15 (a delta on an integration limit needs a convention that only the user chooses)"

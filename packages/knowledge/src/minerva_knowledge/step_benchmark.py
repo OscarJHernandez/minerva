@@ -41,7 +41,7 @@ from minerva_engine import (
     parse_latex,
     parse_text,
 )
-from minerva_engine.models import Diagnostics
+from minerva_engine.models import StepDiagnostics
 from minerva_engine.verify import _evaluate_ex, _sample, verify_equal
 from pydantic import BaseModel, Field, model_validator
 
@@ -367,7 +367,7 @@ def run_existing(kb: KnowledgeBase, engine: Engine, case: StepCase) -> StepOutco
     return StepOutcome("ok" if texts else first_status, texts)
 
 
-def _effort(outcome: StepOutcome, diagnostics: Diagnostics, steps: int) -> StepOutcome:
+def _effort(outcome: StepOutcome, diagnostics: StepDiagnostics, steps: int) -> StepOutcome:
     outcome.steps = steps
     outcome.candidates = diagnostics.candidates
     outcome.rejected = sum(diagnostics.rejected.values())

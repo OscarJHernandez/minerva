@@ -13,6 +13,7 @@ import {
 import type {
   ApplyIdentityResult,
   DifferentiateResult,
+  DistributionResult,
   HistoryItem,
   IntegrateResult,
   IsolateResult,
@@ -21,6 +22,7 @@ import type {
   StepResult,
 } from "@/lib/types";
 import { DerivativePanel } from "../derivative-panel";
+import { DistributionPanel } from "../distribution-panel";
 import { IntegralPanel } from "../integral-panel";
 import { ResultPanel, StatusPill } from "../result-panel";
 import { SeriesPanel } from "../series-panel";
@@ -53,6 +55,8 @@ function FullResult({ item }: { item: HistoryItem }) {
       return <StepResultPanel result={item.result as unknown as StepResult} />;
     case "isolate":
       return <DiagnosticsView d={(item.result as unknown as IsolateResult).diagnostics} />;
+    case "distribution":
+      return <DistributionPanel result={item.result as unknown as DistributionResult} />;
     case "apply_identity": {
       const r = item.result as unknown as ApplyIdentityResult;
       return (

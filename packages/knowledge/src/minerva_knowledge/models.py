@@ -30,8 +30,12 @@ EntryKind = Literal[
 #   numeric     - checked by numerical evaluation at sample points (integrals, series)
 #   structural  - checked by the tensor canonicalizer
 #   dimensional - dimensional consistency only (physics equations)
+#   distributional - an identity between distributions (Dirac delta, Heaviside): exact conditions plus
+#                    a test-function pairing; pointwise sampling cannot see a delta
 #   stated      - recorded from the literature, NOT machine-checked; never auto-applied
-Verification = Literal["symbolic", "numeric", "structural", "dimensional", "stated"]
+Verification = Literal[
+    "symbolic", "numeric", "structural", "dimensional", "distributional", "stated"
+]
 
 
 class Reference(BaseModel):
@@ -126,6 +130,21 @@ class EquationCheck(BaseModel):
     units: dict[str, str]
 
 
+class DistributionCheck(BaseModel):
+    """One concrete instance of a distribution identity, run through the engine's distribution
+    operation (exact conditions plus a test-function pairing) and compared with ``expected``."""
+
+    kind: Literal["distribution"] = "distribution"
+    action: Literal["simplify", "integrate", "differentiate"]
+    input: str  # text syntax, e.g. DiracDelta(a*x + b)
+    expected: str  # the result written by hand, text syntax
+    variable: str = "x"
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)  # `variable` is added as real
+    lower: str | None = None
+    upper: str | None = None
+    endpoint: Literal["half", "include", "exclude"] | None = None
+
+
 Check = Annotated[
     DerivativeCheck
     | AntiderivativeCheck
@@ -133,7 +152,8 @@ Check = Annotated[
     | SeriesCheck
     | RootFormulaCheck
     | TensorCheck
-    | EquationCheck,
+    | EquationCheck
+    | DistributionCheck,
     Field(discriminator="kind"),
 ]
 
@@ -199,6 +219,7 @@ class Entry(BaseModel):
             ),
             "structural": ("tensor",),
             "dimensional": ("equation",),
+            "distributional": ("distribution",),
         }[v]
         source = "rule" if self.rule is not None else (self.check.kind if self.check else "")
         if source not in expected:

@@ -1,10 +1,12 @@
 import type {
+  DistributionResult,
   HistoryItem,
   DifferentiateResult,
   IdentitiesResult,
   IdentityMatch,
   SeriesResult,
   IntegrateResult,
+  MatrixCalculusResult,
   SimplifyResult,
 } from "@/lib/types";
 
@@ -230,6 +232,139 @@ export function identities(matches: IdentityMatch[]): IdentitiesResult {
   };
 }
 
+export const okMatrixIntegral: MatrixCalculusResult = {
+  status: "ok",
+  action: "integrate",
+  input_latex: "\\exp\\left(w A\\right) \\exp\\left(- w B\\right)",
+  structure:
+    "A single term in the matrices A, B, with 2 matrix exponentials, commutation is not assumed for AB.",
+  features: ["matrix:integrate", "matrix:exp", "matrix:noncommuting"],
+  method: "sylvester_reduction",
+  method_title: "Sylvester equation for the integral",
+  result_kind: "explicit",
+  result_latex:
+    "\\left[\\begin{matrix}-1 + e & -1\\\\0 & \\frac{e^{2}}{2} - \\frac{1}{2}\\end{matrix}\\right]",
+  result_entries: [
+    ["-1 + E", "-1"],
+    ["0", "-1/2 + exp(2)/2"],
+  ],
+  equation_latex: "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+  evaluated: true,
+  assumptions_used: ["the Sylvester operator is invertible", "all matrices are constant in w"],
+  steps: [
+    {
+      method: "sylvester_reduction",
+      title: "Integrate F' = aPF + cFQ over the interval",
+      before_latex: null,
+      after_latex: "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+      note: "a Sylvester equation for X = the integral of F",
+    },
+  ],
+  blocked: [],
+  verification: {
+    method: "adaptive quadrature (mpmath) of the integrand against the solved result",
+    points_checked: 4,
+    points_agreed: 4,
+    passed: true,
+    symbolic_zero: true,
+    symbolic_method: "the explicit result substituted into the Sylvester equation",
+    note: "",
+  },
+  notes: [],
+  message: "Evaluated and verified.",
+  duration_ms: 300,
+  diagnostics: {
+    trace_id: "req0123-card0123",
+    method: "sylvester_reduction",
+    methods_tried: [
+      { id: "integrate_polynomial", outcome: "no_match" },
+      { id: "sylvester_reduction", outcome: "selected" },
+    ],
+    dimensions: [[2, 2]],
+    matrices: 2,
+    explicit: 2,
+    time_dependent: 0,
+    commutation: "not_used",
+    invertibility: "from_entries",
+    stages: [
+      { name: "parse", ms: 3 },
+      { name: "transform", ms: 120 },
+      { name: "verify_numeric", ms: 170 },
+      { name: "verify_exact", ms: 2 },
+      { name: "total", ms: 300 },
+    ],
+    digits: 16,
+    tolerance: 1e-9,
+    max_residual: 2.5e-14,
+    points_checked: 4,
+    points_agreed: 4,
+    verification: "quadrature+residual",
+    fallbacks: [],
+    failure_reason: null,
+  },
+};
+
+export const matrixRepresentation: MatrixCalculusResult = {
+  ...okMatrixIntegral,
+  method: "block_exponential",
+  method_title: "Block-matrix exponential representation",
+  result_kind: "representation",
+  result_latex:
+    "\\left[\\exp\\left(\\begin{pmatrix} -A & I \\\\ 0 & 0 \\end{pmatrix}\\right)\\right]_{12}",
+  result_entries: null,
+  evaluated: false,
+  notes: ["X is an exact representation, but not an evaluated entrywise result"],
+  message: "Written exactly through a block-matrix exponential and verified.",
+};
+
+export const matrixFrechet: MatrixCalculusResult = {
+  ...okMatrixIntegral,
+  action: "differentiate",
+  input_latex: "\\exp\\left(t^{2} A + t B\\right)",
+  method: "exp_frechet_derivative",
+  method_title: "Frechet derivative of the exponential",
+  result_kind: "representation",
+  result_latex:
+    "\\int_0^1 \\exp\\left((1-\\sigma) X\\right) \\left(2 t A + B\\right) \\exp\\left(\\sigma X\\right) d\\sigma",
+  result_entries: null,
+  equation_latex: null,
+  evaluated: false,
+  assumptions_used: ["A, B are constant in t"],
+  blocked: [
+    {
+      method: "exp_derivative",
+      title: "Use d/dt exp(X) = X' exp(X)",
+      needs: "X X' = X' X for the exponent X (not established)",
+      latex: null,
+    },
+  ],
+  notes: ["The integral is an exact representation, not an evaluated matrix."],
+  message: "Written exactly and verified; it is a representation, not an evaluated result.",
+};
+
+export const matrixNumericEvolution: MatrixCalculusResult = {
+  ...okMatrixIntegral,
+  action: "evolve",
+  method: "evolution_numeric",
+  method_title: "Numerical solution of dU/dt = A(t) U",
+  result_kind: "numeric",
+  result_latex: "\\begin{pmatrix} 0.68 & 0.47 \\\\ -0.92 & 0.84 \\end{pmatrix}",
+  result_entries: [
+    ["0.68", "0.47"],
+    ["-0.92", "0.84"],
+  ],
+  equation_latex: null,
+  evaluated: false,
+  notes: ["numerical approximation on [0, 1], double precision"],
+  message: "Computed numerically on the stated span and verified by independent checks.",
+  verification: {
+    ...okMatrixIntegral.verification!,
+    symbolic_zero: null,
+    points_checked: 8,
+    points_agreed: 8,
+  },
+};
+
 export function step(
   id: string,
   operation: HistoryItem["operation"],
@@ -387,3 +522,71 @@ export function subterm(index: number, latex: string, over: Partial<Subterm> = {
     ...over,
   };
 }
+export const okDistributionIntegral: DistributionResult = {
+  status: "ok",
+  action: "integrate",
+  reason: null,
+  input_latex: "x^{2} \\operatorname{DiracDelta}\\left(x^{2} - 4\\right)",
+  variable: "x",
+  lower_latex: "-\\infty",
+  upper_latex: "\\infty",
+  endpoint: null,
+  result_latex: "2",
+  result_text: "2",
+  equality: "value",
+  steps: [
+    {
+      entry_id: "distributions.delta_composite_simple_roots",
+      title: "Delta of a polynomial with simple real roots",
+      before_latex: "x^{2} \\operatorname{DiracDelta}\\left(x^{2} - 4\\right)",
+      after_latex: "\\frac{x^{2}}{4} \\operatorname{DiracDelta}\\left(x - 2\\right)",
+      conditions: [
+        {
+          latex: "g'(2) = 4 \\neq 0",
+          established: true,
+          how: "exact: the slope is nonzero under the declared assumptions, so the root is simple",
+        },
+      ],
+    },
+    {
+      entry_id: "distributions.delta_sifting",
+      title: "Integrating against a delta picks out the value",
+      before_latex: "\\operatorname{DiracDelta}\\left(x - 2\\right)",
+      after_latex: "2",
+      conditions: [
+        { latex: "x = 2", established: true, how: "strictly inside the limits: contributes fully" },
+      ],
+    },
+  ],
+  blocked: [],
+  verification: {
+    method: "pairing with test functions",
+    test_functions: ["indicator of the integration interval"],
+    pairings_checked: 1,
+    pairings_agreed: 1,
+    parameter_samples: 1,
+    widths: [0.02, 0.01, 0.005],
+    convergence_observed: true,
+    conditions_established: true,
+    passed: true,
+    note: "equal as distributions on every test function tried",
+  },
+  diagnostics: {
+    reason: null,
+    events: [
+      { stage: "parsed", status: "ok", duration_ms: 1.2, reason: null },
+      { stage: "completed", status: "ok", duration_ms: 0.1, reason: null },
+    ],
+  },
+  notes: [],
+  message: "Integrated with handbook identities under conditions that were established exactly.",
+  duration_ms: 88,
+};
+
+export const okDistributionSimplify: DistributionResult = {
+  ...okDistributionIntegral,
+  action: "simplify",
+  result_latex: "\\frac{1}{2} \\operatorname{DiracDelta}\\left(x - 3\\right)",
+  result_text: "DiracDelta(x - 3)/2",
+  equality: "distributional",
+};

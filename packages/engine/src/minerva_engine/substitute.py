@@ -29,16 +29,16 @@ from typing import Any
 import sympy as sp
 
 from .claims import split_equation
-from .errors import MinervaMathError, ParseError, UnsupportedError
+from .errors import MinervaMathError, ParseError, UnsupportedInput
 from .latexprint import to_latex
 from .models import (
-    Diagnostics,
     ExpressionInput,
     Limits,
     Premise,
     Reason,
     Status,
     Step,
+    StepDiagnostics,
     StepResult,
     Verification,
 )
@@ -70,12 +70,12 @@ def read_relation(
         raise ParseError("write each relation as `left = right` (one equals sign)")
     left, right = (_read_part_with(side, data, limits, denominators) for side in sides)
     if left.is_Number and right.is_Number:
-        raise UnsupportedError("a relation between numbers only cannot be used to substitute")
+        raise UnsupportedInput("a relation between numbers only cannot be used to substitute")
     # The side with symbols is replaced; `2 = x` reads as "replace x by 2".
     pattern, replacement = (right, left) if left.is_Number else (left, right)
     difference = sp.expand(left - right)
     if difference.is_Number and difference != 0:
-        raise UnsupportedError("this relation can never hold, so nothing follows from it")
+        raise UnsupportedInput("this relation can never hold, so nothing follows from it")
     return Relation(pattern, replacement)
 
 
@@ -176,7 +176,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
     data = ExpressionInput(**payload["expression"])
     texts = [str(t) for t in payload.get("relations", [])]
     order_mode = payload.get("order")
-    diag = Diagnostics(collect_detail=bool(payload.get("debug")))
+    diag = StepDiagnostics(collect_detail=bool(payload.get("debug")))
     denominators: list[sp.Expr] = []
 
     def finish(result: StepResult) -> dict[str, Any]:
@@ -382,7 +382,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _verify_back(
-    before: sp.Expr, marked: sp.Expr, back: dict[sp.Dummy, sp.Expr], diag: Diagnostics
+    before: sp.Expr, marked: sp.Expr, back: dict[sp.Dummy, sp.Expr], diag: StepDiagnostics
 ) -> Verification:
     verification = _verify(before, marked.xreplace(back), diag)
     diag.verification_method = "congruence"
