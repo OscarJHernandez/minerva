@@ -51,9 +51,27 @@ api:
   llm: { mode: ollama, baseUrl: "http://<host>:<port>", model: minerva }
 ```
 
-`mode` is `off` or `ollama`; the chart refuses `ollama` without `baseUrl` and `model`, and refuses `scripted`
+`mode` is the default provider: `off`, `ollama` or `openrouter`; the chart refuses `ollama` without `baseUrl` and `model`, and refuses `scripted`
 (development only). Optional: `timeoutSeconds`, `think`, `stripThinking`. See `deploy/ollama/README.md` for a
 dedicated Ollama instance. The endpoint has no authentication: expose it only on a trusted network.
+
+### OpenRouter
+
+Optional cloud models next to Ollama. The API key is never a chart value: create a separate Secret and reference it.
+
+```bash
+kubectl -n minerva create secret generic minerva-openrouter --from-literal=api-key=...   # never commit
+```
+
+```yaml
+api:
+  llm:
+    openrouter: { byok: true, existingSecret: minerva-openrouter, keyUsers: "you@example.org", model: openai/gpt-4.1-mini }
+```
+
+`byok` lets users paste their own key in the chat; `existingSecret` + `keyUsers` allow an operator key for the
+listed accounts. The deploy workflow's pre-flight step checks that a referenced Secret exists before rolling out.
+Step by step, with checks and rollback: [../docs/openrouter-setup.md](../docs/openrouter-setup.md).
 
 ## Notes
 

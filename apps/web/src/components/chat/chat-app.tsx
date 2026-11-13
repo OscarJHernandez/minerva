@@ -20,7 +20,10 @@ import type {
   ToolRun,
 } from "@/lib/chat-types";
 import { CardView } from "./card-view";
+import { modelSettings, providerChoice } from "@/lib/model-settings";
 import { Composer } from "./composer";
+import { ModelPicker } from "./model-picker";
+import { ModelSettingsPanel } from "./model-settings-panel";
 import { CopyButton } from "./debug-panel";
 import { ConversationList } from "./conversation-list";
 import { MessageView } from "./message-view";
@@ -78,6 +81,8 @@ export function ChatApp() {
   const [listOpen, setListOpen] = useState(false);
   const [debugOn, setDebugOn] = useDebugMode();
   const [lastError, setLastError] = useState<LastError | null>(null);
+  const [modelOpen, setModelOpen] = useState(false);
+  const cloudConfirmed = useRef<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -142,6 +147,19 @@ export function ChatApp() {
     }
   }
 
+  /** Moving a conversation that already has turns to the cloud needs one explicit yes. */
+  function confirmCloud(): boolean {
+    const choice = providerChoice(modelSettings.get());
+    if (choice?.kind !== "openrouter" || !activeId || messages.length === 0) return true;
+    if (cloudConfirmed.current.has(activeId)) return true;
+    const ok = window.confirm(
+      "Send this conversation to OpenRouter? Its earlier messages and Minerva's tool results " +
+        "will be transmitted to OpenRouter and the model's provider. Your local model keeps nothing of it.",
+    );
+    if (ok) cloudConfirmed.current.add(activeId);
+    return ok;
+  }
+
   async function send(text: string) {
     setError(null);
     setLastError(null);
@@ -200,6 +218,7 @@ export function ChatApp() {
           }
         },
         controller.signal,
+        providerChoice(modelSettings.get()),
       );
       await refreshList();
     } catch (e) {
@@ -344,6 +363,21 @@ export function ChatApp() {
             <Composer
               disabled={!status}
               imagesEnabled={status?.images === true}
+              beforeSend={confirmCloud}
+              toolbar={
+                status?.providers ? (
+                  <ModelPicker
+                    status={status}
+                    open={modelOpen}
+                    onToggle={() => setModelOpen((o) => !o)}
+                  />
+                ) : null
+              }
+              panel={
+                modelOpen && status ? (
+                  <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
+                ) : null
+              }
               busy={busy}
               onSend={send}
               onStop={() => abortRef.current?.abort()}

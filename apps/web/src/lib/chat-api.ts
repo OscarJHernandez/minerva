@@ -1,6 +1,8 @@
 import { ApiError, extractDetail } from "./api";
 import type {
   ChatStatus,
+  ConnectionResult,
+  ProviderChoice,
   ConversationSummary,
   ExtractedFormula,
   MotionRequest,
@@ -40,6 +42,12 @@ export const chatApi = {
       method: "POST",
       body: JSON.stringify(request),
     }),
+  /** Checks a key and model without a paid completion. The key is sent once and not stored. */
+  testOpenRouter: (apiKey: string | undefined, model: string) =>
+    json<ConnectionResult>("/v1/chat/providers/openrouter/test", {
+      method: "POST",
+      body: JSON.stringify({ api_key: apiKey || undefined, model }),
+    }),
   remove: (id: string) => json<void>(`/v1/chat/conversations/${id}`, { method: "DELETE" }),
 };
 
@@ -62,12 +70,13 @@ export async function sendMessage(
   content: string,
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
+  provider?: ProviderChoice,
 ): Promise<void> {
   const response = await fetch(`/api/v1/chat/conversations/${conversationId}/messages`, {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(provider ? { content, provider } : { content }),
     signal,
   });
   if (!response.ok || !response.body) {

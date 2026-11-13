@@ -29,6 +29,13 @@ ALLOWED_FIELDS = frozenset(
         "steps",
         "tool_calls",
         "tool_errors",
+        "provider",
+        "model",
+        "first_token_ms",
+        "prompt_tokens",
+        "completion_tokens",
+        "cost_usd",
+        "error_kind",
         "logger",
     }
 )

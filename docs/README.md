@@ -3,6 +3,7 @@
 | Document | What it is for |
 | --- | --- |
 | [capabilities.md](capabilities.md) | What Minerva can do today, with examples run through the real engine (generated from [capabilities.yaml](capabilities.yaml)) |
+| [openrouter-setup.md](openrouter-setup.md) | Use OpenRouter cloud models: in-app personal key, or a deployment-wide default on Kubernetes |
 | [self-hosting.md](self-hosting.md) | Build the Docker images, run your own instance, connect your own Ollama model |
 | [architecture.md](architecture.md) | How the engine, handbook, API, agent and web app fit together |
 | [roadmap.md](roadmap.md) | What is planned, in order |

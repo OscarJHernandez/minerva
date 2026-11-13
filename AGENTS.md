@@ -26,7 +26,7 @@ packages/ui/          Shared theme tokens and the KaTeX <Math> component
 packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
-  agent/              LLM client (Ollama), tool registry, agent loop, formula marking, scripted test model
+  agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
 deploy/               Dockerfiles and Helm chart. No secrets, no hostnames
 docs/                 architecture, licensing, roadmap, security/publication notes
 .agents/skills/       Project skills, shared by all agents (.claude/skills is a symlink to it)
@@ -73,6 +73,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - The model only calls tools (`agent/tools.py`); tools are pure, sandboxed and side-effect free. A tool returns a
   `Card` (rendered by the UI from the tool's own output) and a compact `for_model` text. Add new capabilities as tools,
   never as free-form model output.
+- Providers (`agent/llm.py`, `agent/openrouter.py`, `providers.py`): Ollama (the operator's host) and OpenRouter (fixed
+  URL, never user-supplied). History is provider-neutral (`tool_calls` with ids, `tool_call_id`) and each client converts it.
+  A user's OpenRouter key exists only in the request that uses it: never store, log, trace or echo it, and keep it out of
+  error text. A cloud turn needs `cloud_consent`; BYOK is off unless `MINERVA_OPENROUTER_BYOK`; the operator key is for
+  listed emails only, with a daily cap. Never fall back from one provider to another. The key lives in a separate
+  Kubernetes Secret, never in Helm values (the chart refuses `apiKey`). Guide: `docs/openrouter-setup.md`.
 - After each turn, formulas in the model's prose are compared with formulas present in this conversation's tool results;
   anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
