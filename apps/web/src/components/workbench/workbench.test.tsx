@@ -229,4 +229,19 @@ describe("Workbench derivation", () => {
     expect(screen.queryByRole("button", { name: "Apply as next step" })).not.toBeInTheDocument();
     expect(screen.getByText(/Search again/)).toBeInTheDocument();
   });
+
+  it("switches to the geometry mode without leaving the page, hiding the expression tools", async () => {
+    render(<Workbench />);
+    expect(screen.getByLabelText("Mathematical expression")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Geometry" }));
+    expect(screen.getByRole("button", { name: "Geometry" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(await screen.findByLabelText("Metric component 1,1")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Mathematical expression")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Identities" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expression" }));
+    expect(screen.getByLabelText("Mathematical expression")).toBeInTheDocument();
+  });
 });

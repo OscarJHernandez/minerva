@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StoredMessage } from "./chat-types";
+import { sphere, sphereRequest } from "../test/geometry-fixtures";
 import {
   JSON_END,
   JSON_START,
@@ -172,5 +173,67 @@ describe("buildTurnReport", () => {
     const out = buildTurnReport({ title: "t", status: null, now: NOW }, [user, assistant], 1);
     expect(out).toContain("### 1. User");
     expect(out).toContain("### 2. Assistant");
+  });
+
+  it("summarises a geometry card by quantity and stage, without the metric", () => {
+    const slow = {
+      ...sphere,
+      diagnostics: [
+        {
+          stage: "riemann",
+          duration_ms: 4100,
+          ops: 2300,
+          components: 36,
+          status: "ok" as const,
+          failure: null,
+        },
+        {
+          stage: "einstein",
+          duration_ms: 0,
+          ops: null,
+          components: null,
+          status: "failed" as const,
+          failure: "resource_limit",
+        },
+      ],
+    };
+    const message: StoredMessage = {
+      id: "g1",
+      role: "assistant",
+      created_at: "2026-01-02T03:00:05Z",
+      content: {
+        text: "",
+        truncated: false,
+        trace: [
+          {
+            id: "c1",
+            name: "geometry",
+            arguments: { ...sphereRequest },
+            for_model: "status=ok",
+            duration_ms: 4200,
+            status: "ok",
+          },
+        ],
+        blocks: [
+          {
+            kind: "card",
+            segments: [],
+            card: {
+              id: "c1",
+              tool: "geometry",
+              type: "geometry",
+              title: "g",
+              data: { result: slow, request: sphereRequest },
+            },
+          },
+        ],
+      },
+    };
+    const report = buildDebugReport({ title: "t", messages: [message], status: null, now: NOW });
+    expect(report).toContain("- card: geometry");
+    expect(report).toContain("- quantity ricci_scalar: ok (checks n:true s:true)");
+    expect(report).toContain("- stage riemann: 4100 ms, 2300 ops, ok");
+    expect(report).toContain("- stage einstein: 0 ms, resource_limit");
+    expect(report).toContain("signature: not determined; restrictions: 1");
   });
 });

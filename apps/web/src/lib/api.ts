@@ -9,6 +9,8 @@ import type {
   IntegrateResult,
   IdentitiesResult,
   MatrixCalculusResult,
+  GeometryRequest,
+  GeometryResult,
   MatrixRequest,
   SeriesResult,
   SimplifyGoal,
@@ -103,6 +105,11 @@ export const api = {
     request<MatrixCalculusResult>("/v1/compute/matrix", {
       method: "POST",
       body: JSON.stringify({ ...c, ...req, format: "latex" }),
+    }),
+  geometry: (req: GeometryRequest, link?: { derivation_id?: string; save?: boolean }) =>
+    request<GeometryResult>("/v1/compute/geometry", {
+      method: "POST",
+      body: JSON.stringify({ ...req, format: "latex", ...link }),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {
