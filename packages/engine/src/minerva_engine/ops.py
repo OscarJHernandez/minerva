@@ -176,6 +176,17 @@ def op_series(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_geometry(payload: dict[str, Any]) -> dict[str, Any]:
+    from .geometry import MAX_DIMENSION, GeometryInput, geometry
+
+    result = geometry(
+        GeometryInput(**payload["input"]),
+        Limits(**payload["limits"]),
+        max_dimension=int(payload.get("max_dimension", MAX_DIMENSION)),
+    )
+    return result.model_dump(mode="json")
+
+
 # --- integrate -------------------------------------------------------------------------
 def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
     from .matrix import MatrixCalculusInput, matrix_calculus
@@ -676,6 +687,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "series": op_series,
     "integrate": op_integrate,
     "matrix_calculus": op_matrix_calculus,
+    "geometry": op_geometry,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
     "perturbation_solve": op_perturbation_solve,
