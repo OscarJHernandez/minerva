@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl
+from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl, Pins
 from minerva_engine.matrix.models import MAX_MATRICES, Action
 from pydantic import BaseModel, EmailStr, Field
 
@@ -137,3 +137,23 @@ class EntryOut(BaseModel):
     notes: str
     applicable_as_rule: bool
     conditions: list[dict[str, str]]
+
+
+class ConservedRequest(BaseModel):
+    """Find the conserved quantities of a Lagrangian or Hamiltonian (the workbench panel)."""
+
+    function: str = Field(min_length=1, max_length=2000)
+    system: Literal["lagrangian", "hamiltonian"] = "lagrangian"
+    coordinates: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
+        min_length=1, max_length=3
+    )
+    momenta: list[Annotated[str, Field(min_length=1, max_length=32)]] | None = Field(
+        default=None, max_length=3
+    )
+    angles: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
+        default_factory=list, max_length=3
+    )
+    budget: Literal["quick", "standard", "thorough"] = "standard"
+    pins: Pins | None = None
+    time: str = Field(default="t", min_length=1, max_length=16)
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)

@@ -10,4 +10,5 @@ services
 .github
 deploy
 apps/site/src/data
+packages/engine/tests/bench/fixtures/
 docs/benchmarks

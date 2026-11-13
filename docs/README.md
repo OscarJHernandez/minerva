@@ -9,6 +9,8 @@
 | [roadmap.md](roadmap.md) | What is planned, in order |
 | [observability.md](observability.md) | Traces, structured events, debug reports, replay, the agent benchmark, troubleshooting and what is never logged |
 | [model-evaluation.md](model-evaluation.md) | How candidate language models score on tool calling and honesty |
+| [conserved-quantities.md](conserved-quantities.md) | How conserved quantities are discovered, what is and is not established, and the generated-Hamiltonian benchmarks |
+| [invariant-benchmark.md](invariant-benchmark.md) | Adaptive against fixed-parameter search on generated Hamiltonians (generated) |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
 | [geometry-benchmark.md](geometry-benchmark.md) | Differential geometry: correctness against closed forms and `sympy.diffgeom`, latency, expression growth and memory (generated; data in [benchmarks/geometry.json](benchmarks/geometry.json)) |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |

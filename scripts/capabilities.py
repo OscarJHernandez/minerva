@@ -362,6 +362,71 @@ def run_invariants(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+def run_discovery(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    system = spec.get("system", "lagrangian")
+    r = engine.discover_invariants(
+        spec["input"],
+        spec["coordinates"],
+        system,
+        spec.get("momenta"),
+        spec.get("angles", []),
+        spec.get("budget", "standard"),
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        for c in r.constants:
+            outputs.append(
+                {
+                    "label": f"{c.id}, " + ("newly found" if c.kind == "new" else c.name.lower()),
+                    "latex": c.expression_latex,
+                }
+            )
+            if c.kind == "new" and c.verification:
+                v = c.verification
+                checks.append(
+                    "time derivative is zero on the equations of motion "
+                    f"({'symbolic zero' if v.symbolic_zero else 'numeric only'}; "
+                    f"{v.numeric_points_agreed} of {v.numeric_points_checked} points)"
+                )
+        if not r.new_constants:
+            outputs.append(
+                {"label": "Result", "text": "no additional constant within the explored families"}
+            )
+        ind = r.independence
+        if ind is not None and ind.constants:
+            notes.append(
+                f"Functionally independent: {ind.rank_lower}"
+                + (
+                    " (proved)."
+                    if ind.rank_proved
+                    else f" to {ind.rank_upper} (lower bound proved)."
+                )
+            )
+            for rel in ind.relations:
+                outputs.append({"label": "Exact relation", "latex": rel.latex})
+        searched = [t for t in r.tiers if t.outcome == "searched"]
+        if searched:
+            notes.append(
+                f"{len(searched)} families searched, from {searched[0].code} to {searched[-1].code} "
+                "(d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, "
+                "c: powers of a cyclic coordinate)."
+            )
+        if r.unexplored:
+            notes.append("Not searched: " + r.unexplored[0])
+    elif r.message:
+        notes.append(r.message)
+    inputs = [
+        {
+            "label": "Hamiltonian" if system == "hamiltonian" else "Lagrangian",
+            "source": spec["input"],
+        },
+        {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
+    ]
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 def run_entry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     entry = kb.get(spec["entry"])
     if entry is None:
@@ -573,6 +638,7 @@ RUNNERS = {
     "solve": run_solve,
     "lagrangian": run_lagrangian,
     "invariants": run_invariants,
+    "discovery": run_discovery,
     "entry": run_entry,
     "read_formulas": run_read_formulas,
 }

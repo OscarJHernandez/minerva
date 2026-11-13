@@ -305,6 +305,25 @@ def op_search_invariants(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+def op_discover_invariants(payload: dict[str, Any]) -> dict[str, Any]:
+    from .discovery import Pins, discover_invariants
+
+    pins = payload.get("pins")
+    report = discover_invariants(
+        str(payload.get("system", "lagrangian")),
+        str(payload["function"]),
+        [str(c) for c in payload["coordinates"]],
+        [str(m) for m in payload["momenta"]] if payload.get("momenta") else None,
+        [str(a) for a in payload.get("angles", [])],
+        str(payload.get("budget", "standard")),
+        Pins(**pins) if pins else None,
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        Limits(**payload["limits"]),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- dimensional analysis ------------------------------------------------------------------
 def op_dimensional_analysis(payload: dict[str, Any]) -> dict[str, Any]:
     from .pi_groups import ConstantCandidate, QuantitySpec, analyze_dimensions
@@ -723,6 +742,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "expand_motion": op_expand_motion,
     "perturbation_solve": op_perturbation_solve,
     "search_invariants": op_search_invariants,
+    "discover_invariants": op_discover_invariants,
     "integrate_motion": op_integrate_motion,
     "dimensional_analysis": op_dimensional_analysis,
     "check_units": op_check_units,

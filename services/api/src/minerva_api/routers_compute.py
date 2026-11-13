@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from minerva_engine import (
     Applicability,
     DifferentiateResult,
+    DiscoveryReport,
     DistributionInput,
     DistributionResult,
     ExpressionInput,
@@ -41,6 +42,7 @@ from .geometry_log import log_geometry
 from .logging import get_logger
 from .schemas import (
     ApplyIdentityRequest,
+    ConservedRequest,
     DifferentiateRequest,
     DistributionRequest,
     GeometryRequest,
@@ -52,6 +54,7 @@ from .schemas import (
     SeriesRequest,
     SimplifyRequest,
 )
+from .search_log import log_search_events
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -316,6 +319,38 @@ def matrix_calculus(
         saved["request"] = request.model_dump(mode="json", exclude={"expression"})
         out.calculation_id = _save(db, user, "matrix_calculus", body, result.status.value, saved)
     return out
+
+
+@router.post("/conserved", response_model=DiscoveryReport)
+def conserved_quantities(
+    body: ConservedRequest,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> DiscoveryReport:
+    """Adaptive search for conserved quantities. Not saved as a workbench step: the report is returned."""
+    _guard(user, limiter, settings, len(body.function))
+    report = engine.discover_invariants(
+        body.function,
+        body.coordinates,
+        body.system,
+        body.momenta,
+        body.angles,
+        body.budget,
+        body.pins,
+        body.time,
+        body.assumptions,
+    )
+    log_search_events(report.events)
+    log.info(
+        "compute",
+        operation="discover_invariants",
+        status=report.status.value,
+        duration_ms=report.duration_ms,
+        user_id=str(user.id),
+    )
+    return report
 
 
 def _geometry_length(body: GeometryRequest) -> int:

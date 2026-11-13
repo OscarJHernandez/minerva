@@ -18,8 +18,9 @@ Ordering favours correctness infrastructure before breadth.
 2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
    `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial
    conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
-   The search for hidden constants of motion (`search_invariants`) covers rational, autonomous systems; next:
-   square roots (Cartesian Kepler), time-dependent ansätze and symmetries up to a total derivative.
+   The adaptive search for conserved quantities (`discover_invariants`) covers rational Lagrangians and Hamiltonians,
+   with powers of t; next: square roots (Cartesian Kepler, as an adjoined algebraic element), Killing-tensor
+   structure labels, nonlinear canonical maps in the benchmark generator and symmetries up to a total derivative.
 3. **More operations in the workspace:** integrals, limits, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
    Antiderivatives and definite integrals are done (`integrate`: candidate from SymPy; antiderivatives are

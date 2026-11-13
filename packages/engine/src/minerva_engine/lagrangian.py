@@ -223,13 +223,10 @@ class ConservedSearch:
     features: list[str] = field(default_factory=list)
 
 
-def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
-    """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
-    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
-    if not d.solution:
-        return False, None
-    derivative = d.total_derivative(quantity).subs(d.solution)
-    symbolic_zero = sp.simplify(derivative) == 0
+def verify_zero_derivative(derivative: sp.Expr) -> tuple[bool, Verification]:
+    """Is the time derivative of a candidate constant zero on the motion? Checked symbolically (exact
+    cancellation first, then `simplify`) and at random numerical points; the numeric check decides `passed`."""
+    symbolic_zero = sp.cancel(sp.together(derivative)) == 0 or sp.simplify(derivative) == 0
     checked, agreed = numeric_check(derivative, sp.Integer(0))
     passed = checked >= 4 and agreed == checked
     verification = Verification(
@@ -240,6 +237,14 @@ def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verificatio
         note="d/dt of the quantity, evaluated on the equations of motion, is zero",
     )
     return bool(passed), verification
+
+
+def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
+    """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
+    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
+    if not d.solution:
+        return False, None
+    return verify_zero_derivative(d.total_derivative(quantity).subs(d.solution))
 
 
 def find_conserved(d: Derivation) -> ConservedSearch:

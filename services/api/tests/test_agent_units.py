@@ -247,6 +247,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "expand_motion",
         "perturbation_solve",
         "search_invariants",
+        "find_conserved_quantities",
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
@@ -422,6 +423,74 @@ def test_invariants_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None
     assert too_many.card.type == "error"
     bad_degree = execute("search_invariants", {**KEPLER_ARGS, "degree": 3}, ctx)
     assert bad_degree.card.type == "error"
+
+
+def test_discovery_tool_finds_the_kepler_constants_from_the_lagrangian_alone(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {"lagrangian": KEPLER_ARGS["lagrangian"], "coordinates": ["r", "theta"]},
+        ctx,
+    )
+    assert out.card.type == "discovery" and out.status == "ok"
+    report = out.card.data["report"]
+    assert [c["kind"] for c in report["constants"]].count("new") == 2
+    assert report["independence"]["rank_proved"] and report["independence"]["rank_lower"] == 3
+    assert "algebraic relation (exact)" in out.for_model
+    assert "functionally independent: 3 (proved)" in out.for_model
+    assert all(c["expression_latex"] in out.known_latex for c in report["constants"])
+    assert "searched " in out.for_model and "families" in out.for_model
+
+
+def test_discovery_tool_takes_a_hamiltonian_and_states_the_limits(ctx: ToolContext) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {
+            "hamiltonian": r"\frac{p_x^2+p_y^2}{2m}+\frac{k}{2}(x^2+y^2)",
+            "coordinates": ["x", "y"],
+            "momenta": ["p_x", "p_y"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and out.card.data["report"]["system"] == "hamiltonian"
+    assert "limit: " in out.for_model
+
+
+def test_discovery_tool_never_claims_the_system_has_no_other_constants(ctx: ToolContext) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {
+            "lagrangian": r"\frac12(\dot{x}^2+\dot{y}^2)-\frac12(x^2+y^2)-x^2 y+\frac13 y^3",
+            "coordinates": ["x", "y"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and not [
+        c for c in out.card.data["report"]["constants"] if c["kind"] == "new"
+    ]
+    assert "within the explored families" in out.for_model
+    assert "does not mean the system has none" in out.for_model
+
+
+def test_discovery_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None:
+    cartesian = execute(
+        "find_conserved_quantities",
+        {
+            "lagrangian": r"\frac12 m(\dot{x}^2+\dot{y}^2)+\frac{k}{\sqrt{x^2+y^2}}",
+            "coordinates": ["x", "y"],
+        },
+        ctx,
+    )
+    assert cartesian.status == "unsupported" and cartesian.card.type == "discovery"
+    both = execute(
+        "find_conserved_quantities",
+        {"lagrangian": "x", "hamiltonian": "y", "coordinates": ["x"]},
+        ctx,
+    )
+    assert both.card.type == "error"
+    neither = execute("find_conserved_quantities", {"coordinates": ["x"]}, ctx)
+    assert neither.card.type == "error"
 
 
 OSC_ARGS = {
