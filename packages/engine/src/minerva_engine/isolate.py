@@ -676,7 +676,9 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
     variable = str(payload.get("variable", ""))
-    diag = Diagnostics(assumptions_declared=len(data.assumptions))
+    diag = Diagnostics(
+        assumptions_declared=len(data.assumptions), collect_detail=bool(payload.get("debug"))
+    )
     denominators: list[sp.Expr] = []
     try:
         if not _NAME.match(variable):
@@ -760,6 +762,11 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
         diag.verification_outcome = "passed" if verification.passed and complete else "failed"
         if not (verification.passed and complete):
             diag.reject(Reason.NOT_VERIFIED)
+            for state in states:
+                diag.note(
+                    f"candidate: {x} = {state.h}; conditions: {[c.latex() for c in state.conds]}"
+                )
+            diag.note(f"substituted back: {agreed}/{checked} agreed; completeness: {note}")
             return _finish(
                 IsolateResult(
                     status=Status.NOT_VERIFIED,

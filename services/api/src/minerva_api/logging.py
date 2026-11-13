@@ -30,6 +30,16 @@ ALLOWED_FIELDS = frozenset(
         "tool_calls",
         "tool_errors",
         "logger",
+        # Transformation diagnostics: durations, counts and enum-like codes only, never expressions.
+        "parse_ms",
+        "candidates_ms",
+        "transform_ms",
+        "verify_ms",
+        "candidates",
+        "rejections",
+        "verification_method",
+        "verification_outcome",
+        "restrictions_outcome",
     }
 )
 

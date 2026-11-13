@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     llm_vision_model: str = ""
     image_max_bytes: int = Field(default=4_000_000, ge=10_000, le=20_000_000)
     image_rate_per_minute: int = 6
+    # Local debugging of the transformation operations: the response's diagnostics then also carry the
+    # candidates that were rejected (which may contain expressions). Never logged, never saved,
+    # development only.
+    debug_compute: bool = False
     agent_max_steps: int = Field(default=6, ge=1, le=12)
     agent_max_seconds: float = Field(default=180.0, gt=0, le=900)
     chat_rate_per_minute: int = 20
@@ -69,6 +73,8 @@ class Settings(BaseSettings):
             )
         if self.llm_mode == "scripted" and self.env.lower() != "development":
             raise RuntimeError("the scripted stand-in model is for development only")
+        if self.debug_compute and self.env.lower() != "development":
+            raise RuntimeError("MINERVA_DEBUG_COMPUTE is for development only")
         if self.env.lower() == "development":
             return
         secret = self.session_secret.get_secret_value()

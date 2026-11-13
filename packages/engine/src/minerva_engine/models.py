@@ -308,6 +308,15 @@ class Diagnostics(BaseModel):
     restrictions_outcome: Literal["not_checked", "none", "some", "incomplete"] = "not_checked"
     assumptions_declared: int = 0
     premises: int = 0
+    # Opt-in local debugging only (never set by default): the candidates that were rejected, as text.
+    # `collect_detail` is not part of the model's data; `detail` stays empty unless it was requested.
+    collect_detail: bool = Field(default=False, exclude=True)
+    detail: list[str] = Field(default_factory=list)
+
+    def note(self, text: str) -> None:
+        """Record a line of detail (it may contain expressions) if debugging was asked for."""
+        if self.collect_detail and len(self.detail) < 40:
+            self.detail.append(text[:500])
 
     @contextmanager
     def timed(

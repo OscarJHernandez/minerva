@@ -107,6 +107,7 @@ class Engine:
         find: str | None = None,
         rule: Rule | None = None,
         reverse: bool = False,
+        debug: bool = False,
     ) -> StepResult:
         """The parts of an expression that can be chosen: all, where `find` occurs, or where `rule` matches."""
         payload = {
@@ -114,6 +115,7 @@ class Engine:
             "find": find,
             "rule": rule.model_dump() if rule else None,
             "reverse": reverse,
+            "debug": debug,
         }
         return self._step("subterms", payload, "subterms")
 
@@ -128,6 +130,7 @@ class Engine:
         rule: Rule | None = None,
         reverse: bool = False,
         by: list[str] | None = None,
+        debug: bool = False,
     ) -> StepResult:
         """Apply one move (`rule`, `simplify`, `expand`, `factor`, `cancel`, `collect`) to one part."""
         payload = {
@@ -139,6 +142,7 @@ class Engine:
             "rule": rule.model_dump() if rule else None,
             "reverse": reverse,
             "by": by or [],
+            "debug": debug,
         }
         return self._step("rewrite_at", payload, "rewrite")
 
@@ -148,16 +152,24 @@ class Engine:
         relations: list[str],
         *,
         order: str | None = None,
+        debug: bool = False,
     ) -> StepResult:
         """Replace the left side of each relation `l = r` by its right side, one relation at a time.
 
         The relations are premises (not verified by Minerva). If their order changes the result and
         `order` (`given` or `simultaneous`) is not stated, the request is refused.
         """
-        payload = {"expression": expression.model_dump(), "relations": relations, "order": order}
+        payload = {
+            "expression": expression.model_dump(),
+            "relations": relations,
+            "order": order,
+            "debug": debug,
+        }
         return self._step("substitute", payload, "substitute")
 
-    def isolate(self, equation: ExpressionInput, variable: str) -> IsolateResult:
+    def isolate(
+        self, equation: ExpressionInput, variable: str, *, debug: bool = False
+    ) -> IsolateResult:
         """Solve `lhs = rhs` for one variable, listing every solution and the conditions it needs."""
         outcome, ms = self._run(
             "isolate", {"expression": equation.model_dump(), "variable": variable}

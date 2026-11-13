@@ -239,7 +239,7 @@ def op_subterms(payload: dict[str, Any]) -> dict[str, Any]:
     started = time.monotonic()
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
-    diag = Diagnostics()
+    diag = Diagnostics(collect_detail=bool(payload.get("debug")))
     try:
         expr = read_expression(data, limits, diag)
         deadline = started + 0.7 * limits.timeout_seconds
@@ -428,7 +428,7 @@ def op_rewrite_at(payload: dict[str, Any]) -> dict[str, Any]:
     limits = Limits(**payload["limits"])
     data = ExpressionInput(**payload["expression"])
     action = str(payload["action"])
-    diag = Diagnostics()
+    diag = Diagnostics(collect_detail=bool(payload.get("debug")))
     denominators: list[sp.Expr] = []
 
     def finish(result: StepResult) -> dict[str, Any]:
@@ -508,6 +508,7 @@ def op_rewrite_at(payload: dict[str, Any]) -> dict[str, Any]:
         verification = _verify(expr, result, diag)
         if not verification.passed:
             diag.reject(Reason.NOT_VERIFIED)
+            diag.note(f"candidate that failed verification: {to_latex(result)}")
             return finish(
                 StepResult(
                     status=Status.NOT_VERIFIED,

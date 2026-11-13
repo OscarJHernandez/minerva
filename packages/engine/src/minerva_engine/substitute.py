@@ -176,7 +176,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
     data = ExpressionInput(**payload["expression"])
     texts = [str(t) for t in payload.get("relations", [])]
     order_mode = payload.get("order")
-    diag = Diagnostics()
+    diag = Diagnostics(collect_detail=bool(payload.get("debug")))
     denominators: list[sp.Expr] = []
 
     def finish(result: StepResult) -> dict[str, Any]:
@@ -202,6 +202,12 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
             with diag.timed("candidates_ms"):
                 stated = _sequence(expr, relations, tuple(range(len(relations))))
                 order_dependent = _order_dependent(expr, relations, stated, deadline)
+            if diag.collect_detail and len(relations) > 1:
+                for order in itertools.permutations(range(len(relations))):
+                    diag.note(
+                        f"order {[i + 1 for i in order]}: {_sequence(expr, relations, order)}"
+                    )
+                diag.note(f"all at once: {_simultaneous(expr, relations)}")
             if order_mode is None and order_dependent is not False:
                 reason = Reason.CYCLIC if _feeds(relations) else Reason.ORDER_DEPENDENT
                 if order_dependent is None:
@@ -277,6 +283,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
 
         if failed is not None:
             diag.reject(Reason.NOT_VERIFIED)
+            diag.note(f"verification of a substitution failed: {failed.note}")
             return finish(
                 StepResult(
                     status=Status.NOT_VERIFIED,
