@@ -9,7 +9,12 @@ from fastapi import APIRouter, HTTPException, Request, status
 from minerva_engine import (
     Applicability,
     DifferentiateResult,
+    DiscoveryReport,
+    DistributionInput,
+    DistributionResult,
     ExpressionInput,
+    GeometryInput,
+    GeometryResult,
     IntegrateResult,
     MatrixCalculusInput,
     MatrixCalculusResult,
@@ -32,17 +37,24 @@ from pydantic import BaseModel, Field
 
 from .db import Calculation, Derivation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
+from .diagnostics import log_distribution
+from .geometry_log import log_geometry
 from .logging import get_logger
 from .schemas import (
     ApplyIdentityRequest,
+    ConservedRequest,
     DifferentiateRequest,
+    DistributionRequest,
+    GeometryRequest,
     IdentitiesRequest,
     IntegrateRequest,
     Linked,
+    Links,
     MatrixCalculusRequest,
     SeriesRequest,
     SimplifyRequest,
 )
+from .search_log import log_search_events
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -68,6 +80,14 @@ class MatrixCalculusResponse(MatrixCalculusResult):
     calculation_id: uuid.UUID | None = None
 
 
+class GeometryResponse(GeometryResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class DistributionResponse(DistributionResult):
+    calculation_id: uuid.UUID | None = None
+
+
 class IdentitiesResponse(FindIdentitiesResponse):
     calculation_id: uuid.UUID | None = None
 
@@ -84,7 +104,7 @@ def _expr(body: ExpressionInput) -> ExpressionInput:
     return ExpressionInput(input=body.input, format=body.format, assumptions=body.assumptions)
 
 
-def _check_links(db: DbDep, user: UserDep, body: Linked) -> None:
+def _check_links(db: DbDep, user: UserDep, body: Links) -> None:
     """A step may only join the user's own derivation and continue one of its own steps."""
     if not body.save:
         return
@@ -114,20 +134,36 @@ def _save(
     status_value: str,
     result: dict[str, Any],
 ) -> uuid.UUID:
+    return _save_row(
+        db, user, operation, req.input, req.format, req.assumptions, req, status_value, result
+    )
+
+
+def _save_row(
+    db: DbDep,
+    user: UserDep,
+    operation: str,
+    input_text: str,
+    input_format: str,
+    assumptions: dict[str, Any],
+    links: Links,
+    status_value: str,
+    result: dict[str, Any],
+) -> uuid.UUID:
     row = Calculation(
         user_id=user.id,
         operation=operation,
-        input_text=req.input,
-        input_format=req.format,
-        assumptions=req.assumptions,
+        input_text=input_text,
+        input_format=input_format,
+        assumptions=assumptions,
         status=status_value,
         result=result,
-        derivation_id=req.derivation_id,
-        parent_id=req.parent_id,
+        derivation_id=links.derivation_id,
+        parent_id=links.parent_id,
     )
     db.add(row)
-    if req.derivation_id is not None:
-        derivation = db.get(Derivation, req.derivation_id)
+    if links.derivation_id is not None:
+        derivation = db.get(Derivation, links.derivation_id)
         if derivation is not None:
             derivation.updated_at = utcnow()
     db.commit()
@@ -307,6 +343,121 @@ def matrix_calculus(
             mode="json", exclude={"expression", "trace_id"}
         )
         out.calculation_id = _save(db, user, "matrix_calculus", body, result.status.value, saved)
+    return out
+
+
+@router.post("/conserved", response_model=DiscoveryReport)
+def conserved_quantities(
+    body: ConservedRequest,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> DiscoveryReport:
+    """Adaptive search for conserved quantities. Not saved as a workbench step: the report is returned."""
+    _guard(user, limiter, settings, len(body.function))
+    report = engine.discover_invariants(
+        body.function,
+        body.coordinates,
+        body.system,
+        body.momenta,
+        body.angles,
+        body.budget,
+        body.pins,
+        body.time,
+        body.assumptions,
+    )
+    log_search_events(report.events)
+    log.info(
+        "compute",
+        operation="discover_invariants",
+        status=report.status.value,
+        duration_ms=report.duration_ms,
+        user_id=str(user.id),
+    )
+    return report
+
+
+def _geometry_length(body: GeometryRequest) -> int:
+    cells = [c for row in body.metric for c in row]
+    if body.tensor is not None:
+        cells += body.tensor.components
+    return max((len(c) for c in cells), default=0)
+
+
+@router.post("/geometry", response_model=GeometryResponse)
+def geometry(
+    body: GeometryRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> GeometryResponse:
+    """Metric, connection, curvature, geodesics and tensor operations in explicit coordinates.
+
+    The whole geometry is part of the request, so repeating it with other quantities reuses the same
+    problem. Each quantity is returned only if its independent numerical check passed."""
+    _guard(user, limiter, settings, _geometry_length(body))
+    _check_links(db, user, body)
+    request = GeometryInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result = engine.geometry(request)
+    log.info(
+        "compute",
+        operation="geometry",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    log_geometry(result)
+    out = GeometryResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json")
+        label = f"metric in ({', '.join(request.coordinates)})"
+        out.calculation_id = _save_row(
+            db, user, "geometry", label, request.format, request.assumptions, body,
+            result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+@router.post("/distribution", response_model=DistributionResponse)
+def distribution(
+    body: DistributionRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> DistributionResponse:
+    _guard(user, limiter, settings, len(body.input))
+    _check_links(db, user, body)
+    request = DistributionInput(
+        expression=_expr(body),
+        action=body.action,
+        variable=body.variable,
+        lower=body.lower,
+        upper=body.upper,
+        endpoint=body.endpoint,
+    )
+    result = engine.distribution(request)
+    log.info(
+        "compute",
+        operation="distribution",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        reason=result.reason,
+        user_id=str(user.id),
+    )
+    log_distribution(result, str(user.id))
+    out = DistributionResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # Kept even on failure, so the workbench can restore the form.
+        saved["request"] = request.model_dump(mode="json", exclude={"expression"})
+        out.calculation_id = _save(db, user, "distribution", body, result.status.value, saved)
     return out
 
 

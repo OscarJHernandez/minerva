@@ -54,6 +54,11 @@ reasoning applies: optional backend, separate process, narrow protocol, no distr
 Minerva artifacts without a compliance review. Confirm the exact licence of the SageManifolds components
 you intend to use.
 
+Minerva's own differential geometry (`minerva_engine.geometry`: metrics, connections, curvature, geodesics in
+explicit coordinates) is written on SymPy and mpmath (BSD-3-Clause) and uses neither Sage nor
+SageManifolds, so it adds no copyleft obligation. `sympy.diffgeom` is used only by the benchmark as an
+independent reference.
+
 ## Current dependencies
 
 Collected from installed package metadata (Python) and `pnpm licenses` (production JavaScript).
@@ -64,7 +69,7 @@ Unlicense, PSF-2.0, plus:
 | Package | Licence | Note |
 | --- | --- | --- |
 | `psycopg`, `psycopg-binary` | LGPL-3.0-only | Used unmodified as a library. Compatible with an Apache-2.0 project; anyone distributing a build must permit replacing the library (satisfied by shipping it as an ordinary installed package). `psycopg-binary` bundles `libpq` (PostgreSQL licence). Alternative if this becomes a concern: `asyncpg` (Apache-2.0) with an async API |
-| `certifi`, `pathspec` | MPL-2.0 | File-level copyleft; used unmodified |
+| `certifi`, `pathspec`, `hypothesis` | MPL-2.0 | File-level copyleft; used unmodified. `hypothesis` (property-based tests) is a development dependency only; it is not installed in the production images |
 | `sympy`, `mpmath` | BSD-3-Clause | Core computation |
 | `fastapi`, `pydantic`, `sqlalchemy`, `alembic`, `argon2-cffi`, `pyyaml`, `lark`, `uvicorn`, `structlog` | MIT / BSD / Apache-2.0 | |
 

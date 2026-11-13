@@ -82,10 +82,13 @@ def test_absolute_value_needs_a_real_variable(engine: Engine) -> None:
     assert real.result_text == "sign(x)"
 
 
-def test_second_derivative_of_abs_notes_the_distribution(engine: Engine) -> None:
+def test_second_derivative_of_abs_is_unsupported_here(engine: Engine) -> None:
+    # The pointwise derivative check compares 0 with 0 away from the kink: it proves nothing
+    # about the delta, so the distribution operation owns this derivative.
     result = d(engine, "abs(x)", ("x", 2), x=["real"])
-    assert result.status is Status.OK
-    assert any("Dirac" in n for n in result.notes)
+    assert result.status is Status.UNSUPPORTED
+    assert result.result_latex is None
+    assert "distribution" in (result.message or "")
 
 
 def test_assumption_ladder_for_sqrt_of_square(engine: Engine) -> None:

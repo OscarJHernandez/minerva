@@ -1,5 +1,6 @@
 "use client";
 
+import { modelSettings } from "@/lib/model-settings";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -44,6 +45,7 @@ export function UserMenu() {
         className="shrink-0 whitespace-nowrap rounded border border-rule px-2 py-1 text-[13px] hover:bg-sunk sm:px-2.5 sm:text-sm"
         onClick={async () => {
           await api.logout().catch(() => undefined);
+          modelSettings.clear(); // forget any OpenRouter key held in memory
           setUser(null);
           router.push("/login");
           router.refresh();

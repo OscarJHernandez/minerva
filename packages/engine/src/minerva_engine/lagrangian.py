@@ -123,22 +123,49 @@ def derive(
     assumptions: dict[str, list[str]],
     limits: Limits,
 ) -> Derivation:
+    _check_coordinates(coordinates)
+    try:
+        L = parse_latex(latex, assumptions, limits)
+    except MinervaMathError as exc:
+        raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
+    return derive_expr(L, coordinates, time)
+
+
+def _check_coordinates(coordinates: list[str]) -> None:
     if not coordinates or len(coordinates) > MAX_COORDINATES:
         raise DerivationError(
             Status.UNSUPPORTED, f"Give between 1 and {MAX_COORDINATES} coordinates."
         )
     if len(set(coordinates)) != len(coordinates):
         raise DerivationError(Status.PARSE_ERROR, "Coordinates must be distinct.")
-    try:
-        L = parse_latex(latex, assumptions, limits)
-    except MinervaMathError as exc:
-        raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
 
+
+def derive_expr(
+    L: sp.Expr,
+    coordinates: list[str],
+    time: str,
+    *,
+    q: list[sp.Symbol] | None = None,
+    qd: list[sp.Symbol] | None = None,
+    t: sp.Symbol | None = None,
+) -> Derivation:
+    """Euler-Lagrange derivation for an already built Lagrangian.
+
+    `q`, `qd` and `t` may be given as symbols (with their assumptions); otherwise they are found in
+    `L` by name (`<q>_dot` for velocities) or created plain. Geometry passes them explicitly, so the
+    coordinates keep their declared assumptions and the curve parameter cannot clash with a coordinate.
+    """
+    _check_coordinates(coordinates)
     by_name = {s.name: s for s in L.free_symbols}
-    q = [by_name.get(n) or sp.Symbol(n) for n in coordinates]
-    qd = [by_name.get(f"{n}_dot") or sp.Symbol(f"{n}_dot") for n in coordinates]
+    if q is None:
+        q = [by_name.get(n) or sp.Symbol(n) for n in coordinates]
+    if qd is None:
+        qd = [by_name.get(f"{n}_dot") or sp.Symbol(f"{n}_dot") for n in coordinates]
+    if len(q) != len(coordinates) or len(qd) != len(coordinates):
+        raise DerivationError(Status.PARSE_ERROR, "Coordinates and velocities do not match.")
     qdd = [sp.Symbol(f"{n}_ddot") for n in coordinates]
-    t = by_name.get(time) or sp.Symbol(time)
+    if t is None:
+        t = by_name.get(time) or sp.Symbol(time)
     if any(s.name.endswith("_ddot") for s in L.free_symbols):
         raise DerivationError(
             Status.UNSUPPORTED,
@@ -196,13 +223,10 @@ class ConservedSearch:
     features: list[str] = field(default_factory=list)
 
 
-def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
-    """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
-    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
-    if not d.solution:
-        return False, None
-    derivative = d.total_derivative(quantity).subs(d.solution)
-    symbolic_zero = sp.simplify(derivative) == 0
+def verify_zero_derivative(derivative: sp.Expr) -> tuple[bool, Verification]:
+    """Is the time derivative of a candidate constant zero on the motion? Checked symbolically (exact
+    cancellation first, then `simplify`) and at random numerical points; the numeric check decides `passed`."""
+    symbolic_zero = sp.cancel(sp.together(derivative)) == 0 or sp.simplify(derivative) == 0
     checked, agreed = numeric_check(derivative, sp.Integer(0))
     passed = checked >= 4 and agreed == checked
     verification = Verification(
@@ -213,6 +237,14 @@ def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verificatio
         note="d/dt of the quantity, evaluated on the equations of motion, is zero",
     )
     return bool(passed), verification
+
+
+def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
+    """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
+    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
+    if not d.solution:
+        return False, None
+    return verify_zero_derivative(d.total_derivative(quantity).subs(d.solution))
 
 
 def find_conserved(d: Derivation) -> ConservedSearch:

@@ -266,3 +266,16 @@ def test_engine_check_claims_passes_the_matrix_names(engine: Engine) -> None:
     [plain] = engine.check_claims([r"AB = BA"])
     [guarded] = engine.check_claims([r"AB = BA"], matrices=["A", "B"])
     assert plain.status == "holds" and guarded.status == "unverified"
+
+
+def test_distribution_statements_are_never_contradicted() -> None:
+    # \theta(x) + \theta(-x) = 1 reads as theta*x - theta*x = 0 != 1: it must not be called false.
+    for claim in (
+        r"\theta(x) + \theta(-x) = 1",
+        r"\delta(-x) = \delta(x)",
+        r"\operatorname{Heaviside}(x) + \operatorname{Heaviside}(-x) = 1",
+        r"\operatorname{DiracDelta}(2x) = 5 \operatorname{DiracDelta}(x)",
+    ):
+        result = Engine().check_claims([claim], {"x": ["real"]})[0]
+        assert result.status == "unverified", claim
+        assert "distribution" in result.detail or "Dirac" in result.detail

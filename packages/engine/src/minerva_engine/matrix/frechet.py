@@ -20,7 +20,7 @@ from __future__ import annotations
 import sympy as sp
 
 from ..latexprint import to_latex
-from .expressions import Frechet, Terms, render_terms
+from .expressions import Factor, Frechet, Sym, Term, Terms, render_terms
 from .methods import (
     Attempt,
     Outcome,
@@ -53,6 +53,23 @@ QUADRATURE_POINTS = 4
 
 def _frechet_factors(terms: Terms) -> list[Frechet]:
     return [f for t in terms for f in t.factors if isinstance(f, Frechet)]
+
+
+def _familiar_form(terms: Terms) -> str:
+    """The derivative as X' exp(X): what is NOT applied, because it needs X X' = X' X."""
+    out: list[Term] = []
+    for t in terms:
+        pieces: list[tuple[sp.Expr, tuple[Factor, ...]]] = [(t.coeff, ())]
+        for f in t.factors:
+            if isinstance(f, Frechet):
+                options: list[tuple[sp.Expr, tuple[Factor, ...]]] = [
+                    (c, (Sym(name, 1, d), f.base)) for name, d, c in f.direction
+                ]
+            else:
+                options = [(sp.Integer(1), (f,))]
+            pieces = [(c0 * c1, (*fs, *g)) for c0, fs in pieces for c1, g in options]
+        out += [Term(c, fs) for c, fs in pieces]
+    return render_terms(tuple(out))
 
 
 def _quadrature_count(p: Problem, factors: list[Frechet]) -> Count:
@@ -105,7 +122,7 @@ def run_frechet_derivative(p: Problem) -> Attempt:
             method="exp_derivative",
             title="Use d/dt exp(X) = X' exp(X)",
             needs="X X' = X' X for the exponent X (not established)",
-            latex=formula,
+            latex=_familiar_form(derived.terms),
         )
     ]
     count, directions = check_derivative(

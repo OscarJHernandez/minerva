@@ -254,7 +254,24 @@ class _Parser:
     def _symbol_with_subscript(self, name: str) -> sp.Expr:
         if self.accept_op("_"):
             name = f"{name}_{self._subscript_text()}"
+        if name in self.b.functions:
+            return self._declared_call(name)
+        if self.b.strict_calls and self.cur.kind == "op" and self.cur.text == "(":
+            raise ParseError(
+                f"{name}(…) is ambiguous: declare {name} as a function, "
+                f"or write {name}\\cdot(…) for a product"
+            )
         return self.b.symbol(name)
+
+    def _declared_call(self, name: str) -> sp.Expr:
+        if not self.accept_op("("):
+            args = ", ".join(self.b.functions[name])
+            raise ParseError(f"{name!r} is a declared function; write {name}({args})")
+        values = [self.expr()]
+        while self.accept_op(","):
+            values.append(self.expr())
+        self.expect_op(")")
+        return self.b.declared_call(name, values)
 
     def _subscript_text(self) -> str:
         if self.accept_op("{"):
@@ -404,11 +421,13 @@ def parse_latex(
     limits: Limits | None = None,
     denominators: list[sp.Expr] | None = None,
     noncommutative: Iterable[str] = (),
+    functions: dict[str, tuple[str, ...]] | None = None,
+    strict_calls: bool = False,
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
         raise LimitError("input is too long")
-    builder = Builder(assumptions, limits, noncommutative)
+    builder = Builder(assumptions, limits, noncommutative, functions, strict_calls)
     if denominators is not None:
         builder.denominators = denominators
     parser = _Parser(_tokenize(source), builder)

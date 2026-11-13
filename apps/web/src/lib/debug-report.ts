@@ -6,9 +6,16 @@ import type {
   TraceStep,
   TurnDebug,
 } from "./chat-types";
+import { buildTimeline, stageTimings, STOP_EXPLANATION } from "./trace-timeline";
 
-/** Bump when the JSON block changes shape, so `scripts/replay_trace.py` can tell. */
-export const REPORT_FORMAT = 1;
+/**
+ * Bump when the JSON block changes shape, so `scripts/replay_trace.py` can tell.
+ * 2: adds trace ids, stop reasons, events, evidence and error categories per step.
+ */
+export const REPORT_FORMAT = 2;
+export const CONTENT_NOTICE =
+  "This report contains conversation content (your messages, expressions and tool results). " +
+  "Share it only where you would share the conversation. The server log never holds this content.";
 export const JSON_START = "<!-- minerva-debug-json -->";
 export const JSON_END = "<!-- /minerva-debug-json -->";
 const MAX_SHOWN = 4000;
@@ -83,6 +90,36 @@ function cardSummary(card: Card | null | undefined): string[] {
           `fallbacks [${d.fallbacks.join(", ")}]; failure ${d.failure_reason ?? "-"}; ${stages}`,
       );
     }
+  } else if (card.type === "geometry") {
+    const r = card.data.result;
+    out.push(`- status: ${r.status}`, `- dimension: ${r.dimension}`, `- message: ${r.message}`);
+    // which quantity failed and how, then the stages: slow, large or failing ones stand out
+    for (const q of r.quantities) {
+      const checks = q.verification?.checks.map((c) => `${c.kind[0]}:${c.passed}`).join(" ") ?? "-";
+      out.push(`- quantity ${q.kind}: ${q.status} (checks ${checks})`);
+    }
+    out.push(
+      `- signature: ${r.signature ?? "not determined"}; restrictions: ${r.restrictions_latex.length}${r.restrictions_complete ? "" : " (incomplete)"}`,
+      ...r.diagnostics.map(
+        (d) =>
+          `- stage ${d.stage}: ${d.duration_ms} ms${d.ops === null ? "" : `, ${d.ops} ops`}, ${d.failure ?? d.status}`,
+      ),
+    );
+  } else if (card.type === "distribution") {
+    const d = card.data.result;
+    out.push(`- status: ${d.status}${d.reason ? ` (${d.reason})` : ""}`);
+    out.push(`- action: ${d.action ?? "-"}`);
+    out.push(`- input as read: ${d.input_latex ?? "-"}`);
+    out.push(`- result: ${d.result_latex ?? "-"}`);
+    if (d.verification) {
+      out.push(
+        `- verification: ${d.verification.pairings_agreed}/${d.verification.pairings_checked} test-function pairings, conditions established ${d.verification.conditions_established}`,
+      );
+    }
+    out.push(
+      `- stages: ${d.diagnostics.events.map((e) => `${e.stage}${e.status === "failed" ? "!" : ""}`).join(" > ")}`,
+    );
+    out.push(`- engine message: ${d.message}`);
   } else if (card.type === "error") {
     out.push(`- message: ${card.data.message}`);
   } else if ("status" in card.data) {
@@ -99,6 +136,23 @@ function formulas(content: Partial<AssistantContent>) {
     .map((s) => ({ value: s.value, status: s.status, note: s.note ?? null }));
 }
 
+/** The model's prose as it wrote it, one string per text block, with the formula delimiters restored. */
+function proseBlocks(content: Partial<AssistantContent>): string[] {
+  return (content.blocks ?? [])
+    .filter((b) => b.kind === "text")
+    .map((b) =>
+      b.segments
+        .map((s) =>
+          s.type === "display_math"
+            ? `$$${s.value}$$`
+            : s.type === "math"
+              ? `$${s.value}$`
+              : s.value,
+        )
+        .join(""),
+    );
+}
+
 function turnMarkdown(m: StoredMessage, n: number): string[] {
   if (m.role === "user") return [`### ${n}. User`, fence(m.content.text)];
   const c = m.content;
@@ -106,16 +160,70 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
   const d = c.debug;
   if (d) {
     lines.push(
-      `request ${d.request_id || "-"} · ${d.duration_ms} ms · ${d.llm_calls.length} model call(s) · ` +
-        `model ${d.model} · prompt ${d.prompt_sha}`,
+      `trace ${d.trace_id || "-"} · request ${d.request_id || "-"} · ${d.duration_ms} ms · ` +
+        `${d.llm_calls.length} model call(s) · model ${d.model} · prompt ${d.prompt_sha}`,
     );
+    const stop = d.stop_reason ?? c.stop_reason ?? null;
+    if (stop)
+      lines.push(
+        `stop reason: ${stop}${STOP_EXPLANATION[stop] ? ` (${STOP_EXPLANATION[stop]})` : ""}`,
+      );
+    if (d.error) lines.push(`error: ${d.error}`);
+    const stages = stageTimings(d);
+    if (stages.length > 0) {
+      lines.push(
+        "",
+        "| Stage | ms |",
+        "| --- | --- |",
+        ...stages.map(([k, ms]) => `| ${k.trim()} | ${ms} |`),
+        "",
+      );
+    }
+    const tokens = d.llm_calls.filter(
+      (x) => x.prompt_tokens != null || x.completion_tokens != null,
+    );
+    if (tokens.length > 0) {
+      lines.push(
+        `tokens: ${tokens.reduce((n, x) => n + (x.prompt_tokens ?? 0), 0)} in, ${tokens.reduce((n, x) => n + (x.completion_tokens ?? 0), 0)} out (as reported by the model host)`,
+      );
+    }
+    if (d.evidence_pct != null) {
+      lines.push(
+        `formulas with engine evidence: ${d.formulas_with_evidence}/${d.formulas} (${d.evidence_pct}%)`,
+      );
+    }
+    if (d.claim_check && d.claim_check !== "ok") lines.push(`claim check: ${d.claim_check}`);
+    const timeline = buildTimeline(d, c.trace);
+    if (timeline.length > 0) {
+      lines.push("Timeline:", ...timeline.map((r) => `- ${r.t_ms} ms · ${r.title}: ${r.detail}`));
+    }
   }
   (c.trace ?? []).forEach((t, i) => {
     const card = (c.blocks ?? []).find((b) => b.kind === "card" && b.card.id === t.id)?.card;
+    const ev = t.evidence;
     lines.push(
       `#### Tool call ${i + 1}: ${t.name} (${t.status ?? "status unknown"}, ${t.duration_ms ?? "?"} ms)`,
+      `- arguments valid: ${t.arguments_valid ?? "unknown"}${t.error_category ? ` · category: ${t.error_category}` : ""}${t.repeated ? " · repeated call, not run again" : ""}${t.result_id ? ` · result id ${t.result_id}` : ""}${t.engine_ms != null ? ` · ${t.engine_ms} ms in the sandbox` : ""}`,
+      ...(ev
+        ? [
+            `- evidence: ${ev.check}, ${ev.accepted ? "accepted" : "not accepted"} (${ev.reason})` +
+              (ev.points_checked != null
+                ? `, ${ev.points_agreed ?? "?"}/${ev.points_checked} points`
+                : "") +
+              (ev.restrictions ? `, ${ev.restrictions} restriction(s)` : ""),
+          ]
+        : []),
+      ...(t.assumptions_dropped?.length
+        ? [`- declared earlier but not repeated in this call: ${t.assumptions_dropped.join(", ")}`]
+        : []),
       "Arguments the model sent:",
-      fence(clip(JSON.stringify(t.arguments, null, 2)), "json"),
+      fence(clip(JSON.stringify(t.model_arguments ?? t.arguments, null, 2)), "json"),
+      ...(t.model_arguments
+        ? [
+            "After replacing references to earlier results:",
+            fence(clip(JSON.stringify(t.arguments, null, 2)), "json"),
+          ]
+        : []),
       ...cardSummary(card),
       "What the model read back:",
       fence(clip(t.for_model)),
@@ -136,7 +244,11 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
       `- claim check ${claim.status}${claim.kind ? ` [${claim.kind}]` : ""}: \`${claim.value}\`${claim.detail ? ` (${claim.detail})` : ""}${claim.given?.length ? ` given: ${claim.given.join("; ")}` : ""}`,
     );
   }
-  if (c.truncated) lines.push("- the step or time limit ended this turn early");
+  if (c.truncated) {
+    lines.push(
+      `- this turn ended early (${c.debug?.stop_reason ?? c.stop_reason ?? "limit or failure"})`,
+    );
+  }
   return lines;
 }
 
@@ -144,6 +256,7 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
 export function reportData(input: ReportInput) {
   return {
     format: REPORT_FORMAT,
+    contains_conversation_content: true,
     generated_at: (input.now ?? new Date()).toISOString(),
     title: input.title,
     app: { mode: input.status?.mode ?? null, model: input.status?.model ?? null },
@@ -154,6 +267,8 @@ export function reportData(input: ReportInput) {
       trace: m.content.trace ?? [],
       debug: m.content.debug ?? null,
       truncated: m.content.truncated ?? false,
+      stop_reason: m.content.stop_reason ?? m.content.debug?.stop_reason ?? null,
+      prose: m.role === "assistant" ? proseBlocks(m.content) : [],
       formulas: m.role === "assistant" ? formulas(m.content) : [],
     })),
     last_error: input.lastError ?? null,
@@ -167,13 +282,17 @@ export function buildDebugReport(input: ReportInput): string {
     "# Minerva chat debug report",
     `format ${REPORT_FORMAT} · ${data.generated_at} · mode ${data.app.mode ?? "?"} · model ${data.app.model ?? "?"}`,
     "",
+    `> ${CONTENT_NOTICE}`,
+    "",
     "## Conversation",
   ];
   input.messages.forEach((m, i) => lines.push("", ...turnMarkdown(m, i + 1)));
   if (input.lastError) {
     lines.push("", "## Last turn failed", fence(input.lastError.message));
     if (input.lastError.debug) {
-      lines.push(`request ${input.lastError.debug.request_id || "-"}`);
+      lines.push(
+        `trace ${input.lastError.debug.trace_id || "-"} · request ${input.lastError.debug.request_id || "-"}`,
+      );
     }
   }
   lines.push(

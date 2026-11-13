@@ -115,15 +115,20 @@ jobs:
             printf '%s\n' "$HELM_EXTRA_VALUES" > "$RUNNER_TEMP/extra-values.yaml"
             ARGS+=(-f "$RUNNER_TEMP/extra-values.yaml")
           fi
+          VALUES=(
+            -f deploy/helm/minerva/values-production.yaml
+            ${ARGS[@]+"${ARGS[@]}"}
+            --set api.image.digest="$API_DIGEST"
+            --set web.image.digest="$WEB_DIGEST"
+            --set site.image.digest="$SITE_DIGEST"
+            --set hosts.app="${APP_HOST:?set the APP_HOST repository variable}"
+            --set hosts.site="${SITE_HOST:?set the SITE_HOST repository variable}"
+          )
+          # Validate the configuration (and that a referenced OpenRouter Secret exists) before any rollout.
+          bash scripts/deploy-preflight.sh minerva "${VALUES[@]}"
           helm upgrade --install minerva deploy/helm/minerva \
             --namespace minerva \
-            -f deploy/helm/minerva/values-production.yaml \
-            ${ARGS[@]+"${ARGS[@]}"} \
-            --set api.image.digest="$API_DIGEST" \
-            --set web.image.digest="$WEB_DIGEST" \
-            --set site.image.digest="$SITE_DIGEST" \
-            --set hosts.app="${APP_HOST:?set the APP_HOST repository variable}" \
-            --set hosts.site="${SITE_HOST:?set the SITE_HOST repository variable}" \
+            "${VALUES[@]}" \
             --rollback-on-failure --wait --timeout 8m --history-max 10
       - name: Verify release
         run: |

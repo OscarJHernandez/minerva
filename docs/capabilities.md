@@ -501,6 +501,204 @@ Ordered products of matrix exponentials with declared matrices (a size, or expli
 - Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).
 - The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution).
 
+### Dirac delta and Heaviside calculus
+
+*Available in:* workbench, chat, HTTP API.
+
+Simplify, integrate and differentiate expressions with Dirac delta and Heaviside functions. Equality is as distributions (the same action on every test function), never pointwise: a delta has no values to compare. Each step cites a handbook identity and the conditions that were established exactly (the variable is real, a scale factor is nonzero, a root is real and simple, a delta lies inside the limits); a result is shown only if an independent test-function pairing against a regularised input agrees. Whatever cannot be decided is refused with a reason, never guessed.
+
+**Limits**
+
+- One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.
+- A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.
+- Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.
+- The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}); \delta and \theta remain ordinary symbols.
+
+#### An integral against a delta of a polynomial with two simple roots
+
+- **Expression:** `x^2 \operatorname{DiracDelta}(x^2 - 4)`
+- **Limits:** `-oo to oo`
+- **Status:** `ok`
+- **Value:** $2$
+- **Check:** conditions established exactly: yes
+- **Check:** 1 of 1 test-function pairings agree (supporting evidence, not a proof)
+- Step: Delta of a polynomial with simple real roots (distributions.delta_composite_simple_roots).
+- Step: A continuous factor takes its value at the delta (distributions.delta_times_function).
+- Step: Integrating against a delta picks out the value (distributions.delta_sifting).
+- Integrated with handbook identities under conditions that were established exactly; 1 of 1 test-function pairings agree (supporting evidence, not a proof).
+
+#### Scaling by a parameter whose sign is known
+
+- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Assumptions:** a negative
+- **Status:** `ok`
+- **Result (as distributions):** $- \frac{\operatorname{DiracDelta}\left(x\right)}{a}$
+- **Check:** conditions established exactly: yes
+- **Check:** 18 of 18 test-function pairings agree (supporting evidence, not a proof)
+- Step: Scaling and translation of the delta argument (distributions.delta_scaling).
+- Simplified with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof).
+
+#### The derivative of a switched-on decay has a delta where it jumps
+
+- **Expression:** `\mathrm{e}^{-g x} \operatorname{Heaviside}(x)`
+- **Assumptions:** g positive
+- **Status:** `ok`
+- **Result (as distributions):** $- g \mathrm{e}^{- g x} \operatorname{Heaviside}\left(x\right) + \operatorname{DiracDelta}\left(x\right)$
+- **Check:** conditions established exactly: yes
+- **Check:** 18 of 18 test-function pairings agree (supporting evidence, not a proof)
+- Step: The derivative of a step function is a delta at its jump (distributions.heaviside_derivative).
+- Step: Scaling of the delta and the value of its coefficient at the jump (distributions.delta_scaling).
+- Differentiated with handbook identities under conditions that were established exactly; 18 of 18 test-function pairings agree (supporting evidence, not a proof).
+
+#### A scale factor of unknown sign is declined
+
+- **Expression:** `\operatorname{DiracDelta}(a x)`
+- **Assumptions:** a real
+- **Status:** `conditions_not_satisfied`
+- Refused (assumptions_insufficient).
+- The slope a of the argument at the root 0 is not proved nonzero from the declared assumptions (declare the parameter nonzero, positive or negative).
+
+#### A delta on an integration limit is ambiguous until you choose a convention
+
+- **Expression:** `\operatorname{DiracDelta}(x - 1)`
+- **Limits:** `0 to 1`
+- **Status:** `conditions_not_satisfied`
+- Refused (integration_domain_ambiguous).
+- A delta sits exactly on an integration limit (at 1). Its contribution depends on a convention that you must choose: half, include or exclude.
+
+#### A repeated root is declined
+
+- **Expression:** `\operatorname{DiracDelta}(x^2)`
+- **Status:** `unsupported`
+- Refused (singular_root).
+- The root 0 is a repeated root, where the delta of a function is not a combination of simple deltas.
+
+### Differential geometry in coordinates
+
+*Available in:* workbench, chat, HTTP API.
+
+Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed.
+
+**Limits**
+
+- Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
+- Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
+- The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
+- Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
+- Geodesic equations are symbolic; they are not integrated numerically.
+
+#### The 2-sphere, with its curvature invariants
+
+- **Coordinates:** `\theta, \phi`
+- **Metric row 1:** `a^2,  0`
+- **Metric row 2:** `0,  a^2 \sin^2\theta`
+- **Assumptions:** a positive
+- **Status:** `ok`
+- **Christoffel symbols:** $\Gamma^{\theta}{}_{\phi \phi} = - \sin{\left(\theta \right)} \cos{\left(\theta \right)}$
+- **Christoffel symbols:** $\Gamma^{\phi}{}_{\theta \phi} = \cot{\left(\theta \right)}$
+- **Ricci scalar R:** $\frac{2}{a^{2}}$
+- **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{4}{a^{4}}$
+- **Check:** christoffel: 2 independent numeric checks passed; symbolic proof proved
+- **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature not determined: The sign of g_(phi,phi) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: theta, phi.
+- Assumes: a: positive.
+- 3 of 3 requested quantities computed and numerically verified.
+
+#### Schwarzschild spacetime is Ricci-flat
+
+- **Coordinates:** `t, r, \theta, \phi`
+- **Metric row 1:** `-(1-2M/r),  0,  0,  0`
+- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0`
+- **Metric row 3:** `0,  0,  r^2,  0`
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Ricci tensor (symmetric; one of each pair shown):** $0 \text{ (every component)}$
+- **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{48 M^{2}}{r^{6}}$
+- **Check:** ricci: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $- 2 M + r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: M: positive.
+- Assumes: r: positive.
+- 2 of 2 requested quantities computed and numerically verified.
+
+#### Geodesic equations of the plane in polar coordinates
+
+- **Coordinates:** `r, \theta`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  r^2`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Geodesic equations:** $\ddot{r} = r \dot{\theta}^{2}$
+- **Geodesic equations:** $\ddot{\theta} = - \frac{2 \dot{r} \dot{\theta}}{r}$
+- **Check:** geodesics: 2 independent numeric checks passed; symbolic proof proved
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, theta.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### An unspecified function in the metric
+
+- **Coordinates:** `t, r, \theta, \phi`
+- **Metric row 1:** `-f(r),  0,  0,  0`
+- **Metric row 2:** `0,  1/f(r),  0,  0`
+- **Metric row 3:** `0,  0,  r^2,  0`
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta`
+- **Functions:** `f(r)`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Ricci scalar R:** $\frac{- r^{2} f''\left(r\right) - 4 r f'\left(r\right) - 2 f\left(r\right) + 2}{r^{2}}$
+- **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $\sin{\left(\theta \right)} \neq 0$, $f\left(r\right) \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: r: positive.
+- Assumes: f(r) is an unspecified real function.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### The covariant derivative of the radial vector field
+
+- **Coordinates:** `r, \theta`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  r^2`
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Covariant derivative of the tensor:** $\nabla T_{\theta}{}^{\theta} = \frac{1}{r}$
+- **Check:** covariant_derivative: 1 independent numeric checks passed; symbolic proof not attempted
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, theta.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### A degenerate metric is declined
+
+- **Coordinates:** `x, y`
+- **Metric row 1:** `1,  0`
+- **Metric row 2:** `0,  0`
+- **Status:** `unsupported`
+- Assumes: coordinates are real: x, y.
+- The metric is degenerate (its determinant is identically zero), so it has no inverse and no Levi-Civita connection.
+
+#### An undeclared function is refused instead of being read as a product
+
+- **Coordinates:** `r`
+- **Metric row 1:** `f(r)`
+- **Status:** `parse_error`
+- f(…) is ambiguous: declare f as a function, or write f\cdot(…) for a product
+
+#### A metric that is not symmetric is declined
+
+- **Coordinates:** `x, y`
+- **Metric row 1:** `1,  x`
+- **Metric row 2:** `0,  1`
+- **Status:** `parse_error`
+- The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
+
 ### Polynomial equations
 
 *Available in:* chat.
@@ -626,6 +824,91 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - cyclic coordinates: none (every coordinate appears in L)
 - energy function: not conserved (L depends explicitly on time)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
+
+### Find the conserved quantities of a system
+
+*Available in:* workbench, chat, HTTP API.
+
+Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva derives the equations of motion (confirmed by numerical differentiation), then searches a deterministic ladder of larger and larger families of candidates: polynomials in the velocities or momenta times powers of the coordinates, cos and sin of angles (declared, detected, or cyclic) and powers of t. In each family the conservation condition is solved exactly; a candidate is shown only if it is verified on the equations of motion, and products of what is already known are not counted as discoveries. It then reports which constants are functionally independent (an exact Jacobian rank, with the algebraic relations that tie the rest to them) and exactly which families were and were not searched. You do not choose an ansatz, a power bound or the angles.
+
+**Limits**
+
+- Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.
+- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported. At most 3 coordinates.
+- Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
+- Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.
+- Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.
+- A name such as Runge–Lenz is a recognition the model may offer afterwards; the search never uses it.
+
+#### Kepler problem, from the Lagrangian alone
+
+- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **C1, momentum conjugate to theta:** $C1 = m r^{2} \dot{\theta}$
+- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$
+- **C3, newly found:** $C3 = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
+- **C4, newly found:** $C4 = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
+- **Exact relation:** $2 C_{1}^{2} C_{2} - C_{3}^{2} m - C_{4}^{2} m + k^{2} m = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)
+- No angle, power bound or invariant is given. The search expands until both components of the Laplace–Runge–Lenz vector appear, and reports that, with the energy and angular momentum, only three of the four are functionally independent, with the exact relation between them.
+
+#### The same system as a Hamiltonian
+
+- **Hamiltonian:** `\frac{p_r^2}{2m} + \frac{p_\theta^2}{2 m r^2} - \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **C1, momentum conjugate to theta:** $C1 = p_{\theta}$
+- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{p_{r}^{2}}{2 m} + \frac{p_{\theta}^{2}}{2 m r^{2}}$
+- **C3, newly found:** $C3 = - k m \sin{\left(\theta \right)} - p_{r} p_{\theta} \cos{\left(\theta \right)} + \frac{p_{\theta}^{2} \sin{\left(\theta \right)}}{r}$
+- **C4, newly found:** $C4 = - k m \cos{\left(\theta \right)} + p_{r} p_{\theta} \sin{\left(\theta \right)} + \frac{p_{\theta}^{2} \cos{\left(\theta \right)}}{r}$
+- **Exact relation:** $2 C_{1}^{2} C_{2} m - C_{3}^{2} - C_{4}^{2} + k^{2} m^{2} = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)
+
+#### A resonant oscillator has an extra invariant
+
+- **Hamiltonian:** `\frac{p_1^2 + q_1^2}{2} + \frac{p_2^2 + 4 q_2^2}{2}`
+- **Coordinates:** q_1, q_2
+- **Status:** `ok`
+- **C1, energy function:** $C1 = \frac{p_{1}^{2}}{2} + \frac{p_{2}^{2}}{2} + \frac{q_{1}^{2}}{2} + 2 q_{2}^{2}$
+- **C2, newly found:** $C2 = p_{1}^{2} + q_{1}^{2}$
+- **C3, newly found:** $C3 = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}$
+- **C4, newly found:** $C4 = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}$
+- **Exact relation:** $- 2 C_{1} C_{2}^{2} + C_{2}^{3} + 4 C_{3}^{2} + C_{4}^{2} = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
+- With frequencies in the ratio 1 : 2 a constant of degree 3 in the momenta appears; the search reaches it by raising the degree by itself.
+
+#### Hénon–Heiles, none within the explored families
+
+- **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3`
+- **Coordinates:** x, y
+- **Status:** `ok`
+- **C1, energy function:** $C1 = x^{2} y + \frac{x^{2}}{2} + \frac{\dot{x}^{2}}{2} - \frac{y^{3}}{3} + \frac{y^{2}}{2} + \frac{\dot{y}^{2}}{2}$
+- **Result:** no additional constant within the explored families
+- Functionally independent: 1 (proved).
+- 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
+- Only the energy is known; nothing else is found. This says nothing about families that were not searched.
+
+#### A square root is refused
+
+- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2 + y^2}}`
+- **Coordinates:** x, y
+- **Status:** `unsupported`
+- The equations of motion are not rational in the coordinates, the velocities or momenta and the cos and sin of the angles (square roots and the like are not searched).
 
 ### Search for hidden constants of motion
 
@@ -826,7 +1109,7 @@ Attach a photo or screenshot of an equation in the chat. A vision model you host
 Not implemented. Listed so that nobody mistakes them for features.
 
 - **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
-- **SageManifolds integration** (Mathematics): Differential geometry on explicit manifolds, as an optional backend.
+- **Abstract manifolds (SageManifolds)** (Mathematics): Charts, atlases and abstract manifolds as an optional out-of-process backend; coordinate-based geometry is available today.
 - **Integrals and limits** (Mathematics): In the workbench, with the same verification discipline as derivatives. Taylor series are available.
 - **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
 - **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.

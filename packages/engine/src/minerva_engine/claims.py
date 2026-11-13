@@ -24,6 +24,7 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel
 
+from .distributions.guard import contains_distribution
 from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .models import Limits
@@ -125,6 +126,13 @@ def _definition(parsed: list[sp.Expr]) -> tuple[sp.Symbol, sp.Expr] | None:
     return None
 
 
+_DISTRIBUTION_NOTATION = re.compile(r"\\(?:delta|theta|Theta|vartheta)\s*(?:\\left)?\s*\(")
+_DISTRIBUTION_DETAIL = (
+    "could not check: this may denote a Dirac delta or step function, which cannot be tested "
+    "by sampling (use the distribution operation)"
+)
+
+
 class ClaimChecker:
     """Checks equations one after another against the definitions stated so far."""
 
@@ -155,6 +163,8 @@ class ClaimChecker:
         parsed = self._parse(latex)
         if parsed and self._mentions_matrix(parsed):
             return  # a definition of or by a matrix is not a scalar substitution
+        if parsed and any(contains_distribution(p) for p in parsed):
+            return
         found = _definition(parsed) if parsed else None
         if found is None:
             return
@@ -195,6 +205,10 @@ class ClaimChecker:
         sides = split_equation(latex)
         if sides is None:
             return ClaimCheck(status="not_an_equation")
+        if _DISTRIBUTION_NOTATION.search(latex):
+            # \delta(x) and \theta(x) read as products here, which would make a true statement about
+            # a delta or step function look false; a delta cannot be sampled at all.
+            return ClaimCheck(status="unverified", detail=_DISTRIBUTION_DETAIL)
         denominators: list[sp.Expr] = []
         try:
             parsed = [
@@ -212,6 +226,8 @@ class ClaimChecker:
                     "commuting scalars), so it is not checked unless a matrix calculation produced it"
                 ),
             )
+        if any(contains_distribution(p) for p in parsed):
+            return ClaimCheck(status="unverified", detail=_DISTRIBUTION_DETAIL)
         outcome, detail = _compare(parsed)
         if outcome == "holds":
             return _holds_with_domain(parsed, denominators, detail).model_copy(

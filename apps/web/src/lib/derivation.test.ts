@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Assumptions } from "./types";
 import { step } from "@/test/fixtures";
 import {
   DEFAULT_SETTINGS,
@@ -7,6 +8,7 @@ import {
   stepLabel,
   validateSettings,
   verificationSummary,
+  withRealVariable,
 } from "./derivation";
 
 describe("continuation", () => {
@@ -80,5 +82,48 @@ describe("labels and summaries", () => {
   it("lists assumptions, leaving out symbols with none", () => {
     expect(assumptionsSummary({ x: ["positive", "real"], y: [] })).toBe("x positive, real");
     expect(assumptionsSummary({})).toBeNull();
+  });
+});
+
+describe("distribution steps", () => {
+  it("needs both limits to integrate, and nothing else", () => {
+    const base = { ...DEFAULT_SETTINGS, distAction: "integrate" as const };
+    expect(validateSettings("distribution", base)).toMatch(/both limits/);
+    expect(validateSettings("distribution", { ...base, lower: "-oo" })).toMatch(/both limits/);
+    expect(validateSettings("distribution", { ...base, lower: "-oo", upper: "oo" })).toBeNull();
+    expect(validateSettings("distribution", { ...DEFAULT_SETTINGS })).toBeNull();
+    expect(validateSettings("distribution", { ...DEFAULT_SETTINGS, variable: "" })).toMatch(
+      /variable/,
+    );
+  });
+
+  it("declares the variable real without dropping other assumptions", () => {
+    expect(withRealVariable({}, "x")).toEqual({ x: ["real"] });
+    expect(withRealVariable({ x: ["nonzero"], a: ["positive"] }, "x")).toEqual({
+      x: ["nonzero", "real"],
+      a: ["positive"],
+    });
+    const already: Assumptions = { x: ["real"] };
+    expect(withRealVariable(already, "x")).toBe(already);
+  });
+
+  it("labels the step and never claims more than the pairing check", () => {
+    const item = step(
+      "a",
+      "distribution",
+      "x",
+      {
+        result_text: "2",
+        result_latex: "2",
+        action: "integrate",
+        verification: { pairings_checked: 3, pairings_agreed: 3, conditions_established: true },
+      },
+      {},
+    );
+    expect(stepLabel(item)).toBe("Integrate against deltas");
+    const summary = verificationSummary(item) ?? "";
+    expect(summary).toMatch(/3\/3 test-function pairings agree \(not a proof\)/);
+    expect(summary).not.toMatch(/proved|sample points/);
+    expect(continuation(item)).toEqual({ text: "2", latex: "2" });
   });
 });

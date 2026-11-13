@@ -17,7 +17,7 @@ from typing import Literal
 import sympy as sp
 
 from ..build import Builder
-from ..errors import LimitError, MinervaMathError, ParseError
+from ..errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from ..latexprint import to_latex
 from ..models import ExpressionInput, Limits, Status
 from .expressions import (
@@ -66,7 +66,7 @@ def matrix_calculus(data: MatrixCalculusInput, limits: Limits) -> MatrixCalculus
         result = _run(data, limits, deadline, trace)
     except LimitError as exc:
         result = _fail(data, Status.RESOURCE_LIMIT, str(exc))
-    except UnsupportedMatrixExpression as exc:
+    except (UnsupportedMatrixExpression, UnsupportedInput) as exc:
         result = _fail(data, Status.UNSUPPORTED, str(exc))
     except MinervaMathError as exc:
         result = _fail(data, Status.PARSE_ERROR, str(exc))

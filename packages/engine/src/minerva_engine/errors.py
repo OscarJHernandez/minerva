@@ -11,3 +11,7 @@ class ParseError(MinervaMathError):
 
 class LimitError(MinervaMathError):
     """The input exceeds a static safety limit (size, depth, magnitude)."""
+
+
+class UnsupportedInput(MinervaMathError):
+    """The input parses but belongs to a different operation (reported as `unsupported`)."""

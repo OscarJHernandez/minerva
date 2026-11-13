@@ -12,13 +12,55 @@ import re
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
-from .llm import Chunk, ToolCall
+from .llm import Chunk, LLMError, ToolCall
 
 _DOLLAR = re.compile(r"\$([^$]+)\$")
 
 
+_GEOMETRIES: dict[str, dict[str, Any]] = {
+    "polar": {
+        "coordinates": ["r", "theta"],
+        "metric": [["1", "0"], ["0", "r^2"]],
+        "assumptions": {"r": ["positive"]},
+    },
+    "sphere": {
+        "coordinates": ["theta", "phi"],
+        "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+        "assumptions": {"a": ["positive"]},
+    },
+    "schwarzschild": {
+        "coordinates": ["t", "r", "theta", "phi"],
+        "metric": [
+            ["-(1-2M/r)", "0", "0", "0"],
+            ["0", "(1-2M/r)^{-1}", "0", "0"],
+            ["0", "0", "r^2", "0"],
+            ["0", "0", "0", "r^2 \\sin^2\\theta"],
+        ],
+        "assumptions": {"M": ["positive"], "r": ["positive"]},
+    },
+}
+_GEOMETRY_WORDS = (
+    ("christoffel", "christoffel"),
+    ("riemann", "riemann"),
+    ("ricci scalar", "ricci_scalar"),
+    ("ricci", "ricci"),
+    ("einstein", "einstein"),
+    ("kretschmann", "kretschmann"),
+    ("geodesic", "geodesics"),
+)
+
+
+def _scripted_geometry(lower: str) -> dict[str, Any]:
+    name = next((n for n in _GEOMETRIES if n in lower), "polar")
+    quantities = [q for word, q in _GEOMETRY_WORDS if word in lower] or ["christoffel"]
+    if "ricci scalar" in lower and "ricci" in quantities:
+        quantities.remove("ricci")
+    return {**_GEOMETRIES[name], "quantities": quantities}
+
+
 class ScriptedLLM:
     name = "scripted"
+    provider = "scripted"
 
     def __init__(self, delay: float = 0.0) -> None:
         self.delay = delay
@@ -33,13 +75,19 @@ class ScriptedLLM:
         self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
     ) -> AsyncIterator[Chunk]:
         last = messages[-1]
+        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        lower = user.lower()
+        latex = (_DOLLAR.findall(user) or [""])[0].strip()
+        # Two behaviours a real model can show, to exercise the interface and the loop without one.
+        if "simulate a model host failure" in lower:
+            raise LLMError("The model host is not reachable.")
+        if "repeat the same call" in lower:
+            yield Chunk(tool_calls=[ToolCall("simplify", {"latex": latex or "x"})])
+            return
         if last["role"] == "tool":
             async for chunk in self._after_tool(messages):
                 yield chunk
             return
-        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-        lower = user.lower()
-        latex = (_DOLLAR.findall(user) or [""])[0].strip()
 
         if "without tools" in lower or "just tell me" in lower:
             async for c in self._say(
@@ -47,6 +95,12 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif any(w in lower for w in ("christoffel", "geodesic", "curvature", "riemann", "ricci")):
+            # Development stand-in: three named metrics; a real model asks the user for the metric.
+            geometry_args = _scripted_geometry(lower)
+            async for c in self._say("I will compute that for the metric you named. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("geometry", geometry_args)])
         elif "matrix" in lower and latex:
             # Development stand-in: every capital letter is a 2x2 abstract matrix; the action comes from
             # the wording. "A and B commute" declares that pair. A real model asks for sizes first.
@@ -80,6 +134,27 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("matrix_calculus", mat_args)])
+        elif ("dirac" in lower or "heaviside" in lower or "step function" in lower) and latex:
+            # Development stand-in: x is the real variable; the action comes from the wording. A limit
+            # convention is passed only if the user wrote one ("convention half").
+            dist_args: dict[str, Any] = {
+                "latex": latex,
+                "assumptions": {"x": ["real"]},
+                "variable": "x",
+                "action": "simplify",
+            }
+            limits = re.search(r"from\s+(-?[\w\\]+)\s+to\s+(-?[\w\\]+)", lower)
+            if "integra" in lower:
+                dist_args.update(action="integrate", lower="-oo", upper="oo")
+                if limits:
+                    dist_args.update(lower=limits.group(1), upper=limits.group(2))
+                if conv := re.search(r"convention (half|include|exclude)", lower):
+                    dist_args["endpoint"] = conv.group(1)
+            elif "deriv" in lower or "differentiate" in lower:
+                dist_args["action"] = "differentiate"
+            async for c in self._say("I will run the distribution calculus on that. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("distribution", dist_args)])
         elif "dimension" in lower and re.search(r"\w+\s*\[[^\]]+\]", user):
             # Development stand-in: quantities are written `name [unit]`, the unknown as `unknown name`.
             quantities = [
@@ -187,6 +262,20 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif ("conserved quantit" in lower or "find the conserved" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            async for c in self._say(
+                "I will search for the conserved quantities, expanding the families as needed. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "find_conserved_quantities",
+                        {"lagrangian": latex, "coordinates": names or ["x"]},
+                    )
+                ]
+            )
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -279,7 +368,7 @@ class ScriptedLLM:
                 yield c
 
     async def _after_tool(self, messages: Sequence[dict[str, Any]]) -> AsyncIterator[Chunk]:
-        tool = messages[-1].get("tool_name", "")
+        tool = messages[-1].get("name", "")
         content = str(messages[-1]["content"])
         if tool == "simplify":
             result = re.search(r"result=\$([^$]*)\$", content)
@@ -396,6 +485,12 @@ class ScriptedLLM:
                 "The card lists the equations of motion, the accelerations, and the constants of motion "
                 "that Minerva verified on those equations, and says which symmetries it did not search for."
             )
+        elif tool == "find_conserved_quantities":
+            text = (
+                "The card lists every constant that was verified on the equations of motion, which are "
+                "already known, how many are functionally independent, the exact relations among them and "
+                "the families that were and were not searched. Nothing outside those families was searched."
+            )
         elif tool == "search_invariants":
             text = (
                 "The card lists the constants of motion that were verified on the equations of motion, "
@@ -439,6 +534,41 @@ class ScriptedLLM:
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "geometry":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card lists each quantity with the conventions used, where the coordinates break "
+                    "down, and the checks it passed. Numerical agreement is evidence; a quantity is only "
+                    "marked as proved when a symbolic test also succeeded."
+                )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "distribution":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            reason = re.search(r"reason=(\w+)", content)
+            result = re.search(r"result=\$([^$]*)\$", content)
+            if status == "ok" and result:
+                kind = "as distributions" if "AS DISTRIBUTIONS" in content else "as a value"
+                text = (
+                    f"**Result ({kind}):** $${result.group(1)}$$\n\n"
+                    "The card lists the handbook identity of each step, the conditions that were "
+                    "established, and how many test-function pairings agreed."
+                )
+            elif reason and reason.group(1) == "integration_domain_ambiguous":
+                text = (
+                    "A delta sits exactly on an integration limit, and its contribution depends on a "
+                    "convention. Which do you want: half, include or exclude?"
+                )
+            elif status == "conditions_not_satisfied":
+                text = (
+                    "A condition is not established from what was declared, so nothing was changed. "
+                    "The card names it (for example that a scale factor is nonzero): does it hold?"
+                )
+            else:
+                text = f"I could not complete that ({status}). The card gives the reason."
         elif tool == "integrate_motion":
             text = (
                 "The card shows the verified trajectory, the drift of the constants of motion and the "

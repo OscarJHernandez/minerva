@@ -23,10 +23,10 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
-  agent/              LLM client (Ollama), tool registry, agent loop, formula marking, scripted test model
+  agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
 deploy/               Dockerfiles and Helm chart. No secrets, no hostnames
 docs/                 architecture, licensing, roadmap, security/publication notes
 .agents/skills/       Project skills, shared by all agents (.claude/skills is a symlink to it)
@@ -53,9 +53,14 @@ uv run python -m minerva_knowledge verify # check every handbook entry at its de
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge matrix-benchmark   # matrix calculus coverage, methods, verification, time (docs/matrix-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
+uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
+uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
-uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
-uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
+uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
+uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
+uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --repeat 3 --seed 7 --label NAME \
+    --json-out docs/benchmarks/NAME.json --out docs/benchmarks/NAME.md   # real-model run; --compare BASE.json to compare
+uv run python scripts/replay_trace.py report.md [--llm]   # re-run the tool calls (or a whole turn) of a chat debug report
 MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
 
 pnpm install                              # JS workspace
@@ -74,11 +79,34 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - The model only calls tools (`agent/tools.py`); tools are pure, sandboxed and side-effect free. A tool returns a
   `Card` (rendered by the UI from the tool's own output) and a compact `for_model` text. Add new capabilities as tools,
   never as free-form model output.
+- Providers (`agent/llm.py`, `agent/openrouter.py`, `providers.py`): Ollama (the operator's host) and OpenRouter (fixed
+  URL, never user-supplied). History is provider-neutral (`tool_calls` with ids, `tool_call_id`) and each client converts it.
+  A user's OpenRouter key exists only in the request that uses it: never store, log, trace or echo it, and keep it out of
+  error text. A cloud turn needs `cloud_consent`; BYOK is off unless `MINERVA_OPENROUTER_BYOK`; the operator key is for
+  listed emails only, with a daily cap. Never fall back from one provider to another. The key lives in a separate
+  Kubernetes Secret, never in Helm values (the chart refuses `apiKey`). Guide: `docs/openrouter-setup.md`.
 - After each turn, formulas in the model's prose are compared with formulas present in this conversation's tool results;
   anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
-- `scripts/eval_models.py` scores a model on tool calling and honesty through the real loop; results go to `docs/model-evaluation.md`.
+- `scripts/eval_models.py` scores a model on a fixed benchmark through the real loop (`agent/evaluation/`: cases are data in
+  `cases.yaml`, each with an independent source and, where possible, a reference call that the test suite runs against the
+  engine; every failure gets one class). Reports are JSON plus Markdown under `docs/benchmarks/`; `docs/model-evaluation.md`
+  is hand-written interpretation and is never overwritten. Editing the cases changes the case-set digest: say so when
+  comparing runs. The model host name never goes into a report.
+- Every agent request has a `trace_id`; the loop records typed events (`agent/tracing.py`) with monotonic timings. **Events
+  hold no content**: only identifiers, counts, durations, booleans and fixed vocabulary. Do not add a free-text field to
+  an event, an expression, tool argument or result to a log line, or any third-party logging or telemetry service; tests
+  enforce this (`test_tracing.py`). The detailed trace (arguments and results) lives only in the stored assistant message,
+  under the conversation's own access, deletion and export rules: do not give it a table, file or endpoint of its own.
+  Logging and tracing failures must never reach the mathematics (`Tracer.emit` and the engine observer swallow them).
+- A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
+  `malformed_output`, `internal_error`). An identical call in a turn is not run twice; a model call that failed before any
+  output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
+- A formula in the model's prose is marked `from_tool` only if a *verified* result (or a machine-checked handbook entry)
+  produced it. The user's own input as read, a `stated` handbook entry, an identity that was not applied and anything from
+  a result that was not accepted are `quoted`: shown, never marked verified. Do not widen `known_latex` back to "anything a
+  tool printed"; `ToolOutput.evidence` is read from the engine's own result, never from the model.
 - `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
   never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
@@ -88,10 +116,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   strict parser reads it. Uploaded images are never stored or logged; keep it that way.
 - A turn is bounded: `AgentLimits` caps steps, total tool calls (12) and seconds, enforced during model streaming, between
   tool calls and around the claim check; a failing or hanging tool becomes an error card with fixed text, never its cause.
-- Debug mode (chat footer checkbox, or `?debug=1`): shows each tool call's arguments and results under the reply and
-  copies a report (`apps/web/src/lib/debug-report.ts`) to paste to an agent; use the `chat-trace-triage` skill on it.
-  The data comes from `AssistantMessage.trace/debug` stored with the message. The server log gets counters and
-  `request_id` only, never content.
+- Debug mode (chat footer checkbox, or `?debug=1`): shows a timeline (`apps/web/src/lib/trace-timeline.ts`) and each tool
+  call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 2) to
+  paste to an agent; use the `chat-trace-triage` skill on it. The data comes from `AssistantMessage.trace/debug` stored with
+  the message (failed turns too). The server log gets counters, `request_id` and `trace_id` only, never content. See
+  `docs/observability.md`.
 
 ## Mathematical correctness (non-negotiable)
 
@@ -162,6 +191,26 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   nothing here says "integrable" or names a constant: a name such as Runge–Lenz is for the model to offer, not for the
   result to assert. Time-dependent Lagrangians and non-rational accelerations are `unsupported`, an oversized
   ansatz is `resource_limit`. Do not widen the ansatz silently or report an unverified candidate.
+- Adaptive discovery of conserved quantities (`discovery.py`, `flow.py`, `independence.py`; tool
+  `find_conserved_quantities`, endpoint `POST /v1/compute/conserved`) takes a Lagrangian **or** a Hamiltonian and
+  chooses its own ansatz: a deterministic ladder of nested families (momentum degree, power bound, harmonics, cyclic
+  powers, powers of t), cheapest first, each solved exactly. It shows a constant only if it passed `Flow.verify`
+  (symbolic zero and numeric points on the equations of motion, which were themselves confirmed by numerical
+  differentiation of L or H); a candidate that fails is dropped and counted. Products of known and found constants
+  (including combinations that cancel down into a family) are factored out, so a trivial combination is never a
+  discovery. **Search completeness is not global completeness**: a tier is complete within its family only, and
+  "no additional constant" is always worded "within the explored families", never "the system has none". Cyclic
+  and cos/sin-only coordinates are treated as angles because conservation does not depend on periodicity. Parameters
+  are generic; the report says so and lists the factors assumed nonzero. Functional independence
+  (`independence.py`) is the exact Jacobian rank at rational points, a **proved lower bound**; it is called exact
+  only when an upper bound from exact polynomial relations (implicit function theorem) meets it, and sampling never
+  proves independence or dependence. Do not add physics-specific shortcuts or hardcoded invariants: the benchmarks
+  (`packages/engine/tests/bench`, fixtures regenerate from seeds) are separate from the discovery code and never
+  hand it an expected invariant. Names such as Laplace–Runge–Lenz are for the model to offer afterwards. Events
+  (`invariant_search.*`) carry counters and fixed labels only; the API logs them with the request id as trace id
+  (`search_log.py`), expressions stay in the user's private card. Square roots, logarithms, non-polynomial time
+  dependence and more than 3 coordinates are `unsupported`; families above the unknown cap are listed as not searched.
+  The original `search_invariants` is kept unchanged as the fixed-ansatz baseline of `docs/invariant-benchmark.md`.
 - Chains of identities (`transform.py`, tool and endpoint `simplify`) are shown only if every step passed the
   numeric check and the whole chain was re-verified with the symbolic zero test added; the two are reported
   separately and numerical agreement is never called a proof. A rule whose conditions are not provable from the
@@ -203,14 +252,56 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Claims about matrices: names declared in `matrix_calculus` calls of the conversation are passed to `check_claims`;
   an equation that mentions one is `unverified` (never "checked" by sampling numbers, which treats matrices as
   commuting scalars).
+- Distributions (`distributions/`, tool and endpoint `distribution`): a Dirac delta is 0 at every point a sampler can
+  draw, so pointwise sampling proves nothing about it. Every other operation refuses `DiracDelta` / `Heaviside` input as
+  `unsupported`, `verify_equal` never passes it, and the claim checker leaves such statements `unverified` (never
+  `fails`). Do not remove those guards or add a path that verifies a distribution by sampling. A result is shown only if
+  the exact conditions hold (variable and argument symbols real, scale provably nonzero, roots real and provably simple,
+  multiplier defined and continuous, positions decided) and an independent test-function pairing agrees; the two are
+  reported separately and the pairing is "supporting evidence, not a proof". Equality is "as distributions", never
+  "proved" or "sampled". A delta exactly on an integration limit counts only under an explicit `endpoint` convention
+  that the user chose (never default it, never let the model choose it). Repeated roots, undecided signs and
+  non-polynomial arguments are refused with an enumerated reason (`unsupported_distribution`, `singular_root`,
+  `assumptions_insufficient`, `integration_domain_ambiguous`, `verification_failed`, `resource_limit`). Input uses the
+  explicit names; `\delta` and `\theta` remain symbols. Handbook entries about distributions have level
+  `distributional` and no `rule`. Do not loosen the pairing tolerance (`pairing.TOLERANCE`): its tests include a 1e-6
+  relative error, a missing `1/|g'|`, a dropped root and a wrong jump. Logs carry stage events with enumerated reasons
+  only, never expressions.
 - Relations in claims (`claims.py`): an equation with a symbol on one side only or a time derivative (`\theta=\phi+\omega t`,
   `L=T`, `F=ma`, `m\ddot x=-kx`) is a *relation*, not an identity, and is never tested by independent sampling. Definitions
   stated earlier in the conversation (`symbol = expression`, from the user or the model, not verified by Minerva) are
   substituted into it; a result that used them names them (`given`), and one that disagrees with them after
   substitution is `fails` ("does not agree with …"), not "false". A new definition is never a contradiction, and a
   stale definition never rescues a false identity. "Could not check" must never be worded as "false".
+- Differential geometry (`geometry/`, tool and endpoint `geometry`) is coordinate-based, for an explicit symmetric
+  metric (at most 4 coordinates) and an optional tensor field, with functions of the coordinates declared by the
+  user (`f(r)`: the parser reads an undeclared `f(r)` as the product f*r everywhere else, so geometry parses with
+  `strict_calls` and refuses it). The conventions are fixed and returned with every result (Christoffel symbols of
+  the Levi-Civita connection, `R^r_{smn} = d_m G^r_{ns} - d_n G^r_{ms} + G^r_{ml} G^l_{ns} - G^r_{nl} G^l_{ms}`,
+  Ricci = contraction of the first and third index, `G = Ric - g R / 2`): do not change them silently. A quantity is
+  shown only if every *numeric* leg passed: `numeric.py` evaluates the lambdified metric with mpmath and
+  differentiates by central differences only (no SymPy differentiation), and compares with an independent numerical
+  recomputation and with identities the result must satisfy (metric compatibility and no torsion, the Riemann
+  symmetries, first and second Bianchi, a divergence-free Einstein tensor, the Euler-Lagrange equations of
+  `g(x', x')/2` for geodesics). Identity checks measure their residual against the size of the terms that cancel
+  (a residual of 1e-9 from terms of size 1e3 is noise), a point is skipped, never failed, when the values move when
+  the step is doubled, and `STABLE_TOL` must stay below `AGREE_TOL / 3`: a property test found the false
+  "not verified" that this prevents. Symbolic legs (including the second-derivative formula for `R_{abcd}`) are
+  reported separately and never veto; "proved" is only used when they all passed, and a leg too large to try is
+  "not run". Signature is never assumed (only a diagonal metric whose entry signs the declared assumptions decide);
+  coordinates are real, other symbols complex unless declared; a degenerate metric (determinant identically 0) is
+  `unsupported`, an asymmetric or mis-shaped one `parse_error`; zeros of `det g` and of denominators are reported as
+  restrictions about the *coordinates*, never as a statement about curvature singularities, and branch-cut domains
+  (roots, logarithms) are not analysed. Geodesics are symbolic; there is no numerical integration of them. The
+  geometry is not stored anywhere on the server: every request carries the coordinates, metric, assumptions and
+  functions, which keeps tool calls replayable (`scripts/replay_trace.py`). Per-stage diagnostics (time, operation
+  count, failure category) are returned and logged (`geometry_stage`: names and counters only, never content).
+  `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
+  add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
+  connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
-  identities (Bianchi) are out of scope and must be reported as such.
+  identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
+  components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.
 - User input is never executed: no `eval`/`exec`/`sympify`/`parse_expr`. Parsers are
   `latexparse.py` and `textparse.py`, building SymPy trees through `build.Builder`.
 - All computation runs in the sandbox (`sandbox.py`): child process, wall-clock timeout, rlimits,

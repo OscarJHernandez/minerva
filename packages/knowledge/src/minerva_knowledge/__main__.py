@@ -9,8 +9,51 @@ from .checks import run_check
 from .loader import load_entries
 
 
-def _benchmark() -> int:
+def _flag(args: list[str], name: str) -> str | None:
+    if name in args:
+        index = args.index(name)
+        if index + 1 < len(args):
+            return args[index + 1]
+    return None
+
+
+def _distribution_benchmark(args: list[str]) -> int:
+    import json
+    from pathlib import Path
+
     from minerva_engine import Engine, Limits
+
+    from .distribution_benchmark import (
+        compare,
+        format_distribution_report,
+        run_distribution_benchmark,
+    )
+    from .kb import KnowledgeBase
+
+    report = run_distribution_benchmark(
+        KnowledgeBase.load(), Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    )
+    print(format_distribution_report(report))
+    document = report.to_json(label=_flag(args, "--label") or "")
+    out = _flag(args, "--json")
+    if out:
+        Path(out).write_text(
+            json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(f"wrote {out}")
+    regressed = False
+    baseline = _flag(args, "--compare")
+    if baseline:
+        text, regressed = compare(json.loads(Path(baseline).read_text(encoding="utf-8")), document)
+        print("\n== comparison with " + baseline + " ==\n" + text)
+    return 1 if report.failures or regressed else 0
+
+
+def _benchmark(args: list[str] | None = None) -> int:
+    from minerva_engine import Engine, Limits
+
+    if args and _flag(args, "--only") == "distributions":
+        return _distribution_benchmark(args)
 
     from .benchmark import (
         format_report,
@@ -31,7 +74,9 @@ def _benchmark() -> int:
     print("\n== multi-step transformations ==")
     chains = run_transform_benchmark(kb, engine)
     print(format_transform_report(chains))
-    return 1 if report.failures or chains.failures else 0
+    print("\n== distribution calculus ==")
+    distributions = _distribution_benchmark(args or [])
+    return 1 if report.failures or chains.failures or distributions else 0
 
 
 def _matrix_benchmark(args: list[str]) -> int:
@@ -95,14 +140,15 @@ def _generate(check: bool) -> int:
 def main(argv: list[str]) -> int:
     command = argv[0] if argv else "verify"
     if command == "benchmark":
-        return _benchmark()
+        return _benchmark(argv[1:])
     if command == "matrix-benchmark":
         return _matrix_benchmark(argv[1:])
     if command == "generate":
         return _generate(check="--check" in argv[1:])
     if command != "verify":
         print(
-            "usage: python -m minerva_knowledge verify | benchmark | matrix-benchmark "
+            "usage: python -m minerva_knowledge verify | benchmark [--only distributions] "
+            "[--json PATH] [--compare BASELINE.json] [--label NAME] | matrix-benchmark "
             "[--repeat N] [--trace] [--convergence] [--section LABEL] [--out FILE] | "
             "generate [--check]",
             file=sys.stderr,
