@@ -7,8 +7,10 @@ from .differentiate import (
     DifferentiateResult,
     DiffVariable,
 )
+from .discovery import DiscoveredConstant, DiscoveryReport, Pins, SearchEvent
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
+from .independence import IndependenceReport, Relation
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -61,11 +63,14 @@ __all__ = [
     "DiffVariable",
     "DifferentiateResult",
     "DimensionalReport",
+    "DiscoveredConstant",
+    "DiscoveryReport",
     "Engine",
     "ExpansionReport",
     "ExpressionInput",
     "FormulaReading",
     "IdentitiesResult",
+    "IndependenceReport",
     "IntegrateResult",
     "IntegrateVerification",
     "InvariantReport",
@@ -80,11 +85,14 @@ __all__ = [
     "MotionRequest",
     "ParseError",
     "PerturbationReport",
+    "Pins",
     "QuadratureVerification",
     "QuantitySpec",
+    "Relation",
     "Rule",
     "RuleApplication",
     "RuleCondition",
+    "SearchEvent",
     "SeriesResult",
     "SeriesTerm",
     "SeriesVerification",

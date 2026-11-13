@@ -20,6 +20,7 @@
 #   solve        equation, variable
 #   lagrangian   input, coordinates
 #   invariants   input, coordinates, angles, degree, power_bound, harmonics
+#   discovery    input, coordinates, system (lagrangian | hamiltonian), momenta, angles, budget
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
 # Inputs are LaTeX (tensor inputs use the text form S(a,b)*A(-a,-b)). Add a refusal example wherever a
@@ -420,6 +421,71 @@ capabilities:
         op: lagrangian
         input: '\frac12 m\dot{x}^2 - \frac12 k x^2 t'
         coordinates: [x]
+
+  - id: discovery
+    title: Find the conserved quantities of a system
+    status: available
+    group: physics
+    where: [workbench, chat, api]
+    summary: >-
+      Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva derives the equations of
+      motion (confirmed by numerical differentiation), then searches a deterministic ladder of larger and larger
+      families of candidates: polynomials in the velocities or momenta times powers of the coordinates, cos and sin
+      of angles (declared, detected, or cyclic) and powers of t. In each family the conservation condition is
+      solved exactly; a candidate is shown only if it is verified on the equations of motion, and products of what
+      is already known are not counted as discoveries. It then reports which constants are functionally independent
+      (an exact Jacobian rank, with the algebraic relations that tie the rest to them) and exactly which families
+      were and were not searched. You do not choose an ansatz, a power bound or the angles.
+    limits:
+      - Complete within each family searched and nothing more. No additional constant always means within the
+        explored families, never that the system has none.
+      - Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial
+        time dependence are reported as unsupported. At most 3 coordinates.
+      - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
+      - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found
+        only when those values are given.
+      - Functional independence is a proved lower bound (exact rank at rational points); it is called exact only
+        when an upper bound from the relations meets it. Numerical sampling is never used as proof.
+      - A name such as Runge–Lenz is a recognition the model may offer afterwards; the search never uses it.
+    examples:
+      - id: discovery-kepler
+        title: Kepler problem, from the Lagrangian alone
+        note: >-
+          No angle, power bound or invariant is given. The search expands until both components of the Laplace–Runge–Lenz
+          vector appear, and reports that, with the energy and angular momentum, only three of the four are
+          functionally independent, with the exact relation between them.
+        op: discovery
+        input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
+        coordinates: [r, theta]
+      - id: discovery-kepler-hamiltonian
+        title: The same system as a Hamiltonian
+        op: discovery
+        system: hamiltonian
+        input: '\frac{p_r^2}{2m} + \frac{p_\theta^2}{2 m r^2} - \frac{k}{r}'
+        coordinates: [r, theta]
+        momenta: [p_r, p_theta]
+      - id: discovery-resonant
+        title: A resonant oscillator has an extra invariant
+        note: >-
+          With frequencies in the ratio 1 : 2 a constant of degree 3 in the momenta appears; the search reaches it
+          by raising the degree by itself.
+        op: discovery
+        system: hamiltonian
+        input: '\frac{p_1^2 + q_1^2}{2} + \frac{p_2^2 + 4 q_2^2}{2}'
+        coordinates: [q_1, q_2]
+        momenta: [p_1, p_2]
+      - id: discovery-henon-heiles
+        title: Hénon–Heiles, none within the explored families
+        note: >-
+          Only the energy is known; nothing else is found. This says nothing about families that were not searched.
+        op: discovery
+        input: '\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3'
+        coordinates: [x, y]
+      - id: discovery-cartesian-kepler
+        title: A square root is refused
+        op: discovery
+        input: '\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2 + y^2}}'
+        coordinates: [x, y]
 
   - id: invariants
     title: Search for hidden constants of motion

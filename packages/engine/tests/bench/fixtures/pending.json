@@ -1,0 +1,13 @@
+{
+ "kepler_cartesian.s1.k0": {
+  "angular": "no:missing_function_family",
+  "lrl_x": "no:missing_function_family",
+  "lrl_y": "no:missing_function_family"
+ },
+ "osc2_res.s2.k2": {
+  "re": "functional"
+ },
+ "sw.s2.k2": {
+  "K": "no:missing_function_family"
+ }
+}

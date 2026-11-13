@@ -471,3 +471,38 @@ def test_matrix_calculus_logs_no_user_input(capsys) -> None:  # type: ignore[no-
         )
     out = capsys.readouterr().out
     assert "compute" in out and marker not in out
+
+
+def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        r = c.post(
+            "/v1/compute/conserved",
+            json={
+                "function": rf"\frac{{1}}{{2}}m(\dot{{r}}^2+r^2\dot{{\theta}}^2)+\frac{{k_{{{marker}}}}}{{r}}",
+                "coordinates": ["r", "theta"],
+            },
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["status"] == "ok"
+        assert sum(k["kind"] == "new" for k in body["constants"]) == 2
+        assert body["independence"]["rank_lower"] == 3
+        bad = c.post(
+            "/v1/compute/conserved",
+            json={"function": "x", "coordinates": ["a", "b", "c", "d"]},
+        )
+        assert bad.status_code == 422
+    out = capsys.readouterr().out
+    assert "invariant_search.started" in out and "invariant_search.completed" in out
+    assert "invariant_search.nullspace_computed" in out and '"rank"' in out
+    assert marker not in out and "theta" not in out and "\\frac" not in out
+    assert "request_id" in out  # the trace id that ties the stages together
+    assert "ada@example.com" not in out
+
+
+def test_conserved_quantities_requires_login(client: TestClient) -> None:
+    r = client.post("/v1/compute/conserved", json={"function": "x", "coordinates": ["x"]})
+    assert r.status_code == 401

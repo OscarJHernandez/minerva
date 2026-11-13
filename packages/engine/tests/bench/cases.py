@@ -344,9 +344,33 @@ FIXED_SPECS: list[tuple[str, int, int, bool, list[tuple[int, str]]]] = [
 ]
 
 
+def promoted_path() -> Path:
+    return FIXTURES / "promoted_specs.json"
+
+
+def pending_path() -> Path:
+    return FIXTURES / "pending.json"
+
+
+def all_specs() -> list[tuple[str, int, int, bool, list[tuple[int, str]]]]:
+    """The curated fixed specs plus failures promoted from offline sweeps (`bench_invariants promote`)."""
+    specs = list(FIXED_SPECS)
+    if promoted_path().exists():
+        for base, seed, steps, mixing, negatives in json.loads(promoted_path().read_text()):
+            specs.append((base, seed, steps, mixing, [(i, e) for i, e in negatives]))
+    return specs
+
+
+def load_pending() -> dict[str, dict[str, str]]:
+    """Reference invariants known not to be recovered as an exact linear combination, with the reason.
+    A case that starts to pass must be removed from this file: progress is locked in."""
+    data: dict[str, dict[str, str]] = json.loads(pending_path().read_text())
+    return data
+
+
 def build_fixed() -> list[Case]:
     out: list[Case] = []
-    for base, seed, steps, mixing, negatives in FIXED_SPECS:
+    for base, seed, steps, mixing, negatives in all_specs():
         case = build_case(base, seed, steps, mixing=mixing)
         out.append(case)
         for index, eps in negatives:

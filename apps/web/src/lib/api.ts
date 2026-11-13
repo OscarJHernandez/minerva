@@ -1,3 +1,4 @@
+import type { DiscoveryReport } from "./chat-types";
 import type {
   ApplyIdentityResult,
   Assumptions,
@@ -64,6 +65,22 @@ export interface ComputeInput {
   parent_id?: string;
 }
 
+export interface ConservedInput {
+  function: string;
+  system: "lagrangian" | "hamiltonian";
+  coordinates: string[];
+  momenta?: string[] | null;
+  angles?: string[];
+  budget?: "quick" | "standard" | "thorough";
+  /** Advanced: search exactly one family instead of the ladder. */
+  pins?: {
+    degree?: number | null;
+    power_bound?: number | null;
+    harmonics?: number | null;
+    time_degree?: number | null;
+  } | null;
+}
+
 export interface SimplifyInput extends ComputeInput {
   goal?: SimplifyGoal;
   target?: string[];
@@ -103,6 +120,11 @@ export const api = {
     request<MatrixCalculusResult>("/v1/compute/matrix", {
       method: "POST",
       body: JSON.stringify({ ...c, ...req, format: "latex" }),
+    }),
+  conserved: (c: ConservedInput) =>
+    request<DiscoveryReport>("/v1/compute/conserved", {
+      method: "POST",
+      body: JSON.stringify(c),
     }),
   identities: (c: ComputeInput) =>
     request<IdentitiesResult>("/v1/compute/identities", {

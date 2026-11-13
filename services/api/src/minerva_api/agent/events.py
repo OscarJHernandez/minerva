@@ -45,6 +45,7 @@ class Card(BaseModel):
         "expansion",
         "perturbation",
         "invariants",
+        "discovery",
         "motion",
         "dimensional",
         "units",

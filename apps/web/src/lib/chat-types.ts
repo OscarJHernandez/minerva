@@ -171,6 +171,70 @@ export interface InvariantReport {
   duration_ms: number;
 }
 
+export interface DiscoveredConstant {
+  id: string;
+  name: string;
+  expression_latex: string;
+  kind: "known" | "new";
+  source: string;
+  tier: number | null;
+  momentum_degree: number;
+  independence: "independent" | "dependent" | "unresolved";
+  verified: boolean;
+  verification: {
+    symbolic_zero: boolean;
+    numeric_points_checked: number;
+    numeric_points_agreed: number;
+    passed: boolean;
+  } | null;
+  reason: string;
+}
+
+export interface DiscoveryTier {
+  index: number;
+  code: string;
+  description: string;
+  unknowns: number;
+  equations: number;
+  rank: number;
+  nullity: number;
+  new_directions: number;
+  accepted: number;
+  rejected: number;
+  duration_ms: number;
+  outcome: "searched" | "deadline" | "unsupported";
+}
+
+/** Result of the adaptive search for conserved quantities of a Lagrangian or Hamiltonian. */
+export interface DiscoveryReport {
+  status: Status;
+  system: "lagrangian" | "hamiltonian";
+  function_latex: string | null;
+  coordinates: string[];
+  angles: string[];
+  budget: string;
+  constants: DiscoveredConstant[];
+  tiers: DiscoveryTier[];
+  unexplored: string[];
+  stop_reason: string;
+  cause: string;
+  independence: {
+    constants: number;
+    rank_lower: number;
+    rank_upper: number;
+    rank_proved: boolean;
+    max_possible: number | null;
+    relations: { latex: string; factors: number; exact: boolean }[];
+    notes: string[];
+  } | null;
+  parameter_conditions: string[];
+  limitations: string[];
+  notes: string[];
+  message: string;
+  peak_memory_mb: number;
+  duration_ms: number;
+}
+
 /** What the Lagrangian card sends to the numerical-solution endpoint (the engine's request model). */
 export interface MotionRequest {
   lagrangian: string;
@@ -425,6 +489,13 @@ export type Card =
       type: "invariants";
       title: string;
       data: { report: InvariantReport };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "discovery";
+      title: string;
+      data: { report: DiscoveryReport };
     }
   | {
       id: string;

@@ -110,6 +110,9 @@ one most likely to be wrong.
     points); anything that fails is dropped. It reports the exact family searched and that finding none proves
     nothing beyond it. Autonomous Lagrangians with rational accelerations only (square roots are `unsupported`),
     at most 3 coordinates and 500 unknowns (`resource_limit` above).
+  - `flow.py`, `discovery.py`, `independence.py` (`discover_invariants`): the adaptive generalisation, for a
+    Lagrangian or a Hamiltonian; see [conserved-quantities.md](conserved-quantities.md). `invariants.py` stays as the
+    fixed-ansatz baseline.
   - `motion.py` (`integrate_motion`): numerical solution of those accelerations for given parameter values,
     initial conditions and time span, optionally for 2–6 values of one parameter. Pure-Python float adaptive
     Dormand–Prince 5(4) (relative tolerance 1e-12; no SciPy). A run keeps its trajectory only if (1) a fixed-step
@@ -164,7 +167,7 @@ and explains; it never computes and never decides correctness.
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
 - **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
+  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
   posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with

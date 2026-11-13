@@ -22,20 +22,9 @@ LIMITS = Limits(timeout_seconds=120)
 CASES = bench_cases.load_fixed()
 BY_ID = {c.id: c for c in CASES}
 
-# Reference invariants that are not recovered as an exact linear combination, with the reason. A case
-# that starts to pass fails the test until it is removed from here: progress is locked in.
-PENDING: dict[str, dict[str, str]] = {
-    # degree 4 with powers up to 4 needs 375 unknowns; the standard budget stops at 350
-    "osc2_res.s2.k2": {"re": "functional"},
-    # a transformed inverse-square system: the integral has a denominator that mixes coordinates
-    "sw.s2.k2": {"K": "no:missing_function_family"},
-    # algebraic potential: the equations are not rational
-    "kepler_cartesian.s1.k0": {
-        "angular": "no:missing_function_family",
-        "lrl_x": "no:missing_function_family",
-        "lrl_y": "no:missing_function_family",
-    },
-}
+# Reference invariants that are not recovered as an exact linear combination, with the reason
+# (bench/fixtures/pending.json). A case that starts to pass fails the test until it is removed from there.
+PENDING = bench_cases.load_pending()
 
 
 @functools.cache

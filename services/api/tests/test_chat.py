@@ -472,6 +472,26 @@ def test_scripted_model_searches_for_hidden_constants_of_motion(
     assert message["trace"][0]["arguments"]["angles"] == ["theta"]
 
 
+def test_scripted_model_finds_conserved_quantities_without_hints(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    latex = r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}"
+    events = sse(client, cid, f"find the conserved quantities of ${latex}$")
+    message = next(d for e, d in events if e == "message")
+    card = cards_of(message)[0]
+    assert card["type"] == "discovery"
+    report = card["data"]["report"]
+    assert sum(c["kind"] == "new" for c in report["constants"]) == 2
+    assert report["independence"]["rank_lower"] == 3 and report["independence"]["rank_proved"]
+    step = message["trace"][0]
+    assert step["name"] == "find_conserved_quantities"
+    assert set(step["arguments"]) <= {
+        "lagrangian",
+        "coordinates",
+    }  # no ansatz, no angles, no answer
+
+
 def test_matrix_turn_streams_a_verified_card(chat_client: tuple[TestClient, str]) -> None:
     client, cid = chat_client
     events = sse(client, cid, r"Differentiate this matrix expression in t: $\exp(tA)$")

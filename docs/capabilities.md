@@ -476,6 +476,91 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - energy function: not conserved (L depends explicitly on time)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion (`invariants.py`) looks for them in a declared family.
 
+### Find the conserved quantities of a system
+
+*Available in:* workbench, chat, HTTP API.
+
+Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva derives the equations of motion (confirmed by numerical differentiation), then searches a deterministic ladder of larger and larger families of candidates: polynomials in the velocities or momenta times powers of the coordinates, cos and sin of angles (declared, detected, or cyclic) and powers of t. In each family the conservation condition is solved exactly; a candidate is shown only if it is verified on the equations of motion, and products of what is already known are not counted as discoveries. It then reports which constants are functionally independent (an exact Jacobian rank, with the algebraic relations that tie the rest to them) and exactly which families were and were not searched. You do not choose an ansatz, a power bound or the angles.
+
+**Limits**
+
+- Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.
+- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported. At most 3 coordinates.
+- Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
+- Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.
+- Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.
+- A name such as Runge–Lenz is a recognition the model may offer afterwards; the search never uses it.
+
+#### Kepler problem, from the Lagrangian alone
+
+- **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **C1, momentum conjugate to theta:** $C1 = m r^{2} \dot{\theta}$
+- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$
+- **C3, newly found:** $C3 = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
+- **C4, newly found:** $C4 = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
+- **Exact relation:** $2 C_{1}^{2} C_{2} - C_{3}^{2} m - C_{4}^{2} m + k^{2} m = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)
+- No angle, power bound or invariant is given. The search expands until both components of the Laplace–Runge–Lenz vector appear, and reports that, with the energy and angular momentum, only three of the four are functionally independent, with the exact relation between them.
+
+#### The same system as a Hamiltonian
+
+- **Hamiltonian:** `\frac{p_r^2}{2m} + \frac{p_\theta^2}{2 m r^2} - \frac{k}{r}`
+- **Coordinates:** r, theta
+- **Status:** `ok`
+- **C1, momentum conjugate to theta:** $C1 = p_{\theta}$
+- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{p_{r}^{2}}{2 m} + \frac{p_{\theta}^{2}}{2 m r^{2}}$
+- **C3, newly found:** $C3 = - k m \sin{\left(\theta \right)} - p_{r} p_{\theta} \cos{\left(\theta \right)} + \frac{p_{\theta}^{2} \sin{\left(\theta \right)}}{r}$
+- **C4, newly found:** $C4 = - k m \cos{\left(\theta \right)} + p_{r} p_{\theta} \sin{\left(\theta \right)} + \frac{p_{\theta}^{2} \cos{\left(\theta \right)}}{r}$
+- **Exact relation:** $2 C_{1}^{2} C_{2} m - C_{3}^{2} - C_{4}^{2} + k^{2} m^{2} = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 8 families searched, from d1p1h1t0 to d3p3h1t0c2 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the harmonics to 2 needs 420 unknown coefficients (limit 350)
+
+#### A resonant oscillator has an extra invariant
+
+- **Hamiltonian:** `\frac{p_1^2 + q_1^2}{2} + \frac{p_2^2 + 4 q_2^2}{2}`
+- **Coordinates:** q_1, q_2
+- **Status:** `ok`
+- **C1, energy function:** $C1 = \frac{p_{1}^{2}}{2} + \frac{p_{2}^{2}}{2} + \frac{q_{1}^{2}}{2} + 2 q_{2}^{2}$
+- **C2, newly found:** $C2 = p_{1}^{2} + q_{1}^{2}$
+- **C3, newly found:** $C3 = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}$
+- **C4, newly found:** $C4 = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}$
+- **Exact relation:** $- 2 C_{1} C_{2}^{2} + C_{2}^{3} + 4 C_{3}^{2} + C_{4}^{2} = 0$
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- Functionally independent: 3 (proved).
+- 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
+- With frequencies in the ratio 1 : 2 a constant of degree 3 in the momenta appears; the search reaches it by raising the degree by itself.
+
+#### Hénon–Heiles, none within the explored families
+
+- **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3`
+- **Coordinates:** x, y
+- **Status:** `ok`
+- **C1, energy function:** $C1 = x^{2} y + \frac{x^{2}}{2} + \frac{\dot{x}^{2}}{2} - \frac{y^{3}}{3} + \frac{y^{2}}{2} + \frac{\dot{y}^{2}}{2}$
+- **Result:** no additional constant within the explored families
+- Functionally independent: 1 (proved).
+- 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
+- Only the energy is known; nothing else is found. This says nothing about families that were not searched.
+
+#### A square root is refused
+
+- **Lagrangian:** `\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2 + y^2}}`
+- **Coordinates:** x, y
+- **Status:** `unsupported`
+- The equations of motion are not rational in the coordinates, the velocities or momenta and the cos and sin of the angles (square roots and the like are not searched).
+
 ### Search for hidden constants of motion
 
 *Available in:* chat.

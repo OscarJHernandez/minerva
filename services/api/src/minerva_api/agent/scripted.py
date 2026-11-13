@@ -179,6 +179,20 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif ("conserved quantit" in lower or "find the conserved" in lower) and latex:
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            async for c in self._say(
+                "I will search for the conserved quantities, expanding the families as needed. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "find_conserved_quantities",
+                        {"lagrangian": latex, "coordinates": names or ["x"]},
+                    )
+                ]
+            )
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -387,6 +401,12 @@ class ScriptedLLM:
             text = (
                 "The card lists the equations of motion, the accelerations, and the constants of motion "
                 "that Minerva verified on those equations, and says which symmetries it did not search for."
+            )
+        elif tool == "find_conserved_quantities":
+            text = (
+                "The card lists every constant that was verified on the equations of motion, which are "
+                "already known, how many are functionally independent, the exact relations among them and "
+                "the families that were and were not searched. Nothing outside those families was searched."
             )
         elif tool == "search_invariants":
             text = (

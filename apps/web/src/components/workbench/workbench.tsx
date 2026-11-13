@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, type ComputeInput } from "@/lib/api";
@@ -292,6 +293,12 @@ export function Workbench() {
   return (
     <div className="grid gap-x-8 gap-y-6 pb-16 pt-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr]">
       <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-1">
+        <p className="text-xs text-muted">
+          Working with a Lagrangian or Hamiltonian?{" "}
+          <Link href="/workbench/conserved" className="text-accent hover:underline">
+            Find its conserved quantities
+          </Link>
+        </p>
         <ExpressionEditor
           format={format}
           latex={latex}

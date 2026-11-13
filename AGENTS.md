@@ -53,6 +53,7 @@ uv run python -m minerva_knowledge verify # check every handbook entry at its de
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
+uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 uv run python scripts/replay_trace.py report.md       # re-run the tool calls of a chat debug report (see below)
 MINERVA_LLM_MODE=scripted ...             # run the API with the deterministic stand-in model (dev only)
@@ -161,6 +162,26 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   nothing here says "integrable" or names a constant: a name such as Runge–Lenz is for the model to offer, not for the
   result to assert. Time-dependent Lagrangians and non-rational accelerations are `unsupported`, an oversized
   ansatz is `resource_limit`. Do not widen the ansatz silently or report an unverified candidate.
+- Adaptive discovery of conserved quantities (`discovery.py`, `flow.py`, `independence.py`; tool
+  `find_conserved_quantities`, endpoint `POST /v1/compute/conserved`) takes a Lagrangian **or** a Hamiltonian and
+  chooses its own ansatz: a deterministic ladder of nested families (momentum degree, power bound, harmonics, cyclic
+  powers, powers of t), cheapest first, each solved exactly. It shows a constant only if it passed `Flow.verify`
+  (symbolic zero and numeric points on the equations of motion, which were themselves confirmed by numerical
+  differentiation of L or H); a candidate that fails is dropped and counted. Products of known and found constants
+  (including combinations that cancel down into a family) are factored out, so a trivial combination is never a
+  discovery. **Search completeness is not global completeness**: a tier is complete within its family only, and
+  "no additional constant" is always worded "within the explored families", never "the system has none". Cyclic
+  and cos/sin-only coordinates are treated as angles because conservation does not depend on periodicity. Parameters
+  are generic; the report says so and lists the factors assumed nonzero. Functional independence
+  (`independence.py`) is the exact Jacobian rank at rational points, a **proved lower bound**; it is called exact
+  only when an upper bound from exact polynomial relations (implicit function theorem) meets it, and sampling never
+  proves independence or dependence. Do not add physics-specific shortcuts or hardcoded invariants: the benchmarks
+  (`packages/engine/tests/bench`, fixtures regenerate from seeds) are separate from the discovery code and never
+  hand it an expected invariant. Names such as Laplace–Runge–Lenz are for the model to offer afterwards. Events
+  (`invariant_search.*`) carry counters and fixed labels only; the API logs them with the request id as trace id
+  (`search_log.py`), expressions stay in the user's private card. Square roots, logarithms, non-polynomial time
+  dependence and more than 3 coordinates are `unsupported`; families above the unknown cap are listed as not searched.
+  The original `search_invariants` is kept unchanged as the fixed-ansatz baseline of `docs/invariant-benchmark.md`.
 - Chains of identities (`transform.py`, tool and endpoint `simplify`) are shown only if every step passed the
   numeric check and the whole chain was re-verified with the symbolic zero test added; the two are reported
   separately and numerical agreement is never called a proof. A rule whose conditions are not provable from the
