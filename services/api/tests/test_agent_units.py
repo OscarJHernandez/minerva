@@ -1060,3 +1060,77 @@ def test_a_handbook_formula_matches_whatever_its_spacing() -> None:
         known,
     )
     assert [s.status for s in segs if s.type != "text"] == ["from_tool", "unchecked"]
+
+
+ROTATING_DISK = (
+    r"On the rotating disk $L = T$, with $\theta = \phi + \omega t$ and "
+    r"$\dot\theta = \dot\phi + \omega$, so $L = \frac12 m (\dot r^2 + r^2 \dot\theta^2)$."
+)
+
+
+def test_relations_the_model_writes_are_unchecked_with_a_reason_never_contradicted(
+    ctx: ToolContext,
+) -> None:
+    msg = final(
+        collect(FakeLLM([[Chunk(text=ROTATING_DISK)]]), ctx, [{"role": "user", "content": "q"}])
+    )
+    claims = [s for s in segments_of(msg) if s["type"] != "text"]
+    assert len(claims) == 4
+    assert {s["status"] for s in claims} == {"unchecked"}
+    assert all("not tested as an identity" in s["note"] for s in claims)
+    assert {c["kind"] for c in msg["debug"]["claims"]} == {"relation"}
+    # an equation false for every value is still called so; one only false at generic points is not
+    msg = final(
+        collect(
+            FakeLLM(
+                [[Chunk(text=r"False: $x^2 + 2x + 1 = x^2 + 2x$. Wrong: $(x+1)^2 = x^2 + 1$.")]]
+            ),
+            ctx,
+            [{"role": "user", "content": "q"}],
+        )
+    )
+    always, generic = (s for s in segments_of(msg) if s["type"] == "math")
+    assert always["status"] == "contradicted"
+    assert (generic["status"], "identity") == ("unchecked", msg["debug"]["claims"][1]["kind"])
+    assert "not an identity" in generic["note"]
+
+
+def test_definitions_from_earlier_turns_and_earlier_assumptions_are_used(ctx: ToolContext) -> None:
+    llm = FakeLLM(
+        [[Chunk(text=r"Then $\cos\theta = \cos\phi\cos(\omega t) - \sin\phi\sin(\omega t)$.")]]
+    )
+    msg = final(
+        collect(
+            llm,
+            ctx,
+            [{"role": "user", "content": "q"}],
+            prior_relations=[r"\theta = \phi + \omega t"],
+        )
+    )
+    claim = next(s for s in segments_of(msg) if s["type"] == "math")
+    assert claim["status"] == "conditional"
+    assert r"\theta = \phi + \omega t" in claim["note"]
+    assert msg["debug"]["claims"][0]["given"] == [r"\theta = \phi + \omega t"]
+    # a stated definition that the claim contradicts is named
+    llm = FakeLLM([[Chunk(text=r"Then $\cos\theta = \cos\phi + \cos(\omega t)$.")]])
+    msg = final(
+        collect(
+            llm,
+            ctx,
+            [{"role": "user", "content": "q"}],
+            prior_relations=[r"\theta = \phi + \omega t"],
+        )
+    )
+    claim = next(s for s in segments_of(msg) if s["type"] == "math")
+    assert claim["status"] == "contradicted" and "does not agree with" in claim["note"]
+    # assumptions declared in an earlier turn apply
+    llm = FakeLLM([[Chunk(text=r"For positive x, $\sqrt{x^2} = x$.")]])
+    msg = final(
+        collect(
+            llm,
+            ctx,
+            [{"role": "user", "content": "q"}],
+            prior_assumptions={"x": ["positive"]},
+        )
+    )
+    assert next(s for s in segments_of(msg) if s["type"] == "math")["status"] == "checked"

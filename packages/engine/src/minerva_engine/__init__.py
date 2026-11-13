@@ -1,6 +1,6 @@
 """Minerva symbolic computation engine."""
 
-from .claims import ClaimCheck, check_claim, split_equation
+from .claims import ClaimCheck, check_claim, check_claims, split_equation
 from .differentiate import (
     DerivativeStep,
     DerivativeVerification,
@@ -98,6 +98,7 @@ __all__ = [
     "Verification",
     "apply_rule",
     "check_claim",
+    "check_claims",
     "parse_expression",
     "parse_latex",
     "parse_text",

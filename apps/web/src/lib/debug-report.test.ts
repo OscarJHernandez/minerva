@@ -45,7 +45,16 @@ const assistant: StoredMessage = {
       max_seconds: 180,
       duration_ms: 2000,
       llm_calls: [{ ms: 500, text_chars: 0, tool_calls: 1 }],
-      claims: [{ value: "x = 2", status: "fails", detail: "differs at x=1" }],
+      claims: [
+        { value: "x = 2", status: "fails", detail: "differs at x=1" },
+        {
+          value: "y = 3",
+          status: "conditional",
+          detail: "holds given z = 3",
+          kind: "relation",
+          given: ["z = 3"],
+        },
+      ],
       error: null,
     },
     blocks: [
@@ -113,6 +122,9 @@ describe("buildDebugReport", () => {
     expect(report).toContain("request req123");
     expect(report).toContain("claim check fails: `x = 2` (differs at x=1)");
     expect(report).toContain("- contradicted: `x = 2`");
+    expect(report).toContain(
+      "claim check conditional [relation]: `y = 3` (holds given z = 3) given: z = 3",
+    );
   });
 
   it("keeps turns in order: user first, then assistant", () => {
