@@ -39,7 +39,7 @@ import math
 import resource
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 import sympy as sp
@@ -92,9 +92,11 @@ class TierKey:
     power: int  # highest power of an ordinary coordinate (and lowest, negated, where a denominator)
     harmonics: int  # highest harmonic of an angle
     time: int  # highest power of t
+    cyclic: int = 0  # highest power of a cyclic coordinate (besides cos and sin of it)
 
     def code(self) -> str:
-        return f"d{self.degree}p{self.power}h{self.harmonics}t{self.time}"
+        suffix = f"c{self.cyclic}" if self.cyclic else ""
+        return f"d{self.degree}p{self.power}h{self.harmonics}t{self.time}{suffix}"
 
 
 class Pins(BaseModel):
@@ -336,7 +338,9 @@ class _Setup:
         if i in self.angle_idx:
             return self.trig_functions(i, key.harmonics)
         if i in self.cyclic_idx:
-            return self.trig_functions(i, key.harmonics) + [q**a for a in range(1, key.time + 1)]
+            return self.trig_functions(i, key.harmonics) + [
+                q**a for a in range(1, max(key.time, key.cyclic) + 1)
+            ]
         low = -key.power if i in self.denom_idx else 0
         return [q**a for a in range(low, key.power + 1)]
 
@@ -369,6 +373,8 @@ class _Setup:
             text = f"cos and sin of {', '.join(trig)} up to harmonic {key.harmonics}"
             if cyc:
                 text += f" ({', '.join(cyc)} cyclic, treated as periodic)"
+                if key.cyclic:
+                    text += f" and powers of {', '.join(cyc)} up to {key.cyclic}"
             parts.append(text)
         if key.time:
             parts.append(f"powers of t up to {key.time}")
@@ -493,26 +499,30 @@ def _chain(setup: _Setup, budget: Budget, pins: Pins | None) -> tuple[list[TierK
         "P": budget.max_power,
         "H": budget.max_harmonics if has_trig else 1,
         "T": max_time,
+        "C": 2 if setup.cyclic_idx else 0,
     }
     key = TierKey(1, 1, 1, 0)
     chain = [key]
-    schedule = ["d", "P", "P", "d", "H", "P", "d", "P", "T", "T"]
+    schedule = ["d", "P", "P", "C", "d", "H", "P", "d", "P", "C", "T", "T"]
     label = {
         "d": "momentum degree",
         "P": "power bound",
         "H": "harmonics",
         "T": "powers of t",
+        "C": "powers of the cyclic coordinates",
     }
 
     def bump(k: TierKey, step: str) -> TierKey | None:
         if step == "d" and k.degree < limits["d"]:
-            return TierKey(k.degree + 1, k.power, k.harmonics, k.time)
+            return replace(k, degree=k.degree + 1)
         if step == "P" and k.power < limits["P"]:
-            return TierKey(k.degree, k.power + 1, k.harmonics, k.time)
+            return replace(k, power=k.power + 1)
         if step == "H" and k.harmonics < limits["H"]:
-            return TierKey(k.degree, k.power, k.harmonics + 1, k.time)
+            return replace(k, harmonics=k.harmonics + 1)
         if step == "T" and k.time < limits["T"]:
-            return TierKey(k.degree, k.power, k.harmonics, k.time + 1)
+            return replace(k, time=k.time + 1)
+        if step == "C" and k.cyclic < limits["C"]:
+            return replace(k, cyclic=k.cyclic + 1)
         return None
 
     if setup.unknowns(key) > budget.max_unknowns:
@@ -524,9 +534,16 @@ def _chain(setup: _Setup, budget: Budget, pins: Pins | None) -> tuple[list[TierK
         size = setup.unknowns(nxt)
         if size > budget.max_unknowns:
             refused.append(
-                f"raising the {label[step]} to {getattr(nxt, {'d': 'degree', 'P': 'power', 'H': 'harmonics', 'T': 'time'}[step])} "
+                f"raising the {label[step]} to {getattr(nxt, {'d': 'degree', 'P': 'power', 'H': 'harmonics', 'T': 'time', 'C': 'cyclic'}[step])} "
                 f"needs {size} unknown coefficients (limit {budget.max_unknowns})"
             )
+            if step == "d":
+                # Not nested: a higher degree with a smaller power bound is still searched if it fits.
+                for lower in range(key.power - 1, 0, -1):
+                    narrow = replace(nxt, power=lower)
+                    if setup.unknowns(narrow) <= budget.max_unknowns:
+                        chain.append(narrow)
+                        break
             continue
         key = nxt
         chain.append(key)
@@ -866,6 +883,11 @@ def discover(
             cause = "resource_limit"
         elif stop_reason == "ladder_exhausted":
             cause = "ansatz_exhausted"
+    if flow.params:
+        notes.append(
+            "Parameters are generic symbols: constants that exist only at special values (for example "
+            "resonant frequency ratios) are not searched for; give the values to search at them."
+        )
     if parameter_conditions:
         notes.append(
             "Generic parameters: the constants were scaled by factors in the parameters ("
@@ -931,24 +953,55 @@ def _algebra_vectors(
     column_index: dict[tuple[int, ...], int],
     deadline: float,
 ) -> list[dict[int, sp.Expr]]:
-    """The constant 1 and the products of up to four known or found constants that lie in the family."""
-    vectors: list[dict[int, sp.Expr]] = []
-    one = setup.to_vector(sp.Integer(1), column_index)
-    if one:
-        vectors.append(one)
-    usable = [g for g in gens if g.degree <= key.degree]
+    """The elements of the family that are polynomials in the known and found constants.
+
+    Products of up to four constants (and the constant 1) are formed up to momentum degree twice the
+    family's, because a combination of products of higher degree can cancel down into the family (the
+    energy of `h + c L^2` minus `4 c L^2` is `h`). The combinations whose monomials all lie in the
+    family are found by an exact nullspace, so a trivial combination is never counted as new."""
+    products: list[sp.Expr] = [sp.Integer(1)]
+    cap_degree = 2 * key.degree
     count = 0
     for size in range(1, MAX_FACTORS_IN_PRODUCT + 1):
-        for combo in itertools.combinations_with_replacement(range(len(usable)), size):
-            if sum(usable[i].degree for i in combo) > key.degree:
+        for combo in itertools.combinations_with_replacement(range(len(gens)), size):
+            if sum(gens[i].degree for i in combo) > cap_degree:
                 continue
             if count >= MAX_PRODUCTS or time.monotonic() > deadline:
-                return vectors
+                break
             count += 1
-            product = sp.Mul(*[usable[i].poly for i in combo])
-            vector = setup.to_vector(product, column_index)
-            if vector:
-                vectors.append(vector)
+            products.append(sp.Mul(*[gens[i].poly for i in combo]))
+    tables: list[dict[tuple[int, ...], sp.Expr]] = []
+    for expr in products:
+        shifted = sp.expand(expr * setup.shift)
+        if not shifted.is_polynomial(*setup.variables):
+            continue
+        poly = sp.Poly(setup.reduce_angles(shifted), *setup.variables)
+        tables.append({tuple(m): c for m, c in poly.terms()})
+    outside = sorted({m for t in tables for m in t if m not in column_index})
+    if not outside:
+        return [{column_index[m]: c for m, c in t.items()} for t in tables if t]
+    row = {m: i for i, m in enumerate(outside)}
+    field_ = setup.field
+    sparse: dict[int, dict[int, Any]] = {}
+    for j, t in enumerate(tables):
+        for m, c in t.items():
+            if m in row:
+                sparse.setdefault(row[m], {})[j] = field_.from_sympy(sp.sympify(c))
+    null = DomainMatrix(sparse, (len(outside), len(tables)), field_).to_dense().nullspace()
+    vectors: list[dict[int, sp.Expr]] = []
+    for combo_row in null.to_Matrix().tolist():
+        vec: dict[int, sp.Expr] = {}
+        for j, coef in enumerate(combo_row):
+            if coef == 0:
+                continue
+            for m, c in tables[j].items():
+                col = column_index.get(m)
+                if col is not None:
+                    vec[col] = vec.get(col, sp.Integer(0)) + coef * c
+        vec = {k_: sp.cancel(v_) for k_, v_ in vec.items()}
+        vec = {k_: v_ for k_, v_ in vec.items() if v_ != 0}
+        if vec:
+            vectors.append(vec)
     return vectors
 
 

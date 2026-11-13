@@ -1,0 +1,3320 @@
+[
+ {
+  "base": "free2",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/3 + p_2**2/3",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{3} + \\frac{p_{2}^{2}}{3}",
+  "id": "free2.s1.k0",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "m": "3/2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1",
+    "frontier": [
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "p_1",
+    "ops": 0,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 1
+   },
+   {
+    "expr": "p_2",
+    "frontier": [
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "p_2",
+    "ops": 0,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 1
+   },
+   {
+    "expr": "-p_1*q_2 + p_2*q_1",
+    "frontier": [
+     [
+      1,
+      0,
+      1
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "free2",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "2*p_1**2 + p_1*p_2 + p_2**2/4",
+  "hamiltonian_latex": "2 p_{1}^{2} + p_{1} p_{2} + \\frac{p_{2}^{2}}{4}",
+  "id": "free2.s2.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "m": "2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "point",
+    "matrix": [
+     [
+      "1",
+      "-1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "2*p_1",
+    "frontier": [
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "p_1",
+    "ops": 1,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 1
+   },
+   {
+    "expr": "2*p_1 + p_2",
+    "frontier": [
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "p_2",
+    "ops": 2,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*q_1 - 4*p_1*q_2 + p_2*q_1/2 - p_2*q_2",
+    "frontier": [
+     [
+      1,
+      0,
+      1
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 9,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   }
+  ],
+  "seed": 2,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + q_1**2/4 + q_2**2/4",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{4} + \\frac{q_{2}^{2}}{4}",
+  "id": "osc2_iso.s1.k0",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "1/2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2/4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1*q_2 + p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*p_2 + q_1*q_2/2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "cross",
+    "ops": 4,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {
+   "angular": true,
+   "cross": true,
+   "h_1": true,
+   "h_2": true
+  },
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + q_1**2*q_2/3 + q_1**2/4 + q_2**2/4",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2} q_{2}}{3} + \\frac{q_{1}^{2}}{4} + \\frac{q_{2}^{2}}{4}",
+  "id": "osc2_iso.s1.k0.neg0",
+  "kind": "negative_control",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "1/2"
+  },
+  "parent": "osc2_iso.s1.k0",
+  "perturbation": {
+   "eps": "1/3",
+   "index": 0,
+   "term": "q_1**2*q_2"
+  },
+  "recipe": [],
+  "reference_rank": 1,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2/4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1*q_2 + p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*p_2 + q_1*q_2/2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "cross",
+    "ops": 4,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {
+   "angular": true,
+   "cross": true,
+   "h_1": true,
+   "h_2": false
+  },
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + q_1**4/2 + q_1**2/4 + q_2**2/4",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{4}}{2} + \\frac{q_{1}^{2}}{4} + \\frac{q_{2}^{2}}{4}",
+  "id": "osc2_iso.s1.k0.neg3",
+  "kind": "negative_control",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "1/2"
+  },
+  "parent": "osc2_iso.s1.k0",
+  "perturbation": {
+   "eps": "1/2",
+   "index": 3,
+   "term": "q_1**4"
+  },
+  "recipe": [],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2/4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1*q_2 + p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*p_2 + q_1*q_2/2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "cross",
+    "ops": 4,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/4 + p_2**2/2 + 2*q_1**2 + q_2**2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{4} + \\frac{p_{2}^{2}}{2} + 2 q_{1}^{2} + q_{2}^{2}",
+  "id": "osc2_iso.s2.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "-1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1**2/4 + 2*q_1**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 4,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*p_2/2 + 2*q_1*q_2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "angular",
+    "ops": 5,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*q_2 - 2*p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "cross",
+    "ops": 4,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 2,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {
+   "angular": true,
+   "cross": true,
+   "h_1": false,
+   "h_2": true
+  },
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/4 + p_2**2/2 + 2*q_1**2 + q_2**3/2 + q_2**2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{4} + \\frac{p_{2}^{2}}{2} + 2 q_{1}^{2} + \\frac{q_{2}^{3}}{2} + q_{2}^{2}",
+  "id": "osc2_iso.s2.k2.neg1",
+  "kind": "negative_control",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "2"
+  },
+  "parent": "osc2_iso.s2.k2",
+  "perturbation": {
+   "eps": "1/2",
+   "index": 1,
+   "term": "q_2**3"
+  },
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "-1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1**2/4 + 2*q_1**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 4,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*p_2/2 + 2*q_1*q_2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "angular",
+    "ops": 5,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*q_2 - 2*p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "cross",
+    "ops": 4,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 2,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + 27*p_2**2/2 + 3*q_1**2/2 + q_2**2/18",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{27 p_{2}^{2}}{2} + \\frac{3 q_{1}^{2}}{2} + \\frac{q_{2}^{2}}{18}",
+  "id": "osc2_iso.s3.k3",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "-1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "-1"
+     ]
+    ]
+   },
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "-1",
+      "0",
+      "0"
+     ]
+    ]
+   },
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1/3",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "3"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1**2/2 + 3*q_1**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 6,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "27*p_2**2/2 + q_2**2/18",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 6,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "3*p_1*p_2 + q_1*q_2/3",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "angular",
+    "ops": 5,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_1*q_2/3 - 9*p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "cross",
+    "ops": 5,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 3,
+  "source": "library",
+  "steps": 3
+ },
+ {
+  "base": "osc2_iso",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "9*p_1**2/8 + p_2**2/2 + 2*q_1**2/9 + q_2**2/2",
+  "hamiltonian_latex": "\\frac{9 p_{1}^{2}}{8} + \\frac{p_{2}^{2}}{2} + \\frac{2 q_{1}^{2}}{9} + \\frac{q_{2}^{2}}{2}",
+  "id": "osc2_iso.s4.k2.sep",
+  "kind": "discovery",
+  "mixing": false,
+  "n": 2,
+  "params": {
+   "k": "1"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/3",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "3",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1/2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "9*p_1**2/8 + 2*q_1**2/9",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 7,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-3*p_1*q_2/2 + 2*p_2*q_1/3",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 7,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "3*p_1*p_2/2 + 2*q_1*q_2/3",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "cross",
+    "ops": 7,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 4,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "osc2_res",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + q_1**2/2 + 9*q_2**2/2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{2} + \\frac{9 q_{2}^{2}}{2}",
+  "id": "osc2_res.s1.k0",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "b": "3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + 9*q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 6,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1**3*p_2 - 9*p_1**2*q_1*q_2 + 3*p_1*p_2*q_1**2 + 3*q_1**3*q_2",
+    "frontier": [
+     [
+      4,
+      3,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 4,
+    "name": "re",
+    "ops": 16,
+    "power_range": [
+     0,
+     3
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   },
+   {
+    "expr": "-3*p_1**3*q_2 + 3*p_1**2*p_2*q_1 + 9*p_1*q_1**2*q_2 - p_2*q_1**3",
+    "frontier": [
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 3,
+    "name": "im",
+    "ops": 16,
+    "power_range": [
+     0,
+     3
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "osc2_res",
+  "broken": {
+   "h_1": true,
+   "h_2": true,
+   "im": true,
+   "re": true
+  },
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + q_1**2*q_2/4 + q_1**2/2 + 9*q_2**2/2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2} q_{2}}{4} + \\frac{q_{1}^{2}}{2} + \\frac{9 q_{2}^{2}}{2}",
+  "id": "osc2_res.s1.k0.neg0",
+  "kind": "negative_control",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "b": "3"
+  },
+  "parent": "osc2_res.s1.k0",
+  "perturbation": {
+   "eps": "1/4",
+   "index": 0,
+   "term": "q_1**2*q_2"
+  },
+  "recipe": [],
+  "reference_rank": 1,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + 9*q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 6,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1**3*p_2 - 9*p_1**2*q_1*q_2 + 3*p_1*p_2*q_1**2 + 3*q_1**3*q_2",
+    "frontier": [
+     [
+      4,
+      3,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 4,
+    "name": "re",
+    "ops": 16,
+    "power_range": [
+     0,
+     3
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   },
+   {
+    "expr": "-3*p_1**3*q_2 + 3*p_1**2*p_2*q_1 + 9*p_1*q_1**2*q_2 - p_2*q_1**3",
+    "frontier": [
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 3,
+    "name": "im",
+    "ops": 16,
+    "power_range": [
+     0,
+     3
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "osc2_res",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "2*p_1**2 - 4*p_1*p_2 + 5*p_2**2/2 + 37*q_1**2/8 + 9*q_1*q_2 + 9*q_2**2/2",
+  "hamiltonian_latex": "2 p_{1}^{2} - 4 p_{1} p_{2} + \\frac{5 p_{2}^{2}}{2} + \\frac{37 q_{1}^{2}}{8} + 9 q_{1} q_{2} + \\frac{9 q_{2}^{2}}{2}",
+  "id": "osc2_res.s2.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "b": "3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "point",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "1",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "-1"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "2*p_1**2 - 4*p_1*p_2 + 2*p_2**2 + q_1**2/8",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 11,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   },
+   {
+    "expr": "p_2**2/2 + 9*q_1**2/2 + 9*q_1*q_2 + 9*q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 13,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   },
+   {
+    "expr": "-8*p_1**3*p_2 + 24*p_1**2*p_2**2 - 18*p_1**2*q_1**2 - 18*p_1**2*q_1*q_2 - 24*p_1*p_2**3 + 75*p_1*p_2*q_1**2/2 + 36*p_1*p_2*q_1*q_2 + 8*p_2**4 - 39*p_2**2*q_1**2/2 - 18*p_2**2*q_1*q_2 + 3*q_1**4/8 + 3*q_1**3*q_2/8",
+    "frontier": [
+     [
+      4,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 4,
+    "name": "re",
+    "ops": 56,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 12
+   },
+   {
+    "expr": "-24*p_1**3*q_1 - 24*p_1**3*q_2 + 78*p_1**2*p_2*q_1 + 72*p_1**2*p_2*q_2 - 84*p_1*p_2**2*q_1 - 72*p_1*p_2**2*q_2 + 9*p_1*q_1**3/2 + 9*p_1*q_1**2*q_2/2 + 30*p_2**3*q_1 + 24*p_2**3*q_2 - 37*p_2*q_1**3/8 - 9*p_2*q_1**2*q_2/2",
+    "frontier": [
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 3,
+    "name": "im",
+    "ops": 57,
+    "power_range": [
+     0,
+     3
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 12
+   }
+  ],
+  "seed": 2,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "osc2_aniso",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "19*p_1**2 + 16*p_1*p_2 + 5*p_1*q_1 - 18*p_1*q_2 + 4*p_2**2 + 2*p_2*q_1 - 9*p_2*q_2 + q_1**2/2 - 3*q_1*q_2 + 6*q_2**2",
+  "hamiltonian_latex": "19 p_{1}^{2} + 16 p_{1} p_{2} + 5 p_{1} q_{1} - 18 p_{1} q_{2} + 4 p_{2}^{2} + 2 p_{2} q_{1} - 9 p_{2} q_{2} + \\frac{q_{1}^{2}}{2} - 3 q_{1} q_{2} + 6 q_{2}^{2}",
+  "id": "osc2_aniso.s1.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "1,3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "shear_q",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "-1",
+      "2"
+     ],
+     [
+      "0",
+      "1",
+      "2",
+      "-1"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "point",
+    "matrix": [
+     [
+      "1",
+      "-3",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "3",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "13*p_1**2 + 10*p_1*p_2 + 5*p_1*q_1 - 15*p_1*q_2 + 2*p_2**2 + 2*p_2*q_1 - 6*p_2*q_2 + q_1**2/2 - 3*q_1*q_2 + 9*q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 30,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 10
+   },
+   {
+    "expr": "6*p_1**2 + 6*p_1*p_2 - 3*p_1*q_2 + 2*p_2**2 - 3*p_2*q_2 + 3*q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 18,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 6
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "quartic_sep",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/8 + p_2**2/2 + 48*q_1**4 + q_2**2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{8} + \\frac{p_{2}^{2}}{2} + 48 q_{1}^{4} + q_{2}^{2}",
+  "id": "quartic_sep.s1.k1.sep",
+  "kind": "discovery",
+  "mixing": false,
+  "n": 2,
+  "params": {
+   "a": "3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1/2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1**2/8 + 48*q_1**4",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 4,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 1
+ },
+ {
+  "base": "central_quartic",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "2*p_1**4 + 4*p_1**2*q_2**2 + p_2**2/2 + q_1**2/2 + 2*q_2**4",
+  "hamiltonian_latex": "2 p_{1}^{4} + 4 p_{1}^{2} q_{2}^{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{2} + 2 q_{2}^{4}",
+  "id": "central_quartic.s1.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "a": "2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "shear_p",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "-1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1*p_2 + q_1*q_2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "angular",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "sw",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + q_1**2/2 + q_2**2/2 + 1/(3*q_2**2) + q_1**(-2)",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{2} + \\frac{q_{2}^{2}}{2} + \\frac{1}{3 q_{2}^{2}} + \\frac{1}{q_{1}^{2}}",
+  "id": "sw.s1.k0",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "alpha": "1",
+   "beta": "1/3",
+   "k": "1"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/2 + q_1**(-2)",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 8,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   },
+   {
+    "expr": "p_2**2/2 + q_2**2/2 + 1/(3*q_2**2)",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 9,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   },
+   {
+    "expr": "p_1**2*q_2**2 - 2*p_1*p_2*q_1*q_2 + p_2**2*q_1**2 + 2*q_1**2/(3*q_2**2) + 2*q_2**2/q_1**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "K",
+    "ops": 23,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 5
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "sw",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "3*p_1**2/2 + 3*p_1*q_1 + p_2**2/2 - p_2*q_2 + 2*q_1**2 + 2*q_2**2 + 2/(p_1**2 + 2*p_1*q_1 + q_1**2) + 3/q_2**2",
+  "hamiltonian_latex": "\\frac{3 p_{1}^{2}}{2} + 3 p_{1} q_{1} + \\frac{p_{2}^{2}}{2} - p_{2} q_{2} + 2 q_{1}^{2} + 2 q_{2}^{2} + \\frac{2}{p_{1}^{2} + 2 p_{1} q_{1} + q_{1}^{2}} + \\frac{3}{q_{2}^{2}}",
+  "id": "sw.s2.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "alpha": "2",
+   "beta": "3",
+   "k": "3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "-1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "shear_p",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "1",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "-1",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "3*p_1**2/2 + 3*p_1*q_1 + 2*q_1**2 + 2/(p_1**2 + 2*p_1*q_1 + q_1**2)",
+    "frontier": null,
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 0,
+    "name": "h_1",
+    "ops": 17,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "not a Laurent polynomial",
+    "representable": false,
+    "terms": 0
+   },
+   {
+    "expr": "p_2**2/2 - p_2*q_2 + 2*q_2**2 + 3/q_2**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 10,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 4
+   },
+   {
+    "expr": "p_1**2*p_2**2 - 2*p_1**2*p_2*q_2 + p_1**2*q_2**2 + 6*p_1**2/q_2**2 + 2*p_1*p_2**2*q_1 - 2*p_1*p_2*q_1*q_2 + 12*p_1*q_1/q_2**2 + p_2**2*q_1**2 + 6*q_1**2/q_2**2 + 4*q_2**2/(p_1**2 + 2*p_1*q_1 + q_1**2)",
+    "frontier": null,
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 0,
+    "name": "K",
+    "ops": 51,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "not a Laurent polynomial",
+    "representable": false,
+    "terms": 0
+   }
+  ],
+  "seed": 2,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "sw",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 + 3*q_1**2/2 + 3*q_2**2/2 + 1/(3*q_2**2) + 2/q_1**2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{3 q_{1}^{2}}{2} + \\frac{3 q_{2}^{2}}{2} + \\frac{1}{3 q_{2}^{2}} + \\frac{2}{q_{1}^{2}}",
+  "id": "sw.s3.k2.sep",
+  "kind": "discovery",
+  "mixing": false,
+  "n": 2,
+  "params": {
+   "alpha": "2",
+   "beta": "1/3",
+   "k": "3"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/3",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "3",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "3",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1/3",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "p_1**2/2 + 3*q_1**2/2 + 2/q_1**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 9,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   },
+   {
+    "expr": "p_2**2/2 + 3*q_2**2/2 + 1/(3*q_2**2)",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 10,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   },
+   {
+    "expr": "p_1**2*q_2**2 - 2*p_1*p_2*q_1*q_2 + p_2**2*q_1**2 + 2*q_1**2/(3*q_2**2) + 4*q_2**2/q_1**2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "K",
+    "ops": 23,
+    "power_range": [
+     -2,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 5
+   }
+  ],
+  "seed": 3,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "func_inv",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2 + p_2**4/2 - p_2**3*q_2 + p_2**2*q_2**2 - p_2*q_2**3/2 + q_1**2/2 + q_2**4/8",
+  "hamiltonian_latex": "p_{1}^{2} + \\frac{p_{2}^{4}}{2} - p_{2}^{3} q_{2} + p_{2}^{2} q_{2}^{2} - \\frac{p_{2} q_{2}^{3}}{2} + \\frac{q_{1}^{2}}{2} + \\frac{q_{2}^{4}}{8}",
+  "id": "func_inv.s1.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "c": "1/2",
+   "k": "2,1"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "-1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "shear_q",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "-1"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1**2 + q_1**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 4,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2**2 - p_2*q_2 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 6,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   }
+  ],
+  "seed": 1,
+  "source": "constructed",
+  "steps": 2
+ },
+ {
+  "base": "func_inv_rot",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "2*p_1**2*p_2**2 + p_1**2/2 + 8*p_1*p_2**2*q_1 + 4*p_1*p_2*q_1*q_2 + 2*p_1*q_1 + 8*p_2**2*q_1**2 + p_2**2/2 + 8*p_2*q_1**2*q_2 + 2*q_1**2*q_2**2 + 5*q_1**2/2 + q_2**2/2",
+  "hamiltonian_latex": "2 p_{1}^{2} p_{2}^{2} + \\frac{p_{1}^{2}}{2} + 8 p_{1} p_{2}^{2} q_{1} + 4 p_{1} p_{2} q_{1} q_{2} + 2 p_{1} q_{1} + 8 p_{2}^{2} q_{1}^{2} + \\frac{p_{2}^{2}}{2} + 8 p_{2} q_{1}^{2} q_{2} + 2 q_{1}^{2} q_{2}^{2} + \\frac{5 q_{1}^{2}}{2} + \\frac{q_{2}^{2}}{2}",
+  "id": "func_inv_rot.s1.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "c": "2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "shear_p",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "2",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "-1",
+      "0",
+      "0"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1**2/2 + 2*p_1*q_1 + p_2**2/2 + 5*q_1**2/2 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h",
+    "ops": 15,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 5
+   },
+   {
+    "expr": "-p_1*p_2 - 2*p_2*q_1 - q_1*q_2",
+    "frontier": [
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "angular",
+    "ops": 7,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   }
+  ],
+  "seed": 1,
+  "source": "constructed",
+  "steps": 2
+ },
+ {
+  "base": "sep_sum",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + 2*p_1*q_1 + 2*p_1*q_2 + p_2**2/2 + 2*p_2*q_1 + 2*q_1**4 + 9*q_1**2/2 + 4*q_1*q_2 + 2*q_2**4 + 5*q_2**2/2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + 2 p_{1} q_{1} + 2 p_{1} q_{2} + \\frac{p_{2}^{2}}{2} + 2 p_{2} q_{1} + 2 q_{1}^{4} + \\frac{9 q_{1}^{2}}{2} + 4 q_{1} q_{2} + 2 q_{2}^{4} + \\frac{5 q_{2}^{2}}{2}",
+  "id": "sep_sum.s1.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "c": "1/2,2;1/2,2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "shear_p",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "2",
+      "1",
+      "1",
+      "0"
+     ],
+     [
+      "1",
+      "1",
+      "0",
+      "1"
+     ]
+    ]
+   },
+   {
+    "kind": "shear_p",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "1",
+      "0"
+     ],
+     [
+      "1",
+      "-1",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1**2/2 + 2*p_1*q_1 + 2*p_1*q_2 + 2*q_1**4 + 5*q_1**2/2 + 4*q_1*q_2 + 2*q_2**2",
+    "frontier": [
+     [
+      2,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 21,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 7
+   },
+   {
+    "expr": "p_2**2/2 + 2*p_2*q_1 + 2*q_1**2 + 2*q_2**4 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 14,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 5
+   }
+  ],
+  "seed": 1,
+  "source": "constructed",
+  "steps": 2
+ },
+ {
+  "base": "sep_sum",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "2*p_1**2 + p_2**2/2 + q_1**4/48 + q_1**2/8 + 2*q_2**4 + q_2**2/2",
+  "hamiltonian_latex": "2 p_{1}^{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{4}}{48} + \\frac{q_{1}^{2}}{8} + 2 q_{2}^{4} + \\frac{q_{2}^{2}}{2}",
+  "id": "sep_sum.s2.k1.sep",
+  "kind": "discovery",
+  "mixing": false,
+  "n": 2,
+  "params": {
+   "c": "1/2,1/3;1/2,2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "2*p_1**2 + q_1**4/48 + q_1**2/8",
+    "frontier": [
+     [
+      2,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 8,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   },
+   {
+    "expr": "p_2**2/2 + 2*q_2**4 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 8,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   }
+  ],
+  "seed": 2,
+  "source": "constructed",
+  "steps": 1
+ },
+ {
+  "base": "sep_sum",
+  "broken": {
+   "h_1": true,
+   "h_2": true
+  },
+  "generator_version": 1,
+  "hamiltonian": "2*p_1**2 + p_2**2/2 + p_2*q_1/3 + q_1**4/48 + q_1**2/8 + 2*q_2**4 + q_2**2/2",
+  "hamiltonian_latex": "2 p_{1}^{2} + \\frac{p_{2}^{2}}{2} + \\frac{p_{2} q_{1}}{3} + \\frac{q_{1}^{4}}{48} + \\frac{q_{1}^{2}}{8} + 2 q_{2}^{4} + \\frac{q_{2}^{2}}{2}",
+  "id": "sep_sum.s2.k1.sep.neg4",
+  "kind": "negative_control",
+  "mixing": false,
+  "n": 2,
+  "params": {
+   "c": "1/2,1/3;1/2,2"
+  },
+  "parent": "sep_sum.s2.k1.sep",
+  "perturbation": {
+   "eps": "1/3",
+   "index": 4,
+   "term": "p_2*q_1"
+  },
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1/2",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "2",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 1,
+  "references": [
+   {
+    "expr": "2*p_1**2 + q_1**4/48 + q_1**2/8",
+    "frontier": [
+     [
+      2,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 8,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   },
+   {
+    "expr": "p_2**2/2 + 2*q_2**4 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      4,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 8,
+    "power_range": [
+     0,
+     4
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 3
+   }
+  ],
+  "seed": 2,
+  "source": "constructed",
+  "steps": 1
+ },
+ {
+  "base": "cyclic_sep",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2 + q_2**2/2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + p_{2}^{2} + \\frac{q_{2}^{2}}{2}",
+  "id": "cyclic_sep.s1.k2",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "2"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "-1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "-1"
+     ]
+    ]
+   },
+   {
+    "kind": "swap",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0"
+     ],
+     [
+      "0",
+      "-1",
+      "0",
+      "0"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 2,
+  "references": [
+   {
+    "expr": "p_1",
+    "frontier": [
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "p_1",
+    "ops": 0,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 1
+   },
+   {
+    "expr": "p_2**2 + q_2**2/2",
+    "frontier": [
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 4,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 2
+ },
+ {
+  "base": "kepler_cartesian",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + p_2**2/2 - 1/sqrt(q_1**2 + q_2**2)",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} - \\frac{1}{\\sqrt{q_{1}^{2} + q_{2}^{2}}}",
+  "id": "kepler_cartesian.s1.k0",
+  "kind": "discovery",
+  "mixing": true,
+  "n": 2,
+  "params": {
+   "k": "1"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [],
+  "reference_rank": 3,
+  "references": [
+   {
+    "expr": "-p_1*q_2 + p_2*q_1",
+    "frontier": null,
+    "frontier_scope": "",
+    "momentum_degree": 1,
+    "name": "angular",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_2*(-p_1*q_2 + p_2*q_1) - q_1/sqrt(q_1**2 + q_2**2)",
+    "frontier": null,
+    "frontier_scope": "",
+    "momentum_degree": 0,
+    "name": "lrl_x",
+    "ops": 11,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "not a Laurent polynomial",
+    "representable": false,
+    "terms": 0
+   },
+   {
+    "expr": "-p_1*(-p_1*q_2 + p_2*q_1) - q_2/sqrt(q_1**2 + q_2**2)",
+    "frontier": null,
+    "frontier_scope": "",
+    "momentum_degree": 0,
+    "name": "lrl_y",
+    "ops": 12,
+    "power_range": [
+     0,
+     0
+    ],
+    "reason": "not a Laurent polynomial",
+    "representable": false,
+    "terms": 0
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 0
+ },
+ {
+  "base": "osc3_iso",
+  "broken": {},
+  "generator_version": 1,
+  "hamiltonian": "p_1**2/2 + 9*p_2**2/2 + p_3**2/2 + q_1**2/2 + q_2**2/18 + q_3**2/2",
+  "hamiltonian_latex": "\\frac{p_{1}^{2}}{2} + \\frac{9 p_{2}^{2}}{2} + \\frac{p_{3}^{2}}{2} + \\frac{q_{1}^{2}}{2} + \\frac{q_{2}^{2}}{18} + \\frac{q_{3}^{2}}{2}",
+  "id": "osc3_iso.s1.k1.sep",
+  "kind": "discovery",
+  "mixing": false,
+  "n": 3,
+  "params": {
+   "k": "1"
+  },
+  "parent": null,
+  "perturbation": null,
+  "recipe": [
+   {
+    "kind": "scale",
+    "matrix": [
+     [
+      "1",
+      "0",
+      "0",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "1/3",
+      "0",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "1",
+      "0",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "1",
+      "0",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "0",
+      "3",
+      "0"
+     ],
+     [
+      "0",
+      "0",
+      "0",
+      "0",
+      "0",
+      "1"
+     ]
+    ]
+   }
+  ],
+  "reference_rank": 5,
+  "references": [
+   {
+    "expr": "p_1**2/2 + q_1**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_1",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "9*p_2**2/2 + q_2**2/18",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_2",
+    "ops": 6,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "p_3**2/2 + q_3**2/2",
+    "frontier": [
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 2,
+    "name": "h_3",
+    "ops": 5,
+    "power_range": [
+     0,
+     2
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1*q_2/3 + 3*p_2*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular_12",
+    "ops": 5,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-p_1*q_3 + p_3*q_1",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular_13",
+    "ops": 3,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   },
+   {
+    "expr": "-3*p_2*q_3 + p_3*q_2/3",
+    "frontier": [
+     [
+      1,
+      1,
+      0
+     ]
+    ],
+    "frontier_scope": "span of 1, H, the invariants and their pairwise products",
+    "momentum_degree": 1,
+    "name": "angular_23",
+    "ops": 5,
+    "power_range": [
+     0,
+     1
+    ],
+    "reason": "",
+    "representable": true,
+    "terms": 2
+   }
+  ],
+  "seed": 1,
+  "source": "library",
+  "steps": 1
+ }
+]
