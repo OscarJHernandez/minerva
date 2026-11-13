@@ -47,9 +47,12 @@ function notEvaluatedText(kind: MatrixResultKind, action: MatrixCalculusResult["
 export function MatrixPanel({
   result,
   methods = [],
+  headingId = "matrix-heading",
 }: {
   result: MatrixCalculusResult;
   methods?: EntrySummary[];
+  /** Unique when several panels are on one page (the workbench shows every run). */
+  headingId?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const v = result.verification;
@@ -57,12 +60,9 @@ export function MatrixPanel({
   const shown = result.status === "ok" && kind !== null;
 
   return (
-    <section
-      aria-labelledby="matrix-heading"
-      className="rounded-lg border border-rule bg-raised p-5"
-    >
+    <section aria-labelledby={headingId} className="rounded-lg border border-rule bg-raised p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="matrix-heading" className="font-serif text-xl">
+        <h2 id={headingId} className="font-serif text-xl">
           Matrix calculus
         </h2>
         <StatusPill status={result.status} okLabel={kind ? OK_LABEL[kind] : "Verified"} />

@@ -271,7 +271,7 @@ capabilities:
     title: Noncommutative matrix calculus
     status: available
     group: math
-    where: [chat, api]
+    where: [chat, api, workbench]
     summary: >-
       Ordered products of matrix exponentials with declared matrices (a size, or explicit entries), also
       matrices that depend on a variable, A(t). Minerva recognises the structure and picks the technique: the
