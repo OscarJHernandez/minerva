@@ -3,7 +3,14 @@
 import { Math } from "@minerva/ui/math";
 import Link from "next/link";
 import { useState } from "react";
-import type { DistributionReason, DistributionResult, EntrySummary } from "@/lib/types";
+import type {
+  DistributionNotation,
+  DistributionNotationName,
+  DistributionQuestion,
+  DistributionReason,
+  DistributionResult,
+  EntrySummary,
+} from "@/lib/types";
 import { EntryCard } from "./entry-card";
 import { StatusPill } from "./result-panel";
 
@@ -13,9 +20,86 @@ const REASON: Record<DistributionReason, string> = {
   assumptions_insufficient: "A condition is not established by the declared assumptions",
   verification_failed: "The test-function check did not confirm the candidate",
   integration_domain_ambiguous: "A delta sits on an integration limit: a convention is needed",
+  notation_unconfirmed: "Minerva needs to know whether a name is a Dirac delta or a step function",
   resource_limit: "Resource limit reached",
   parse_error: "The expression could not be read",
 };
+
+const WRITTEN: Record<DistributionNotationName, string> = {
+  delta: "\\delta(\\ldots)",
+  theta: "\\theta(\\ldots)",
+  Theta: "\\Theta(\\ldots)",
+};
+
+/**
+ * Outside this operation `\delta(x)` is the symbol delta times x. The user, never Minerva or the model,
+ * says whether it is a distribution; nothing is computed until they do.
+ */
+function NotationQuestions({
+  questions,
+  onAnswer,
+}: {
+  questions: DistributionQuestion[];
+  onAnswer: (notation: DistributionNotation) => void | Promise<void>;
+}) {
+  const [answers, setAnswers] = useState<DistributionNotation>({});
+  const [sent, setSent] = useState(false);
+
+  function choose(q: DistributionQuestion, reading: "dirac_delta" | "heaviside" | "symbol") {
+    const next = { ...answers, [q.name]: reading };
+    setAnswers(next);
+    if (!sent && questions.every((item) => next[item.name] !== undefined)) {
+      setSent(true);
+      void Promise.resolve(onAnswer(next)).catch(() => setSent(false));
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-3" data-testid="notation-questions">
+      {questions.map((q) => {
+        const yes = q.candidate === "dirac_delta" ? "a Dirac delta" : "a step function";
+        const label = q.candidate === "dirac_delta" ? "Dirac delta" : "step function";
+        return (
+          <div
+            key={q.name}
+            role="group"
+            aria-label={`Is ${q.name}(…) ${yes}?`}
+            className="rounded border border-rule bg-sunk p-3 text-sm"
+          >
+            <div className="flex flex-wrap items-center gap-x-2">
+              <span>Is</span>
+              <Math latex={WRITTEN[q.name]} />
+              <span>a {label}?</span>
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Outside this tool it is an ordinary symbol, so nothing is computed until you say.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={sent}
+                aria-label={`Yes, ${q.name}(…) is ${yes}`}
+                className="rounded bg-accent px-3 py-1.5 text-accent-ink hover:opacity-90 disabled:opacity-50"
+                onClick={() => choose(q, q.candidate)}
+              >
+                Yes, {yes}
+              </button>
+              <button
+                type="button"
+                disabled={sent}
+                aria-label={`No, ${q.name}(…) is an ordinary symbol`}
+                className="rounded border border-rule px-3 py-1.5 hover:bg-raised disabled:opacity-50"
+                onClick={() => choose(q, "symbol")}
+              >
+                No, an ordinary symbol
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * Delta and step functions: which handbook identity was applied at each step, the conditions that
@@ -25,9 +109,12 @@ const REASON: Record<DistributionReason, string> = {
 export function DistributionPanel({
   result,
   methods = [],
+  onAnswer,
 }: {
   result: DistributionResult;
   methods?: EntrySummary[];
+  /** Runs the call again with the user's answers; without it a question is shown but cannot be answered. */
+  onAnswer?: (notation: DistributionNotation) => void | Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
   const v = result.verification;
@@ -102,6 +189,10 @@ export function DistributionPanel({
           {REASON[result.reason]}.
         </p>
       )}
+
+      {result.reason === "notation_unconfirmed" &&
+        (result.questions?.length ?? 0) > 0 &&
+        onAnswer && <NotationQuestions questions={result.questions ?? []} onAnswer={onAnswer} />}
 
       {shown && result.steps.length > 0 && (
         <div className="mt-4">

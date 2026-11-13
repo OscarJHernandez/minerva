@@ -295,8 +295,19 @@ export type DistributionReason =
   | "assumptions_insufficient"
   | "verification_failed"
   | "integration_domain_ambiguous"
+  | "notation_unconfirmed"
   | "resource_limit"
   | "parse_error";
+
+/** Names that may be a Dirac delta or a step function; ordinary symbols unless the user says so. */
+export type DistributionNotationName = "delta" | "theta" | "Theta";
+export type DistributionReading = "dirac_delta" | "heaviside" | "symbol";
+export type DistributionNotation = Partial<Record<DistributionNotationName, DistributionReading>>;
+
+export interface DistributionQuestion {
+  name: DistributionNotationName;
+  candidate: "dirac_delta" | "heaviside";
+}
 
 export interface DistributionRequest {
   action: DistributionAction;
@@ -304,6 +315,14 @@ export interface DistributionRequest {
   lower: string | null;
   upper: string | null;
   endpoint: DistributionEndpoint | null;
+  /** What the user answered to "is that a Dirac delta?"; never set by Minerva or the model. */
+  notation?: DistributionNotation;
+}
+
+/** What a chat card posts back: the whole call, with the user's answer. */
+export interface DistributionAnswer extends DistributionRequest {
+  latex: string;
+  assumptions: Assumptions;
 }
 
 export interface DistributionCondition {
@@ -342,6 +361,9 @@ export interface DistributionResult {
   lower_latex: string | null;
   upper_latex: string | null;
   endpoint: DistributionEndpoint | null;
+  /** Names the user has to answer for (reason `notation_unconfirmed`), and the readings applied. */
+  questions?: DistributionQuestion[];
+  notation?: DistributionNotation;
   result_latex: string | null;
   result_text: string | null;
   equality: "distributional" | "value" | null;

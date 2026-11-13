@@ -1,5 +1,5 @@
 import { ApiError, extractDetail } from "./api";
-import type { GeometryRequest } from "./types";
+import type { DistributionAnswer, GeometryRequest } from "./types";
 import type {
   ChatStatus,
   ConnectionResult,
@@ -42,6 +42,12 @@ export const chatApi = {
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/geometry`, {
       method: "POST",
       body: JSON.stringify({ ...request, format: undefined }),
+    }),
+  /** Runs a delta card again with the user's answer to "is that a Dirac delta?" (no model involved). */
+  distribution: (id: string, request: DistributionAnswer) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/distribution`, {
+      method: "POST",
+      body: JSON.stringify(request),
     }),
   /** Solves again with the comparison numbers the user typed; the reply is the stored card message. */
   perturbationSolve: (id: string, request: PerturbationRequest) =>

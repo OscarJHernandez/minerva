@@ -154,3 +154,34 @@ def test_logs_have_events_and_never_the_input(capsys) -> None:  # type: ignore[n
     assert any(e["reason"] == "singular_root" for e in events)
     compute = [json.loads(line) for line in out.splitlines() if '"event": "compute"' in line]
     assert any(c.get("reason") == "singular_root" for c in compute)
+
+
+def test_delta_notation_is_asked_then_confirmed(authed: TestClient) -> None:
+    kw = {
+        "format": "latex",
+        "input": r"x^2 \delta(x^2 - 4)",
+        "action": "integrate",
+        "lower": "-oo",
+        "upper": "oo",
+    }
+    asked = post(authed, **kw)
+    assert (
+        asked["status"] == "conditions_not_satisfied" and asked["reason"] == "notation_unconfirmed"
+    )
+    assert [q["name"] for q in asked["questions"]] == ["delta"] and asked["result_latex"] is None
+
+    answered = post(authed, **kw, notation={"delta": "dirac_delta"})
+    assert answered["status"] == "ok" and answered["result_text"] == "2"
+    assert answered["notation"] == {"delta": "dirac_delta"}
+
+    symbol = post(authed, **kw, notation={"delta": "symbol"})
+    assert symbol["status"] == "unsupported"
+
+    items = authed.get("/v1/history").json()
+    assert any(i["result"]["request"].get("notation") == {"delta": "dirac_delta"} for i in items)
+
+
+def test_notation_rejects_names_and_readings_that_do_not_fit(authed: TestClient) -> None:
+    for bad in ({"delta": "heaviside"}, {"theta": "dirac_delta"}, {"phi": "symbol"}):
+        r = authed.post(URL, json={"input": "x", "variable": "x", "notation": bad})
+        assert r.status_code == 422, bad

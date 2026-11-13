@@ -35,6 +35,12 @@ def test_text_parser_still_rejects_an_undeclared_function() -> None:
         parse_text("f(r)")
 
 
+def test_strict_text_names_the_fix_for_an_undeclared_call() -> None:
+    with pytest.raises(ParseError, match="declare f as a function"):
+        parse_text("f(r)", strict_calls=True)
+    assert parse_text("sin(r)", strict_calls=True) == sp.sin(r)
+
+
 def test_a_declared_function_cannot_be_used_as_a_bare_symbol() -> None:
     with pytest.raises(ParseError, match="declared function"):
         parse_latex("f + 1", functions=F)

@@ -5,7 +5,7 @@ import type {
   IdentitiesResult,
   GeometryRequest,
   GeometryResult,
-  DistributionRequest,
+  DistributionAnswer,
   DistributionResult,
   IntegrateResult,
   IsolateResult,
@@ -450,7 +450,8 @@ export type Card =
       data: {
         result: DistributionResult;
         methods: EntrySummary[];
-        request: DistributionRequest;
+        /** The call as made (with the expression), so the question's buttons can ask again. */
+        request: DistributionAnswer;
       };
     }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }

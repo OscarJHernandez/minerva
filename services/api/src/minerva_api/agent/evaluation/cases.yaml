@@ -941,6 +941,15 @@
     arguments: {latex: 'x^2\operatorname{DiracDelta}(x^2-4)', action: integrate, variable: x, lower: '-\infty', upper: '\infty', assumptions: {x: [real]}}
   source: "Gel'fand and Shilov, Generalized Functions vol. 1 (delta of a function): x^2/|2x| at x = 2 and at x = -2 gives 1 + 1; packages/engine/src/minerva_engine/reference_benchmark.py checks the same kind of integral against a regularised sequence"
 
+- id: delta-notation-asks-the-user
+  category: calculus
+  prompt: 'Integrate $x^2\delta(x^2-4)$ over the whole real line.'
+  expected_tool: distribution
+  args: {equals: {action: integrate}}
+  reply_matches: 'Dirac|delta|confirm|button|card'
+  informational: true
+  source: "distribution tool: \\delta(...) is read as a distribution only after the user confirms it on the card"
+
 - id: delta-on-a-limit-asks-for-a-convention
   category: calculus
   prompt: 'Integrate $\operatorname{DiracDelta}(x-1)$ from 0 to 1.'

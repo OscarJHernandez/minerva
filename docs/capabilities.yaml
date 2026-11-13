@@ -16,13 +16,15 @@
 #   matrix       input, matrices [{name, rows, cols | entries, depends_on}], action (evaluate | simplify |
 #                differentiate | integrate | evolve), variable, lower, upper, commuting [[A, B]],
 #                invertible [names], self_commuting [names]
-#   distribution input, assumptions, action (simplify | integrate | differentiate), variable, lower, upper, endpoint
+#   distribution input, assumptions, action (simplify | integrate | differentiate), variable, lower, upper, endpoint,
+#                notation {delta | theta | Theta: dirac_delta | heaviside | symbol} (the user's answer to "is that a
+#                Dirac delta?"; without it the example shows the question)
 #   identities   input, assumptions, show [rule ids to display]
-#   geometry     coordinates, metric [[LaTeX]], assumptions, functions [{name, args}], quantities, tensor {variance,
+#   geometry     coordinates, metric [[expression]], assumptions, functions [{name, args}], quantities, tensor {variance,
 #                components}, tensor_index
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
-#   lagrangian   input, coordinates
+#   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
 #   invariants   input, coordinates, angles, degree, power_bound, harmonics
 #   discovery    input, coordinates, system (lagrangian | hamiltonian), momenta, angles, budget
 #   entry        entry [handbook entry id]
@@ -30,8 +32,12 @@
 #   substitute   input, relations [LaTeX `left = right`], order (given | simultaneous), assumptions
 #   rewrite      input, action (simplify | expand | factor | cancel | collect | rule), part, occurrence, rule, by, assumptions
 #   isolate      input (an equation), variable, assumptions
-# Inputs are LaTeX (tensor inputs use the text form S(a,b)*A(-a,-b)). Add a refusal example wherever a
-# capability has an obvious limit: what Minerva declines to do is part of what it does.
+# Syntax: every example may set `format: text` (plain typing: sin(x)/(1+cos(x)), explicit `*`, `^` for powers) or
+# leave it out for LaTeX. Prefer plain text: it is how people type, and the page shows the formula the engine
+# read from it. Keep LaTeX only where LaTeX is the point (refusing an ambiguous `\sin 2x`, photo transcription,
+# one example per capability that shows LaTeX input). Tensor inputs have their own form, S(a,b)*A(-a,-b).
+# Add a refusal example wherever a capability has an obvious limit: what Minerva declines to do is part of
+# what it does.
 
 groups:
   - id: math
@@ -71,46 +77,53 @@ capabilities:
       - Symbols are complex unless you declare otherwise, so results that need real or positive symbols are
         left alone until you say so.
       - If nothing better is found, the input is returned unchanged and the status says so.
-      - Bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous.
+      - In LaTeX, bare function arguments such as `\sin 2x` and inverse notation such as `\sin^{-1}` are rejected as ambiguous; plain text needs the parentheses, `sin(2*x)`.
     examples:
       - id: simplify-trig-quotients
         title: Rational trigonometric expression
         op: simplify
-        input: '\frac{\sin(x)}{1+\cos(x)} + \frac{1+\cos(x)}{\sin(x)}'
+        format: text
+        input: "sin(x)/(1+cos(x)) + (1+cos(x))/sin(x)"
       - id: simplify-fourth-powers
         title: Difference of fourth powers
         op: simplify
-        input: '\frac{\sin^4(x) - \cos^4(x)}{\sin^2(x) - \cos^2(x)}'
+        format: text
+        input: "(sin(x)^4 - cos(x)^4)/(sin(x)^2 - cos(x)^2)"
       - id: simplify-cancelled-singularity
         title: Cancelling a factor keeps its restriction
         note: >-
           The result is `x + 1`, valid only where `x \neq 1`; the two expressions differ in domain.
         op: simplify
-        input: '\frac{x^2-1}{x-1}'
+        format: text
+        input: "(x^2-1)/(x-1)"
       - id: simplify-sqrt-general
         title: Square root of a square, no assumptions
         note: >-
           Without an assumption the square root of a square is neither x nor |x| for every complex x, so nothing is simplified.
         op: simplify
-        input: '\sqrt{x^2}'
+        format: text
+        input: "sqrt(x^2)"
       - id: simplify-sqrt-real
         title: The same, with x declared real
         note: >-
           Under the declared assumption the expression is read as |x|.
         op: simplify
-        input: '\sqrt{x^2}'
+        format: text
+        input: "sqrt(x^2)"
         assumptions: { x: [real] }
       - id: simplify-power-general
         title: Power of a power, no assumptions
         note: >-
           The rule (x^a)^b = x^{ab} fails for complex x, so the expression is left as it is.
         op: simplify
+        format: text
         input: "(x^a)^b"
       - id: simplify-power-positive
         title: The same, with x positive and a real
         note: >-
           With x positive and a real the exponents combine, and the expression is read as x^{ab}.
         op: simplify
+        format: text
         input: "(x^a)^b"
         assumptions: { x: [positive], a: [real] }
       - id: simplify-chain
@@ -123,38 +136,45 @@ capabilities:
       - id: simplify-chain-nested
         title: An identity inside a larger expression
         op: simplify
-        input: '\log(\sin^2 t + \cos^2 t + y)'
+        format: text
+        input: "log(sin(t)^2 + cos(t)^2 + y)"
       - id: simplify-chain-blocked
         title: Matches, but its conditions are not provable
         note: >-
           Combining logarithms needs both arguments positive. Nothing is applied and the input comes back.
         op: simplify
-        input: '\log x + \log y'
+        format: text
+        input: "log(x) + log(y)"
       - id: simplify-chain-unlocked
         title: The same, with x and y declared positive
         op: simplify
-        input: '\log x + \log y'
+        format: text
+        input: "log(x) + log(y)"
         assumptions: { x: [positive], y: [positive] }
       - id: simplify-goal-expand
         title: Expand a multiple angle
         op: simplify
-        input: '\sin(3x)'
+        format: text
+        input: "sin(3*x)"
         goal: expand
       - id: simplify-goal-factor
         title: Factor a difference of fourth powers
         op: simplify
+        format: text
         input: "x^4 - y^4"
         goal: factor
       - id: simplify-goal-rewrite
         title: Rewrite in terms of sine and cosine
         op: simplify
-        input: '\tan x \cos x'
+        format: text
+        input: "tan(x)*cos(x)"
         goal: rewrite
         target: [sin, cos]
       - id: simplify-nothing-better
         title: Nothing to improve
         op: simplify
-        input: '\sin x'
+        format: text
+        input: "sin(x)"
       - id: simplify-ambiguous
         title: Ambiguous input is refused
         op: simplify
@@ -176,7 +196,8 @@ capabilities:
       - id: diff-product
         title: Product rule
         op: differentiate
-        input: 'x^3 \sin(x)'
+        format: text
+        input: "x^3*sin(x)"
         variables: [{ name: x }]
       - id: diff-third-order
         title: Third derivative of a Gaussian
@@ -186,14 +207,16 @@ capabilities:
       - id: diff-mixed
         title: Mixed partial derivative
         op: differentiate
-        input: "x^2 y^3"
+        format: text
+        input: "x^2*y^3"
         variables: [{ name: x }, { name: y }]
       - id: diff-abs-complex
         title: No complex derivative
         note: >-
           Declare x real to differentiate |x|.
         op: differentiate
-        input: "|x|"
+        format: text
+        input: "abs(x)"
         variables: [{ name: x }]
 
   - id: series
@@ -221,14 +244,16 @@ capabilities:
       - id: series-parameter
         title: Binomial series with a symbolic exponent
         op: series
-        input: "(1+x)^{a}"
+        format: text
+        input: "(1+x)^a"
         variable: x
         point: "0"
         order: 3
       - id: series-shifted
         title: Logarithm about 1
         op: series
-        input: '\ln x'
+        format: text
+        input: "log(x)"
         variable: x
         point: "1"
         order: 4
@@ -236,7 +261,8 @@ capabilities:
       - id: series-pole
         title: A pole has no Taylor series
         op: series
-        input: '\frac{1}{x}'
+        format: text
+        input: "1/x"
         variable: x
         point: "0"
         order: 3
@@ -266,7 +292,8 @@ capabilities:
       - id: matrix-integral-explicit
         title: An integral of a product of noncommuting exponentials
         op: matrix
-        input: '\exp(wA)\exp(-wB)'
+        format: text
+        input: "exp(w*A)*exp(-w*B)"
         matrices:
           - { name: A, entries: [["1", "0"], ["0", "2"]] }
           - { name: B, entries: [["0", "1"], ["0", "0"]] }
@@ -277,7 +304,8 @@ capabilities:
       - id: matrix-integral-abstract
         title: The same structure with abstract matrices gives a verified equation, not entries
         op: matrix
-        input: '\exp(-(x-y)(y-w)A)\exp(-(w-z)(z-q)B)'
+        format: text
+        input: "exp(-(x-y)*(y-w)*A)*exp(-(w-z)*(z-q)*B)"
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
@@ -288,7 +316,8 @@ capabilities:
       - id: matrix-derivative
         title: Derivative of a product keeps the order
         op: matrix
-        input: '\exp(tA)\exp(sB)'
+        format: text
+        input: "exp(t*A)*exp(s*B)"
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
@@ -297,7 +326,8 @@ capabilities:
       - id: matrix-merge-blocked
         title: Exponentials of matrices that may not commute are not merged
         op: matrix
-        input: '\exp(A)\exp(B)'
+        format: text
+        input: "exp(A)*exp(B)"
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
@@ -314,7 +344,8 @@ capabilities:
       - id: matrix-frechet
         title: The derivative of an exponential whose exponent does not commute with its derivative
         op: matrix
-        input: '\exp(t^2 A + t B)'
+        format: text
+        input: "exp(t^2*A + t*B)"
         matrices:
           - { name: A, rows: 2 }
           - { name: B, rows: 2 }
@@ -443,27 +474,46 @@ capabilities:
       - One real variable. A delta needs a polynomial argument with simple real roots; repeated roots, other functions (sin x) and products of distributions are declined.
       - A delta exactly on an integration limit counts only under a convention you choose (half, include or exclude); Minerva never picks one.
       - Heaviside functions are differentiated when the argument is affine and the other factors are smooth everywhere; derivatives of a delta, products of steps and integrals of ordinary functions with a step are declined.
-      - The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Input uses the explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}); \delta and \theta remain ordinary symbols.
+      - The test-function check is supporting evidence, not a proof; the exact conditions are reported separately. Write `delta(x)` or `\delta(x)` (outside this operation they are ordinary symbols) and Minerva asks whether it is a Dirac delta, and `theta(x)` whether it is a step function, then computes nothing until you answer. The explicit names (\operatorname{DiracDelta}, \operatorname{Heaviside}) need no question.
     examples:
       - id: delta-shell-integral
         title: An integral against a delta of a polynomial with two simple roots
         op: distribution
-        input: 'x^2 \operatorname{DiracDelta}(x^2 - 4)'
+        format: text
+        notation: { delta: dirac_delta }
+        input: "x^2*delta(x^2 - 4)"
         action: integrate
         variable: x
         lower: "-oo"
         upper: oo
+      - id: delta-notation-asked
+        title: Minerva asks whether delta is a Dirac delta
+        op: distribution
+        format: text
+        input: "x^2*delta(x^2 - 4)"
+        action: integrate
+        variable: x
+        lower: "-oo"
+        upper: oo
+        note: >-
+          Until you answer, delta(...) is an ordinary symbol times a bracket, so nothing is computed. The chat and
+          the workbench show the question with buttons; the example above this one is the same integral after
+          the answer "yes, a Dirac delta".
       - id: delta-scaling-parameter
         title: Scaling by a parameter whose sign is known
         op: distribution
-        input: '\operatorname{DiracDelta}(a x)'
+        format: text
+        notation: { delta: dirac_delta }
+        input: "delta(a*x)"
         assumptions: { a: [negative] }
         action: simplify
         variable: x
       - id: heaviside-derivative
         title: The derivative of a switched-on decay has a delta where it jumps
         op: distribution
-        input: '\mathrm{e}^{-g x} \operatorname{Heaviside}(x)'
+        format: text
+        notation: { theta: heaviside }
+        input: "exp(-g*x)*theta(x)"
         assumptions: { g: [positive] }
         action: differentiate
         variable: x
@@ -477,7 +527,9 @@ capabilities:
       - id: delta-on-a-limit
         title: A delta on an integration limit is ambiguous until you choose a convention
         op: distribution
-        input: '\operatorname{DiracDelta}(x - 1)'
+        format: text
+        notation: { delta: dirac_delta }
+        input: "delta(x - 1)"
         action: integrate
         variable: x
         lower: "0"
@@ -485,7 +537,9 @@ capabilities:
       - id: delta-repeated-root
         title: A repeated root is declined
         op: distribution
-        input: '\operatorname{DiracDelta}(x^2)'
+        format: text
+        notation: { delta: dirac_delta }
+        input: "delta(x^2)"
         action: simplify
         variable: x
 
@@ -513,10 +567,11 @@ capabilities:
       - id: geometry-sphere
         title: The 2-sphere, with its curvature invariants
         op: geometry
-        coordinates: ['\theta', '\phi']
+        format: text
+        coordinates: [theta, phi]
         metric:
           - ["a^2", "0"]
-          - ["0", 'a^2 \sin^2\theta']
+          - ["0", "a^2*sin(theta)^2"]
         assumptions: { a: [positive] }
         quantities: [christoffel, ricci_scalar, kretschmann]
       - id: geometry-schwarzschild
@@ -533,7 +588,8 @@ capabilities:
       - id: geometry-geodesics
         title: Geodesic equations of the plane in polar coordinates
         op: geometry
-        coordinates: ["r", '\theta']
+        format: text
+        coordinates: [r, theta]
         metric:
           - ["1", "0"]
           - ["0", "r^2"]
@@ -542,19 +598,21 @@ capabilities:
       - id: geometry-function
         title: An unspecified function in the metric
         op: geometry
-        coordinates: ["t", "r", '\theta', '\phi']
+        format: text
+        coordinates: [t, r, theta, phi]
         metric:
           - ["-f(r)", "0", "0", "0"]
           - ["0", "1/f(r)", "0", "0"]
           - ["0", "0", "r^2", "0"]
-          - ["0", "0", "0", 'r^2 \sin^2\theta']
+          - ["0", "0", "0", "r^2*sin(theta)^2"]
         assumptions: { r: [positive] }
         functions: [{ name: f, args: [r] }]
         quantities: [ricci_scalar]
       - id: geometry-covariant
         title: The covariant derivative of the radial vector field
         op: geometry
-        coordinates: ["r", '\theta']
+        format: text
+        coordinates: [r, theta]
         metric:
           - ["1", "0"]
           - ["0", "r^2"]
@@ -564,6 +622,7 @@ capabilities:
       - id: geometry-degenerate
         title: A degenerate metric is declined
         op: geometry
+        format: text
         coordinates: ["x", "y"]
         metric:
           - ["1", "0"]
@@ -572,6 +631,7 @@ capabilities:
       - id: geometry-undeclared-function
         title: An undeclared function is refused instead of being read as a product
         op: geometry
+        format: text
         coordinates: ["r"]
         metric:
           - ["f(r)"]
@@ -579,6 +639,7 @@ capabilities:
       - id: geometry-asymmetric
         title: A metric that is not symmetric is declined
         op: geometry
+        format: text
         coordinates: ["x", "y"]
         metric:
           - ["1", "x"]
@@ -604,12 +665,14 @@ capabilities:
         note: >-
           The identity matches, but \log(xy) = \log x + \log y needs both factors positive, which is not provable from the declared assumptions.
         op: identities
-        input: '\log(x y)'
+        format: text
+        input: "log(x*y)"
         show: [log.product]
       - id: identity-log-applicable
         title: Applied once x and y are declared positive
         op: identities
-        input: '\log(x y)'
+        format: text
+        input: "log(x*y)"
         assumptions: { x: [positive], y: [positive] }
         show: [log.product]
       - id: identity-product-to-sum
@@ -640,7 +703,8 @@ capabilities:
           In the workbench this is the Apply button next to an applicable identity; it appears only after the
           assumptions make the identity applicable.
         op: identities
-        input: '\log(x y)'
+        format: text
+        input: "log(x*y)"
         assumptions: { x: [positive], y: [positive] }
         show: [log.product]
 
@@ -897,7 +961,8 @@ capabilities:
       - id: lagrangian-kepler-polar
         title: Kepler problem in polar coordinates
         op: lagrangian
-        input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
+        format: text
+        input: "m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r"
         coordinates: [r, theta]
       - id: lagrangian-kepler-cartesian
         title: The same problem in Cartesian coordinates
@@ -907,7 +972,8 @@ capabilities:
       - id: lagrangian-time-dependent
         title: Explicit time dependence removes the energy
         op: lagrangian
-        input: '\frac12 m\dot{x}^2 - \frac12 k x^2 t'
+        format: text
+        input: "m*x_dot^2/2 - k*x^2*t/2"
         coordinates: [x]
 
   - id: discovery
@@ -1000,7 +1066,8 @@ capabilities:
           Both components of the Laplace–Runge–Lenz vector appear, up to a constant factor, without being
           looked up. The angular momentum and energy are known already and are not counted.
         op: invariants
-        input: '\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}'
+        format: text
+        input: "m*(r_dot^2 + r^2*theta_dot^2)/2 + k/r"
         coordinates: [r, theta]
         angles: [theta]
       - id: invariants-oscillator
@@ -1009,7 +1076,8 @@ capabilities:
           The cross term and the energy of one direction, the components of the Fradkin tensor, beyond the
           energy and angular momentum.
         op: invariants
-        input: '\frac12 m(\dot{x}^2 + \dot{y}^2) - \frac12 k(x^2 + y^2)'
+        format: text
+        input: "m*(x_dot^2 + y_dot^2)/2 - k*(x^2 + y^2)/2"
         coordinates: [x, y]
       - id: invariants-henon-heiles
         title: Hénon–Heiles, none in this family
@@ -1022,7 +1090,8 @@ capabilities:
       - id: invariants-time-dependent
         title: Explicit time dependence is refused
         op: invariants
-        input: '\frac12 m\dot{x}^2 - \frac12 k t x^2'
+        format: text
+        input: "m*x_dot^2/2 - k*t*x^2/2"
         coordinates: [x]
 
   - id: tensors

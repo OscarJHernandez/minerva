@@ -1545,9 +1545,54 @@ def test_distribution_tool_refusals_name_the_reason_and_show_no_result(ctx: Tool
     assert "endpoint_convention" not in boundary.for_model  # the tool never picks one
 
 
-def test_distribution_tool_keeps_delta_and_theta_as_symbols(ctx: ToolContext) -> None:
-    out = execute("distribution", {"latex": r"\delta(x)", "assumptions": {"x": ["real"]}}, ctx)
-    assert out.status == "unsupported"  # no distribution was written: \delta(x) is delta times x
+def test_distribution_tool_asks_before_reading_delta_as_a_distribution(ctx: ToolContext) -> None:
+    args = {"latex": r"x^2\delta(x^2-4)", "assumptions": {"x": ["real"]}, "action": "integrate"}
+    args |= {"lower": "-oo", "upper": "oo"}
+    out = execute("distribution", args, ctx)
+    assert out.status == "conditions_not_satisfied"  # nothing computed: \delta(...) may be a symbol
+    assert "reason=notation_unconfirmed" in out.for_model
+    assert "needs_user_confirmation=delta" in out.for_model
+    assert "result=" not in out.for_model
+    assert [q["name"] for q in out.card.data["result"]["questions"]] == ["delta"]
+    # the card carries everything its buttons need to ask again, minus any answer
+    request = out.card.data["request"]
+    assert request["latex"] == args["latex"] and request["assumptions"] == {"x": ["real"]}
+    assert "notation" not in request
+
+
+def test_the_model_cannot_answer_for_the_user(ctx: ToolContext) -> None:
+    from minerva_api.agent.tools import DistributionArgs
+
+    assert "notation" not in DistributionArgs.model_json_schema()["properties"]
+    args = {
+        "latex": r"\delta(x-1)",
+        "assumptions": {"x": ["real"]},
+        "notation": {"delta": "dirac_delta"},
+    }
+    out = execute("distribution", args, ctx)  # an answer smuggled into the call is ignored
+    assert out.status == "conditions_not_satisfied"
+    assert "reason=notation_unconfirmed" in out.for_model
+
+
+def test_a_users_answer_goes_through_the_same_checks(ctx: ToolContext) -> None:
+    answered = ToolContext(engine=ctx.engine, kb=ctx.kb, notation={"delta": "dirac_delta"})
+    args = {"latex": r"x^2\delta(x^2-4)", "assumptions": {"x": ["real"]}, "action": "integrate"}
+    args |= {"lower": "-oo", "upper": "oo"}
+    out = execute("distribution", args, answered)
+    explicit = execute(
+        "distribution", {**args, "latex": r"x^2\operatorname{DiracDelta}(x^2-4)"}, ctx
+    )
+    assert out.status == explicit.status == "ok"
+    assert (
+        "result=$2$" in out.for_model
+        and "notation_confirmed_by_user=delta:dirac_delta" in out.for_model
+    )
+    assert out.card.data["result"]["result_text"] == explicit.card.data["result"]["result_text"]
+
+
+def test_delta_and_theta_are_still_symbols_for_every_other_tool(ctx: ToolContext) -> None:
+    out = execute("simplify", {"latex": r"\delta(x)", "assumptions": {"x": ["real"]}}, ctx)
+    assert "DiracDelta" not in out.for_model
 
 
 def test_distribution_tool_is_deterministic_for_trace_replay(ctx: ToolContext) -> None:

@@ -78,11 +78,46 @@ def _example(
     }
 
 
+def _syntax(spec: dict[str, Any]) -> str:
+    return "text" if spec.get("format") == "text" else "latex"
+
+
+def _expr(spec: dict[str, Any], assumptions: dict[str, list[str]] | None = None) -> ExpressionInput:
+    """The example's input in the syntax it names (`format: text`; LaTeX by default)."""
+    return ExpressionInput(
+        input=spec["input"],
+        format=_syntax(spec),  # type: ignore[arg-type]
+        assumptions=spec.get("assumptions") or {} if assumptions is None else assumptions,
+    )
+
+
+def _source_line(
+    spec: dict[str, Any],
+    label: str,
+    engine: Engine | None = None,
+    reading: str | None = None,
+    source: str | None = None,
+) -> dict[str, str]:
+    """An input line: what was typed, its syntax, and (for plain text) how the engine read it.
+
+    The reading comes from the engine, never from typesetting the typed string here.
+    """
+    line = {"label": label, "source": source if source is not None else spec["input"]}
+    line["syntax"] = _syntax(spec)
+    if _syntax(spec) == "text":
+        if reading is None and engine is not None:
+            status, _, _, latex = engine.features(_expr(spec))
+            reading = latex if status.value == "ok" else None
+        if reading:
+            line["latex"] = reading
+    return line
+
+
 def run_simplify(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = simplify_expression(
         kb,
         engine,
-        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        _expr(spec),
         spec.get("goal", "simplify"),
         spec.get("target") or [],
     )
@@ -116,7 +151,7 @@ def run_simplify(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
     return _example(
         spec,
         r.status.value,
-        [{"label": "Input", "source": spec["input"]}],
+        [_source_line(spec, "Input", engine, r.input_latex)],
         outputs,
         checks,
         [r.message] if r.message and r.status.value != "ok" else [],
@@ -125,7 +160,7 @@ def run_simplify(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
 
 def run_differentiate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.differentiate(
-        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        _expr(spec),
         [DiffVariable(**v) for v in spec["variables"]],
     )
     outputs: list[dict[str, str]] = []
@@ -141,7 +176,7 @@ def run_differentiate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
     return _example(
         spec,
         r.status.value,
-        [{"label": "Input", "source": spec["input"]}],
+        [_source_line(spec, "Input", engine)],
         outputs,
         checks,
         [r.message] if r.message else [],
@@ -150,7 +185,7 @@ def run_differentiate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
 
 def run_series(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.series(
-        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        _expr(spec),
         spec.get("variable", "x"),
         str(spec.get("point", "0")),
         int(spec["order"]),
@@ -168,7 +203,7 @@ def run_series(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
     return _example(
         spec,
         r.status.value,
-        [{"label": "Input", "source": spec["input"]}],
+        [_source_line(spec, "Input", engine)],
         outputs,
         checks,
         [r.message] if r.message else [],
@@ -179,7 +214,7 @@ def run_identities(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     r = find_identities(
         kb,
         engine,
-        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        _expr(spec),
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
@@ -207,9 +242,7 @@ def run_identities(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
                     else app.message,
                 }
             )
-    return _example(
-        spec, status, [{"label": "Input", "source": spec["input"]}], outputs, checks, notes
-    )
+    return _example(spec, status, [_source_line(spec, "Input", engine)], outputs, checks, notes)
 
 
 def run_tensor(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
@@ -288,7 +321,7 @@ def run_solve(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[s
 
 
 def run_lagrangian(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
-    r = engine.analyze_lagrangian(spec["input"], spec["coordinates"])
+    r = engine.analyze_lagrangian(spec["input"], spec["coordinates"], format=_syntax(spec))  # type: ignore[arg-type]
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     notes: list[str] = []
@@ -314,7 +347,7 @@ def run_lagrangian(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
         spec,
         r.status.value,
         [
-            {"label": "Lagrangian", "source": spec["input"]},
+            _source_line(spec, "Lagrangian", reading=r.lagrangian_latex),
             {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
         ],
         outputs,
@@ -331,6 +364,7 @@ def run_invariants(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
         spec.get("degree", 2),
         spec.get("power_bound", 3),
         spec.get("harmonics", 1),
+        format=_syntax(spec),  # type: ignore[arg-type]
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
@@ -354,7 +388,7 @@ def run_invariants(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     elif r.message:
         notes.append(r.message)
     inputs = [
-        {"label": "Lagrangian", "source": spec["input"]},
+        _source_line(spec, "Lagrangian", reading=r.lagrangian_latex),
         {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
     ]
     if spec.get("angles"):
@@ -476,7 +510,7 @@ def _matrix_text(m: dict[str, Any]) -> str:
 
 def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     request = MatrixCalculusInput(
-        expression=ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        expression=_expr(spec),
         matrices=spec["matrices"],
         commuting=[tuple(p) for p in spec.get("commuting", [])],
         invertible=spec.get("invertible", []),
@@ -487,7 +521,7 @@ def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
         upper=spec.get("upper"),
     )
     r = engine.matrix_calculus(request)
-    inputs = [{"label": "Expression", "source": spec["input"]}]
+    inputs = [_source_line(spec, "Expression")]
     inputs += [{"label": "Matrix", "source": _matrix_text(m)} for m in spec["matrices"]]
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
@@ -542,9 +576,13 @@ def run_geometry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
     )
     r = _GEOMETRY_ENGINE.geometry(request)
     inputs = [
-        {"label": "Coordinates", "source": ", ".join(spec["coordinates"])},
+        {
+            "label": "Coordinates",
+            "source": ", ".join(spec["coordinates"]),
+            "syntax": _syntax(spec),
+        },
         *(
-            {"label": f"Metric row {i}", "source": ",  ".join(row)}
+            {"label": f"Metric row {i}", "source": ",  ".join(row), "syntax": _syntax(spec)}
             for i, row in enumerate(spec["metric"], start=1)
         ),
     ]
@@ -588,6 +626,13 @@ def run_geometry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+_READING_WORDS = {
+    "dirac_delta": "a Dirac delta",
+    "heaviside": "a step function",
+    "symbol": "an ordinary symbol",
+}
+
+
 def run_distribution(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     del kb
     variable = spec["variable"]
@@ -595,15 +640,26 @@ def run_distribution(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) ->
     assumptions[variable] = sorted({*assumptions.get(variable, []), "real"})
     r = engine.distribution(
         DistributionInput(
-            expression=ExpressionInput(input=spec["input"], assumptions=assumptions),
+            expression=_expr(spec, assumptions),
             action=spec["action"],
             variable=variable,
             lower=spec.get("lower"),
             upper=spec.get("upper"),
             endpoint=spec.get("endpoint"),
+            notation=spec.get("notation") or {},
         )
     )
-    inputs = [{"label": "Expression", "source": spec["input"]}]
+    inputs = [_source_line(spec, "Expression", reading=r.input_latex)]
+    if spec.get("notation"):
+        inputs.append(
+            {
+                "label": "You confirmed",
+                "text": "; ".join(
+                    f"{name}(…) is {_READING_WORDS[reading]}"
+                    for name, reading in spec["notation"].items()
+                ),
+            }
+        )
     if spec["action"] == "integrate":
         inputs.append({"label": "Limits", "source": f"{spec.get('lower')} to {spec.get('upper')}"})
     outputs: list[dict[str, str]] = []
@@ -849,6 +905,10 @@ def _render_capability(cap: dict[str, Any]) -> list[str]:
         lines += [f"#### {ex['title']}", ""]
         for item in ex["input"]:
             value = f"`{item['source']}`" if "source" in item else item["text"]
+            if item.get("syntax"):
+                value += " (plain text)" if item["syntax"] == "text" else " (LaTeX)"
+            if item.get("latex"):
+                value += f", read as {_tex(item['latex'])}"
             lines.append(f"- **{item['label']}:** {value}")
         if ex["assumptions"]:
             lines.append(f"- **Assumptions:** {ex['assumptions']}")

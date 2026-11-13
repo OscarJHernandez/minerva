@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { Math } from "@minerva/ui/math";
+import { CapabilityRow } from "@/components/capability-row";
 import { MathLine, StatusBadge } from "@/components/example-view";
 import { Section } from "@/components/section";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { CAPABILITIES, example, inputSource, outputLatex, type Example } from "@/lib/capabilities";
-import { APP_URL, CONTRIBUTING_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
+import {
+  CAPABILITIES,
+  example,
+  inputLatex,
+  inputSource,
+  outputLatex,
+  type Example,
+} from "@/lib/capabilities";
+import { APP_URL, CONTRIBUTING_URL, OPENROUTER_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
 
 const primary = "rounded bg-accent px-5 py-2.5 font-medium text-accent-ink hover:opacity-90";
 const secondary = "rounded border border-rule px-5 py-2.5 font-medium hover:bg-sunk";
@@ -76,6 +84,17 @@ const code = (ex: Example) => (
   <code className="block overflow-x-auto whitespace-pre text-sm">{inputSource(ex)}</code>
 );
 const tex = (latex: string) => <MathLine latex={latex} />;
+/** What was typed (plain text) and, under it, the formula as the engine read it. */
+const typed = (ex: Example) => {
+  const line = ex.input.find((l) => l.source);
+  if (line?.syntax !== "text") return tex(inputLatex(ex));
+  return (
+    <div>
+      <code className="block overflow-x-auto whitespace-pre text-sm">{inputSource(ex)}</code>
+      {tex(inputLatex(ex))}
+    </div>
+  );
+};
 const plain = (text: string) => <span className="text-sm text-muted">{text}</span>;
 
 export default function Home() {
@@ -105,8 +124,18 @@ export default function Home() {
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
             Explore mathematical identities, simplify symbolic expressions, and verify results under
-            explicit assumptions. Run Minerva on your own infrastructure, optionally with a language
-            model you host, and keep your mathematical work under your control.
+            explicit assumptions. Run Minerva on your own infrastructure and choose the language
+            model behind the chat: one you host, open-weight models paid per use through OpenRouter,
+            or none at all. The backend is switchable.
+          </p>
+          <p className="mt-4 max-w-2xl text-sm text-muted">
+            Open source does not mean private. A model reached through OpenRouter sees your
+            conversation and the results of the tools it calls, even if its weights are open. Only a
+            model you host yourself keeps them on your infrastructure.{" "}
+            <a href={OPENROUTER_URL} className="underline hover:text-ink">
+              OpenRouter setup and privacy
+            </a>
+            .
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <a href={APP_URL} className={primary}>
@@ -130,10 +159,14 @@ export default function Home() {
             <figcaption className="text-xs uppercase tracking-wide text-muted">
               The Kepler problem, analysed by Minerva
             </figcaption>
+            <p className="mt-3 text-xs uppercase tracking-wide text-muted">You type</p>
+            <code className="mt-1 block overflow-x-auto whitespace-pre text-sm sm:text-base">
+              {inputSource(kepler)}
+            </code>
             <div className="mt-3 space-y-1 text-xl sm:text-2xl">
               <div className="overflow-x-auto overflow-y-hidden">
                 <Math
-                  latex={`L = ${inputSource(kepler)}`}
+                  latex={`L = ${inputLatex(kepler)}`}
                   label="Lagrangian of the Kepler problem in polar coordinates"
                 />
               </div>
@@ -168,14 +201,14 @@ export default function Home() {
           </p>
         </Section>
 
-        <Section id="examples" title="What it does, and what it refuses to do">
+        <Section id="examples" title="Some examples of what it can do">
           <div className="grid gap-5 md:grid-cols-2">
             <Card
               title="Simplify, then verify"
               badge="Verified"
               tone="ok"
               rows={[
-                { label: "Input", node: tex(inputSource(trig)) },
+                { label: "You type", node: typed(trig) },
                 { label: "Result", node: tex(outputLatex(trig, "Result")) },
               ]}
               note="SymPy simplifies; an independent numeric check at random complex points and a symbolic zero test confirm the result before it is shown."
@@ -185,7 +218,7 @@ export default function Home() {
               badge="Needs x, y > 0"
               tone="warn"
               rows={[
-                { label: "Input", node: tex(inputSource(logBlocked)) },
+                { label: "You type", node: typed(logBlocked) },
                 { label: "No assumptions", node: plain(logBlocked.outputs[0]?.text ?? "") },
                 { label: "With x, y positive", node: tex(outputLatex(logOk, "Logarithm")) },
               ]}
@@ -196,7 +229,7 @@ export default function Home() {
               badge="Assumption-aware"
               tone="ok"
               rows={[
-                { label: "Input", node: tex(inputSource(powerGeneral)) },
+                { label: "You type", node: typed(powerGeneral) },
                 {
                   label: "No assumptions",
                   node: tex(String.raw`\text{unchanged: }${outputLatex(powerGeneral, "Read as")}`),
@@ -256,28 +289,19 @@ export default function Home() {
           <div className="grid gap-12 md:grid-cols-2">
             <div>
               <h3 className="text-sm font-medium uppercase tracking-wide text-ok">Available now</h3>
-              <dl className="mt-4 space-y-5">
+              <div className="mt-2 border-t border-rule">
                 {available.map((c) => (
-                  <div key={c.id}>
-                    <dt className="font-medium">{c.title}</dt>
-                    <dd className="text-sm text-muted">
-                      {c.summary}
-                      {c.needs_model && " Self-hosted; needs a model you connect."}
-                    </dd>
-                  </div>
+                  <CapabilityRow key={c.id} cap={c} />
                 ))}
-              </dl>
+              </div>
             </div>
             <div>
-              <h3 className="text-sm font-medium uppercase tracking-wide text-muted">Planned</h3>
-              <dl className="mt-4 space-y-5">
+              <h3 className="text-sm font-medium uppercase tracking-wide text-warn">Planned</h3>
+              <div className="mt-2 border-t border-rule">
                 {planned.map((c) => (
-                  <div key={c.id}>
-                    <dt className="font-medium">{c.title}</dt>
-                    <dd className="text-sm text-muted">{c.summary}</dd>
-                  </div>
+                  <CapabilityRow key={c.id} cap={c} />
                 ))}
-              </dl>
+              </div>
             </div>
           </div>
           <p className="mt-10 max-w-2xl text-sm text-muted">
