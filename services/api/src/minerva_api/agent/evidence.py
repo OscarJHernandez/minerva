@@ -23,6 +23,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "expand_motion": "series_checks",
     "perturbation_solve": "numeric",
     "search_invariants": "numeric",
+    "find_conserved_quantities": "numeric",  # each constant: symbolic zero and numeric points on the flow
     "integrate_motion": "numeric",
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly

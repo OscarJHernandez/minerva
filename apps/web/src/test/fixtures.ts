@@ -273,6 +273,35 @@ export const okMatrixIntegral: MatrixCalculusResult = {
   notes: [],
   message: "Evaluated and verified.",
   duration_ms: 300,
+  diagnostics: {
+    trace_id: "req0123-card0123",
+    method: "sylvester_reduction",
+    methods_tried: [
+      { id: "integrate_polynomial", outcome: "no_match" },
+      { id: "sylvester_reduction", outcome: "selected" },
+    ],
+    dimensions: [[2, 2]],
+    matrices: 2,
+    explicit: 2,
+    time_dependent: 0,
+    commutation: "not_used",
+    invertibility: "from_entries",
+    stages: [
+      { name: "parse", ms: 3 },
+      { name: "transform", ms: 120 },
+      { name: "verify_numeric", ms: 170 },
+      { name: "verify_exact", ms: 2 },
+      { name: "total", ms: 300 },
+    ],
+    digits: 16,
+    tolerance: 1e-9,
+    max_residual: 2.5e-14,
+    points_checked: 4,
+    points_agreed: 4,
+    verification: "quadrature+residual",
+    fallbacks: [],
+    failure_reason: null,
+  },
 };
 
 export const matrixRepresentation: MatrixCalculusResult = {
@@ -286,6 +315,54 @@ export const matrixRepresentation: MatrixCalculusResult = {
   evaluated: false,
   notes: ["X is an exact representation, but not an evaluated entrywise result"],
   message: "Written exactly through a block-matrix exponential and verified.",
+};
+
+export const matrixFrechet: MatrixCalculusResult = {
+  ...okMatrixIntegral,
+  action: "differentiate",
+  input_latex: "\\exp\\left(t^{2} A + t B\\right)",
+  method: "exp_frechet_derivative",
+  method_title: "Frechet derivative of the exponential",
+  result_kind: "representation",
+  result_latex:
+    "\\int_0^1 \\exp\\left((1-\\sigma) X\\right) \\left(2 t A + B\\right) \\exp\\left(\\sigma X\\right) d\\sigma",
+  result_entries: null,
+  equation_latex: null,
+  evaluated: false,
+  assumptions_used: ["A, B are constant in t"],
+  blocked: [
+    {
+      method: "exp_derivative",
+      title: "Use d/dt exp(X) = X' exp(X)",
+      needs: "X X' = X' X for the exponent X (not established)",
+      latex: null,
+    },
+  ],
+  notes: ["The integral is an exact representation, not an evaluated matrix."],
+  message: "Written exactly and verified; it is a representation, not an evaluated result.",
+};
+
+export const matrixNumericEvolution: MatrixCalculusResult = {
+  ...okMatrixIntegral,
+  action: "evolve",
+  method: "evolution_numeric",
+  method_title: "Numerical solution of dU/dt = A(t) U",
+  result_kind: "numeric",
+  result_latex: "\\begin{pmatrix} 0.68 & 0.47 \\\\ -0.92 & 0.84 \\end{pmatrix}",
+  result_entries: [
+    ["0.68", "0.47"],
+    ["-0.92", "0.84"],
+  ],
+  equation_latex: null,
+  evaluated: false,
+  notes: ["numerical approximation on [0, 1], double precision"],
+  message: "Computed numerically on the stated span and verified by independent checks.",
+  verification: {
+    ...okMatrixIntegral.verification!,
+    symbolic_zero: null,
+    points_checked: 8,
+    points_agreed: 8,
+  },
 };
 
 export function step(

@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { matrixRepresentation, okMatrixIntegral } from "@/test/fixtures";
+import {
+  matrixFrechet,
+  matrixNumericEvolution,
+  matrixRepresentation,
+  okMatrixIntegral,
+} from "@/test/fixtures";
 import { MatrixPanel } from "./matrix-panel";
 
 describe("MatrixPanel", () => {
@@ -86,5 +91,45 @@ describe("MatrixPanel", () => {
       />,
     );
     expect(screen.getByText(/Not run \(the numeric check decides\)/)).toBeInTheDocument();
+  });
+
+  it("says a derivative representation was not evaluated, and what the familiar form needs", () => {
+    render(<MatrixPanel result={matrixFrechet} />);
+    expect(screen.getByTestId("not-evaluated")).toHaveTextContent(
+      /The result was not evaluated.*exact representation/,
+    );
+    expect(screen.queryByText(/The integral was not evaluated/)).not.toBeInTheDocument();
+    expect(screen.getByText("Exact representation")).toBeInTheDocument();
+    expect(screen.getByText(/Not applied/)).toBeInTheDocument();
+    expect(screen.getByText(/X X' = X' X for the exponent X/)).toBeInTheDocument();
+  });
+
+  it("labels a numerical solution an approximation, never a closed form or a proof", () => {
+    render(<MatrixPanel result={matrixNumericEvolution} />);
+    expect(screen.getByText("Numerical approximation, verified")).toBeInTheDocument();
+    expect(screen.getByText("Numerical value (approximation)")).toBeInTheDocument();
+    expect(screen.getByTestId("not-evaluated")).toHaveTextContent(
+      /numerical approximation.*not a closed form and not a proof/,
+    );
+    expect(screen.queryByText("Evaluated and verified")).not.toBeInTheDocument();
+    expect(screen.getByText(/Not run \(the numeric check decides\)/)).toBeInTheDocument();
+  });
+
+  it("shows how the result was computed, without any mathematics", () => {
+    render(<MatrixPanel result={okMatrixIntegral} />);
+    const diagnostics = screen.getByTestId("matrix-diagnostics");
+    expect(diagnostics).toHaveTextContent("integrate_polynomial: no match");
+    expect(diagnostics).toHaveTextContent("sylvester_reduction: selected");
+    expect(diagnostics).toHaveTextContent("2 declared (2 explicit, 0 time dependent), sizes 2×2");
+    expect(diagnostics).toHaveTextContent("Invertibility");
+    expect(diagnostics).toHaveTextContent("visible in the entries");
+    expect(diagnostics).toHaveTextContent("16 digits, tolerance 1e-9, largest residual 2.5e-14");
+    expect(diagnostics).toHaveTextContent("verify numeric 170 ms");
+    expect(diagnostics).toHaveTextContent("req0123-card0123");
+  });
+
+  it("copes with a result that has no diagnostics (a saved older result)", () => {
+    render(<MatrixPanel result={{ ...okMatrixIntegral, diagnostics: undefined }} />);
+    expect(screen.queryByTestId("matrix-diagnostics")).not.toBeInTheDocument();
   });
 });

@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import contextlib
+import re
 import time
 from typing import Any, Literal
 
 from .claims import ClaimCheck
 from .differentiate import DifferentiateResult, DiffVariable
+from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
 from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
-from .matrix import MatrixCalculusInput, MatrixCalculusResult
+from .matrix import MatrixCalculusInput, MatrixCalculusResult, MatrixDiagnostics, MatrixStage
 from .models import (
     ExpressionInput,
     FormulaReading,
@@ -50,9 +52,14 @@ class Engine:
         # Told about every sandbox call (see observe.py); None by default, and never allowed to fail a call.
         self.observer: Observer | None = None
 
-    def _run(self, op: str, payload: dict[str, Any]) -> tuple[SandboxResult, int]:
+    def _run(
+        self, op: str, payload: dict[str, Any], timeout: float | None = None
+    ) -> tuple[SandboxResult, int]:
         start = time.monotonic()
-        result = self.sandbox.run(op, {**payload, "limits": self.limits.model_dump()})
+        limits = self.limits.model_copy(
+            update={"timeout_seconds": timeout} if timeout is not None else {}
+        )
+        result = self.sandbox.run(op, {**payload, "limits": limits.model_dump()}, timeout=timeout)
         ms = int((time.monotonic() - start) * 1000)
         observer = self.observer
         if observer is not None:
@@ -127,12 +134,28 @@ class Engine:
     def matrix_calculus(self, request: MatrixCalculusInput) -> MatrixCalculusResult:
         """Evaluate, simplify, differentiate or integrate an expression in declared, noncommuting
         matrices and their exponentials; the method is chosen from the structure and the result is
-        shown only if its own verification passed."""
+        shown only if its own verification passed. The active trace id (see `observe.trace_scope`) is
+        the diagnostics' trace id unless the request carries one."""
+        active = current_trace_id()
+        if (
+            request.trace_id is None
+            and active is not None
+            and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active)
+        ):
+            request = request.model_copy(update={"trace_id": active})
         outcome, ms = self._run("matrix_calculus", {"input": request.model_dump()})
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             status, message = self._failure_status(outcome.outcome)
             return MatrixCalculusResult(
-                status=status, action=request.action, message=message, duration_ms=ms
+                status=status,
+                action=request.action,
+                message=message,
+                duration_ms=ms,
+                diagnostics=MatrixDiagnostics(
+                    trace_id=request.trace_id,
+                    stages=[MatrixStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
             )
         result = MatrixCalculusResult(**outcome.value)
         result.duration_ms = ms
@@ -251,16 +274,23 @@ class Engine:
         formulas: list[str],
         assumptions: dict[str, list[str]] | None = None,
         relations: list[str] | None = None,
+        matrices: list[str] | None = None,
     ) -> list[ClaimCheck]:
         """Numerically test equations written by the model. Failures leave claims unchecked.
 
         `relations` are formulas stated earlier in the conversation; definitions among them are used
-        by substitution (see `claims.py`)."""
+        by substitution (see `claims.py`). `matrices` are names declared as matrices in the
+        conversation: equations that mention them are never tested by sampling numbers."""
         if not formulas:
             return []
         outcome, _ = self._run(
             "check_claims",
-            {"formulas": formulas, "assumptions": assumptions or {}, "relations": relations or []},
+            {
+                "formulas": formulas,
+                "assumptions": assumptions or {},
+                "relations": relations or [],
+                "matrices": matrices or [],
+            },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             return [
@@ -410,6 +440,42 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return InvariantReport(status=status, message=message, duration_ms=ms)
         report = InvariantReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def discover_invariants(
+        self,
+        function: str,
+        coordinates: list[str],
+        system: str = "lagrangian",
+        momenta: list[str] | None = None,
+        angles: list[str] | None = None,
+        budget: str = "standard",
+        pins: Pins | None = None,
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+    ) -> DiscoveryReport:
+        """Adaptive search for conserved quantities of a Lagrangian or Hamiltonian, sandboxed."""
+        seconds = BUDGETS[budget].seconds if budget in BUDGETS else self.limits.timeout_seconds
+        outcome, ms = self._run(
+            "discover_invariants",
+            {
+                "system": system,
+                "function": function,
+                "coordinates": coordinates,
+                "momenta": momenta,
+                "angles": angles or [],
+                "budget": budget,
+                "pins": pins.model_dump() if pins else None,
+                "time": time,
+                "assumptions": assumptions or {},
+            },
+            timeout=seconds,
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DiscoveryReport(status=status, message=message, duration_ms=ms)
+        report = DiscoveryReport(**outcome.value)
         report.duration_ms = ms
         return report
 

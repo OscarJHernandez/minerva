@@ -247,6 +247,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "expand_motion",
         "perturbation_solve",
         "search_invariants",
+        "find_conserved_quantities",
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
@@ -422,6 +423,74 @@ def test_invariants_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None
     assert too_many.card.type == "error"
     bad_degree = execute("search_invariants", {**KEPLER_ARGS, "degree": 3}, ctx)
     assert bad_degree.card.type == "error"
+
+
+def test_discovery_tool_finds_the_kepler_constants_from_the_lagrangian_alone(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {"lagrangian": KEPLER_ARGS["lagrangian"], "coordinates": ["r", "theta"]},
+        ctx,
+    )
+    assert out.card.type == "discovery" and out.status == "ok"
+    report = out.card.data["report"]
+    assert [c["kind"] for c in report["constants"]].count("new") == 2
+    assert report["independence"]["rank_proved"] and report["independence"]["rank_lower"] == 3
+    assert "algebraic relation (exact)" in out.for_model
+    assert "functionally independent: 3 (proved)" in out.for_model
+    assert all(c["expression_latex"] in out.known_latex for c in report["constants"])
+    assert "searched " in out.for_model and "families" in out.for_model
+
+
+def test_discovery_tool_takes_a_hamiltonian_and_states_the_limits(ctx: ToolContext) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {
+            "hamiltonian": r"\frac{p_x^2+p_y^2}{2m}+\frac{k}{2}(x^2+y^2)",
+            "coordinates": ["x", "y"],
+            "momenta": ["p_x", "p_y"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and out.card.data["report"]["system"] == "hamiltonian"
+    assert "limit: " in out.for_model
+
+
+def test_discovery_tool_never_claims_the_system_has_no_other_constants(ctx: ToolContext) -> None:
+    out = execute(
+        "find_conserved_quantities",
+        {
+            "lagrangian": r"\frac12(\dot{x}^2+\dot{y}^2)-\frac12(x^2+y^2)-x^2 y+\frac13 y^3",
+            "coordinates": ["x", "y"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and not [
+        c for c in out.card.data["report"]["constants"] if c["kind"] == "new"
+    ]
+    assert "within the explored families" in out.for_model
+    assert "does not mean the system has none" in out.for_model
+
+
+def test_discovery_tool_refuses_what_it_cannot_search(ctx: ToolContext) -> None:
+    cartesian = execute(
+        "find_conserved_quantities",
+        {
+            "lagrangian": r"\frac12 m(\dot{x}^2+\dot{y}^2)+\frac{k}{\sqrt{x^2+y^2}}",
+            "coordinates": ["x", "y"],
+        },
+        ctx,
+    )
+    assert cartesian.status == "unsupported" and cartesian.card.type == "discovery"
+    both = execute(
+        "find_conserved_quantities",
+        {"lagrangian": "x", "hamiltonian": "y", "coordinates": ["x"]},
+        ctx,
+    )
+    assert both.card.type == "error"
+    neither = execute("find_conserved_quantities", {"coordinates": ["x"]}, ctx)
+    assert neither.card.type == "error"
 
 
 OSC_ARGS = {
@@ -1209,6 +1278,130 @@ def test_definitions_from_earlier_turns_and_earlier_assumptions_are_used(ctx: To
         )
     )
     assert next(s for s in segments_of(msg) if s["type"] == "math")["status"] == "checked"
+
+
+# -- the claim checker and matrices declared by tool calls -------------------------------------------
+def test_matrix_names_come_from_matrix_tool_calls_only() -> None:
+    from minerva_api.agent.events import TraceStep
+    from minerva_api.agent.loop import matrix_names
+
+    trace = [
+        TraceStep(
+            id="a",
+            name="matrix_calculus",
+            arguments={"matrices": [{"name": "A", "rows": 2}, {"name": "Bx", "rows": 2}]},
+            for_model="",
+        ),
+        TraceStep(id="b", name="simplify", arguments={"matrices": [{"name": "Z"}]}, for_model=""),
+    ]
+    assert matrix_names(trace) == {"A", "Bx"}
+    assert matrix_names(
+        [{"name": "matrix_calculus", "arguments": {"matrices": [{"name": "Q"}]}}]
+    ) == {"Q"}
+    assert matrix_names([{"name": "matrix_calculus", "arguments": {"matrices": "bad"}}]) == set()
+
+
+def test_a_model_written_matrix_equation_is_not_called_checked(ctx: ToolContext) -> None:
+    from minerva_api.agent.events import Block, Segment, TraceStep
+    from minerva_api.agent.loop import check_model_claims
+
+    trace = [
+        TraceStep(
+            id="a",
+            name="matrix_calculus",
+            arguments={"matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]},
+            for_model="",
+        )
+    ]
+
+    def block() -> Block:
+        return Block(
+            kind="text",
+            segments=[
+                Segment(type="math", value=r"\exp(A)\exp(B) = \exp(A+B)", status="unchecked"),
+                Segment(type="math", value=r"\exp(s)\exp(u) = \exp(s+u)", status="unchecked"),
+            ],
+        )
+
+    with_matrices = block()
+    asyncio.run(check_model_claims([with_matrices], ctx, trace))
+    matrix_claim, scalar_claim = with_matrices.segments
+    assert matrix_claim.status == "unchecked"  # never "checked" for matrices
+    assert scalar_claim.status == "checked"
+    # an earlier turn's declaration protects this turn too
+    later = block()
+    asyncio.run(check_model_claims([later], ctx, [], prior_matrices=["A", "B"]))
+    assert later.segments[0].status == "unchecked" and later.segments[1].status == "checked"
+    # without any declaration the formula is tested as a scalar identity, as before
+    plain = block()
+    asyncio.run(check_model_claims([plain], ctx, []))
+    assert plain.segments[0].status == "checked"
+
+
+# -- matrix calculus tool: new capabilities -------------------------------------------------------
+def test_matrix_tool_reports_a_frechet_derivative_as_a_representation(ctx: ToolContext) -> None:
+    out = execute(
+        "matrix_calculus",
+        {
+            "latex": r"\exp(t^2 A + t B)",
+            "matrices": [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}],
+            "action": "differentiate",
+            "variable": "t",
+        },
+        ctx,
+    )
+    assert out.card.type == "matrix" and out.status == "ok"
+    assert "method=exp_frechet_derivative" in out.for_model
+    assert "evaluated=NO (do not call this an evaluated result)" in out.for_model
+    assert "NOT APPLIED" in out.for_model and "X'" in out.for_model
+    assert "method.matrix.frechet_derivative" in out.for_model  # the handbook entry is retrieved
+    result = out.card.data["result"]
+    assert result["result_latex"] in out.known_latex
+    # the form that was NOT applied may be quoted, never shown as verified
+    assert all(b["latex"] not in out.known_latex for b in result["blocked"] if b["latex"])
+    assert any("not applied" in why for _, why in out.quoted_latex)
+
+
+def test_matrix_tool_labels_a_numerical_solution_an_approximation(ctx: ToolContext) -> None:
+    arguments = {
+        "latex": "A(t)",
+        "matrices": [{"name": "A", "entries": [["0", "t"], ["-1", "0"]]}],
+        "action": "evolve",
+        "variable": "t",
+        "upper": "1",
+    }
+    out = execute("matrix_calculus", arguments, ctx)
+    assert out.status == "ok" and "kind=numeric" in out.for_model
+    assert "numerical approximation" in out.for_model and "not a closed form" in out.for_model
+    assert "evaluated=yes" not in out.for_model
+    without_span = execute("matrix_calculus", {**arguments, "upper": None}, ctx)
+    assert without_span.status == "unsupported" and "end time" in without_span.for_model
+
+
+def test_matrix_diagnostics_take_the_active_trace_id(ctx: ToolContext) -> None:
+    from minerva_engine import trace_scope
+
+    arguments = {"latex": "A", "matrices": [{"name": "A", "rows": 2}]}
+    with trace_scope("abcd1234ef567890"):
+        out = execute("matrix_calculus", arguments, ctx)
+    assert out.card.data["result"]["diagnostics"]["trace_id"] == "abcd1234ef567890"
+    assert "trace_id" not in out.card.data["request"]
+    with trace_scope("not a valid id!"):  # never copied into the diagnostics
+        out = execute("matrix_calculus", arguments, ctx)
+    assert out.card.data["result"]["diagnostics"]["trace_id"] is None
+    out = execute("matrix_calculus", arguments, ctx)  # no active trace
+    assert out.card.data["result"]["diagnostics"]["trace_id"] is None
+
+
+def test_matrix_tool_schema_asks_for_numbers_the_user_chooses(ctx: ToolContext) -> None:
+    from minerva_api.agent.tools import schemas
+
+    schema = next(s for s in schemas() if s["function"]["name"] == "matrix_calculus")
+    properties = schema["function"]["parameters"]["properties"]
+    assert "evolve" in properties["action"]["enum"]
+    assert "USER" in properties["upper"]["description"]
+    assert "USER" in properties["self_commuting"]["description"]
+    assert "depends_on" in str(schema["function"]["parameters"])
 
 
 SPHERE_ARGS = {

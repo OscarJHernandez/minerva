@@ -24,6 +24,7 @@ from minerva_engine import (
     MatrixCalculusInput,
     MatrixDecl,
     MotionRequest,
+    Pins,
     QuantitySpec,
     TensorInput,
     TensorSpec,
@@ -37,10 +38,11 @@ from minerva_knowledge.identities import (
     simplify_expression,
     summarize,
 )
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
+from ..search_log import log_search_events
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .segments import normalize
@@ -134,32 +136,51 @@ class MatrixCalculusArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
         description="Expression in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
-        "(a bare e is an ordinary symbol). Products keep their order; matrices are constant.",
+        "(a bare e is an ordinary symbol). Products keep their order. Matrices are constant unless "
+        "declared with depends_on; a matrix that depends on the variable is written A(t), and tA "
+        "always means t times A. For action evolve this is the generator A(t) of dU/dt = A(t)U.",
     )
     matrices: list[MatrixDecl] = Field(
         min_length=1,
         max_length=6,
         description="Every matrix in the expression: a size (rows, cols) or explicit entries. "
-        "Ask the user for sizes or entries; never invent them.",
+        "Ask the user for sizes or entries; never invent them. Set depends_on to the variable only "
+        "when the USER says the matrix depends on it.",
     )
-    action: Literal["evaluate", "simplify", "differentiate", "integrate"] = Field(
+    action: Literal["evaluate", "simplify", "differentiate", "integrate", "evolve"] = Field(
         default="simplify",
         description="evaluate: explicit matrices only. simplify: merge what is provably mergeable. "
-        "differentiate/integrate need `variable`; integrate may take bounds `lower` and `upper`.",
+        "differentiate/integrate need `variable`; integrate may take bounds `lower` and `upper`; "
+        "differentiate also handles exponents that do not commute with their derivative (Frechet "
+        "derivative) and time-dependent matrices. integrate recognises Duhamel integrals "
+        "(exp((t-s)A) B exp(sA) over s). evolve solves dU/dt = A(t)U, U(t0)=I: `variable` is time, "
+        "`lower` the initial time (default 0), `upper` the end of the span.",
     )
     variable: str | None = Field(
         default=None, max_length=32, description="Scalar variable of differentiation or integration"
     )
     lower: str | None = Field(
-        default=None, max_length=200, description="Lower bound (a scalar expression)"
+        default=None,
+        max_length=200,
+        description="Lower bound (a scalar expression); for evolve the initial time",
     )
     upper: str | None = Field(
-        default=None, max_length=200, description="Upper bound (a scalar expression)"
+        default=None,
+        max_length=200,
+        description="Upper bound (a scalar expression); for evolve the end of the numerical span: "
+        "a number only the USER may choose, so ask and never pick one",
     )
     commuting: list[tuple[str, str]] = Field(
         default_factory=list,
         max_length=16,
-        description="Pairs of matrices the USER says commute. Never add a pair on your own.",
+        description="Pairs of matrices the USER says commute (for time-dependent matrices: at all "
+        "times). Never add a pair on your own.",
+    )
+    self_commuting: list[str] = Field(
+        default_factory=list,
+        max_length=6,
+        description="Time-dependent matrices A the USER says satisfy A(t1)A(t2) = A(t2)A(t1) at "
+        "all times. Never add one on your own.",
     )
     invertible: list[str] = Field(
         default_factory=list,
@@ -369,6 +390,68 @@ class InvariantArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class DiscoveryArgs(BaseModel):
+    lagrangian: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description=r"L(q, qdot) in LaTeX, using \dot{q} for velocities. Give exactly one of `lagrangian` and `hamiltonian`.",
+    )
+    hamiltonian: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description="H(q, p) in LaTeX, with the canonical momenta as symbols such as p_x or p_\\theta.",
+    )
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=3,
+        description="Names of the generalised coordinates (at most 3), e.g. ['r', 'theta']",
+    )
+    momenta: list[str] | None = Field(
+        default=None,
+        max_length=3,
+        description="Hamiltonian only: the momentum symbols in the order of the coordinates. Default p_<coordinate>.",
+    )
+    angles: list[str] = Field(
+        default_factory=list,
+        max_length=3,
+        description="Optional: coordinates known to be angles. Not needed: angles are detected (a coordinate "
+        "that appears only through cos and sin, or that does not appear in the equations at all).",
+    )
+    budget: Literal["quick", "standard", "thorough"] = Field(
+        default="standard",
+        description="How far the search may go. Use the default unless the user asks for more or less.",
+    )
+    degree: int | None = Field(
+        default=None,
+        ge=1,
+        le=4,
+        description="Advanced, only on request: pin one family (momentum degree)",
+    )
+    power_bound: int | None = Field(
+        default=None, ge=0, le=4, description="Advanced, only on request: pin one family (powers)"
+    )
+    harmonics: int | None = Field(
+        default=None,
+        ge=1,
+        le=2,
+        description="Advanced, only on request: pin one family (harmonics)",
+    )
+    time_degree: int | None = Field(
+        default=None,
+        ge=0,
+        le=2,
+        description="Advanced, only on request: pin one family (powers of t)",
+    )
+    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _one_function(self) -> DiscoveryArgs:
+        if (self.lagrangian is None) == (self.hamiltonian is None):
+            raise ValueError("give exactly one of lagrangian and hamiltonian")
+        return self
 
 
 class MotionArgs(MotionRequest):
@@ -740,6 +823,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
         matrices=args.matrices,
         commuting=args.commuting,
         invertible=args.invertible,
+        self_commuting=args.self_commuting,
         action=args.action,
         variable=args.variable,
         lower=args.lower,
@@ -760,7 +844,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
         data={
             "result": result.model_dump(mode="json"),
             "methods": method_data,
-            "request": request.model_dump(mode="json", exclude={"expression"}),
+            "request": request.model_dump(mode="json", exclude={"expression", "trace_id"}),
         },
     )
     shown = result.status.value == "ok"
@@ -771,11 +855,17 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
     )
     if shown:
         head += f"method={result.method}; kind={result.result_kind}; "
-        head += (
-            "evaluated=yes; "
-            if result.evaluated
-            else "evaluated=NO (do not call this an evaluated result); "
-        )
+        if result.result_kind == "numeric":
+            head += (
+                "evaluated=NO (a numerical approximation on the given span, not a closed form and "
+                "not a proof; say so); "
+            )
+        else:
+            head += (
+                "evaluated=yes; "
+                if result.evaluated
+                else "evaluated=NO (do not call this an evaluated result); "
+            )
         if result.result_latex:
             head += f"result=${result.result_latex}$; "
         if result.equation_latex:
@@ -1224,6 +1314,79 @@ def run_perturbation(args: PerturbationArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
+    pins = None
+    if any(
+        x is not None for x in (args.degree, args.power_bound, args.harmonics, args.time_degree)
+    ):
+        pins = Pins(
+            degree=args.degree,
+            power_bound=args.power_bound,
+            harmonics=args.harmonics,
+            time_degree=args.time_degree,
+        )
+    system = "hamiltonian" if args.hamiltonian is not None else "lagrangian"
+    report = ctx.engine.discover_invariants(
+        args.hamiltonian if args.hamiltonian is not None else str(args.lagrangian),
+        args.coordinates,
+        system,
+        args.momenta,
+        args.angles,
+        args.budget,
+        pins,
+        args.time,
+        args.assumptions,
+    )
+    log_search_events(report.events)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="find_conserved_quantities",
+        type="discovery",
+        title="Conserved quantities",
+        data={"report": report.model_dump(mode="json")},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = [report.function_latex] if report.function_latex else []
+    if report.angles:
+        lines.append("treated as angles (cos and sin): " + ", ".join(report.angles))
+    searched = [t for t in report.tiers if t.outcome == "searched"]
+    if searched:
+        lines.append(
+            f"searched {len(searched)} families, from: {searched[0].description}; up to: "
+            f"{searched[-1].description}"
+        )
+    for c in report.constants:
+        label = "already known" if c.kind == "known" else "new, verified on the equations of motion"
+        lines.append(f"{c.id} ({label}; {c.independence}): ${c.expression_latex}$")
+        known.append(c.expression_latex)
+    if report.independence:
+        ind = report.independence
+        lines.append(
+            f"functionally independent: {ind.rank_lower}"
+            + (" (proved)" if ind.rank_proved else f" to {ind.rank_upper} (lower bound proved)")
+            + (f"; at most {ind.max_possible} are possible" if ind.max_possible else "")
+        )
+        for rel in ind.relations:
+            lines.append(f"algebraic relation (exact): ${rel.latex}$")
+            known.append(rel.latex)
+        lines.extend(f"note: {n}" for n in ind.notes)
+    if report.unexplored:
+        lines.append("not searched: " + "; ".join(report.unexplored[:4]))
+    lines.extend(f"note: {n}" for n in report.notes)
+    lines.extend(f"limit: {n}" for n in report.limitations)
+    if report.status.value == "ok" and not report.new_constants:
+        lines.append(
+            "No additional constant was found within the explored families. Say exactly that: it does "
+            "not mean the system has none."
+        )
+    if report.new_constants:
+        lines.append(
+            "These are constants in the searched families only. Naming one (for example as the "
+            "Laplace-Runge-Lenz vector) is a recognition you may offer, not something this result proves."
+        )
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+
+
 def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.search_invariants(
         args.lagrangian,
@@ -1535,13 +1698,17 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "matrix_calculus",
             "Calculus with noncommuting matrices and their exponentials: evaluate (explicit entries), "
-            "simplify, differentiate, or integrate products such as \\exp(wA)\\exp(-wB) in a scalar variable. "
-            "Declare every matrix (a size, or explicit entries). The method is chosen from the structure "
-            "(ordered product rule, merge only when commutation is declared or visible in the entries, "
-            "closed form for an invertible matrix, Sylvester equation, block-matrix exponential) and the "
-            "result is shown only if independent numerical checks pass. A Sylvester equation or a "
-            "block-matrix representation is NOT an evaluated integral: say so. Matrices are never assumed "
-            "to commute or to be invertible; ask the user before declaring either.",
+            "simplify, differentiate, integrate or evolve. Differentiate \\exp(X(t)) for noncommuting "
+            "X and X' (the Frechet derivative integral, never assumed to equal X' exp(X)), including "
+            "time-dependent matrices A(t); integrate products such as \\exp(wA)\\exp(-wB) and Duhamel "
+            "integrals \\exp((t-s)A) B \\exp(sA); evolve dU/dt = A(t)U with U(0)=I (closed form "
+            "exp of the integral only when the generator commutes with itself at all times; explicit "
+            "entries on a span the user gives are solved numerically). Declare every matrix (a size, "
+            "or explicit entries). The method is chosen from the structure and the result is shown "
+            "only if independent checks pass. A Sylvester equation, a block-matrix or integral "
+            "representation is NOT an evaluated result and a numerical solution is an approximation "
+            "on its span, not a closed form: say so. Matrices are never assumed to commute or to be "
+            "invertible; ask the user before declaring either.",
             MatrixCalculusArgs,
             run_matrix_calculus,
         ),
@@ -1610,6 +1777,20 @@ TOOLS: dict[str, Tool] = {
             "solution for numbers the user gives. Not for damping, driving or several coordinates.",
             PerturbationArgs,
             run_perturbation,
+        ),
+        Tool(
+            "find_conserved_quantities",
+            "Find the conserved quantities of a Lagrangian or Hamiltonian system without being told where "
+            "to look: searches a deterministic ladder of larger and larger families (polynomials in the "
+            "velocities or momenta times powers of the coordinates, cos and sin of angles, powers of t), "
+            "solves the conservation condition exactly in each, verifies every constant on the equations "
+            "of motion, removes products of what is known, and reports which are functionally independent "
+            "(with exact relations such as |A|^2 in terms of the energy and angular momentum). Use this "
+            "for 'find the conserved quantities', 'is there a hidden symmetry', 'more constants of "
+            "motion'. Reports exactly which families were searched and which were not; finding nothing "
+            "means nothing within them. Not for square roots (Cartesian Kepler) or more than 3 coordinates.",
+            DiscoveryArgs,
+            run_discovery,
         ),
         Tool(
             "search_invariants",

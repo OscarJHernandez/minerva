@@ -18,8 +18,9 @@ Ordering favours correctness infrastructure before breadth.
 2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
    `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial
    conditions, Hamiltonian/symplectic integration for long runs, field Lagrangians (PDEs), exporting data.
-   The search for hidden constants of motion (`search_invariants`) covers rational, autonomous systems; next:
-   square roots (Cartesian Kepler), time-dependent ansätze and symmetries up to a total derivative.
+   The adaptive search for conserved quantities (`discover_invariants`) covers rational Lagrangians and Hamiltonians,
+   with powers of t; next: square roots (Cartesian Kepler, as an adjoined algebraic element), Killing-tensor
+   structure labels, nonlinear canonical maps in the benchmark generator and symmetries up to a total derivative.
 3. **More operations in the workspace:** integrals, limits, numeric evaluation, each with
    the same verification discipline (differentiate-back for integrals, interval/sample checks for limits).
    Antiderivatives and definite integrals are done (`integrate`: candidate from SymPy; antiderivatives are
@@ -33,11 +34,15 @@ Ordering favours correctness infrastructure before breadth.
    one coordinate, checked by residual order and against the verified numerical integrator). The card has a form for the
    comparison numbers. Next: multiple scales for damping and driving (needs generalised forces first), and
    several coordinates.
-   Matrix calculus is done for constant matrices (`matrix_calculus`: ordered products of matrix exponentials, the
-   product rule, merging only under declared commutation, closed forms for invertible matrices, Sylvester
-   reduction and block-matrix exponentials for integrals, every result checked on random matrices). Next:
-   time-ordered exponentials and the Magnus expansion, Duhamel integrals for exponents that do not commute with
-   their derivative, matrix-valued functions beyond the exponential, and integrals of sums of such terms as one equation.
+   Matrix calculus is done (`matrix_calculus`: ordered products of matrix exponentials, the product rule, merging
+   only under declared commutation, closed forms for invertible matrices, Sylvester reduction and block-matrix
+   exponentials for integrals, the Frechet derivative of exp(X(t)) when X and X' do not commute, time-dependent
+   matrices A(t), Duhamel integrals, and evolution operators dU/dt = A(t)U: a closed form when the generator
+   commutes with itself, a verified numerical solution on a span the user gives otherwise; every result checked
+   on random matrices and benchmarked in `docs/matrix-benchmark.md`). Next: time-ordered exponentials with
+   truncated Dyson and Magnus expansions, higher derivatives of the exponential, integrals of time-dependent
+   matrices, matrix-valued functions beyond the exponential, integrals of sums of such terms as one equation, and
+   a matrix form in the workbench (today chat and API only).
    Dirac delta and Heaviside calculus is done for one real variable (`distribution`: scaling, simple real roots of
    polynomial arguments, integration against deltas with an explicit limit convention, derivatives of steps; exact
    conditions plus a test-function pairing, benchmarked in `docs/distribution-benchmark.md`). Next: derivatives of

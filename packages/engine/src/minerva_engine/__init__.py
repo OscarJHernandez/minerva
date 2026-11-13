@@ -7,6 +7,7 @@ from .differentiate import (
     DifferentiateResult,
     DiffVariable,
 )
+from .discovery import DiscoveredConstant, DiscoveryReport, Pins, SearchEvent
 from .distributions.models import (
     Blocked,
     Condition,
@@ -20,6 +21,7 @@ from .distributions.models import (
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
 from .geometry import GeometryInput, GeometryResult
+from .independence import IndependenceReport, Relation
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -76,6 +78,8 @@ __all__ = [
     "DiffVariable",
     "DifferentiateResult",
     "DimensionalReport",
+    "DiscoveredConstant",
+    "DiscoveryReport",
     "DistributionEvent",
     "DistributionInput",
     "DistributionResult",
@@ -88,6 +92,7 @@ __all__ = [
     "GeometryInput",
     "GeometryResult",
     "IdentitiesResult",
+    "IndependenceReport",
     "IntegrateResult",
     "IntegrateVerification",
     "InvariantReport",
@@ -102,12 +107,15 @@ __all__ = [
     "MotionRequest",
     "ParseError",
     "PerturbationReport",
+    "Pins",
     "QuadratureVerification",
     "QuantitySpec",
+    "Relation",
     "Rule",
     "RuleApplication",
     "RuleCondition",
     "SandboxCall",
+    "SearchEvent",
     "SeriesResult",
     "SeriesTerm",
     "SeriesVerification",

@@ -434,6 +434,30 @@
   reply_matches: 'not evaluated|equation|representation|commut|cannot|unsupported|blocked'
   source: "AGENTS.md (a Sylvester equation is never presented as an evaluated integral)"
 
+- id: matrix-frechet-not-rewritten
+  category: tensor_matrix
+  prompt: 'Differentiate $\exp(t^2 A + t B)$ in t, where A and B are 2x2 matrices.'
+  expected_tool: matrix_calculus
+  args: {equals: {action: differentiate}, absent: [commuting]}
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '\exp(t^2 A + t B)'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: differentiate
+      variable: t
+  reply_matches: 'integral|representation|commut'
+  wrong_formulas: ['\frac{d}{dt}\exp(t^2 A + t B) = (2tA + B)\exp(t^2 A + t B)']
+  source: "engine test_matrix_frechet.py (X' exp(X) is wrong when X and X' do not commute)"
+
+- id: matrix-evolution-asks-for-the-span
+  category: tensor_matrix
+  prompt: 'Solve dU/dt = A(t) U with U(0) = I for the 2x2 matrix A(t) = [[0, t], [-1, 0]].'
+  expected_tool: ask
+  reply_matches: 'end|until|span|how long|up to|which time|what time'
+  source: "AGENTS.md (the end of a numerical span is a number only the user may choose)"
+
 # ----------------------------------------------------------------------------- physics
 - id: lagrangian-kepler
   category: physics

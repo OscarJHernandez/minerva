@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from minerva_engine import (
     Applicability,
     DifferentiateResult,
+    DiscoveryReport,
     DistributionInput,
     DistributionResult,
     ExpressionInput,
@@ -41,6 +42,7 @@ from .geometry_log import log_geometry
 from .logging import get_logger
 from .schemas import (
     ApplyIdentityRequest,
+    ConservedRequest,
     DifferentiateRequest,
     DistributionRequest,
     GeometryRequest,
@@ -52,6 +54,7 @@ from .schemas import (
     SeriesRequest,
     SimplifyRequest,
 )
+from .search_log import log_search_events
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -280,6 +283,23 @@ def integrate(
     return out
 
 
+def _matrix_log_fields(result: MatrixCalculusResult, trace_id: str | None) -> dict[str, Any]:
+    """Counters and enums from the diagnostics: never names, entries, expressions or bounds."""
+    d = result.diagnostics
+    if d is None:
+        return {"trace_id": trace_id}
+    verify = sum(s.ms for s in d.stages if s.name.startswith("verify"))
+    fields: dict[str, Any] = {
+        "trace_id": d.trace_id or trace_id,
+        "matrix_method": d.method,
+        "result_kind": result.result_kind,
+        "commutation": d.commutation,
+        "verify_ms": int(verify),
+        "reason": d.failure_reason,
+    }
+    return {k: v for k, v in fields.items() if v is not None}
+
+
 @router.post("/matrix", response_model=MatrixCalculusResponse)
 def matrix_calculus(
     body: MatrixCalculusRequest,
@@ -288,34 +308,74 @@ def matrix_calculus(
     engine: EngineDep,
     limiter: LimiterDep,
     settings: SettingsDep,
+    request: Request,
 ) -> MatrixCalculusResponse:
     _guard(user, limiter, settings, len(body.input))
+    _check_links(db, user, body)
     expression = ExpressionInput(input=body.input, format=body.format, assumptions=body.assumptions)
-    request = MatrixCalculusInput(
+    trace_id = str(getattr(request.state, "request_id", "")) or None
+    engine_request = MatrixCalculusInput(
         expression=expression,
         matrices=body.matrices,
         commuting=body.commuting,
         invertible=body.invertible,
+        self_commuting=body.self_commuting,
         action=body.action,
         variable=body.variable,
         lower=body.lower,
         upper=body.upper,
+        trace_id=trace_id,
     )
-    result = engine.matrix_calculus(request)
+    result = engine.matrix_calculus(engine_request)
     log.info(
         "compute",
         operation="matrix_calculus",
         status=result.status.value,
         duration_ms=result.duration_ms,
         user_id=str(user.id),
+        **_matrix_log_fields(result, trace_id),
     )
     out = MatrixCalculusResponse(**result.model_dump())
     if body.save:
         saved = result.model_dump(mode="json")
         # the declarations are kept (even on failure) so that the workbench can restore the form
-        saved["request"] = request.model_dump(mode="json", exclude={"expression"})
+        saved["request"] = engine_request.model_dump(
+            mode="json", exclude={"expression", "trace_id"}
+        )
         out.calculation_id = _save(db, user, "matrix_calculus", body, result.status.value, saved)
     return out
+
+
+@router.post("/conserved", response_model=DiscoveryReport)
+def conserved_quantities(
+    body: ConservedRequest,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> DiscoveryReport:
+    """Adaptive search for conserved quantities. Not saved as a workbench step: the report is returned."""
+    _guard(user, limiter, settings, len(body.function))
+    report = engine.discover_invariants(
+        body.function,
+        body.coordinates,
+        body.system,
+        body.momenta,
+        body.angles,
+        body.budget,
+        body.pins,
+        body.time,
+        body.assumptions,
+    )
+    log_search_events(report.events)
+    log.info(
+        "compute",
+        operation="discover_invariants",
+        status=report.status.value,
+        duration_ms=report.duration_ms,
+        user_id=str(user.id),
+    )
+    return report
 
 
 def _geometry_length(body: GeometryRequest) -> int:

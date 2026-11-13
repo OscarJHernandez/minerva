@@ -1,0 +1,435 @@
+# Hand-written cases for `matrix_calculus`, written independently of the code under test.
+# `group`: existing (behaviour that shipped before this work; must never regress), frechet, duhamel,
+# evolution, unsupported (known gaps that must stay explicit), limits (resource limits).
+# `expect_*`: the target outcome. `pending: true`: reported, never asserted; a pending case that
+# already meets its target fails the test suite until `pending` is removed.
+# A case whose request the engine cannot express yet (a field or action that does not exist) is
+# reported as status `not_expressible`.
+# Matrices: {name, rows[, cols]} is abstract, {name, entries} is explicit.
+
+# --- existing: explicit exponentials ---
+- id: exp-diagonal
+  group: existing
+  input: '\exp(tA)'
+  action: evaluate
+  matrices: [{name: A, entries: [['1', '0'], ['0', '2']]}]
+  expect_status: ok
+  expect_method: exp_explicit
+  expect_kind: explicit
+  expect_evaluated: true
+- id: exp-nilpotent
+  group: existing
+  input: '\exp(tB)'
+  action: evaluate
+  matrices: [{name: B, entries: [['0', '1'], ['0', '0']]}]
+  expect_status: ok
+  expect_method: exp_explicit
+  expect_kind: explicit
+  expect_evaluated: true
+- id: exp-defective-repeated-eigenvalue
+  group: existing
+  input: '\exp(B)'
+  action: evaluate
+  matrices: [{name: B, entries: [['2', '1'], ['0', '2']]}]
+  expect_status: ok
+  expect_method: exp_explicit
+  expect_kind: explicit
+  expect_evaluated: true
+- id: exp-ordered-product
+  group: existing
+  input: '\exp(A)\exp(B)'
+  action: evaluate
+  matrices:
+    - {name: A, entries: [['1', '0'], ['0', '2']]}
+    - {name: B, entries: [['0', '1'], ['0', '0']]}
+  expect_status: ok
+  expect_method: exp_explicit
+  expect_kind: explicit
+  expect_evaluated: true
+- id: exp-abstract-cannot-be-evaluated
+  group: existing
+  input: '\exp(A)'
+  action: evaluate
+  matrices: [{name: A, rows: 2}]
+  expect_status: unsupported
+
+# --- existing: differentiation (the exponent commutes with its derivative) ---
+- id: derivative-abstract
+  group: existing
+  input: '\exp(tA)'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 3}]
+  expect_status: ok
+  expect_method: exp_derivative
+  expect_kind: expression
+  expect_evaluated: true
+- id: derivative-product-keeps-order
+  group: existing
+  input: '\exp(tA)\exp(tB)'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: ok
+  expect_method: exp_derivative
+  expect_kind: expression
+  expect_evaluated: true
+- id: derivative-scalar-function-of-t
+  group: existing
+  input: '\exp(t^2 A)'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2}]
+  expect_status: ok
+  expect_method: exp_derivative
+  expect_kind: expression
+  expect_evaluated: true
+- id: derivative-commuting-declared
+  group: existing
+  input: '\exp(t^2 A + t B)'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  commuting: [[A, B]]
+  expect_status: ok
+  expect_method: exp_derivative
+  expect_kind: expression
+  expect_evaluated: true
+
+# --- existing: simplification ---
+- id: merge-blocked-without-commutation
+  group: existing
+  input: '\exp(A)\exp(B)'
+  action: simplify
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: conditions_not_satisfied
+- id: merge-declared
+  group: existing
+  input: '\exp(A)\exp(B)'
+  action: simplify
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  commuting: [[A, B]]
+  expect_status: ok
+  expect_method: exp_merge_commuting
+  expect_kind: expression
+  expect_evaluated: true
+
+# --- existing: integration ---
+- id: integral-invertible
+  group: existing
+  input: '\exp(tA)'
+  action: integrate
+  variable: t
+  lower: a
+  upper: b
+  matrices: [{name: A, rows: 2}]
+  invertible: [A]
+  expect_status: ok
+  expect_method: exp_integral_invertible
+  expect_kind: expression
+  expect_evaluated: true
+- id: integral-not-invertible-is-a-representation
+  group: existing
+  input: '\exp(tA)'
+  action: integrate
+  variable: t
+  lower: '0'
+  upper: '1'
+  matrices: [{name: A, rows: 2}]
+  expect_status: ok
+  expect_method: block_exponential
+  expect_kind: representation
+  expect_evaluated: false
+- id: integral-singular-explicit
+  group: existing
+  input: '\exp(tA)'
+  action: integrate
+  variable: t
+  lower: '0'
+  upper: '1'
+  matrices: [{name: A, entries: [['0', '1'], ['0', '0']]}]
+  expect_status: ok
+  expect_kind: explicit
+  expect_evaluated: true
+- id: integral-polynomial
+  group: existing
+  input: '3 t^2 A + B'
+  action: integrate
+  variable: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: ok
+  expect_method: integrate_polynomial
+  expect_kind: expression
+  expect_evaluated: true
+- id: integral-sylvester-explicit
+  group: existing
+  input: '\exp(wA)\exp(-wB)'
+  action: integrate
+  variable: w
+  lower: '0'
+  upper: '1'
+  matrices:
+    - {name: A, entries: [['1', '0'], ['0', '2']]}
+    - {name: B, entries: [['0', '1'], ['0', '0']]}
+  expect_status: ok
+  expect_method: sylvester_reduction
+  expect_kind: explicit
+  expect_evaluated: true
+- id: integral-sylvester-abstract
+  group: existing
+  input: '\exp(wP)\exp(-wQ)'
+  action: integrate
+  variable: w
+  lower: '0'
+  upper: '1'
+  matrices: [{name: P, rows: 2}, {name: Q, rows: 2}]
+  expect_status: ok
+  expect_kind: representation
+  expect_evaluated: false
+
+# --- existing: errors ---
+- id: dimension-mismatch
+  group: existing
+  input: 'AB'
+  action: simplify
+  matrices: [{name: A, rows: 2, cols: 3}, {name: B, rows: 2, cols: 2}]
+  expect_status: parse_error
+- id: bare-e-is-rejected
+  group: existing
+  input: 'e^{tA}'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2}]
+  expect_status: parse_error
+
+# --- frechet: derivative of exp(X(t)) when X and X' do not commute ---
+- id: frechet-abstract
+  group: frechet
+  input: '\exp(t^2 A + t B)'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: ok
+  expect_method: exp_frechet_derivative
+  expect_kind: representation
+  expect_evaluated: false
+- id: frechet-explicit-nilpotent-pair
+  group: frechet
+  input: '\exp(t A + t^2 B)'
+  action: differentiate
+  variable: t
+  matrices:
+    - {name: A, entries: [['0', '1'], ['0', '0']]}
+    - {name: B, entries: [['0', '0'], ['1', '0']]}
+  expect_status: ok
+  expect_method: exp_frechet_derivative
+  expect_kind: explicit
+  expect_evaluated: true
+- id: frechet-explicit-defective
+  group: frechet
+  input: '\exp(t A + t^2 B)'
+  action: differentiate
+  variable: t
+  matrices:
+    - {name: A, entries: [['2', '1'], ['0', '2']]}
+    - {name: B, entries: [['0', '0'], ['1', '0']]}
+  expect_status: ok
+  expect_method: exp_frechet_derivative
+  expect_kind: explicit
+  expect_evaluated: true
+- id: frechet-time-dependent-matrix-abstract
+  group: frechet
+  input: '\exp(A(t))'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2, depends_on: t}]
+  expect_status: ok
+  expect_method: exp_frechet_derivative
+  expect_kind: representation
+  expect_evaluated: false
+- id: frechet-time-dependent-self-commuting
+  group: frechet
+  input: '\exp(A(t))'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2, depends_on: t}]
+  self_commuting: [A]
+  expect_status: ok
+  expect_method: exp_derivative
+  expect_kind: expression
+  expect_evaluated: true
+- id: frechet-time-dependent-explicit
+  group: frechet
+  input: '\exp(A(t))'
+  action: differentiate
+  variable: t
+  matrices:
+    - {name: A, entries: [['0', '1'], ['t', '0']]}
+  expect_status: ok
+  expect_method: exp_frechet_derivative
+  expect_kind: explicit
+  expect_evaluated: true
+- id: frechet-time-dependent-commutes-from-entries
+  group: frechet
+  input: '\exp(A(t))'
+  action: differentiate
+  variable: t
+  matrices:
+    - {name: A, entries: [['0', 't'], ['0', '0']]}
+  expect_status: ok
+  expect_method: exp_derivative
+  expect_kind: expression
+  expect_evaluated: true
+- id: frechet-time-dependent-undeclared-product
+  group: frechet
+  input: 'A(t)'
+  action: differentiate
+  variable: t
+  matrices: [{name: A, rows: 2}]
+  expect_status: parse_error
+
+# --- duhamel: \int_0^t e^{(t-s)A} B e^{sA} ds ---
+- id: duhamel-abstract
+  group: duhamel
+  input: '\exp((t-s)A) B \exp(sA)'
+  action: integrate
+  variable: s
+  lower: '0'
+  upper: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: ok
+  expect_method: duhamel
+  expect_kind: representation
+  expect_evaluated: false
+- id: duhamel-commuting-declared
+  group: duhamel
+  input: '\exp((t-s)A) B \exp(sA)'
+  action: integrate
+  variable: s
+  lower: '0'
+  upper: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  commuting: [[A, B]]
+  expect_status: ok
+  expect_method: duhamel
+  expect_kind: expression
+  expect_evaluated: true
+- id: duhamel-nilpotent
+  group: duhamel
+  input: '\exp((t-s)A) B \exp(sA)'
+  action: integrate
+  variable: s
+  lower: '0'
+  upper: t
+  matrices:
+    - {name: A, entries: [['0', '1'], ['0', '0']]}
+    - {name: B, entries: [['0', '0'], ['1', '0']]}
+  expect_status: ok
+  expect_method: duhamel
+  expect_kind: explicit
+  expect_evaluated: true
+- id: duhamel-diagonal
+  group: duhamel
+  input: '\exp((t-s)A) B \exp(sA)'
+  action: integrate
+  variable: s
+  lower: '0'
+  upper: t
+  matrices:
+    - {name: A, entries: [['1', '0'], ['0', '2']]}
+    - {name: B, entries: [['0', '1'], ['1', '0']]}
+  expect_status: ok
+  expect_method: duhamel
+  expect_kind: explicit
+  expect_evaluated: true
+- id: duhamel-defective
+  group: duhamel
+  input: '\exp((t-s)A) B \exp(sA)'
+  action: integrate
+  variable: s
+  lower: '0'
+  upper: t
+  matrices:
+    - {name: A, entries: [['2', '1'], ['0', '2']]}
+    - {name: B, entries: [['0', '0'], ['1', '0']]}
+  expect_status: ok
+  expect_method: duhamel
+  expect_kind: explicit
+  expect_evaluated: true
+
+# --- evolution: dU/dt = A(t) U, U(0) = I ---
+- id: evolution-constant-abstract
+  group: evolution
+  input: 'A'
+  action: evolve
+  variable: t
+  matrices: [{name: A, rows: 2}]
+  expect_status: ok
+  expect_method: evolution_commuting
+  expect_kind: expression
+  expect_evaluated: true
+- id: evolution-commuting-family
+  group: evolution
+  input: 'tA + t^2 B'
+  action: evolve
+  variable: t
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  commuting: [[A, B]]
+  expect_status: ok
+  expect_method: evolution_commuting
+  expect_kind: expression
+  expect_evaluated: true
+- id: evolution-self-commuting-declared
+  group: evolution
+  input: 'A(t)'
+  action: evolve
+  variable: t
+  matrices: [{name: A, rows: 2, depends_on: t}]
+  self_commuting: [A]
+  expect_status: ok
+  expect_method: evolution_commuting
+  expect_kind: representation
+  expect_evaluated: false
+- id: evolution-numeric-noncommuting
+  group: evolution
+  input: 'A(t)'
+  action: evolve
+  variable: t
+  upper: '1'
+  matrices: [{name: A, entries: [['0', 't'], ['-1', '0']]}]
+  expect_status: ok
+  expect_method: evolution_numeric
+  expect_kind: numeric
+  expect_evaluated: false
+
+# --- unsupported: gaps that must stay explicit ---
+- id: unsupported-sine-of-a-matrix
+  group: unsupported
+  input: '\sin(A)'
+  action: simplify
+  matrices: [{name: A, rows: 2}]
+  expect_status: unsupported
+- id: unsupported-time-ordered-integral
+  group: unsupported
+  input: '\exp(t(A+B))'
+  action: integrate
+  variable: t
+  lower: '0'
+  upper: '1'
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: unsupported
+- id: unsupported-evolution-abstract-noncommuting
+  group: unsupported
+  input: 'A(t)'
+  action: evolve
+  variable: t
+  matrices: [{name: A, rows: 2, depends_on: t}]
+  expect_status: unsupported
+
+# --- limits ---
+- id: limit-power-too-large
+  group: limits
+  input: '(A+B)^{12}'
+  action: simplify
+  matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+  expect_status: resource_limit

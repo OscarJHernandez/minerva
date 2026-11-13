@@ -235,6 +235,39 @@ def test_engine_batch_passes_relations_through_the_sandbox() -> None:
     assert results[0].given == [r"\theta = \phi + \omega t"]
 
 
+# -- formulas about matrices declared in the conversation -----------------------------------------
+def test_scalar_sampling_would_wrongly_confirm_matrix_equations() -> None:
+    """The reason matrices must be named: without them these are tested as commuting scalars."""
+    assert check_claim(r"\exp(A)\exp(B) = \exp(A+B)", {}, L).status == "holds"
+    assert check_claim(r"AB = BA", {}, L).status == "holds"
+
+
+def test_equations_about_declared_matrices_are_never_tested_by_sampling() -> None:
+    formulas = [
+        r"\exp(A)\exp(B) = \exp(A+B)",
+        r"AB = BA",
+        r"\frac{d}{dt}\exp(tA) = A\exp(tA)",
+        r"\sin^2 x + \cos^2 x = 1",
+        r"\exp(s)\exp(u) = \exp(s+u)",
+    ]
+    results = check_claims(formulas, {}, [], L, matrices=["A", "B"])
+    assert [r.status for r in results[:3]] == ["unverified"] * 3
+    assert all("matrix" in r.detail for r in results[:3])
+    assert results[3].status == "holds"  # unrelated scalar claims are checked as before
+    assert results[4].status == "holds"  # scalars named differently are not matrices
+
+
+def test_a_definition_involving_a_matrix_is_not_substituted() -> None:
+    results = check_claims([r"X = AB", r"X = BA"], {}, [r"A = 2 B"], L, matrices=["A", "B"])
+    assert [r.status for r in results] == ["unverified", "unverified"]
+
+
+def test_engine_check_claims_passes_the_matrix_names(engine: Engine) -> None:
+    [plain] = engine.check_claims([r"AB = BA"])
+    [guarded] = engine.check_claims([r"AB = BA"], matrices=["A", "B"])
+    assert plain.status == "holds" and guarded.status == "unverified"
+
+
 def test_distribution_statements_are_never_contradicted() -> None:
     # \theta(x) + \theta(-x) = 1 reads as theta*x - theta*x = 0 != 1: it must not be called false.
     for claim in (

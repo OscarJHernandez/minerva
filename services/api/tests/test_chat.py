@@ -474,6 +474,26 @@ def test_scripted_model_searches_for_hidden_constants_of_motion(
     assert message["trace"][0]["arguments"]["angles"] == ["theta"]
 
 
+def test_scripted_model_finds_conserved_quantities_without_hints(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    latex = r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}"
+    events = sse(client, cid, f"find the conserved quantities of ${latex}$")
+    message = next(d for e, d in events if e == "message")
+    card = cards_of(message)[0]
+    assert card["type"] == "discovery"
+    report = card["data"]["report"]
+    assert sum(c["kind"] == "new" for c in report["constants"]) == 2
+    assert report["independence"]["rank_lower"] == 3 and report["independence"]["rank_proved"]
+    step = message["trace"][0]
+    assert step["name"] == "find_conserved_quantities"
+    assert set(step["arguments"]) <= {
+        "lagrangian",
+        "coordinates",
+    }  # no ansatz, no angles, no answer
+
+
 def test_distribution_turn_streams_a_card_and_checks_the_formula(
     chat_client: tuple[TestClient, str],
 ) -> None:
@@ -575,6 +595,22 @@ def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
         r"\dot\theta = \dot\phi + \omega",
     ]
     assert assumptions == {"x": ["positive"]}
+
+
+def test_matrix_turn_for_a_noncommuting_derivative_is_a_representation(
+    chat_client: tuple[TestClient, str],
+) -> None:
+    client, cid = chat_client
+    events = sse(client, cid, r"Differentiate the matrix expression $\exp(t^2 A + t B)$ in t")
+    message = next(d for e, d in events if e == "message")
+    (card,) = cards_of(message)
+    result = card["data"]["result"]
+    assert result["method"] == "exp_frechet_derivative"
+    assert result["evaluated"] is False and result["result_kind"] == "representation"
+    assert "not evaluated" in message["text"]
+    # the engine operation carries the turn's trace id, which also joins the stored trace and the log
+    assert message["debug"]["trace_id"]
+    assert result["diagnostics"]["trace_id"] == message["debug"]["trace_id"]
 
 
 def test_scripted_model_can_simulate_a_host_failure_and_a_repeat_loop() -> None:
