@@ -32,7 +32,7 @@ const MARKS: Record<
   conditional: {
     label: "conditional",
     title:
-      "Written by the language model. Minerva tested this equation: it is not true in general, but it holds under an extra assumption (see the note).",
+      "Written by the language model. Minerva tested this equation: it is not true in general, but it holds under an extra assumption or a definition stated earlier (see the note; Minerva has not verified that assumption or definition).",
     underline: "border-b border-dashed border-warn",
     box: "border-warn/50 bg-warn-soft/40",
     tone: "text-warn",
