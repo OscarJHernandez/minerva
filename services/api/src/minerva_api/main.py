@@ -35,7 +35,8 @@ UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def _make_llm(settings: Settings) -> LLMClient | None:
-    if settings.llm_mode == "ollama":
+    """The local model (Ollama or the dev stand-in). OpenRouter clients are made per request."""
+    if settings.ollama_configured:
         return OllamaClient(
             settings.llm_base_url,
             settings.llm_model,
@@ -49,7 +50,7 @@ def _make_llm(settings: Settings) -> LLMClient | None:
 
 
 def _make_vision(settings: Settings) -> FormulaReader | None:
-    if settings.llm_mode == "ollama" and settings.llm_vision_model:
+    if settings.ollama_configured and settings.llm_vision_model:
         return OllamaFormulaReader(
             settings.llm_base_url, settings.llm_vision_model, settings.llm_timeout_seconds
         )
@@ -80,7 +81,8 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
                 max_concurrency=settings.compute_max_concurrency,
             )
         )
-        app.state.llm = _make_llm(settings)
+        app.state.local_llm = _make_llm(settings)
+        app.state.llm = app.state.local_llm  # kept for older callers
         app.state.vision = _make_vision(settings)
         await run_in_threadpool(app.state.engine.warm_up)
         log.info("startup", status="ready")

@@ -12,6 +12,8 @@ import type {
   IntegrateResult,
   IdentitiesResult,
   MatrixCalculusResult,
+  GeometryRequest,
+  GeometryResult,
   MatrixRequest,
   SeriesResult,
   SimplifyGoal,
@@ -127,6 +129,11 @@ export const api = {
     request<DiscoveryReport>("/v1/compute/conserved", {
       method: "POST",
       body: JSON.stringify(c),
+    }),
+  geometry: (req: GeometryRequest, link?: { derivation_id?: string; save?: boolean }) =>
+    request<GeometryResult>("/v1/compute/geometry", {
+      method: "POST",
+      body: JSON.stringify({ ...req, format: "latex", ...link }),
     }),
   distribution: (c: ComputeInput, req: DistributionRequest) =>
     request<DistributionResult>("/v1/compute/distribution", {

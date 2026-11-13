@@ -506,3 +506,173 @@ def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type:
 def test_conserved_quantities_requires_login(client: TestClient) -> None:
     r = client.post("/v1/compute/conserved", json={"function": "x", "coordinates": ["x"]})
     assert r.status_code == 401
+
+
+GEOMETRY_POLAR = {
+    "coordinates": ["r", "theta"],
+    "metric": [["1", "0"], ["0", "r^2"]],
+    "format": "text",
+    "assumptions": {"r": ["positive"]},
+    "quantities": ["christoffel", "ricci_scalar", "geodesics"],
+}
+
+
+def test_geometry_regression_and_history(authed: TestClient) -> None:
+    r = authed.post("/v1/compute/geometry", json=GEOMETRY_POLAR)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok" and body["dimension"] == 2
+    by_kind = {q["kind"]: q for q in body["quantities"]}
+    assert by_kind["ricci_scalar"]["scalar_text"] == "0"
+    assert {c["text"] for c in by_kind["geodesics"]["components"]} == {
+        "r_ddot = r*theta_dot**2",
+        "theta_ddot = -2*r_dot*theta_dot/r",
+    }
+    assert all(q["verification"]["numeric_passed"] for q in body["quantities"])
+    assert body["conventions"] and body["diagnostics"]
+    (item,) = authed.get("/v1/history").json()
+    assert item["operation"] == "geometry" and item["id"] == body["calculation_id"]
+    # the whole problem is stored so that the workbench can restore the form
+    assert item["result"]["request"]["metric"] == GEOMETRY_POLAR["metric"]
+    assert item["result"]["request"]["coordinates"] == ["r", "theta"]
+    assert "save" not in item["result"]["request"]
+
+
+def test_geometry_the_same_problem_can_be_sent_again_for_other_quantities(
+    authed: TestClient,
+) -> None:
+    first = authed.post("/v1/compute/geometry", json=GEOMETRY_POLAR).json()
+    again = authed.post(
+        "/v1/compute/geometry", json={**GEOMETRY_POLAR, "quantities": ["riemann", "einstein"]}
+    ).json()
+    assert again["status"] == "ok" and again["metric_latex"] == first["metric_latex"]
+    assert [q["kind"] for q in again["quantities"]] == ["riemann", "einstein"]
+
+
+def test_geometry_failures_are_statuses_and_bad_shapes_are_422(authed: TestClient) -> None:
+    degenerate = {**GEOMETRY_POLAR, "metric": [["1", "0"], ["0", "0"]]}
+    body = authed.post("/v1/compute/geometry", json=degenerate).json()
+    assert body["status"] == "unsupported" and "degenerate" in body["message"]
+    asymmetric = {**GEOMETRY_POLAR, "metric": [["1", "x"], ["0", "1"]]}
+    assert authed.post("/v1/compute/geometry", json=asymmetric).json()["status"] == "parse_error"
+    undeclared = {**GEOMETRY_POLAR, "metric": [["f(r)", "0"], ["0", "1"]]}
+    assert authed.post("/v1/compute/geometry", json=undeclared).json()["status"] == "parse_error"
+    for bad in (
+        {**GEOMETRY_POLAR, "quantities": []},
+        {**GEOMETRY_POLAR, "quantities": ["levitation"]},
+        {**GEOMETRY_POLAR, "coordinates": []},
+        {**GEOMETRY_POLAR, "metric": [["x" * 400, "0"], ["0", "1"]]},
+    ):
+        assert authed.post("/v1/compute/geometry", json=bad).status_code == 422
+
+
+def test_geometry_supports_declared_functions_and_tensor_fields(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/geometry",
+        json={
+            "coordinates": ["t", "x"],
+            "metric": [["-1", "0"], ["0", "a(t)^2"]],
+            "format": "text",
+            "functions": [{"name": "a", "args": ["t"]}],
+            "quantities": ["ricci_scalar", "covariant_derivative"],
+            "tensor": {"variance": ["up"], "components": ["1", "0"]},
+        },
+    ).json()
+    assert body["status"] == "ok"
+    kinds = {q["kind"]: q for q in body["quantities"]}
+    assert kinds["covariant_derivative"]["components"][0]["indices"] == [1, 1]
+
+
+def test_geometry_does_not_save_into_another_users_derivation(
+    authed: TestClient, client: TestClient
+) -> None:
+    other = TestClient(client.app)
+    register(other, "grace@example.com")
+    derivation = other.post("/v1/derivations", json={}).json()["id"]
+    r = authed.post("/v1/compute/geometry", json={**GEOMETRY_POLAR, "derivation_id": derivation})
+    assert r.status_code == 404
+
+
+def test_geometry_requires_authentication(client: TestClient) -> None:
+    assert client.post("/v1/compute/geometry", json=GEOMETRY_POLAR).status_code == 401
+
+
+def test_geometry_logs_no_user_input(capsys) -> None:  # type: ignore[no-untyped-def]
+    marker = "zzGEOMARKERzz"
+    app = build_app()
+    with TestClient(app) as c:
+        register(c)
+        c.post(
+            "/v1/compute/geometry",
+            json={
+                "coordinates": ["x", marker],
+                "metric": [["1", "0"], ["0", f"({marker})^2 + 1"]],
+                "format": "text",
+                "quantities": ["christoffel"],
+                "functions": [{"name": "fzzFUNCzz", "args": [marker]}],
+            },
+        )
+    out = capsys.readouterr().out
+    assert "compute" in out and marker not in out and "fzzFUNCzz" not in out
+
+
+def _events(out: str) -> list[dict]:  # type: ignore[type-arg]
+    import json
+
+    events = []
+    for line in out.splitlines():
+        try:
+            events.append(json.loads(line))
+        except ValueError:
+            continue
+    return events
+
+
+def test_geometry_logs_one_event_per_stage_with_counters_only(capsys) -> None:  # type: ignore[no-untyped-def]
+    from minerva_api.logging import ALLOWED_FIELDS
+
+    marker = "zzGEOSTAGEzz"
+    with TestClient(build_app()) as c:
+        register(c)
+        c.post(
+            "/v1/compute/geometry",
+            json={
+                "coordinates": ["r", "theta"],
+                "metric": [["1", "0"], ["0", f"r^2 + 0*{marker}"]],
+                "format": "text",
+                "assumptions": {"r": ["positive"]},
+                "quantities": ["christoffel", "riemann"],
+            },
+        )
+    out = capsys.readouterr().out
+    assert marker not in out and "theta" not in out and "r^2" not in out
+    events = _events(out)
+    stages = [e for e in events if e.get("event") == "geometry_stage"]
+    names = {e["stage"] for e in stages}
+    assert {"setup", "determinant", "christoffel", "christoffel:verify", "riemann"} <= names
+    for e in stages:
+        assert set(e) <= ALLOWED_FIELDS  # nothing outside the allow-list reaches the log
+        assert e["operation"] == "geometry" and e["dimension"] == 2
+        assert isinstance(e["duration_ms"], int) and e["status"] in {"ok", "failed", "skipped"}
+        assert e.get("request_id")  # the stage can be tied to the request
+    summary = next(e for e in events if e.get("event") == "geometry")
+    assert summary["quantities"] == ["christoffel", "riemann"] and summary["dimension"] == 2
+
+
+def test_a_failed_stage_is_logged_with_its_failure_category(capsys) -> None:  # type: ignore[no-untyped-def]
+    with TestClient(build_app()) as c:
+        register(c)
+        c.post(
+            "/v1/compute/geometry",
+            json={
+                "coordinates": ["x", "y"],
+                "metric": [["1", "0"], ["0", "0"]],
+                "format": "text",
+                "quantities": ["christoffel"],
+            },
+        )
+    stages = [e for e in _events(capsys.readouterr().out) if e.get("event") == "geometry_stage"]
+    failed = [e for e in stages if e["status"] == "failed"]
+    assert (
+        failed and failed[0]["stage"] == "inverse_metric" and failed[0]["failure"] == "unsupported"
+    )

@@ -1,6 +1,64 @@
 # Model evaluation
 
-Generated 2026-11-11 by `scripts/eval_models.py`. Each prompt runs through the real agent loop (real tools and verification) on the configured Ollama host. A case passes when the right tool is called with valid arguments, the reply says what it should (for example that conditions or assumptions are needed), and the model does not write formulas that no tool produced where that would be wrong. Results vary from run to run; treat differences of one case as noise.
+> **Status of this page.** The table and failures below were produced on 2026-11-11 by the previous version
+> of `scripts/eval_models.py`: 21 scored cases, one run per cell, an older claim checker. They are
+> **historical and outdated**: the case set, the scoring, the claim checker and the agent loop have all
+> changed since (the old `unsupported-derivative` case demanded a refusal for something `differentiate` now
+> does). Do not compare them with new runs. This page is now written by hand and is never overwritten by the
+> script. Current, reproducible measurements (per-category rates, tool-selection confusion matrices, latency
+> distributions, failure classes, baseline-versus-new comparisons) are produced by the benchmark described in
+> [observability.md](observability.md) and kept as JSON and Markdown under `docs/benchmarks/`.
+
+## Agent benchmark: before and after the reliability changes (2026-11-13)
+
+First reproducible measurement with the benchmark in [observability.md](observability.md): 78 cases in 10
+categories, two models on a local Ollama 0.40.3, 2 repeats, seed 7, temperature 0.2, same limits. *Baseline* is the agent
+as it was before the reliability changes (commit `7b19980`, frozen, with the new benchmark code on top);
+*new* is the same cases after them (commit `abaeb9f`). Full reports:
+[baseline](benchmarks/agent-baseline.md), [new](benchmarks/agent-new.md),
+[comparison](benchmarks/agent-comparison.md) (JSON next to each). The case file has since gained five informational
+geometry and distribution cases (83 in total), so its digest no longer equals the one these runs recorded
+(`e89efb8efe53`); informational cases are not scored.
+
+| | pass rate | tool selection | valid arguments | completion | unsupported shown as verified | unnecessary calls |
+| --- | --- | --- | --- | --- | --- | --- |
+| gemma4:26b, baseline | 51.3% | 75.3% | 84.9% | 98.7% | 4 | 34 |
+| gemma4:26b, new | 48.1% | 77.3% | 91.9% | 94.8% | 4 | 27 |
+| qwen3.5:35b, baseline | 66.2% | 89.0% | 99.3% | 99.4% | 3 | 16 |
+| qwen3.5:35b, new | 66.2% | 85.1% | 99.3% | 99.4% | 3 | 21 |
+
+Targets (tool selection >= 95%, valid arguments >= 99%, completion >= 90%, no unsupported formula shown as
+verified): **met** only for completion (both models) and, for `qwen3.5:35b`, valid arguments. **Not met**: tool
+selection, and the count of unsupported formulas shown as verified, for both models, before and after.
+
+What the numbers do and do not show:
+
+- **The changes did not raise the pass rate.** `qwen3.5:35b` is unchanged (66.2%); `gemma4:26b` is 3.2 points lower.
+  With two repeats and 3 to 8 unstable cases per model, differences of a few points are within the noise of a
+  sampling model, so this is "no measurable improvement", not "a regression".
+- **Where something moved:** `gemma4:26b` sent fewer invalid tool calls (21 of 139 before, 10 of 124 after; valid
+  arguments 84.9% to 91.9%) and repeated identical calls less (15 to 10). The new loop stops a model that keeps
+  calling tools that cannot help: this shows up as 8 `unproductive_loop` failures for `gemma4:26b`, which before were
+  counted as other failures or as limit hits; stopping them also lowers its completion rate, by construction.
+- **The unsupported-as-verified count did not fall, and it is not mainly a model fault.** All 7 hits are the
+  matrix cases (`\exp(A)\exp(B) = \exp(A+B)`). The models answered correctly ("holds only if A and B commute"),
+  but the claim checker treats undeclared symbols as ordinary complex numbers, so it marks that equation `checked`.
+  This is a limit of the claim checker (no matrix semantics for claims), not of the model, and it is the first
+  item the evidence points to; it is not fixed here.
+- **Where the models fail** (new run): tool selection is the largest class (33 of 80 failures for `gemma4:26b`,
+  22 of 52 for `qwen3.5:35b`), then model honesty (mostly formulas in the reply that no tool produced). In the
+  `unsupported` category the models usually answer from their own belief without calling the tool (8 of 12 runs
+  for `gemma4:26b`); the benchmark counts that as a tool-selection miss because "unsupported" should be the
+  engine's finding. Calculus is the weakest category for `gemma4:26b` (18%): often the model passes a different
+  expression than the one asked.
+- **Latency** is dominated by the model (median turn 24 to 27 s on this host, tools about 0.5 s) and did not change
+  beyond noise (p95 for `qwen3.5:35b` 62 s to 72 s).
+- **Not measured:** other models (`qwen3.8:27b` was slower on this host and was left out), more than 2 repeats, any
+  cloud provider.
+
+## Earlier evaluation (historical)
+
+Generated 2026-11-11 by the earlier `scripts/eval_models.py`. Each prompt runs through the real agent loop (real tools and verification) on the configured Ollama host. A case passes when the right tool is called with valid arguments, the reply says what it should (for example that conditions or assumptions are needed), and the model does not write formulas that no tool produced where that would be wrong. Results vary from run to run; treat differences of one case as noise.
 
 | Model | Passed | Median s/case | Slowest | Formulas the model wrote |
 | --- | --- | --- | --- | --- |

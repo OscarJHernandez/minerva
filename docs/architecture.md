@@ -71,6 +71,21 @@ one most likely to be wrong.
     and verifies its own result with `verify.py` (numeric leg decides; exact series leg reported separately).
     The language model only fills in the declarations and explains the card; handbook `method.matrix.*` entries
     (stated) document the techniques and are retrieved by the features the engine emits (`matrix:*`).
+  - `geometry` (`geometry/`, `Engine.geometry`, `POST /v1/compute/geometry`, chat tool `geometry`): metric,
+    inverse, determinant, Christoffel symbols, Riemann/Ricci/Einstein tensors, Ricci scalar, Kretschmann and
+    Ricci-squared invariants, symbolic geodesic equations, covariant derivatives and index raising/lowering of
+    a tensor field, in explicit coordinates (at most 4) with real coordinates and optional declared functions
+    of them (`Builder.functions`, `strict_calls`). `setup.py` parses and validates (square, symmetric,
+    non-degenerate); `compute.py` runs memoised, timed stages with size and deadline guards before every
+    uninterruptible `simplify`; `numeric.py` is a second, independent route (lambdified metric at 50 digits,
+    central differences, formulas written again); `verify.py` decides what is shown: a quantity needs all its
+    numeric legs (agreement with the numerical recomputation, metric compatibility, curvature symmetries and
+    Bianchi identities, a divergence-free Einstein tensor, Euler-Lagrange equations for geodesics through
+    `lagrangian.derive_expr`), while symbolic legs (for example `R_{abcd}` from second derivatives of the metric)
+    are reported separately. Conventions, assumptions, signature (only if decided), restrictions (`domain.py`)
+    and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
+    server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
+    (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -191,7 +206,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
@@ -209,16 +224,27 @@ and explains; it never computes and never decides correctness.
   by substitution (the note names them).
 - **Storage:** conversations and messages (per user, private); each assistant message stores its ordered blocks
   (prose and cards) and the tool trace so later turns have the same context.
-- **Debug report:** each stored assistant message carries `trace` (tool name, the arguments the model sent, the text it
-  read back, tool status and duration) and `debug` (`request_id`, model, mode, a fingerprint of the system prompt and
-  tool schemas, per-call timings, and how each equation the model wrote was tested). With "Debug mode" on, the chat
-  shows this and copies a Markdown report ending in a JSON block; `scripts/replay_trace.py` re-runs the recorded tool
-  calls, and the `chat-trace-triage` skill says how to classify the result. This is shown only to the account that owns
-  the conversation. The server log still holds no content: `chat_turn` adds `steps`, `tool_calls` and `tool_errors`
-  counts, and the `request_id` in the report matches the `X-Request-ID` response header.
+- **Trace and debug report:** every agent request has a `trace_id` (header `X-Trace-ID`, every stream event, the stored
+  message, the log). The loop records typed, content-free events (`agent/tracing.py`: `agent.started`, `llm.request`,
+  `llm.response`, `tool.started`, `tool.completed`, `verification.completed`, `agent.retry`, `agent.stopped`,
+  `agent.completed`) with monotonic timings, token counts when the host reports them, and a stop reason. Each stored
+  assistant message carries `trace` (tool name, the arguments the model sent and the ones after `@rN` references were
+  replaced, the text it read back, status, duration, an `evidence` record, an error category) and `debug` (trace id,
+  model, prompt fingerprint, per-call timings, the events, how each equation the model wrote was tested). Failed turns
+  are stored too. With "Debug mode" on, the chat shows a timeline and copies a Markdown report ending in a JSON block;
+  `scripts/replay_trace.py` re-runs the recorded tool calls, or a whole turn with `--llm`, and the `chat-trace-triage`
+  skill says how to classify the result. This is conversation content: it is shown and stored only with the
+  conversation, under its access and deletion rules. The server log holds no content at any setting: `chat_turn` and
+  the events carry identifiers, counts, durations and fixed vocabulary. See [observability.md](observability.md).
+- **Reliability of the loop:** a turn ends with an explicit stop reason; an identical call is not run twice; a model call
+  that fails before any output is retried once; unusable tool calls get one correction; verified results can be reused
+  as `@rN` instead of being retyped; a formula is marked verified only if a verified result produced it (the user's own
+  input, handbook entries that are only stated and identities that were not applied are marked *quoted*).
 - **Models:** `MINERVA_LLM_MODE` is `off`, `ollama` (your own host: `MINERVA_LLM_BASE_URL`, `MINERVA_LLM_MODEL`) or
   `scripted` (deterministic stand-in for tests and UI work, development only). `scripts/eval_models.py` measures a
-  model's tool-calling and honesty through the real loop; results in `docs/model-evaluation.md`.
+  model's tool-calling and honesty through the real loop on a fixed benchmark (`agent/evaluation/`: cases as data, scoring,
+  failure classes, JSON and Markdown reports, baseline comparison; see [observability.md](observability.md)); interpretation
+  in `docs/model-evaluation.md`.
 - **Transport:** `POST /v1/chat/conversations/{id}/messages` streams server-sent events (`text`, `tool_call`, `card`,
   `message`, `error`, `done`).
 - **Add image** (`vision.py`, `POST /v1/chat/formula-image`): the composer can read formulas from a picture. The

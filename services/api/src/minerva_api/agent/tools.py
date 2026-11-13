@@ -7,6 +7,7 @@ confused or manipulated model can at worst produce a poor explanation.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import uuid
 from collections.abc import Callable
@@ -19,6 +20,7 @@ from minerva_engine import (
     DistributionInput,
     Engine,
     ExpressionInput,
+    GeometryInput,
     MatrixCalculusInput,
     MatrixDecl,
     MotionRequest,
@@ -27,6 +29,7 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
 )
+from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
@@ -38,9 +41,12 @@ from minerva_knowledge.identities import (
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from ..diagnostics import log_distribution
+from ..geometry_log import log_geometry
 from ..search_log import log_search_events
-from .events import Card
+from .events import Card, Evidence
+from .evidence import evidence_for
 from .segments import normalize
+from .tracing import category_for
 
 MAX_INPUT = 2000
 
@@ -55,8 +61,15 @@ class ToolContext:
 class ToolOutput:
     card: Card
     for_model: str
+    # Runners put every formula of the result here; `execute` then keeps in it only the formulas a
+    # verified result produced, and moves the rest to `quoted_latex` (formula, reason it is not verified).
     known_latex: list[str] = field(default_factory=list)
     status: str = "ok"  # the tool's own status, for the debug trace
+    quoted_latex: list[tuple[str, str]] = field(default_factory=list)
+    # Filled in by `execute` from the result itself (see evidence.py), never by the model.
+    evidence: Evidence | None = None
+    arguments_valid: bool = True  # False: the call was refused before any computation
+    error_category: str | None = None  # tracing.ErrorCategory value, when the result is a failure
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -151,6 +164,53 @@ class MatrixCalculusArgs(SimplifyArgs):
         default_factory=list,
         max_length=6,
         description="Matrices the USER says are invertible. Never add one on your own.",
+    )
+
+
+class GeometryArgs(BaseModel):
+    """Arguments of `geometry`. The whole geometry is sent every time: nothing is remembered between calls."""
+
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description="Coordinate names in order, plain names as the LaTeX parser reads them: "
+        '["t", "r", "theta", "phi"]. They are real symbols.',
+    )
+    metric: list[list[str]] = Field(
+        min_length=1,
+        max_length=4,
+        description="The metric components g_{mu nu} as an n by n grid of LaTeX strings, one row per "
+        'coordinate, e.g. [["-(1-2M/r)", "0"], ["0", "(1-2M/r)^{-1}"]]. Use \\sin^2\\theta, '
+        "not \\sin 2\\theta. Ask the user for the metric; never invent one.",
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of symbols (e.g. {"M": ["positive"]}). Coordinates are real already. '
+        "Do not add assumptions the user did not state.",
+    )
+    functions: list[FunctionDecl] = Field(
+        default_factory=list,
+        max_length=6,
+        description='Unspecified real functions of coordinates used in the metric, e.g. [{"name": "f", '
+        '"args": ["r"]}] for f(r). A function must be declared before it is written f(r).',
+    )
+    quantities: list[Literal[*QUANTITIES]] = Field(  # type: ignore[valid-type]
+        min_length=1,
+        max_length=len(QUANTITIES),
+        description="What to compute: inverse_metric, determinant, christoffel, riemann, ricci, ricci_scalar, "
+        "einstein, kretschmann, ricci_squared, geodesics (symbolic geodesic equations), "
+        "covariant_derivative, raise_index, lower_index. The last three need `tensor`.",
+    )
+    tensor: TensorField | None = Field(
+        default=None,
+        description="A tensor field given by variance (up/down per index) and its n**rank components, "
+        "row-major, as LaTeX strings. Only for covariant_derivative, raise_index and lower_index.",
+    )
+    tensor_index: int = Field(
+        default=0,
+        ge=0,
+        le=2,
+        description="Which index (0-based) raise_index or lower_index acts on",
     )
 
 
@@ -421,7 +481,9 @@ def _expr(args: SimplifyArgs) -> ExpressionInput:
     return ExpressionInput(input=args.latex, format="latex", assumptions=args.assumptions)
 
 
-def _error(tool: str, message: str) -> ToolOutput:
+def _error(
+    tool: str, message: str, category: str = "tool_failure", arguments_valid: bool = True
+) -> ToolOutput:
     card = Card(
         id=uuid.uuid4().hex[:8],
         tool=tool,
@@ -429,17 +491,33 @@ def _error(tool: str, message: str) -> ToolOutput:
         title="Could not run",
         data={"message": message},
     )
-    return ToolOutput(card=card, for_model=f"error: {message}", status="error")
+    return ToolOutput(
+        card=card,
+        for_model=f"error: {message}",
+        status="error",
+        evidence=Evidence(check="none", accepted=False, reason="error"),
+        arguments_valid=arguments_valid,
+        error_category=category,
+    )
 
 
 # --- tool implementations ----------------------------------------------------------------------
 MAX_STEPS_FOR_MODEL = 6
 
 
-def _chain_lines(result: TransformResponse) -> tuple[list[str], list[str]]:
-    """What the model may quote about a chain: each step's identity, forms and evidence."""
+NOT_APPLIED = "a handbook identity that was not applied: its conditions are not established"
+NOT_VERIFIED = "a candidate that was not verified"
+
+
+def _chain_lines(result: TransformResponse) -> tuple[list[str], list[str], list[tuple[str, str]]]:
+    """What the model may quote about a chain: each step's identity, forms and evidence.
+
+    Returns the lines, the formulas the verified chain produced, and the formulas that are only quoted
+    (statements of identities that were not applied).
+    """
     lines: list[str] = []
     known: list[str] = []
+    quoted: list[tuple[str, str]] = []
     for i, step in enumerate(result.steps[:MAX_STEPS_FOR_MODEL], start=1):
         v = step.verification
         evidence = (
@@ -465,11 +543,11 @@ def _chain_lines(result: TransformResponse) -> tuple[list[str], list[str]]:
             + (f"; statement=${entry.statement_latex}$" if entry else "")
         )
         if entry:
-            known.append(entry.statement_latex)
+            quoted.append((entry.statement_latex, NOT_APPLIED))
     for alt in result.alternatives:
         lines.append(f"- other form: ${alt.result_latex}$ ({len(alt.steps)} steps)")
         known.append(alt.result_latex)
-    return lines, known
+    return lines, known, quoted
 
 
 def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
@@ -504,9 +582,11 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
         )
         + result.message
     )
-    lines, known_steps = _chain_lines(result)
+    lines, known_steps, quoted = _chain_lines(result)
     known = [x for x in (result.input_latex, result.result_latex) if x] + known_steps
-    return ToolOutput(card, "\n".join([head, *lines]), known, result.status.value)
+    return ToolOutput(
+        card, "\n".join([head, *lines]), known, result.status.value, quoted_latex=quoted
+    )
 
 
 def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
@@ -541,7 +621,7 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
         )
         if x
     ]
-    return ToolOutput(card, text, known)
+    return ToolOutput(card, text, known, result.status.value)
 
 
 def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
@@ -624,6 +704,95 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, known, result.status.value)
 
 
+def geometry_request(args: GeometryArgs) -> GeometryInput:
+    return GeometryInput(**args.model_dump(), format="latex")
+
+
+def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
+    request = geometry_request(args)
+    result = ctx.engine.geometry(request)
+    log_geometry(result)  # stage names and counters only
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="geometry",
+        type="geometry",
+        title="Differential geometry",
+        data={
+            "result": result.model_dump(mode="json"),
+            # the whole problem, so that the card's buttons can ask for more about the same geometry
+            "request": request.model_dump(mode="json"),
+        },
+    )
+    head = f"status={result.status.value}; dimension={result.dimension}; "
+    known: list[str] = []
+    if result.metric_latex:
+        head += f"metric=${result.metric_latex}$; "
+        known.append(result.metric_latex)
+    if result.signature:
+        head += f"signature={result.signature}; "
+    elif result.status.value == "ok":
+        head += "signature=NOT DETERMINED (do not call the metric Lorentzian or Riemannian); "
+    lines = [head + result.message]
+    if result.status.value == "ok" or result.quantities:
+        lines.extend(f"- convention: {c}" for c in result.conventions)
+        lines.extend(f"- assumption: {a}" for a in result.assumptions_used)
+        if result.restrictions_latex:
+            lines.append(
+                "- the coordinate expressions are valid only where "
+                + ", ".join(f"${r}$" for r in result.restrictions_latex)
+                + (
+                    ""
+                    if result.restrictions_complete
+                    else " (and possibly elsewhere: root, logarithm and branch domains were not analysed)"
+                )
+                + ". This says where the coordinates break down, not whether the geometry is singular."
+            )
+            known.extend(result.restrictions_latex)
+        elif not result.restrictions_complete:
+            lines.append("- domain restrictions could not be fully determined")
+        if result.signature is None and result.signature_note:
+            lines.append(f"- signature: {result.signature_note}")
+    for q in result.quantities:
+        evidence = ""
+        v = q.verification
+        if v is not None and q.status.value == "ok":
+            numeric = [c for c in v.checks if c.kind == "numeric"]
+            points = min((c.points_agreed for c in numeric), default=0)
+            evidence = f"; numerically checked ({len(numeric)} independent checks, at least {points} points each)"
+            if v.symbolic_zero is True:
+                evidence += "; also proved by a symbolic zero test"
+            else:
+                evidence += "; NO symbolic proof (say 'numerically checked', never 'proved')"
+        lines.append(
+            f"- {q.kind}: status={q.status.value}{evidence}"
+            + (f"; {q.message}" if q.message else "")
+        )
+        if q.status.value != "ok":
+            continue
+        if q.scalar_latex is not None:
+            lines.append(f"  value=${q.scalar_latex}$")
+            known.append(q.scalar_latex)
+        elif q.all_zero and q.kind != "geodesics":
+            lines.append("  every component is zero")
+        for c in q.components[:40]:
+            statement = c.latex if q.kind == "geodesics" else f"{c.label_latex} = {c.latex}"
+            lines.append(f"  ${statement}$")
+            known.extend([statement, c.latex.split(" = ")[-1]])
+        if len(q.components) > 40:
+            lines.append(f"  ... and {len(q.components) - 40} more components (see the card)")
+        if q.symmetry_note and q.kind != "geodesics":
+            lines.append(f"  ({q.symmetry_note})")
+        lines.extend(f"  note: {n}" for n in q.notes)
+    slow = [d for d in result.diagnostics if d.status == "failed"]
+    if slow:
+        lines.append("- failed stage(s): " + ", ".join(f"{d.stage} ({d.failure})" for d in slow))
+    lines.append(
+        "to compute more about THIS geometry, call geometry again with the same coordinates, metric, "
+        "assumptions and functions."
+    )
+    return ToolOutput(card, "\n".join(lines), known, result.status.value)
+
+
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
     request = MatrixCalculusInput(
         expression=_expr(args),
@@ -704,7 +873,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
         f"- NOT APPLIED ({b.title}): needs {b.needs}" + (f" for ${b.latex}$" if b.latex else "")
         for b in result.blocked
     )
-    known.extend(b.latex for b in result.blocked if b.latex)
+    quoted_blocked = [(b.latex, NOT_APPLIED) for b in result.blocked if b.latex]
     lines.extend(f"- note: {n}" for n in result.notes)
     if method_data:
         lines.append(
@@ -712,7 +881,9 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data if m.get("statement_latex"))
-    return ToolOutput(card, "\n".join(lines), known, result.status.value)
+    return ToolOutput(
+        card, "\n".join(lines), known, result.status.value, quoted_latex=quoted_blocked
+    )
 
 
 def run_distribution(args: DistributionArgs, ctx: ToolContext) -> ToolOutput:
@@ -911,6 +1082,7 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    quoted: list[tuple[str, str]] = []
     for e in report.equations:
         lines.append(f"equation of motion ({e.coordinate}): ${e.latex}$")
         known.append(e.latex)
@@ -923,7 +1095,10 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
     for c in report.conserved:
         flag = "verified on the equations of motion" if c.verified else "NOT verified"
         lines.append(f"conserved ({c.kind}, {flag}): {c.name}: ${c.expression_latex}$; {c.reason}")
-        known.append(c.expression_latex)
+        if c.verified:
+            known.append(c.expression_latex)
+        else:
+            quoted.append((c.expression_latex, NOT_VERIFIED))
     lines.extend(f"tested, not found: {t}" for t in report.tested)
     lines.extend(f"note: {n}" for n in report.notes)
     if report.accelerations:
@@ -939,7 +1114,7 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
-    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value, quoted_latex=quoted)
 
 
 def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
@@ -968,6 +1143,7 @@ def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    quoted: list[tuple[str, str]] = []
     if report.equilibrium:
         lines.append(
             "equilibrium: " + ", ".join(f"{e.name} = ${e.latex}$" for e in report.equilibrium)
@@ -977,8 +1153,12 @@ def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
         lines.append(
             f"expansion ({e.coordinate}, {'verified' if ok else 'NOT verified'}): ${e.full_latex}$"
         )
-        known.append(e.full_latex)
-        known.extend(t.latex for t in e.terms)
+        if ok:
+            known.append(e.full_latex)
+            known.extend(t.latex for t in e.terms)
+        else:
+            quoted.append((e.full_latex, NOT_VERIFIED))
+            quoted.extend((t.latex, NOT_VERIFIED) for t in e.terms)
     if report.stiffness_latex:
         lines.append(f"linear part, A (uddot = A u + B v): ${report.stiffness_latex}$")
         known.append(report.stiffness_latex)
@@ -1008,7 +1188,7 @@ def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
             "The expansion is local: it says nothing about motion far from the equilibrium. "
             "Do not state stability unless a mode's sign is marked provable."
         )
-    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value, quoted_latex=quoted)
 
 
 def run_perturbation(args: PerturbationArgs, ctx: ToolContext) -> ToolOutput:
@@ -1479,6 +1659,20 @@ TOOLS: dict[str, Tool] = {
             run_matrix_calculus,
         ),
         Tool(
+            "geometry",
+            "Differential geometry in explicit coordinates: give the coordinates and the metric once and "
+            "ask for the inverse metric, determinant, Christoffel symbols, Riemann, Ricci and Einstein "
+            "tensors, the Ricci scalar, Kretschmann and Ricci-squared invariants, symbolic geodesic "
+            "equations, and covariant derivatives or index raising/lowering of a tensor field. Conventions "
+            "are fixed and returned. Every quantity is shown only if independent numerical checks pass "
+            "(metric compatibility, curvature symmetries, Bianchi identities, Euler-Lagrange); a symbolic "
+            "proof is reported separately. The signature is never assumed, a degenerate or asymmetric "
+            "metric is refused, and where the coordinates break down is reported. The geometry is not "
+            "remembered: resend it with every call.",
+            GeometryArgs,
+            run_geometry,
+        ),
+        Tool(
             "distribution",
             "Calculus with Dirac delta and Heaviside (step) functions: simplify a delta of a polynomial "
             "(scaling, translation, several simple roots, a continuous factor taking its value), integrate "
@@ -1603,25 +1797,131 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     """Validate and run one tool call. Never raises: problems become an error result the model can read."""
     tool = TOOLS.get(name)
     if tool is None:
-        return _error(name, f"unknown tool {name!r}; available: {', '.join(TOOLS)}")
+        return _error(
+            name,
+            f"unknown tool {name!r}; available: {', '.join(TOOLS)}",
+            "unknown_tool",
+            arguments_valid=False,
+        )
     try:
         args = tool.args_model(**arguments)
     except ValidationError as exc:
         first = exc.errors()[0]
         where = ".".join(str(p) for p in first["loc"])
-        return _error(name, f"invalid arguments ({where}): {first['msg']}")
+        return _error(
+            name,
+            f"invalid arguments ({where}): {first['msg']}",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
     except TypeError:
-        return _error(name, "invalid arguments")
+        return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
     try:
-        return tool.run(args, ctx)
+        output = tool.run(args, ctx)
     except ValidationError as exc:
-        return _error(name, f"invalid arguments: {exc.errors()[0]['msg']}")
+        return _error(
+            name,
+            f"invalid arguments: {exc.errors()[0]['msg']}",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
     except Exception:  # a bug in one tool must not end the turn; the text is fixed, never the cause
         return _error(name, "the tool failed unexpectedly")
+    # What the engine established, read from its own result: the model has no say in it.
+    with contextlib.suppress(Exception):
+        output.evidence = evidence_for(name, output.status, output.card.data)
+    category = category_for(output.status)
+    output.error_category = category.value if category else None
+    _classify_known(name, output)
+    return output
+
+
+# Fields of a result that hold the user's own input as Minerva read it (not something it computed).
+# `equation_latex` is an input for solve and check_units, but a computed result for matrix_calculus.
+_INPUT_FIELDS = ("input_latex", "lagrangian_latex", "notation_latex", "metric_latex")
+_EQUATION_IS_INPUT = frozenset({"solve_polynomial", "check_units"})
+QUOTED_INPUT = "your input, as read by Minerva"
+QUOTED_STATED = "a handbook entry that is only stated, not machine-checked"
+QUOTED_UNVERIFIED = "part of a result that was not verified"
+
+
+def _walk(value: Any, depth: int = 0) -> Any:
+    """Every dict inside a card's data (depth-limited)."""
+    if depth > 6:
+        return
+    if isinstance(value, dict):
+        yield value
+        for item in value.values():
+            yield from _walk(item, depth + 1)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _walk(item, depth + 1)
+
+
+def _classify_known(tool: str, output: ToolOutput) -> None:
+    """Keep in `known_latex` only the formulas that a verified result produced.
+
+    A formula the user typed (echoed as "input as read"), a handbook statement that is only `stated`, or
+    anything from a result that was not accepted is *quoted*: the model may repeat it, but it is not shown
+    as verified. Only the result's own fields decide; nothing is parsed from the model's words.
+    """
+    data = output.card.data
+    inputs: set[str] = set()
+    stated: set[str] = set()
+    input_fields = (
+        (*_INPUT_FIELDS, "equation_latex") if tool in _EQUATION_IS_INPUT else _INPUT_FIELDS
+    )
+    for node in _walk(data):
+        for key in input_fields:
+            value = node.get(key)
+            if isinstance(value, str) and value:
+                inputs.add(normalize(value))
+        statement = node.get("statement_latex")
+        if isinstance(statement, str) and node.get("verification") == "stated":
+            stated.add(normalize(statement))
+    accepted = output.evidence.accepted if output.evidence else False
+    verified: list[str] = []
+    quoted: dict[str, str] = {normalize(x): why for x, why in output.quoted_latex if x}
+    for formula in output.known_latex:
+        key = normalize(formula)
+        if not key:
+            continue
+        if key in inputs:
+            quoted.setdefault(key, QUOTED_INPUT)
+        elif key in stated:
+            quoted.setdefault(key, QUOTED_STATED)
+        elif accepted and key not in quoted:
+            verified.append(formula)
+        else:
+            quoted.setdefault(key, QUOTED_UNVERIFIED)
+    output.known_latex = verified
+    output.quoted_latex = list(quoted.items())  # (normalised formula, reason)
+
+
+def check_arguments(name: str, arguments: dict[str, Any]) -> bool:
+    """Would `execute` accept these arguments? Validation only: nothing is computed."""
+    tool = TOOLS.get(name)
+    if tool is None:
+        return False
+    try:
+        tool.args_model(**arguments)
+    except (ValidationError, TypeError):
+        return False
+    return True
 
 
 def known_formulas(outputs: list[ToolOutput]) -> set[str]:
+    """Normalised formulas that verified results (or machine-checked handbook entries) contain."""
     return {normalize(x) for o in outputs for x in o.known_latex if x}
+
+
+def quoted_formulas(outputs: list[ToolOutput]) -> dict[str, str]:
+    """Normalised formulas that appeared in tool output without being a verified result, with why."""
+    quoted: dict[str, str] = {}
+    for o in outputs:
+        for key, why in o.quoted_latex:
+            quoted.setdefault(key, why)
+    return quoted
 
 
 def describe_arguments(arguments: dict[str, Any]) -> str:

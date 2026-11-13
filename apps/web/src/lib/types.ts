@@ -415,6 +415,7 @@ export type Operation =
   | "integrate"
   | "apply_identity"
   | "matrix_calculus"
+  | "geometry"
   | "distribution";
 
 export interface HistoryItem {
@@ -467,4 +468,112 @@ export interface TocChapter {
   summary: string;
   entry_count: number;
   sections: { id: string; title: string; entry_count: number }[];
+}
+
+// --- differential geometry ------------------------------------------------------------------
+
+export type GeometryQuantity =
+  | "inverse_metric"
+  | "determinant"
+  | "christoffel"
+  | "riemann"
+  | "ricci"
+  | "ricci_scalar"
+  | "einstein"
+  | "kretschmann"
+  | "ricci_squared"
+  | "geodesics"
+  | "covariant_derivative"
+  | "raise_index"
+  | "lower_index";
+
+export type GeometryVariance = "up" | "down";
+
+export interface GeometryFunction {
+  name: string;
+  args: string[];
+}
+
+export interface GeometryTensor {
+  variance: GeometryVariance[];
+  components: string[];
+}
+
+/** The whole geometric problem. It is sent with every request: nothing is remembered server-side. */
+export interface GeometryRequest {
+  coordinates: string[];
+  metric: string[][];
+  format?: "latex" | "text";
+  assumptions: Assumptions;
+  functions: GeometryFunction[];
+  quantities: GeometryQuantity[];
+  tensor: GeometryTensor | null;
+  tensor_index: number;
+}
+
+export interface GeometryComponent {
+  indices: number[];
+  label_latex: string;
+  latex: string;
+  text: string;
+}
+
+export interface GeometryCheck {
+  name: string;
+  kind: "numeric" | "symbolic";
+  passed: boolean | null;
+  points_checked: number;
+  points_agreed: number;
+  note: string;
+}
+
+export interface GeometryVerification {
+  method: string;
+  numeric_passed: boolean;
+  symbolic_zero: boolean | null;
+  checks: GeometryCheck[];
+  note: string;
+}
+
+export interface GeometryQuantityResult {
+  kind: GeometryQuantity;
+  status: Status;
+  title: string;
+  variance: GeometryVariance[];
+  components: GeometryComponent[];
+  all_zero: boolean;
+  scalar_latex: string | null;
+  scalar_text: string | null;
+  symmetry_note: string;
+  verification: GeometryVerification | null;
+  notes: string[];
+  message: string;
+}
+
+export interface GeometryStage {
+  stage: string;
+  duration_ms: number;
+  ops: number | null;
+  components: number | null;
+  status: "ok" | "failed" | "skipped";
+  failure: string | null;
+}
+
+export interface GeometryResult {
+  status: Status;
+  dimension: number;
+  coordinates_latex: string[];
+  metric_latex: string | null;
+  signature: string | null;
+  signature_note: string;
+  conventions: string[];
+  assumptions_used: string[];
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  quantities: GeometryQuantityResult[];
+  diagnostics: GeometryStage[];
+  peak_memory_mb: number | null;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
 }

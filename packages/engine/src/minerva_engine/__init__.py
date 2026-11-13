@@ -20,6 +20,7 @@ from .distributions.models import (
 )
 from .errors import LimitError, MinervaMathError, ParseError
 from .expansion import ExpansionReport
+from .geometry import GeometryInput, GeometryResult
 from .independence import IndependenceReport, Relation
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
@@ -47,6 +48,7 @@ from .models import (
     Verification,
 )
 from .motion import MotionReport, MotionRequest, Sweep
+from .observe import SandboxCall, current_trace_id, trace_scope
 from .ops import apply_rule, parse_expression, verify_rule
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
@@ -87,6 +89,8 @@ __all__ = [
     "ExpansionReport",
     "ExpressionInput",
     "FormulaReading",
+    "GeometryInput",
+    "GeometryResult",
     "IdentitiesResult",
     "IndependenceReport",
     "IntegrateResult",
@@ -110,6 +114,7 @@ __all__ = [
     "Rule",
     "RuleApplication",
     "RuleCondition",
+    "SandboxCall",
     "SearchEvent",
     "SeriesResult",
     "SeriesTerm",
@@ -129,9 +134,11 @@ __all__ = [
     "apply_rule",
     "check_claim",
     "check_claims",
+    "current_trace_id",
     "parse_expression",
     "parse_latex",
     "parse_text",
     "split_equation",
+    "trace_scope",
     "verify_rule",
 ]

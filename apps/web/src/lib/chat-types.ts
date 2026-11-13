@@ -3,6 +3,8 @@ import type {
   SeriesResult,
   EntrySummary,
   IdentitiesResult,
+  GeometryRequest,
+  GeometryResult,
   DistributionRequest,
   DistributionResult,
   IntegrateResult,
@@ -398,7 +400,9 @@ export interface SolveReport {
 }
 
 /**
- * Formulas only. from_tool: appears in a tool result or handbook entry of this conversation.
+ * Formulas only. from_tool: appears in a verified tool result or a machine-checked handbook entry.
+ * quoted: appears in a tool result without being a verified result of its own (your input as read,
+ *   a handbook entry that is only stated, a candidate that was not applied); the reason is in `note`.
  * checked: an equation the model wrote that Minerva tested numerically and found true.
  * conditional: false in general but true under extra assumptions (see `note`).
  * contradicted: an equation the model wrote that Minerva tested, as an identity or against
@@ -406,7 +410,8 @@ export interface SolveReport {
  * unchecked: written by the model; Minerva could not check it (a definition, coordinate change or
  *   equation to solve is not an identity; the reason is in `note`). Never a finding that it is wrong.
  */
-export type FormulaStatus = "from_tool" | "checked" | "conditional" | "contradicted" | "unchecked";
+export type FormulaStatus =
+  "from_tool" | "quoted" | "checked" | "conditional" | "contradicted" | "unchecked";
 
 export interface Segment {
   type: "text" | "math" | "display_math";
@@ -427,6 +432,13 @@ export type Card =
       type: "matrix";
       title: string;
       data: { result: MatrixCalculusResult; methods: EntrySummary[]; request: MatrixRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "geometry";
+      title: string;
+      data: { result: GeometryResult; request: GeometryRequest };
     }
   | {
       id: string;
@@ -538,6 +550,27 @@ export type Block =
   | { kind: "text"; segments: Segment[]; card: null }
   | { kind: "card"; segments: Segment[]; card: Card };
 
+/** What the engine established for one tool result (numbers and flags, never an expression). */
+export interface Evidence {
+  check:
+    | "symbolic_zero"
+    | "numeric"
+    | "quadrature"
+    | "series_checks"
+    | "structural"
+    | "dimensional"
+    | "lookup"
+    | "none";
+  /** The result may be shown as an engine result. */
+  accepted: boolean;
+  reason: string;
+  points_checked?: number | null;
+  points_agreed?: number | null;
+  symbolic_zero?: boolean | null;
+  restrictions: number;
+  restrictions_complete?: boolean | null;
+}
+
 /** A tool call as the model made it, and what the model read back. Kept for debugging. */
 export interface TraceStep {
   id: string;
@@ -547,18 +580,54 @@ export interface TraceStep {
   /** Absent on messages stored before debug data existed. */
   duration_ms?: number | null;
   status?: string | null;
+  /** The provider's tool-call id, replayed when history is rebuilt. */
+  call_id?: string | null;
+  /** Added with tracing; absent on older messages. */
+  evidence?: Evidence | null;
+  arguments_valid?: boolean | null;
+  error_category?: string | null;
+  engine_ms?: number | null;
+  repeated?: boolean;
+  result_id?: string | null;
+  /** What the model wrote before `@rN` references were replaced; only when it differs. */
+  model_arguments?: Record<string, unknown> | null;
+  assumptions_dropped?: string[];
+}
+
+export interface LLMCall {
+  ms: number;
+  text_chars: number;
+  tool_calls: number;
+  first_token_ms?: number | null;
+  finish_reason?: string | null;
+  /** As reported by the provider; absent when it reports none. */
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+  cost_usd?: number | null;
+}
+
+/** One content-free trace event (see docs/observability.md); fields vary by `event`. */
+export interface TraceEvent {
+  event: string;
+  trace_id: string;
+  seq: number;
+  t_ms: number;
+  step?: number | null;
+  [field: string]: unknown;
 }
 
 export interface TurnDebug {
   request_id: string;
   api_version: string;
   mode: string;
+  provider?: string;
+  error_kind?: string | null;
   model: string;
   prompt_sha: string;
   max_steps: number;
   max_seconds: number;
   duration_ms: number;
-  llm_calls: { ms: number; text_chars: number; tool_calls: number }[];
+  llm_calls: LLMCall[];
   claims: {
     value: string;
     status: string;
@@ -567,6 +636,16 @@ export interface TurnDebug {
     given?: string[];
   }[];
   error: string | null;
+  /** Added with tracing; absent on older messages. */
+  trace_id?: string;
+  stop_reason?: string | null;
+  max_tool_calls?: number;
+  events?: TraceEvent[];
+  events_dropped?: number;
+  claim_check?: string | null;
+  formulas?: number;
+  formulas_with_evidence?: number;
+  evidence_pct?: number | null;
 }
 
 export interface AssistantContent {
@@ -575,6 +654,7 @@ export interface AssistantContent {
   truncated: boolean;
   trace?: TraceStep[];
   debug?: TurnDebug | null;
+  stop_reason?: string | null;
 }
 
 export interface StoredMessage {
@@ -596,6 +676,36 @@ export interface ChatStatus {
   model: string;
   /** Formulas can be read from a picture ("Add image"). */
   images?: boolean;
+  providers?: ProviderStatus;
+}
+
+export interface ProviderStatus {
+  default: "ollama" | "openrouter";
+  ollama: { available: boolean; model: string; reachable?: boolean };
+  openrouter: {
+    available: boolean;
+    byok: boolean;
+    server_key_for_you: boolean;
+    default_model: string;
+    models: string[];
+    zdr: boolean;
+    data_collection: string;
+  };
+}
+
+/** What the browser sends to pick the provider for one turn. */
+export interface ProviderChoice {
+  kind: "ollama" | "openrouter";
+  model?: string;
+  api_key?: string;
+  cloud_consent?: boolean;
+}
+
+export interface ConnectionResult {
+  ok: boolean;
+  message: string;
+  credit_remaining?: number | null;
+  supports_tools?: boolean;
 }
 
 /** One formula transcribed from a picture, and how Minerva's parser reads it. */
@@ -619,5 +729,8 @@ export type StreamEvent =
   | { event: "tool_call"; data: ToolRun }
   | { event: "card"; data: Card }
   | { event: "message"; data: AssistantContent }
-  | { event: "error"; data: { message: string; debug?: TurnDebug; trace?: TraceStep[] } }
-  | { event: "done"; data: Record<string, never> };
+  | {
+      event: "error";
+      data: { message: string; debug?: TurnDebug; trace?: TraceStep[]; trace_id?: string };
+    }
+  | { event: "done"; data: { trace_id?: string } };

@@ -17,6 +17,8 @@
 #                integrate), variable, lower, upper, commuting [[A, B]], invertible [names]
 #   distribution input, assumptions, action (simplify | integrate | differentiate), variable, lower, upper, endpoint
 #   identities   input, assumptions, show [rule ids to display]
+#   geometry     coordinates, metric [[LaTeX]], assumptions, functions [{name, args}], quantities, tensor {variance,
+#                components}, tensor_index
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates
@@ -373,6 +375,102 @@ capabilities:
         action: simplify
         variable: x
 
+  - id: differential-geometry
+    title: Differential geometry in coordinates
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the
+      Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature
+      invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field.
+      Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result.
+      A quantity is shown only if independent numerical checks pass: the connection is checked for metric
+      compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a
+      vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is
+      reported separately, and the signature is never assumed.
+    limits:
+      - Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
+      - Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
+      - The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
+      - Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
+      - Geodesic equations are symbolic; they are not integrated numerically.
+    examples:
+      - id: geometry-sphere
+        title: The 2-sphere, with its curvature invariants
+        op: geometry
+        coordinates: ['\theta', '\phi']
+        metric:
+          - ["a^2", "0"]
+          - ["0", 'a^2 \sin^2\theta']
+        assumptions: { a: [positive] }
+        quantities: [christoffel, ricci_scalar, kretschmann]
+      - id: geometry-schwarzschild
+        title: Schwarzschild spacetime is Ricci-flat
+        op: geometry
+        coordinates: ["t", "r", '\theta', '\phi']
+        metric:
+          - ["-(1-2M/r)", "0", "0", "0"]
+          - ["0", "(1-2M/r)^{-1}", "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", 'r^2 \sin^2\theta']
+        assumptions: { M: [positive], r: [positive] }
+        quantities: [ricci, kretschmann]
+      - id: geometry-geodesics
+        title: Geodesic equations of the plane in polar coordinates
+        op: geometry
+        coordinates: ["r", '\theta']
+        metric:
+          - ["1", "0"]
+          - ["0", "r^2"]
+        assumptions: { r: [positive] }
+        quantities: [geodesics]
+      - id: geometry-function
+        title: An unspecified function in the metric
+        op: geometry
+        coordinates: ["t", "r", '\theta', '\phi']
+        metric:
+          - ["-f(r)", "0", "0", "0"]
+          - ["0", "1/f(r)", "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", 'r^2 \sin^2\theta']
+        assumptions: { r: [positive] }
+        functions: [{ name: f, args: [r] }]
+        quantities: [ricci_scalar]
+      - id: geometry-covariant
+        title: The covariant derivative of the radial vector field
+        op: geometry
+        coordinates: ["r", '\theta']
+        metric:
+          - ["1", "0"]
+          - ["0", "r^2"]
+        assumptions: { r: [positive] }
+        quantities: [covariant_derivative]
+        tensor: { variance: [up], components: ["1", "0"] }
+      - id: geometry-degenerate
+        title: A degenerate metric is declined
+        op: geometry
+        coordinates: ["x", "y"]
+        metric:
+          - ["1", "0"]
+          - ["0", "0"]
+        quantities: [christoffel]
+      - id: geometry-undeclared-function
+        title: An undeclared function is refused instead of being read as a product
+        op: geometry
+        coordinates: ["r"]
+        metric:
+          - ["f(r)"]
+        quantities: [christoffel]
+      - id: geometry-asymmetric
+        title: A metric that is not symmetric is declined
+        op: geometry
+        coordinates: ["x", "y"]
+        metric:
+          - ["1", "x"]
+          - ["0", "1"]
+        quantities: [christoffel]
+
   - id: identities
     title: Identity search with applicability checks
     status: available
@@ -721,10 +819,10 @@ capabilities:
     group: math
     summary: Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
   - id: sagemanifolds
-    title: SageManifolds integration
+    title: Abstract manifolds (SageManifolds)
     status: planned
     group: math
-    summary: Differential geometry on explicit manifolds, as an optional backend.
+    summary: Charts, atlases and abstract manifolds as an optional out-of-process backend; coordinate-based geometry is available today.
   - id: integrals
     title: Integrals and limits
     status: planned

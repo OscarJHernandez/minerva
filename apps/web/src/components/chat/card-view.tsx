@@ -9,6 +9,7 @@ import { DistributionPanel } from "../distribution-panel";
 import { MatrixPanel } from "../matrix-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { DiscoveryCard } from "./discovery-card";
+import { GeometryCard } from "./geometry-card";
 import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
@@ -32,6 +33,8 @@ export function CardView({ card }: { card: Card }) {
       return <IntegralPanel result={card.data} />;
     case "matrix":
       return <MatrixPanel result={card.data.result} methods={card.data.methods} />;
+    case "geometry":
+      return <GeometryCard result={card.data.result} request={card.data.request} />;
     case "distribution":
       return <DistributionPanel result={card.data.result} methods={card.data.methods} />;
     case "identities":

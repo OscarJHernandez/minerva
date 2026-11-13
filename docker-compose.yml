@@ -36,6 +36,15 @@ services:
       MINERVA_LLM_TIMEOUT_SECONDS: ${MINERVA_LLM_TIMEOUT_SECONDS:-120}
       MINERVA_LLM_THINK: ${MINERVA_LLM_THINK:-false}
       MINERVA_LLM_STRIP_THINKING: ${MINERVA_LLM_STRIP_THINKING:-false}
+      # OpenRouter (optional cloud provider; see docs/openrouter-setup.md). Off unless enabled in .env.
+      MINERVA_OPENROUTER_BYOK: ${MINERVA_OPENROUTER_BYOK:-false}
+      MINERVA_OPENROUTER_MODEL: ${MINERVA_OPENROUTER_MODEL:-}
+      MINERVA_OPENROUTER_MODELS: ${MINERVA_OPENROUTER_MODELS:-}
+      MINERVA_OPENROUTER_API_KEY: ${MINERVA_OPENROUTER_API_KEY:-}
+      MINERVA_OPENROUTER_KEY_USERS: ${MINERVA_OPENROUTER_KEY_USERS:-}
+      MINERVA_OPENROUTER_DAILY_TURNS: ${MINERVA_OPENROUTER_DAILY_TURNS:-50}
+      MINERVA_OPENROUTER_DATA_COLLECTION: ${MINERVA_OPENROUTER_DATA_COLLECTION:-deny}
+      MINERVA_OPENROUTER_ZDR: ${MINERVA_OPENROUTER_ZDR:-false}
     # Lets the container reach an Ollama running on the host: http://host.docker.internal:11434
     # (built in on Docker Desktop; this line adds it on Linux).
     extra_hosts:

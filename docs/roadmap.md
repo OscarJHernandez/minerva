@@ -64,10 +64,19 @@ analysis without a model; unit conversion and prefixes; searching three or more 
   where possible (explicit index ranges), otherwise labelled unverified.
 - Multi-term identities (Bianchi, Schouten) and gamma-matrix algebra via Cadabra.
 
-## Differential geometry (SageManifolds)
+## Differential geometry
 
-- Optional backend for charts, metrics, connections and curvature on explicit manifolds; results verified by
-  component-wise checks. Same licensing approach as Cadabra.
+Done: coordinate-based geometry with SymPy (`geometry`: metric, Christoffel symbols, curvature, invariants,
+symbolic geodesics, covariant derivatives, index operations, declared functions of the coordinates), in chat, the
+API and the workbench, with a reproducible benchmark. Next, in order of value:
+
+- Numerical geodesics (needs initial conditions the user chooses; reuse the verified integrator).
+- Conformal and coordinate changes as an operation (transform a metric and check the tensor laws).
+- Weyl tensor, geodesic deviation, Killing vector search (a finite ansatz, as `search_invariants`).
+- A tensor input for connections other than Levi-Civita (torsion, non-metricity), reported as such.
+- More than four coordinates, if the expression-growth measurements allow it.
+- Optional SageManifolds backend for abstract manifolds, charts and atlases, only as an out-of-process backend
+  with the same licensing approach as Cadabra (GPL; see `licensing.md`). Not needed for anything above.
 
 ## Mathematical RAG
 
@@ -105,7 +114,7 @@ confirm, and raising the evaluation pass rate (14 of 21 cases for every model tr
 ## Platform
 
 - Shared rate limiting, account deletion/export, email verification and password reset.
-- Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`); observability.
+- Kubernetes deployment and Cloudflare Tunnel (prepared in `deploy/helm`). Per-request tracing and the agent benchmark exist ([observability.md](observability.md)); metrics export and dashboards are not planned until a need is shown.
 - Playwright end-to-end tests in CI; accessibility audit of the math editor.
 
 ## Agentic CI (deferred, needs an LLM API budget)

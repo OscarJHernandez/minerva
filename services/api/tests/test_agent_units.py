@@ -8,36 +8,13 @@ from typing import Any
 import pytest
 from minerva_api.agent.llm import Chunk, LLMError, ToolCall
 from minerva_api.agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
+from minerva_api.agent.replay import ReplayLLM
 from minerva_api.agent.segments import normalize, split_segments
 from minerva_api.agent.tools import ToolContext, execute
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 
-
-class FakeLLM:
-    """Replays prepared replies, one list of chunks per model call, and records what it was sent."""
-
-    name = "fake"
-
-    def __init__(self, replies: list[list[Chunk]] | None = None, repeat_last: bool = False) -> None:
-        self.replies = replies or []
-        self.repeat_last = repeat_last
-        self.seen: list[list[dict[str, Any]]] = []
-        self.error: LLMError | None = None
-
-    async def chat(
-        self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
-    ) -> AsyncIterator[Chunk]:
-        self.seen.append([dict(m) for m in messages])
-        if self.error:
-            raise self.error
-        index = len(self.seen) - 1
-        if index >= len(self.replies):
-            if not self.repeat_last:
-                return
-            index = len(self.replies) - 1
-        for chunk in self.replies[index]:
-            yield chunk
+FakeLLM = ReplayLLM  # the shared replay model; the old name is kept for the tests below
 
 
 @pytest.fixture(scope="module")
@@ -101,14 +78,18 @@ def test_formula_not_from_a_tool_is_marked_unverified(ctx: ToolContext) -> None:
 
 
 def test_step_cap_stops_a_looping_model(ctx: ToolContext) -> None:
-    call = [Chunk(tool_calls=[ToolCall("search_handbook", {"query": "gaussian"})])]
-    llm = FakeLLM([call], repeat_last=True)
+    # Different calls every step (an identical one would be recognised as a repeat, not run again).
+    calls = [
+        [Chunk(tool_calls=[ToolCall("search_handbook", {"query": q})])]
+        for q in ("gaussian", "euler", "planck", "zeta")
+    ]
+    llm = FakeLLM(calls)
     msg = final(
         collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_steps=3))
     )
-    assert msg["truncated"] is True
+    assert msg["truncated"] is True and msg["stop_reason"] == "step_limit"
     assert len(cards_of(msg)) == 3
-    assert "limit" in msg["text"]
+    assert "step limit" in msg["text"]
 
 
 def test_time_cap_stops_the_turn(ctx: ToolContext) -> None:
@@ -117,6 +98,7 @@ def test_time_cap_stops_the_turn(ctx: ToolContext) -> None:
         collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=-1))
     )
     assert msg["truncated"] is True and llm.seen == []
+    assert msg["stop_reason"] == "time_limit" and "time limit" in msg["text"]
 
 
 def test_unknown_tool_and_bad_arguments_become_errors_the_model_can_read(ctx: ToolContext) -> None:
@@ -152,8 +134,12 @@ def test_tool_arguments_are_bounded(ctx: ToolContext) -> None:
 def test_model_host_failure_is_an_error_event_without_a_message(ctx: ToolContext) -> None:
     llm = FakeLLM()
     llm.error = LLMError("The model host is not reachable.")
-    events = collect(llm, ctx, [{"role": "user", "content": "q"}])
-    assert [e["event"] for e in events] == ["error"]
+    events = collect(
+        llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(retry_delay_seconds=0)
+    )
+    # The error is reported first; the turn is still delivered as a message so its trace can be stored.
+    assert [e["event"] for e in events] == ["error", "message"]
+    assert len(llm.seen) == 2  # the one retry of a call that failed outright
 
 
 def test_model_host_failure_carries_debug_and_partial_trace(ctx: ToolContext) -> None:
@@ -166,7 +152,7 @@ def test_model_host_failure_carries_debug_and_partial_trace(ctx: ToolContext) ->
     assert data["trace"] == []
     debug = data["debug"]
     assert debug["error"] == data["message"]
-    assert (debug["request_id"], debug["mode"], debug["model"]) == ("abc", "ollama", "fake")
+    assert (debug["request_id"], debug["mode"], debug["model"]) == ("abc", "ollama", "replay")
     assert len(debug["prompt_sha"]) == 12
 
 
@@ -183,7 +169,7 @@ def test_turn_records_debug_timings_statuses_and_claim_checks(ctx: ToolContext) 
     debug = msg["debug"]
     assert len(debug["llm_calls"]) == 2
     assert debug["llm_calls"][0]["tool_calls"] == 1 and debug["llm_calls"][1]["text_chars"] > 0
-    assert debug["max_steps"] == 6 and debug["model"] == "fake"
+    assert debug["max_steps"] == 6 and debug["model"] == "replay"
     by_value = {c["value"]: c["status"] for c in debug["claims"]}
     assert by_value["x^2 = 5x"] in (
         "not_identity",
@@ -252,6 +238,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "series",
         "integrate",
         "matrix_calculus",
+        "geometry",
         "distribution",
         "find_identities",
         "tensor_canonicalize",
@@ -742,7 +729,9 @@ def test_series_tool_is_honest_about_what_it_cannot_do(ctx: ToolContext) -> None
     assert pole.card.data["status"] == "unsupported"
     assert pole.card.data["result_latex"] is None
     assert "series=" not in pole.for_model
-    assert pole.known_latex == [pole.card.data["input_latex"]]
+    # Nothing was verified, so nothing is vouched for; the input is only quoted.
+    assert pole.known_latex == []
+    assert [key for key, _ in pole.quoted_latex] == [normalize(pole.card.data["input_latex"])]
     modulus = execute("series", {"latex": r"\left|x\right|", "variable": "x", "point": "1"}, ctx)
     assert modulus.card.data["status"] == "unsupported"
 
@@ -1026,15 +1015,20 @@ def test_matrix_calculus_tool_rejects_bad_arguments_without_raising(ctx: ToolCon
 
 # --- bounds and failures ------------------------------------------------------------------------
 def test_total_tool_calls_are_capped_whatever_the_steps(ctx: ToolContext) -> None:
-    many = [Chunk(tool_calls=[ToolCall("search_handbook", {"query": "gaussian"})] * 3)]
-    llm = FakeLLM([many], repeat_last=True)
+    def batch(*queries: str) -> list[Chunk]:
+        return [Chunk(tool_calls=[ToolCall("search_handbook", {"query": q}) for q in queries])]
+
+    llm = FakeLLM([batch("gaussian", "euler", "planck"), batch("zeta", "bessel", "gamma")])
     limits = AgentLimits(max_steps=6, max_tool_calls=4)
     msg = final(collect(llm, ctx, [{"role": "user", "content": "q"}], limits=limits))
     assert msg["truncated"] is True and "limit" in msg["text"]
+    assert msg["stop_reason"] == "tool_call_limit"
     assert len(cards_of(msg)) == 4
     assert len(llm.seen) == 2  # the cap ends the turn: no further model call
     refused = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"][4:]
     assert all("not run" in r for r in refused)
+    skipped = [t for t in msg["trace"] if t["status"] == "skipped"]
+    assert len(skipped) == 2 and all(t["error_category"] == "limit_reached" for t in skipped)
 
 
 def test_a_tool_that_raises_becomes_an_error_card_not_a_broken_stream(
@@ -1143,7 +1137,7 @@ def test_an_unexpected_model_client_error_is_an_error_event(ctx: ToolContext) ->
             yield Chunk()
 
     events = collect(Broken(), ctx, [{"role": "user", "content": "q"}])
-    assert [e["event"] for e in events] == ["error"]
+    assert [e["event"] for e in events] == ["error", "message"]
     assert "secret" not in str(events)
 
 
@@ -1284,6 +1278,72 @@ def test_definitions_from_earlier_turns_and_earlier_assumptions_are_used(ctx: To
         )
     )
     assert next(s for s in segments_of(msg) if s["type"] == "math")["status"] == "checked"
+
+
+SPHERE_ARGS = {
+    "coordinates": ["theta", "phi"],
+    "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+    "assumptions": {"a": ["positive"]},
+    "quantities": ["ricci_scalar", "christoffel"],
+}
+
+
+def test_geometry_tool_returns_a_card_and_a_checkable_summary(ctx: ToolContext) -> None:
+    out = execute("geometry", SPHERE_ARGS, ctx)
+    assert out.status == "ok" and out.card.type == "geometry"
+    assert out.card.data["request"]["coordinates"] == [
+        "theta",
+        "phi",
+    ]  # the card carries the problem
+    text = out.for_model
+    assert "status=ok" in text and "convention:" in text and "Levi-Civita" in text
+    assert r"value=$\frac{2}{a^{2}}$" in text
+    assert "NOT DETERMINED" in text  # sin^2 theta is not known to be strictly positive
+    # every formula the model may quote is registered as coming from the tool
+    assert normalize(r"\frac{2}{a^{2}}") in {normalize(x) for x in out.known_latex}
+    assert any(r"\Gamma^{\theta}{}_{\phi \phi}" in x for x in out.known_latex)
+    assert any("sin" in r for r in out.known_latex)  # the restriction sin(theta) != 0
+
+
+def test_geometry_tool_failures_are_explained_not_decorated(ctx: ToolContext) -> None:
+    out = execute("geometry", {**SPHERE_ARGS, "metric": [["1", "0"], ["0", "0"]]}, ctx)
+    assert out.status == "unsupported" and "degenerate" in out.for_model
+    assert "value=" not in out.for_model
+    out = execute("geometry", {**SPHERE_ARGS, "quantities": ["levitation"]}, ctx)
+    assert out.status == "error"
+    out = execute("geometry", {**SPHERE_ARGS, "coordinates": []}, ctx)
+    assert out.status == "error"
+    out = execute("geometry", {**SPHERE_ARGS, "metric": [["f(r)", "0"], ["0", "1"]]}, ctx)
+    assert out.status == "parse_error" and "declare" in out.for_model
+
+
+def test_geometry_tool_never_leaks_a_state_between_calls(ctx: ToolContext) -> None:
+    # the geometry is resent each time: a second call with other quantities gives the same metric
+    first = execute("geometry", SPHERE_ARGS, ctx)
+    second = execute("geometry", {**SPHERE_ARGS, "quantities": ["riemann"]}, ctx)
+    assert first.card.data["result"]["metric_latex"] == second.card.data["result"]["metric_latex"]
+    assert [q["kind"] for q in second.card.data["result"]["quantities"]] == ["riemann"]
+
+
+def test_geometry_formulas_are_marked_from_the_tool_and_invented_ones_are_not(
+    ctx: ToolContext,
+) -> None:
+    llm = FakeLLM(
+        [
+            [Chunk(tool_calls=[ToolCall("geometry", SPHERE_ARGS)])],
+            [
+                Chunk(
+                    text=r"The Ricci scalar is $\frac{2}{a^{2}}$, not $\frac{3}{a^{2}}$ "
+                    r"and the restriction is $\sin{\left(\theta \right)} \neq 0$."
+                )
+            ],
+        ]
+    )
+    msg = final(collect(llm, ctx, [{"role": "user", "content": "curvature of the sphere"}]))
+    marks = {s["value"]: s["status"] for s in segments_of(msg) if s["type"] != "text"}
+    assert marks[r"\frac{2}{a^{2}}"] == "from_tool"
+    assert marks[r"\sin{\left(\theta \right)} \neq 0"] == "from_tool"
+    assert marks[r"\frac{3}{a^{2}}"] != "from_tool"  # not in any tool result
 
 
 def test_distribution_tool_reports_steps_conditions_and_evidence(ctx: ToolContext) -> None:

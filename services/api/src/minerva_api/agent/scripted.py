@@ -12,13 +12,55 @@ import re
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
-from .llm import Chunk, ToolCall
+from .llm import Chunk, LLMError, ToolCall
 
 _DOLLAR = re.compile(r"\$([^$]+)\$")
 
 
+_GEOMETRIES: dict[str, dict[str, Any]] = {
+    "polar": {
+        "coordinates": ["r", "theta"],
+        "metric": [["1", "0"], ["0", "r^2"]],
+        "assumptions": {"r": ["positive"]},
+    },
+    "sphere": {
+        "coordinates": ["theta", "phi"],
+        "metric": [["a^2", "0"], ["0", "a^2 \\sin^2\\theta"]],
+        "assumptions": {"a": ["positive"]},
+    },
+    "schwarzschild": {
+        "coordinates": ["t", "r", "theta", "phi"],
+        "metric": [
+            ["-(1-2M/r)", "0", "0", "0"],
+            ["0", "(1-2M/r)^{-1}", "0", "0"],
+            ["0", "0", "r^2", "0"],
+            ["0", "0", "0", "r^2 \\sin^2\\theta"],
+        ],
+        "assumptions": {"M": ["positive"], "r": ["positive"]},
+    },
+}
+_GEOMETRY_WORDS = (
+    ("christoffel", "christoffel"),
+    ("riemann", "riemann"),
+    ("ricci scalar", "ricci_scalar"),
+    ("ricci", "ricci"),
+    ("einstein", "einstein"),
+    ("kretschmann", "kretschmann"),
+    ("geodesic", "geodesics"),
+)
+
+
+def _scripted_geometry(lower: str) -> dict[str, Any]:
+    name = next((n for n in _GEOMETRIES if n in lower), "polar")
+    quantities = [q for word, q in _GEOMETRY_WORDS if word in lower] or ["christoffel"]
+    if "ricci scalar" in lower and "ricci" in quantities:
+        quantities.remove("ricci")
+    return {**_GEOMETRIES[name], "quantities": quantities}
+
+
 class ScriptedLLM:
     name = "scripted"
+    provider = "scripted"
 
     def __init__(self, delay: float = 0.0) -> None:
         self.delay = delay
@@ -33,13 +75,19 @@ class ScriptedLLM:
         self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
     ) -> AsyncIterator[Chunk]:
         last = messages[-1]
+        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+        lower = user.lower()
+        latex = (_DOLLAR.findall(user) or [""])[0].strip()
+        # Two behaviours a real model can show, to exercise the interface and the loop without one.
+        if "simulate a model host failure" in lower:
+            raise LLMError("The model host is not reachable.")
+        if "repeat the same call" in lower:
+            yield Chunk(tool_calls=[ToolCall("simplify", {"latex": latex or "x"})])
+            return
         if last["role"] == "tool":
             async for chunk in self._after_tool(messages):
                 yield chunk
             return
-        user = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-        lower = user.lower()
-        latex = (_DOLLAR.findall(user) or [""])[0].strip()
 
         if "without tools" in lower or "just tell me" in lower:
             async for c in self._say(
@@ -47,6 +95,12 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif any(w in lower for w in ("christoffel", "geodesic", "curvature", "riemann", "ricci")):
+            # Development stand-in: three named metrics; a real model asks the user for the metric.
+            geometry_args = _scripted_geometry(lower)
+            async for c in self._say("I will compute that for the metric you named. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("geometry", geometry_args)])
         elif "matrix" in lower and latex:
             # Development stand-in: every capital letter is a 2x2 abstract matrix; the action comes from
             # the wording. "A and B commute" declares that pair. A real model asks for sizes first.
@@ -306,7 +360,7 @@ class ScriptedLLM:
                 yield c
 
     async def _after_tool(self, messages: Sequence[dict[str, Any]]) -> AsyncIterator[Chunk]:
-        tool = messages[-1].get("tool_name", "")
+        tool = messages[-1].get("name", "")
         content = str(messages[-1]["content"])
         if tool == "simplify":
             result = re.search(r"result=\$([^$]*)\$", content)
@@ -463,6 +517,17 @@ class ScriptedLLM:
                 text = (
                     "A step needs a condition that is not established, so nothing was changed. "
                     "The card names it (for example that two matrices commute): does it hold?"
+                )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "geometry":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card lists each quantity with the conventions used, where the coordinates break "
+                    "down, and the checks it passed. Numerical agreement is evidence; a quantity is only "
+                    "marked as proved when a symbolic test also succeeded."
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."

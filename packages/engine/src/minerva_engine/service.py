@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import Any
 
@@ -10,6 +11,7 @@ from .differentiate import DifferentiateResult, DiffVariable
 from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
+from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -27,6 +29,7 @@ from .models import (
     TransformResult,
 )
 from .motion import MotionReport, MotionRequest
+from .observe import Observer, SandboxCall, current_trace_id
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
@@ -45,6 +48,8 @@ class Engine:
     def __init__(self, limits: Limits | None = None, sandbox: Sandbox | None = None) -> None:
         self.limits = limits or Limits()
         self.sandbox = sandbox or Sandbox(self.limits)
+        # Told about every sandbox call (see observe.py); None by default, and never allowed to fail a call.
+        self.observer: Observer | None = None
 
     def _run(
         self, op: str, payload: dict[str, Any], timeout: float | None = None
@@ -54,7 +59,13 @@ class Engine:
             update={"timeout_seconds": timeout} if timeout is not None else {}
         )
         result = self.sandbox.run(op, {**payload, "limits": limits.model_dump()}, timeout=timeout)
-        return result, int((time.monotonic() - start) * 1000)
+        ms = int((time.monotonic() - start) * 1000)
+        observer = self.observer
+        if observer is not None:
+            # Observing must never change a computation: whatever the observer does, the result stands.
+            with contextlib.suppress(Exception):
+                observer(SandboxCall(op, result.outcome.value, ms, current_trace_id()))
+        return result, ms
 
     @staticmethod
     def _failure_status(outcome: Outcome) -> tuple[Status, str]:
@@ -130,6 +141,23 @@ class Engine:
                 status=status, action=request.action, message=message, duration_ms=ms
             )
         result = MatrixCalculusResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def geometry(
+        self, request: GeometryInput, *, max_dimension: int = MAX_DIMENSION
+    ) -> GeometryResult:
+        """Metric, connection, curvature, geodesics and tensor operations in explicit coordinates.
+
+        Every quantity is shown only if its independent numerical check passed; conventions,
+        assumptions, domain restrictions and per-stage diagnostics are part of the result."""
+        outcome, ms = self._run(
+            "geometry", {"input": request.model_dump(), "max_dimension": max_dimension}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return GeometryResult(status=status, message=message, duration_ms=ms)
+        result = GeometryResult(**outcome.value)
         result.duration_ms = ms
         return result
 

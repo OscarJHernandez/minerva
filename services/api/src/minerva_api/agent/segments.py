@@ -9,6 +9,7 @@ unchecked. This is a conservative string comparison on normalised LaTeX, not a p
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 
 from .events import Segment
 
@@ -117,33 +118,43 @@ def _bare_equations(text: str) -> list[tuple[int, int]]:
     return spans
 
 
-def _text_segments(text: str, known: set[str]) -> list[Segment]:
+def _mark(body: str, known: set[str], quoted: Mapping[str, str]) -> tuple[str, str | None]:
+    """The mark of a formula the model wrote: produced by a tool, merely quoted, or unchecked."""
+    key = normalize(body)
+    if key in known:
+        return "from_tool", None
+    if key in quoted:
+        return "quoted", quoted[key]
+    return "unchecked", None
+
+
+def _text_segments(text: str, known: set[str], quoted: Mapping[str, str]) -> list[Segment]:
     out: list[Segment] = []
     position = 0
     for start, end in _bare_equations(text):
         if start > position:
             out.append(Segment(type="text", value=text[position:start]))
         body = text[start:end].strip()
-        out.append(
-            Segment(
-                type="math",
-                value=body,
-                status="from_tool" if normalize(body) in known else "unchecked",
-            )
-        )
+        status, note = _mark(body, known, quoted)
+        out.append(Segment(type="math", value=body, status=status, note=note))
         position = end
     if position < len(text):
         out.append(Segment(type="text", value=text[position:]))
     return out
 
 
-def split_segments(text: str, known: set[str]) -> list[Segment]:
-    """`known` holds normalised formulas that came from tools or handbook entries."""
+def split_segments(
+    text: str, known: set[str], quoted: Mapping[str, str] | None = None
+) -> list[Segment]:
+    """`known` holds normalised formulas a tool produced as results, or machine-checked handbook
+    statements. `quoted` maps normalised formulas that appeared in tool output without being a verified
+    result (the user's own input as read, a handbook statement that is only stated) to the reason."""
+    quoted = quoted or {}
     segments: list[Segment] = []
     position = 0
     for match in _MATH.finditer(text):
         if match.start() > position:
-            segments.extend(_text_segments(text[position : match.start()], known))
+            segments.extend(_text_segments(text[position : match.start()], known, quoted))
         display = any(match.group(n) is not None for n in ("d1", "d2", "d3"))
         body = next(
             g
@@ -157,14 +168,16 @@ def split_segments(text: str, known: set[str]) -> list[Segment]:
             if g is not None
         )
         body = body.strip()
+        status, note = _mark(body, known, quoted)
         segments.append(
             Segment(
                 type="display_math" if display else "math",
                 value=body,
-                status="from_tool" if normalize(body) in known else "unchecked",
+                status=status,
+                note=note,
             )
         )
         position = match.end()
     if position < len(text):
-        segments.extend(_text_segments(text[position:], known))
+        segments.extend(_text_segments(text[position:], known, quoted))
     return segments
