@@ -47,6 +47,7 @@ verify). Retrieval only proposes; the engine decides.
 ```bash
 uv sync                                   # Python workspace (3.13), creates .venv
 uv run pytest                             # all Python tests (SQLite). MINERVA_TEST_DATABASE_URL=postgresql+psycopg://... for Postgres
+MINERVA_TEST_SHARD=2/5 uv run pytest      # one disjoint slice of the tests (root conftest.py); CI runs 5 + 2 API shards in parallel pods
 uv run ruff check . && uv run ruff format --check .
 uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level

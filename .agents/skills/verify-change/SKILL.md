@@ -23,10 +23,11 @@ git status --short && git diff --stat
 | `apps/`, `packages/ui`, `package.json`, `pnpm-lock.yaml` | `make check-web`, plus the `ui-check` skill |
 | `services/api/alembic`, database models | `db-migration` skill (includes `alembic check`) |
 | `.github/workflows` | `ci-workflows` skill |
-| `deploy/`, `scripts/` | `bash -n scripts/build-image.sh`; Helm lint per `.github/workflows/ci.yml` (`chart` job) |
+| `deploy/`, `scripts/` | `bash -n scripts/build-image.sh`; Helm lint per `.github/workflows/ci.yml` (`lint` job) |
 | anything | `make check` runs all of the above except Helm and images |
 
-`make check` is the same set as the CI jobs `python` and `web`.
+`make check` is the same set as the CI jobs `python`, `tests`, `tests-api` and `web`. CI splits the pytest run over
+runner pods with `MINERVA_TEST_SHARD=i/n` (engine, handbook and scripts in 5 shards, API tests in 2); unset runs everything.
 
 ## 3. Definition of done (`AGENTS.md`)
 
