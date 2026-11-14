@@ -69,6 +69,7 @@ from .pi_groups import (
 from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
+from .statmech.models import StatMechInput, StatMechResult
 from .stats.models import (
     ExpectationInput,
     ExpectationResult,
@@ -143,6 +144,8 @@ __all__ = [
     "SimplifyResult",
     "Solution",
     "SolveReport",
+    "StatMechInput",
+    "StatMechResult",
     "StatModelInput",
     "StatModelResult",
     "Status",

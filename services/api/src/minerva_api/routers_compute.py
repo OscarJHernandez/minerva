@@ -23,6 +23,8 @@ from minerva_engine import (
     MatrixCalculusResult,
     RuleCondition,
     SeriesResult,
+    StatMechInput,
+    StatMechResult,
     StatModelInput,
     StatModelResult,
     Status,
@@ -45,7 +47,7 @@ from pydantic import BaseModel, Field
 
 from .db import Calculation, Derivation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
-from .diagnostics import log_distribution
+from .diagnostics import log_distribution, log_statmech
 from .geometry_log import log_geometry
 from .logging import get_logger
 from .schemas import (
@@ -65,6 +67,7 @@ from .schemas import (
     SeriesRequest,
     SimplifyRequest,
     StatisticsRequest,
+    StatMechRequest,
     SubstituteRequest,
     SubtermsRequest,
     SumsRequest,
@@ -447,6 +450,60 @@ def geometry(
         out.calculation_id = _save_row(
             db, user, "geometry", label, request.format, request.assumptions, body,
             result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+class StatMechResponse(StatMechResult):
+    calculation_id: uuid.UUID | None = None
+
+
+def _longest_text(value: Any) -> int:
+    """Length of the longest free-text field anywhere in a request."""
+    if isinstance(value, str):
+        return len(value)
+    if isinstance(value, dict):
+        return max((_longest_text(v) for v in value.values()), default=0)
+    if isinstance(value, list):
+        return max((_longest_text(v) for v in value), default=0)
+    return 0
+
+
+@router.post("/statmech", response_model=StatMechResponse)
+def statmech(
+    body: StatMechRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> StatMechResponse:
+    """Statistical mechanics of an explicit system: partition function, thermodynamic derivations,
+    thermal averages and numerical evaluation.
+
+    The whole problem is part of the request, so repeating it with another action reuses it. Every
+    result is returned only if an independent numerical evaluation agreed."""
+    request = StatMechInput(**body.model_dump(exclude=set(Links.model_fields)))
+    _guard(user, limiter, settings, _longest_text(request.model_dump()))
+    _check_links(db, user, body)
+    result = engine.statmech(request)
+    log.info(
+        "compute",
+        operation="statmech",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        reason=result.reason,
+        user_id=str(user.id),
+    )
+    log_statmech(result, request.system.kind, str(user.id))
+    out = StatMechResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json")
+        out.calculation_id = _save_row(
+            db, user, "statmech", f"{request.system.kind} ({request.action})", request.format,
+            request.assumptions, body, result.status.value, saved,
         )  # fmt: skip
     return out
 

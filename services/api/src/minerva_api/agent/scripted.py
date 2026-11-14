@@ -179,6 +179,33 @@ class ScriptedLLM:
             async for c in self._say("I will expand it by linearity and verify it. "):
                 yield c
             yield Chunk(tool_calls=[ToolCall("expectation", exp_args)])
+        elif any(w in lower for w in ("partition function", "free energy", "heat capacity")):
+            # Development stand-in: a two-level system, or a quantum oscillator if one is mentioned. A real
+            # model takes the spectrum from the user and asks when it is missing.
+            if "oscillator" in lower:
+                sm_args: dict[str, Any] = {
+                    "action": "derive",
+                    "system": {"kind": "level_family", "energy": "hbar*omega*(n + 1/2)"},
+                    "assumptions": {"hbar": ["positive"], "omega": ["positive"]},
+                    "quantities": ["Z", "F", "U"],
+                }
+            else:
+                sm_args = {
+                    "action": "derive",
+                    "system": {
+                        "kind": "levels",
+                        "levels": [{"energy": "0"}, {"energy": "epsilon"}],
+                    },
+                    "assumptions": {"epsilon": ["positive"]},
+                    "quantities": ["Z", "F", "U"],
+                }
+                if "heat capacity" in lower:
+                    sm_args["partials"] = [
+                        {"of": "U", "variable": "T", "held_fixed": [], "label": "C"}
+                    ]
+            async for c in self._say("I will derive that from the spectrum and have it checked. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("statistical_mechanics", sm_args)])
         elif any(w in lower for w in ("christoffel", "geodesic", "curvature", "riemann", "ricci")):
             # Development stand-in: three named metrics; a real model asks the user for the metric.
             geometry_args = _scripted_geometry(lower)
@@ -494,6 +521,22 @@ class ScriptedLLM:
                     f"I could not differentiate that ({status}). The card says why; for example "
                     "|x| needs x declared real."
                 )
+        elif tool == "statistical_mechanics":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the partition function and the derived quantities. Each one was "
+                    "compared with an independent enumeration of the levels, with the other state "
+                    "variables held fixed as listed. Numerical agreement is evidence, not a proof."
+                )
+            elif "ASK THE USER" in content:
+                text = (
+                    "A convention is needed before I can go on: the card asks for it. It is your choice, "
+                    "not mine."
+                )
+            else:
+                text = f"I could not complete that ({status}). The card gives the reason."
         elif tool == "perturbation_solve":
             found = re.search(r"status=(\w+)", content)
             status = found.group(1) if found else "failed"

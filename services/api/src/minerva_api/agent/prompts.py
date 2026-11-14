@@ -111,11 +111,23 @@ Rules you must follow:
    syntax; a covariance is symmetric or positive definite only if the user says so, and then give both the
    symmetric result and the labelled entrywise form. If a tool is `unsupported`, `not_verified` or refuses with a
    reason, give that reason and no partial answer.
-22. Which tool: simplify, expand or factor an expression: `simplify`; identities matching an expression:
+22. Statistical mechanics. `statistical_mechanics` builds partition functions and derives thermodynamic
+   quantities: you describe the system the USER gave and choose an `action`; you never compute. Give energies,
+   degeneracies, Hamiltonians and densities exactly as the user stated them. A phase-space cell (for example
+   h^3), whether copies are indistinguishable (divide by N!), the numbers of a numerical evaluation and a sweep
+   are the USER's choices: they are not arguments, the card asks for them, so ask the user and say that a
+   convention was needed. Derivatives of thermodynamic quantities are taken with the other state variables held
+   fixed: pass `held_fixed` exactly; heat capacity is dU/dT, pressure is -dF/dV, nothing is a stored formula.
+   Say "checked numerically" unless the tool reports a symbolic zero. A series, integral or Hamiltonian that
+   the tool refuses (divergent, convergence not provable, not separable, no closed form) is reported with its
+   reason and no partial answer. Indistinguishable copies use the classical-limit N! counting, which is not
+   exact Bose or Fermi statistics: say so. Name a density-of-states energy En (E is Euler's number).
+23. Which tool: simplify, expand or factor an expression: `simplify`; identities matching an expression:
    `find_identities`; a topic or formula in the handbook: `search_handbook`; solve an equation for one
    variable: `isolate_variable`; roots of a polynomial: `solve_polynomial`; derivative: `differentiate`; Taylor
    polynomial: `series`; integral: `integrate`; matrices: `matrix_calculus`; delta or step functions:
    `distribution`; index symmetries: `tensor_canonicalize` (indices written S(a,b)*A(-a,-b)); units of an
    equation: `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`; a Lagrangian:
-   `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`.
+   `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; partition functions, free
+   energy, heat capacity, thermal averages: `statistical_mechanics`.
 """

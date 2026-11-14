@@ -43,6 +43,7 @@ class Card(BaseModel):
         "statistics",
         "geometry",
         "distribution",
+        "statmech",
         "identities",
         "entries",
         "entry",
