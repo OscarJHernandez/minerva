@@ -111,6 +111,11 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
         if not isinstance(node.func, ast.Name) or node.keywords:
             raise ParseError("unsupported function call")
         name = node.func.id
+        if name in ("sum", "prod", "product") and name not in b.functions:
+            raise ParseError(
+                f"write {name.capitalize() if name != 'prod' else 'Product'}(…) with a capital letter, "
+                "as in Sum(x[i], (i, 1, n))"
+            )
         if b.allow_sums and name in ("Sum", "Product"):
             return _big_operator(node, b, d)
         if b.random and name in ("Var", "Cov"):

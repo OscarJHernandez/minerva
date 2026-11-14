@@ -200,3 +200,46 @@ def test_the_scripted_model_only_declares_independence_when_the_user_says_so() -
     stated = asyncio.run(_chunks(r"Expand $\operatorname{Var}(X+Y)$ for independent X and Y."))
     (call,) = [t for c in stated for t in c.tool_calls]
     assert call.arguments["independent"] == [["X", "Y"]]
+
+
+# ---------------------------------------------------------------------------------- a whole chat turn
+
+
+def test_a_chat_turn_asks_then_derives_with_a_statistics_card() -> None:
+    """The scripted model through the real loop, storage and card pipeline."""
+    from fastapi.testclient import TestClient
+
+    from .conftest import build_app, register
+    from .test_chat import cards_of, sse
+
+    with TestClient(build_app(llm_mode="scripted")) as client:
+        register(client)
+        cid = client.post("/v1/chat/conversations", json={}).json()["id"]
+
+        asked = sse(
+            client,
+            cid,
+            "Find the maximum likelihood estimator of the mean of n Gaussian observations.",
+        )
+        assert not any(e == "tool_started" for e, _ in asked)
+        messages = client.get(f"/v1/chat/conversations/{cid}").json()["messages"]
+        assert cards_of(messages[-1]["content"]) == []  # no card: it asked first
+
+        sse(
+            client,
+            cid,
+            "They are independent, with known variance: find the maximum likelihood estimator.",
+        )
+        last = client.get(f"/v1/chat/conversations/{cid}").json()["messages"][-1]
+        (card,) = cards_of(last["content"])
+        assert card["type"] == "statistics" and card["tool"] == "statistical_model"
+        result = card["data"]["result"]
+        assert result["status"] == "ok" and result["evidence"] == "conditional"
+        assert result["estimates"][0]["optimum"] == "global"
+        assert card["data"]["request"]["iid"] is True
+
+        sse(client, cid, r"Expand $\operatorname{Var}(X+Y)$.")
+        last = client.get(f"/v1/chat/conversations/{cid}").json()["messages"][-1]
+        (card,) = cards_of(last["content"])
+        assert card["type"] == "expectation" and card["data"]["request"]["independent"] == []
+        assert card["data"]["result"]["evidence"] == "identity"

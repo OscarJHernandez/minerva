@@ -351,6 +351,7 @@ def matrix_calculus(
         variable=body.variable,
         lower=body.lower,
         upper=body.upper,
+        candidate=body.candidate,
         trace_id=trace_id,
     )
     result = engine.matrix_calculus(engine_request)

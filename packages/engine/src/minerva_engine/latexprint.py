@@ -68,6 +68,11 @@ class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
             tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}\right)"
         return str(self._do_exponent(tex, exp))
 
+    def _print_beta(self, expr: sp.Basic, exp: Any = None) -> str:
+        # SymPy prints the arguments of B(a, b) as raw names (alpha, not \\alpha)
+        tex = rf"\operatorname{{B}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+        return str(self._do_exponent(tex, exp))
+
     # Indexed data prints as x_{i}; sums and products as nested single-limit operators (SymPy's
     # multi-limit form is not something the parsers read), the term of an Add in parentheses.
     def _print_Indexed(self, expr: sp.Indexed) -> str:

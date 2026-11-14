@@ -163,3 +163,17 @@ def test_property_text_and_latex_round_trip(body: str, kind: str) -> None:
     e = txt(f"{kind}({body}, (i, 1, n))")
     assert txt(to_text(e)).dummy_eq(e)
     assert tex(to_latex(e)).dummy_eq(e)
+
+
+def test_a_lowercase_sum_says_what_to_write() -> None:
+    for source in ["sum(x[i], (i, 1, n))", "prod(x[i], (i, 1, n))"]:
+        with pytest.raises(ParseError, match="capital letter"):
+            txt(source)
+    # the same call in an operation that does not allow sums is refused the same way, not misread
+    with pytest.raises(ParseError, match="capital letter"):
+        parse_text("sum(1, 2)", {})
+
+
+def test_the_beta_function_prints_its_arguments_as_symbols() -> None:
+    a, b = sp.symbols("alpha beta", positive=True)
+    assert to_latex(sp.beta(a, b)) == r"\operatorname{B}\left(\alpha, \beta\right)"

@@ -145,6 +145,8 @@ class MatrixCalculusRequest(Linked):
     variable: str | None = Field(default=None, min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
+    # gradient, jacobian, hessian: an answer to check instead of deriving one ({"result": "..."})
+    candidate: dict[str, str] | None = Field(default=None, max_length=4)
 
 
 class GeometryRequest(GeometryInput, Links):

@@ -170,3 +170,32 @@ def test_logs_hold_enumerated_fields_and_never_the_input(capsys) -> None:  # typ
             "event", "level", "timestamp", "request_id", "operation", "status",
             "duration_ms", "reason", "user_id",
         }  # fmt: skip
+
+
+def test_matrix_gradients_and_candidate_checks_over_the_api(authed: TestClient) -> None:
+    matrices = [
+        {"name": "x", "rows": 3, "cols": 1},
+        {"name": "mu", "rows": 3, "cols": 1},
+        {"name": "S", "rows": 3, "cols": 3, "positive_definite": True},
+    ]
+    base = {
+        "input": "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)",
+        "format": "text",
+        "matrices": matrices,
+        "action": "gradient",
+        "variable": "S",
+    }
+    body = post(authed, "/v1/compute/matrix", **base)
+    assert body["status"] == "ok" and body["derivative"]["convention"] == "symmetric_frobenius"
+    assert body["derivative"]["alternatives"][0]["convention"] == "symmetric_entrywise"
+    assert body["result_text"] and body["verification"]["passed"]
+    wrong = post(authed, "/v1/compute/matrix", **base, candidate={"result": "-1/2*inv(S)"})
+    assert wrong["status"] == "not_verified" and wrong["result_text"] is None
+    latex = post(authed, "/v1/compute/matrix", **{**base, "format": "latex"})
+    assert latex["status"] == "unsupported"  # the gradient actions read the plain-text syntax
+    undeclared = post(
+        authed,
+        "/v1/compute/matrix",
+        **{**base, "input": "logdet(X)", "matrices": [{"name": "X", "rows": 3}], "variable": "X"},
+    )
+    assert undeclared["reason"] == "invertibility_not_declared"
