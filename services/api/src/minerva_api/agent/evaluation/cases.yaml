@@ -955,3 +955,64 @@
   reply_matches: 'convention|half|include|exclude|ambiguous'
   informational: true
   source: "AGENTS.md rule 15 (a delta on an integration limit needs a convention that only the user chooses)"
+
+# ----------------------------------------------------------------------------- statistics
+- id: mle-gaussian-mean-independent
+  category: symbolic
+  prompt: 'Observations $x_1,\dots,x_n$ are independent and normally distributed with unknown mean $\mu$ and known variance $v$. Derive the maximum-likelihood estimator of $\mu$.'
+  expected_tool: statistical_model
+  args: {equals: {family: normal, action: mle, iid: true}, includes: {estimate: [mu]}}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_model
+    arguments:
+      family: normal
+      parametrization: variance
+      parameters: {v: v}
+      observation: x
+      sample_size: n
+      iid: true
+      estimate: [mu]
+      action: mle
+      assumptions: {n: [integer, positive], v: [positive], x: [real]}
+  informational: true
+  source: "engine test_stat_derivations.py (the independence was stated by the user)"
+
+- id: mle-asks-whether-the-observations-are-independent
+  category: ambiguous
+  prompt: 'Find the maximum-likelihood estimator of the mean of $n$ Gaussian observations whose variance $v$ is known.'
+  expected_tool: ask
+  forbid: [statistical_model]
+  reply_matches: 'independent|i\.i\.d|iid'
+  source: "AGENTS.md (independence is never assumed: the user states it)"
+
+- id: variance-of-a-sum-keeps-the-covariance
+  category: symbolic
+  prompt: 'Expand $\operatorname{Var}(X+Y)$ for two random variables $X$ and $Y$.'
+  expected_tool: expectation
+  args: {absent: [independent]}
+  expect_card: {status: ok}
+  reference:
+    tool: expectation
+    arguments: {latex: '\operatorname{Var}(X+Y)', random: [X, Y]}
+  informational: true
+  source: "engine test_expectation.py (no independence unless the user states it)"
+
+- id: beta-binomial-posterior
+  category: symbolic
+  prompt: 'The number of successes $k$ in $n$ trials is Binomial(n, p) and I use a Beta(alpha, beta) prior for p. What is the posterior of p?'
+  expected_tool: statistical_model
+  args: {equals: {action: posterior}, includes: {estimate: [p]}}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_model
+    arguments:
+      family: binomial
+      parameters: {n: n}
+      observation: k
+      estimate: [p]
+      prior: {family: beta, parameters: {alpha: alpha, beta: beta}}
+      action: posterior
+      assumptions: {n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive]}
+  informational: true
+  source: "engine test_stat_derivations.py (the prior is the user's)"

@@ -19,7 +19,15 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from minerva_engine import DistributionInput, Engine, GeometryInput, Limits
+from minerva_engine import (
+    DistributionInput,
+    Engine,
+    ExpectationInput,
+    GeometryInput,
+    Limits,
+    StatModelInput,
+    SumsInput,
+)
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
@@ -533,11 +541,28 @@ def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
             "equation": "Equation (not an evaluated integral)",
             "representation": "Exact representation (not evaluated)",
             "numeric": "Numerical approximation (not a closed form)",
+            "gradient": "Gradient",
+            "jacobian": "Jacobian",
+            "hessian": "Hessian",
         }[r.result_kind or "expression"]
         if r.result_latex:
             outputs.append({"label": heading, "latex": r.result_latex})
         if r.equation_latex:
             outputs.append({"label": "Verified equation", "latex": r.equation_latex})
+        if r.derivative is not None:
+            d = r.derivative
+            shown = (
+                "gradient within the symmetric matrices (Frobenius inner product)"
+                if d.convention == "symmetric_frobenius"
+                else "unconstrained derivative (every entry free)"
+            )
+            notes.append(
+                f"Convention: {shown}; real field, a transpose and not a conjugate transpose."
+            )
+            for alt in d.alternatives:
+                outputs.append(
+                    {"label": "Entrywise form (independent entries, i <= j)", "latex": alt.latex}
+                )
         if r.method:
             notes.append(f"Method: {r.method_title} ({r.method}).")
         notes += [f"Assumes: {a}." for a in r.assumptions_used if not a.startswith("scalar")]
@@ -552,6 +577,8 @@ def run_matrix(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
                 )
     for b in r.blocked:
         notes.append(f"Not applied: {b.title} needs {b.needs}.")
+    if r.reason:
+        notes.append(f"Refused ({r.reason}).")
     notes.append(r.message)
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
@@ -814,11 +841,187 @@ def run_isolate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+def run_sums(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    r = engine.sums(
+        SumsInput(
+            expression=_expr(spec),
+            action=spec.get("action", "expand"),
+            variable=spec.get("variable"),
+            candidate=spec.get("candidate"),
+        )
+    )
+    inputs = [_source_line(spec, "Expression", reading=r.input_latex)]
+    if spec.get("candidate"):
+        inputs.append({"label": "Answer to check", "source": spec["candidate"]["result"]})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        outputs.append({"label": "Result", "latex": r.result_latex})
+        if r.verification:
+            v = r.verification
+            checks.append(
+                f"{v.instances_agreed} of {v.instances_checked} explicit instances agree; "
+                + v.describe()
+            )
+    elif r.reason:
+        notes.append(f"Refused ({r.reason}).")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_expectation(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    r = engine.expectation(
+        ExpectationInput(
+            expression=_expr(spec),
+            random=spec["random"],
+            independent=spec.get("independent") or [],
+            action=spec.get("action", "expand"),
+            candidate=spec.get("candidate"),
+        )
+    )
+    inputs = [
+        _source_line(spec, "Expression", reading=r.input_latex),
+        {"label": "Random variables", "source": ", ".join(spec["random"])},
+    ]
+    if spec.get("independent"):
+        inputs.append(
+            {
+                "label": "Independence you stated",
+                "source": "; ".join(" and ".join(g) for g in spec["independent"]),
+            }
+        )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        outputs.append({"label": "Result", "latex": r.result_latex})
+        if r.given:
+            notes.append(
+                "Holds given: "
+                + "; ".join(r.given)
+                + " (Minerva does not check that this is true)."
+            )
+        else:
+            notes.append("No independence was used.")
+        if r.verification:
+            checks.append(r.verification.describe())
+    elif r.reason:
+        notes.append(f"Refused ({r.reason}).")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def _matrix_latex(rows: list[list[str]]) -> str:
+    return "\\begin{pmatrix}" + " \\\\ ".join(" & ".join(row) for row in rows) + "\\end{pmatrix}"
+
+
+_GREEK_TEX = {
+    "alpha": "\\alpha",
+    "beta": "\\beta",
+    "mu": "\\mu",
+    "sigma": "\\sigma",
+    "theta": "\\theta",
+    "lam": "\\lambda",
+}
+
+
+def run_statistics(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    request = StatModelInput(
+        family=spec["family"],
+        parametrization=spec.get("parametrization"),
+        parameters=spec.get("parameters") or {},
+        observation=spec.get("observation"),
+        sample_size=spec.get("sample_size"),
+        iid=spec.get("iid"),
+        estimate=spec.get("estimate") or [],
+        action=spec["action"],
+        prior=spec.get("prior"),
+        data=spec.get("data"),
+        candidate=spec.get("candidate"),
+        assumptions=spec.get("assumptions") or {},
+    )
+    r = engine.statistical_model(request)
+    inputs = [{"label": "Model", "source": f"{spec['family']}, action {spec['action']}"}]
+    if spec.get("parameters"):
+        inputs.append(
+            {
+                "label": "Known parameters",
+                "source": ", ".join(f"{k} = {v}" for k, v in spec["parameters"].items()),
+            }
+        )
+    if spec.get("sample_size"):
+        said = (
+            "stated: independent and identically distributed" if spec.get("iid") else "NOT stated"
+        )
+        inputs.append(
+            {
+                "label": "Observations",
+                "source": f"{spec['sample_size']} observations of {spec.get('observation', 'x')} ({said})",
+            }
+        )
+    if spec.get("data"):
+        inputs.append({"label": "Data", "source": ", ".join(spec["data"])})
+    if spec.get("prior"):
+        pr = spec["prior"]
+        inputs.append(
+            {
+                "label": "Prior (yours)",
+                "source": f"{pr['family']}({', '.join(f'{k} = {v}' for k, v in pr['parameters'].items())})",
+            }
+        )
+    if spec.get("estimate"):
+        inputs.append({"label": "Parameters", "source": ", ".join(spec["estimate"])})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        outputs += [
+            {"label": name.capitalize(), "latex": latex} for name, latex in r.moments_latex.items()
+        ]
+        outputs += [{"label": name, "latex": latex} for name, latex in r.expressions_latex.items()]
+        for e in r.estimates:
+            outputs.append({"label": f"Estimator of {e.parameter}", "latex": e.latex})
+            if e.optimum:
+                notes.append(
+                    f"{e.parameter}: {e.optimum} maximum ({e.optimum_evidence}); "
+                    + (
+                        " ".join(f"valid only if ${c.latex}$." for c in e.admissible_if)
+                        or "no condition on the data."
+                    )
+                )
+        if r.matrix_latex:
+            outputs.append({"label": "Fisher information", "latex": _matrix_latex(r.matrix_latex)})
+        if r.posterior:
+            outputs.append(
+                {
+                    "label": f"Posterior ({r.posterior.family})",
+                    "latex": ",\\; ".join(
+                        f"{_GREEK_TEX.get(k, k)} = {v}"
+                        for k, v in r.posterior.parameters_latex.items()
+                    ),
+                }
+            )
+        checks += [f"{c.method}: {c.points_agreed} of {c.points_checked}" for c in r.checks]
+        if r.premises:
+            notes.append("Holds given: " + "; ".join(r.premises) + ".")
+    elif r.reason:
+        notes.append(f"Refused ({r.reason}).")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
     "series": run_series,
     "matrix": run_matrix,
+    "sums": run_sums,
+    "expectation": run_expectation,
+    "statistics": run_statistics,
     "geometry": run_geometry,
     "distribution": run_distribution,
     "identities": run_identities,

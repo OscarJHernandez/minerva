@@ -147,9 +147,26 @@ class MatrixCalculusArgs(SimplifyArgs):
         "Ask the user for sizes or entries; never invent them. Set depends_on to the variable only "
         "when the USER says the matrix depends on it.",
     )
-    action: Literal["evaluate", "simplify", "differentiate", "integrate", "evolve"] = Field(
+    action: Literal[
+        "evaluate",
+        "simplify",
+        "differentiate",
+        "integrate",
+        "evolve",
+        "gradient",
+        "jacobian",
+        "hessian",
+    ] = Field(
         default="simplify",
-        description="evaluate: explicit matrices only. simplify: merge what is provably mergeable. "
+        description="gradient / jacobian / hessian: derivative of a scalar (or vector) function with "
+        "respect to a MATRIX or VECTOR `variable`, over the reals. For these three actions write the "
+        "expression in the PLAIN-TEXT syntax in `latex`: tr(A*X*B), transpose(x), inv(S), det(X), "
+        "logdet(S) (= log|det|), `*` for the matrix product, e.g. "
+        '"-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)". Declare `symmetric` or '
+        "`positive_definite` on a covariance ONLY if the USER says so (the result then is the gradient "
+        "within the symmetric matrices, with the entrywise form labelled separately); inv, logdet and "
+        "det need the matrix listed in `invertible` (or positive definite), which only the USER may "
+        "state. evaluate: explicit matrices only. simplify: merge what is provably mergeable. "
         "differentiate/integrate need `variable`; integrate may take bounds `lower` and `upper`; "
         "differentiate also handles exponents that do not commute with their derivative (Frechet "
         "derivative) and time-dependent matrices. integrate recognises Duhamel integrals "
@@ -818,8 +835,12 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
+    # gradients, Jacobians and Hessians read the plain-text syntax (transpose, inv, tr, det, logdet)
+    plain = args.action in {"gradient", "jacobian", "hessian"}
     request = MatrixCalculusInput(
-        expression=_expr(args),
+        expression=ExpressionInput(
+            input=args.latex, format="text" if plain else "latex", assumptions=args.assumptions
+        ),
         matrices=args.matrices,
         commuting=args.commuting,
         invertible=args.invertible,
@@ -868,6 +889,17 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
             )
         if result.result_latex:
             head += f"result=${result.result_latex}$; "
+        if result.derivative is not None:
+            d = result.derivative
+            head += (
+                f"derivative={d.kind}; constraint={d.constraint}; convention={d.convention}; "
+                "real field (a transpose, not a conjugate transpose); "
+            )
+            for alt in d.alternatives:
+                head += (
+                    f"alternative ({alt.convention}, verified {alt.points_agreed}/{alt.points_checked}): "
+                    f"${alt.latex}$; "
+                )
         if result.equation_latex:
             head += f"equation=${result.equation_latex}$; "
     v = result.verification
@@ -2234,3 +2266,48 @@ def quoted_formulas(outputs: list[ToolOutput]) -> dict[str, str]:
 
 def describe_arguments(arguments: dict[str, Any]) -> str:
     return json.dumps(arguments, ensure_ascii=False)[:400]
+
+
+# The statistics tools live in their own module; they import the helpers above, so they are registered here.
+from .stat_tools import (  # noqa: E402
+    ExpectationArgs,
+    StatModelArgs,
+    SumsArgs,
+    run_expectation,
+    run_statistical_model,
+    run_sums,
+)
+
+TOOLS["sums"] = Tool(
+    "sums",
+    "Finite sums and products with symbolic bounds: expand by linearity, closed forms of sums without "
+    "data, factor a double sum, log of a product (only for provably positive factors), differentiate "
+    "through a sum. Indexed data x_i inside \\sum are separate unknowns. A result is shown only if it "
+    "agrees with the original on explicit expansions at several sizes (including n >= 2); it is NOT "
+    "a proof for every n and must be worded 'checked for n = ...'. Bounds must be provably non-empty "
+    "(declare n an integer and positive); infinite sums are refused.",
+    SumsArgs,
+    run_sums,
+)
+TOOLS["expectation"] = Tool(
+    "expectation",
+    "Expectation, variance and covariance of declared random variables: E[aX+bY+c], Var(X+Y) = "
+    "Var X + Var Y + 2 Cov(X, Y), Cov(X, Y) = E[XY] - E[X]E[Y]. INDEPENDENCE IS NEVER ASSUMED: covariance "
+    "terms stay unless the USER stated independence, and then the result HOLDS GIVEN it. Verified "
+    "against explicit finite joint distributions (dependent unless independence was declared).",
+    ExpectationArgs,
+    run_expectation,
+)
+TOOLS["statistical_model"] = Tool(
+    "statistical_model",
+    "Probability models derived from their density: moments (mean, variance), log-likelihood and "
+    "score, the maximum-likelihood estimator (with admissibility conditions, boundary cases refused, "
+    "and the optimum called global only when concavity is proved), Fisher information, and the "
+    "posterior for a prior (found by matching the kernel, never from a table). Ask the USER for the "
+    "family, the known parameters, the sample size and WHETHER THE OBSERVATIONS ARE INDEPENDENT; "
+    "never pick a prior, a parameter value or concrete data yourself. Refuses (with a reason) "
+    "unsupported families, invalid parameters, missing independence, non-regular families such as "
+    "Uniform(0, theta), moments that do not exist (Cauchy) and kernels outside the known families.",
+    StatModelArgs,
+    run_statistical_model,
+)
