@@ -758,7 +758,8 @@ export type VectorAction =
   | "apply_identity"
   | "substitute"
   | "apply"
-  | "derive";
+  | "derive"
+  | "em_derive";
 
 export interface VectorFieldDecl {
   name: string;
@@ -788,6 +789,9 @@ export interface VectorRequest {
   premise?: number | null;
   operator?: "grad" | "div" | "curl" | "lap" | "dt" | null;
   target?: string | null;
+  /** The named electromagnetic derivation (em_derive) and the handbook equations the USER adopted. */
+  template?: string | null;
+  premise_ids?: string[];
 }
 
 export interface VectorBlocked {
@@ -832,6 +836,18 @@ export interface VectorStep {
   needs: string[];
   verification: VectorVerification | null;
   symbolic_zero: boolean | null;
+  /** Which route of an electromagnetic derivation (0-based). */
+  chain?: number | null;
+}
+
+/** A derived statement evaluated on exact solutions of its premises: consistency evidence only. */
+export interface VectorModelCheck {
+  status: "passed" | "failed" | "not_run";
+  kind: string;
+  models: number;
+  points: number;
+  max_residual: number | null;
+  note: string;
 }
 
 export interface VectorApplicable {
@@ -872,6 +888,10 @@ export interface VectorResult {
   evidence: VectorStepEvidence | null;
   given: string[];
   search_complete: boolean | null;
+  equations_latex?: string[];
+  needs_premises?: string[];
+  model_check?: VectorModelCheck | null;
+  derivation?: string | null;
   duration_ms: number;
   calculation_id?: string | null;
 }

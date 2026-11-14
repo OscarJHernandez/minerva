@@ -30,6 +30,7 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
     VectorInput,
+    VectorResult,
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
@@ -39,6 +40,8 @@ from minerva_knowledge.identities import (
     TransformResponse,
     constant_candidates,
     find_identities,
+    premise_options,
+    resolve_premise_ids,
     simplify_expression,
     summarize,
     vector_identity_rules,
@@ -330,6 +333,13 @@ class VectorCalculusArgs(BaseModel):
         "Never invent or complete one: a result that uses a premise holds only given it, and Minerva does "
         "not check that the premise is true.",
     )
+    premise_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="Handbook field equations (em.maxwell.faraday, em.maxwell.ampere_vacuum, ...) the USER "
+        "chose to adopt as premises, listed by `electromagnetism` with action setup. Adopt one only when "
+        "the user said to use that law; the equation then holds in the result only as a premise.",
+    )
     premise: int | None = Field(
         default=None, ge=0, le=7, description="substitute: which premise (0-based) to use."
     )
@@ -340,6 +350,39 @@ class VectorCalculusArgs(BaseModel):
         default=None,
         max_length=MAX_INPUT,
         description="derive: the expression to reach (same syntax as `expression`).",
+    )
+
+
+class ElectromagnetismArgs(BaseModel):
+    """Arguments of `electromagnetism`."""
+
+    action: Literal["setup", "derive"] = Field(
+        description="setup: list the derivations Minerva can carry out, the field equations (premises) each "
+        "needs, and the field equations of the handbook the user may adopt. derive: carry one out."
+    )
+    derivation: str | None = Field(
+        default=None,
+        max_length=40,
+        description="derive: wave_equation_e, wave_equation_b, continuity, poynting, gauge_invariance, "
+        "poisson or laplace.",
+    )
+    premise_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="derive: the handbook field equations the USER chose to adopt as premises (from setup). "
+        "Never adopt one the user did not choose; the result holds only given them.",
+    )
+    premises: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="derive: further field equations the USER stated, `lhs = rhs` in text syntax "
+        "(curl(E) = -dt(B)).",
+    )
+    smoothness: Literal["c2", "smooth"] | None = Field(
+        default=None,
+        description="derive: the smoothness the USER stated for the fields (twice continuously "
+        "differentiable, or smooth). Without it identities that need equal mixed partial derivatives are "
+        "blocked; never add it yourself.",
     )
 
 
@@ -925,20 +968,29 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 
-_VECTOR_STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive")
-
-
 def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutput:
-    fields = args.model_dump(exclude={"premises"})
-    request = VectorInput(
-        **fields,
-        premises=[Premise(equation=p) for p in args.premises],
-        format="latex",
-    )
+    fields = args.model_dump(exclude={"premises", "premise_ids"})
+    premises = [Premise(equation=p) for p in args.premises]
+    try:
+        premises += [
+            Premise(equation=o.equation, label=o.title)
+            for o in resolve_premise_ids(ctx.kb, args.premise_ids)
+        ]
+    except KeyError as exc:
+        return _error(
+            "vector_calculus",
+            f"{exc.args[0]} is not an adoptable handbook field equation (see electromagnetism setup)",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    request = VectorInput(**fields, premises=premises, format="latex")
     if args.action in ("identities", "apply_identity", "derive"):
         # The handbook proposes; the engine matches the identities and checks every rewrite.
         request = request.model_copy(update={"rules": vector_identity_rules(ctx.kb)})
-    result = ctx.engine.vector_calculus(request)
+    return _vector_output(ctx.engine.vector_calculus(request), request)
+
+
+def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
     log_vector(result)  # status, reason, counters: never a field name or an expression
     card = Card(
         id=uuid.uuid4().hex[:8],
@@ -992,6 +1044,16 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
                 "- every identity step was checked by comparing the whole expressions before and after "
                 "(exact component difference zero, and an independent Cartesian evaluation agreeing)"
             )
+        for eq in result.equations_latex:
+            lines.append(f"- derived equation: ${eq}$")
+            known.append(eq)
+        if result.model_check is not None:
+            mc = result.model_check
+            lines.append(
+                f"- check on exact solutions of the premises: {mc.status}"
+                + (f" ({mc.note})" if mc.note else "")
+                + ". This is consistency evidence, not a verification: say so."
+            )
         for a in result.applicable:
             suffix = f" BLOCKED: {a.note}" if a.blocked else ""
             lines.append(
@@ -1020,6 +1082,11 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
                 f"- blocked: needs {b.needs} smoothness of {', '.join(b.fields)}: {b.note}. Ask the "
                 "user whether the field is that smooth; do not declare it yourself."
             )
+        if result.needs_premises:
+            lines.append(
+                "- needs these field equations as premises (the user adopts them; do not assume them): "
+                + "; ".join(f"`{n}`" for n in result.needs_premises)
+            )
         if result.undeclared:
             lines.append(
                 "- undeclared: "
@@ -1044,6 +1111,85 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
     return ToolOutput(
         card, "\n".join([head + result.message, *lines]), known, result.status.value, quoted
     )
+
+
+def run_electromagnetism(args: ElectromagnetismArgs, ctx: ToolContext) -> ToolOutput:
+    from minerva_engine.vector.em import PLANNED, TEMPLATES, describe
+
+    if args.action == "setup":
+        options = premise_options(ctx.kb)
+        entries = [ctx.kb.get(o.id) for o in options]
+        card = Card(
+            id=uuid.uuid4().hex[:8],
+            tool="electromagnetism",
+            type="entries",
+            title="Electromagnetism setup",
+            data={
+                "query": "field equations you may adopt as premises",
+                "entries": [summarize(ctx.kb, e).model_dump(mode="json") for e in entries if e],
+            },
+        )
+        lines = [
+            "status=ok; these are the electromagnetic derivations Minerva can carry out. Each needs field "
+            "equations as PREMISES: ask the user which laws to adopt; never adopt one for them."
+        ]
+        for t in TEMPLATES.values():
+            d = describe(t)
+            needs = ", ".join(f"`{n}`" for n in d["needs"]) or "none (an identity)"
+            lines.append(
+                f"- {d['id']}: {d['title']}. Needs premises: {needs}. Fields: "
+                + ", ".join(f"{f['name']} ({f['kind']})" for f in d["fields"])
+                + "; constants: "
+                + (", ".join(d["constants"]) or "none")
+            )
+        lines.append(
+            "adoptable field equations (premise_ids): "
+            + "; ".join(f"{o.id} = {o.equation}" for o in options)
+        )
+        lines.append("not available yet: " + "; ".join(PLANNED))
+        return ToolOutput(card, "\n".join(lines), [], "ok")
+    template = TEMPLATES.get(args.derivation or "")
+    if template is None:
+        return _error(
+            "electromagnetism",
+            "derive needs `derivation`: " + ", ".join(sorted(TEMPLATES)),
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    try:
+        premises = [
+            Premise(equation=o.equation, label=o.title)
+            for o in resolve_premise_ids(ctx.kb, args.premise_ids)
+        ]
+    except KeyError as exc:
+        return _error(
+            "electromagnetism",
+            f"{exc.args[0]} is not an adoptable field equation (see setup)",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    premises += [Premise(equation=p) for p in args.premises]
+    fields = [
+        FieldDecl(
+            name=name,
+            kind=kind,
+            depends_on=["x", "y", "z", "t"],
+            smoothness=args.smoothness if name in template.smooth else None,
+        )
+        for name, kind in template.fields
+    ]
+    request = VectorInput(
+        expression="",
+        format="text",
+        coordinates="cartesian",
+        fields=fields,
+        constants=list(template.constants),
+        premises=premises,
+        action="em_derive",
+        template=template.id,
+        rules=vector_identity_rules(ctx.kb),
+    )
+    return _vector_output(ctx.engine.vector_calculus(request), request)
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
@@ -2220,6 +2366,19 @@ TOOLS: dict[str, Tool] = {
             "The declarations are not remembered: resend them with every call.",
             VectorCalculusArgs,
             run_vector_calculus,
+        ),
+        Tool(
+            "electromagnetism",
+            "Derivations in electromagnetism from field equations the USER adopts as premises (Maxwell's "
+            "equations in SI, potentials, statics): the wave equations for E and B in vacuum, charge "
+            "conservation, Poynting's theorem, gauge invariance of the fields, Poisson's and Laplace's "
+            "equations. `setup` lists them with the premises each needs. Each derivation is a set of routes "
+            "found by general vector-calculus steps and checked step by step; the result is evaluated on "
+            "exact solutions of its premises. A result that used a premise is CONDITIONAL on it and is never "
+            "called an identity, a proof or unconditional; only gauge invariance needs no premise. "
+            "Minerva never checks that a premise is true. Cartesian coordinates, fields depend on x, y, z, t.",
+            ElectromagnetismArgs,
+            run_electromagnetism,
         ),
         Tool(
             "distribution",

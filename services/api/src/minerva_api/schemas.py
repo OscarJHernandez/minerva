@@ -150,7 +150,13 @@ class GeometryRequest(GeometryInput, Links):
 
 
 class VectorRequest(VectorInput, Links):
-    """An expression over declared scalar and vector fields, in one coordinate system."""
+    """An expression over declared scalar and vector fields, in one coordinate system.
+
+    `premise_ids` are handbook field equations (`em.maxwell.faraday`, ...) the user chose to adopt as
+    premises; the server turns them into `premises`. The handbook identities (`rules`) are never taken
+    from the request."""
+
+    premise_ids: list[str] = Field(default_factory=list, max_length=8)
 
 
 class DistributionRequest(Linked):

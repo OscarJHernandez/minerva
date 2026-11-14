@@ -381,6 +381,24 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (depth 4, width 8, 400 states) over verified identity steps and premise substitutions: "not found" means nothing
   within the bounds. Results that use a premise go to `quoted_latex`, never `known_latex`. Benchmark cases cover
   identities, derivations, blocked, wrong-rule and ambiguous steps (`docs/vector-benchmark.md`).
+- Electromagnetic derivations (`vector/em.py`, `vector/dimensions.py`; tool `electromagnetism`, action `em_derive`).
+  Maxwell's equations and the other field equations are handbook entries with check kind `vector_equation`
+  (level `dimensional`: units only, the operators contribute 1/length and 1/time) and `premise: true`: **premises the
+  user adopts, never verified laws** (`identities.premise_options`, `premise_ids`). The model never adopts one for the
+  user. A derivation is a `Template`: the premises it needs (matched *exactly*, else `conditions_not_satisfied` with
+  `needs_premises`), routes (start, target) found by the general `find_chain` search over handbook identities and
+  the supplied premises with every identity step residual-checked, and an algebraic combination
+  `lhs - rhs = sum c_i (start_i - target_i)` checked by expansion. The final equation is then evaluated on **exact
+  solutions of its premises** (plane waves in vacuum; fields built from random potentials with the sources they
+  imply; harmonic potentials; Cartesian only): `ModelCheck` is "consistent with N exact solutions", never a
+  verification, and a failure withholds the result. A result that used a premise is `evidence="conditional"`, lists
+  it in `given`, goes to `quoted_latex` (never `known_latex`), and is never called an identity, a proof or a
+  consequence of Maxwell's equations beyond the premises used; only `gauge_invariance` needs none and is an identity.
+  The templates are tasks, not stored answers; do not add a template whose chain the search cannot find, and do not
+  add a hardcoded result. Planned and not claimed anywhere: wave equations for the potentials, interface conditions
+  (a pillbox needs the integral theorems), matter with a general constitutive relation. A failed `derive` search
+  that skipped identities blocked on smoothness reports them (`blocked`, `needs_smoothness`). `ε0` and `μ0` are
+  CODATA 2022 `stated` constants (measured, not exact); a test checks `mu0 epsilon0 c^2 = 1` within the uncertainties.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

@@ -35,12 +35,12 @@ class VectorLatexPrinter(MinervaLatexPrinter):
 
     def _wrap(self, e: sp.Basic) -> str:
         text = str(self._print(e))
-        if e.is_Atom or isinstance(e, (Pos, Unit)):
+        if e.is_Atom or isinstance(e, Pos | Unit | Pd | sp.Derivative):
             return text
-        if isinstance(e, sp.Function) and not isinstance(e, Div | Curl | Grad | Lap | Adv | Pd):
-            return text
-        if isinstance(e, sp.Derivative):
-            return text
+        if isinstance(e, Div | Curl | Grad | Lap | Adv | Dot | Cross):
+            return rf"\left({text}\right)"  # an operator or a product: bracket it
+        if isinstance(e, sp.Function):
+            return text  # sin(x), a field: already delimited
         return rf"\left({text}\right)"
 
     def _print_Grad(self, expr: Grad) -> str:

@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation
 import mpmath
 import sympy as sp
 from minerva_engine import ParseError, parse_text, verify_rule
-from minerva_engine.dimensions import DimensionError, check_equation_dimensions
+from minerva_engine.dimensions import DimensionError, check_equation_dimensions, dim_text
 from minerva_engine.models import TensorInput
 from minerva_engine.tensor import canonicalize
 from minerva_engine.verify import verify_equal
@@ -31,6 +31,7 @@ from .models import (
     RootFormulaCheck,
     SeriesCheck,
     TensorCheck,
+    VectorEquationCheck,
     VectorIdentityCheck,
 )
 
@@ -285,6 +286,21 @@ def _check_vector_identity(entry: Entry, c: VectorIdentityCheck) -> CheckReport:
     )
 
 
+def _check_vector_equation(entry: Entry, c: VectorEquationCheck) -> CheckReport:
+    """Dimensional consistency of an equation with vector operators (units only)."""
+    from minerva_engine.vector.dimensions import check_vector_equation
+
+    try:
+        dim = check_vector_equation(c.lhs, c.rhs, dict(c.fields), dict(c.units))
+    except (DimensionError, ParseError) as exc:
+        return CheckReport(entry.id, "dimensional", False, str(exc))
+    except Exception as exc:  # an unsupported construct is a failed check, never a pass
+        return CheckReport(entry.id, "dimensional", False, f"could not be checked: {exc}")
+    return CheckReport(
+        entry.id, "dimensional", True, f"dimensionally consistent ({dim_text(dim)}); units only"
+    )
+
+
 def run_check(entry: Entry) -> CheckReport:
     """Run the checker matching the entry's content; `stated` entries report as such."""
     if entry.verification == "stated":
@@ -314,4 +330,6 @@ def run_check(entry: Entry) -> CheckReport:
         return _check_distribution(entry, c)
     if isinstance(c, VectorIdentityCheck):
         return _check_vector_identity(entry, c)
+    if isinstance(c, VectorEquationCheck):
+        return _check_vector_equation(entry, c)
     return CheckReport(entry.id, "none", False, "entry has nothing to verify")

@@ -37,7 +37,7 @@ from .models import FieldDecl, Premise, VectorInput, VectorResult
 
 LIMITS = Limits(timeout_seconds=60)
 # Listing identities and replacing a premise by its other side compute nothing to check numerically.
-NO_NUMERIC_CHECK = ("identities", "substitute")
+NO_NUMERIC_CHECK = ("identities", "substitute", "em_derive")
 GROUPS = (
     "valid",
     "consistency",
@@ -47,6 +47,7 @@ GROUPS = (
     "unsupported",
     "identities",
     "derivations",
+    "electromagnetism",
 )
 
 # Symbols of the references (the engine's text output is read back with these).
@@ -790,7 +791,8 @@ def _step_cases() -> list[Case]:
                 (abstract("A", "vector"),),
                 target="grad(div(A)) - lap(A)",
             ),
-            Status.UNCHANGED,
+            Status.CONDITIONS_NOT_SATISFIED,
+            needs="c2",
         ),
         Case(
             "wrong-identity",
@@ -852,8 +854,96 @@ def _step_cases() -> list[Case]:
     return out
 
 
+def _em(
+    template_id: str, premises: list[str] | None = None, smoothness: str | None = "c2"
+) -> VectorInput:
+    from .em import TEMPLATES
+
+    t = TEMPLATES[template_id]
+    return VectorInput(
+        expression="",
+        format="text",
+        fields=[
+            FieldDecl(
+                name=n,
+                kind=k,
+                depends_on=["x", "y", "z", "t"],
+                smoothness=smoothness if n in t.smooth else None,
+            )
+            for n, k in t.fields
+        ],
+        constants=list(t.constants),
+        premises=[Premise(equation=p) for p in (t.needs if premises is None else premises)],
+        rules=_rules(),
+        action="em_derive",
+        template=template_id,
+    )
+
+
+def _em_ok(conditional: bool) -> Callable[[VectorResult], bool]:
+    def check(r: VectorResult) -> bool:
+        return (
+            r.evidence == ("conditional" if conditional else "identity")
+            and bool(r.steps)
+            and r.model_check is not None
+            and r.model_check.status == "passed"
+            and bool(r.equations_latex)
+        )
+
+    return check
+
+
+def _em_cases() -> list[Case]:
+    from .em import TEMPLATES
+
+    out = [
+        Case(
+            f"em-{tid.replace('_', '-')}",
+            TEMPLATES[tid].title,
+            "electromagnetism",
+            _em(tid),
+            check=_em_ok(bool(TEMPLATES[tid].needs)),
+        )
+        for tid in TEMPLATES
+    ]
+    faraday_flipped = ["div(E) = 0", "curl(E) = dt(B)", "curl(B) = mu0*epsilon0*dt(E)"]
+    out += [
+        Case(
+            "em-missing-premise",
+            "The wave equation without Ampere-Maxwell",
+            "electromagnetism",
+            _em("wave_equation_e", ["div(E) = 0", "curl(E) = -dt(B)"]),
+            Status.CONDITIONS_NOT_SATISFIED,
+            check=lambda r: len(r.needs_premises) == 1 and r.steps == [],
+        ),
+        Case(
+            "em-premise-with-a-flipped-sign",
+            "A premise that is not the one needed counts as missing",
+            "electromagnetism",
+            _em("wave_equation_e", faraday_flipped),
+            Status.CONDITIONS_NOT_SATISFIED,
+            check=lambda r: r.needs_premises == ["curl(E) = -dt(B)"],
+        ),
+        Case(
+            "em-gauge-needs-smoothness",
+            "Gauge invariance without a declared twice differentiable chi",
+            "electromagnetism",
+            _em("gauge_invariance", [], smoothness=None),
+            Status.CONDITIONS_NOT_SATISFIED,
+        ),
+        Case(
+            "em-continuity-needs-smoothness",
+            "Continuity without declared smoothness",
+            "electromagnetism",
+            _em("continuity", smoothness=None),
+            Status.CONDITIONS_NOT_SATISFIED,
+        ),
+    ]
+    return out
+
+
 def _all_cases() -> list[Case]:
-    return [*_cases(), *_step_cases()]
+    return [*_cases(), *_step_cases(), *_em_cases()]
 
 
 CASES = _all_cases()

@@ -200,6 +200,11 @@ one most likely to be wrong.
     are proposed to a typed matcher (`rules.py`), applied at a chosen part and accepted only if the exact component
     residual of the *whole* expressions before and after is zero and the Cartesian reading agrees (`context.py`); a
     field equation supplied by the user is a premise and makes the result conditional; `derive` is a bounded search.
+    Electromagnetism (`em.py`) builds on that: Maxwell's equations are handbook field equations (dimensional level, units
+    only) that a user adopts as premises; a named derivation (wave equations in vacuum, charge conservation, Poynting's
+    theorem, gauge invariance, Poisson and Laplace) is a set of routes found by the same search, each identity step
+    verified, combined algebraically, then evaluated on exact solutions of the premises (plane waves, fields from random
+    potentials with their sources). A result that used a premise is conditional on it and is never called an identity.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 

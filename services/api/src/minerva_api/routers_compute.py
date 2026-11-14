@@ -29,11 +29,13 @@ from minerva_engine import (
     VectorResult,
     Verification,
 )
+from minerva_engine.vector import Premise
 from minerva_knowledge.identities import (
     EntrySummary,
     FindIdentitiesResponse,
     TransformResponse,
     find_identities,
+    resolve_premise_ids,
     simplify_expression,
     summarize,
     vector_identity_rules,
@@ -456,8 +458,23 @@ def vector(
     _guard(user, limiter, settings, len(body.expression))
     _check_links(db, user, body)
     # The identities come from the handbook, never from the request: a client cannot cite its own rule.
-    request = VectorInput(**body.model_dump(exclude={*Links.model_fields, "rules"}))
-    if request.action in ("identities", "apply_identity", "derive"):
+    request = VectorInput(**body.model_dump(exclude={*Links.model_fields, "rules", "premise_ids"}))
+    if body.premise_ids:
+        try:
+            chosen = resolve_premise_ids(kb, body.premise_ids)
+        except KeyError as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "That is not an adoptable field equation."
+            ) from exc
+        request = request.model_copy(
+            update={
+                "premises": [
+                    *request.premises,
+                    *[Premise(equation=o.equation, label=o.title) for o in chosen],
+                ]
+            }
+        )
+    if request.action in ("identities", "apply_identity", "derive", "em_derive"):
         request = request.model_copy(update={"rules": vector_identity_rules(kb)})
     result = engine.vector_calculus(request)
     log_vector(result)

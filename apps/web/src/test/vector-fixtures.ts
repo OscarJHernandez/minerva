@@ -149,3 +149,29 @@ export const listed: VectorResult = {
     },
   ],
 };
+
+export const waveEquation: VectorResult = {
+  ...derived,
+  derivation: "wave_equation_e",
+  result_latex:
+    "\\nabla^{2} \\mathbf{E} = \\epsilon_{0} \\mu_{0} \\frac{\\partial^{2} \\mathbf{E}}{\\partial t^{2}}",
+  equations_latex: [
+    "\\nabla^{2} \\mathbf{E} = \\epsilon_{0} \\mu_{0} \\frac{\\partial^{2} \\mathbf{E}}{\\partial t^{2}}",
+  ],
+  given: ["div(E) = 0", "curl(E) = -dt(B)", "curl(B) = mu0*epsilon0*dt(E)"],
+  model_check: {
+    status: "passed",
+    kind: "vacuum_waves",
+    models: 2,
+    points: 8,
+    max_residual: 1e-20,
+    note: "consistent with 2 exact solutions of the premises at 8 points; this is not a verification",
+  },
+};
+
+export const needsPremises: VectorResult = {
+  ...blocked,
+  derivation: "wave_equation_e",
+  needs_premises: ["curl(B) = mu0*epsilon0*dt(E)"],
+  blocked: [],
+};

@@ -7,6 +7,8 @@ import {
   divergenceRequest,
   jacobian,
   listed,
+  needsPremises,
+  waveEquation,
 } from "@/test/vector-fixtures";
 import { VectorPanel } from "./vector-panel";
 
@@ -73,5 +75,21 @@ describe("VectorPanel", () => {
     expect(list).toHaveTextContent("vector.curl_curl");
     expect(list).toHaveTextContent(/Blocked: .*smoothness of these fields was not declared/);
     expect(screen.queryByTestId("steps")).not.toBeInTheDocument();
+  });
+
+  it("shows a derived equation, the premises it is conditional on and the check on exact solutions", () => {
+    render(<VectorPanel result={waveEquation} />);
+    expect(screen.getByTestId("equations")).toBeInTheDocument();
+    expect(screen.getByTestId("given")).toHaveTextContent("curl(B) = mu0*epsilon0*dt(E)");
+    expect(screen.getByTestId("given")).toHaveTextContent(/not an identity/);
+    expect(screen.getByTestId("model-check")).toHaveTextContent(/consistent with 2 of them/);
+    expect(screen.getByTestId("model-check")).toHaveTextContent(/Evidence, not a verification/);
+  });
+
+  it("asks for the premises a derivation needs and shows no equation", () => {
+    render(<VectorPanel result={needsPremises} />);
+    expect(screen.getByTestId("needs")).toHaveTextContent("curl(B) = mu0*epsilon0*dt(E)");
+    expect(screen.getByTestId("needs")).toHaveTextContent(/Minerva does not assume them/);
+    expect(screen.queryByTestId("equations")).not.toBeInTheDocument();
   });
 });

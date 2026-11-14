@@ -130,6 +130,13 @@ INSTANCES = {
     "vector.triple_product_expansion": "cross(A, cross(B, C))",
     "vector.scalar_triple_cyclic": "dot(A, cross(B, C))",
     "vector.cross_anticommutes": "cross(A, B)",
+    "vector.time_sum_vector": "dt(A + B)",
+    "vector.time_sum_scalar": "dt(f + g)",
+    "vector.time_dot": "dt(dot(A, B))",
+    "vector.time_scalar_vector": "dt(f*A)",
+    "vector.dot_sum": "dot(A, B + C)",
+    "vector.cross_sum": "cross(A, B + C)",
+    "vector.lap_sum_scalar": "lap(f + g)",
 }
 
 

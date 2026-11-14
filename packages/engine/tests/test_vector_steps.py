@@ -321,7 +321,10 @@ def test_derive_without_the_premise_does_not_reach_the_target() -> None:
 
 def test_derive_respects_the_declared_smoothness() -> None:
     result = step("curl(curl(A))", "derive", fields=[vec("A")], target="grad(div(A)) - lap(A)")
-    assert result.status is Status.UNCHANGED  # the identity needs c2, which was not declared
+    # the identity needs c2, which was not declared: the search says why it found nothing
+    assert result.status is Status.CONDITIONS_NOT_SATISFIED
+    assert result.blocked and result.blocked[0].needs == "c2" and result.blocked[0].fields == ["A"]
+    assert result.result_latex is None
 
 
 def test_derive_a_smaller_form_without_a_target() -> None:

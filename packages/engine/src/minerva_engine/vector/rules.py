@@ -322,7 +322,24 @@ def canonical(expr: sp.Expr, constants: frozenset[str]) -> sp.Expr:
     (`curl(-X) = -curl(X)`), and an operator applied to zero is zero. Each change is an identity; a
     step that uses it is still verified by comparing the whole expressions."""
 
+    def pull_bilinear(node: sp.Expr) -> sp.Expr:
+        factors: list[sp.Expr] = []
+        args = []
+        for a in node.args:
+            if isinstance(a, sp.Mul):
+                const = [x for x in a.args if _is_constant(x, constants)]
+                rest = [x for x in a.args if not _is_constant(x, constants)]
+                if const and rest:
+                    factors.extend(const)
+                    a = sp.Mul(*rest)
+            args.append(a)
+        if not factors:
+            return node
+        return sp.Mul(*factors) * node.func(*args)
+
     def pull(node: sp.Expr) -> sp.Expr:
+        if isinstance(node, Dot | Cross):
+            return pull_bilinear(node)
         arg = node.args[0]
         if arg == 0:
             return sp.Integer(0)
@@ -347,7 +364,7 @@ def canonical(expr: sp.Expr, constants: frozenset[str]) -> sp.Expr:
         if current == previous:
             break
         previous = current
-        current = current.replace(lambda e: isinstance(e, (*_LINEAR, Pd)), pull)
+        current = current.replace(lambda e: isinstance(e, (*_LINEAR, Pd, Dot, Cross)), pull)
     return current
 
 

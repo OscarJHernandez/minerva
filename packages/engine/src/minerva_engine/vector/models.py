@@ -27,8 +27,9 @@ Action = Literal[
     "substitute",
     "apply",
     "derive",
+    "em_derive",
 ]
-STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive")
+STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive", "em_derive")
 ResultKind = Literal["scalar", "vector", "matrix"]
 Format = Literal["latex", "text"]
 
@@ -39,6 +40,8 @@ Reason = Literal[
     "bad_declaration",
     "unsupported_expression",
     "needs_smoothness",
+    "needs_premises",
+    "model_check_failed",
     "derivative_depth",
     "verification_failed",
     "no_such_rule",
@@ -126,6 +129,7 @@ class VectorInput(BaseModel):
     premise: int | None = Field(default=None, ge=0, le=7)
     operator: Literal["grad", "div", "curl", "lap", "dt"] | None = None
     target: str | None = Field(default=None, max_length=1000)
+    template: str | None = Field(default=None, max_length=40)
     trace_id: str | None = None
 
     @field_validator("assumptions")
@@ -221,6 +225,20 @@ class VectorStep(BaseModel):
     needs: list[str] = Field(default_factory=list)
     verification: VectorVerification | None = None
     symbolic_zero: bool | None = None
+    chain: int | None = None  # which route of an electromagnetic derivation (0-based)
+
+
+class ModelCheck(BaseModel):
+    """A derived statement evaluated on exact solutions of the premises it was derived from
+    (plane waves in vacuum, fields built from random potentials with the sources they imply). A
+    pass is "consistent with N exact solutions", never a verification; a failure withholds the result."""
+
+    status: Literal["passed", "failed", "not_run"]
+    kind: str = ""
+    models: int = 0
+    points: int = 0
+    max_residual: float | None = None
+    note: str = ""
 
 
 class Applicable(BaseModel):
@@ -264,5 +282,9 @@ class VectorResult(BaseModel):
     evidence: StepEvidence | None = None
     given: list[str] = Field(default_factory=list)
     search_complete: bool | None = None
+    equations_latex: list[str] = Field(default_factory=list)
+    needs_premises: list[str] = Field(default_factory=list)
+    model_check: ModelCheck | None = None
+    derivation: str | None = None
     diagnostics: VectorDiagnostics = Field(default_factory=VectorDiagnostics)
     duration_ms: int = 0

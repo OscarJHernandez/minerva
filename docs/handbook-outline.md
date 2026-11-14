@@ -33,7 +33,7 @@ Status: **●** has entries, **○** planned.
 | | Chapter | Planned content |
 | --- | --- | --- |
 | ● | Classical mechanics | Dynamics, oscillations; later: Lagrangian/Hamiltonian formalism, rigid bodies |
-| ● | Electromagnetism | Force laws; later: Maxwell's equations (SI and Gaussian), potentials, radiation |
+| ● | Electromagnetism | Force laws; Maxwell's equations in SI (field equations to adopt as premises, units-checked), potentials, gauges, continuity, energy and the Poynting vector, constitutive relations, statics, boundary conditions (stated); later: Gaussian units, radiation |
 | ● | Thermodynamics and statistical mechanics | Gas laws, entropy, radiation; later: partition functions, ensembles |
 | ● | Quantum mechanics | Fundamental relations; later: angular momentum algebra, perturbation theory, hydrogen atom |
 | ● | Special and general relativity | Kinematics, energy-momentum; field equations (stated); later: metrics, geodesics |

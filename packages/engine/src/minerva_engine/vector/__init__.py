@@ -4,6 +4,7 @@ from .compute import vector_calculus
 from .models import (
     Blocked,
     FieldDecl,
+    ModelCheck,
     Premise,
     VectorDiagnostics,
     VectorInput,
@@ -15,6 +16,7 @@ from .models import (
 __all__ = [
     "Blocked",
     "FieldDecl",
+    "ModelCheck",
     "Premise",
     "VectorDiagnostics",
     "VectorInput",

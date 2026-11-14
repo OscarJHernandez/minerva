@@ -671,6 +671,10 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
             else " field" + (f", {f['smoothness']}" if f.get("smoothness") else "")
         )
         inputs.append({"label": f"Field {f['name']}", "source": what})
+    return _vector_example(spec, r, inputs)
+
+
+def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) -> dict[str, Any]:
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     notes: list[str] = []
@@ -692,6 +696,10 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
                 else "identity"
             )
             outputs.append({"label": f"Step {i} ({kind}): {step.title}", "latex": step.after_latex})
+        for eq in r.equations_latex:
+            outputs.append({"label": "Derived equation", "latex": eq})
+        if r.model_check is not None and r.model_check.status == "passed":
+            checks.append(r.model_check.note)
         for a in r.applicable[:6]:
             outputs.append(
                 {
@@ -725,8 +733,54 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
             )
     for b in r.blocked:
         notes.append(f"Not shown: needs {b.needs} smoothness of {', '.join(b.fields)}. {b.note}.")
+    if r.needs_premises:
+        notes.append("Needs these premises (the user adopts them): " + "; ".join(r.needs_premises))
     notes.append(r.message)
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_electromagnetism(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    from minerva_engine.vector import FieldDecl, Premise
+    from minerva_engine.vector.em import TEMPLATES
+    from minerva_knowledge.identities import resolve_premise_ids
+
+    template = TEMPLATES[spec["derivation"]]
+    chosen = resolve_premise_ids(kb, spec.get("premise_ids") or [])
+    premises = [Premise(equation=o.equation, label=o.title) for o in chosen]
+    premises += [Premise(equation=p) for p in spec.get("premises") or []]
+    smoothness = spec.get("smoothness")
+    r = engine.vector_calculus(
+        VectorInput(
+            expression="",
+            format="text",
+            fields=[
+                FieldDecl(
+                    name=n,
+                    kind=k,
+                    depends_on=["x", "y", "z", "t"],
+                    smoothness=smoothness if n in template.smooth else None,
+                )
+                for n, k in template.fields
+            ],
+            constants=list(template.constants),
+            premises=premises,
+            action="em_derive",
+            template=template.id,
+            rules=vector_identity_rules(kb),
+        )
+    )
+    inputs = [{"label": "Derivation", "source": template.title}]
+    inputs += [
+        {
+            "label": f"Premise (adopted by the user): {o.title}",
+            "source": o.equation,
+            "syntax": "text",
+        }
+        for o in chosen
+    ]
+    if smoothness:
+        inputs.append({"label": "Smoothness (declared by the user)", "source": smoothness})
+    return _vector_example(spec, r, inputs)
 
 
 _READING_WORDS = {
@@ -924,6 +978,7 @@ RUNNERS = {
     "matrix": run_matrix,
     "geometry": run_geometry,
     "vector": run_vector,
+    "electromagnetism": run_electromagnetism,
     "distribution": run_distribution,
     "identities": run_identities,
     "tensor": run_tensor,

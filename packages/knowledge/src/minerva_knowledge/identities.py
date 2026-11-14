@@ -16,7 +16,7 @@ from minerva_engine.vector import VectorRule
 from pydantic import BaseModel, Field
 
 from .kb import KnowledgeBase
-from .models import Entry, Reference, VectorIdentityCheck
+from .models import Entry, Reference, VectorEquationCheck, VectorIdentityCheck
 from .render import rhs_features, rule_features
 
 _ORDER = {
@@ -78,6 +78,44 @@ def vector_identity_rules(kb: KnowledgeBase, features: set[str] | None = None) -
         )
     found.sort(key=lambda item: (item[0], item[1].id))
     return [rule for _, rule in found]
+
+
+class PremiseOption(BaseModel):
+    """A field equation of the handbook that a user may adopt as a premise of a derivation. Adopting
+    it is the user's act: it is a field equation they supply, never an identity Minerva proved."""
+
+    id: str
+    title: str
+    equation: str  # text syntax, `lhs = rhs`
+    statement_latex: str
+    fields: dict[str, str]
+    constants: list[str]
+
+
+def premise_options(kb: KnowledgeBase) -> list[PremiseOption]:
+    """The handbook's adoptable field equations (Maxwell's equations, potentials, gauges, statics,
+    constitutive relations), in handbook order."""
+    out = []
+    for entry in kb.entries:
+        check = entry.check
+        if isinstance(check, VectorEquationCheck) and check.premise:
+            out.append(
+                PremiseOption(
+                    id=entry.id,
+                    title=entry.title,
+                    equation=f"{check.lhs} = {check.rhs}",
+                    statement_latex=kb.statement_latex(entry),
+                    fields=dict(check.fields),
+                    constants=list(check.constants),
+                )
+            )
+    return out
+
+
+def resolve_premise_ids(kb: KnowledgeBase, ids: list[str]) -> list[PremiseOption]:
+    """The options for `ids`; an id that is not an adoptable handbook equation raises `KeyError`."""
+    by_id = {o.id: o for o in premise_options(kb)}
+    return [by_id[i] for i in ids]
 
 
 def summarize(kb: KnowledgeBase, entry: Entry) -> EntrySummary:

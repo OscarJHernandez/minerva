@@ -159,6 +159,23 @@ class VectorIdentityCheck(BaseModel):
     requires: list[Literal["c2"]] = Field(default_factory=list)
 
 
+class VectorEquationCheck(BaseModel):
+    """A field equation with vector operators, checked for dimensional consistency only (units): the
+    gradient, divergence and curl divide by a length, the Laplacian by a length squared, a time
+    derivative by a time. `premise: true` means a user may adopt it as a premise of a derivation: it is
+    then a field equation they supply, never a verified identity."""
+
+    kind: Literal["vector_equation"] = "vector_equation"
+    lhs: str  # text syntax, e.g. "curl(E)"
+    rhs: str
+    fields: dict[str, Literal["scalar", "vector"]]
+    units: dict[str, str]  # SI base-unit expression of every symbol
+    constants: list[str] = Field(
+        default_factory=list
+    )  # symbols that do not depend on position or time
+    premise: bool = False
+
+
 Check = Annotated[
     DerivativeCheck
     | AntiderivativeCheck
@@ -168,7 +185,8 @@ Check = Annotated[
     | TensorCheck
     | EquationCheck
     | DistributionCheck
-    | VectorIdentityCheck,
+    | VectorIdentityCheck
+    | VectorEquationCheck,
     Field(discriminator="kind"),
 ]
 
@@ -233,7 +251,7 @@ class Entry(BaseModel):
                 "root_formula",
             ),
             "structural": ("tensor",),
-            "dimensional": ("equation",),
+            "dimensional": ("equation", "vector_equation"),
             "distributional": ("distribution",),
         }[v]
         source = "rule" if self.rule is not None else (self.check.kind if self.check else "")
@@ -275,6 +293,7 @@ __all__ = [
     "SeriesCheck",
     "SymbolDoc",
     "TensorCheck",
+    "VectorEquationCheck",
     "VectorIdentityCheck",
     "Verification",
 ]

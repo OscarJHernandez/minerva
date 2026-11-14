@@ -153,6 +153,17 @@ export function VectorPanel({
         </div>
       )}
 
+      {shown && (result.equations_latex?.length ?? 0) > 0 && (
+        <div className="mt-3" data-testid="equations">
+          <div className="text-xs uppercase tracking-wide text-muted">Derived equation</div>
+          {result.equations_latex?.map((eq) => (
+            <div key={eq} className="overflow-x-auto">
+              <Math latex={eq} display label="Derived equation" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {result.given.length > 0 && (
         <p
           role="note"
@@ -213,6 +224,26 @@ export function VectorPanel({
         </div>
       )}
 
+      {(result.needs_premises?.length ?? 0) > 0 && (
+        <div
+          role="note"
+          className="mt-3 rounded bg-warn-soft p-3 text-sm text-warn"
+          data-testid="needs"
+        >
+          <p>
+            This derivation needs these field equations as premises, and they were not supplied:
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {result.needs_premises?.map((n) => (
+              <li key={n}>
+                <code>{n}</code>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-xs">They are yours to adopt: Minerva does not assume them.</p>
+        </div>
+      )}
+
       {result.undeclared.length > 0 && (
         <p role="note" className="mt-3 rounded bg-warn-soft p-3 text-sm text-warn">
           Not declared: {result.undeclared.join(", ")}. Declare each as a field or a constant; an
@@ -239,6 +270,14 @@ export function VectorPanel({
               : "; there may be more restrictions that were not determined."}
           </p>
         </div>
+      )}
+
+      {result.model_check && result.model_check.status !== "failed" && (
+        <p className="mt-3 text-xs text-muted" data-testid="model-check">
+          {result.model_check.status === "passed"
+            ? `Evaluated on exact solutions of the premises: consistent with ${result.model_check.models} of them at ${result.model_check.points} points. Evidence, not a verification.`
+            : `Not evaluated on exact solutions: ${result.model_check.note}`}
+        </p>
       )}
 
       {v && (

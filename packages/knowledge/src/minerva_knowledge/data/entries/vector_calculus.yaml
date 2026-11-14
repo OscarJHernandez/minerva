@@ -583,3 +583,88 @@
     }
   keywords: [levi-civita, contraction, trace]
   notes: "Recorded as stated; checked by enumerating the components in the test suite."
+
+# ---------------------------------------------------------------------------- used by the electromagnetic derivations
+- id: vector.time_sum_vector
+  title: Time derivative of a sum of vectors
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\mathbf{A}+\mathbf{B}) = \frac{\partial\mathbf{A}}{\partial t} + \frac{\partial\mathbf{B}}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(A + B)", rhs: "dt(A) + dt(B)", fields: {A: vector, B: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  applies_to: ["vector:pd"]
+  keywords: [time derivative, linearity, sum]
+
+- id: vector.time_sum_scalar
+  title: Time derivative of a sum of scalars
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(f+g) = \frac{\partial f}{\partial t} + \frac{\partial g}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(f + g)", rhs: "dt(f) + dt(g)", fields: {f: scalar, g: scalar}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  applies_to: ["vector:pd"]
+  keywords: [time derivative, linearity, sum]
+
+- id: vector.time_dot
+  title: Time derivative of a dot product
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\mathbf{A}\cdot\mathbf{B}) = \frac{\partial\mathbf{A}}{\partial t}\cdot\mathbf{B} + \mathbf{A}\cdot\frac{\partial\mathbf{B}}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(dot(A, B))", rhs: "dot(dt(A), B) + dot(A, dt(B))", fields: {A: vector, B: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 8, Poynting's theorem"}
+  applies_to: ["vector:pd", "vector:dot"]
+  keywords: [time derivative, product rule, dot product, energy]
+
+- id: vector.time_scalar_vector
+  title: Time derivative of a scalar times a vector
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(f\mathbf{A}) = \frac{\partial f}{\partial t}\mathbf{A} + f\,\frac{\partial\mathbf{A}}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(f*A)", rhs: "dt(f)*A + f*dt(A)", fields: {f: scalar, A: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  applies_to: ["vector:pd"]
+  keywords: [time derivative, product rule]
+
+- id: vector.dot_sum
+  title: The dot product distributes over a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\cdot(\mathbf{B}+\mathbf{C}) = \mathbf{A}\cdot\mathbf{B} + \mathbf{A}\cdot\mathbf{C}'
+  check: {kind: vector_identity, lhs: "dot(A, B + C)", rhs: "dot(A, B) + dot(A, C)", fields: {A: vector, B: vector, C: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, vector algebra"}
+  applies_to: ["vector:dot"]
+  keywords: [dot product, distributive, bilinear]
+
+- id: vector.cross_sum
+  title: The cross product distributes over a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\times(\mathbf{B}+\mathbf{C}) = \mathbf{A}\times\mathbf{B} + \mathbf{A}\times\mathbf{C}'
+  check: {kind: vector_identity, lhs: "cross(A, B + C)", rhs: "cross(A, B) + cross(A, C)", fields: {A: vector, B: vector, C: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, vector algebra"}
+  applies_to: ["vector:cross"]
+  keywords: [cross product, distributive, bilinear]
+
+- id: vector.lap_sum_scalar
+  title: Laplacian of a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: linearity
+  verification: symbolic
+  statement_latex: '\nabla^{2}(f+g) = \nabla^{2}f + \nabla^{2}g'
+  check: {kind: vector_identity, lhs: "lap(f + g)", rhs: "lap(f) + lap(g)", fields: {f: scalar, g: scalar}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, second derivatives"}
+  applies_to: ["vector:lap"]
+  keywords: [laplacian, linearity, sum]

@@ -1105,3 +1105,53 @@
   reply_matches: 'given|premise|supplied|assum'
   reply_forbids: 'proves?d?\b|unconditional'
   source: "AGENTS.md (a result that depends on a premise is conditional, never called proved or an identity)"
+
+# ----------------------------------------------------------------------------- electromagnetism
+- id: em-wave-equation-from-maxwell
+  category: physics
+  prompt: 'Taking Maxwell''s equations in vacuum as given (Gauss''s law with no charge, Faraday''s law and the Ampere-Maxwell law with no current), derive the wave equation for the electric field. The fields are twice continuously differentiable.'
+  expected_tool: electromagnetism
+  args: {equals: {action: derive, derivation: wave_equation_e, smoothness: c2}, includes: {premise_ids: [em.maxwell.faraday, em.maxwell.ampere_vacuum, em.maxwell.gauss_vacuum]}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: electromagnetism
+    arguments:
+      action: derive
+      derivation: wave_equation_e
+      premise_ids: [em.maxwell.gauss_vacuum, em.maxwell.faraday, em.maxwell.ampere_vacuum]
+      smoothness: c2
+  reply_matches: 'given|premise|conditional|assum'
+  reply_forbids: 'unconditional|proves? that|is an identity'
+  source: "Griffiths, Introduction to Electrodynamics, chapter 9; the user adopted the premises and stated the smoothness (AGENTS.md: results that use a premise are conditional)"
+
+- id: em-adopting-premises-is-the-users-choice
+  category: ambiguous
+  prompt: 'Derive the wave equation for the electric field.'
+  expected_tool: electromagnetism
+  expect_card: {status: conditions_not_satisfied}
+  max_calls: 2
+  reference:
+    tool: electromagnetism
+    arguments: {action: derive, derivation: wave_equation_e, smoothness: c2}
+  reply_matches: 'premise|assum|which|Maxwell|adopt'
+  source: "AGENTS.md: the model never adopts a field equation for the user; the derivation needs premises, so the tool asks and the answer asks"
+
+- id: em-gauge-invariance
+  category: physics
+  prompt: 'Show that the electric and magnetic fields built from the potentials do not change under the gauge transformation A -> A + grad chi, phi -> phi - d chi/dt, where chi is twice continuously differentiable.'
+  expected_tool: electromagnetism
+  args: {equals: {action: derive, derivation: gauge_invariance, smoothness: c2}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: electromagnetism
+    arguments: {action: derive, derivation: gauge_invariance, smoothness: c2}
+  source: "Griffiths, Introduction to Electrodynamics, chapter 10 (gauge transformations); an identity, no premise"
+
+- id: em-unavailable-derivation-is-not-improvised
+  category: unsupported
+  prompt: 'Derive the boundary condition for the normal component of D at an interface between two dielectrics.'
+  expected_tool: none
+  informational: true
+  source: "interface conditions need a pillbox argument (the integral theorems), which Minerva does not have yet: it says so (docs/capabilities.md, electromagnetism limits)"

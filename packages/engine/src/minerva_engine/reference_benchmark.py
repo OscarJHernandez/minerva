@@ -353,6 +353,141 @@ def _cross_of_scalars(engine: Engine) -> tuple[str, str]:
     return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
 
 
+def _em_request(
+    template_id: str, premises: list[str] | None = None, smoothness: str | None = "c2"
+) -> Any:
+    """The request the `electromagnetism` tool makes, with the handbook's identities."""
+    from minerva_knowledge import KnowledgeBase
+    from minerva_knowledge.identities import vector_identity_rules
+
+    from .vector import Premise
+    from .vector.em import TEMPLATES
+
+    t = TEMPLATES[template_id]
+    return VectorInput(
+        expression="",
+        format="text",
+        fields=[
+            FieldDecl(
+                name=n,
+                kind=k,
+                depends_on=["x", "y", "z", "t"],
+                smoothness=smoothness if n in t.smooth else None,
+            )
+            for n, k in t.fields
+        ],
+        constants=list(t.constants),
+        premises=[Premise(equation=p) for p in (t.needs if premises is None else premises)],
+        rules=vector_identity_rules(KnowledgeBase.load()),
+        action="em_derive",
+        template=template_id,
+    )
+
+
+def _plane_wave() -> tuple[sp.Expr, sp.Expr, sp.Expr, sp.Expr, sp.Expr, dict[str, sp.Symbol]]:
+    """E and B of a plane wave in vacuum (textbook: Griffiths chapter 9), written by hand."""
+    x, y, z, t = (sp.Symbol(n, real=True) for n in "xyzt")
+    eps, c = sp.Rational(7, 5), sp.Rational(5, 2)
+    k = (sp.Integer(2), sp.Integer(1), sp.Integer(2))  # |k| = 3
+    omega = c * 3
+    e0 = (
+        sp.Integer(1),
+        sp.Integer(-2),
+        sp.Rational(3, 2),
+    )  # k . e0 = 2 - 2 + 3 = 3 ... fixed below
+    e0 = (sp.Integer(1), sp.Integer(0), sp.Integer(-1))  # k . e0 = 0
+    phase = sum(a * v for a, v in zip(k, (x, y, z), strict=True)) - omega * t
+    kxe = (
+        k[1] * e0[2] - k[2] * e0[1],
+        k[2] * e0[0] - k[0] * e0[2],
+        k[0] * e0[1] - k[1] * e0[0],
+    )
+    E = tuple(a * sp.cos(phase) for a in e0)
+    B = tuple(a / omega * sp.cos(phase) for a in kxe)
+    mu = 1 / (eps * c**2)
+    return E, B, eps, mu, omega, {"x": x, "y": y, "z": z, "t": t}
+
+
+def _em_wave(engine: Engine) -> tuple[str, str]:
+    """The wave equation for E, derived from Maxwell's equations as premises, in the textbook form;
+    the textbook equation is also checked on a plane wave with plain SymPy (an oracle of its own)."""
+    result = engine.vector_calculus(_em_request("wave_equation_e"))
+    if result.status.value != "ok":
+        return _verdict("correct", False, None, f"status {result.status.value}")
+    E, _B, eps, mu, _omega, v = _plane_wave()
+    x, y, z, t = v["x"], v["y"], v["z"], v["t"]
+    lap = [sum(sp.diff(e, a, 2) for a in (x, y, z)) for e in E]
+    residual = [sp.simplify(lap[i] - mu * eps * sp.diff(E[i], t, 2)) for i in range(3)]
+    expected = r"\nabla^{2} \mathbf{E} = \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}"
+    agrees = result.equations_latex == [expected] and all(r == 0 for r in residual)
+    return _verdict("correct", True, agrees, "textbook form; plane wave satisfies it")
+
+
+def _em_poynting(engine: Engine) -> tuple[str, str]:
+    """div S + du/dt = 0 for a plane wave (J = 0), by plain SymPy, and the engine derives the theorem."""
+    result = engine.vector_calculus(_em_request("poynting"))
+    if result.status.value != "ok":
+        return _verdict("correct", False, None, f"status {result.status.value}")
+    E, B, eps, mu, _omega, v = _plane_wave()
+    x, y, z, t = v["x"], v["y"], v["z"], v["t"]
+    cross = (
+        E[1] * B[2] - E[2] * B[1],
+        E[2] * B[0] - E[0] * B[2],
+        E[0] * B[1] - E[1] * B[0],
+    )
+    div_s = sum(sp.diff(c / mu, a) for c, a in zip(cross, (x, y, z), strict=True))
+    u = eps * sum(e**2 for e in E) / 2 + sum(b**2 for b in B) / (2 * mu)
+    agrees = sp.simplify(div_s + sp.diff(u, t)) == 0 and result.evidence == "conditional"
+    return _verdict(
+        "correct", True, agrees, "plane wave conserves energy; derivation is conditional"
+    )
+
+
+def _em_gauge(engine: Engine) -> tuple[str, str]:
+    """E and B are invariant under A -> A + grad chi, phi -> phi - dchi/dt (plain SymPy on explicit
+    potentials), and Minerva derives it as an identity with no premise."""
+    result = engine.vector_calculus(_em_request("gauge_invariance", []))
+    if result.status.value != "ok":
+        return _verdict("correct", False, None, f"status {result.status.value}")
+    x, y, z, t = (sp.Symbol(n, real=True) for n in "xyzt")
+    phi = x * y + t * z**2
+    a = (y * t, x**2 * z, sp.sin(x * t))
+    chi = x**2 * y * t + z * sp.exp(t)
+
+    def grad(f: sp.Expr) -> list[sp.Expr]:
+        return [sp.diff(f, v) for v in (x, y, z)]
+
+    e = [-g - sp.diff(ai, t) for g, ai in zip(grad(phi), a, strict=True)]
+    new_phi = phi - sp.diff(chi, t)
+    new_a = [ai + g for ai, g in zip(a, grad(chi), strict=True)]
+    e2 = [-g - sp.diff(ai, t) for g, ai in zip(grad(new_phi), new_a, strict=True)]
+    agrees = all(sp.simplify(p - q) == 0 for p, q in zip(e, e2, strict=True)) and (
+        result.evidence == "identity" and not result.given
+    )
+    return _verdict("correct", True, agrees, "E invariant on explicit potentials; an identity")
+
+
+def _em_missing_premise(engine: Engine) -> tuple[str, str]:
+    """Without Gauss's law as a premise, continuity cannot follow: refuse and ask, never assume."""
+    from .vector.em import TEMPLATES
+
+    needs = TEMPLATES["continuity"].needs
+    result = engine.vector_calculus(_em_request("continuity", [needs[0]]))
+    return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
+def _em_flipped_sign(engine: Engine) -> tuple[str, str]:
+    """A premise with the wrong sign is not the one the derivation needs (it would give the wrong
+    wave equation): refused as a missing premise."""
+    result = engine.vector_calculus(
+        _em_request(
+            "wave_equation_e",
+            ["div(E) = 0", "curl(E) = dt(B)", "curl(B) = mu0*epsilon0*dt(E)"],
+        )
+    )
+    return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "matrix-exp-product-noncommuting",
@@ -445,6 +580,41 @@ PROBLEMS: list[Problem] = [
         "definition of the cross product (two vectors)",
         "refused",
         _cross_of_scalars,
+    ),
+    Problem(
+        "em-wave-equation-from-maxwell",
+        "electromagnetism",
+        "Griffiths, Introduction to Electrodynamics, chapter 9 (wave equation in vacuum; plane waves)",
+        "correct",
+        _em_wave,
+    ),
+    Problem(
+        "em-poynting-theorem-plane-wave",
+        "electromagnetism",
+        "Griffiths, Introduction to Electrodynamics, chapter 8 (Poynting's theorem)",
+        "correct",
+        _em_poynting,
+    ),
+    Problem(
+        "em-gauge-invariance-of-the-fields",
+        "electromagnetism",
+        "Griffiths, Introduction to Electrodynamics, chapter 10 (gauge transformations)",
+        "correct",
+        _em_gauge,
+    ),
+    Problem(
+        "em-continuity-without-gauss-refused",
+        "electromagnetism",
+        "Griffiths, Introduction to Electrodynamics, chapter 7 (continuity needs Gauss's law and Ampere-Maxwell)",
+        "refused",
+        _em_missing_premise,
+    ),
+    Problem(
+        "em-wave-equation-flipped-faraday-refused",
+        "electromagnetism",
+        "Griffiths, Introduction to Electrodynamics, chapter 7 (the sign of Faraday's law)",
+        "refused",
+        _em_flipped_sign,
     ),
 ]
 

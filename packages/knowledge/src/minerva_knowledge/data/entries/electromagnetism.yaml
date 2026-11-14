@@ -38,3 +38,569 @@
     - {name: v, meaning: speed, unit: "m/s"}
     - {name: B, meaning: magnetic flux density, unit: "kg/(A*s**2)"}
   keywords: [lorentz, electromagnetic force, field, charge]
+
+# ---------------------------------------------------------------------------- Maxwell's equations (SI)
+# Field equations are *premises*: a user may adopt one in a derivation, and any result that uses it holds
+# only given it. The check is dimensional (units only; the operators contribute 1/length and 1/time):
+# it catches a missing 1/c^2, it does not say the equation is true. Symbols: E electric field, B magnetic
+# flux density, rho charge density, J current density, mu0 and epsilon0 the vacuum permeability and permittivity.
+- id: em.maxwell.gauss
+  title: Gauss's law (differential form, SI)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: dimensional
+  statement_latex: '\nabla\cdot\mathbf{E} = \frac{\rho}{\varepsilon_0}'
+  validity: "Fields differentiable; free and bound charge together in rho; vacuum permittivity."
+  check:
+    kind: vector_equation
+    lhs: "div(E)"
+    rhs: "rho/epsilon0"
+    fields: {E: vector, rho: scalar}
+    units: {E: "kg*m/(A*s**3)", rho: "A*s/m**3", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [epsilon0]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  keywords: [maxwell, gauss, electric field, charge density, divergence]
+  applies_to: ["em:maxwell", "vector:div"]
+  notes: "A field equation to adopt as a premise; Minerva checks units only."
+
+- id: em.maxwell.gauss_vacuum
+  title: Gauss's law in vacuum (no charge)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: dimensional
+  statement_latex: '\nabla\cdot\mathbf{E} = 0'
+  validity: "Charge-free region."
+  check:
+    kind: vector_equation
+    lhs: "div(E)"
+    rhs: "0"
+    fields: {E: vector}
+    units: {E: "kg*m/(A*s**3)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 9, electromagnetic waves in vacuum"}
+  keywords: [maxwell, gauss, vacuum, electric field]
+  applies_to: ["em:maxwell", "vector:div"]
+
+- id: em.maxwell.gauss_magnetic
+  title: Gauss's law for magnetism
+  kind: equation
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: dimensional
+  statement_latex: '\nabla\cdot\mathbf{B} = 0'
+  validity: "Fields differentiable; no magnetic monopoles."
+  check:
+    kind: vector_equation
+    lhs: "div(B)"
+    rhs: "0"
+    fields: {B: vector}
+    units: {B: "kg/(A*s**2)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  keywords: [maxwell, magnetic field, monopole, divergence]
+  applies_to: ["em:maxwell", "vector:div"]
+
+- id: em.maxwell.faraday
+  title: Faraday's law (differential form, SI)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: dimensional
+  statement_latex: '\nabla\times\mathbf{E} = -\frac{\partial\mathbf{B}}{\partial t}'
+  validity: "Fields differentiable; fixed coordinates (no moving loop)."
+  check:
+    kind: vector_equation
+    lhs: "curl(E)"
+    rhs: "-dt(B)"
+    fields: {E: vector, B: vector}
+    units: {E: "kg*m/(A*s**3)", B: "kg/(A*s**2)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  keywords: [maxwell, faraday, induction, curl]
+  applies_to: ["em:maxwell", "vector:curl", "vector:pd"]
+
+- id: em.maxwell.ampere
+  title: Ampere-Maxwell law (differential form, SI)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: dimensional
+  statement_latex: '\nabla\times\mathbf{B} = \mu_0\mathbf{J} + \mu_0\varepsilon_0\frac{\partial\mathbf{E}}{\partial t}'
+  validity: "Fields differentiable; J is the total current density."
+  check:
+    kind: vector_equation
+    lhs: "curl(B)"
+    rhs: "mu0*J + mu0*epsilon0*dt(E)"
+    fields: {B: vector, J: vector, E: vector}
+    units: {B: "kg/(A*s**2)", J: "A/m**2", E: "kg*m/(A*s**3)", mu0: "kg*m/(A**2*s**2)", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [mu0, epsilon0]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  keywords: [maxwell, ampere, displacement current, curl]
+  applies_to: ["em:maxwell", "vector:curl", "vector:pd"]
+
+- id: em.maxwell.ampere_vacuum
+  title: Ampere-Maxwell law in vacuum (no current)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: dimensional
+  statement_latex: '\nabla\times\mathbf{B} = \mu_0\varepsilon_0\frac{\partial\mathbf{E}}{\partial t}'
+  validity: "Current-free region."
+  check:
+    kind: vector_equation
+    lhs: "curl(B)"
+    rhs: "mu0*epsilon0*dt(E)"
+    fields: {B: vector, E: vector}
+    units: {B: "kg/(A*s**2)", E: "kg*m/(A*s**3)", mu0: "kg*m/(A**2*s**2)", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [mu0, epsilon0]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 9, electromagnetic waves in vacuum"}
+  keywords: [maxwell, ampere, vacuum, displacement current]
+  applies_to: ["em:maxwell", "vector:curl", "vector:pd"]
+
+- id: em.maxwell.integral_forms
+  title: Maxwell's equations in integral form
+  kind: theorem
+  chapter: physics.electromagnetism
+  section: maxwell
+  verification: stated
+  statement_latex: '\oint_S\mathbf{E}\cdot d\mathbf{S} = \frac{Q}{\varepsilon_0},\quad \oint_S\mathbf{B}\cdot d\mathbf{S} = 0,\quad \oint_C\mathbf{E}\cdot d\mathbf{l} = -\frac{d\Phi_B}{dt},\quad \oint_C\mathbf{B}\cdot d\mathbf{l} = \mu_0 I + \mu_0\varepsilon_0\frac{d\Phi_E}{dt}'
+  validity: "Fixed surfaces and loops. Obtained from the differential forms by the divergence and Stokes theorems."
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations in matter and in integral form"}
+  keywords: [maxwell, integral form, flux, circulation]
+  notes: "Recorded as stated; the integral theorems themselves are a later part of Minerva."
+
+# ---------------------------------------------------------------------------- charge conservation
+- id: em.continuity
+  title: Continuity equation (charge conservation)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: conservation
+  verification: dimensional
+  statement_latex: '\frac{\partial\rho}{\partial t} + \nabla\cdot\mathbf{J} = 0'
+  validity: "A consequence of Gauss's law and the Ampere-Maxwell law (see the derivation); it can also be adopted as a premise."
+  check:
+    kind: vector_equation
+    lhs: "dt(rho) + div(J)"
+    rhs: "0"
+    fields: {rho: scalar, J: vector}
+    units: {rho: "A*s/m**3", J: "A/m**2"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, continuity equation"}
+  keywords: [continuity, charge conservation, current density]
+  applies_to: ["em:continuity", "vector:div", "vector:pd"]
+
+# ---------------------------------------------------------------------------- potentials and gauges
+- id: em.potentials.electric
+  title: Electric field from the potentials
+  kind: equation
+  chapter: physics.electromagnetism
+  section: potentials
+  verification: dimensional
+  statement_latex: '\mathbf{E} = -\nabla\varphi - \frac{\partial\mathbf{A}}{\partial t}'
+  validity: "Scalar potential phi and vector potential A, differentiable."
+  check:
+    kind: vector_equation
+    lhs: "E"
+    rhs: "-grad(phi) - dt(A)"
+    fields: {E: vector, phi: scalar, A: vector}
+    units: {E: "kg*m/(A*s**3)", phi: "kg*m**2/(A*s**3)", A: "kg*m/(A*s**2)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 10, potentials and fields"}
+  keywords: [potential, scalar potential, vector potential, electric field]
+  applies_to: ["em:potentials", "vector:grad", "vector:pd"]
+
+- id: em.potentials.magnetic
+  title: Magnetic field from the vector potential
+  kind: equation
+  chapter: physics.electromagnetism
+  section: potentials
+  verification: dimensional
+  statement_latex: '\mathbf{B} = \nabla\times\mathbf{A}'
+  validity: "Vector potential A, differentiable."
+  check:
+    kind: vector_equation
+    lhs: "B"
+    rhs: "curl(A)"
+    fields: {B: vector, A: vector}
+    units: {B: "kg/(A*s**2)", A: "kg*m/(A*s**2)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 10, potentials and fields"}
+  keywords: [potential, vector potential, magnetic field]
+  applies_to: ["em:potentials", "vector:curl"]
+
+- id: em.gauge.lorenz
+  title: Lorenz gauge condition
+  kind: equation
+  chapter: physics.electromagnetism
+  section: gauges
+  verification: dimensional
+  statement_latex: '\nabla\cdot\mathbf{A} + \mu_0\varepsilon_0\frac{\partial\varphi}{\partial t} = 0'
+  validity: "A condition on the potentials, not a law: a gauge is chosen."
+  check:
+    kind: vector_equation
+    lhs: "div(A) + mu0*epsilon0*dt(phi)"
+    rhs: "0"
+    fields: {A: vector, phi: scalar}
+    units: {A: "kg*m/(A*s**2)", phi: "kg*m**2/(A*s**3)", mu0: "kg*m/(A**2*s**2)", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [mu0, epsilon0]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 10, gauge transformations"}
+  keywords: [gauge, lorenz gauge, potentials]
+  applies_to: ["em:gauge", "vector:div", "vector:pd"]
+
+- id: em.gauge.coulomb
+  title: Coulomb gauge condition
+  kind: equation
+  chapter: physics.electromagnetism
+  section: gauges
+  verification: dimensional
+  statement_latex: '\nabla\cdot\mathbf{A} = 0'
+  validity: "A condition on the vector potential, not a law: a gauge is chosen."
+  check:
+    kind: vector_equation
+    lhs: "div(A)"
+    rhs: "0"
+    fields: {A: vector}
+    units: {A: "kg*m/(A*s**2)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 10, gauge transformations"}
+  keywords: [gauge, coulomb gauge, transverse]
+  applies_to: ["em:gauge", "vector:div"]
+
+- id: em.gauge.transformation
+  title: Gauge transformation of the potentials
+  kind: equation
+  chapter: physics.electromagnetism
+  section: gauges
+  verification: stated
+  statement_latex: "\\mathbf{A}' = \\mathbf{A} + \\nabla\\chi,\\quad \\varphi' = \\varphi - \\frac{\\partial\\chi}{\\partial t}\\quad\\Rightarrow\\quad \\mathbf{E}' = \\mathbf{E},\\ \\mathbf{B}' = \\mathbf{B}"
+  validity: "chi twice continuously differentiable. The invariance of E and B is derived by Minerva (derivation gauge_invariance), not stated here."
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 10, gauge transformations"}
+  keywords: [gauge, transformation, invariance, potentials]
+
+# ---------------------------------------------------------------------------- energy and force
+- id: em.lorentz_force_vector
+  title: Lorentz force (vector law)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: forces
+  verification: dimensional
+  statement_latex: '\mathbf{F} = q\,(\mathbf{E} + \mathbf{v}\times\mathbf{B})'
+  validity: "Point charge q with velocity v in the fields E and B; SI units."
+  check:
+    kind: vector_equation
+    lhs: "F"
+    rhs: "q*(E + cross(v, B))"
+    fields: {F: vector, E: vector, v: vector, B: vector}
+    units: {F: "kg*m/s**2", q: "A*s", E: "kg*m/(A*s**3)", v: "m/s", B: "kg/(A*s**2)"}
+    constants: [q]
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 5, Lorentz force law"}
+  keywords: [lorentz, force, charge, magnetic force]
+  applies_to: ["em:force", "vector:cross"]
+
+- id: em.energy_density
+  title: Electromagnetic energy density
+  kind: equation
+  chapter: physics.electromagnetism
+  section: conservation
+  verification: dimensional
+  statement_latex: 'u = \frac{\varepsilon_0}{2}\,\mathbf{E}\cdot\mathbf{E} + \frac{1}{2\mu_0}\,\mathbf{B}\cdot\mathbf{B}'
+  validity: "Vacuum fields."
+  check:
+    kind: vector_equation
+    lhs: "u"
+    rhs: "epsilon0*dot(E, E)/2 + dot(B, B)/(2*mu0)"
+    fields: {u: scalar, E: vector, B: vector}
+    units: {u: "kg/(m*s**2)", E: "kg*m/(A*s**3)", B: "kg/(A*s**2)", mu0: "kg*m/(A**2*s**2)", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [mu0, epsilon0]
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 8, conservation laws"}
+  keywords: [energy density, field energy, poynting]
+  applies_to: ["em:energy"]
+
+- id: em.poynting_vector
+  title: Poynting vector
+  kind: equation
+  chapter: physics.electromagnetism
+  section: conservation
+  verification: dimensional
+  statement_latex: '\mathbf{S} = \frac{1}{\mu_0}\,\mathbf{E}\times\mathbf{B}'
+  validity: "Vacuum fields."
+  check:
+    kind: vector_equation
+    lhs: "S"
+    rhs: "cross(E, B)/mu0"
+    fields: {S: vector, E: vector, B: vector}
+    units: {S: "kg/s**3", E: "kg*m/(A*s**3)", B: "kg/(A*s**2)", mu0: "kg*m/(A**2*s**2)"}
+    constants: [mu0]
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 8, Poynting's theorem"}
+  keywords: [poynting, energy flux, radiation]
+  applies_to: ["em:energy", "vector:cross"]
+
+- id: em.poynting_theorem
+  title: Poynting's theorem (differential form)
+  kind: theorem
+  chapter: physics.electromagnetism
+  section: conservation
+  verification: dimensional
+  statement_latex: '\nabla\cdot\mathbf{S} + \frac{\partial u}{\partial t} + \mathbf{J}\cdot\mathbf{E} = 0'
+  validity: "A consequence of the Maxwell equations; derived by Minerva (derivation poynting) from the premises you supply."
+  check:
+    kind: vector_equation
+    lhs: "div(S) + dt(u) + dot(J, E)"
+    rhs: "0"
+    fields: {S: vector, u: scalar, J: vector, E: vector}
+    units: {S: "kg/s**3", u: "kg/(m*s**2)", J: "A/m**2", E: "kg*m/(A*s**3)"}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 8, Poynting's theorem"}
+  keywords: [poynting, energy conservation, field energy]
+  applies_to: ["em:energy", "vector:div"]
+
+# ---------------------------------------------------------------------------- waves
+- id: em.wave_equation.electric
+  title: Wave equation for the electric field (vacuum)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: waves
+  verification: dimensional
+  statement_latex: '\nabla^{2}\mathbf{E} - \mu_0\varepsilon_0\frac{\partial^{2}\mathbf{E}}{\partial t^{2}} = \mathbf{0}'
+  validity: "Derived by Minerva (derivation wave_equation_e) from Faraday's law, the Ampere-Maxwell law and Gauss's law in vacuum."
+  check:
+    kind: vector_equation
+    lhs: "lap(E) - mu0*epsilon0*dt(dt(E))"
+    rhs: "0"
+    fields: {E: vector}
+    units: {E: "kg*m/(A*s**3)", mu0: "kg*m/(A**2*s**2)", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [mu0, epsilon0]
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 9, electromagnetic waves in vacuum"}
+  keywords: [wave equation, electromagnetic wave, speed of light, vacuum]
+  applies_to: ["em:waves", "vector:lap", "vector:pd"]
+
+- id: em.wave_equation.magnetic
+  title: Wave equation for the magnetic field (vacuum)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: waves
+  verification: dimensional
+  statement_latex: '\nabla^{2}\mathbf{B} - \mu_0\varepsilon_0\frac{\partial^{2}\mathbf{B}}{\partial t^{2}} = \mathbf{0}'
+  validity: "Derived by Minerva (derivation wave_equation_b) from the Ampere-Maxwell law, Faraday's law and Gauss's law for magnetism in vacuum."
+  check:
+    kind: vector_equation
+    lhs: "lap(B) - mu0*epsilon0*dt(dt(B))"
+    rhs: "0"
+    fields: {B: vector}
+    units: {B: "kg/(A*s**2)", mu0: "kg*m/(A**2*s**2)", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [mu0, epsilon0]
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 9, electromagnetic waves in vacuum"}
+  keywords: [wave equation, electromagnetic wave, magnetic field, vacuum]
+  applies_to: ["em:waves", "vector:lap", "vector:pd"]
+
+# ---------------------------------------------------------------------------- constitutive relations
+- id: em.constitutive.displacement
+  title: Electric displacement
+  kind: equation
+  chapter: physics.electromagnetism
+  section: constitutive
+  verification: dimensional
+  statement_latex: '\mathbf{D} = \varepsilon_0\mathbf{E} + \mathbf{P}'
+  validity: "Definition of D for a polarisation density P."
+  check:
+    kind: vector_equation
+    lhs: "D"
+    rhs: "epsilon0*E + P"
+    fields: {D: vector, E: vector, P: vector}
+    units: {D: "A*s/m**2", E: "kg*m/(A*s**3)", P: "A*s/m**2", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [epsilon0]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 4, electric displacement"}
+  keywords: [displacement, polarisation, dielectric]
+  applies_to: ["em:constitutive"]
+
+- id: em.constitutive.magnetising
+  title: Magnetising field
+  kind: equation
+  chapter: physics.electromagnetism
+  section: constitutive
+  verification: dimensional
+  statement_latex: '\mathbf{H} = \frac{\mathbf{B}}{\mu_0} - \mathbf{M}'
+  validity: "Definition of H for a magnetisation M."
+  check:
+    kind: vector_equation
+    lhs: "H"
+    rhs: "B/mu0 - M"
+    fields: {H: vector, B: vector, M: vector}
+    units: {H: "A/m", B: "kg/(A*s**2)", M: "A/m", mu0: "kg*m/(A**2*s**2)"}
+    constants: [mu0]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 6, the auxiliary field H"}
+  keywords: [magnetising field, magnetisation, H field]
+  applies_to: ["em:constitutive"]
+
+- id: em.constitutive.linear_dielectric
+  title: Linear dielectric
+  kind: equation
+  chapter: physics.electromagnetism
+  section: constitutive
+  verification: dimensional
+  statement_latex: '\mathbf{D} = \varepsilon\,\mathbf{E}'
+  validity: "A linear, isotropic medium with constant permittivity epsilon."
+  check:
+    kind: vector_equation
+    lhs: "D"
+    rhs: "epsilon*E"
+    fields: {D: vector, E: vector}
+    units: {D: "A*s/m**2", E: "kg*m/(A*s**3)", epsilon: "A**2*s**4/(kg*m**3)"}
+    constants: [epsilon]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 4, linear dielectrics"}
+  keywords: [linear dielectric, permittivity, constitutive relation]
+  applies_to: ["em:constitutive"]
+
+- id: em.constitutive.linear_magnetic
+  title: Linear magnetic medium
+  kind: equation
+  chapter: physics.electromagnetism
+  section: constitutive
+  verification: dimensional
+  statement_latex: '\mathbf{B} = \mu\,\mathbf{H}'
+  validity: "A linear, isotropic medium with constant permeability mu."
+  check:
+    kind: vector_equation
+    lhs: "B"
+    rhs: "mu*H"
+    fields: {B: vector, H: vector}
+    units: {B: "kg/(A*s**2)", H: "A/m", mu: "kg*m/(A**2*s**2)"}
+    constants: [mu]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 6, linear media"}
+  keywords: [linear medium, permeability, constitutive relation]
+  applies_to: ["em:constitutive"]
+
+- id: em.constitutive.ohm
+  title: Ohm's law (local form)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: constitutive
+  verification: dimensional
+  statement_latex: '\mathbf{J} = \sigma\,\mathbf{E}'
+  validity: "A conductor with constant conductivity sigma."
+  check:
+    kind: vector_equation
+    lhs: "J"
+    rhs: "sigma*E"
+    fields: {J: vector, E: vector}
+    units: {J: "A/m**2", E: "kg*m/(A*s**3)", sigma: "A**2*s**3/(kg*m**3)"}
+    constants: [sigma]
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Ohm's law"}
+  keywords: [ohm, conductivity, current density, constitutive relation]
+  applies_to: ["em:constitutive"]
+
+# ---------------------------------------------------------------------------- statics
+- id: em.static.potential
+  title: Electrostatic potential
+  kind: equation
+  chapter: physics.electromagnetism
+  section: statics
+  verification: dimensional
+  statement_latex: '\nabla\varphi = -\mathbf{E}'
+  validity: "Static fields (no time dependence), so that the curl of E vanishes."
+  check:
+    kind: vector_equation
+    lhs: "grad(phi)"
+    rhs: "-E"
+    fields: {phi: scalar, E: vector}
+    units: {phi: "kg*m**2/(A*s**3)", E: "kg*m/(A*s**3)"}
+    premise: true
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 2, electric potential"}
+  keywords: [electrostatics, potential, static]
+  applies_to: ["em:statics", "vector:grad"]
+
+- id: em.static.poisson
+  title: Poisson's equation
+  kind: equation
+  chapter: physics.electromagnetism
+  section: statics
+  verification: dimensional
+  statement_latex: '\nabla^{2}\varphi = -\frac{\rho}{\varepsilon_0}'
+  validity: "Electrostatics. Derived by Minerva (derivation poisson) from Gauss's law and the electrostatic potential."
+  check:
+    kind: vector_equation
+    lhs: "lap(phi)"
+    rhs: "-rho/epsilon0"
+    fields: {phi: scalar, rho: scalar}
+    units: {phi: "kg*m**2/(A*s**3)", rho: "A*s/m**3", epsilon0: "A**2*s**4/(kg*m**3)"}
+    constants: [epsilon0]
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 2, Poisson's equation"}
+  keywords: [poisson, electrostatics, potential, charge density]
+  applies_to: ["em:statics", "vector:lap"]
+
+- id: em.static.laplace
+  title: Laplace's equation
+  kind: equation
+  chapter: physics.electromagnetism
+  section: statics
+  verification: dimensional
+  statement_latex: '\nabla^{2}\varphi = 0'
+  validity: "Charge-free region, electrostatics. Derived by Minerva (derivation laplace)."
+  check:
+    kind: vector_equation
+    lhs: "lap(phi)"
+    rhs: "0"
+    fields: {phi: scalar}
+    units: {phi: "kg*m**2/(A*s**3)"}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 3, Laplace's equation"}
+  keywords: [laplace, electrostatics, potential, harmonic]
+  applies_to: ["em:statics", "vector:lap"]
+
+# ---------------------------------------------------------------------------- boundary conditions (stated)
+- id: em.boundary.normal_d
+  title: Boundary condition on the normal component of D
+  kind: equation
+  chapter: physics.electromagnetism
+  section: boundary
+  verification: stated
+  statement_latex: '\hat{\mathbf{n}}\cdot(\mathbf{D}_2 - \mathbf{D}_1) = \sigma_f'
+  validity: "At an interface with free surface charge density sigma_f; n points from medium 1 to medium 2."
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, boundary conditions"}
+  keywords: [boundary condition, interface, surface charge, displacement]
+  notes: "Recorded as stated; Minerva evaluates jumps of explicit fields across a plane, it does not derive interface conditions (a pillbox argument needs the integral theorems)."
+
+- id: em.boundary.tangential_e
+  title: Boundary condition on the tangential component of E
+  kind: equation
+  chapter: physics.electromagnetism
+  section: boundary
+  verification: stated
+  statement_latex: '\hat{\mathbf{n}}\times(\mathbf{E}_2 - \mathbf{E}_1) = \mathbf{0}'
+  validity: "At any interface with fields that are not time-varying without bound."
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, boundary conditions"}
+  keywords: [boundary condition, interface, tangential, electric field]
+  notes: "Recorded as stated."
+
+- id: em.boundary.normal_b
+  title: Boundary condition on the normal component of B
+  kind: equation
+  chapter: physics.electromagnetism
+  section: boundary
+  verification: stated
+  statement_latex: '\hat{\mathbf{n}}\cdot(\mathbf{B}_2 - \mathbf{B}_1) = 0'
+  validity: "At any interface."
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, boundary conditions"}
+  keywords: [boundary condition, interface, normal, magnetic field]
+  notes: "Recorded as stated."
+
+- id: em.boundary.tangential_h
+  title: Boundary condition on the tangential component of H
+  kind: equation
+  chapter: physics.electromagnetism
+  section: boundary
+  verification: stated
+  statement_latex: '\hat{\mathbf{n}}\times(\mathbf{H}_2 - \mathbf{H}_1) = \mathbf{K}_f'
+  validity: "At an interface with free surface current density K_f."
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, boundary conditions"}
+  keywords: [boundary condition, interface, surface current, magnetising field]
+  notes: "Recorded as stated."

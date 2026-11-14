@@ -302,3 +302,121 @@ def test_a_client_cannot_supply_its_own_identity(authed: TestClient) -> None:
     }
     out = authed.post("/v1/compute/vector", json=body).json()
     assert out["status"] == "unsupported" and out["diagnostics"]["reason"] == "no_such_rule"
+
+
+# -- electromagnetism ------------------------------------------------------------------------------
+VACUUM = ["em.maxwell.gauss_vacuum", "em.maxwell.faraday", "em.maxwell.ampere_vacuum"]
+
+
+def test_setup_lists_the_derivations_and_the_equations_the_user_may_adopt(ctx: ToolContext) -> None:
+    out = execute("electromagnetism", {"action": "setup"}, ctx)
+    assert out.status == "ok" and out.card.type == "entries"
+    assert "wave_equation_e" in out.for_model and "gauge_invariance" in out.for_model
+    assert "em.maxwell.faraday" in out.for_model and "never adopt one for them" in out.for_model
+    assert "not available yet" in out.for_model and "pillbox" in out.for_model
+    assert out.known_latex == []  # a list of options, not a verified result
+    ids = {e["id"] for e in out.card.data["entries"]}
+    assert {"em.maxwell.faraday", "em.maxwell.ampere", "em.continuity"} <= ids
+
+
+def test_the_wave_equation_is_conditional_on_the_premises_and_never_verified(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "electromagnetism",
+        {
+            "action": "derive",
+            "derivation": "wave_equation_e",
+            "premise_ids": VACUUM,
+            "smoothness": "c2",
+        },
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert "CONDITIONAL" in out.for_model and "never call the result an identity" in out.for_model
+    assert "check on exact solutions of the premises: passed" in out.for_model
+    assert "consistency evidence, not a verification" in out.for_model
+    assert out.known_latex == []
+    assert any("premises you supplied" in why for _, why in out.quoted_latex)
+    result = out.card.data["result"]
+    assert result["evidence"] == "conditional" and result["derivation"] == "wave_equation_e"
+    assert len(result["equations_latex"]) == 1 and result["model_check"]["status"] == "passed"
+
+
+def test_gauge_invariance_is_a_verified_identity_with_no_premise(ctx: ToolContext) -> None:
+    out = execute(
+        "electromagnetism",
+        {"action": "derive", "derivation": "gauge_invariance", "smoothness": "c2"},
+        ctx,
+    )
+    assert out.status == "ok" and out.card.data["result"]["evidence"] == "identity"
+    assert "CONDITIONAL" not in out.for_model and out.known_latex  # an identity may be repeated
+
+
+def test_a_missing_premise_is_asked_for_and_nothing_is_derived(ctx: ToolContext) -> None:
+    out = execute(
+        "electromagnetism",
+        {
+            "action": "derive",
+            "derivation": "wave_equation_e",
+            "premise_ids": VACUUM[:2],
+            "smoothness": "c2",
+        },
+        ctx,
+    )
+    assert out.status == "conditions_not_satisfied"
+    assert "the user adopts them; do not assume them" in out.for_model
+    assert "curl(B) = mu0*epsilon0*dt(E)" in out.for_model and out.known_latex == []
+
+
+def test_blocked_until_the_user_states_the_smoothness(ctx: ToolContext) -> None:
+    out = execute(
+        "electromagnetism",
+        {"action": "derive", "derivation": "continuity", "premise_ids": [
+            "em.maxwell.ampere", "em.maxwell.gauss"]},
+        ctx,
+    )  # fmt: skip
+    assert out.status != "ok" and out.known_latex == []
+
+
+def test_unknown_derivations_and_premises_are_refused(ctx: ToolContext) -> None:
+    assert execute("electromagnetism", {"action": "derive"}, ctx).status == "error"
+    bad = execute(
+        "electromagnetism",
+        {"action": "derive", "derivation": "poynting", "premise_ids": ["vector.curl_curl"]},
+        ctx,
+    )
+    assert bad.status == "error" and not bad.arguments_valid
+    assert (
+        execute("vector_calculus", {"premise_ids": ["nope"], "action": "derive"}, ctx).status
+        == "error"
+    )
+
+
+def test_the_route_resolves_premise_ids_and_only_from_the_handbook(authed: TestClient) -> None:
+    fields = [
+        {"name": n, "kind": "vector", "smoothness": "c2", "depends_on": ["x", "y", "z", "t"]}
+        for n in ("E", "B")
+    ]
+    body = {
+        "expression": "",
+        "format": "text",
+        "fields": fields,
+        "constants": ["mu0", "epsilon0"],
+        "premise_ids": [
+            "em.maxwell.gauss_magnetic",
+            "em.maxwell.faraday",
+            "em.maxwell.ampere_vacuum",
+        ],
+        "action": "em_derive",
+        "template": "wave_equation_b",
+    }
+    out = authed.post("/v1/compute/vector", json=body).json()
+    assert out["status"] == "ok", out["message"]
+    assert out["evidence"] == "conditional" and out["model_check"]["status"] == "passed"
+    assert (
+        authed.post(
+            "/v1/compute/vector", json={**body, "premise_ids": ["vector.curl_curl"]}
+        ).status_code
+        == 422
+    )

@@ -77,8 +77,10 @@ conversion, with an independent Cartesian finite-difference check and smoothness
 
 - Done: vector identities as handbook data and controlled derivations (apply an identity, substitute a premise,
   apply an operator to both sides, derive toward a target).
-- Maxwell's equations in SI as stated premises, potentials and gauges, wave equation, continuity and Poynting
-  derivations, labelled conditional on the premises they use.
+- Done: Maxwell's equations in SI as premises the user adopts, potentials and gauges, the wave equations,
+  continuity, Poynting, gauge invariance, Poisson and Laplace, labelled conditional on the premises they use.
+  Next there: wave equations for the potentials (Lorenz gauge), Maxwell's equations in matter, interface
+  conditions (needs the integral theorems).
 - Line, surface and volume integrals and the gradient, divergence and Stokes theorems with explicit domains.
 - Analytical and numerical electromagnetic methods (point charges, multipoles, rectangle boundary-value problems);
   Fourier and Laplace methods, Green's functions beyond the free-space kernel, FEM and FDTD stay out of scope.

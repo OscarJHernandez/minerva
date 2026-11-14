@@ -145,7 +145,7 @@ def _run(
 ) -> None:
     system = get_system(inp.coordinates)
     deadline = started + TIME_BUDGET_SECONDS
-    if inp.action != "jacobian" and not inp.expression.strip():
+    if inp.action not in ("jacobian", "em_derive") and not inp.expression.strip():
         raise _Refused(Status.PARSE_ERROR, "an expression is required", "unsupported_expression")
     result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
     if inp.action == "jacobian":

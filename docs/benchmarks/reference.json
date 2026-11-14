@@ -97,6 +97,41 @@
       "source": "definition of the cross product (two vectors)",
       "expected": "refused",
       "outcome": "refused_as_expected"
+    },
+    {
+      "id": "em-wave-equation-from-maxwell",
+      "category": "electromagnetism",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 9 (wave equation in vacuum; plane waves)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "em-poynting-theorem-plane-wave",
+      "category": "electromagnetism",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 8 (Poynting's theorem)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "em-gauge-invariance-of-the-fields",
+      "category": "electromagnetism",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 10 (gauge transformations)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "em-continuity-without-gauss-refused",
+      "category": "electromagnetism",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 7 (continuity needs Gauss's law and Ampere-Maxwell)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "em-wave-equation-flipped-faraday-refused",
+      "category": "electromagnetism",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 7 (the sign of Faraday's law)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
     }
   ]
 }

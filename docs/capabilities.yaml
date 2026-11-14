@@ -26,6 +26,9 @@
 #                components, depends_on, smoothness}], constants, assumptions, action (evaluate | jacobian | convert |
 #                identities | apply_identity | substitute | apply | derive), to, rule_id, path, reverse, premises [text
 #                `lhs = rhs`, given by the user], premise, operator (grad | div | curl | lap | dt), target
+#   electromagnetism derivation (wave_equation_e | wave_equation_b | continuity | poynting | gauge_invariance |
+#                poisson | laplace), premise_ids [handbook field equations the user adopts], premises [text], smoothness
+#                (c2 | smooth, declared by the user)
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
@@ -788,6 +791,70 @@ capabilities:
         fields:
           - { name: A, kind: vector }
           - { name: B, kind: vector }
+
+  - id: electromagnetism
+    title: Derivations in electromagnetism
+    status: available
+    group: physics
+    where: [chat, api]
+    summary: >-
+      Derivations from the field equations a user adopts as premises (Maxwell's equations in SI units,
+      potentials, statics): the wave equations for the electric and magnetic fields in vacuum, charge
+      conservation, Poynting's theorem, gauge invariance of the fields, Poisson's and Laplace's equations.
+      Each derivation is not a stored answer: its routes are found by the general vector-calculus steps (the
+      handbook's vector identities and the supplied premises) and every identity step is checked by comparing the
+      whole expressions before and after. The result is then evaluated on exact solutions of its premises
+      (plane waves, fields built from random potentials with the sources they imply) and is shown as consistent
+      with them, never as verified by them. A result that used a premise is conditional on it, names it, and is
+      never called an identity or a proof; Minerva does not check that a premise is true. Only the gauge
+      invariance of E and B needs no premise.
+    limits:
+      - 'Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems.'
+      - 'Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell''s equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them.'
+      - 'A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for.'
+      - 'Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable.'
+      - 'The handbook entries for Maxwell''s equations are checked for units only (the operators contribute a length or a time); they are premises, not verified laws.'
+    examples:
+      - id: em-wave-equation-e
+        title: The wave equation for E in vacuum, from Maxwell's equations as premises
+        op: electromagnetism
+        derivation: wave_equation_e
+        premise_ids: [em.maxwell.gauss_vacuum, em.maxwell.faraday, em.maxwell.ampere_vacuum]
+        smoothness: c2
+      - id: em-continuity
+        title: Charge conservation from Gauss's law and the Ampere-Maxwell law
+        op: electromagnetism
+        derivation: continuity
+        premise_ids: [em.maxwell.ampere, em.maxwell.gauss]
+        smoothness: c2
+      - id: em-poynting
+        title: Poynting's theorem
+        op: electromagnetism
+        derivation: poynting
+        premise_ids: [em.maxwell.faraday, em.maxwell.ampere]
+        smoothness: c2
+      - id: em-gauge-invariance
+        title: Gauge invariance of E and B is an identity (no premise)
+        op: electromagnetism
+        derivation: gauge_invariance
+        smoothness: c2
+      - id: em-poisson
+        title: Poisson's equation from Gauss's law and the electrostatic potential
+        op: electromagnetism
+        derivation: poisson
+        premise_ids: [em.maxwell.gauss, em.static.potential]
+        smoothness: c2
+      - id: em-missing-premise
+        title: Without the Ampere-Maxwell law the wave equation is not derived, and Minerva asks for it
+        op: electromagnetism
+        derivation: wave_equation_e
+        premise_ids: [em.maxwell.gauss_vacuum, em.maxwell.faraday]
+        smoothness: c2
+      - id: em-no-smoothness
+        title: Without declared smoothness the identities are blocked
+        op: electromagnetism
+        derivation: continuity
+        premise_ids: [em.maxwell.ampere, em.maxwell.gauss]
 
   - id: identities
     title: Identity search with applicability checks

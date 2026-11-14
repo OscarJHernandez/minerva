@@ -116,6 +116,14 @@
   title: Electromagnetism
   sections:
     - {id: forces, title: Forces}
+    - {id: maxwell, title: Maxwell's equations}
+    - {id: conservation, title: Charge, energy and the Poynting vector}
+    - {id: potentials, title: Potentials}
+    - {id: gauges, title: Gauges}
+    - {id: waves, title: Electromagnetic waves}
+    - {id: constitutive, title: Constitutive relations}
+    - {id: statics, title: Electrostatics}
+    - {id: boundary, title: Boundary conditions}
 - id: physics.thermodynamics
   book: physics
   title: Thermodynamics and statistical mechanics

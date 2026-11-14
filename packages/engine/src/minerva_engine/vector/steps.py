@@ -20,8 +20,8 @@ Every move is a *proposal* that is then checked by something other than the move
 
 from __future__ import annotations
 
-from collections import deque
-from dataclasses import dataclass
+import heapq
+from dataclasses import dataclass, field
 
 import sympy as sp
 
@@ -37,13 +37,23 @@ from .models import (
     VectorResult,
     VectorRule,
     VectorStep,
+    VectorVerification,
 )
-from .rules import ParsedRule, Rewrite, canonical, node_at, parse_rule, rewrites, vector_features
+from .rules import (
+    ParsedRule,
+    Rewrite,
+    _dot_sorted,
+    canonical,
+    node_at,
+    parse_rule,
+    rewrites,
+    vector_features,
+)
 
 MAX_LISTED = 40
-DERIVE_DEPTH = 4
-DERIVE_WIDTH = 8
-DERIVE_STATES = 400
+DERIVE_DEPTH = 6
+DERIVE_WIDTH = 12
+DERIVE_STATES = 500
 
 
 def split_equation(text: str) -> tuple[str, str] | None:
@@ -489,20 +499,23 @@ class _Move:
 
 
 def _moves(
-    ctx: Context, expr: sp.Expr, rules: list[ParsedRule], premises: list[ParsedPremise]
+    ctx: Context,
+    expr: sp.Expr,
+    rules: list[ParsedRule],
+    premises: list[ParsedPremise],
+    blocked_seen: list[Blocked] | None = None,
 ) -> list[_Move]:
     out: list[_Move] = []
     for rw, blocked in _applicable(ctx, expr, rules):
-        if not blocked:
-            out.append(
-                _Move(
-                    "identity",
-                    rw,
-                    None,
-                    rw.reverse,
-                    canonical(rw.result, frozenset(ctx.low.constants)),
-                )
+        if blocked:
+            if blocked_seen is not None:
+                blocked_seen.extend(blocked)
+            continue
+        out.append(
+            _Move(
+                "identity", rw, None, rw.reverse, canonical(rw.result, frozenset(ctx.low.constants))
             )
+        )
     for p in premises:
         for reverse in (False, True):
             old, new = (p.rhs, p.lhs) if reverse else (p.lhs, p.rhs)
@@ -514,30 +527,62 @@ def _moves(
 
 
 def _key(e: sp.Expr) -> sp.Expr:
-    return sp.expand(e)
+    """What two expressions must share to count as equal in a search: expanded, with the symmetric
+    dot product written in one order."""
+    return _dot_sorted(sp.expand(e))
 
 
-def _derive(ctx: Context, expr: sp.Expr, result: VectorResult, diag: VectorDiagnostics) -> None:
-    rules, premises = _rules(ctx), _premises(ctx)
-    target = ctx.parse(ctx.inp.target) if ctx.inp.target else None
-    if target is not None and kind_of(target) != kind_of(expr):
-        raise Refused(Status.PARSE_ERROR, "the target is not of the same kind", "type_error")
+@dataclass
+class Chain:
+    """The outcome of a search from one expression to a target (or to a smaller form)."""
+
+    status: Status
+    message: str = ""
+    steps: list[VectorStep] = field(default_factory=list)
+    given: list[str] = field(default_factory=list)
+    final: sp.Expr | None = None
+    complete: bool = True
+    reason: Reason | None = None
+    verification: VectorVerification | None = None
+    blocked: list[Blocked] = field(default_factory=list)
+
+
+def find_chain(
+    ctx: Context,
+    expr: sp.Expr,
+    target: sp.Expr | None,
+    rules: list[ParsedRule],
+    premises: list[ParsedPremise],
+    *,
+    action: str = "derive",
+    prefix: str = "",
+) -> Chain:
+    """Best-first search over verified identity steps and premise substitutions, within fixed bounds
+    (depth, width, number of states). Each step of the chain found is then checked on its own."""
     goal = _key(target) if target is not None else None
     start = _key(expr)
+
+    def priority(state: sp.Expr) -> int:
+        if goal is None:
+            return int(state.count_ops())
+        return int(_key(sp.Add(state, sp.Mul(-1, target))).count_ops()) if target is not None else 0
+
     seen: dict[sp.Expr, tuple[sp.Expr | None, _Move | None, sp.Expr]] = {start: (None, None, expr)}
-    frontier = deque([(expr, 0)])
+    blocked_seen: list[Blocked] = []
+    counter = 0
+    heap: list[tuple[int, int, int, sp.Expr]] = [(priority(expr), 0, counter, expr)]
     complete = True
-    best = (expr.count_ops(), start)
+    best = (int(expr.count_ops()), start)
     reached: sp.Expr | None = start if goal is not None and start == goal else None
-    while frontier and reached is None:
-        current, depth = frontier.popleft()
+    while heap and reached is None:
+        _, depth, _, current = heapq.heappop(heap)
+        moves = _moves(ctx, current, rules, premises, blocked_seen)
         if depth >= DERIVE_DEPTH:
-            complete = complete and not _moves(ctx, current, rules, premises)
+            complete = complete and not moves
             continue
-        moves = _moves(ctx, current, rules, premises)
         if len(moves) > DERIVE_WIDTH:
             complete = False
-            moves.sort(key=lambda m: m.after.count_ops())
+            moves.sort(key=lambda m: priority(m.after))
             moves = moves[:DERIVE_WIDTH]
         for move in moves:
             key = _key(move.after)
@@ -550,43 +595,55 @@ def _derive(ctx: Context, expr: sp.Expr, result: VectorResult, diag: VectorDiagn
             if goal is not None and key == goal:
                 reached = key
                 break
-            if goal is None:
-                size = move.after.count_ops()
-                if size < best[0]:
-                    best = (size, key)
-            frontier.append((move.after, depth + 1))
-    result.search_complete = complete
+            if goal is None and move.after.count_ops() < best[0]:
+                best = (int(move.after.count_ops()), key)
+            counter += 1
+            heapq.heappush(heap, (priority(move.after), depth + 1, counter, move.after))
     final = reached if goal is not None else (best[1] if best[1] != start else None)
     if final is None:
-        result.status = Status.UNCHANGED
-        result.message = (
+        merged: dict[tuple[str, tuple[str, ...]], Blocked] = {}
+        for b in blocked_seen:
+            merged.setdefault((b.needs, tuple(b.fields)), b)
+        if merged:
+            fields = ", ".join(sorted({f for _, fs in merged for f in fs}))
+            return Chain(
+                Status.CONDITIONS_NOT_SATISFIED,
+                "no chain was found with the identities the declared smoothness allows: identities that "
+                f"need twice continuously differentiable fields were blocked ({fields}). Declare the "
+                "smoothness if it holds; this does not say that a chain then exists",
+                complete=complete,
+                reason="needs_smoothness",
+                blocked=list(merged.values()),
+            )
+        return Chain(
+            Status.UNCHANGED,
             "no chain of identities"
             + (" and premises" if premises else "")
             + " reached "
             + ("the target" if goal is not None else "a smaller form")
-            + f" within the bounds (depth {DERIVE_DEPTH}, width {DERIVE_WIDTH}); this does not say "
-            "that none exists"
+            + f" within the bounds (depth {DERIVE_DEPTH}, width {DERIVE_WIDTH}, {DERIVE_STATES} "
+            "states); this does not say that none exists",
+            complete=complete,
+            reason="not_found",
         )
-        diag.reason = "not_found"
-        return
-    chain: list[_Move] = []
+    moves_found: list[_Move] = []
     expressions: list[sp.Expr] = []
     cursor: sp.Expr | None = final
     while cursor is not None:
         parent, step_move, expression = seen[cursor]
         if step_move is None:
             break
-        chain.append(step_move)
+        moves_found.append(step_move)
         expressions.append(expression)
         cursor = parent
-    chain.reverse()
+    moves_found.reverse()
     expressions.reverse()
-    steps: list[VectorStep] = []
-    given: list[str] = []
+    out = Chain(Status.OK, complete=complete)
     previous = expr
-    for move, after in zip(chain, expressions, strict=True):
+    for move, after in zip(moves_found, expressions, strict=True):
         if move.kind == "identity":
-            assert move.rewrite is not None  # noqa: S101
+            if move.rewrite is None:
+                continue
             rw = Rewrite(
                 move.rewrite.rule,
                 move.rewrite.reverse,
@@ -597,39 +654,40 @@ def _derive(ctx: Context, expr: sp.Expr, result: VectorResult, diag: VectorDiagn
             )
             step, status, message, blocked, ev = _verified_step(ctx, previous, rw)
             if step is None:
-                result.blocked = blocked
-                _fail(
-                    result,
+                return Chain(
                     status,
                     "a step of the chain failed its check: " + message,
-                    diag,
-                    "verification_failed",
+                    complete=complete,
+                    reason="verification_failed",
+                    blocked=blocked,
+                    verification=ev.verification if ev else None,
                 )
-                return
-            result.verification = ev.verification if ev else result.verification
-            step.action = "derive"
-            steps.append(step)
+            out.verification = ev.verification if ev else out.verification
+            step.action = action  # type: ignore[assignment]
+            step.title = prefix + step.title
+            out.steps.append(step)
         else:
             p = move.premise
-            assert p is not None  # noqa: S101
+            if p is None:
+                continue
             old = p.rhs if move.reverse else p.lhs
-            if move.raw is not None and move.raw != after:
-                tidy_check = ctx.residual(
-                    move.raw, after
-                )  # constants out of operators: an identity
-                if not tidy_check.zero:
-                    _fail(
-                        result,
-                        Status.NOT_VERIFIED,
-                        "tidying a substituted expression was not confirmed",
-                        diag,
-                        "verification_failed",
-                    )
-                    return
-            steps.append(
+            if (
+                move.raw is not None
+                and move.raw != after
+                and not ctx.residual(move.raw, after).zero
+            ):
+                return Chain(
+                    Status.NOT_VERIFIED,
+                    "tidying a substituted expression was not confirmed",
+                    complete=complete,
+                    reason="verification_failed",
+                )
+            out.steps.append(
                 VectorStep(
-                    action="derive",
-                    title=f"Substitute {p.label}" + (" (right to left)" if move.reverse else ""),
+                    action=action,
+                    title=prefix
+                    + f"Substitute {p.label}"
+                    + (" (right to left)" if move.reverse else ""),
                     before_latex=ctx.latex(previous),
                     after_latex=ctx.latex(after),
                     part_latex=ctx.latex(old),
@@ -637,24 +695,42 @@ def _derive(ctx: Context, expr: sp.Expr, result: VectorResult, diag: VectorDiagn
                     given=[p.text],
                 )
             )
-            if p.text not in given:
-                given.append(p.text)
+            if p.text not in out.given:
+                out.given.append(p.text)
         previous = after
-    result.steps = steps
-    result.given = given
-    result.evidence = "conditional" if given else "identity"
-    _show(ctx, previous, result)
+    out.final = previous
+    return out
+
+
+def _derive(ctx: Context, expr: sp.Expr, result: VectorResult, diag: VectorDiagnostics) -> None:
+    rules, premises = _rules(ctx), _premises(ctx)
+    target = ctx.parse(ctx.inp.target) if ctx.inp.target else None
+    if target is not None and kind_of(target) != kind_of(expr):
+        raise Refused(Status.PARSE_ERROR, "the target is not of the same kind", "type_error")
+    chain = find_chain(ctx, expr, target, rules, premises)
+    result.search_complete = chain.complete
+    result.verification = chain.verification
+    if chain.status is not Status.OK or chain.final is None:
+        result.blocked = chain.blocked
+        _fail(result, chain.status, chain.message, diag, chain.reason or "not_found")
+        return
+    result.steps = chain.steps
+    result.given = chain.given
+    result.evidence = "conditional" if chain.given else "identity"
+    _show(ctx, chain.final, result)
     result.status = Status.OK
     result.message = (
-        f"a chain of {len(steps)} step(s); each identity step was checked by comparing the whole "
-        "expressions before and after"
+        f"a chain of {len(chain.steps)} step(s); each identity step was checked by comparing the "
+        "whole expressions before and after"
         + (
-            "; the result holds only given: " + "; ".join(given) + " (supplied by you, not checked)"
-            if given
+            "; the result holds only given: "
+            + "; ".join(chain.given)
+            + " (supplied by you, not checked)"
+            if chain.given
             else ""
         )
     )
-    if not complete:
+    if not chain.complete:
         result.message += (
             ". The search was cut at its bounds, so this chain may not be the shortest"
         )
@@ -664,6 +740,11 @@ def _derive(ctx: Context, expr: sp.Expr, result: VectorResult, diag: VectorDiagn
 def run_step(ctx: Context, result: VectorResult, diag: VectorDiagnostics) -> None:
     inp = ctx.inp
     text = inp.expression
+    if inp.action == "em_derive":
+        from .em import run_em
+
+        run_em(ctx, result, diag)
+        return
     if inp.action == "apply":
         _apply_operator(ctx, text, result, diag)
         return

@@ -850,7 +850,7 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - **Field B:** `vector field`
 - **Status:** `ok`
 - **Match: vector.cross_anticommutes:** $\mathbf{A} \times \mathbf{B} \to \nabla \cdot \left(- \mathbf{B} \times \mathbf{A}\right)$
-- **Match: vector.div_cross:** $\nabla \cdot \mathbf{A} \times \mathbf{B} \to - \mathbf{A} \cdot \left(\nabla \times \mathbf{B}\right) + \mathbf{B} \cdot \left(\nabla \times \mathbf{A}\right)$
+- **Match: vector.div_cross:** $\nabla \cdot \left(\mathbf{A} \times \mathbf{B}\right) \to - \mathbf{A} \cdot \left(\nabla \times \mathbf{B}\right) + \mathbf{B} \cdot \left(\nabla \times \mathbf{A}\right)$
 - 2 way(s) to apply an identity; none was applied or verified. Choose one with `rule_id` and `path` (an identity that needs c2 is blocked unless the fields are declared)
 
 #### curl curl E from Faraday's and Ampere-Maxwell's laws, as supplied by the user
@@ -864,7 +864,7 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - **Field B:** `vector field, smooth`
 - **Status:** `ok`
 - **Result:** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
-- **Step 1 (conditional on curl(E) = -dt(B)): Substitute premise 1:** $- \nabla \times \left(\frac{\partial \mathbf{B}}{\partial t}\right)$
+- **Step 1 (conditional on curl(E) = -dt(B)): Substitute premise 1:** $- \nabla \times \frac{\partial \mathbf{B}}{\partial t}$
 - **Step 2 (identity): vector.time_curl (right to left):** $- \frac{\partial \left(\nabla \times \mathbf{B}\right)}{\partial t}$
 - **Step 3 (conditional on curl(B) = mu0*epsilon0*dt(E)): Substitute premise 2:** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
 - Holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E). Supplied by the user and not checked: not an identity.
@@ -877,7 +877,7 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - **Target:** `-lap(E)` (plain text)
 - **Field E:** `vector field, smooth`
 - **Status:** `unchanged`
-- no chain of identities reached the target within the bounds (depth 4, width 8); this does not say that none exists
+- no chain of identities reached the target within the bounds (depth 6, width 12, 500 states); this does not say that none exists
 
 #### Two vectors side by side are refused, not guessed
 
@@ -1251,6 +1251,130 @@ Puts a tensor expression in canonical form using declared index symmetries (symm
 ## Physics
 
 Mechanics and other physical systems, from a Lagrangian to its conserved quantities.
+
+### Derivations in electromagnetism
+
+*Available in:* chat, HTTP API.
+
+Derivations from the field equations a user adopts as premises (Maxwell's equations in SI units, potentials, statics): the wave equations for the electric and magnetic fields in vacuum, charge conservation, Poynting's theorem, gauge invariance of the fields, Poisson's and Laplace's equations. Each derivation is not a stored answer: its routes are found by the general vector-calculus steps (the handbook's vector identities and the supplied premises) and every identity step is checked by comparing the whole expressions before and after. The result is then evaluated on exact solutions of its premises (plane waves, fields built from random potentials with the sources they imply) and is shown as consistent with them, never as verified by them. A result that used a premise is conditional on it, names it, and is never called an identity or a proof; Minerva does not check that a premise is true. Only the gauge invariance of E and B needs no premise.
+
+**Limits**
+
+- Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems.
+- Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell's equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them.
+- A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for.
+- Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable.
+- The handbook entries for Maxwell's equations are checked for units only (the operators contribute a length or a time); they are premises, not verified laws.
+
+#### The wave equation for E in vacuum, from Maxwell's equations as premises
+
+- **Derivation:** `Wave equation for the electric field in vacuum`
+- **Premise (adopted by the user): Gauss's law in vacuum (no charge):** `div(E) = 0` (plain text)
+- **Premise (adopted by the user): Faraday's law (differential form, SI):** `curl(E) = -dt(B)` (plain text)
+- **Premise (adopted by the user): Ampere-Maxwell law in vacuum (no current):** `curl(B) = mu0*epsilon0*dt(E)` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla^{2} \mathbf{E} = \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Step 1 (conditional on curl(E) = -dt(B)): [route 1] Substitute Faraday's law (differential form, SI):** $- \nabla \times \frac{\partial \mathbf{B}}{\partial t}$
+- **Step 2 (identity): [route 1] vector.time_curl (right to left):** $- \frac{\partial \left(\nabla \times \mathbf{B}\right)}{\partial t}$
+- **Step 3 (conditional on curl(B) = mu0*epsilon0*dt(E)): [route 1] Substitute Ampere-Maxwell law in vacuum (no current):** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Step 4 (identity): [route 2] vector.curl_curl:** $\nabla \left(\nabla \cdot \mathbf{E}\right) - \nabla^{2} \mathbf{E}$
+- **Step 5 (conditional on div(E) = 0): [route 2] Substitute Gauss's law in vacuum (no charge):** $- \nabla^{2} \mathbf{E}$
+- **Derived equation:** $\nabla^{2} \mathbf{E} = \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E); div(E) = 0. Supplied by the user and not checked: not an identity.
+- Wave equation for the electric field in vacuum: conditional on curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E); div(E) = 0 (supplied by you, not checked by Minerva), 5 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Charge conservation from Gauss's law and the Ampere-Maxwell law
+
+- **Derivation:** `Charge conservation from Gauss's law and the Ampere-Maxwell law`
+- **Premise (adopted by the user): Ampere-Maxwell law (differential form, SI):** `curl(B) = mu0*J + mu0*epsilon0*dt(E)` (plain text)
+- **Premise (adopted by the user): Gauss's law (differential form, SI):** `div(E) = rho/epsilon0` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla \cdot \mathbf{J} + \frac{\partial \rho}{\partial t} = 0$
+- **Step 1 (identity): [route 1] vector.div_curl:** $0$
+- **Step 2 (conditional on curl(B) = mu0*J + mu0*epsilon0*dt(E)): [route 2] Substitute Ampere-Maxwell law (differential form, SI):** $\nabla \cdot \left(\epsilon_{0} \mu_{0} \frac{\partial \mathbf{E}}{\partial t} + \mu_{0} \mathbf{J}\right)$
+- **Step 3 (identity): [route 2] vector.div_sum:** $\epsilon_{0} \mu_{0} \nabla \cdot \frac{\partial \mathbf{E}}{\partial t} + \mu_{0} \nabla \cdot \mathbf{J}$
+- **Step 4 (identity): [route 2] vector.time_div (right to left):** $\epsilon_{0} \mu_{0} \frac{\partial \left(\nabla \cdot \mathbf{E}\right)}{\partial t} + \mu_{0} \nabla \cdot \mathbf{J}$
+- **Step 5 (conditional on div(E) = rho/epsilon0): [route 2] Substitute Gauss's law (differential form, SI):** $\mu_{0} \nabla \cdot \mathbf{J} + \mu_{0} \frac{\partial \rho}{\partial t}$
+- **Derived equation:** $\nabla \cdot \mathbf{J} + \frac{\partial \rho}{\partial t} = 0$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: curl(B) = mu0*J + mu0*epsilon0*dt(E); div(E) = rho/epsilon0. Supplied by the user and not checked: not an identity.
+- Charge conservation from Gauss's law and the Ampere-Maxwell law: conditional on curl(B) = mu0*J + mu0*epsilon0*dt(E); div(E) = rho/epsilon0 (supplied by you, not checked by Minerva), 5 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Poynting's theorem
+
+- **Derivation:** `Poynting's theorem from Faraday's and the Ampere-Maxwell law`
+- **Premise (adopted by the user): Faraday's law (differential form, SI):** `curl(E) = -dt(B)` (plain text)
+- **Premise (adopted by the user): Ampere-Maxwell law (differential form, SI):** `curl(B) = mu0*J + mu0*epsilon0*dt(E)` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\mathbf{J} \cdot \mathbf{E} + \frac{\partial \left(\frac{\epsilon_{0} \left(\mathbf{E} \cdot \mathbf{E}\right)}{2} + \frac{\mathbf{B} \cdot \mathbf{B}}{2 \mu_{0}}\right)}{\partial t} + \frac{\nabla \cdot \left(\mathbf{E} \times \mathbf{B}\right)}{\mu_{0}} = 0$
+- **Step 1 (identity): [route 1] vector.div_cross:** $\frac{\mathbf{B} \cdot \left(\nabla \times \mathbf{E}\right) - \mathbf{E} \cdot \left(\nabla \times \mathbf{B}\right)}{\mu_{0}}$
+- **Step 2 (conditional on curl(E) = -dt(B)): [route 1] Substitute Faraday's law (differential form, SI):** $\frac{- \mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t} - \mathbf{E} \cdot \left(\nabla \times \mathbf{B}\right)}{\mu_{0}}$
+- **Step 3 (conditional on curl(B) = mu0*J + mu0*epsilon0*dt(E)): [route 1] Substitute Ampere-Maxwell law (differential form, SI):** $\frac{- \mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t} - \mathbf{E} \cdot \left(\epsilon_{0} \mu_{0} \frac{\partial \mathbf{E}}{\partial t} + \mu_{0} \mathbf{J}\right)}{\mu_{0}}$
+- **Step 4 (identity): [route 1] vector.dot_sum:** $\frac{- \epsilon_{0} \mu_{0} \left(\mathbf{E} \cdot \frac{\partial \mathbf{E}}{\partial t}\right) - \mu_{0} \left(\mathbf{E} \cdot \mathbf{J}\right) - \mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t}}{\mu_{0}}$
+- **Step 5 (identity): [route 2] vector.time_sum_scalar:** $\frac{\epsilon_{0} \frac{\partial \left(\mathbf{E} \cdot \mathbf{E}\right)}{\partial t}}{2} + \frac{\frac{\partial \left(\mathbf{B} \cdot \mathbf{B}\right)}{\partial t}}{2 \mu_{0}}$
+- **Step 6 (identity): [route 2] vector.time_dot:** $\frac{\epsilon_{0} \left(\mathbf{E} \cdot \frac{\partial \mathbf{E}}{\partial t} + \frac{\partial \mathbf{E}}{\partial t} \cdot \mathbf{E}\right)}{2} + \frac{\frac{\partial \left(\mathbf{B} \cdot \mathbf{B}\right)}{\partial t}}{2 \mu_{0}}$
+- **Step 7 (identity): [route 2] vector.time_dot:** $\frac{\epsilon_{0} \left(\mathbf{E} \cdot \frac{\partial \mathbf{E}}{\partial t} + \frac{\partial \mathbf{E}}{\partial t} \cdot \mathbf{E}\right)}{2} + \frac{\mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t} + \frac{\partial \mathbf{B}}{\partial t} \cdot \mathbf{B}}{2 \mu_{0}}$
+- **Derived equation:** $\mathbf{J} \cdot \mathbf{E} + \frac{\partial \left(\frac{\epsilon_{0} \left(\mathbf{E} \cdot \mathbf{E}\right)}{2} + \frac{\mathbf{B} \cdot \mathbf{B}}{2 \mu_{0}}\right)}{\partial t} + \frac{\nabla \cdot \left(\mathbf{E} \times \mathbf{B}\right)}{\mu_{0}} = 0$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: curl(E) = -dt(B); curl(B) = mu0*J + mu0*epsilon0*dt(E). Supplied by the user and not checked: not an identity.
+- Poynting's theorem from Faraday's and the Ampere-Maxwell law: conditional on curl(E) = -dt(B); curl(B) = mu0*J + mu0*epsilon0*dt(E) (supplied by you, not checked by Minerva), 7 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Gauge invariance of E and B is an identity (no premise)
+
+- **Derivation:** `Gauge invariance of E and B`
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla \times \left(\mathbf{A} + \nabla \chi\right) = \nabla \times \mathbf{A} \quad - \nabla \left(\phi - \frac{\partial \chi}{\partial t}\right) - \frac{\partial \left(\mathbf{A} + \nabla \chi\right)}{\partial t} = - \nabla \phi - \frac{\partial \mathbf{A}}{\partial t}$
+- **Step 1 (identity): [route 1] vector.curl_sum:** $\nabla \times \mathbf{A} + \nabla \times \left(\nabla \chi\right)$
+- **Step 2 (identity): [route 1] vector.curl_grad:** $\nabla \times \mathbf{A}$
+- **Step 3 (identity): [route 2] vector.grad_sum:** $- (\nabla \phi - \nabla \frac{\partial \chi}{\partial t}) - \frac{\partial \left(\mathbf{A} + \nabla \chi\right)}{\partial t}$
+- **Step 4 (identity): [route 2] vector.time_sum_vector:** $- (\nabla \phi - \nabla \frac{\partial \chi}{\partial t}) - \left(\frac{\partial \mathbf{A}}{\partial t} + \frac{\partial \left(\nabla \chi\right)}{\partial t}\right)$
+- **Step 5 (identity): [route 2] vector.time_grad:** $- (\nabla \phi - \nabla \frac{\partial \chi}{\partial t}) - \left(\nabla \frac{\partial \chi}{\partial t} + \frac{\partial \mathbf{A}}{\partial t}\right)$
+- **Derived equation:** $\nabla \times \left(\mathbf{A} + \nabla \chi\right) = \nabla \times \mathbf{A}$
+- **Derived equation:** $- \nabla \left(\phi - \frac{\partial \chi}{\partial t}\right) - \frac{\partial \left(\mathbf{A} + \nabla \chi\right)}{\partial t} = - \nabla \phi - \frac{\partial \mathbf{A}}{\partial t}$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- **Check:** each identity step: the whole expressions before and after differ by an exactly zero component residual, and an independent Cartesian evaluation agrees
+- Gauge invariance of E and B: an identity (no premise was needed), 5 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Poisson's equation from Gauss's law and the electrostatic potential
+
+- **Derivation:** `Poisson's equation from Gauss's law and the electrostatic potential`
+- **Premise (adopted by the user): Gauss's law (differential form, SI):** `div(E) = rho/epsilon0` (plain text)
+- **Premise (adopted by the user): Electrostatic potential:** `grad(phi) = -E` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla^{2} \phi = - \frac{\rho}{\epsilon_{0}}$
+- **Step 1 (identity): [route 1] vector.laplacian_scalar:** $\nabla \cdot \left(\nabla \phi\right)$
+- **Step 2 (conditional on grad(phi) = -E): [route 1] Substitute Electrostatic potential:** $- \nabla \cdot \mathbf{E}$
+- **Step 3 (conditional on div(E) = rho/epsilon0): [route 1] Substitute Gauss's law (differential form, SI):** $- \frac{\rho}{\epsilon_{0}}$
+- **Derived equation:** $\nabla^{2} \phi = - \frac{\rho}{\epsilon_{0}}$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: grad(phi) = -E; div(E) = rho/epsilon0. Supplied by the user and not checked: not an identity.
+- Poisson's equation from Gauss's law and the electrostatic potential: conditional on grad(phi) = -E; div(E) = rho/epsilon0 (supplied by you, not checked by Minerva), 3 verified step(s) over 1 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Without the Ampere-Maxwell law the wave equation is not derived, and Minerva asks for it
+
+- **Derivation:** `Wave equation for the electric field in vacuum`
+- **Premise (adopted by the user): Gauss's law in vacuum (no charge):** `div(E) = 0` (plain text)
+- **Premise (adopted by the user): Faraday's law (differential form, SI):** `curl(E) = -dt(B)` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `conditions_not_satisfied`
+- Needs these premises (the user adopts them): curl(B) = mu0*epsilon0*dt(E)
+- Wave equation for the electric field in vacuum needs these field equations as premises, and they were not supplied exactly as written: curl(B) = mu0*epsilon0*dt(E). They are yours to adopt: Minerva does not assume them.
+
+#### Without declared smoothness the identities are blocked
+
+- **Derivation:** `Charge conservation from Gauss's law and the Ampere-Maxwell law`
+- **Premise (adopted by the user): Ampere-Maxwell law (differential form, SI):** `curl(B) = mu0*J + mu0*epsilon0*dt(E)` (plain text)
+- **Premise (adopted by the user): Gauss's law (differential form, SI):** `div(E) = rho/epsilon0` (plain text)
+- **Status:** `conditions_not_satisfied`
+- Not shown: needs c2 smoothness of B. vector.div_curl holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
+- Not shown: needs c2 smoothness of E. vector.time_div holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
+- route 1 (div(curl(B)) to 0) failed: no chain was found with the identities the declared smoothness allows: identities that need twice continuously differentiable fields were blocked (B, E). Declare the smoothness if it holds; this does not say that a chain then exists
 
 ### Lagrangian mechanics
 
