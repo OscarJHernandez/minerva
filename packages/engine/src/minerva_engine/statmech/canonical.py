@@ -26,7 +26,7 @@ from .models import (
     StatQuantity,
     StatStep,
 )
-from .oracle import DIFF_TOL, DPS, MIN_POINTS, Oracle, Point, close, sample_points
+from .oracle import DPS, MIN_POINTS, BaseOracle, Oracle, Point, close, sample_points
 from .setup import Problem, Refusal
 
 TIDY_MAX_OPS = 160
@@ -52,17 +52,50 @@ def tidy(expr: sp.Expr) -> sp.Expr:
         return expr
 
 
+def make_oracle(problem: Problem) -> BaseOracle:
+    """The independent numerical oracle for the kind of system."""
+    if problem.kind == "levels":
+        return Oracle(problem)
+    from .systems import ClassicalOracle, DosOracle, FamilyOracle
+
+    if problem.kind == "level_family":
+        return FamilyOracle(problem)
+    if problem.kind == "density_of_states":
+        return DosOracle(problem)
+    return ClassicalOracle(problem)
+
+
 class Canonical:
     """Symbolic quantities in the inverse temperature, displayed in the user's variable."""
 
     def __init__(self, problem: Problem) -> None:
         self.p = problem
         b, kB = problem.beta, problem.k_B
-        terms = [
-            g * sp.exp(-b * e) for e, g in zip(problem.energies, problem.degeneracies, strict=True)
-        ]
-        self.Z: sp.Expr = sp.Add(*terms)
-        self.lnZ: sp.Expr = sp.log(self.Z)
+        terms: list[sp.Expr] = []
+        if problem.kind == "levels":
+            terms = [
+                g * sp.exp(-b * e)
+                for e, g in zip(problem.energies, problem.degeneracies, strict=True)
+            ]
+            z1: sp.Expr = sp.Add(*terms)
+        elif problem.Z1 is None:
+            raise Refusal(
+                "unsupported_system",
+                "no closed form of the partition function was found, so it cannot be differentiated "
+                "symbolically; numerical evaluation (action evaluate) is available",
+            )
+        else:
+            z1 = problem.Z1
+        n = problem.copies_count
+        if n is None:
+            self.Z: sp.Expr = z1
+            self.lnZ: sp.Expr = sp.log(z1)
+        elif problem.identical:
+            self.Z = z1**n / sp.factorial(n)
+            self.lnZ = n * sp.log(z1) - sp.log(sp.factorial(n))
+        else:
+            self.Z = z1**n
+            self.lnZ = n * sp.log(z1)
         U = tidy(-sp.diff(self.lnZ, b))
         self.base: dict[str, sp.Expr] = {
             "Z": self.Z,
@@ -72,7 +105,9 @@ class Canonical:
             "S": tidy(kB * (self.lnZ + b * U)),
             "Var_E": tidy(sp.diff(self.lnZ, b, 2)),
         }
-        self.probabilities: list[sp.Expr] = [t / self.Z for t in terms]
+        self.probabilities: list[sp.Expr] = (
+            [t / self.Z for t in terms] if problem.kind == "levels" and n is None else []
+        )
 
     # -- display -------------------------------------------------------------------------
     def shown(self, expr: sp.Expr) -> sp.Expr:
@@ -142,33 +177,11 @@ def _scale_expr(problem: Problem, text: str) -> sp.Expr:
         raise Refusal("parse_error", "the scale of a derivative is not a valid expression") from exc
 
 
-def _diff_at(
-    oracle: Oracle,
-    point: Point,
-    name: str,
-    variable: str,
-    order: int,
-) -> Any:
-    """mpmath's numerical derivative of an enumerated base quantity (independent of sympy)."""
-    p = oracle.problem
-    with mp.workdps(DPS):
-        if variable in {p.beta.name, p.T.name}:
-            if variable == p.beta.name:
-                return mp.diff(lambda x: oracle.quantity(name, point, beta=x), point[p.beta], order)
-            return mp.diff(
-                lambda x: oracle.quantity(name, point, beta=1 / (point[p.k_B] * x)),
-                point[p.T],
-                order,
-            )
-        symbol = next(s for s in p.params if s.name == variable)
-        return mp.diff(lambda x: oracle.quantity(name, {**point, symbol: x}), point[symbol], order)
-
-
-def _evaluator(oracle: Oracle, expr: sp.Expr) -> Callable[[Point], Any]:
+def _evaluator(oracle: BaseOracle, expr: sp.Expr) -> Callable[[Point], Any]:
     return lambda pt: oracle.eval_expr(expr, pt)
 
 
-def _enumerated(oracle: Oracle, name: str) -> Callable[[Point], Any]:
+def _enumerated(oracle: BaseOracle, name: str) -> Callable[[Point], Any]:
     return lambda pt: oracle.quantity(name, pt)
 
 
@@ -184,6 +197,7 @@ def compare(
     reference: Callable[[Point], Any],
     detail: str,
     tol: Any,
+    min_points: int = MIN_POINTS,
 ) -> StatCheck:
     agreed = 0
     with mp.workdps(DPS):  # the oracle's numbers and the tolerance are 50-digit quantities
@@ -193,14 +207,14 @@ def compare(
                     agreed += 1
             except (ValueError, ZeroDivisionError, OverflowError):
                 continue
-    ok = len(points) >= MIN_POINTS and agreed == len(points)
+    ok = len(points) >= min_points and agreed == len(points)
     return StatCheck(
         name=name, subject=subject, passed=ok, points=len(points), agreed=agreed, detail=detail
     )
 
 
 def numeric_checks_base(
-    canon: Canonical, oracle: Oracle, names: Sequence[str], points: list[Point]
+    canon: Canonical, oracle: BaseOracle, names: Sequence[str], points: list[Point]
 ) -> dict[str, list[StatCheck]]:
     """Enumeration (and, where a derivative produced the formula, finite-difference) checks."""
     p = canon.p
@@ -214,8 +228,8 @@ def numeric_checks_base(
                 points,
                 _evaluator(oracle, expr),
                 _enumerated(oracle, n),
-                "direct sum over the levels, log-sum-exp",
-                mp.mpf(10) ** -18,
+                "direct numerical evaluation (sum, quadrature or log-sum-exp)",
+                oracle.tol,
             )
         )
         if n == "U":
@@ -225,9 +239,9 @@ def numeric_checks_base(
                     n,
                     points,
                     _evaluator(oracle, expr),
-                    lambda pt: -_diff_at(oracle, pt, "lnZ", p.beta.name, 1),
+                    lambda pt: -oracle.derivative_of("lnZ", pt, p.beta.name, 1),
                     "minus the numerical derivative of the enumerated ln Z with respect to beta",
-                    DIFF_TOL,
+                    oracle.diff_tol,
                 )
             )
         elif n == "Var_E":
@@ -237,9 +251,9 @@ def numeric_checks_base(
                     n,
                     points,
                     _evaluator(oracle, expr),
-                    lambda pt: _diff_at(oracle, pt, "lnZ", p.beta.name, 2),
+                    lambda pt: oracle.derivative_of("lnZ", pt, p.beta.name, 2),
                     "the second numerical derivative of the enumerated ln Z with respect to beta",
-                    DIFF_TOL,
+                    oracle.diff_tol,
                 )
             )
             out[n].append(_nonnegative(expr, oracle, points))
@@ -250,9 +264,9 @@ def numeric_checks_base(
                     n,
                     points,
                     _evaluator(oracle, expr),
-                    lambda pt: -_diff_at(oracle, pt, "F", p.T.name, 1),
+                    lambda pt: -oracle.derivative_of("F", pt, p.T.name, 1),
                     "minus the numerical derivative of the enumerated F with respect to T",
-                    DIFF_TOL,
+                    oracle.diff_tol,
                 )
             )
     if {"F", "U", "S"} <= set(names):
@@ -266,13 +280,13 @@ def numeric_checks_base(
                     oracle.quantity("U", pt) - oracle.quantity("S", pt) / (pt[p.k_B] * pt[p.beta])
                 ),
                 "F = U - T S on the enumerated values",
-                mp.mpf(10) ** -18,
+                oracle.tol,
             )
         )
     return out
 
 
-def _nonnegative(expr: sp.Expr, oracle: Oracle, points: list[Point]) -> StatCheck:
+def _nonnegative(expr: sp.Expr, oracle: BaseOracle, points: list[Point]) -> StatCheck:
     with mp.workdps(DPS):
         ok = all(oracle.eval_expr(expr, pt) >= -(mp.mpf(10) ** -30) for pt in points)
     return StatCheck(
@@ -338,29 +352,58 @@ def levels_step(problem: Problem, canon: Canonical) -> StatStep:
     )
 
 
+def partition_conditions(problem: Problem) -> list[Condition]:
+    b = to_latex(problem.beta)
+    base = Condition(
+        latex=rf"{b} > 0,\ k_B > 0",
+        established=True,
+        how="positive by the definition of an ensemble temperature",
+    )
+    if problem.kind == "levels":
+        return [
+            base,
+            Condition(
+                latex=r"\text{finite sum}",
+                established=True,
+                how="a finite sum of exponentials always converges; derivatives pass through it exactly",
+            ),
+        ]
+    return [base, *problem.conditions]
+
+
 def partition_steps(problem: Problem, canon: Canonical) -> list[StatStep]:
     b = to_latex(problem.beta)
-    return [
-        levels_step(problem, canon),
-        StatStep(
-            name="partition_function",
-            title="Partition function",
-            latex=rf"Z = \sum_i g_i\, e^{{-{b} E_i}} = {canon.latex(canon.Z)}",
-            text=canon.text(canon.Z),
-            conditions=[
-                Condition(
-                    latex=rf"{b} > 0,\ k_B > 0",
-                    established=True,
-                    how="positive by the definition of an ensemble temperature",
+    if problem.kind == "levels":
+        steps = [
+            levels_step(problem, canon),
+            StatStep(
+                name="partition_function",
+                title="Partition function",
+                latex=rf"Z = \sum_i g_i\, e^{{-{b} E_i}} = {canon.latex(canon.Z)}",
+                text=canon.text(canon.Z),
+                conditions=partition_conditions(problem),
+            ),
+        ]
+    else:
+        steps = [step.model_copy(deep=True) for step in problem.setup_steps]
+        for step in steps:
+            if step.name == "partition_function":
+                step.conditions = partition_conditions(problem)
+    n = problem.copies_count
+    if n is not None:
+        steps.append(
+            StatStep(
+                name="copies",
+                title="Independent copies",
+                latex=(
+                    rf"Z = \frac{{Z_1^{{{to_latex(n)}}}}}{{{to_latex(n)}!}} = {canon.latex(canon.Z)}"
+                    if problem.identical
+                    else rf"Z = Z_1^{{{to_latex(n)}}} = {canon.latex(canon.Z)}"
                 ),
-                Condition(
-                    latex=r"\text{finite sum}",
-                    established=True,
-                    how="a finite sum of exponentials always converges; derivatives pass through it exactly",
-                ),
-            ],
-        ),
-    ]
+                text=canon.text(canon.Z),
+            )
+        )
+    return steps
 
 
 def probabilities_step(canon: Canonical) -> StatStep:
@@ -415,7 +458,7 @@ def derive(
     problem: Problem, request: StatMechInput, deadline: float
 ) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
     canon = Canonical(problem)
-    oracle = Oracle(problem)
+    oracle = make_oracle(problem)
     points = sample_points(problem)
     names = list(request.quantities)
     if not names and not request.partials:
@@ -427,7 +470,7 @@ def derive(
     steps = partition_steps(problem, canon)
     quantities: list[StatQuantity] = []
     routes = {
-        "Z": "sum of Boltzmann weights over the levels",
+        "Z": "partition function of the system (single copy raised to the number of copies)",
         "lnZ": "logarithm of Z",
         "F": "F = -(1/beta) ln Z",
         "U": "U = -d ln Z / d beta",
@@ -465,8 +508,7 @@ def derive(
                 else [],
             )
         )
-    if problem.energies and len(problem.energies) <= SYMBOLIC_LEVELS:
-        _attach_symbolic(canon, quantities, deadline)
+    _attach_symbolic(canon, quantities, deadline)
     for spec in request.partials:
         quantities.append(_partial_quantity(canon, oracle, points, spec))
         steps.append(
@@ -477,7 +519,7 @@ def derive(
                 text=quantities[-1].text,
             )
         )
-    return steps, quantities, partition_steps(problem, canon)[1].conditions
+    return steps, quantities, partition_conditions(problem)
 
 
 def _equation(name: str, canon: Canonical, expr: sp.Expr) -> str:
@@ -501,11 +543,24 @@ def _equation(name: str, canon: Canonical, expr: sp.Expr) -> str:
 
 
 def _attach_symbolic(canon: Canonical, quantities: list[StatQuantity], deadline: float) -> None:
-    """Symbolic-zero leg: U and Var_E against their direct moments."""
+    """Symbolic-zero leg: U and Var_E against their direct moments, where those are available."""
     p = canon.p
-    w = canon.probabilities
-    u_direct = sp.Add(*[wi * e for wi, e in zip(w, p.energies, strict=True)])
-    var_direct = sp.Add(*[wi * (e - u_direct) ** 2 for wi, e in zip(w, p.energies, strict=True)])
+    if p.copies_count is not None:
+        return
+    if p.kind == "levels":
+        if not 0 < len(p.energies) <= SYMBOLIC_LEVELS:
+            return
+        w = canon.probabilities
+        u_direct = sp.Add(*[wi * e for wi, e in zip(w, p.energies, strict=True)])
+        var_direct = sp.Add(
+            *[wi * (e - u_direct) ** 2 for wi, e in zip(w, p.energies, strict=True)]
+        )
+    elif p.moments1 is not None:
+        m0, m1, m2 = p.moments1
+        u_direct = m1 / m0
+        var_direct = m2 / m0 - u_direct**2
+    else:
+        return
     for q in quantities:
         if q.name == "U":
             q.checks.append(symbolic_zero("U", canon.base["U"], u_direct, deadline))
@@ -514,7 +569,7 @@ def _attach_symbolic(canon: Canonical, quantities: list[StatQuantity], deadline:
 
 
 def _partial_quantity(
-    canon: Canonical, oracle: Oracle, points: list[Point], spec: Partial
+    canon: Canonical, oracle: BaseOracle, points: list[Point], spec: Partial
 ) -> StatQuantity:
     problem = canon.p
     expr, fixed = canon.partial(spec)
@@ -531,10 +586,10 @@ def _partial_quantity(
         points,
         lambda pt: oracle.eval_expr(shown_total, pt),
         lambda pt: (
-            oracle.eval_expr(scale_shown, pt) * _diff_at(oracle, pt, spec.of, var, spec.order)
+            oracle.eval_expr(scale_shown, pt) * oracle.derivative_of(spec.of, pt, var, spec.order)
         ),
         "numerical derivative of the enumerated quantity, the other state variables fixed",
-        DIFF_TOL,
+        oracle.diff_tol,
     )
     d = "d" if spec.order == 1 else f"d^{spec.order}"
     label = spec.label or f"{d}{spec.of}/d{var}"
@@ -554,6 +609,8 @@ def _partial_quantity(
 def expectation(
     problem: Problem, request: StatMechInput, deadline: float
 ) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
+    if problem.kind != "levels" or problem.copies_count is not None:
+        return expectation_energy(problem, request, deadline)
     canon = Canonical(problem)
     oracle = Oracle(problem)
     name = request.observable
@@ -661,11 +718,115 @@ def expectation(
     return steps, [q], conditions
 
 
+Cumulants = list[Any]
+
+
+def _energy_statistic(
+    k: dict[int, sp.Expr], stat: str, order: int
+) -> tuple[sp.Expr, int, Callable[[Cumulants], Any]]:
+    """The statistic of E as an expression in the cumulants, and the same from numeric cumulants."""
+    if stat == "mean":
+        return k[1], 1, lambda c: c[0]
+    if stat == "variance":
+        return k[2], 2, lambda c: c[1]
+    if stat == "cumulant":
+        return k[order], order, lambda c: c[order - 1]
+    if stat == "central_moment":
+        central: dict[int, tuple[sp.Expr, Callable[[Cumulants], Any]]] = {
+            1: (sp.Integer(0), lambda c: 0),
+            2: (k[2], lambda c: c[1]),
+            3: (k[3], lambda c: c[2]),
+            4: (k[4] + 3 * k[2] ** 2, lambda c: c[3] + 3 * c[1] ** 2),
+        }
+        return central[order][0], order, central[order][1]
+    raw: dict[int, tuple[sp.Expr, Callable[[Cumulants], Any]]] = {
+        1: (k[1], lambda c: c[0]),
+        2: (k[2] + k[1] ** 2, lambda c: c[1] + c[0] ** 2),
+        3: (k[3] + 3 * k[2] * k[1] + k[1] ** 3, lambda c: c[2] + 3 * c[1] * c[0] + c[0] ** 3),
+        4: (
+            k[4] + 4 * k[3] * k[1] + 3 * k[2] ** 2 + 6 * k[2] * k[1] ** 2 + k[1] ** 4,
+            lambda c: c[3] + 4 * c[2] * c[0] + 3 * c[1] ** 2 + 6 * c[1] * c[0] ** 2 + c[0] ** 4,
+        ),
+    }
+    return raw[order][0], order, raw[order][1]
+
+
+def expectation_energy(
+    problem: Problem, request: StatMechInput, deadline: float
+) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
+    """Statistics of the energy from derivatives of ln Z (any system with a closed form).
+
+    The cumulants are kappa_n = (-1)^n d^n ln Z / d beta^n; they are compared with the cumulants of
+    the directly enumerated moments. Per-level observables exist only for an explicit list of levels.
+    """
+    if request.observable != "E" or request.statistic == "covariance":
+        raise Refusal(
+            "unknown_observable",
+            "for this system only statistics of the energy E are available; observables with "
+            "values per level need an explicit list of levels (without copies)",
+        )
+    canon = Canonical(problem)
+    oracle = make_oracle(problem)
+    points = sample_points(problem)
+    b = problem.beta
+    k = {n: tidy((-1) ** n * sp.diff(canon.lnZ, b, n)) for n in (1, 2, 3, 4)}
+    order, stat = request.order, request.statistic
+    expr, kn, ref = _energy_statistic(k, stat, order)
+    expr = tidy(expr)
+    shown = canon.shown(expr)
+
+    def reference(pt: Point) -> Any:
+        return ref([oracle.energy_cumulant(pt, j) for j in (1, 2, 3, 4)])
+
+    checks = [
+        compare(
+            "enumeration",
+            stat,
+            points,
+            _evaluator(oracle, shown),
+            reference,
+            "cumulants of the directly enumerated moments of E",
+            oracle.tol * 10**3,
+        )
+    ]
+    if stat in {"variance"} or (stat == "cumulant" and order == 2):
+        checks.append(_nonnegative(shown, oracle, points))
+    if stat in {"mean", "variance", "cumulant"} and kn <= (4 if oracle.exact else 2):
+        checks.append(
+            compare(
+                "fluctuation_response",
+                f"kappa_{kn}(E)",
+                points,
+                _evaluator(oracle, shown),
+                lambda pt: (-1) ** kn * oracle.derivative_of("lnZ", pt, problem.beta.name, kn),
+                "cumulant of E as (-1)^n times the n-th numerical derivative of ln Z with respect to beta",
+                oracle.diff_tol * 10,
+            )
+        )
+    conditions = partition_conditions(problem)
+    q = make_quantity(
+        canon,
+        f"{stat}_E",
+        expr,
+        title=f"{stat.replace('_', ' ').capitalize()} of E",
+        route="cumulants of E as derivatives of ln Z with respect to beta",
+        held_fixed=sorted(s.name for s in problem.params),
+        checks=checks,
+    )
+    steps = [
+        *partition_steps(problem, canon),
+        StatStep(
+            name="expectation", title=q.title, latex=q.latex, text=q.text, conditions=conditions
+        ),
+    ]
+    return steps, [q], conditions
+
+
 def _response_checks(
     problem: Problem,
     request: StatMechInput,
     canon: Canonical,
-    oracle: Oracle,
+    oracle: BaseOracle,
     points: list[Point],
     expr: sp.Expr,
     n: int,
@@ -683,9 +844,9 @@ def _response_checks(
                 f"kappa_{n}(E)",
                 points,
                 lambda pt: oracle.eval_expr(shown, pt),
-                lambda pt: (-1) ** n * _diff_at(oracle, pt, "lnZ", p.beta.name, n),
+                lambda pt: (-1) ** n * oracle.derivative_of("lnZ", pt, p.beta.name, n),
                 "cumulant of E as (-1)^n times the n-th derivative of the enumerated ln Z with respect to beta",
-                DIFF_TOL * 10,
+                oracle.diff_tol * 10,
             )
         )
         conditions.append(
@@ -727,10 +888,10 @@ def _response_checks(
             f"kappa_{n}({request.observable})",
             points,
             lambda pt: oracle.eval_expr(shown, pt),
-            lambda pt: _diff_at(oracle, pt, "lnZ", lam.name, n) / pt[b] ** n,
+            lambda pt: oracle.derivative_of("lnZ", pt, lam.name, n) / pt[b] ** n,
             f"cumulant as beta^-{n} times the {n}-th derivative of the enumerated ln Z with respect to "
             f"{lam.name}",
-            DIFF_TOL * 10,
+            oracle.diff_tol * 10,
         )
     )
     response = tidy(sp.diff(canon.lnZ, lam, n) / b**n)

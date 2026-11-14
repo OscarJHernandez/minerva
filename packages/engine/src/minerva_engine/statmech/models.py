@@ -8,7 +8,7 @@ reasons only, never expressions.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ from ..distributions.models import Condition
 from ..models import Status
 
 Ensemble = Literal["canonical"]
-Action = Literal["analyze", "partition", "derive", "expectation"]
+Action = Literal["analyze", "partition", "derive", "expectation", "evaluate"]
 TemperatureVariable = Literal["beta", "T"]
 BaseQuantity = Literal["Z", "lnZ", "F", "U", "S", "Var_E"]
 Statistic = Literal["mean", "moment", "central_moment", "cumulant", "variance", "covariance"]
@@ -32,6 +32,10 @@ Reason = Literal[
     "verification_failed",
     "unsupported_system",
     "resource_limit",
+    "divergent",
+    "convergence_not_provable",
+    "not_separable",
+    "convention_unconfirmed",
 ]
 Stage = Literal["parse", "build", "symbolic", "verify", "expectation", "analyze"]
 
@@ -54,7 +58,61 @@ class LevelsSystem(BaseModel):
     levels: list[LevelSpec] = Field(min_length=1, max_length=MAX_LEVELS)
 
 
-System = LevelsSystem
+class FamilySystem(BaseModel):
+    """Levels E(n) with degeneracy g(n) for an integer index, finite or infinite."""
+
+    kind: Literal["level_family"] = "level_family"
+    index: str = Field(default="n", max_length=8)
+    energy: str = Field(max_length=300)
+    degeneracy: str = Field(default="1", max_length=100)
+    lower: str = Field(default="0", max_length=32)
+    upper: str = Field(default="oo", max_length=32)
+
+
+class DosSystem(BaseModel):
+    """A continuous spectrum with density of states rho(E) on [lower, upper]."""
+
+    kind: Literal["density_of_states"] = "density_of_states"
+    variable: str = Field(default="En", max_length=8)
+    density: str = Field(max_length=300)
+    lower: str = Field(max_length=32)
+    upper: str = Field(default="oo", max_length=32)
+
+
+class PhaseVariable(BaseModel):
+    name: str = Field(max_length=16)
+    domain_lower: str = Field(default="-oo", max_length=64)
+    domain_upper: str = Field(default="oo", max_length=64)
+
+
+class ClassicalSystem(BaseModel):
+    """A classical Hamiltonian H(p, q) of one copy of the system, integrated over phase space.
+
+    ``phase_space_cell`` (the divisor of the phase-space measure, e.g. ``h^3`` for three degrees of
+    freedom, or ``1``) is a convention only the user chooses; without it the result is
+    ``convention_unconfirmed``.
+    """
+
+    kind: Literal["classical"] = "classical"
+    hamiltonian: str = Field(max_length=400)
+    variables: list[PhaseVariable] = Field(min_length=1, max_length=8)
+    phase_space_cell: str | None = Field(default=None, max_length=64)
+
+
+System = Annotated[
+    LevelsSystem | FamilySystem | DosSystem | ClassicalSystem, Field(discriminator="kind")
+]
+
+
+class Copies(BaseModel):
+    """``count`` independent, non-interacting copies of the system.
+
+    ``identical`` is the user's choice: true divides by count! (the Boltzmann counting of the
+    classical limit, not exact quantum statistics); false treats the copies as distinguishable.
+    """
+
+    count: str = Field(max_length=32)
+    identical: bool | None = None
 
 
 class Partial(BaseModel):
@@ -80,9 +138,23 @@ class Coupling(BaseModel):
     observable: str = Field(max_length=32)
 
 
+MAX_SWEEP_POINTS = 60
+
+
+class Sweep(BaseModel):
+    """Evaluate over a range of one symbol (all numbers are the user's)."""
+
+    variable: str = Field(max_length=32)
+    start: str = Field(max_length=32)
+    stop: str = Field(max_length=32)
+    points: int = Field(default=11, ge=2, le=MAX_SWEEP_POINTS)
+    scale: Literal["linear", "log"] = "linear"
+
+
 class StatMechInput(BaseModel):
     ensemble: Ensemble = "canonical"
     system: System
+    copies: Copies | None = None
     format: Literal["text", "latex"] = "text"
     temperature: TemperatureVariable = "beta"
     # Names of the temperature-related symbols; they are positive by the definition of a temperature.
@@ -101,6 +173,9 @@ class StatMechInput(BaseModel):
     order: int = Field(default=1, ge=1, le=MAX_ORDER)
     other_observable: str | None = Field(default=None, max_length=32)
     coupling: Coupling | None = None
+    # evaluate: the numbers are chosen by the user, never by the model
+    values: dict[str, str] = Field(default_factory=dict, max_length=16)
+    sweep: Sweep | None = None
 
 
 class StatStep(BaseModel):
@@ -171,6 +246,14 @@ class StatMechVerification(BaseModel):
     note: str = ""
 
 
+class StatTable(BaseModel):
+    """Numerical values over a sweep: one column per quantity, numbers as decimal strings."""
+
+    columns: list[str]
+    rows: list[list[str]]
+    variable: str = ""
+
+
 class StatMechResult(BaseModel):
     status: Status
     action: Action
@@ -182,6 +265,8 @@ class StatMechResult(BaseModel):
     conditions: list[Condition] = Field(default_factory=list)
     methods: list[MethodSuggestion] = Field(default_factory=list)
     not_supported: list[str] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+    table: StatTable | None = None
     verification: StatMechVerification = Field(default_factory=StatMechVerification)
     diagnostics: StatMechDiagnostics = Field(default_factory=StatMechDiagnostics)
     notes: list[str] = Field(default_factory=list)

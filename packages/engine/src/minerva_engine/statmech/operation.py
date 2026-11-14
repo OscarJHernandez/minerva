@@ -30,6 +30,7 @@ from .models import (
     StatMechVerification,
     StatQuantity,
 )
+from .numeric import evaluate
 from .oracle import MIN_POINTS, Oracle, sample_points
 from .setup import Refusal, build_problem
 
@@ -43,6 +44,10 @@ _STATUS_FOR_REASON: dict[Reason, Status] = {
     "unsupported_system": Status.UNSUPPORTED,
     "verification_failed": Status.NOT_VERIFIED,
     "resource_limit": Status.RESOURCE_LIMIT,
+    "divergent": Status.CONDITIONS_NOT_SATISFIED,
+    "convergence_not_provable": Status.CONDITIONS_NOT_SATISFIED,
+    "not_separable": Status.UNSUPPORTED,
+    "convention_unconfirmed": Status.CONDITIONS_NOT_SATISFIED,
 }
 
 # Checks whose failure means the formula is not shown. A symbolic zero that is undecided is extra
@@ -78,7 +83,12 @@ class _Trace:
 
 
 def _failure(
-    request: StatMechInput, reason: Reason, message: str, trace: _Trace, diag: StatMechDiagnostics
+    request: StatMechInput,
+    reason: Reason,
+    message: str,
+    trace: _Trace,
+    diag: StatMechDiagnostics,
+    questions: list[str] | None = None,
 ) -> StatMechResult:
     diag.reason = reason
     diag.events = trace.events
@@ -88,6 +98,7 @@ def _failure(
         ensemble=request.ensemble,
         reason=reason,
         message=message,
+        questions=questions or [],
         diagnostics=diag,
     )
 
@@ -96,15 +107,17 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
     started = time.monotonic()
     deadline = started + 0.8 * limits.timeout_seconds
     trace = _Trace()
+    levels = getattr(request.system, "levels", None)
     diag = StatMechDiagnostics(
-        levels=len(request.system.levels), parameters=len(request.parameters)
+        levels=len(levels) if levels is not None else 0, parameters=len(request.parameters)
     )
     stage: Stage = "parse"
     try:
         problem = build_problem(request, limits)
         trace.mark("parse")
         stage = "build"
-        notes: list[str] = []
+        notes: list[str] = list(problem.notes)
+        table = None
         if request.action == "analyze":
             stage = "analyze"
             result = StatMechResult(
@@ -126,20 +139,23 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
                 request.model_copy(update={"quantities": ["Z", "lnZ"], "partials": []}),
                 deadline,
             )
-            canon = Canonical(problem)
-            steps.append(probabilities_step(canon))
-            quantities.append(
-                StatQuantity(
-                    name="probabilities",
-                    title="Probability of each level",
-                    latex=steps[-1].latex,
-                    text=steps[-1].text,
-                    route="P_i = g_i exp(-beta E_i) / Z",
-                    checks=probability_checks(canon, Oracle(problem), sample_points(problem)),
+            if problem.kind == "levels" and problem.copies_count is None:
+                canon = Canonical(problem)
+                steps.append(probabilities_step(canon))
+                quantities.append(
+                    StatQuantity(
+                        name="probabilities",
+                        title="Probability of each level",
+                        latex=steps[-1].latex,
+                        text=steps[-1].text,
+                        route="P_i = g_i exp(-beta E_i) / Z",
+                        checks=probability_checks(canon, Oracle(problem), sample_points(problem)),
+                    )
                 )
-            )
         elif request.action == "derive":
             steps, quantities, conditions = derive(problem, request, deadline)
+        elif request.action == "evaluate":
+            steps, quantities, conditions, table = evaluate(problem, request, deadline)
         else:
             steps, quantities, conditions = expectation(problem, request, deadline)
         trace.mark("symbolic")
@@ -159,17 +175,19 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
         )
         diag.points_checked = verification.points_checked
         diag.points_agreed = verification.points_agreed
-        if failed or verification.points_checked < MIN_POINTS:
+        if failed or verification.points_checked < (
+            1 if request.action == "evaluate" else MIN_POINTS
+        ):
             trace.mark("verify", "failed", "verification_failed")
             return _failure(
                 request,
                 "verification_failed",
-                "A formula did not agree with the independent enumeration, so nothing is shown.",
+                "A result did not agree with the independent numerical evaluation, so nothing is shown.",
                 trace,
                 diag,
             )
         trace.mark("verify")
-        notes.append("Every formula above agreed with an independent enumeration of the levels.")
+        notes.append("Every result above agreed with an independent numerical evaluation.")
         return StatMechResult(
             status=Status.OK,
             action=request.action,
@@ -178,14 +196,15 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
             steps=steps,
             quantities=quantities,
             conditions=conditions,
+            table=table,
             verification=verification,
             diagnostics=_diagnostics(diag, trace),
             notes=notes,
-            message="Verified against an independent enumeration of the levels.",
+            message="Verified against an independent numerical evaluation.",
         )
     except Refusal as exc:
         trace.mark(stage, "failed", exc.reason)
-        return _failure(request, exc.reason, str(exc), trace, diag)
+        return _failure(request, exc.reason, str(exc), trace, diag, exc.questions)
     except LimitError as exc:
         trace.mark(stage, "failed", "resource_limit")
         return _failure(request, "resource_limit", str(exc), trace, diag)
