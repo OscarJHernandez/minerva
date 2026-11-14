@@ -147,6 +147,13 @@ class JetSpace:
                 if k == self.depth:
                     raise LimitError("a total derivative needs a jet beyond the represented depth")
                 total += sp.diff(expr, symbol) * self.u[i][k + 1]
+            for k in range(self.depth + 1):
+                symbol = self.eta[i][k]
+                if symbol not in free:
+                    continue
+                if k == self.depth:
+                    raise LimitError("a total derivative needs a jet beyond the represented depth")
+                total += sp.diff(expr, symbol) * self.eta[i][k + 1]
         return total
 
     def Dn(self, expr: sp.Expr, n: int) -> sp.Expr:

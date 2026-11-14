@@ -24,7 +24,50 @@ def _analyze(problem: Problem, data: VariationInput, deadline: float) -> Variati
     )
 
 
-HANDLERS: dict[str, Handler] = {"analyze": _analyze}
+def _first(problem: Problem, data: VariationInput, deadline: float) -> VariationReport:
+    from . import report as rep
+    from .firstvar import first_variation
+    from .verify import (
+        VariationForm,
+        check_el_pointwise,
+        check_first_variation,
+        check_ibp_step,
+        sympy_euler,
+    )
+
+    derived = first_variation(problem)
+    form = VariationForm.of(derived)
+    check = check_first_variation(problem, form, deadline=deadline)
+    pointwise = check_el_pointwise(problem, form.interior)
+    stage_checks = [
+        check_ibp_step(problem, derived.stages[k], derived.stages[k + 1])
+        for k in range(len(derived.stages) - 1)
+    ]
+    crosscheck = sympy_euler(problem, form.interior)
+    if not (
+        check.passed
+        and pointwise.passed
+        and all(c.passed for c in stage_checks)
+        and crosscheck is not False
+    ):
+        return VariationReport(
+            status=Status.NOT_VERIFIED,
+            action="first",
+            message="The derived first variation did not pass its independent numerical checks, "
+            "so it is not shown.",
+        )
+    first = rep.build(problem, derived, check, pointwise, stage_checks, crosscheck)
+    return VariationReport(
+        status=Status.OK,
+        action="first",
+        analysis=analyze(problem),
+        first=first,
+        message="First variation derived; every integration by parts is listed and nothing is dropped.",
+        diagnostics=Diagnostics(stages=len(derived.stages)),
+    )
+
+
+HANDLERS: dict[str, Handler] = {"analyze": _analyze, "first": _first}
 
 
 def variation(data: VariationInput, limits: Limits) -> VariationReport:
@@ -37,10 +80,8 @@ def variation(data: VariationInput, limits: Limits) -> VariationReport:
         if handler is None:
             raise UnsupportedInput(f"the action {data.action!r} is not available yet")
         report = handler(problem, data, deadline)
-        report.diagnostics = Diagnostics(
-            functions=problem.jets.count,
-            highest_order=max(problem.jets.orders),
-        )
+        report.diagnostics.functions = problem.jets.count
+        report.diagnostics.highest_order = max(problem.jets.orders)
     except ParseError as exc:
         report = VariationReport(status=Status.PARSE_ERROR, action=data.action, message=str(exc))
     except UnsupportedInput as exc:

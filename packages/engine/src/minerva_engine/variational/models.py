@@ -11,7 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..geometry.models import FunctionDecl
-from ..models import SYMBOL_DECLARATIONS, SYMBOL_NAME_MAX, Status
+from ..models import SYMBOL_DECLARATIONS, SYMBOL_NAME_MAX, Status, Verification
 
 Action = Literal["analyze", "first", "evaluate", "verify", "solve", "second"]
 End = Literal["lower", "upper"]
@@ -138,6 +138,89 @@ class Analysis(BaseModel):
     next_steps: list[NextStep]
 
 
+BoundaryEffect = Literal[
+    "removed_by_fixed", "natural_condition", "kept_unspecified", "vanishes_identically"
+]
+
+
+class IbpStage(BaseModel):
+    """One integration by parts: a derivative moved off the perturbation, nothing dropped."""
+
+    index: int
+    function: str | None = None
+    moved_order: int | None = None
+    integrand_latex: str
+    boundary_latex: str  # the boundary function accumulated so far
+    needs_derivatives: int  # the integrand now contains derivatives up to this order
+    checked: bool | None = None
+
+
+class EulerLagrangeEquation(BaseModel):
+    function: str
+    equation_latex: str  # EL_i = 0
+    expression_latex: str
+    order: int  # highest derivative that appears
+
+
+class BoundaryEntry(BaseModel):
+    end: End
+    function: str
+    order: int
+    perturbation_latex: str  # η^(order) at the end
+    coefficient_latex: str  # what multiplies it in δS (t replaced by the end)
+    state: ConditionState
+    effect: BoundaryEffect
+    natural_condition_latex: str | None = None  # coefficient = 0, if the perturbation is free
+
+
+class ComparisonRow(BaseModel):
+    step: str
+    quotient: str
+    abs_error: float
+    rel_error: float
+
+
+class Comparison(BaseModel):
+    kind: Literal["bubble", "generic"]
+    function: str | None = None
+    analytic: str
+    scale: str
+    rows: list[ComparisonRow]
+    observed_order: float | None = None
+    richardson_rel_error: float
+    verdict: Literal["agree", "disagree", "inconclusive"]
+
+
+class FirstVariationChecks(BaseModel):
+    deciding: Literal["passed", "failed", "inconclusive"]
+    comparisons: list[Comparison]
+    pointwise_passed: bool | None = None
+    stages_checked: int = 0
+    stages_passed: bool | None = None
+    sympy_agrees: bool | None = None
+    seed: int = 0
+    statement: str = (
+        "Numerical evidence: finite differences of the action along polynomial perturbations "
+        "agree with the claimed first variation. It is not a proof."
+    )
+
+
+class FirstVariation(BaseModel):
+    varied_latex: list[str]
+    delta_integrand_latex: str
+    stages: list[IbpStage]
+    equations: list[EulerLagrangeEquation]
+    null_lagrangian: bool
+    boundary_form_latex: str
+    endpoint_terms_latex: str
+    boundary: list[BoundaryEntry]
+    first_variation_latex: str
+    stationarity_latex: list[str]
+    notes: list[str] = Field(default_factory=list)
+    checks: FirstVariationChecks
+    verification: Verification
+
+
 class Diagnostics(BaseModel):
     """Counts, durations and enum codes only; never names, expressions or values."""
 
@@ -160,6 +243,7 @@ class VariationReport(BaseModel):
     message: str = ""
     action: Action = "analyze"
     analysis: Analysis | None = None
+    first: FirstVariation | None = None
     notes: list[str] = Field(default_factory=list)
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     duration_ms: float = 0.0

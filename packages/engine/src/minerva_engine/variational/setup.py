@@ -25,6 +25,16 @@ from .models import End, EndpointCondition, FunctionalInput
 
 _NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
+_IMPLIES_REAL = {
+    "real",
+    "positive",
+    "negative",
+    "nonnegative",
+    "nonpositive",
+    "integer",
+    "rational",
+}
+
 # Integrands the whole construction is not valid for (non-smooth, non-local or complex-conjugated).
 _NOT_SMOOTH = (sp.Abs, sp.sign, sp.Piecewise, sp.conjugate, sp.re, sp.im, sp.floor, sp.ceiling)
 
@@ -90,7 +100,7 @@ def read_problem(data: FunctionalInput, limits: Limits) -> Problem:
         given[decl.name] = tuple(decl.args)
 
     provisional = JetSpace.build(variable, names, tuple(0 for _ in names), MAX_DEPTH)
-    assumptions = {k: v for k, v in data.assumptions.items() if k not in (variable, *names)}
+    assumptions = {k: list(v) for k, v in data.assumptions.items() if k not in (variable, *names)}
     common: dict[str, object] = {
         "assumptions": assumptions,
         "limits": limits,
@@ -101,6 +111,15 @@ def read_problem(data: FunctionalInput, limits: Limits) -> Problem:
 
     def read(source: str) -> sp.Expr:
         return sp.sympify(_parse(source, data.format, common))
+
+    # A symbol in a bound is a real number: declare it so before anything else is read, so that
+    # the same name in the integrand is the same (real) symbol.
+    for source in (data.lower, data.upper):
+        if source is not None:
+            for symbol in read(source).free_symbols:
+                items = assumptions.setdefault(symbol.name, [])
+                if not set(items) & _IMPLIES_REAL:
+                    items.append("real")
 
     integrand = read(data.integrand)
     if isinstance(integrand, sp.Basic) and integrand.atoms(sp.Derivative) - {
