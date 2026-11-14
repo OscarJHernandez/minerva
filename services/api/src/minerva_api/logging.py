@@ -162,7 +162,9 @@ def configure_logging(level: str = "INFO") -> None:
             structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(logging.getLevelName(level)),
-        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
+        # stdout is looked up when a logger is made, not when logging is configured: a stream that was
+        # replaced or closed since (a test capture, a redirect) must not make a log call raise inside a tool.
+        logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=False,
     )
 

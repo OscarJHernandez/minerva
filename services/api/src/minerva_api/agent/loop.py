@@ -21,6 +21,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
+from .declarations import declared_matrices
 from .events import (
     AssistantMessage,
     Block,
@@ -118,6 +119,13 @@ MALFORMED_TEXT = {
     "arguments_not_json": "the arguments were not valid JSON",
     "arguments_not_object": "the arguments were not a JSON object",
 }
+# Statuses that are a definite answer from the engine, however unwelcome.
+ANSWER_STATUSES = frozenset({"unchanged", "unsupported", "conditions_not_satisfied"})
+DROPPED_ASSUMPTIONS_NOTE = (
+    "note: {symbols} was declared earlier in this conversation with assumptions, but this call did "
+    "not repeat them, so the result holds for general complex symbols. If the earlier assumptions "
+    "were meant to apply, call again with them."
+)
 MAX_UNPRODUCTIVE = 3  # consecutive executed calls that established nothing
 MAX_REPEATS = 2  # identical calls in one turn before the turn is wrapped up
 MIN_WRAP_UP_SECONDS = 3.0
@@ -565,6 +573,7 @@ async def _run_turn(
                 if refusal is not None:
                     output = refusal
                 else:
+                    ctx.matrices = frozenset(matrix_names(trace)) | frozenset(prior_matrices)
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -652,9 +661,15 @@ async def _run_turn(
                         verify_ms=engine_ms,
                     )
                 accepted = evidence.accepted if evidence else False
-                unproductive = 0 if accepted else unproductive + 1
+                # An answer is not a stuck loop: "unchanged", "unsupported" and "conditions not
+                # satisfied" are what the engine established. Only errors, refused or invalid calls
+                # and unverified candidates count towards the limit.
+                answered = output.status in ANSWER_STATUSES
+                unproductive = 0 if (accepted or answered) else unproductive + 1
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
                 content = output.for_model + (f"\n{store.note_for(result_id)}" if result_id else "")
+                if dropped:
+                    content += "\n" + DROPPED_ASSUMPTIONS_NOTE.format(symbols=", ".join(dropped))
                 messages.append(
                     {"role": "tool", "tool_call_id": call.id, "name": call.name, "content": content}
                 )
@@ -825,17 +840,38 @@ async def _run_turn(
 
 
 def matrix_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
-    """Names this conversation declared as matrices in `matrix_calculus` calls."""
+    """Names this conversation declared as matrices: in `matrix_calculus` calls, or as
+    `noncommutative` in the assumptions of any tool call (a refused or failed call counts: the
+    cautious reading)."""
     names: set[str] = set()
     for step in trace:
         name = step.name if isinstance(step, TraceStep) else step.get("name")
         arguments = step.arguments if isinstance(step, TraceStep) else step.get("arguments", {})
-        if name != "matrix_calculus" or not isinstance(arguments, dict):
+        if not isinstance(arguments, dict):
             continue
-        for decl in arguments.get("matrices", []) or []:
-            if isinstance(decl, dict) and isinstance(decl.get("name"), str):
-                names.add(decl["name"])
+        if name == "matrix_calculus":
+            for decl in arguments.get("matrices", []) or []:
+                if isinstance(decl, dict) and isinstance(decl.get("name"), str):
+                    names.add(decl["name"])
+        declared = arguments.get("assumptions")
+        if isinstance(declared, dict):
+            names.update(
+                str(n)
+                for n, items in declared.items()
+                if isinstance(items, list) and "noncommutative" in items
+            )
     return names
+
+
+def _prose_of(blocks: list[Block]) -> list[str]:
+    """The model's own text of this turn, formulas put back in `$...$`, to read declarations from."""
+    texts: list[str] = []
+    for b in blocks:
+        if b.kind == "text":
+            texts.append(
+                "".join(s.value if s.type == "text" else f"${s.value}$" for s in b.segments)
+            )
+    return texts
 
 
 MAX_CLAIMS = 12
@@ -908,7 +944,7 @@ async def check_model_claims(
             for name, items in declared.items():
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
-    matrices = matrix_names(trace) | set(prior_matrices)
+    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(_prose_of(blocks))
     results = await run_in_threadpool(
         ctx.engine.check_claims,
         [s.value for s in pending],

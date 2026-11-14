@@ -934,9 +934,12 @@
   category: calculus
   prompt: 'Evaluate the integral of $x^2\operatorname{DiracDelta}(x^2-4)$ over the whole real line.'
   expected_tool: distribution
-  args: {equals: {action: integrate}}
-  informational: true
-  source: "distribution tool: delta integrals go through the engine, never the model"
+  args: {equals: {action: integrate}, assumes: {x: real}}
+  expect_card: {status: ok, result_text: "2"}
+  reference:
+    tool: distribution
+    arguments: {latex: 'x^2\operatorname{DiracDelta}(x^2-4)', action: integrate, variable: x, lower: '-\infty', upper: '\infty', assumptions: {x: [real]}}
+  source: "Gel'fand and Shilov, Generalized Functions vol. 1 (delta of a function): x^2/|2x| at x = 2 and at x = -2 gives 1 + 1; packages/engine/src/minerva_engine/reference_benchmark.py checks the same kind of integral against a regularised sequence"
 
 - id: delta-notation-asks-the-user
   category: calculus
@@ -953,7 +956,10 @@
   expected_tool: distribution
   args: {absent: [endpoint]}
   reply_matches: 'convention|half|include|exclude|ambiguous'
-  informational: true
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: distribution
+    arguments: {latex: '\operatorname{DiracDelta}(x-1)', action: integrate, variable: x, lower: '0', upper: '1', assumptions: {x: [real]}}
   source: "AGENTS.md rule 15 (a delta on an integration limit needs a convention that only the user chooses)"
 
 # ----------------------------------------------------------------------------- statistics
@@ -1016,3 +1022,43 @@
       assumptions: {n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive]}
   informational: true
   source: "engine test_stat_derivations.py (the prior is the user's)"
+- id: matrix-noncommuting-explicit-product
+  category: tensor_matrix
+  prompt: 'With $A = \begin{pmatrix}0&1\\0&0\end{pmatrix}$ and $B = \begin{pmatrix}0&0\\1&0\end{pmatrix}$, evaluate $\exp(A)\exp(B)$.'
+  expected_tool: matrix_calculus
+  args: {absent: [commuting]}
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '\exp(A)\exp(B)'
+      matrices: [{name: A, entries: [['0', '1'], ['0', '0']]}, {name: B, entries: [['0', '0'], ['1', '0']]}]
+      action: evaluate
+  wrong_formulas: ['\exp(A)\exp(B) = \exp(A + B)', '\exp(A)\exp(B) = \exp(A+B)']
+  source: "mpmath.expm(A) * mpmath.expm(B) = [[2, 1], [1, 1]] (reference_benchmark.py); these A and B do not commute"
+
+- id: conserved-quantities-oscillator
+  category: physics
+  prompt: 'Find the conserved quantities of the two-dimensional isotropic oscillator with Lagrangian $\frac12(\dot x^2+\dot y^2) - \frac12(x^2+y^2)$, coordinates x and y.'
+  expected_tool: find_conserved_quantities
+  also_ok: [analyze_lagrangian]
+  args: {includes: {coordinates: [x, y]}}
+  expect_card: {status: ok}
+  reference:
+    tool: find_conserved_quantities
+    arguments: {lagrangian: '\frac12(\dot x^2+\dot y^2) - \frac12(x^2+y^2)', coordinates: [x, y]}
+  reply_forbids: 'no other|has no more|completely integrable|fully integrable'
+  source: "textbook: the isotropic oscillator has energies and the angular momentum as constants; docs/conserved-quantities.md (a result is stated within the explored families only)"
+
+- id: substitute-then-differentiate
+  category: multistep
+  prompt: 'Using my relation $y = 3x$, substitute it into $x^2 + y$ and then differentiate the result with respect to x.'
+  expected_tool: substitute
+  sequence: [substitute, differentiate]
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: substitute
+    arguments: {latex: 'x^2 + y', relations: ['y = 3x']}
+  reply_matches: 'given|premise|relation'
+  source: "arithmetic: x^2 + 3x, derivative 2x + 3; the relation is the user's premise (AGENTS.md, controlled steps)"

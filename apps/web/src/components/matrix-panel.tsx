@@ -11,16 +11,33 @@ import type {
 import { EntryCard } from "./entry-card";
 import { StatusPill } from "./result-panel";
 
-const OK_LABEL: Record<MatrixResultKind, string> = {
-  explicit: "Evaluated and verified",
-  expression: "Transformed and verified",
-  equation: "Reduced, not evaluated",
-  representation: "Represented exactly, not evaluated",
-  numeric: "Numerical approximation, verified",
-  gradient: "Gradient, checked against the numerical derivative",
-  jacobian: "Jacobian, checked against the numerical derivative",
-  hessian: "Hessian, checked against the numerical derivative",
-};
+/**
+ * The status label never says more than the checks did: the numerical legs always ran, and the
+ * exact leg is named only when it passed.
+ */
+function okLabel(kind: MatrixResultKind | null, exact: boolean | null | undefined): string {
+  const how = exact ? "checked numerically and exactly" : "checked numerically";
+  switch (kind) {
+    case "explicit":
+      return `Evaluated, ${how}`;
+    case "expression":
+      return `Transformed, ${how}`;
+    case "equation":
+      return "Reduced, not evaluated";
+    case "representation":
+      return "Represented exactly, not evaluated";
+    case "numeric":
+      return "Numerical approximation, checked independently";
+    case "gradient":
+      return "Gradient, checked against the numerical derivative";
+    case "jacobian":
+      return "Jacobian, checked against the numerical derivative";
+    case "hessian":
+      return "Hessian, checked against the numerical derivative";
+    default:
+      return "Checked numerically";
+  }
+}
 
 const RESULT_HEADING: Record<MatrixResultKind, string> = {
   explicit: "Result",
@@ -61,12 +78,12 @@ const CONSTRAINT_TEXT = {
 function notEvaluatedText(kind: MatrixResultKind, action: MatrixCalculusResult["action"]): string {
   const what = action === "integrate" ? "The integral" : "The result";
   if (kind === "equation") {
-    return `${what} was not evaluated. This is an equation that it satisfies, verified, but not entries.`;
+    return `${what} was not evaluated. This is an equation that it satisfies, checked, but not entries.`;
   }
   if (kind === "numeric") {
     return `${what} was not evaluated in closed form. This is a numerical approximation on the stated span: a measurement checked by independent methods, not a closed form and not a proof for all times.`;
   }
-  return `${what} was not evaluated. This is an exact representation (a block-matrix exponential or an integral), verified, but not entries.`;
+  return `${what} was not evaluated. This is an exact representation (a block-matrix exponential or an integral), checked, but not entries.`;
 }
 
 /**
@@ -95,7 +112,7 @@ export function MatrixPanel({
         <h2 id={headingId} className="font-serif text-xl">
           Matrix calculus
         </h2>
-        <StatusPill status={result.status} okLabel={kind ? OK_LABEL[kind] : "Verified"} />
+        <StatusPill status={result.status} okLabel={okLabel(kind, v?.symbolic_zero)} />
       </div>
 
       {result.input_latex && (

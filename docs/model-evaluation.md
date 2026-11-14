@@ -17,7 +17,7 @@ as it was before the reliability changes (commit `7b19980`, frozen, with the new
 *new* is the same cases after them (commit `abaeb9f`). Full reports:
 [baseline](benchmarks/agent-baseline.md), [new](benchmarks/agent-new.md),
 [comparison](benchmarks/agent-comparison.md) (JSON next to each). The case file has since gained five informational
-geometry and distribution cases (83 in total), so its digest no longer equals the one these runs recorded
+geometry and distribution cases (83 in total at that point; the case file now has 94, see "Changes after the 2026-11-13 runs"), so its digest no longer equals the one these runs recorded
 (`e89efb8efe53`); informational cases are not scored.
 
 | | pass rate | tool selection | valid arguments | completion | unsupported shown as verified | unnecessary calls |
@@ -55,6 +55,41 @@ What the numbers do and do not show:
   beyond noise (p95 for `qwen3.5:35b` 62 s to 72 s).
 - **Not measured:** other models (`qwen3.8:27b` was slower on this host and was left out), more than 2 repeats, any
   cloud provider.
+
+## Changes after the 2026-11-13 runs (not yet measured with a model)
+
+These follow from reading the stored replies of that run and from calling the tools directly. **No real-model run
+has been made since, so nothing here claims a better pass rate.** The case set also grew from 78 to 90 cases and the
+tools from 17 to 23, so the 2026-11-13 numbers are a baseline for an older system; compare a new run only with a
+fresh run of the previous commit on the same case digest.
+
+Tool interface (what the model is told when a call fails):
+
+- A number where the schema wants text (`series` with `point: 0`) is accepted (it was refused).
+- A wrong-shaped `assumptions`, `quantities` or `matrices` reports up to three errors and the right shape.
+- Fixed hints for a bare `e^x` (read as a symbol, never reinterpreted), reserved `E`/`I`, and tensor index syntax.
+- An `unchanged` result says that it is the answer. `unchanged`, `unsupported` and `conditions_not_satisfied` no
+  longer count towards the "unproductive" stop (they are what the engine found): four different inputs that
+  all come back `unchanged` end normally. Errors, invalid calls and `not_verified` still count.
+- When a call leaves out assumptions declared earlier, the model is told which symbols (it was only traced).
+- Prompt: a stated matrix size is enough (rule 14 made models ask for entries), the duplicate rule number is
+  fixed, and rule 21 maps request types to tools.
+
+Scoring (these change which replies pass; re-score old reports with care):
+
+- A formula in the reply matches a tool result when both are the same function call spelled differently
+  (`\sin x`, `\sin(x)`, `\sin{\left(x \right)}`): correct answers were failing `max_unchecked: 0` on spelling.
+  `\sin xy` is still not `\sin(xy)`.
+- Quoting the case's own false statement so that it is shown as contradicted does not count as a failure when the
+  reply refutes it (matches `reply_matches`, avoids `reply_forbids`); confirming it still does.
+- The runner passes the earlier formulas of a case's history to the loop as the chat route does.
+
+To measure (same host and settings as the baseline, three repeats):
+
+```bash
+git switch --detach <previous commit> && uv run python scripts/eval_models.py --base-url "$HOST" --models gemma4:26b,qwen3.5:35b --repeat 3 --seed 7 --label before --json-out docs/benchmarks/before.json --out docs/benchmarks/before.md
+git switch - && uv run python scripts/eval_models.py --base-url "$HOST" --models gemma4:26b,qwen3.5:35b --repeat 3 --seed 7 --label after --json-out docs/benchmarks/after.json --out docs/benchmarks/after.md --compare docs/benchmarks/before.json
+```
 
 ## Earlier evaluation (historical)
 

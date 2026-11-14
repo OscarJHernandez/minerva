@@ -57,6 +57,7 @@ uv run python -m minerva_knowledge stat-benchmark [--group G] [--json P] [--comp
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
+uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
@@ -252,9 +253,18 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   or bounds; the server log gets the same kind of fields and a test enforces it. `docs/matrix-benchmark.md` and
   `python -m minerva_knowledge matrix-benchmark` measure coverage, method selection, verification, time and
   residuals; a pending case that now passes fails the suite.
-- Claims about matrices: names declared in `matrix_calculus` calls of the conversation are passed to `check_claims`;
-  an equation that mentions one is `unverified` (never "checked" by sampling numbers, which treats matrices as
-  commuting scalars).
+- Claims about matrices: a name is a matrix if the conversation declared it in a `matrix_calculus` call, as
+  `noncommutative` in any tool call's assumptions, or in words ("let A and B be matrices", `agent/declarations.py`,
+  deliberately generous: a wrong guess only makes a claim unchecked). The whole conversation counts, not the history
+  window, and so does the model's own reply. `check_claims` decides "mentions a matrix" from the **text** of the
+  formula (`claims.mentions_name`), before the parser can cancel anything (`AB - BA` is 0 as commuting symbols); a
+  declared `A` covers `A_1`, and `C = AB` makes `C` a matrix. An equation that mentions one is `unverified`, never
+  "checked" by sampling numbers. Transpose and adjoint notation (`^T`, `^\top`, `^\dagger`) is `unverified` too (a bare `T`
+  would otherwise be read as a positive symbol). `noncommutative` and unknown assumptions are removed from the
+  assumptions the checker parses with (`clean_assumptions`): they used to stop the whole check. The scalar tools
+  (`simplify`, `differentiate`, `integrate`, `series`, `isolate_variable`, `solve_polynomial`, `find_identities`,
+  `distribution`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`), so a scalar result about
+  matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
 - Distributions (`distributions/`, tool and endpoint `distribution`): a Dirac delta is 0 at every point a sampler can
   draw, so pointwise sampling proves nothing about it. Every other operation refuses `DiracDelta` / `Heaviside` input as
   `unsupported`, `verify_equal` never passes it, and the claim checker leaves such statements `unverified` (never

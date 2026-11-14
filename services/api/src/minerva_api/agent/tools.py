@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -29,6 +30,7 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
 )
+from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -55,6 +57,9 @@ MAX_INPUT = 2000
 class ToolContext:
     engine: Engine
     kb: KnowledgeBase
+    # Names this conversation declared as matrices or operators (set by the loop before each call).
+    # Tools that treat symbols as commuting numbers refuse expressions that mention one.
+    matrices: frozenset[str] = frozenset()
     # What the USER answered on a card (`delta(...)` is a Dirac delta). Only the direct-post route fills
     # it; the agent loop never does, so the model cannot make such an answer.
     notation: dict[str, str] = field(default_factory=dict)
@@ -607,7 +612,8 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
             f"result=${result.result_latex}$; "
             if result.status.value == "ok"
             else "result=none (the input is unchanged: no rewrite was applied, so there is no "
-            "simplified form to report); "
+            "simplified form to report; this is the answer, so do not try the same input with another "
+            "tool to get one); "
         )
         + (
             f"end to end: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
@@ -911,7 +917,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
                 if v.symbolic_zero is not None
                 else ", no exact check was run"
             )
-            + "; "
+            + " (checks, not a proof: say 'checked', never 'proved'); "
         )
     lines = [head + result.message]
     if result.structure:
@@ -2133,6 +2139,110 @@ def schemas() -> list[dict[str, Any]]:
     return [t.schema() for t in TOOLS.values()]
 
 
+_SHAPE_HINTS = {
+    "assumptions": 'an object mapping each symbol to a list of words, e.g. {"x": ["positive"]}',
+    "quantities": 'a list of objects, e.g. [{"symbol": "F", "unit": "N"}]',
+    "matrices": 'a list of objects, e.g. [{"name": "A", "rows": 2}]',
+    "variables": 'a list of names, e.g. ["x", "y"]',
+}
+
+
+def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[str, Any]:
+    """A number where the schema wants text (`point: 0`) is the same thing written differently."""
+    fields = model.model_fields
+    out = dict(arguments)
+    for key, value in arguments.items():
+        field_info = fields.get(key)
+        if (
+            field_info is not None
+            and isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and field_info.annotation in (str, str | None)
+        ):
+            out[key] = str(value)
+    return out
+
+
+def _validation_message(exc: ValidationError) -> str:
+    """Every problem (up to three) with the fix for the usual wrong shapes, not only the first."""
+    parts: list[str] = []
+    for err in exc.errors()[:3]:
+        where = ".".join(str(p) for p in err["loc"])
+        hint = _SHAPE_HINTS.get(str(err["loc"][0])) if err["loc"] else None
+        parts.append(f"{where}: {err['msg']}" + (f" (it must be {hint})" if hint else ""))
+    more = len(exc.errors()) - 3
+    return (
+        "invalid arguments (" + "; ".join(parts) + (f"; and {more} more" if more > 0 else "") + ")"
+    )
+
+
+_BARE_E_POWER = re.compile(r"(?<![A-Za-z\\])e\s*\^")
+
+
+def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None:
+    """Fixed advice for the model on failures it keeps repeating. It only ever adds text for the
+    model; the card and the input are unchanged, and nothing is reinterpreted."""
+    text = " ".join(str(arguments.get(k, "")) for k in ("latex", "equation", "expression"))
+    hints: list[str] = []
+    if output.status in ("unsupported", "unchanged", "parse_error") and _BARE_E_POWER.search(text):
+        hints.append(
+            "hint: `e` was read as an ordinary symbol, not Euler's number; write exponentials as "
+            "\\exp(...) (a bare `e^x` is the symbol e to the power x)."
+        )
+    if output.status == "parse_error" and "reserved" in output.for_model:
+        hints.append(
+            "hint: E, I, pi and oo are reserved names; rename a symbol called E or I (for example "
+            "En or Ik) and try again."
+        )
+    if name == "tensor_canonicalize" and output.status == "parse_error":
+        hints.append(
+            "hint: write each index as a call, e.g. S(a,b)*A(-a,-b), with - for a lower index; "
+            "LaTeX subscripts such as S_{ab} are not read."
+        )
+    if hints:
+        output.for_model += "\n" + "\n".join(hints)
+
+
+# Tools whose engine treats every symbol as a commuting number: on a declared matrix they would give a
+# plausible but wrong answer, which the loop would then mark as verified.
+SCALAR_TOOLS = frozenset(
+    {
+        "simplify",
+        "differentiate",
+        "series",
+        "integrate",
+        "isolate_variable",
+        "solve_polynomial",
+        "find_identities",
+        "distribution",
+    }
+)
+_EXPRESSION_FIELDS = ("latex", "equation", "expression")
+
+
+def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput | None:
+    if name not in SCALAR_TOOLS or not ctx.matrices:
+        return None
+    hit = sorted(
+        n
+        for n in ctx.matrices
+        if any(
+            isinstance(arguments.get(f), str) and mentions_name(arguments[f], {n})
+            for f in _EXPRESSION_FIELDS
+        )
+    )
+    if not hit:
+        return None
+    return _error(
+        name,
+        f"{', '.join(hit)} was declared as a matrix or operator in this conversation; `{name}` treats "
+        "symbols as commuting numbers and would give a wrong answer for it. Use `matrix_calculus` "
+        "(it needs each matrix's size or entries), or say that this is not supported. Do not "
+        "compute it yourself.",
+        "unsupported",
+    )
+
+
 def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput:
     """Validate and run one tool call. Never raises: problems become an error result the model can read."""
     tool = TOOLS.get(name)
@@ -2144,18 +2254,14 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
             arguments_valid=False,
         )
     try:
-        args = tool.args_model(**arguments)
+        args = tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except ValidationError as exc:
-        first = exc.errors()[0]
-        where = ".".join(str(p) for p in first["loc"])
-        return _error(
-            name,
-            f"invalid arguments ({where}): {first['msg']}",
-            "invalid_arguments",
-            arguments_valid=False,
-        )
+        return _error(name, _validation_message(exc), "invalid_arguments", arguments_valid=False)
     except TypeError:
         return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
+    refused = _matrix_refusal(name, arguments, ctx)
+    if refused is not None:
+        return refused
     try:
         output = tool.run(args, ctx)
     except ValidationError as exc:
@@ -2173,6 +2279,7 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     category = category_for(output.status)
     output.error_category = category.value if category else None
     _classify_known(name, output)
+    _add_hints(name, arguments, output)
     return output
 
 

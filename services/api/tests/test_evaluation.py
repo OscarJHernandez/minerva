@@ -382,6 +382,26 @@ def test_a_contradicted_correct_statement_is_a_checker_false_positive_not_a_mode
     assert r2.contradicted == 1 and r2.failure_class == FailureClass.MODEL_HONESTY
 
 
+def test_refuting_the_cases_own_false_claim_is_not_a_failure() -> None:
+    case = EvalCase(
+        id="refute",
+        category="false_claim",
+        prompt="p",
+        expected_tool=NO_TOOL,
+        wrong_formulas=[r"\sin^2 x + \cos^2 x = 2"],
+        reply_matches="not true|false",
+        reply_forbids="confirmed",
+        source="test",
+    )
+    wrong = {"type": "math", "value": r"\sin^2 x + \cos^2 x = 2", "status": "contradicted"}
+    refuting = obs_with([wrong], text="That is false: sin^2 + cos^2 = 2 is not true.")
+    assert score_case(case, refuting).contradicted == 0
+    confirming = obs_with([wrong], text="Yes, confirmed: sin^2 + cos^2 = 2.")
+    assert score_case(case, confirming).contradicted == 1
+    other = {"type": "math", "value": "1 = 2", "status": "contradicted"}
+    assert score_case(case, obs_with([other], text="That is false.")).contradicted == 1
+
+
 def test_a_looping_model_is_stopped_and_the_repeats_are_counted(ctx: ToolContext) -> None:
     same = call("simplify", {"latex": r"\frac{x^2-1}{x-1}"})
     r = run("simplify-rational", [same], ctx, repeat_last=True)
@@ -785,7 +805,10 @@ def test_the_geometry_and_distribution_cases_are_part_of_the_benchmark() -> None
         "delta-on-a-limit-asks-for-a-convention",
     }
     assert ported <= set(BY_ID)
-    assert all(BY_ID[i].informational for i in ported)  # measured and reported, not scored
+    geometry = {i for i in ported if i.startswith("geometry")}
+    assert all(BY_ID[i].informational for i in geometry)  # measured and reported, not scored
+    deltas = ported - geometry  # these have an engine answer to compare with, so they are scored
+    assert all(not BY_ID[i].informational and BY_ID[i].reference for i in deltas)
     history = BY_ID["geometry-follow-up-resends-the-same-metric"].history
     assert (
         history[1]["tool_calls"][0]["id"] == history[2]["tool_call_id"]
