@@ -44,6 +44,7 @@ from .pi_groups import (
 from .sandbox import Outcome, Sandbox, SandboxResult
 from .series import SeriesResult
 from .solve import SolveReport
+from .statmech.models import StatMechInput, StatMechResult
 from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
 
 # Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
@@ -253,6 +254,24 @@ class Engine:
                 duration_ms=ms,
             )
         result = StatModelResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def statmech(self, request: StatMechInput) -> StatMechResult:
+        """Canonical-ensemble statistical mechanics of an explicit spectrum: partition function,
+        thermodynamic derivations with a held-fixed set, and thermal averages. Every formula is
+        shown only if an independent enumeration of the levels agrees."""
+        outcome, ms = self._run("statmech", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return StatMechResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = StatMechResult(**outcome.value)
         result.duration_ms = ms
         return result
 
