@@ -30,6 +30,7 @@ from minerva_engine import (
     OdeNumericInput,
     OdeNumericReport,
     OdeSolution,
+    OdeSolveInput,
     Pins,
     QuantitySpec,
     TensorInput,
@@ -251,23 +252,12 @@ class OdeAnalyzeArgs(OdeInput):
     """Arguments of `ode_analyze`: the equation(s) exactly as the user wrote them."""
 
 
-class OdeSymbolicArgs(OdeInput):
-    """Arguments of `ode_solve_symbolic`."""
-
-    method: Literal["closed_form"] = Field(
-        default="closed_form",
-        description="`closed_form`: a solution in terms of functions, accepted only after it is "
-        "substituted back into the equation.",
-    )
+class OdeSymbolicArgs(OdeSolveInput):
+    """Arguments of `ode_solve_symbolic`: `closed_form`, `series` or `perturbation`."""
 
 
 class OdeNumericArgs(OdeNumericInput):
     """Arguments of `ode_solve_numerical`. Every number comes from the user."""
-
-    kind: Literal["ivp"] = Field(
-        default="ivp",
-        description="`ivp`: an initial-value problem (initial values in `conditions`, all at one point).",
-    )
 
 
 class DistributionArgs(SimplifyArgs):
@@ -1608,7 +1598,7 @@ def run_ode_analyze(args: OdeAnalyzeArgs, ctx: ToolContext) -> ToolOutput:
 
 
 def run_ode_symbolic(args: OdeSymbolicArgs, ctx: ToolContext) -> ToolOutput:
-    request = OdeInput(**args.model_dump(exclude={"method"}))
+    request = OdeSolveInput(**args.model_dump())
     result = ctx.engine.ode_solve_symbolic(request)
     log_ode("ode_solve_symbolic", _ode_status(result), result.diagnostics, result.duration_ms)
     card = _ode_card("ode_solve_symbolic", "ode_solution", "Closed-form solution", result, request)
@@ -1629,15 +1619,38 @@ def run_ode_symbolic(args: OdeSymbolicArgs, ctx: ToolContext) -> ToolOutput:
             "partial": "family with fewer independent constants than the order",
         }[item.family]
         where = "" if item.evaluated else "; an integral remains unevaluated (a representation)"
+        if item.expansion is not None:
+            how = (
+                "the truncated result, put into the equation as written, leaves a residual that falls "
+                f"at the claimed order ({v.points_agreed} of {v.points_checked} confirmations); "
+                "a numerical check, not a proof"
+            )
+        else:
+            how = (
+                f"numerically checked at {v.points_agreed} of {v.points_checked} points, derivatives "
+                f"taken numerically; {proof}"
+            )
         lines.append(
             f"solution ({item.kind}, {family}{', constants ' + ', '.join(item.constants) if item.constants else ''}"
-            f"{where}): numerically checked at {v.points_agreed} of {v.points_checked} points, "
-            f"derivatives taken numerically; {proof}"
+            f"{where}): {how}"
         )
         for equation in item.equations_latex:
             lines.append(f"  ${equation}$")
             known.append(equation)
             known.append(equation.split(" = ", 1)[-1])
+        if item.expansion is not None:
+            e = item.expansion
+            lines.append(
+                f"  {e.kind.replace('_', ' ')} to order {e.order}"
+                + (f" about ${e.point_latex}$" if e.point_latex else "")
+                + f". {e.validity}"
+            )
+            if e.secular_orders:
+                lines.append(
+                    "  terms that grow with the variable at order(s) "
+                    + ", ".join(map(str, e.secular_orders))
+                    + ": valid only on bounded intervals; do not call it valid for long times"
+                )
         for c in item.conditions:
             lines.append(
                 f"  condition ${c.latex}$: {'satisfied' if c.satisfied else 'NOT satisfied'}"
@@ -1670,7 +1683,7 @@ def _series_summary(report: OdeNumericReport) -> list[str]:
 
 
 def run_ode_numeric(args: OdeNumericArgs, ctx: ToolContext) -> ToolOutput:
-    request = OdeNumericInput(**args.model_dump(exclude={"kind"}))
+    request = OdeNumericInput(**args.model_dump())
     report = ctx.engine.ode_solve_numerical(request)
     log_ode("ode_solve_numerical", _ode_status(report), report.diagnostics, report.duration_ms)
     card = _ode_card("ode_solve_numerical", "ode_numeric", "Numerical solution", report, request)
@@ -2322,24 +2335,29 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "ode_solve_symbolic",
-            "Find a closed-form solution of an ordinary differential equation or system with SymPy and "
-            "accept it only if the equation, as the user wrote it, holds when the solution is put in "
-            "(derivatives taken numerically at sample points); initial conditions are applied afterwards "
-            "and checked separately. The result says whether it is explicit, implicit or contains an "
-            "unevaluated integral, how many independent constants it has, and where it is valid. A "
-            "failure means SymPy found nothing, never that no solution exists.",
+            "Solve an ordinary differential equation or system analytically. method=closed_form (default): "
+            "a formula from SymPy, accepted only if the equation as the user wrote it holds when it is put "
+            "in (derivatives taken numerically); conditions are applied afterwards and checked separately. "
+            "method=series: a Taylor polynomial about the point of the initial values, which the user must "
+            "give in full; local, with no radius of convergence claimed. method=perturbation: an expansion "
+            "in a small parameter the USER names (never choose it); with an `equilibrium` it is the "
+            "Poincare-Lindstedt method for periodic motion about it (y'' = a(y) only), without one a "
+            "regular expansion that needs every initial value and may show terms that grow with time. "
+            "Every result says what it is and where it can be trusted. A failure means nothing was "
+            "found, never that no solution exists.",
             OdeSymbolicArgs,
             run_ode_symbolic,
         ),
         Tool(
             "ode_solve_numerical",
-            "Integrate an ordinary differential equation or system numerically (initial-value problem). "
-            "Higher orders become first-order systems; the integrator (explicit or stiff) is chosen from "
-            "measured behaviour. The trajectory is shown only if an independent integrator agrees, "
-            "refining the tolerance converges, the integral form of the equation holds and any verified "
-            "conserved quantity is conserved. It is an approximation on the interval given. Every number "
-            "(initial values, parameter values, the end of the interval) comes from the USER: never "
-            "choose them yourself, ask.",
+            "Solve an ordinary differential equation or system numerically. kind=ivp (default): an "
+            "initial-value problem; higher orders become first-order systems and the integrator "
+            "(explicit or stiff) is chosen from measured behaviour. kind=bvp: conditions at two points, "
+            "the interval is between them. A result is shown only if independent checks pass (a different "
+            "integrator or shooting, refinement, the equation's residual, boundary values, a verified "
+            "conserved quantity). It is an approximation on the interval given; a boundary-value "
+            "solution is one of possibly several. Every number (conditions, parameter values, the end "
+            "of the interval for ivp) comes from the USER: never choose them yourself, ask.",
             OdeNumericArgs,
             run_ode_numeric,
         ),

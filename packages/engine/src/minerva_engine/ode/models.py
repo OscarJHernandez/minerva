@@ -89,6 +89,37 @@ class OdeInput(BaseModel):
         return value
 
 
+SolveMethod = Literal["closed_form", "series", "perturbation"]
+MAX_SERIES_ORDER = 12
+
+
+class OdeSolveInput(OdeInput):
+    """An equation and the analytical approach to try. `closed_form`: a formula, verified by
+    substitution. `series`: a Taylor polynomial about the point of the initial values (needs them all).
+    `perturbation`: an expansion in a small parameter the user names; with an `equilibrium` it is the
+    Poincare-Lindstedt method for periodic motion about it, without one a regular expansion."""
+
+    method: SolveMethod = "closed_form"
+    order: int = Field(
+        default=6,
+        ge=1,
+        le=MAX_SERIES_ORDER,
+        description="series: the highest power of (x - x0) kept. perturbation: the highest power of "
+        "the small parameter kept (at most 6 for Poincare-Lindstedt).",
+    )
+    small_parameter: str | None = Field(
+        default=None,
+        max_length=SYMBOL_NAME_MAX,
+        description="perturbation only: the parameter that is small. Ask the user; never choose it.",
+    )
+    equilibrium: str | None = Field(
+        default=None,
+        max_length=200,
+        description="perturbation only: the equilibrium position to oscillate about "
+        "(Poincare-Lindstedt, one second-order equation y'' = a(y)). Ask the user.",
+    )
+
+
 # --- reading and structure ----------------------------------------------------------------
 
 
@@ -242,10 +273,30 @@ class ConditionCheck(BaseModel):
     residual: float | None = None
 
 
+class ExpansionCheck(BaseModel):
+    name: Literal["initial_conditions", "residual_order", "boundedness", "frequency_order"]
+    passed: bool
+    value: float | None = None
+    note: str = ""
+
+
+class OdeExpansion(BaseModel):
+    """What a series or perturbation result is, and where it can be trusted."""
+
+    kind: Literal["taylor", "regular_perturbation", "poincare_lindstedt"]
+    order: int
+    point_latex: str | None = None  # the expansion point (taylor)
+    small_latex: str | None = None  # the small parameter (perturbation)
+    secular_orders: list[int] = Field(default_factory=list)  # orders with terms that grow with x
+    checks: list[ExpansionCheck] = Field(default_factory=list)
+    validity: str = ""  # fixed text: local, small parameter, bounded interval
+
+
 class OdeSolutionItem(BaseModel):
     """One verified solution (or, for a system, one verified solution of every unknown)."""
 
-    kind: Literal["explicit", "implicit", "unevaluated"]
+    kind: Literal["explicit", "implicit", "unevaluated", "series", "perturbation"]
+    expansion: OdeExpansion | None = None
     equations_latex: list[str]
     # The right-hand side for each unknown as text the text parser reads (explicit results only).
     rhs_text: list[str] = Field(default_factory=list)
@@ -263,7 +314,7 @@ class OdeSolutionItem(BaseModel):
 class OdeSolution(BaseModel):
     status: Status
     message: str = ""
-    method: Literal["closed_form"] | None = None
+    method: SolveMethod | None = None
     interpretation: OdeInterpretation | None = None
     solutions: list[OdeSolutionItem] = Field(default_factory=list)
     # The weakest of the shown solutions' checks (fewest points, symbolic only if every one proved it).
@@ -296,9 +347,15 @@ class OdeNumericInput(OdeInput):
         max_length=MAX_PARAMETERS,
         description="The numerical value of every parameter. Ask the user: never choose them.",
     )
-    t_end: float = Field(
-        description="Where the interval ends (it starts at the point of the initial values). "
-        "Ask the user: never choose it."
+    kind: Literal["ivp", "bvp"] = Field(
+        default="ivp",
+        description="`ivp`: initial values at one point (in `conditions`). `bvp`: conditions at two "
+        "points (the ends of the interval).",
+    )
+    t_end: float | None = Field(
+        default=None,
+        description="ivp: where the interval ends (it starts at the point of the initial values). Ask "
+        "the user: never choose it. bvp: not used, the two points of the conditions are the ends.",
     )
     method: NumericMethod = Field(
         default="auto",
@@ -317,6 +374,10 @@ class NumericCheck(BaseModel):
         "tolerance_refinement",
         "defect",
         "first_integral",
+        "boundary_conditions",
+        "residual",
+        "mesh_refinement",
+        "shooting",
     ]
     status: Literal["passed", "failed", "skipped"]
     value: float | None = None

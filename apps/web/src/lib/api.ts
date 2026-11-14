@@ -5,6 +5,7 @@ import type {
   OdeNumericInput,
   OdeNumericReport,
   OdeSolution,
+  OdeSolveInput,
 } from "./ode-types";
 import type {
   ApplyIdentityResult,
@@ -148,7 +149,7 @@ export const api = {
     }),
   odeAnalyze: (req: OdeInput) =>
     request<OdeAnalysis>("/v1/compute/ode/analyze", { method: "POST", body: JSON.stringify(req) }),
-  odeSolve: (req: OdeInput) =>
+  odeSolve: (req: OdeInput | OdeSolveInput) =>
     request<OdeSolution>("/v1/compute/ode/solve", { method: "POST", body: JSON.stringify(req) }),
   odeNumeric: (req: OdeNumericInput) =>
     request<OdeNumericReport>("/v1/compute/ode/numeric", {

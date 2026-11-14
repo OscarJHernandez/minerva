@@ -120,6 +120,7 @@ const verification = {
 
 export const solutionItem: OdeSolutionItem = {
   kind: "explicit",
+  expansion: null,
   equations_latex: ["y\\left(t\\right) = C_{1} e^{-t} + C_{2} e^{-2t}"],
   rhs_text: ["C1*exp(-t) + C2*exp(-2*t)"],
   constants: ["C1", "C2"],

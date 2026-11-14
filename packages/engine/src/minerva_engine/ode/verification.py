@@ -147,13 +147,22 @@ class _Evaluator:
         self.residual = [_lambdify(args, f) for f in problem.residuals]
         self.terms = [_lambdify(args, _terms(f)) for f in problem.residuals]
 
-    def relative(self, x: Any, jet_values: Sequence[Any], parameter_values: Sequence[Any]) -> float:
-        worst = 0.0
+    def parts(
+        self, x: Any, jet_values: Sequence[Any], parameter_values: Sequence[Any]
+    ) -> list[tuple[Any, Any]]:
+        """For each equation: the size of its residual and the size of the terms that cancel in it."""
+        out = []
         for residual, terms in zip(self.residual, self.terms, strict=True):
             value = abs(residual(x, *jet_values, *parameter_values))
             scale = sum(abs(term) for term in terms(x, *jet_values, *parameter_values))
             if not _finite(value) or not _finite(scale):
                 raise ArithmeticError("not finite")
+            out.append((value, scale))
+        return out
+
+    def relative(self, x: Any, jet_values: Sequence[Any], parameter_values: Sequence[Any]) -> float:
+        worst = 0.0
+        for value, scale in self.parts(x, jet_values, parameter_values):
             worst = max(worst, float(value / scale) if scale > mp.mpf(10) ** -40 else float(value))
         return worst
 

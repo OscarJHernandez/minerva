@@ -174,3 +174,25 @@ def test_the_logs_hold_no_equation_name_or_value(capsys) -> None:  # type: ignor
     assert numeric["trace_id"] == responses[0].headers["X-Request-ID"]
     assert numeric["ode_method"] == "DOP853" and isinstance(numeric["steps"], int)
     assert {"read", "integrate", "total"} <= {e["stage"] for e in stages}
+
+
+def test_solve_runs_a_series_and_numeric_runs_a_boundary_problem(authed: TestClient) -> None:
+    series = authed.post(
+        "/v1/compute/ode/solve", json={**GROWTH, "method": "series", "order": 4}
+    ).json()
+    assert series["status"] == "ok" and series["method"] == "series"
+    assert series["solutions"][0]["expansion"]["kind"] == "taylor"
+    bvp = authed.post(
+        "/v1/compute/ode/numeric",
+        json={
+            "equations": ["y'' = -y"],
+            "independent": "x",
+            "kind": "bvp",
+            "conditions": ["y(0) = 0", "y(1) = 1"],
+        },
+    ).json()
+    assert bvp["status"] == "ok" and bvp["method_used"] == "solve_bvp"
+    saved = authed.get("/v1/history").json()
+    assert {h["operation"] for h in saved} == {"ode_solve_symbolic", "ode_solve_numerical"}
+    for payload in ({**GROWTH, "method": "magic"}, {**GROWTH, "order": 99}):
+        assert authed.post("/v1/compute/ode/solve", json=payload).status_code == 422

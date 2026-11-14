@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
-import type { OdeInput, OdeNumericInput } from "@/lib/ode-types";
+import type { OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 
 /**
@@ -19,7 +19,7 @@ export interface MotionRunner {
   distribution?: (request: DistributionAnswer) => Promise<void>;
   /** Starts a closed-form or numerical solution from an analysis card, with the user's own numbers. */
   ode?: {
-    symbolic: (request: OdeInput) => Promise<void>;
+    symbolic: (request: OdeInput | OdeSolveInput) => Promise<void>;
     numeric: (request: OdeNumericInput) => Promise<void>;
   };
 }

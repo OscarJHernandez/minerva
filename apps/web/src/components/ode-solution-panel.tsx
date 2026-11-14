@@ -4,12 +4,32 @@ import type { OdeSolution, OdeSolutionItem } from "@/lib/ode-types";
 import { StatusPill } from "./result-panel";
 
 const KIND = {
+  series: "a Taylor polynomial (local)",
+  perturbation: "an expansion in a small parameter",
   explicit: "explicit",
   implicit: "implicit (a relation between the variables)",
   unevaluated: "contains an integral that could not be evaluated (a representation, not a formula)",
 } as const;
 
+const EXPANSION: Record<string, string> = {
+  taylor: "Taylor polynomial",
+  regular_perturbation: "Regular perturbation expansion",
+  poincare_lindstedt: "Poincaré–Lindstedt expansion (periodic motion)",
+};
+
+const EXPANSION_CHECK: Record<string, string> = {
+  initial_conditions: "the initial values hold",
+  residual_order: "the residual of the equation falls at the claimed order",
+  boundedness: "no term grows with the variable",
+  frequency_order: "the frequency is corrected to the claimed order",
+};
+
 function family(item: OdeSolutionItem): string {
+  if (item.expansion) {
+    const e = item.expansion;
+    const where = e.point_latex ? ` about ${e.point_latex.replace(/\\/g, "")}` : "";
+    return `${EXPANSION[e.kind] ?? e.kind} to order ${e.order}${where}.`;
+  }
   if (item.family === "particular")
     return "A particular solution: every constant is fixed by the conditions.";
   if (item.family === "general") {
@@ -47,6 +67,26 @@ function Item({
         <span className="text-muted">{KIND[item.kind]}. </span>
         {family(item)}
       </p>
+      {item.expansion && (
+        <div className="mt-2 text-sm" data-expansion={item.expansion.kind}>
+          <p className="text-muted">{item.expansion.validity}</p>
+          {item.expansion.secular_orders.length > 0 && (
+            <p className="mt-1 text-warn">
+              Terms that grow with the variable appear at order{" "}
+              {item.expansion.secular_orders.join(", ")}: this holds only on a bounded interval, for
+              small values of the parameter.
+            </p>
+          )}
+          <ul className="mt-1 text-xs">
+            {item.expansion.checks.map((c) => (
+              <li key={c.name} className={c.passed ? "text-ok" : "text-warn"}>
+                {c.passed ? "✓" : "✗"} {EXPANSION_CHECK[c.name] ?? c.name}
+                {c.note && !c.passed ? ` (${c.note})` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {item.conditions.length > 0 && (
         <ul className="mt-2 text-sm">
           {item.conditions.map((c) => (
@@ -70,8 +110,9 @@ function Item({
       )}
       <details className="mt-2 text-xs">
         <summary className="cursor-pointer text-muted">
-          How it was checked: {v.points_agreed} of {v.points_checked} points agree
-          {v.symbolic_zero ? ", also proved" : ", numerically checked"}
+          How it was checked: {v.points_agreed} of {v.points_checked}{" "}
+          {item.expansion ? "confirmations agree" : "points agree"}
+          {item.expansion ? "" : v.symbolic_zero ? ", also proved" : ", numerically checked"}
         </summary>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5">
           <dt className="text-muted">Equation as written</dt>

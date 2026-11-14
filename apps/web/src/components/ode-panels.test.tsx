@@ -271,3 +271,132 @@ describe("OdeNumericPanel", () => {
     expect(screen.getByRole("img", { name: "The solution against s" })).toBeInTheDocument();
   });
 });
+
+describe("series and perturbation results", () => {
+  const expansion = {
+    kind: "taylor" as const,
+    order: 6,
+    point_latex: "t = 0",
+    small_latex: null,
+    secular_orders: [],
+    checks: [
+      { name: "residual_order" as const, passed: true, value: 1e-16, note: "" },
+      { name: "initial_conditions" as const, passed: true, value: null, note: "" },
+    ],
+    validity: "A local approximation about the expansion point.",
+  };
+  const numericOnly = { ...solutionItem.verification, symbolic_zero: null };
+  const series = {
+    ...solutionItem,
+    verification: numericOnly,
+    kind: "series" as const,
+    constants: [],
+    family: "particular" as const,
+    expansion,
+  };
+
+  it("describes a series as local, with its order and what was checked", () => {
+    render(
+      <OdeSolutionPanel
+        report={{ ...solution, method: "series", verification: numericOnly, solutions: [series] }}
+      />,
+    );
+    expect(screen.getByText(/Taylor polynomial to order 6 about t = 0/)).toBeInTheDocument();
+    expect(
+      screen.getByText("A local approximation about the expansion point."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/the residual of the equation falls at the claimed order/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/confirmations agree/)).toBeInTheDocument();
+    expect(screen.queryByText(/and proved/)).not.toBeInTheDocument();
+  });
+
+  it("warns about secular terms and shows the check that failed", () => {
+    const secular = {
+      ...series,
+      kind: "perturbation" as const,
+      expansion: {
+        ...expansion,
+        kind: "regular_perturbation" as const,
+        secular_orders: [1, 2],
+        checks: [
+          ...expansion.checks,
+          {
+            name: "boundedness" as const,
+            passed: false,
+            value: null,
+            note: "terms grow with the variable",
+          },
+        ],
+      },
+    };
+    render(
+      <OdeSolutionPanel report={{ ...solution, method: "perturbation", solutions: [secular] }} />,
+    );
+    expect(
+      screen.getByText(/Terms that grow with the variable appear at order 1, 2/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/only on a bounded interval/)).toBeInTheDocument();
+    expect(screen.getByText(/no term grows with the variable/)).toHaveTextContent("✗");
+  });
+
+  it("names the periodic method", () => {
+    const periodic = {
+      ...series,
+      kind: "perturbation" as const,
+      expansion: { ...expansion, kind: "poincare_lindstedt" as const, point_latex: null },
+    };
+    render(
+      <OdeSolutionPanel report={{ ...solution, method: "perturbation", solutions: [periodic] }} />,
+    );
+    expect(
+      screen.getByText(/Poincaré–Lindstedt expansion \(periodic motion\) to order 6/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("a boundary-value result", () => {
+  it("calls the given values conditions and lists the boundary checks", () => {
+    render(
+      <OdeNumericPanel
+        report={{
+          ...numeric,
+          method_used: "solve_bvp",
+          method_reason:
+            "a solution found from the starting guess 'zero'; other solutions may exist",
+          initial: [
+            { label_latex: "y(0)", value: 0 },
+            { label_latex: "y(1)", value: 1 },
+          ],
+          verification: {
+            ...numeric.verification!,
+            checks: [
+              {
+                name: "boundary_conditions",
+                status: "passed",
+                value: 0,
+                tolerance: 1e-6,
+                note: "",
+              },
+              { name: "residual", status: "passed", value: 1e-8, tolerance: 1e-6, note: "" },
+              {
+                name: "mesh_refinement",
+                status: "passed",
+                value: 1e-11,
+                tolerance: 1e-5,
+                note: "",
+              },
+              { name: "shooting", status: "skipped", value: null, tolerance: null, note: "" },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("Conditions (yours)")).toBeInTheDocument();
+    expect(screen.getByText(/other solutions may exist/)).toBeInTheDocument();
+    expect(screen.getByText("The conditions hold at both ends")).toBeInTheDocument();
+    expect(screen.getByText("A refined mesh gives the same solution")).toBeInTheDocument();
+    expect(screen.getByText("not run")).toBeInTheDocument();
+  });
+});

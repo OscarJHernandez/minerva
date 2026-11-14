@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 
 import sympy as sp
 
+from ..build import FUNCTIONS, RESERVED_NAMES, TEXT_FUNCTION_ALIASES
 from ..errors import LimitError, ParseError, UnsupportedInput
 from ..latexparse import _GREEK, _GREEK_NAME
 from ..latexprint import to_latex
@@ -142,6 +143,7 @@ def _arg(group: str | None) -> str | None:
     return inner[1:-1].strip() if inner.startswith("(") else inner
 
 
+_KNOWN_FUNCTIONS = frozenset(FUNCTIONS) | frozenset(TEXT_FUNCTION_ALIASES) | RESERVED_NAMES
 _TEXT_NUMBER = re.compile(r"\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?")
 _TEXT_CALL = re.compile(r"(?:diff|Derivative)\s*\(")
 
@@ -176,6 +178,9 @@ def _heads_text(source: str) -> Iterator[Head]:
             i += 1
             continue
         name, end = ident.group(), ident.end()
+        if name in _KNOWN_FUNCTIONS:
+            i = end  # sqrt(y), sin(y): the argument is scanned, it is not an application of an unknown
+            continue
         order, dotted = 0, False
         for suffix, value in (("_ddot", 2), ("_dot", 1)):
             if name.endswith(suffix) and len(name) > len(suffix):

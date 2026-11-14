@@ -9,6 +9,10 @@ const CHECK: Record<NumericCheck["name"], string> = {
   tolerance_refinement: "Refining the tolerance converges",
   defect: "The integral form of the equation holds over the steps",
   first_integral: "A verified conserved quantity stays constant",
+  boundary_conditions: "The conditions hold at both ends",
+  residual: "The equation holds on a fine grid",
+  mesh_refinement: "A refined mesh gives the same solution",
+  shooting: "Integrating from the left end reaches the right end",
 };
 
 const WARNING: Record<NumericWarning, string> = {
@@ -81,7 +85,9 @@ export function OdeNumericPanel({
             {report.evaluations} evaluations; rtol {report.rtol}, atol {report.atol}.
           </p>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
-            <dt className="text-muted">Initial values (yours)</dt>
+            <dt className="text-muted">
+              {report.method_used === "solve_bvp" ? "Conditions (yours)" : "Initial values (yours)"}
+            </dt>
             <dd>
               {report.initial.map((i) => `${plainLabel(i.label_latex)} = ${i.value}`).join(", ")}
             </dd>

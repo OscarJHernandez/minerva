@@ -18,11 +18,22 @@ export interface OdeInput {
   conditions: (OdeCondition | string)[];
 }
 
+export type SolveMethod = "closed_form" | "series" | "perturbation";
+
+export interface OdeSolveInput extends OdeInput {
+  method: SolveMethod;
+  order: number;
+  small_parameter: string | null;
+  equilibrium: string | null;
+}
+
 export type NumericMethod = "auto" | "RK45" | "DOP853" | "Radau" | "BDF" | "LSODA";
 
 export interface OdeNumericInput extends OdeInput {
+  kind: "ivp" | "bvp";
   parameters: Record<string, number>;
-  t_end: number;
+  /** ivp: where the interval ends. bvp: not used (the two points of the conditions are the ends). */
+  t_end: number | null;
   method: NumericMethod;
   rtol: number;
   atol: number;
@@ -121,8 +132,26 @@ export interface ConditionCheck {
   residual: number | null;
 }
 
+export interface ExpansionCheck {
+  name: "initial_conditions" | "residual_order" | "boundedness" | "frequency_order";
+  passed: boolean;
+  value: number | null;
+  note: string;
+}
+
+export interface OdeExpansion {
+  kind: "taylor" | "regular_perturbation" | "poincare_lindstedt";
+  order: number;
+  point_latex: string | null;
+  small_latex: string | null;
+  secular_orders: number[];
+  checks: ExpansionCheck[];
+  validity: string;
+}
+
 export interface OdeSolutionItem {
-  kind: "explicit" | "implicit" | "unevaluated";
+  kind: "explicit" | "implicit" | "unevaluated" | "series" | "perturbation";
+  expansion: OdeExpansion | null;
   equations_latex: string[];
   rhs_text: string[];
   constants: string[];
@@ -136,7 +165,7 @@ export interface OdeSolutionItem {
 export interface OdeSolution {
   status: Status;
   message: string;
-  method: "closed_form" | null;
+  method: SolveMethod | null;
   interpretation: OdeInterpretation | null;
   solutions: OdeSolutionItem[];
   verification: OdeVerification | null;
@@ -153,7 +182,11 @@ export interface NumericCheck {
     | "independent_method"
     | "tolerance_refinement"
     | "defect"
-    | "first_integral";
+    | "first_integral"
+    | "boundary_conditions"
+    | "residual"
+    | "mesh_refinement"
+    | "shooting";
   status: "passed" | "failed" | "skipped";
   value: number | null;
   tolerance: number | null;

@@ -86,7 +86,7 @@ class System:
     problem: OdeProblem
     labels: list[tuple[str, int]]
     states: list[sp.Symbol]
-    f: Callable[[float, np.ndarray], np.ndarray]
+    f: Callable[..., Any]  # f(t, *states), as a numpy function
     f_math: Callable[[float, list[float]], list[float]]
     jacobian: Callable[[float, np.ndarray], np.ndarray]
     y0: np.ndarray
@@ -459,9 +459,30 @@ def _number(expr: sp.Expr, values: dict[str, float]) -> float | None:
     return value.real if value.imag == 0 and math.isfinite(value.real) else None
 
 
+def parameter_problem(problem: OdeProblem, given: dict[str, float]) -> str | None:
+    """Why the parameter values cannot be used (missing, not a parameter, against an assumption), or None.
+    Every parameter needs a value from the user; none is ever supplied here."""
+    names = {p.name for p in problem.parameters}
+    missing = sorted(names - set(given))
+    if missing:
+        return "Values are required for every parameter; missing: " + ", ".join(missing) + "."
+    extra = sorted(set(given) - names)
+    if extra:
+        return "Not parameters of this equation: " + ", ".join(extra) + "."
+    for p in problem.parameters:
+        violated = _respects(p, given[p.name])
+        if violated:
+            return f"The value given for {p.name} is not {violated}, which was declared."
+    return None
+
+
 def solve_numerical(
     data: OdeNumericInput, limits: Limits, trace_id: str | None = None
 ) -> OdeNumericReport:
+    if data.kind == "bvp":
+        from .boundary import solve_boundary
+
+        return solve_boundary(data, limits, trace_id)
     started = time.perf_counter()
     stop_at = time.monotonic() + 0.6 * limits.timeout_seconds
     stages: list[OdeStage] = []
@@ -525,29 +546,9 @@ def solve_numerical(
             f"Needed: {listing}. Minerva does not choose them.",
             "conditions",
         )
-    names = {p.name for p in problem.parameters}
-    missing = sorted(names - set(data.parameters))
-    extra = sorted(set(data.parameters) - names)
-    if missing:
-        return stop(
-            Status.PARSE_ERROR,
-            "Values are required for every parameter; missing: " + ", ".join(missing) + ".",
-            "parameters",
-        )
-    if extra:
-        return stop(
-            Status.PARSE_ERROR,
-            "Not parameters of this equation: " + ", ".join(extra) + ".",
-            "parameters",
-        )
-    for p in problem.parameters:
-        violated = _respects(p, data.parameters[p.name])
-        if violated:
-            return stop(
-                Status.PARSE_ERROR,
-                f"The value given for {p.name} is not {violated}, which was declared.",
-                "parameters",
-            )
+    problem_with = parameter_problem(problem, data.parameters)
+    if problem_with:
+        return stop(Status.PARSE_ERROR, problem_with, "parameters")
     values = dict(data.parameters)
     t0 = _number(problem.conditions[0].at, values)
     if t0 is None:
@@ -558,6 +559,12 @@ def solve_numerical(
         if number is None:
             return stop(Status.PARSE_ERROR, "Initial values must be real numbers.", "conditions")
         initial[(c.unknown, c.order)] = number
+    if data.t_end is None:
+        return stop(
+            Status.PARSE_ERROR,
+            "Give the end of the interval (t_end): Minerva does not choose it.",
+            "interval",
+        )
     t1 = float(data.t_end)
     if t1 == t0:
         return stop(

@@ -5,6 +5,8 @@ import type {
   OdeInput,
   OdeInterpretation,
   OdeNumericInput,
+  OdeSolveInput,
+  SolveMethod,
 } from "./ode-types";
 
 /** The text the user types for a differential equation; nothing here computes or guesses. */
@@ -218,6 +220,7 @@ export function buildNumericRequest(
     ok: true,
     request: {
       ...base,
+      kind: "ivp",
       conditions,
       parameters,
       t_end: end,
@@ -303,5 +306,153 @@ export function restoreOdeForm(request: OdeInput): OdeForm {
     independent: request.independent ?? "",
     conditions: request.conditions.map(conditionText).join("\n"),
     assumptions: request.assumptions,
+  };
+}
+
+export const MAX_SERIES_ORDER = 12;
+export const MAX_REGULAR_ORDER = 4;
+export const MAX_PERIODIC_ORDER = 6;
+
+export interface SolveForm {
+  method: SolveMethod;
+  start: string;
+  initial: Record<string, string>;
+  order: string;
+  smallParameter: string;
+  equilibrium: string;
+}
+
+export function blankSolveForm(
+  method: SolveMethod,
+  meaning: OdeInterpretation,
+  base: OdeInput,
+): SolveForm {
+  return {
+    method,
+    ...prefillFromConditions(base.conditions, meaning),
+    order: method === "series" ? "6" : "2",
+    smallParameter: "",
+    equilibrium: "",
+  };
+}
+
+/**
+ * The request for a series or a perturbation expansion. Nothing is chosen for the user: a series needs
+ * every initial value, a perturbation expansion the small parameter they name, and the equilibrium only
+ * if they want the periodic (Poincare-Lindstedt) method.
+ */
+export function buildSolveRequest(
+  base: OdeInput,
+  meaning: OdeInterpretation,
+  form: SolveForm,
+): Built<OdeSolveInput> {
+  const order = Number(form.order);
+  const periodic = form.method === "perturbation" && form.equilibrium.trim() !== "";
+  const limit =
+    form.method === "series" ? MAX_SERIES_ORDER : periodic ? MAX_PERIODIC_ORDER : MAX_REGULAR_ORDER;
+  if (!Number.isInteger(order) || order < 1 || order > limit) {
+    return { ok: false, error: `The order must be a whole number from 1 to ${limit}.` };
+  }
+  let conditions: (OdeCondition | string)[] = [];
+  const needsAll = form.method === "series" || (form.method === "perturbation" && !periodic);
+  if (needsAll) {
+    const point = parseNumber(form.start);
+    if (point === null) {
+      return { ok: false, error: "Give the point where the initial values hold, as a number." };
+    }
+    for (const field of stateFields(meaning)) {
+      const value = parseNumber(form.initial[stateKey(field)] ?? "");
+      if (value === null) {
+        return { ok: false, error: `Give the initial value of ${field.key} as a number.` };
+      }
+      conditions.push({
+        unknown: field.unknown,
+        order: field.order,
+        at: String(point),
+        value: String(value),
+      });
+    }
+  } else {
+    conditions = [];
+  }
+  let smallParameter: string | null = null;
+  if (form.method === "perturbation") {
+    if (!meaning.parameters.includes(form.smallParameter)) {
+      return { ok: false, error: "Choose which parameter is small: Minerva does not choose it." };
+    }
+    smallParameter = form.smallParameter;
+  }
+  return {
+    ok: true,
+    request: {
+      ...base,
+      conditions,
+      method: form.method,
+      order,
+      small_parameter: smallParameter,
+      equilibrium: periodic ? form.equilibrium.trim() : null,
+    },
+  };
+}
+
+export interface BoundaryForm {
+  /** One condition per line, like `y(0) = 0` or `y'(1) = 2`. */
+  conditions: string;
+  parameters: Record<string, string>;
+  rtol: string;
+  atol: string;
+}
+
+export function blankBoundaryForm(base: OdeInput, meaning: OdeInterpretation): BoundaryForm {
+  return {
+    conditions: base.conditions
+      .map((c) => (typeof c === "string" ? c : conditionText(c)))
+      .join("\n"),
+    parameters: Object.fromEntries(meaning.parameters.map((p) => [p, ""])),
+    rtol: "1e-8",
+    atol: "1e-10",
+  };
+}
+
+/** The request for a boundary-value problem: the user's conditions at two points, and nothing else. */
+export function buildBoundaryRequest(
+  base: OdeInput,
+  meaning: OdeInterpretation,
+  form: BoundaryForm,
+): Built<OdeNumericInput> {
+  const conditions = lines(form.conditions);
+  if (conditions.length === 0) {
+    return { ok: false, error: "Give the conditions at the two ends, like y(0) = 0 and y(1) = 1." };
+  }
+  if (conditions.some((c) => !c.includes("="))) {
+    return { ok: false, error: "Write each condition like y(0) = 0." };
+  }
+  const parameters: Record<string, number> = {};
+  for (const name of meaning.parameters) {
+    const value = parseNumber(form.parameters[name] ?? "");
+    if (value === null) return { ok: false, error: `Give a number for the parameter ${name}.` };
+    parameters[name] = value;
+  }
+  const rtol = parseNumber(form.rtol);
+  const atol = parseNumber(form.atol);
+  if (rtol === null || rtol < 1e-12 || rtol > 1e-3) {
+    return { ok: false, error: "The relative tolerance must be between 1e-12 and 1e-3." };
+  }
+  if (atol === null || atol < 1e-14 || atol > 1e-3) {
+    return { ok: false, error: "The absolute tolerance must be between 1e-14 and 1e-3." };
+  }
+  return {
+    ok: true,
+    request: {
+      ...base,
+      kind: "bvp",
+      conditions,
+      parameters,
+      t_end: null,
+      method: "auto",
+      rtol,
+      atol,
+      samples: 200,
+    },
   };
 }

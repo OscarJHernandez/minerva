@@ -64,6 +64,7 @@ from .ode import (
     OdeNumericInput,
     OdeNumericReport,
     OdeSolution,
+    OdeSolveInput,
 )
 from .ops import apply_rule, parse_expression, verify_rule
 from .perturbation import CompareRequest, PerturbationReport
@@ -129,6 +130,7 @@ __all__ = [
     "OdeNumericInput",
     "OdeNumericReport",
     "OdeSolution",
+    "OdeSolveInput",
     "ParseError",
     "PerturbationReport",
     "Pins",

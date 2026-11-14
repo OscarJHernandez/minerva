@@ -241,11 +241,11 @@ def op_ode_analyze(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def op_ode_solve_symbolic(payload: dict[str, Any]) -> dict[str, Any]:
-    from .ode import OdeInput
-    from .ode.symbolic import solve_closed_form
+    from .ode.models import OdeSolveInput
+    from .ode.solve import solve_symbolic
 
-    result = solve_closed_form(
-        OdeInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
+    result = solve_symbolic(
+        OdeSolveInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
     )
     return result.model_dump(mode="json")
 

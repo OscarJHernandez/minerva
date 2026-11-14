@@ -24,6 +24,7 @@ from minerva_engine import (
     OdeNumericInput,
     OdeNumericReport,
     OdeSolution,
+    OdeSolveInput,
     RuleCondition,
     SeriesResult,
     Status,
@@ -63,6 +64,7 @@ from .schemas import (
     MatrixCalculusRequest,
     OdeNumericRequest,
     OdeRequest,
+    OdeSolveRequest,
     RewriteRequest,
     SeriesRequest,
     SimplifyRequest,
@@ -794,7 +796,7 @@ def _ode_label(request: OdeInput) -> str:
 
 def _ode_run(
     operation: str,
-    body: OdeRequest | OdeNumericRequest,
+    body: OdeRequest | OdeSolveRequest | OdeNumericRequest,
     engine_request: OdeInput,
     call: Any,
     user: UserDep,
@@ -848,7 +850,7 @@ def ode_analyze(
 
 @router.post("/ode/solve", response_model=OdeSolutionResponse)
 def ode_solve(
-    body: OdeRequest,
+    body: OdeSolveRequest,
     user: UserDep,
     db: DbDep,
     engine: EngineDep,
@@ -856,10 +858,10 @@ def ode_solve(
     settings: SettingsDep,
     request: Request,
 ) -> OdeSolutionResponse:
-    """Closed-form solutions, each shown only after the equation holds for it at sampled points."""
+    """Closed-form, series or perturbation solutions, each shown only after it was checked."""
     _guard(user, limiter, settings, _ode_length(body))
     _check_links(db, user, body)
-    engine_request = OdeInput(**body.model_dump(exclude=set(Links.model_fields)))
+    engine_request = OdeSolveInput(**body.model_dump(exclude=set(Links.model_fields)))
     result, saved_id = _ode_run(
         "ode_solve_symbolic", body, engine_request, engine.ode_solve_symbolic, user, db, request
     )

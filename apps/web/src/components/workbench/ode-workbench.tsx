@@ -16,10 +16,11 @@ import type {
   OdeNumericInput,
   OdeNumericReport,
   OdeSolution,
+  OdeSolveInput,
 } from "@/lib/ode-types";
 import { AssumptionsEditor } from "../assumptions-editor";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
-import { OdeNumericForm } from "../ode-forms";
+import { OdeBoundaryForm, OdeNumericForm, OdeSolveForm } from "../ode-forms";
 import { OdeNumericPanel } from "../ode-numeric-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 
@@ -27,6 +28,8 @@ const FIELD =
   "min-w-0 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink disabled:opacity-50";
 const ACTION =
   "rounded border border-rule px-2 py-1 text-xs hover:border-accent disabled:opacity-50";
+
+type FormName = "ivp" | "bvp" | "series" | "perturbation";
 
 type Run =
   | { key: number; kind: "analysis"; request: OdeInput; report: OdeAnalysis }
@@ -62,7 +65,8 @@ export function OdeWorkbench({
   const [runs, setRuns] = useState<Run[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [numericFor, setNumericFor] = useState<number | null>(null);
+  /** Which analysis has a form open, and which one. */
+  const [formFor, setFormFor] = useState<{ key: number; form: FormName } | null>(null);
   const uid = useId();
 
   useEffect(() => {
@@ -71,7 +75,7 @@ export function OdeWorkbench({
     setForm(restoreOdeForm(restore.request));
     setRuns([]);
     setError(null);
-    setNumericFor(null);
+    setFormFor(null);
   }, [restore]);
 
   function add(run: NewRun) {
@@ -102,7 +106,7 @@ export function OdeWorkbench({
     }
   }
 
-  async function solveSymbolic(request: OdeInput) {
+  async function solveSymbolic(request: OdeInput | OdeSolveInput) {
     setBusy("symbolic");
     setError(null);
     try {
@@ -125,31 +129,72 @@ export function OdeWorkbench({
   }
 
   function action(run: Extract<Run, { kind: "analysis" }>, m: MethodSuggestion) {
-    if (m.id === "symbolic_closed_form") {
-      return (
-        <button
-          type="button"
-          className={ACTION}
-          disabled={busy !== null}
-          onClick={() => void solveSymbolic(run.request)}
-        >
-          {busy === "symbolic" ? "Solving and checking…" : "Find a closed form"}
-        </button>
-      );
+    const open = (form: FormName, label: string) => (
+      <button
+        type="button"
+        className={ACTION}
+        aria-expanded={formFor?.key === run.key && formFor.form === form}
+        onClick={() =>
+          setFormFor((f) => (f?.key === run.key && f.form === form ? null : { key: run.key, form }))
+        }
+      >
+        {label}
+      </button>
+    );
+    switch (m.id) {
+      case "symbolic_closed_form":
+        return (
+          <button
+            type="button"
+            className={ACTION}
+            disabled={busy !== null}
+            onClick={() => void solveSymbolic(run.request)}
+          >
+            {busy === "symbolic" ? "Solving and checking…" : "Find a closed form"}
+          </button>
+        );
+      case "numerical_ivp":
+        return open("ivp", "Solve numerically…");
+      case "numerical_bvp":
+        return open("bvp", "Solve the boundary-value problem…");
+      case "power_series":
+        return open("series", "Build a series…");
+      case "regular_perturbation":
+      case "poincare_lindstedt":
+        return open("perturbation", "Expand in a small parameter…");
+      default:
+        return null;
     }
-    if (m.id === "numerical_ivp") {
-      return (
-        <button
-          type="button"
-          className={ACTION}
-          aria-expanded={numericFor === run.key}
-          onClick={() => setNumericFor((k) => (k === run.key ? null : run.key))}
-        >
-          Solve numerically…
-        </button>
-      );
+  }
+
+  /** Throws, so that the form can show the message next to its fields. */
+  async function solveExpansion(request: OdeSolveInput) {
+    try {
+      add({ kind: "symbolic", request, report: await api.odeSolve(request) });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) onUnauthorized();
+      throw e;
     }
-    return null;
+  }
+
+  function formBody(run: Extract<Run, { kind: "analysis" }>) {
+    const meaning = run.report.interpretation;
+    if (formFor?.key !== run.key || !meaning || run.report.status !== "ok") return null;
+    const body =
+      formFor.form === "ivp" ? (
+        <OdeNumericForm base={run.request} meaning={meaning} onRun={solveNumeric} />
+      ) : formFor.form === "bvp" ? (
+        <OdeBoundaryForm base={run.request} meaning={meaning} onRun={solveNumeric} />
+      ) : (
+        <OdeSolveForm
+          key={formFor.form}
+          base={run.request}
+          meaning={meaning}
+          method={formFor.form}
+          onRun={solveExpansion}
+        />
+      );
+    return <div className="mt-4 rounded border border-rule p-3">{body}</div>;
   }
 
   return (
@@ -174,7 +219,7 @@ export function OdeWorkbench({
                   setForm(chosen.form);
                   setRuns([]);
                   setError(null);
-                  setNumericFor(null);
+                  setFormFor(null);
                 }
               }}
             >
@@ -269,7 +314,7 @@ export function OdeWorkbench({
               className="text-xs text-muted underline"
               onClick={() => {
                 setRuns([]);
-                setNumericFor(null);
+                setFormFor(null);
               }}
             >
               Clear the results on screen
@@ -282,17 +327,7 @@ export function OdeWorkbench({
         <div key={run.key} data-run={run.kind}>
           {run.kind === "analysis" ? (
             <OdeAnalysisPanel report={run.report} actions={(m) => action(run, m)}>
-              {numericFor === run.key &&
-                run.report.interpretation &&
-                run.report.status === "ok" && (
-                  <div className="mt-4 rounded border border-rule p-3">
-                    <OdeNumericForm
-                      base={run.request}
-                      meaning={run.report.interpretation}
-                      onRun={solveNumeric}
-                    />
-                  </div>
-                )}
+              {formBody(run)}
             </OdeAnalysisPanel>
           ) : run.kind === "symbolic" ? (
             <OdeSolutionPanel report={run.report} onUse={onUseExpression} />

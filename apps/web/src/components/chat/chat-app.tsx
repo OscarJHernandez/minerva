@@ -8,7 +8,7 @@ import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
-import type { OdeInput, OdeNumericInput } from "@/lib/ode-types";
+import type { OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 import type {
   AssistantContent,
@@ -304,7 +304,7 @@ export function ChatApp() {
   /** An analysis card's forms: a closed form or a numerical solution with the user's own numbers. */
   const runOde = useMemo(
     () => ({
-      symbolic: async (request: OdeInput) => {
+      symbolic: async (request: OdeInput | OdeSolveInput) => {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
         try {
           const message = await chatApi.odeSolveSymbolic(activeId, request);

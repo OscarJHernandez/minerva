@@ -13,6 +13,7 @@ from minerva_engine import (
     MatrixDecl,
     OdeInput,
     OdeNumericInput,
+    OdeSolveInput,
     Pins,
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
@@ -152,6 +153,10 @@ class GeometryRequest(GeometryInput, Links):
 
 class OdeRequest(OdeInput, Links):
     """A differential equation or system (analysis and closed-form solutions)."""
+
+
+class OdeSolveRequest(OdeSolveInput, Links):
+    """A differential equation and the analytical approach to try."""
 
 
 class OdeNumericRequest(OdeNumericInput, Links):

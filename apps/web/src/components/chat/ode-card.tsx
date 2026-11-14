@@ -1,8 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "@/lib/ode-types";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
-import { OdeNumericForm, OdeSymbolicForm } from "../ode-forms";
+import { OdeBoundaryForm, OdeNumericForm, OdeSolveForm, OdeSymbolicForm } from "../ode-forms";
 import { OdeNumericPanel } from "../ode-numeric-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 import { useMotionRunner } from "./motion-runner";
@@ -15,33 +16,71 @@ export function OdeAnalysisCard({ report, request }: { report: OdeAnalysis; requ
   const runner = useMotionRunner();
   const meaning = report.interpretation;
   const ode = runner?.ode;
-  const applicable = (id: string) => report.methods.some((m) => m.id === id && m.applicable);
+  const applicable = (...ids: string[]) =>
+    report.methods.some((m) => ids.includes(m.id) && m.applicable);
+  const sections: { id: string; show: boolean; title: string; note: string; body: ReactNode }[] =
+    ode && meaning && report.status === "ok"
+      ? [
+          {
+            id: "closed",
+            show: applicable("symbolic_closed_form"),
+            title: "Find a closed form",
+            note: "(checked by substituting it back)",
+            body: <OdeSymbolicForm base={request} meaning={meaning} onRun={ode.symbolic} />,
+          },
+          {
+            id: "series",
+            show: applicable("power_series"),
+            title: "Build a series about a point",
+            note: "(local; you give the initial values and the order)",
+            body: (
+              <OdeSolveForm base={request} meaning={meaning} method="series" onRun={ode.symbolic} />
+            ),
+          },
+          {
+            id: "perturbation",
+            show: applicable("regular_perturbation", "poincare_lindstedt"),
+            title: "Expand in a small parameter",
+            note: "(you name the parameter)",
+            body: (
+              <OdeSolveForm
+                base={request}
+                meaning={meaning}
+                method="perturbation"
+                onRun={ode.symbolic}
+              />
+            ),
+          },
+          {
+            id: "ivp",
+            show: applicable("numerical_ivp"),
+            title: "Solve numerically",
+            note: "(you choose the numbers): show",
+            body: <OdeNumericForm base={request} meaning={meaning} onRun={ode.numeric} />,
+          },
+          {
+            id: "bvp",
+            show: applicable("numerical_bvp"),
+            title: "Solve the boundary-value problem",
+            note: "(you give the conditions)",
+            body: <OdeBoundaryForm base={request} meaning={meaning} onRun={ode.numeric} />,
+          },
+        ]
+      : [];
   return (
     <OdeAnalysisPanel report={report}>
-      {ode && meaning && report.status === "ok" && (
+      {sections.some((x) => x.show) && (
         <div className="mt-4 space-y-3">
-          {applicable("symbolic_closed_form") && (
-            <details className="rounded border border-rule p-3">
-              <summary className="cursor-pointer text-sm font-medium">
-                Find a closed form{" "}
-                <span className="font-normal text-muted">(checked by substituting it back)</span>
-              </summary>
-              <div className="mt-3">
-                <OdeSymbolicForm base={request} meaning={meaning} onRun={ode.symbolic} />
-              </div>
-            </details>
-          )}
-          {applicable("numerical_ivp") && (
-            <details className="rounded border border-rule p-3">
-              <summary className="cursor-pointer text-sm font-medium">
-                Solve numerically{" "}
-                <span className="font-normal text-muted">(you choose the numbers): show</span>
-              </summary>
-              <div className="mt-3">
-                <OdeNumericForm base={request} meaning={meaning} onRun={ode.numeric} />
-              </div>
-            </details>
-          )}
+          {sections
+            .filter((x) => x.show)
+            .map((x) => (
+              <details key={x.id} className="rounded border border-rule p-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  {x.title} <span className="font-normal text-muted">{x.note}</span>
+                </summary>
+                <div className="mt-3">{x.body}</div>
+              </details>
+            ))}
         </div>
       )}
     </OdeAnalysisPanel>

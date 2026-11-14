@@ -286,6 +286,12 @@ def test_a_value_that_breaks_a_declared_assumption_is_refused() -> None:
     assert r.status is Status.PARSE_ERROR and "positive" in r.message
 
 
+def test_the_end_of_the_interval_is_never_chosen_for_the_user() -> None:
+    request = OdeNumericInput(equations=["y' = y"], independent="t", conditions=["y(0) = 1"])
+    r = solve_numerical(request, L)
+    assert r.status is Status.PARSE_ERROR and "t_end" in r.message and r.series == []
+
+
 def test_an_empty_interval_is_refused() -> None:
     r = run("y' = y", independent="t", conditions=["y(0) = 1"], t_end=0)
     assert r.status is Status.PARSE_ERROR and "empty" in r.message

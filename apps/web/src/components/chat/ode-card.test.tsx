@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
-import type { OdeInput, OdeNumericInput } from "@/lib/ode-types";
+import type { OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import { analysis, numeric, request, solution } from "@/test/ode-fixtures";
 import { CardView } from "./card-view";
 import { OdeAnalysisCard } from "./ode-card";
@@ -14,11 +14,13 @@ const symbolicForm = () => within(screen.getByRole("form", { name: "Closed-form 
 function withRunner(
   node: React.ReactNode,
   ode: {
-    symbolic?: (r: OdeInput) => Promise<void>;
+    symbolic?: (r: OdeInput | OdeSolveInput) => Promise<void>;
     numeric?: (r: OdeNumericInput) => Promise<void>;
   } = {},
 ) {
-  const symbolic = vi.fn<(r: OdeInput) => Promise<void>>(ode.symbolic ?? (async () => {}));
+  const symbolic = vi.fn<(r: OdeInput | OdeSolveInput) => Promise<void>>(
+    ode.symbolic ?? (async () => {}),
+  );
   const numericRun = vi.fn<(r: OdeNumericInput) => Promise<void>>(ode.numeric ?? (async () => {}));
   render(
     <MotionRunnerProvider value={{ run: vi.fn(), ode: { symbolic, numeric: numericRun } }}>
@@ -162,5 +164,103 @@ describe("CardView for differential equations", () => {
       <CardView card={{ ...base, type: "ode_numeric", data: { report: numeric, request } }} />,
     );
     expect(screen.getByRole("region", { name: "Numerical solution" })).toBeInTheDocument();
+  });
+});
+
+describe("the other methods on the analysis card", () => {
+  const every = {
+    ...analysis,
+    methods: [
+      ...analysis.methods.filter((m) => m.id !== "poincare_lindstedt"),
+      {
+        ...analysis.methods[0]!,
+        id: "power_series" as const,
+        title: "Series",
+        rank: 3,
+        action: "series",
+      },
+      {
+        ...analysis.methods[0]!,
+        id: "regular_perturbation" as const,
+        title: "Perturbation",
+        rank: 4,
+        action: "perturbation",
+      },
+    ],
+  };
+  const boundary = {
+    ...analysis,
+    problem_kind: "boundary_value" as const,
+    methods: analysis.methods.map((m) =>
+      m.id === "numerical_ivp"
+        ? { ...m, applicable: false, rank: null }
+        : m.id === "poincare_lindstedt"
+          ? { ...m, id: "numerical_bvp" as const, applicable: true, rank: 3 }
+          : m,
+    ),
+  };
+  const forms = (name: string) => within(screen.getByRole("form", { name }));
+
+  it("offers a series form that asks for every initial value and the order", async () => {
+    const { symbolic } = withRunner(<OdeAnalysisCard report={every} request={request} />);
+    await userEvent.click(screen.getByText(/Build a series about a point/));
+    const form = forms("Series solution");
+    await userEvent.click(form.getByRole("button", { name: "Build the series" }));
+    expect(form.getByRole("alert")).toHaveTextContent("point where the initial values hold");
+    await userEvent.type(form.getByLabelText("at t ="), "0");
+    await userEvent.type(form.getByLabelText("y(t₀)"), "1");
+    await userEvent.type(form.getByLabelText("y'(t₀)"), "0");
+    await userEvent.click(form.getByRole("button", { name: "Build the series" }));
+    expect(symbolic).toHaveBeenCalledOnce();
+    expect(symbolic.mock.calls[0]?.[0]).toMatchObject({ method: "series", order: 6 });
+  });
+
+  it("makes the user choose the small parameter", async () => {
+    const { symbolic } = withRunner(<OdeAnalysisCard report={every} request={request} />);
+    await userEvent.click(screen.getByText(/Expand in a small parameter/));
+    const form = forms("Perturbation expansion");
+    await userEvent.type(form.getByLabelText("at t ="), "0");
+    await userEvent.type(form.getByLabelText("y(t₀)"), "1");
+    await userEvent.type(form.getByLabelText("y'(t₀)"), "0");
+    await userEvent.click(form.getByRole("button", { name: "Expand in the small parameter" }));
+    expect(form.getByRole("alert")).toHaveTextContent("Minerva does not choose it");
+    expect(symbolic).not.toHaveBeenCalled();
+    await userEvent.selectOptions(form.getByLabelText("Small parameter"), "c");
+    await userEvent.click(form.getByRole("button", { name: "Expand in the small parameter" }));
+    expect(symbolic.mock.calls[0]?.[0]).toMatchObject({
+      method: "perturbation",
+      small_parameter: "c",
+    });
+  });
+
+  it("an equilibrium switches to the periodic method and drops the initial values", async () => {
+    withRunner(<OdeAnalysisCard report={every} request={request} />);
+    await userEvent.click(screen.getByText(/Expand in a small parameter/));
+    const form = forms("Perturbation expansion");
+    expect(form.getByLabelText("at t =")).toBeInTheDocument();
+    await userEvent.type(form.getByLabelText(/Equilibrium/), "0");
+    expect(form.queryByLabelText("at t =")).not.toBeInTheDocument();
+    expect(form.getByRole("button", { name: "Expand about the equilibrium" })).toBeInTheDocument();
+  });
+
+  it("offers the boundary form instead of the initial-value form for a boundary problem", async () => {
+    const { numeric: run } = withRunner(
+      <OdeAnalysisCard
+        report={boundary}
+        request={{ ...request, conditions: ["y(0) = 0", "y(1) = 1"] }}
+      />,
+    );
+    expect(screen.queryByText(/Solve numerically/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText(/you give the conditions/));
+    const form = forms("Boundary-value problem");
+    expect(form.getByLabelText(/Conditions at the two ends/)).toHaveValue("y(0) = 0\ny(1) = 1");
+    await userEvent.type(form.getByLabelText("c"), "0.5");
+    await userEvent.click(form.getByRole("button", { name: "Solve the boundary-value problem" }));
+    expect(run.mock.calls[0]?.[0]).toMatchObject({
+      kind: "bvp",
+      conditions: ["y(0) = 0", "y(1) = 1"],
+      parameters: { c: 0.5 },
+      t_end: null,
+    });
   });
 });

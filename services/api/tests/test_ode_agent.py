@@ -34,8 +34,8 @@ def test_the_tools_are_three_and_say_who_chooses_the_numbers() -> None:
     numeric = TOOLS["ode_solve_numerical"]
     assert "never choose them yourself" in numeric.description
     schema = numeric.schema()["function"]["parameters"]
-    assert set(schema["required"]) >= {"equations", "t_end"}
-    assert "Ask the user" in schema["properties"]["t_end"]["description"]
+    assert "equations" in schema["required"]
+    assert "Ask the" in schema["properties"]["t_end"]["description"]
     assert "Ask the user" in schema["properties"]["parameters"]["description"]
     assert (
         "never guess"
@@ -133,11 +133,11 @@ NUMERIC = {
 }
 
 
-def test_a_call_without_the_interval_is_invalid_so_the_model_must_ask(ctx: ToolContext) -> None:
+def test_a_call_without_the_interval_is_refused_so_the_model_must_ask(ctx: ToolContext) -> None:
     arguments = {k: v for k, v in NUMERIC.items() if k != "t_end"}
     out = execute("ode_solve_numerical", arguments, ctx)
-    assert out.status == "error" and not out.arguments_valid
-    assert "t_end" in out.for_model
+    assert out.status == "parse_error" and "t_end" in out.for_model
+    assert "No trajectory is shown" in out.for_model
 
 
 def test_missing_parameter_values_and_conditions_are_refused_by_the_engine(
@@ -284,7 +284,7 @@ def test_the_direct_routes_refuse_bad_bodies_and_other_peoples_conversations(
     chat_client: Any,
 ) -> None:
     client, cid = chat_client
-    bad = {k: v for k, v in NUMERIC.items() if k != "t_end"}
+    bad = {**NUMERIC, "rtol": 0}
     assert (
         client.post(f"/v1/chat/conversations/{cid}/tools/ode_solve_numerical", json=bad).status_code
         == 422
@@ -293,3 +293,101 @@ def test_the_direct_routes_refuse_bad_bodies_and_other_peoples_conversations(
     register(other, "grace@example.com")
     r = other.post(f"/v1/chat/conversations/{cid}/tools/ode_solve_numerical", json=NUMERIC)
     assert r.status_code == 404
+
+
+# --- series, perturbation and boundary-value problems ----------------------------------------------
+
+
+def test_a_series_is_described_as_local_and_checked_not_proved(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_solve_symbolic",
+        {
+            "equations": ["y' = y"],
+            "independent": "x",
+            "conditions": ["y(0) = 1"],
+            "method": "series",
+            "order": 5,
+        },
+        ctx,
+    )
+    assert out.status == "ok" and out.card.type == "ode_solution"
+    text = out.for_model
+    assert "series" in text and "local approximation" in text
+    assert "falls at the claimed order" in text and "not a proof" in text
+    assert "also proved" not in text
+    assert out.evidence is not None and out.evidence.accepted
+
+
+def test_a_perturbation_without_a_named_small_parameter_is_refused(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_solve_symbolic",
+        {
+            "equations": [r"y'' + y + \epsilon y^3 = 0"],
+            "independent": "t",
+            "conditions": ["y(0) = 1", "y'(0) = 0"],
+            "method": "perturbation",
+        },
+        ctx,
+    )
+    assert out.status == "parse_error" and "Name the small parameter" in out.for_model
+    assert out.known_latex == []
+    schema = TOOLS["ode_solve_symbolic"].schema()["function"]["parameters"]["properties"]
+    assert "never choose" in schema["small_parameter"]["description"]
+
+
+def test_secular_terms_are_reported_to_the_model(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_solve_symbolic",
+        {
+            "equations": [r"y'' + y + \epsilon y^3 = 0"],
+            "independent": "t",
+            "conditions": ["y(0) = 1", "y'(0) = 0"],
+            "method": "perturbation",
+            "small_parameter": "epsilon",
+            "order": 1,
+        },
+        ctx,
+    )
+    assert out.status == "ok"
+    assert "valid only on bounded intervals" in out.for_model
+
+
+def test_a_boundary_value_problem_goes_through_the_numerical_tool(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_solve_numerical",
+        {
+            "equations": ["y'' = -y"],
+            "independent": "x",
+            "kind": "bvp",
+            "conditions": ["y(0) = 0", "y(1) = 1"],
+        },
+        ctx,
+    )
+    assert out.status == "ok" and out.card.type == "ode_numeric"
+    assert "solve_bvp" in out.for_model and "check boundary conditions: passed" in out.for_model
+    assert out.card.data["report"]["method_used"] == "solve_bvp"
+
+
+def test_the_scripted_chat_builds_a_series_and_solves_a_boundary_problem(chat_client: Any) -> None:
+    client, cid = chat_client
+    message = message_of(
+        sse(
+            client,
+            cid,
+            "Give the series to order 5 of this ODE, independent variable x, y(0)=1: $y' = y$",
+        )
+    )
+    (card,) = cards_of(message)
+    item = card["data"]["report"]["solutions"][0]
+    assert card["type"] == "ode_solution" and item["kind"] == "series"
+    assert item["expansion"]["order"] == 5
+    message = message_of(
+        sse(
+            client,
+            cid,
+            "Solve this boundary ODE, independent variable x, y(0)=0, y(1)=1: $y'' = -y$",
+        )
+    )
+    (card,) = cards_of(message)
+    assert card["type"] == "ode_numeric" and card["data"]["request"]["kind"] == "bvp"
+    assert card["data"]["report"]["status"] == "ok"

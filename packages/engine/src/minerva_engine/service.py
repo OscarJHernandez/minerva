@@ -33,7 +33,7 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest
 from .observe import Observer, SandboxCall, current_trace_id
-from .ode import OdeAnalysis, OdeDiagnostics, OdeInput, OdeSolution, OdeStage
+from .ode import OdeAnalysis, OdeDiagnostics, OdeInput, OdeSolution, OdeSolveInput, OdeStage
 from .ode.models import OdeNumericInput, OdeNumericReport
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
@@ -310,7 +310,7 @@ class Engine:
         result.duration_ms = ms
         return result
 
-    def ode_solve_symbolic(self, request: OdeInput) -> OdeSolution:
+    def ode_solve_symbolic(self, request: OdeInput | OdeSolveInput) -> OdeSolution:
         """Closed-form solutions through SymPy, each shown only after the equation as written holds
         for it at sampled points (derivatives taken numerically). Conditions are applied afterwards and
         checked separately. SymPy failing is `unsupported`, never "no solution exists"."""

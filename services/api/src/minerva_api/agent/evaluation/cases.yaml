@@ -1066,3 +1066,39 @@
       independent: x
   reply_forbids: 'no closed.form solution exists|cannot be solved in closed form|is impossible|proved that'
   source: "AGENTS.md: unsupported never claims that none exists; engine test_ode_symbolic.py"
+
+- id: ode-series-about-the-initial-point
+  category: calculus
+  prompt: "The independent variable is t. Give the Taylor series to order 5 of $y'' + 0.2 y' + y + y^3 = 0$ about t = 0 with y(0) = 1 and y'(0) = 0."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  args: {equals: {method: series}, present: [conditions]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y'' + 0.2 y' + y + y^3 = 0"]
+      independent: t
+      conditions: ["y(0) = 1", "y'(0) = 0"]
+      method: series
+      order: 5
+  reply_forbids: 'valid for all|converges everywhere|for any t'
+  source: "engine test_ode_series.py: y = 1 - t^2 + t^3/15 + 33 t^4/100 ...; a series is local"
+
+- id: ode-boundary-value-problem
+  category: calculus
+  prompt: "The independent variable is x. Solve the boundary-value problem $y'' = -y$ with y(0) = 0 and y(1) = 1."
+  expected_tool: ode_solve_numerical
+  also_ok: [ode_analyze, ode_solve_symbolic]
+  args: {equals: {kind: bvp}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_numerical
+    arguments:
+      equations: ["y'' = -y"]
+      independent: x
+      kind: bvp
+      conditions: ["y(0) = 0", "y(1) = 1"]
+  source: "closed form y = sin(x)/sin(1), engine test_ode_boundary.py"

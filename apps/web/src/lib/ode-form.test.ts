@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   BLANK_ODE_FORM,
   ODE_EXAMPLES,
+  blankBoundaryForm,
   blankNumericForm,
+  blankSolveForm,
+  buildBoundaryRequest,
+  buildSolveRequest,
   buildNumericRequest,
   buildOdeInput,
   buildSymbolicRequest,
@@ -121,6 +125,7 @@ describe("buildNumericRequest", () => {
           { unknown: "y", order: 0, at: "0", value: "1" },
           { unknown: "y", order: 1, at: "0", value: "0" },
         ],
+        kind: "ivp",
         parameters: { c: 0.5 },
         t_end: 10,
         method: "auto",
@@ -254,5 +259,111 @@ describe("restoreOdeForm", () => {
           .join("\n"),
       });
     }
+  });
+});
+
+describe("buildSolveRequest", () => {
+  const series = () => ({
+    ...blankSolveForm("series", meaning, base),
+    start: "0",
+    initial: { "y:0": "1", "y:1": "0" },
+  });
+
+  it("builds a series request from exactly what was typed", () => {
+    const built = buildSolveRequest(base, meaning, series());
+    expect(built).toEqual({
+      ok: true,
+      request: {
+        ...base,
+        conditions: [
+          { unknown: "y", order: 0, at: "0", value: "1" },
+          { unknown: "y", order: 1, at: "0", value: "0" },
+        ],
+        method: "series",
+        order: 6,
+        small_parameter: null,
+        equilibrium: null,
+      },
+    });
+  });
+
+  it("needs every initial value and the point for a series", () => {
+    expect(buildSolveRequest(base, meaning, { ...series(), start: "" })).toEqual({
+      ok: false,
+      error: expect.stringContaining("point where the initial values hold"),
+    });
+    expect(
+      buildSolveRequest(base, meaning, { ...series(), initial: { "y:0": "1", "y:1": "" } }),
+    ).toEqual({ ok: false, error: "Give the initial value of y' as a number." });
+  });
+
+  it.each([["0"], ["13"], ["2.5"], ["x"]])("refuses the series order %j", (order) => {
+    expect(buildSolveRequest(base, meaning, { ...series(), order }).ok).toBe(false);
+  });
+
+  it("never chooses the small parameter", () => {
+    const form = { ...series(), method: "perturbation" as const, order: "2" };
+    expect(buildSolveRequest(base, meaning, form)).toEqual({
+      ok: false,
+      error: expect.stringContaining("Minerva does not choose it"),
+    });
+    expect(buildSolveRequest(base, meaning, { ...form, smallParameter: "zeta" }).ok).toBe(false);
+    const built = buildSolveRequest(base, meaning, { ...form, smallParameter: "c" });
+    expect(built.ok && built.request).toMatchObject({
+      method: "perturbation",
+      small_parameter: "c",
+      equilibrium: null,
+      order: 2,
+    });
+  });
+
+  it("an equilibrium makes it the periodic method: no initial values, a higher order allowed", () => {
+    const form = {
+      ...blankSolveForm("perturbation", meaning, base),
+      smallParameter: "c",
+      equilibrium: " 0 ",
+      order: "5",
+    };
+    const built = buildSolveRequest(base, meaning, form);
+    expect(built.ok && built.request).toMatchObject({
+      conditions: [],
+      equilibrium: "0",
+      order: 5,
+    });
+    expect(buildSolveRequest(base, meaning, { ...form, equilibrium: "", order: "5" }).ok).toBe(
+      false,
+    );
+  });
+});
+
+describe("buildBoundaryRequest", () => {
+  const form = () => ({
+    ...blankBoundaryForm({ ...base, conditions: ["y(0) = 0", "y(1) = 1"] }, meaning),
+    parameters: { c: "0.5" },
+  });
+
+  it("carries the conditions as typed and leaves the interval to their two points", () => {
+    expect(
+      blankBoundaryForm({ ...base, conditions: ["y(0) = 0", "y(1) = 1"] }, meaning).conditions,
+    ).toBe("y(0) = 0\ny(1) = 1");
+    const built = buildBoundaryRequest(base, meaning, form());
+    expect(built.ok && built.request).toMatchObject({
+      kind: "bvp",
+      conditions: ["y(0) = 0", "y(1) = 1"],
+      parameters: { c: 0.5 },
+      t_end: null,
+      rtol: 1e-8,
+    });
+  });
+
+  it("refuses missing conditions, parameters and tolerances out of range", () => {
+    expect(buildBoundaryRequest(base, meaning, { ...form(), conditions: "" }).ok).toBe(false);
+    expect(buildBoundaryRequest(base, meaning, { ...form(), conditions: "y(0)" }).ok).toBe(false);
+    expect(buildBoundaryRequest(base, meaning, { ...form(), parameters: { c: "" } })).toEqual({
+      ok: false,
+      error: "Give a number for the parameter c.",
+    });
+    expect(buildBoundaryRequest(base, meaning, { ...form(), rtol: "1" }).ok).toBe(false);
+    expect(buildBoundaryRequest(base, meaning, { ...form(), atol: "0" }).ok).toBe(false);
   });
 });

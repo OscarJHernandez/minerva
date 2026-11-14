@@ -440,7 +440,23 @@ class ScriptedLLM:
             async for c in self._say("Which variable is independent (for example t or x)?"):
                 yield c
             return
-        if "numerical" in lower:
+        if "boundary" in lower and conditions:
+            parameters = {
+                k: float(v)
+                for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)
+                if k not in ("rtol", "atol")
+            }
+            args.update({"parameters": parameters, "kind": "bvp"})
+            async for c in self._say("I will solve the boundary-value problem and check it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_solve_numerical", args)])
+        elif "series" in lower:
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 6
+            args.update({"method": "series", "order": order})
+            async for c in self._say("I will build the series and check it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_solve_symbolic", args)])
+        elif "numerical" in lower:
             given = {
                 k: float(v)
                 for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)

@@ -1,5 +1,5 @@
 import { ApiError, extractDetail } from "./api";
-import type { OdeInput, OdeNumericInput } from "./ode-types";
+import type { OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
 import type {
   ChatStatus,
@@ -51,7 +51,7 @@ export const chatApi = {
       body: JSON.stringify(request),
     }),
   /** Finds a closed form when the user presses the button on an analysis card. */
-  odeSolveSymbolic: (id: string, request: OdeInput) =>
+  odeSolveSymbolic: (id: string, request: OdeInput | OdeSolveInput) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_solve_symbolic`, {
       method: "POST",
       body: JSON.stringify(request),
