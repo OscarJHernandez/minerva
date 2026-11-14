@@ -28,8 +28,18 @@ Action = Literal[
     "apply",
     "derive",
     "em_derive",
+    "integrate",
 ]
 STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive", "em_derive")
+IntegralKind = Literal[
+    "line",
+    "line_scalar",
+    "flux",
+    "volume",
+    "gradient_theorem",
+    "divergence_theorem",
+    "stokes_theorem",
+]
 ResultKind = Literal["scalar", "vector", "matrix"]
 Format = Literal["latex", "text"]
 
@@ -42,6 +52,9 @@ Reason = Literal[
     "needs_smoothness",
     "needs_premises",
     "model_check_failed",
+    "singular_in_domain",
+    "missing_geometry",
+    "integration_failed",
     "derivative_depth",
     "verification_failed",
     "no_such_rule",
@@ -89,6 +102,45 @@ class FieldDecl(BaseModel):
         return self
 
 
+class Param(BaseModel):
+    """A parameter and its range (text syntax: numbers, `pi`, declared constants)."""
+
+    name: str
+    lower: str = Field(max_length=120)
+    upper: str = Field(max_length=120)
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, value: str) -> str:
+        if not NAME_RE.match(value) or len(value) > 12 or value == "t":
+            raise ValueError("a parameter is a short name other than t (t is time)")
+        return value
+
+
+class Curve(BaseModel):
+    """A curve given by the three coordinates of the chosen system as functions of one parameter,
+    traversed in the direction of increasing parameter."""
+
+    q: list[str] = Field(min_length=3, max_length=3)
+    parameter: Param
+
+
+class Surface(BaseModel):
+    """A surface given by the three coordinates as functions of two parameters over a rectangle. Its
+    orientation is that of the normal d_u r x d_v r: the order of `u` and `v` is the orientation."""
+
+    q: list[str] = Field(min_length=3, max_length=3)
+    u: Param
+    v: Param
+
+
+class Region(BaseModel):
+    """A coordinate box: the lower and upper value of each coordinate of the system, in order. The
+    outward boundary is generated from it; nothing else is accepted as a domain."""
+
+    bounds: list[tuple[str, str]] = Field(min_length=3, max_length=3)
+
+
 class VectorRule(BaseModel):
     """A vector identity handed over by the knowledge layer: `lhs = rhs` in text syntax over typed
     pattern variables. `requires` is the smoothness the identity needs (a handbook fact, not an
@@ -130,6 +182,11 @@ class VectorInput(BaseModel):
     operator: Literal["grad", "div", "curl", "lap", "dt"] | None = None
     target: str | None = Field(default=None, max_length=1000)
     template: str | None = Field(default=None, max_length=40)
+    # Integrals: the domain is always given, never invented (see integrals.py).
+    integral: IntegralKind | None = None
+    curve: Curve | None = None
+    surface: Surface | None = None
+    region: Region | None = None
     trace_id: str | None = None
 
     @field_validator("assumptions")
@@ -241,6 +298,40 @@ class ModelCheck(BaseModel):
     note: str = ""
 
 
+class IntegralValue(BaseModel):
+    """One integral: its exact value when SymPy found one, and always an independent quadrature."""
+
+    label: str
+    latex: str | None = None  # exact value; None when only a numerical value exists
+    text: str | None = None
+    numeric: str | None = None  # decimal string; None while constants are symbols
+    exact: bool = False
+    quadrature_error: float | None = None
+    agreed: bool | None = (
+        None  # exact value against the independent quadrature (None: no exact value)
+    )
+    points: int = 0
+
+
+class Hypothesis(BaseModel):
+    """A hypothesis of a theorem and what is known about it: `established` (by construction),
+    `checked` (a finite scan found no violation: not a proof) or `not_established`."""
+
+    text: str
+    status: Literal["established", "checked", "not_established"]
+    note: str = ""
+
+
+class IntegralResult(BaseModel):
+    kind: IntegralKind
+    values: list[IntegralValue] = Field(default_factory=list)  # one integral, or the two sides
+    theorem: str | None = None
+    holds: bool | None = None  # theorems: the two sides agree
+    hypotheses: list[Hypothesis] = Field(default_factory=list)
+    orientation: str = ""
+    method: Literal["symbolic", "numerical"] = "symbolic"
+
+
 class Applicable(BaseModel):
     """An identity that matches a part of the expression (listed, not applied or verified)."""
 
@@ -286,5 +377,6 @@ class VectorResult(BaseModel):
     needs_premises: list[str] = Field(default_factory=list)
     model_check: ModelCheck | None = None
     derivation: str | None = None
+    integral: IntegralResult | None = None
     diagnostics: VectorDiagnostics = Field(default_factory=VectorDiagnostics)
     duration_ms: int = 0

@@ -488,6 +488,82 @@ def _em_flipped_sign(engine: Engine) -> tuple[str, str]:
     return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
 
 
+def _integral_request(**kw: Any) -> Any:
+    from .vector import Curve, Param, Region, Surface
+
+    del Curve, Param, Region, Surface
+    return VectorInput(format="text", action="integrate", **kw)
+
+
+def _int_flux(engine: Engine) -> tuple[str, str]:
+    """The flux of r-hat / r^2 through a sphere is 4 pi (Gauss, textbook), whatever the radius."""
+    from .vector import Param, Surface
+
+    result = engine.vector_calculus(
+        _integral_request(
+            expression="F",
+            integral="flux",
+            coordinates="spherical",
+            fields=[FieldDecl(name="F", kind="vector", components=["1/r**2", "0", "0"])],
+            surface=Surface(
+                q=["3", "u", "v"],
+                u=Param(name="u", lower="0", upper="pi"),
+                v=Param(name="v", lower="0", upper="2*pi"),
+            ),
+        )
+    )
+    if result.status.value != "ok" or result.integral is None:
+        return _verdict("correct", False, None, f"status {result.status.value}")
+    agrees = result.integral.values[0].text == "4*pi"
+    return _verdict("correct", True, agrees, "4 pi, as Gauss's law gives")
+
+
+def _int_line_against_mpmath(engine: Engine) -> tuple[str, str]:
+    """A line integral along a helix, against nested mpmath quadrature written by hand in Cartesian form
+    (`F . r'(s)` with r' written out: none of Minerva's integral code is used)."""
+    from .vector import Curve, Param
+
+    result = engine.vector_calculus(
+        _integral_request(
+            expression="F",
+            integral="line",
+            fields=[FieldDecl(name="F", kind="vector", components=["-y**2", "x*z", "x*y + z"])],
+            curve=Curve(
+                q=["cos(s)", "sin(s)", "s/3"], parameter=Param(name="s", lower="0", upper="2*pi")
+            ),
+        )
+    )
+    if result.status.value != "ok" or result.integral is None:
+        return _verdict("correct", False, None, f"status {result.status.value}")
+
+    def integrand(s: Any) -> Any:
+        x, y, z = mp.cos(s), mp.sin(s), s / 3
+        dx, dy, dz = -mp.sin(s), mp.cos(s), mp.mpf(1) / 3
+        return (-(y**2)) * dx + (x * z) * dy + (x * y + z) * dz
+
+    truth = mp.quad(integrand, [0, 2 * mp.pi])
+    value = result.integral.values[0]
+    got = mp.mpf(value.numeric) if value.numeric else mp.mpf(sp.N(sp.sympify(value.text), 20))
+    return _verdict("correct", True, abs(got - truth) < 1e-9, "helix, nested mpmath quadrature")
+
+
+def _int_pole_refused(engine: Engine) -> tuple[str, str]:
+    """The divergence theorem needs F defined on the whole ball; 1/r^2 has a pole at its centre (the
+    true flux is 4 pi while div F = 0 elsewhere): refuse rather than report two unequal sides."""
+    from .vector import Region
+
+    result = engine.vector_calculus(
+        _integral_request(
+            expression="F",
+            integral="divergence_theorem",
+            coordinates="spherical",
+            fields=[FieldDecl(name="F", kind="vector", components=["1/r**2", "0", "0"])],
+            region=Region(bounds=[("0", "2"), ("0", "pi"), ("0", "2*pi")]),
+        )
+    )
+    return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "matrix-exp-product-noncommuting",
@@ -615,6 +691,27 @@ PROBLEMS: list[Problem] = [
         "Griffiths, Introduction to Electrodynamics, chapter 7 (the sign of Faraday's law)",
         "refused",
         _em_flipped_sign,
+    ),
+    Problem(
+        "integral-flux-inverse-square",
+        "integral",
+        "Griffiths, Introduction to Electrodynamics, section 1.3 (flux of r-hat over r squared)",
+        "correct",
+        _int_flux,
+    ),
+    Problem(
+        "integral-line-against-mpmath",
+        "integral",
+        "direct quadrature of F . dr along the helix (mpmath), written by hand",
+        "correct",
+        _int_line_against_mpmath,
+    ),
+    Problem(
+        "integral-divergence-theorem-pole-refused",
+        "integral",
+        "Griffiths, Introduction to Electrodynamics, section 1.5 (the delta function at the origin)",
+        "refused",
+        _int_pole_refused,
     ),
 ]
 

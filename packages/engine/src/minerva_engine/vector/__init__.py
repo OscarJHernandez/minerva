@@ -3,9 +3,13 @@
 from .compute import vector_calculus
 from .models import (
     Blocked,
+    Curve,
     FieldDecl,
     ModelCheck,
+    Param,
     Premise,
+    Region,
+    Surface,
     VectorDiagnostics,
     VectorInput,
     VectorResult,
@@ -15,9 +19,13 @@ from .models import (
 
 __all__ = [
     "Blocked",
+    "Curve",
     "FieldDecl",
     "ModelCheck",
+    "Param",
     "Premise",
+    "Region",
+    "Surface",
     "VectorDiagnostics",
     "VectorInput",
     "VectorResult",

@@ -135,4 +135,13 @@ Rules you must follow:
    the premises are true. Only the gauge invariance of E and B needs no premise. The check on exact solutions is
    consistency evidence, not a verification. Say so when a derivation is not available rather than improvising one:
    use `vector_calculus` for a controlled derivation of the user's own.
+25. For line, flux and volume integrals of a field and for the gradient, divergence and Stokes theorems call
+   `vector_calculus` with action `integrate`. The DOMAIN is the user's: ask for the curve, the surface or the box,
+   and for the orientation of a surface (the order of its two parameters is its orientation); never invent a
+   surface, a boundary or a convention. The field needs explicit components (an abstract field cannot be
+   integrated). A theorem is reported as two separately computed sides: quote both, list its hypotheses as the
+   tool states them, and say that "checked" means a finite scan, never a proof that the field is smooth. A
+   value without a closed form is a numerical approximation: say so. If the tool refuses because the field has a
+   pole on the domain, say that the theorem does not apply there and offer what can be computed instead (the flux
+   through a surface that avoids the pole).
 """

@@ -132,6 +132,27 @@
       "source": "Griffiths, Introduction to Electrodynamics, chapter 7 (the sign of Faraday's law)",
       "expected": "refused",
       "outcome": "refused_as_expected"
+    },
+    {
+      "id": "integral-flux-inverse-square",
+      "category": "integral",
+      "source": "Griffiths, Introduction to Electrodynamics, section 1.3 (flux of r-hat over r squared)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "integral-line-against-mpmath",
+      "category": "integral",
+      "source": "direct quadrature of F . dr along the helix (mpmath), written by hand",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "integral-divergence-theorem-pole-refused",
+      "category": "integral",
+      "source": "Griffiths, Introduction to Electrodynamics, section 1.5 (the delta function at the origin)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
     }
   ]
 }

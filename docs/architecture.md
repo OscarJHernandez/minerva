@@ -205,6 +205,11 @@ one most likely to be wrong.
     theorem, gauge invariance, Poisson and Laplace) is a set of routes found by the same search, each identity step
     verified, combined algebraically, then evaluated on exact solutions of the premises (plane waves, fields from random
     potentials with their sources). A result that used a premise is conditional on it and is never called an identity.
+    Integrals (`integrals.py`) take a domain the user gives (a parametrised curve or surface, a coordinate box) and an
+    explicit field: each value is an exact pull-back integrated by SymPy against an independent quadrature of the input
+    read in Cartesian coordinates; the gradient, divergence and Stokes theorems are reported as two separately computed
+    sides with their hypotheses marked established, checked (a finite scan) or not established, and a pole on the domain
+    refuses the theorem.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 

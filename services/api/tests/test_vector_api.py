@@ -420,3 +420,83 @@ def test_the_route_resolves_premise_ids_and_only_from_the_handbook(authed: TestC
         ).status_code
         == 422
     )
+
+
+# -- integrals --------------------------------------------------------------------------------------
+INVERSE_SQUARE = {"name": "F", "kind": "vector", "components": ["1/r**2", "0", "0"]}
+SPHERE = {"q": ["1", "u", "v"], "u": {"name": "u", "lower": "0", "upper": "pi"},
+          "v": {"name": "v", "lower": "0", "upper": "2*pi"}}  # fmt: skip
+
+
+def test_flux_through_a_sphere_is_a_checked_exact_value(ctx: ToolContext) -> None:
+    out = execute(
+        "vector_calculus",
+        {
+            "action": "integrate",
+            "integral": "flux",
+            "expression": "F",
+            "coordinates": "spherical",
+            "fields": [INVERSE_SQUARE],
+            "surface": SPHERE,
+        },
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert "exact" in out.for_model and "d_u r x d_v r" in out.for_model
+    assert out.known_latex  # an exact, verified value may be repeated
+    assert out.card.data["result"]["integral"]["values"][0]["text"] == "4*pi"
+
+
+def test_a_theorem_lists_its_hypotheses_and_never_says_proved(ctx: ToolContext) -> None:
+    out = execute(
+        "vector_calculus",
+        {
+            "action": "integrate",
+            "integral": "divergence_theorem",
+            "expression": "F",
+            "fields": [{"name": "F", "kind": "vector", "components": ["x**2", "y*z", "z**3"]}],
+            "region": {"bounds": [["0", "1"], ["0", "2"], ["0", "1"]]},
+        },
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert (
+        "the divergence theorem: the two sides were computed separately and agree" in out.for_model
+    )
+    assert "checked" in out.for_model and "never a proof of smoothness" in out.for_model
+
+
+def test_the_point_charge_ball_is_refused_by_the_theorem_but_not_by_the_flux(
+    ctx: ToolContext,
+) -> None:
+    refused = execute(
+        "vector_calculus",
+        {
+            "action": "integrate",
+            "integral": "divergence_theorem",
+            "expression": "F",
+            "coordinates": "spherical",
+            "fields": [INVERSE_SQUARE],
+            "region": {"bounds": [["0", "2"], ["0", "pi"], ["0", "2*pi"]]},
+        },
+        ctx,
+    )
+    assert refused.status == "unsupported" and refused.known_latex == []
+    assert "not defined and finite" in refused.for_model
+
+
+def test_the_route_integrates_and_stores_the_geometry(authed: TestClient) -> None:
+    body = {
+        "expression": "F",
+        "format": "text",
+        "coordinates": "spherical",
+        "fields": [INVERSE_SQUARE],
+        "action": "integrate",
+        "integral": "flux",
+        "surface": SPHERE,
+        "save": True,
+    }
+    out = authed.post("/v1/compute/vector", json=body).json()
+    assert out["status"] == "ok" and out["integral"]["values"][0]["exact"] is True
+    (item,) = authed.get("/v1/history").json()
+    assert item["result"]["request"]["surface"]["u"]["name"] == "u"

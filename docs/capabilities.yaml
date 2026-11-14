@@ -24,8 +24,10 @@
 #                components}, tensor_index
 #   vector       input (LaTeX or format: text), coordinates (cartesian | cylindrical | spherical), fields [{name, kind,
 #                components, depends_on, smoothness}], constants, assumptions, action (evaluate | jacobian | convert |
-#                identities | apply_identity | substitute | apply | derive), to, rule_id, path, reverse, premises [text
-#                `lhs = rhs`, given by the user], premise, operator (grad | div | curl | lap | dt), target
+#                identities | apply_identity | substitute | apply | derive | integrate), to, rule_id, path, reverse,
+#                premises [text `lhs = rhs`, given by the user], premise, operator (grad | div | curl | lap | dt), target,
+#                integral (line | line_scalar | flux | volume | gradient_theorem | divergence_theorem | stokes_theorem), curve
+#                {q, parameter {name, lower, upper}}, surface {q, u, v}, region {bounds [[lower, upper] x 3]}
 #   electromagnetism derivation (wave_equation_e | wave_equation_b | continuity | poynting | gauge_invariance |
 #                poisson | laplace), premise_ids [handbook field equations the user adopts], premises [text], smoothness
 #                (c2 | smooth, declared by the user)
@@ -784,6 +786,112 @@ capabilities:
         target: '-lap(E)'
         fields:
           - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
+      - id: integral-flux-point-charge
+        title: The flux of r-hat over r squared through a sphere is 4 pi
+        op: vector
+        action: integrate
+        integral: flux
+        input: 'F'
+        format: text
+        coordinates: spherical
+        constants: [R]
+        assumptions: { R: [positive] }
+        fields:
+          - { name: F, kind: vector, components: ['1/r**2', '0', '0'] }
+        surface:
+          q: ['R', 'u', 'v']
+          u: { name: u, lower: '0', upper: 'pi' }
+          v: { name: v, lower: '0', upper: '2*pi' }
+      - id: integral-flux-reversed
+        title: Swapping the parameters reverses the orientation, and the sign
+        op: vector
+        action: integrate
+        integral: flux
+        input: 'F'
+        format: text
+        coordinates: spherical
+        constants: [R]
+        assumptions: { R: [positive] }
+        fields:
+          - { name: F, kind: vector, components: ['1/r**2', '0', '0'] }
+        surface:
+          q: ['R', 'v', 'u']
+          u: { name: u, lower: '0', upper: '2*pi' }
+          v: { name: v, lower: '0', upper: 'pi' }
+      - id: integral-line-circulation
+        title: Circulation of the azimuthal field around the equator of a sphere
+        op: vector
+        action: integrate
+        integral: line
+        input: 'F'
+        format: text
+        coordinates: spherical
+        fields:
+          - { name: F, kind: vector, components: ['0', '0', '1'] }
+        curve:
+          q: ['2', 'pi/2', 's']
+          parameter: { name: s, lower: '0', upper: '2*pi' }
+      - id: integral-divergence-theorem
+        title: The divergence theorem on a box, both sides computed separately
+        op: vector
+        action: integrate
+        integral: divergence_theorem
+        input: 'F'
+        format: text
+        fields:
+          - { name: F, kind: vector, components: ['x**2', 'y*z', 'z**3'] }
+        region:
+          bounds: [['0', '1'], ['0', '2'], ['0', '1']]
+      - id: integral-stokes-theorem
+        title: Stokes' theorem on a parametrised surface
+        op: vector
+        action: integrate
+        integral: stokes_theorem
+        input: 'F'
+        format: text
+        fields:
+          - { name: F, kind: vector, components: ['-y*z', 'x*z', 'x*y'] }
+        surface:
+          q: ['u', 'v', 'u*v']
+          u: { name: u, lower: '0', upper: '1' }
+          v: { name: v, lower: '0', upper: '1' }
+      - id: integral-gauss-law
+        title: Gauss's law in integral form for a uniformly charged ball
+        op: vector
+        action: integrate
+        integral: flux
+        input: 'E'
+        format: text
+        coordinates: spherical
+        constants: [R, rho0, epsilon0]
+        assumptions: { R: [positive], rho0: [positive], epsilon0: [positive] }
+        fields:
+          - { name: E, kind: vector, components: ['rho0*r/(3*epsilon0)', '0', '0'] }
+        surface:
+          q: ['R', 'u', 'v']
+          u: { name: u, lower: '0', upper: 'pi' }
+          v: { name: v, lower: '0', upper: '2*pi' }
+      - id: integral-pole-refused
+        title: The divergence theorem over a ball is refused when the field has a pole at the centre
+        op: vector
+        action: integrate
+        integral: divergence_theorem
+        input: 'F'
+        format: text
+        coordinates: spherical
+        fields:
+          - { name: F, kind: vector, components: ['1/r**2', '0', '0'] }
+        region:
+          bounds: [['0', '2'], ['0', 'pi'], ['0', '2*pi']]
+      - id: integral-domain-not-invented
+        title: A flux without a surface is not computed (the domain is never invented)
+        op: vector
+        action: integrate
+        integral: flux
+        input: 'F'
+        format: text
+        fields:
+          - { name: F, kind: vector, components: ['1', '0', '0'] }
       - id: vector-ambiguous-product
         title: Two vectors side by side are refused, not guessed
         op: vector

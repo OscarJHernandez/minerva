@@ -82,7 +82,7 @@ export function VectorPanel({
         </div>
       )}
 
-      {shown && result.result_kind === "scalar" && result.result_latex && (
+      {shown && !result.integral && result.result_kind === "scalar" && result.result_latex && (
         <div className="mt-3">
           <div className="text-xs uppercase tracking-wide text-muted">Result</div>
           <div className="overflow-x-auto">
@@ -150,6 +150,55 @@ export function VectorPanel({
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {shown && result.integral && (
+        <div className="mt-3" data-testid="integral">
+          <div className="text-xs uppercase tracking-wide text-muted">
+            {result.integral.theorem ? `${result.integral.theorem}: the two sides` : "Integral"}
+          </div>
+          <ul className="mt-1 space-y-2">
+            {result.integral.values.map((v) => (
+              <li key={v.label} className="min-w-0 overflow-x-auto">
+                <Math
+                  latex={`${v.label} = ${v.latex ?? v.numeric ?? ""}`}
+                  display
+                  label="Integral"
+                />
+                <p className="text-xs text-muted">
+                  {v.exact
+                    ? "Exact value, checked against an independent quadrature."
+                    : "Numerical approximation: no closed form was found."}
+                  {v.numeric && v.exact ? ` ≈ ${v.numeric}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-xs text-muted" data-testid="orientation">
+            Orientation: {result.integral.orientation}
+          </p>
+          {result.integral.method === "numerical" && (
+            <p role="note" className="mt-2 rounded bg-warn-soft p-2 text-sm text-warn">
+              This is a numerical approximation, not an exact value.
+            </p>
+          )}
+          {result.integral.hypotheses.length > 0 && (
+            <div className="mt-2" data-testid="hypotheses">
+              <div className="text-xs uppercase tracking-wide text-muted">Hypotheses</div>
+              <ul className="mt-1 space-y-1 text-sm">
+                {result.integral.hypotheses.map((h) => (
+                  <li key={h.text}>
+                    <span className="font-medium">{h.status}</span>: {h.text}{" "}
+                    <span className="text-muted">({h.note})</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-xs text-muted">
+                “checked” is a finite scan of the domain, never a proof of smoothness.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

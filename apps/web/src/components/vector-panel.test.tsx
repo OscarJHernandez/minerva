@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   blocked,
   curl,
+  approximation,
   derived,
+  divergenceTheorem,
+  fluxResult,
   divergenceRequest,
   jacobian,
   listed,
@@ -91,5 +94,31 @@ describe("VectorPanel", () => {
     expect(screen.getByTestId("needs")).toHaveTextContent("curl(B) = mu0*epsilon0*dt(E)");
     expect(screen.getByTestId("needs")).toHaveTextContent(/Minerva does not assume them/);
     expect(screen.queryByTestId("equations")).not.toBeInTheDocument();
+  });
+
+  it("shows an integral with its orientation", () => {
+    render(<VectorPanel result={fluxResult} />);
+    expect(screen.getByTestId("integral")).toHaveTextContent(/Exact value, checked against/);
+    expect(screen.getByTestId("orientation")).toHaveTextContent(/normal d_u r x d_v r/);
+    expect(screen.queryByTestId("hypotheses")).not.toBeInTheDocument();
+  });
+
+  it("shows the two sides of a theorem and says its hypotheses are scanned, not proved", () => {
+    render(<VectorPanel result={divergenceTheorem} />);
+    expect(screen.getByTestId("integral")).toHaveTextContent(
+      /the divergence theorem: the two sides/,
+    );
+    const hypotheses = screen.getByTestId("hypotheses");
+    expect(hypotheses).toHaveTextContent(/checked: F is continuously differentiable/);
+    expect(hypotheses).toHaveTextContent(/established: the region is a coordinate box/);
+    expect(hypotheses).toHaveTextContent(/never a proof of smoothness/);
+  });
+
+  it("labels a value without a closed form as a numerical approximation", () => {
+    render(<VectorPanel result={approximation} />);
+    expect(screen.getByRole("note")).toHaveTextContent(
+      /numerical approximation, not an exact value/,
+    );
+    expect(screen.getByTestId("integral")).toHaveTextContent(/no closed form was found/);
   });
 });

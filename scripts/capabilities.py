@@ -653,9 +653,18 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
             premise=spec.get("premise"),
             operator=spec.get("operator"),
             target=spec.get("target"),
+            integral=spec.get("integral"),
+            curve=spec.get("curve"),
+            surface=spec.get("surface"),
+            region=spec.get("region"),
         )
     )
     inputs = [{"label": "Coordinates", "source": spec.get("coordinates", "cartesian")}]
+    if spec.get("integral"):
+        inputs.append({"label": "Integral", "source": spec["integral"].replace("_", " ")})
+    for key in ("curve", "surface", "region"):
+        if spec.get(key):
+            inputs.append({"label": key.capitalize(), "source": _geometry_text(spec[key])})
     if spec.get("input"):
         inputs.append({"label": "Expression", "source": spec["input"], "syntax": _syntax(spec)})
     for i, p in enumerate(spec.get("premises") or []):
@@ -674,6 +683,19 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
     return _vector_example(spec, r, inputs)
 
 
+def _geometry_text(geometry: dict[str, Any]) -> str:
+    parts = []
+    if "q" in geometry:
+        parts.append("coordinates (" + ", ".join(geometry["q"]) + ")")
+    for key in ("parameter", "u", "v"):
+        if key in geometry:
+            p = geometry[key]
+            parts.append(f"{p['name']} from {p['lower']} to {p['upper']}")
+    if "bounds" in geometry:
+        parts.append("bounds " + "; ".join(f"[{lo}, {hi}]" for lo, hi in geometry["bounds"]))
+    return ", ".join(parts)
+
+
 def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) -> dict[str, Any]:
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
@@ -684,7 +706,7 @@ def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) 
                 {"label": f"Component along {b}", "latex": c}
                 for b, c in zip(r.basis_latex, r.components_latex, strict=True)
             ]
-        elif r.result_kind in ("scalar", "vector") and r.result_latex:
+        elif r.result_kind in ("scalar", "vector") and r.result_latex and r.integral is None:
             outputs.append({"label": "Result", "latex": r.result_latex})
         elif r.result_kind == "matrix" and r.result_latex and r.determinant_latex:
             outputs.append({"label": "Jacobian", "latex": r.result_latex})
@@ -696,6 +718,27 @@ def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) 
                 else "identity"
             )
             outputs.append({"label": f"Step {i} ({kind}): {step.title}", "latex": step.after_latex})
+        if r.integral is not None:
+            for iv in r.integral.values:
+                shown = iv.latex if iv.latex is not None else (iv.numeric or "")
+                kind = "exact" if iv.exact else "numerical approximation"
+                outputs.append({"label": f"Integral ({kind})", "latex": f"{iv.label} = {shown}"})
+            notes.append("Orientation: " + r.integral.orientation + ".")
+            for h in r.integral.hypotheses:
+                notes.append(f"Hypothesis ({h.status}): {h.text}. {h.note}.")
+            if r.integral.theorem:
+                checks.append(
+                    f"{r.integral.theorem}: both sides computed separately, each an exact value checked "
+                    "against an independent quadrature of the input read in Cartesian coordinates"
+                    if r.integral.method == "symbolic"
+                    else f"{r.integral.theorem}: both sides computed separately and agree numerically"
+                )
+            else:
+                checks.append(
+                    "exact value checked against an independent quadrature"
+                    if r.integral.method == "symbolic"
+                    else "two quadrature rules agree; a numerical approximation, not an exact value"
+                )
         for eq in r.equations_latex:
             outputs.append({"label": "Derived equation", "latex": eq})
         if r.model_check is not None and r.model_check.status == "passed":

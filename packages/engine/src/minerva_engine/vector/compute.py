@@ -152,6 +152,16 @@ def _run(
         _jacobian(system, result, diag, deadline)
         return
 
+    if inp.action == "integrate":
+        from .integrals import run_integral
+
+        ctx = build_context(inp, limits, started)
+        diag.abstract_fields = sum(1 for d in ctx.low.declared.values() if d.explicit is None)
+        diag.explicit_fields = sum(1 for d in ctx.low.declared.values() if d.explicit is not None)
+        result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
+        run_integral(ctx, result, diag)
+        return
+
     if inp.action in STEP_ACTIONS:
         from .steps import run_step
 

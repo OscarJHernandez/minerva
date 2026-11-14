@@ -34,7 +34,7 @@ from minerva_engine import (
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
-from minerva_engine.vector import FieldDecl, Premise
+from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
@@ -299,6 +299,7 @@ class VectorCalculusArgs(BaseModel):
         "substitute",
         "apply",
         "derive",
+        "integrate",
     ] = Field(
         default="evaluate",
         description="evaluate: compute the expression in the components of the system. jacobian: the "
@@ -308,7 +309,8 @@ class VectorCalculusArgs(BaseModel):
         "(or right to left with reverse=true), checked by comparing the whole expressions before and "
         "after. substitute: replace one side of a premise the USER gave by the other. apply: apply "
         "`operator` to both sides of an equation (`expression` is `lhs = rhs`). derive: search a chain "
-        "of identity (and premise) steps to `target`, or to a smaller form without one.",
+        "of identity (and premise) steps to `target`, or to a smaller form without one. integrate: a line, "
+        "flux, volume integral or one of the three theorems, over a domain the USER gives (see `integral`).",
     )
     to: Literal["cartesian", "cylindrical", "spherical"] | None = Field(
         default=None, description="Target system for convert."
@@ -323,6 +325,43 @@ class VectorCalculusArgs(BaseModel):
         max_length=24,
         description="apply_identity or substitute: the part to act on, as the path the `identities` "
         "call listed ([] is the whole expression). Never guess it: list first when several places match.",
+    )
+    integral: (
+        Literal[
+            "line",
+            "line_scalar",
+            "flux",
+            "volume",
+            "gradient_theorem",
+            "divergence_theorem",
+            "stokes_theorem",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description="integrate: line (the work of a vector field along `curve`), line_scalar, flux "
+        "(through `surface`), volume (of a scalar over `region`), gradient_theorem (scalar f along "
+        "`curve`), divergence_theorem (vector F over `region`: the volume integral of div F and the flux "
+        "through the box's outward faces, computed separately), stokes_theorem (vector F over `surface`: "
+        "the flux of curl F and the circulation around the boundary). `expression` is the integrand; "
+        "its fields need explicit `components`. The domain is NEVER invented: ask the user for the curve, "
+        "surface or region and their orientation.",
+    )
+    curve: Curve | None = Field(
+        default=None,
+        description="A curve: the three coordinates of `coordinates` as text functions of one parameter "
+        "with a range, traversed in the direction of increasing parameter.",
+    )
+    surface: Surface | None = Field(
+        default=None,
+        description="A surface: the three coordinates as text functions of two parameters over a "
+        "rectangle. The orientation is the normal d_u r x d_v r: the ORDER of u and v is the orientation, "
+        "so state it and never choose it for the user.",
+    )
+    region: Region | None = Field(
+        default=None,
+        description="A coordinate box: (lower, upper) for each coordinate of the system, in order. "
+        "Nothing else is accepted as a volume.",
     )
     reverse: bool = Field(default=False, description="Read the identity or premise right to left.")
     premises: list[str] = Field(
@@ -1044,6 +1083,33 @@ def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
                 "- every identity step was checked by comparing the whole expressions before and after "
                 "(exact component difference zero, and an independent Cartesian evaluation agreeing)"
             )
+        if result.integral is not None:
+            integral = result.integral
+            for iv in integral.values:
+                what = "exact" if iv.exact else "NUMERICAL APPROXIMATION (no closed form found)"
+                shown = iv.latex if iv.latex is not None else (iv.numeric or "?")
+                lines.append(f"- {what}: ${iv.label} = {shown}$")
+                if iv.latex is not None:
+                    known.append(iv.latex)
+                if iv.numeric is not None:
+                    lines.append(f"  numerical value {iv.numeric}")
+            lines.append(f"- orientation: {integral.orientation}")
+            if integral.theorem is not None:
+                lines.append(
+                    f"- {integral.theorem}: the two sides were computed separately and "
+                    f"{'agree' if integral.holds else 'DISAGREE'}. Hypotheses:"
+                )
+                for h in integral.hypotheses:
+                    lines.append(f"  - {h.text}: {h.status} ({h.note})")
+                lines.append(
+                    "  'checked' is a finite scan, never a proof of smoothness: do not say the "
+                    "hypotheses were proved"
+                )
+            if integral.method == "numerical":
+                lines.append(
+                    "- this is a numerical approximation, not an exact value: say so, and give the "
+                    "digits only as approximate"
+                )
         for eq in result.equations_latex:
             lines.append(f"- derived equation: ${eq}$")
             known.append(eq)
@@ -1061,7 +1127,7 @@ def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
                 f"${a.part_latex}$ -> ${a.result_latex}$ (needs {', '.join(a.needs) or 'nothing'}){suffix}"
             )
         v = result.verification
-        if v is not None and not result.steps:
+        if v is not None and not result.steps and result.integral is None:
             lines.append(
                 f"- numerically checked at {v.points_agreed} sample points against an independent "
                 "evaluation; NO symbolic proof: say 'numerically checked', never 'proved'"
@@ -2358,7 +2424,9 @@ TOOLS: dict[str, Tool] = {
             "Vector calculus in Cartesian, cylindrical or spherical coordinates: gradient, divergence, curl, "
             "Laplacian (scalar and vector), dot, cross and triple products, directional derivatives, partial "
             "derivatives with respect to a coordinate or time, the Jacobian of a coordinate system, and "
-            "conversion of explicit fields between systems. Declare each field (scalar or vector, arbitrary "
+            "conversion of explicit fields between systems, and line, flux and volume integrals with the "
+            "gradient, divergence and Stokes theorems over a domain the USER gives (action integrate). "
+            "Declare each field (scalar or vector, arbitrary "
             "or explicit) and each constant. A result is shown only if an independent Cartesian "
             "finite-difference evaluation agrees (numerically checked, not a proof). Nothing is assumed "
             "smooth: a result that needs mixed partial derivatives to commute is withheld until the USER "

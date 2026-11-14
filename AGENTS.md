@@ -399,6 +399,24 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (a pillbox needs the integral theorems), matter with a general constitutive relation. A failed `derive` search
   that skipped identities blocked on smoothness reports them (`blocked`, `needs_smoothness`). `ε0` and `μ0` are
   CODATA 2022 `stated` constants (measured, not exact); a test checks `mu0 epsilon0 c^2 = 1` within the uncertainties.
+- Integrals (`vector/integrals.py`, action `integrate`): line, scalar line, flux, volume, and the gradient, divergence
+  and Stokes theorems of **explicit** fields (an abstract field is `unsupported`; so is a field that depends on `t`)
+  over a domain the USER gives, never invented: a curve and a surface are the three coordinates of the system as
+  functions of parameters (the direction of increasing parameter; the normal `d_u r x d_v r`, so the order of `u` and
+  `v` *is* the orientation, and swapping them changes the sign), a volume is a coordinate box whose six outward faces
+  the engine generates, and Stokes' boundary is the rectangle's edges counter-clockwise in `(u, v)`. Each value is the
+  agreement of two routes that share no scale factor: an exact pull-back integrated by SymPy (time-limited by an alarm)
+  and a quadrature of the *input expression* read at Cartesian points by the `numeric.py` finite-difference evaluator
+  (tangents, normals and the volume element are differenced from the Cartesian map; the quadrature runs at its own
+  precision with a higher-precision integrand so finite differences add no noise). A disagreement is `not_verified`.
+  No closed form: the value is a quadrature cross-checked by a second rule and **labelled a numerical approximation**.
+  A theorem is two separately computed sides; "holds" means the sides agree. Hypotheses are `established` (by
+  construction), `checked` (a finite scan of the domain: interior grid plus two probes near each end, because the ends
+  are often coordinate singularities where the Cartesian reading is undefined for a smooth field) or
+  `not_established`, **never proved**. A field with a pole on the domain (`1/r^2` over a ball containing the origin) is
+  `unsupported` / `singular_in_domain` for the integral and the theorem alike; the flux through a surface that avoids
+  the pole is computed. Faces of zero extent (`r = 0`, the poles of the sphere) integrate to exactly zero. Not covered,
+  and not claimed: piecewise or discontinuous fields, surface charges, non-box volumes, differentiation under the integral.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

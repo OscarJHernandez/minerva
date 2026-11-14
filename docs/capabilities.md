@@ -879,6 +879,112 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - **Status:** `unchanged`
 - no chain of identities reached the target within the bounds (depth 6, width 12, 500 states); this does not say that none exists
 
+#### The flux of r-hat over r squared through a sphere is 4 pi
+
+- **Coordinates:** `spherical`
+- **Integral:** `flux`
+- **Surface:** `coordinates (R, u, v), u from 0 to pi, v from 0 to 2*pi`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1/r**2, 0, 0`
+- **Assumptions:** R positive
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \left(\mathbf{F}\right) \cdot d\mathbf{S} = 4 \pi$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: normal d_u r x d_v r (the order of the parameters is the orientation).
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-36); numerical agreement is evidence, not a proof
+
+#### Swapping the parameters reverses the orientation, and the sign
+
+- **Coordinates:** `spherical`
+- **Integral:** `flux`
+- **Surface:** `coordinates (R, v, u), u from 0 to 2*pi, v from 0 to pi`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1/r**2, 0, 0`
+- **Assumptions:** R positive
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \left(\mathbf{F}\right) \cdot d\mathbf{S} = - 4 \pi$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: normal d_u r x d_v r (the order of the parameters is the orientation).
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-20); numerical agreement is evidence, not a proof
+
+#### Circulation of the azimuthal field around the equator of a sphere
+
+- **Coordinates:** `spherical`
+- **Integral:** `line`
+- **Curve:** `coordinates (2, pi/2, s), s from 0 to 2*pi`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 0, 0, 1`
+- **Status:** `ok`
+- **Integral (exact):** $\int_{C} \left(\mathbf{F}\right) \cdot d\mathbf{l} = 4 \pi$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: increasing parameter.
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-20); numerical agreement is evidence, not a proof
+
+#### The divergence theorem on a box, both sides computed separately
+
+- **Coordinates:** `cartesian`
+- **Integral:** `divergence theorem`
+- **Region:** `bounds [0, 1]; [0, 2]; [0, 1]`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components x**2, y*z, z**3`
+- **Status:** `ok`
+- **Integral (exact):** $\iiint_V \nabla \cdot \left(\mathbf{F}\right) dV = 5$
+- **Integral (exact):** $\oint_{\partial V} \left(\mathbf{F}\right) \cdot d\mathbf{S} = 5$
+- **Check:** the divergence theorem: both sides computed separately, each an exact value checked against an independent quadrature of the input read in Cartesian coordinates
+- Orientation: outward normals on the six faces of the box.
+- Hypothesis (established): the region is a coordinate box with a piecewise smooth boundary. the six faces and their outward normals were generated from the bounds.
+- Hypothesis (checked): F is continuously differentiable on the closed region. F and the integrand are finite at every point of a grid on the region and its boundary; smoothness is not proved.
+- both sides of the divergence theorem were computed separately and agree; the hypotheses are listed with what is known of each. This is consistent with the theorem for this field and domain, not a proof of its hypotheses
+
+#### Stokes' theorem on a parametrised surface
+
+- **Coordinates:** `cartesian`
+- **Integral:** `stokes theorem`
+- **Surface:** `coordinates (u, v, u*v), u from 0 to 1, v from 0 to 1`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components -y*z, x*z, x*y`
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \nabla \times \left(\mathbf{F}\right) \cdot d\mathbf{S} = 1$
+- **Integral (exact):** $\oint_{\partial S} \left(\mathbf{F}\right) \cdot d\mathbf{l} = 1$
+- **Check:** Stokes' theorem: both sides computed separately, each an exact value checked against an independent quadrature of the input read in Cartesian coordinates
+- Orientation: normal d_u r x d_v r; boundary counter-clockwise in (u, v).
+- Hypothesis (established): S is a piecewise smooth oriented surface whose boundary is the image of the rectangle's edges. the boundary is traversed counter-clockwise in (u, v): the right-hand rule for the normal d_u r x d_v r.
+- Hypothesis (checked): F is continuously differentiable on a neighbourhood of S. F, its curl and the edge integrands are finite at every point of a grid on S and its boundary; smoothness is not proved.
+- both sides of Stokes' theorem were computed separately and agree; the hypotheses are listed with what is known of each. This is consistent with the theorem for this field and domain, not a proof of its hypotheses
+
+#### Gauss's law in integral form for a uniformly charged ball
+
+- **Coordinates:** `spherical`
+- **Integral:** `flux`
+- **Surface:** `coordinates (R, u, v), u from 0 to pi, v from 0 to 2*pi`
+- **Expression:** `E` (plain text)
+- **Field E:** `vector field, components rho0*r/(3*epsilon0), 0, 0`
+- **Assumptions:** R positive; rho0 positive; epsilon0 positive
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \left(\mathbf{E}\right) \cdot d\mathbf{S} = \frac{4 \pi R^{3} \rho_{0}}{3 \epsilon_{0}}$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: normal d_u r x d_v r (the order of the parameters is the orientation).
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-18); numerical agreement is evidence, not a proof
+
+#### The divergence theorem over a ball is refused when the field has a pole at the centre
+
+- **Coordinates:** `spherical`
+- **Integral:** `divergence theorem`
+- **Region:** `bounds [0, 2]; [0, pi]; [0, 2*pi]`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1/r**2, 0, 0`
+- **Status:** `unsupported`
+- the field is not defined and finite everywhere on the domain of lower face of r (a pole, or a point where it cannot be evaluated): the integral is not computed
+
+#### A flux without a surface is not computed (the domain is never invented)
+
+- **Coordinates:** `cartesian`
+- **Integral:** `flux`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1, 0, 0`
+- **Status:** `parse_error`
+- a flux needs `surface`: the domain is never invented
+
 #### Two vectors side by side are refused, not guessed
 
 - **Coordinates:** `cartesian`

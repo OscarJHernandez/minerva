@@ -175,3 +175,69 @@ export const needsPremises: VectorResult = {
   needs_premises: ["curl(B) = mu0*epsilon0*dt(E)"],
   blocked: [],
 };
+
+export const fluxResult: VectorResult = {
+  ...curl,
+  action: "integrate",
+  coordinates: "spherical",
+  result_kind: "scalar",
+  result_latex: "\\iint_S \\left(\\mathbf{F}\\right) \\cdot d\\mathbf{S} = 4 \\pi",
+  components_latex: [],
+  basis_latex: [],
+  restrictions_latex: [],
+  integral: {
+    kind: "flux",
+    values: [
+      {
+        label: "\\iint_S \\left(\\mathbf{F}\\right) \\cdot d\\mathbf{S}",
+        latex: "4 \\pi",
+        text: "4*pi",
+        numeric: "12.5663706143592",
+        exact: true,
+        quadrature_error: 1e-15,
+        agreed: true,
+        points: 81,
+      },
+    ],
+    theorem: null,
+    holds: null,
+    hypotheses: [],
+    orientation: "normal d_u r x d_v r (the order of the parameters is the orientation)",
+    method: "symbolic",
+  },
+};
+
+export const divergenceTheorem: VectorResult = {
+  ...fluxResult,
+  integral: {
+    ...fluxResult.integral!,
+    kind: "divergence_theorem",
+    theorem: "the divergence theorem",
+    holds: true,
+    values: [
+      fluxResult.integral!.values[0]!,
+      { ...fluxResult.integral!.values[0]!, label: "\\oint_{\\partial V} F \\cdot d\\mathbf{S}" },
+    ],
+    hypotheses: [
+      {
+        text: "F is continuously differentiable on the closed region",
+        status: "checked",
+        note: "finite at every point of a grid; smoothness is not proved",
+      },
+      {
+        text: "the region is a coordinate box",
+        status: "established",
+        note: "the faces and outward normals were generated",
+      },
+    ],
+  },
+};
+
+export const approximation: VectorResult = {
+  ...fluxResult,
+  integral: {
+    ...fluxResult.integral!,
+    method: "numerical",
+    values: [{ ...fluxResult.integral!.values[0]!, latex: null, text: null, exact: false }],
+  },
+};

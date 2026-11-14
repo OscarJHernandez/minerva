@@ -759,7 +759,8 @@ export type VectorAction =
   | "substitute"
   | "apply"
   | "derive"
-  | "em_derive";
+  | "em_derive"
+  | "integrate";
 
 export interface VectorFieldDecl {
   name: string;
@@ -792,6 +793,54 @@ export interface VectorRequest {
   /** The named electromagnetic derivation (em_derive) and the handbook equations the USER adopted. */
   template?: string | null;
   premise_ids?: string[];
+  /** Integrals: the domain is always the user's. */
+  integral?: VectorIntegralKind | null;
+  curve?: { q: string[]; parameter: VectorParam } | null;
+  surface?: { q: string[]; u: VectorParam; v: VectorParam } | null;
+  region?: { bounds: [string, string][] } | null;
+}
+
+export type VectorIntegralKind =
+  | "line"
+  | "line_scalar"
+  | "flux"
+  | "volume"
+  | "gradient_theorem"
+  | "divergence_theorem"
+  | "stokes_theorem";
+
+export interface VectorParam {
+  name: string;
+  lower: string;
+  upper: string;
+}
+
+export interface VectorIntegralValue {
+  label: string;
+  latex: string | null;
+  text: string | null;
+  numeric: string | null;
+  exact: boolean;
+  quadrature_error: number | null;
+  agreed: boolean | null;
+  points: number;
+}
+
+/** `established`: by construction; `checked`: a finite scan found no violation (never a proof). */
+export interface VectorHypothesis {
+  text: string;
+  status: "established" | "checked" | "not_established";
+  note: string;
+}
+
+export interface VectorIntegralResult {
+  kind: VectorIntegralKind;
+  values: VectorIntegralValue[];
+  theorem: string | null;
+  holds: boolean | null;
+  hypotheses: VectorHypothesis[];
+  orientation: string;
+  method: "symbolic" | "numerical";
 }
 
 export interface VectorBlocked {
@@ -892,6 +941,7 @@ export interface VectorResult {
   needs_premises?: string[];
   model_check?: VectorModelCheck | null;
   derivation?: string | null;
+  integral?: VectorIntegralResult | null;
   duration_ms: number;
   calculation_id?: string | null;
 }

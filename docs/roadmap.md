@@ -81,7 +81,9 @@ conversion, with an independent Cartesian finite-difference check and smoothness
   continuity, Poynting, gauge invariance, Poisson and Laplace, labelled conditional on the premises they use.
   Next there: wave equations for the potentials (Lorenz gauge), Maxwell's equations in matter, interface
   conditions (needs the integral theorems).
-- Line, surface and volume integrals and the gradient, divergence and Stokes theorems with explicit domains.
+- Done: line, surface and volume integrals and the gradient, divergence and Stokes theorems with explicit domains
+  (coordinate boxes and parametrised curves and surfaces). Next there: piecewise fields and surface charges, volumes
+  that are not boxes, and interface conditions by a pillbox argument.
 - Analytical and numerical electromagnetic methods (point charges, multipoles, rectangle boundary-value problems);
   Fourier and Laplace methods, Green's functions beyond the free-space kernel, FEM and FDTD stay out of scope.
 - The electromagnetic field tensor in the geometry module; a vector mode in the workbench.

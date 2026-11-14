@@ -37,7 +37,7 @@ from .models import FieldDecl, Premise, VectorInput, VectorResult
 
 LIMITS = Limits(timeout_seconds=60)
 # Listing identities and replacing a premise by its other side compute nothing to check numerically.
-NO_NUMERIC_CHECK = ("identities", "substitute", "em_derive")
+NO_NUMERIC_CHECK = ("identities", "substitute", "em_derive", "integrate")
 GROUPS = (
     "valid",
     "consistency",
@@ -48,6 +48,7 @@ GROUPS = (
     "identities",
     "derivations",
     "electromagnetism",
+    "integrals",
 )
 
 # Symbols of the references (the engine's text output is read back with these).
@@ -942,8 +943,270 @@ def _em_cases() -> list[Case]:
     return out
 
 
+def _int(
+    expression: str,
+    kind: str,
+    fields: tuple[FieldDecl, ...],
+    system: str = "cartesian",
+    **kw: Any,
+) -> VectorInput:
+    return VectorInput(
+        expression=expression,
+        format="text",
+        coordinates=system,
+        fields=list(fields),
+        action="integrate",
+        integral=kind,
+        **kw,
+    )
+
+
+def _value(*expected: str) -> Callable[[VectorResult], bool]:
+    """The integral's value(s) equal the hand-computed closed form(s), as expressions."""
+
+    def check(r: VectorResult) -> bool:
+        if r.integral is None or len(r.integral.values) != len(expected):
+            return False
+        syms = {n: sp.Symbol(n, positive=True) for n in ("R", "rho0", "epsilon0")}
+        return all(
+            v.text is not None
+            and sp.simplify(sp.sympify(v.text, locals=syms) - sp.sympify(e, locals=syms)) == 0
+            for v, e in zip(r.integral.values, expected, strict=True)
+        )
+
+    return check
+
+
+def _holds(r: VectorResult) -> bool:
+    return bool(r.integral and r.integral.holds and r.integral.hypotheses)
+
+
+def _integral_cases() -> list[Case]:
+    from .models import Curve, Param, Region, Surface
+
+    def p(name: str, lo: str, hi: str) -> Param:
+        return Param(name=name, lower=lo, upper=hi)
+
+    def vec(name: str, *c: str) -> FieldDecl:
+        return FieldDecl(name=name, kind="vector", components=list(c))
+
+    def sca(name: str, c: str) -> FieldDecl:
+        return FieldDecl(name=name, kind="scalar", components=[c])
+
+    R = {"constants": ["R"], "assumptions": {"R": ["positive"]}}
+    sphere_u = Surface(q=["R", "u", "v"], u=p("u", "0", "pi"), v=p("v", "0", "2*pi"))
+    sphere_in = Surface(q=["R", "v", "u"], u=p("u", "0", "2*pi"), v=p("v", "0", "pi"))
+    ball = Region(bounds=[("0", "R"), ("0", "pi"), ("0", "2*pi")])
+    field = vec("F", "1/r**2", "0", "0")
+    gauss = {
+        "constants": ["R", "rho0", "epsilon0"],
+        "assumptions": {"R": ["positive"], "rho0": ["positive"], "epsilon0": ["positive"]},
+    }
+    e = vec("E", "rho0*r/(3*epsilon0)", "0", "0")
+    return [
+        Case(
+            "int-line-work",
+            "Work of (y, x, 0) along a parabola",
+            "integrals",
+            _int(
+                "F",
+                "line",
+                (vec("F", "y", "x", "0"),),
+                curve=Curve(q=["s", "s**2", "0"], parameter=p("s", "0", "1")),
+            ),
+            check=_value("1"),
+        ),
+        Case(
+            "int-line-circulation-spherical",
+            "Circulation of e_phi around the equator of a sphere",
+            "integrals",
+            _int(
+                "F",
+                "line",
+                (vec("F", "0", "0", "1"),),
+                "spherical",
+                curve=Curve(q=["2", "pi/2", "s"], parameter=p("s", "0", "2*pi")),
+            ),
+            check=_value("4*pi"),
+        ),
+        Case(
+            "int-line-helix-length",
+            "Length of a helix (scalar line integral)",
+            "integrals",
+            _int(
+                "f",
+                "line_scalar",
+                (sca("f", "1"),),
+                curve=Curve(q=["cos(s)", "sin(s)", "s"], parameter=p("s", "0", "2*pi")),
+            ),
+            check=_value("2*sqrt(2)*pi"),
+        ),
+        Case(
+            "int-flux-point-charge",
+            "Flux of r_hat / r^2 through a sphere is 4 pi",
+            "integrals",
+            _int("F", "flux", (field,), "spherical", surface=sphere_u, **R),
+            check=_value("4*pi"),
+        ),
+        Case(
+            "int-flux-orientation",
+            "The same flux with the parameters swapped is -4 pi",
+            "integrals",
+            _int("F", "flux", (field,), "spherical", surface=sphere_in, **R),
+            check=_value("-4*pi"),
+        ),
+        Case(
+            "int-volume-ball",
+            "Volume of a ball",
+            "integrals",
+            _int("f", "volume", (sca("f", "1"),), "spherical", region=ball, **R),
+            check=_value("4*pi*R**3/3"),
+        ),
+        Case(
+            "int-volume-cylinder",
+            "Integral of z over a cylinder",
+            "integrals",
+            _int(
+                "f",
+                "volume",
+                (sca("f", "z"),),
+                "cylindrical",
+                region=Region(bounds=[("0", "2"), ("0", "2*pi"), ("0", "3")]),
+            ),
+            check=_value("18*pi"),
+        ),
+        Case(
+            "int-gauss-law-ball",
+            "Gauss's law, integral form: flux of E in a uniformly charged ball = rho V / epsilon0",
+            "integrals",
+            _int("E", "flux", (e,), "spherical", surface=sphere_u, **gauss),
+            check=_value("4*pi*rho0*R**3/(3*epsilon0)"),
+        ),
+        Case(
+            "int-divergence-theorem-cartesian",
+            "Divergence theorem on a box, Cartesian",
+            "integrals",
+            _int(
+                "F",
+                "divergence_theorem",
+                (vec("F", "x**2", "y*z", "z**3"),),
+                region=Region(bounds=[("0", "1"), ("0", "2"), ("0", "1")]),
+            ),
+            check=lambda r: _holds(r) and _value("5", "5")(r),
+        ),
+        Case(
+            "int-divergence-theorem-cylindrical",
+            "Divergence theorem on a cylindrical box",
+            "integrals",
+            _int(
+                "F",
+                "divergence_theorem",
+                (vec("F", "rho*z", "rho**2", "z**2"),),
+                "cylindrical",
+                region=Region(bounds=[("1", "2"), ("0", "pi"), ("0", "1")]),
+            ),
+            check=_holds,
+        ),
+        Case(
+            "int-divergence-theorem-ball",
+            "Divergence theorem over a ball (F = r e_r): 32 pi",
+            "integrals",
+            _int(
+                "F",
+                "divergence_theorem",
+                (vec("F", "r", "0", "0"),),
+                "spherical",
+                region=Region(bounds=[("0", "2"), ("0", "pi"), ("0", "2*pi")]),
+            ),
+            check=lambda r: _holds(r) and _value("32*pi", "32*pi")(r),
+        ),
+        Case(
+            "int-stokes-surface",
+            "Stokes' theorem on a parametrised surface",
+            "integrals",
+            _int(
+                "F",
+                "stokes_theorem",
+                (vec("F", "-y*z", "x*z", "x*y"),),
+                surface=Surface(q=["u", "v", "u*v"], u=p("u", "0", "1"), v=p("v", "0", "1")),
+            ),
+            check=lambda r: _holds(r) and _value("1", "1")(r),
+        ),
+        Case(
+            "int-gradient-theorem",
+            "Gradient theorem along a curve",
+            "integrals",
+            _int(
+                "f",
+                "gradient_theorem",
+                (sca("f", "x**2*y + z*x"),),
+                curve=Curve(q=["s", "s**2", "1-s"], parameter=p("s", "0", "1")),
+            ),
+            check=lambda r: _holds(r) and _value("1", "1")(r),
+        ),
+        # refusals
+        Case(
+            "int-point-charge-ball-refused",
+            "The divergence theorem over a ball with a pole at the centre",
+            "singular",
+            _int(
+                "F",
+                "divergence_theorem",
+                (field,),
+                "spherical",
+                region=Region(bounds=[("0", "2"), ("0", "pi"), ("0", "2*pi")]),
+            ),
+            Status.UNSUPPORTED,
+            check=lambda r: r.diagnostics.reason == "singular_in_domain",
+        ),
+        Case(
+            "int-pole-on-the-curve-refused",
+            "A line integral through a pole",
+            "singular",
+            _int(
+                "F",
+                "line",
+                (vec("F", "1/x", "0", "0"),),
+                curve=Curve(q=["s", "0", "0"], parameter=p("s", "-1", "1")),
+            ),
+            Status.UNSUPPORTED,
+        ),
+        Case(
+            "int-abstract-field-refused",
+            "An integral of an abstract field",
+            "unsupported",
+            _int(
+                "F",
+                "line",
+                (abstract("F", "vector"),),
+                curve=Curve(q=["s", "0", "0"], parameter=p("s", "0", "1")),
+            ),
+            Status.UNSUPPORTED,
+        ),
+        Case(
+            "int-missing-domain",
+            "A flux without a surface: the domain is never invented",
+            "invalid",
+            _int("F", "flux", (vec("F", "1", "0", "0"),)),
+            Status.PARSE_ERROR,
+        ),
+        Case(
+            "int-wrong-kind",
+            "A line integral of a scalar expression",
+            "invalid",
+            _int(
+                "f",
+                "line",
+                (sca("f", "1"),),
+                curve=Curve(q=["s", "0", "0"], parameter=p("s", "0", "1")),
+            ),
+            Status.PARSE_ERROR,
+        ),
+    ]
+
+
 def _all_cases() -> list[Case]:
-    return [*_cases(), *_step_cases(), *_em_cases()]
+    return [*_cases(), *_step_cases(), *_em_cases(), *_integral_cases()]
 
 
 CASES = _all_cases()
