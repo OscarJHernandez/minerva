@@ -284,6 +284,33 @@ def test_wrong_information_matrices_are_rejected(engine, wrong) -> None:
     assert r.status is Status.NOT_VERIFIED and r.matrix_text is None
 
 
+def test_a_refuted_matrix_stops_at_the_first_disagreement_and_a_right_one_runs_every_point(
+    engine,
+) -> None:
+    def candidate(m):
+        return {f"matrix[{i}][{j}]": m[i][j] for i in range(2) for j in range(2)}
+
+    wrong = fisher(
+        engine,
+        "normal",
+        ["mu", "sigma"],
+        candidate=candidate([["1/sigma**2", "0"], ["0", "1/sigma**2"]]),
+    )
+    form, mean = wrong.checks
+    assert wrong.status is Status.NOT_VERIFIED and wrong.matrix_text is None
+    assert form.points_checked < 3 and not form.passed and form.points_agreed < form.points_checked
+    assert not mean.passed and "not completed" in mean.note  # never reported as a failed mean check
+
+    right = fisher(
+        engine,
+        "normal",
+        ["mu", "sigma"],
+        candidate=candidate([["1/sigma**2", "0"], ["0", "2/sigma**2"]]),
+    )
+    assert right.status is Status.OK
+    assert all(c.passed and c.points_checked >= 3 for c in right.checks)
+
+
 # ---------------------------------------------------------------------------------- posteriors
 
 

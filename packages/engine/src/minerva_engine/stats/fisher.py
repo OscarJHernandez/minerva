@@ -201,6 +201,15 @@ def _verify(
         form.points_agreed += agreed
         mean.points_checked += 1
         mean.points_agreed += all(abs(m) <= mp.mpf(10) ** -5 for m in means)
+        if not agreed:
+            # One disagreement already decides the verdict (every point must agree); the remaining
+            # quadratures would only spend time, which is what a loaded host cannot spare.
+            form.note = (
+                "disagrees with the variance of the score; the remaining points were not run"
+            )
+            mean.note = "not completed: the matrix was already refuted by the other check"
+            form.passed = mean.passed = False
+            return form, mean
     for c in (form, mean):
         c.passed = c.points_checked >= 3 and c.points_agreed == c.points_checked
     return form, mean

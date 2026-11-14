@@ -1407,7 +1407,8 @@ capabilities:
         estimate: [p]
         prior: { family: beta, parameters: { alpha: alpha, beta: beta } }
         action: posterior
-        assumptions: { n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive] }
+        assumptions:
+          { n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive] }
       - id: gamma-moments
         title: Moments derived from a density
         op: statistics
