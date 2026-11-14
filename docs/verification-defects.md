@@ -37,6 +37,12 @@ digits against a noise floor of 1e-20). Each is a row in `packages/engine/tests/
 `test_counterexample.py` run against the one probe family meant to catch it. Numerical agreement stays "evidence,
 not proof" in every case.
 
+### Found by the expanded reference benchmark
+
+| Id | Defect | Status |
+| --- | --- | --- |
+| V-016 | `solve` ran `nroots` on the whole polynomial. A root of multiplicity 3 or more made the iteration fail to converge and the request ended in `internal_error` (`(x-1)^3 = 0`, `x^3-3x^2+3x-1 = 0`); a double root was split into two nearby numbers (`2` and `2.000000000000000000001897` for `(x-2)^2(x+1)`), every root was marked multiplicity 1, and `x^4 = 0` was shown as four roots of size 1e-31 and 0. No wrong result was labelled verified, but legitimate queries failed and multiplicities were wrong. | fixed: roots come from the squarefree factors (simple roots) with the multiplicity from `factor_list`; a genuine non-convergence is `unsupported`, never `internal_error`; tests `test_repeated_roots_*` |
+
 ### Open defects (agent layer, found by reading the result store while writing the multi-step tests)
 
 | Id | Defect | Status |

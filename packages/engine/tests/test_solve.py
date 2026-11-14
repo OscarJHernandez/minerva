@@ -53,6 +53,47 @@ def test_roots_have_multiplicities_through_factors() -> None:
     assert all(root.numeric == "1" for root in r.roots)
 
 
+@pytest.mark.parametrize(
+    ("equation", "distinct"),
+    [
+        ("(x-1)^3=0", {"1": 3}),
+        ("x^3-3x^2+3x-1=0", {"1": 3}),  # the same triple root, expanded
+        ("(x-2)^2(x+1)=0", {"2": 2, "-1": 1}),
+        ("x^4=0", {"0": 4}),
+        ("(x-1)^2(x+3)^3=0", {"1": 2, "-3": 3}),
+    ],
+)
+def test_repeated_roots_are_exact_with_their_multiplicity(
+    equation: str, distinct: dict[str, int]
+) -> None:
+    """A multiple root used to crash (`internal_error`, the iteration cannot converge on it) or be split into
+    two nearby numbers (`2` and `2.000000000000000000001897`). Roots of the squarefree factors are simple."""
+    r = solve(equation)
+    assert r.status is Status.OK, r.message
+    assert len(r.roots) == r.degree  # a root of multiplicity m is listed m times
+    found: dict[str, int] = {}
+    for root in r.roots:
+        found[root.numeric] = root.multiplicity
+        assert root.real
+    assert found == distinct
+    v = r.verification
+    assert v and v.roots_substituted_back and v.vieta_holds and v.count_matches_degree
+
+
+def test_repeated_roots_agree_with_mpmath_polyroots_on_the_distinct_values() -> None:
+    import mpmath
+
+    r = solve("(x-1)^2(x+3)^3=0")
+    reference = sorted(
+        {
+            round(float(mpmath.re(z)), 6)
+            for z in mpmath.polyroots([1, 7, 10, -18, -27, 27], maxsteps=2000, extraprec=300)
+        }
+    )
+    assert reference == [-3.0, 1.0]
+    assert sorted({float(root.numeric) for root in r.roots}) == reference
+
+
 def test_symbolic_coefficients_quadratic_has_a_formula_higher_degrees_do_not() -> None:
     q = solve("ax^2+bx+c=0", "x")
     assert q.status is Status.OK and q.symbolic_coefficients

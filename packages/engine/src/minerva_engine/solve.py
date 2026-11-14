@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+import mpmath
 import sympy as sp
 from pydantic import BaseModel, Field
 
@@ -288,11 +289,33 @@ def _numeric(report: SolveReport, poly: sp.Poly, x: sp.Symbol) -> SolveReport:
         )
         exact_all.extend(exact * int(mult))
 
-    numeric = sp.Poly(poly.as_expr(), x).nroots(n=DIGITS, maxsteps=500)
-    values = [sp.N(r, DIGITS) for r in numeric]
+    # Roots come from the irreducible (hence squarefree) factors: their roots are simple, so Newton-type
+    # iteration converges, and a root of multiplicity m is exact and listed m times. Running `nroots` on the
+    # whole polynomial cannot converge on a multiple root (a triple root crashed with `internal_error`) and
+    # splits a double root into two nearby numbers.
+    entries: list[tuple[sp.Expr, int]] = []
+    try:
+        for factor_expr, mult in factor_list:
+            factor = sp.Poly(factor_expr, x)
+            if factor.degree() < 1:
+                continue
+            for r in factor.nroots(n=DIGITS, maxsteps=500):
+                entries.extend([(sp.N(r, DIGITS), int(mult))] * int(mult))
+    except mpmath.NoConvergence:
+        return _fail(
+            Status.UNSUPPORTED,
+            "The numerical root finder did not converge, so no roots are shown.",
+            report.equation_latex,
+        )
+    values = [value for value, _ in entries]
     exact_numeric = [sp.N(e, DIGITS) for e in exact_all]
-    for value in sorted(
-        values, key=lambda v: (bool(abs(sp.im(v)) > TOL), float(sp.re(v)), float(sp.im(v)))
+    for value, mult in sorted(
+        entries,
+        key=lambda item: (
+            bool(abs(sp.im(item[0])) > TOL),
+            float(sp.re(item[0])),
+            float(sp.im(item[0])),
+        ),
     ):
         real = abs(sp.im(value)) < TOL
         match = next(
@@ -302,7 +325,7 @@ def _numeric(report: SolveReport, poly: sp.Poly, x: sp.Symbol) -> SolveReport:
             RootReport(
                 numeric=_format(value),
                 real=bool(real),
-                multiplicity=1,
+                multiplicity=mult,
                 exact_latex=to_latex(match) if match is not None else None,
             )
         )
