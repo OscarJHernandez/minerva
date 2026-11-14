@@ -142,7 +142,7 @@ export const api = {
   matrix: (c: ComputeInput, req: MatrixRequest) =>
     request<MatrixCalculusResult>("/v1/compute/matrix", {
       method: "POST",
-      body: JSON.stringify({ ...c, ...req, format: "latex" }),
+      body: JSON.stringify({ format: "latex", ...c, ...req }),
     }),
   conserved: (c: ConservedInput) =>
     request<DiscoveryReport>("/v1/compute/conserved", {

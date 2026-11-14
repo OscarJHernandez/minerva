@@ -267,7 +267,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 
 ### Noncommutative matrix calculus
 
-*Available in:* chat, HTTP API.
+*Available in:* chat, HTTP API, workbench.
 
 Ordered products of matrix exponentials with declared matrices (a size, or explicit entries), also matrices that depend on a variable, A(t). Minerva recognises the structure and picks the technique: the ordered product rule; the Frechet derivative of exp(X(t)) when X and X' do not commute (never assumed to equal X' exp(X)); merging exponentials only where commutation is declared or visible in the entries; a closed form for an invertible matrix; Duhamel integrals of e^((t-s)A) B e^(sA); a Sylvester equation or a block-matrix exponential for other integrals; and evolution operators dU/dt = A(t) U, U(0) = I. A result is shown only if independent checks agree. An equation, a representation or a numerical approximation is never presented as an evaluated result.
 
