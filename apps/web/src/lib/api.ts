@@ -162,7 +162,7 @@ export const api = {
   ) =>
     request<VectorResult>("/v1/compute/vector", {
       method: "POST",
-      body: JSON.stringify({ ...req, format: "latex", ...link }),
+      body: JSON.stringify({ format: "latex", ...req, ...link }),
     }),
   distribution: (c: ComputeInput, req: DistributionRequest) =>
     request<DistributionResult>("/v1/compute/distribution", {

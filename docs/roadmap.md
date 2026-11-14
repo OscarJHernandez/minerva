@@ -87,8 +87,10 @@ conversion, with an independent Cartesian finite-difference check and smoothness
 - Done: analytical and numerical electrostatics with the user's numbers (point charges, densities over a box,
   multipoles, Dirichlet problems on a rectangle, a check of a candidate solution), each as two methods that must
   agree. Fourier and Laplace methods, Green's functions beyond the free-space kernel, FEM and FDTD stay out of scope.
-- Done: the electromagnetic field tensor in the geometry module (dA, divergence, invariant, Hodge dual). Next: a vector
-  mode in the workbench.
+- Done: the electromagnetic field tensor in the geometry module (dA, divergence, invariant, Hodge dual). 
+- Done: a vector mode in the workbench (declared fields, one step at a time, premises the user ticks, results saved and
+  reopened). Not built: a part picker for paths and a saved chain of vector steps; a result can only be offered as the
+  expression of the next step.
 
 ## Differential geometry
 

@@ -21,6 +21,7 @@ import type {
   DistributionResult,
   GeometryRequest,
   MatrixRequest,
+  VectorRequest,
   HistoryItem,
   IdentitiesResult,
   IdentityMatch,
@@ -33,6 +34,8 @@ import { ExpressionEditor, type EditorFormat } from "./expression-editor";
 import { restoreMatrixForm, type MatrixForm } from "@/lib/matrix-form";
 import { GeometryWorkbench } from "./geometry-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
+import { VectorWorkbench } from "./vector-workbench";
+import { restoreVectorForm, type VectorForm } from "@/lib/vector-form";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
 import { PartPicker, type PartAction } from "./part-picker";
@@ -107,7 +110,10 @@ export function Workbench() {
   const [earlier, setEarlier] = useState<HistoryItem[]>([]);
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
-  const [mode, setMode] = useState<"expression" | "geometry" | "matrix">("expression");
+  const [mode, setMode] = useState<"expression" | "geometry" | "matrix" | "vector">("expression");
+  const [vectorRestore, setVectorRestore] = useState<{ form: VectorForm; nonce: number } | null>(
+    null,
+  );
   const [matrixRestore, setMatrixRestore] = useState<{
     form: MatrixForm;
     nonce: number;
@@ -400,6 +406,18 @@ export function Workbench() {
       }
       return;
     }
+    if (item.operation === "vector") {
+      // the whole problem was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: VectorRequest }).request;
+      if (request) {
+        setMode("vector");
+        setVectorRestore({
+          form: restoreVectorForm(request, item.input, item.format, item.assumptions),
+          nonce: Date.now(),
+        });
+        return;
+      }
+    }
     if (item.operation === "matrix_calculus") {
       // the declarations were stored with the result, so the form can be restored and changed
       const request = (item.result as { request?: MatrixRequest }).request;
@@ -452,8 +470,8 @@ export function Workbench() {
             Find its conserved quantities
           </Link>
         </p>
-        <div role="group" aria-label="Workbench mode" className="flex gap-2">
-          {(["expression", "matrix", "geometry"] as const).map((m) => (
+        <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
+          {(["expression", "matrix", "geometry", "vector"] as const).map((m) => (
             <button
               key={m}
               type="button"
@@ -465,7 +483,13 @@ export function Workbench() {
                   : "border-rule bg-raised text-ink hover:bg-sunk"
               }`}
             >
-              {m === "expression" ? "Expression" : m === "matrix" ? "Matrices" : "Geometry"}
+              {m === "expression"
+                ? "Expression"
+                : m === "matrix"
+                  ? "Matrices"
+                  : m === "geometry"
+                    ? "Geometry"
+                    : "Vectors"}
             </button>
           ))}
         </div>
@@ -577,7 +601,13 @@ export function Workbench() {
       </aside>
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-        {mode === "matrix" ? (
+        {mode === "vector" ? (
+          <VectorWorkbench
+            restore={vectorRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+          />
+        ) : mode === "matrix" ? (
           <MatrixWorkbench
             restore={matrixRestore}
             onUnauthorized={() => router.push("/login")}
