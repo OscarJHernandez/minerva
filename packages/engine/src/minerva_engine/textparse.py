@@ -17,7 +17,7 @@ from typing import Any
 
 import sympy as sp
 
-from .build import CONSTANTS, FUNCTIONS, TEXT_FUNCTION_ALIASES, Builder, NotationLog
+from .build import CONSTANTS, FUNCTIONS, TEXT_FUNCTION_ALIASES, Builder, JetBinding, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
 
@@ -35,6 +35,7 @@ def parse_text(
     notation: NotationLog | None = None,
     *,
     allow_noncommutative: bool = False,
+    jets: JetBinding | None = None,
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(text) > limits.max_input_chars:
@@ -47,6 +48,7 @@ def parse_text(
         strict_calls,
         notation,
         allow_noncommutative=allow_noncommutative,
+        jets=jets,
     )
     if denominators is not None:
         builder.denominators = denominators
@@ -105,6 +107,12 @@ def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:
             raise ParseError("unsupported function call")
         name = node.func.id
         args = [_convert(a, b, d) for a in node.args]
+        if b.jets is not None and name in b.jets.dependent:
+            if args != [b.jets.symbols[b.jets.variable]]:
+                raise ParseError(
+                    f"{name} is a function of {b.jets.variable}: write {name}({b.jets.variable})"
+                )
+            return b.jets.symbols[name]
         if name in b.functions:
             return b.declared_call(name, args)
         if len(args) == 1:
