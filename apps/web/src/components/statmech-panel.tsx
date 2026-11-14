@@ -285,7 +285,7 @@ export function StatMechPanel({
               <thead>
                 <tr>
                   {result.table.columns.map((c) => (
-                    <th key={c} className="pr-3 font-medium">
+                    <th key={c} className="whitespace-nowrap pr-3 font-medium">
                       {c}
                     </th>
                   ))}
@@ -295,7 +295,7 @@ export function StatMechPanel({
                 {result.table.rows.map((row, i) => (
                   <tr key={i}>
                     {row.map((cell, j) => (
-                      <td key={j} className="pr-3 font-mono">
+                      <td key={j} className="whitespace-nowrap pr-3 font-mono">
                         {cell}
                       </td>
                     ))}
@@ -345,7 +345,7 @@ export function StatMechPanel({
                 <thead>
                   <tr>
                     {["", "exact", "approximate", "error", ""].map((h, i) => (
-                      <th key={i} className="pr-3 font-medium">
+                      <th key={i} className="whitespace-nowrap pr-3 font-medium">
                         {h}
                       </th>
                     ))}
@@ -354,11 +354,11 @@ export function StatMechPanel({
                 <tbody>
                   {result.approximation.error_table.map((row) => (
                     <tr key={row.label}>
-                      <td className="pr-3">{row.label}</td>
-                      <td className="pr-3 font-mono">{row.exact}</td>
-                      <td className="pr-3 font-mono">{row.approximate}</td>
-                      <td className="pr-3 font-mono">{row.error}</td>
-                      <td className="text-muted">{row.note}</td>
+                      <td className="whitespace-nowrap pr-3">{row.label}</td>
+                      <td className="whitespace-nowrap pr-3 font-mono">{row.exact}</td>
+                      <td className="whitespace-nowrap pr-3 font-mono">{row.approximate}</td>
+                      <td className="whitespace-nowrap pr-3 font-mono">{row.error}</td>
+                      <td className="whitespace-nowrap text-muted">{row.note}</td>
                     </tr>
                   ))}
                 </tbody>
