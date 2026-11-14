@@ -33,6 +33,8 @@ import { ExpressionEditor, type EditorFormat } from "./expression-editor";
 import { restoreMatrixForm, type MatrixForm } from "@/lib/matrix-form";
 import { GeometryWorkbench } from "./geometry-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
+import { OdeWorkbench } from "./ode-workbench";
+import type { OdeInput } from "@/lib/ode-types";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
 import { PartPicker, type PartAction } from "./part-picker";
@@ -107,11 +109,12 @@ export function Workbench() {
   const [earlier, setEarlier] = useState<HistoryItem[]>([]);
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
-  const [mode, setMode] = useState<"expression" | "geometry" | "matrix">("expression");
+  const [mode, setMode] = useState<"expression" | "geometry" | "matrix" | "ode">("expression");
   const [matrixRestore, setMatrixRestore] = useState<{
     form: MatrixForm;
     nonce: number;
   } | null>(null);
+  const [odeRestore, setOdeRestore] = useState<{ request: OdeInput; nonce: number } | null>(null);
   const [geometryRestore, setGeometryRestore] = useState<{
     request: GeometryRequest;
     nonce: number;
@@ -390,7 +393,28 @@ export function Workbench() {
     }
   }
 
+  /** A right-hand side from a closed-form solution, to work on as an ordinary expression. */
+  function continueWithSolution(expression: string) {
+    setMode("expression");
+    reset();
+    setFormat("text");
+    setText(expression);
+  }
+
   function openEarlier(item: HistoryItem) {
+    if (
+      item.operation === "ode_analyze" ||
+      item.operation === "ode_solve_symbolic" ||
+      item.operation === "ode_solve_numerical"
+    ) {
+      // the whole problem was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: OdeInput }).request;
+      if (request) {
+        setMode("ode");
+        setOdeRestore({ request, nonce: Date.now() });
+      }
+      return;
+    }
     if (item.operation === "geometry") {
       // the whole problem was stored with the result, so the form can be restored and changed
       const request = (item.result as { request?: GeometryRequest }).request;
@@ -453,7 +477,7 @@ export function Workbench() {
           </Link>
         </p>
         <div role="group" aria-label="Workbench mode" className="flex gap-2">
-          {(["expression", "matrix", "geometry"] as const).map((m) => (
+          {(["expression", "matrix", "geometry", "ode"] as const).map((m) => (
             <button
               key={m}
               type="button"
@@ -465,7 +489,13 @@ export function Workbench() {
                   : "border-rule bg-raised text-ink hover:bg-sunk"
               }`}
             >
-              {m === "expression" ? "Expression" : m === "matrix" ? "Matrices" : "Geometry"}
+              {m === "expression"
+                ? "Expression"
+                : m === "matrix"
+                  ? "Matrices"
+                  : m === "geometry"
+                    ? "Geometry"
+                    : "Differential equations"}
             </button>
           ))}
         </div>
@@ -577,7 +607,14 @@ export function Workbench() {
       </aside>
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-        {mode === "matrix" ? (
+        {mode === "ode" ? (
+          <OdeWorkbench
+            restore={odeRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+            onUseExpression={(expression) => continueWithSolution(expression)}
+          />
+        ) : mode === "matrix" ? (
           <MatrixWorkbench
             restore={matrixRestore}
             onUnauthorized={() => router.push("/login")}

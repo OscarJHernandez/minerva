@@ -25,6 +25,11 @@ from minerva_engine import (
     MatrixCalculusInput,
     MatrixDecl,
     MotionRequest,
+    OdeAnalysis,
+    OdeInput,
+    OdeNumericInput,
+    OdeNumericReport,
+    OdeSolution,
     Pins,
     QuantitySpec,
     TensorInput,
@@ -44,6 +49,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
+from ..ode_log import log_ode
 from ..search_log import log_search_events
 from .events import Card, Evidence
 from .evidence import evidence_for
@@ -238,6 +244,29 @@ class GeometryArgs(BaseModel):
         ge=0,
         le=2,
         description="Which index (0-based) raise_index or lower_index acts on",
+    )
+
+
+class OdeAnalyzeArgs(OdeInput):
+    """Arguments of `ode_analyze`: the equation(s) exactly as the user wrote them."""
+
+
+class OdeSymbolicArgs(OdeInput):
+    """Arguments of `ode_solve_symbolic`."""
+
+    method: Literal["closed_form"] = Field(
+        default="closed_form",
+        description="`closed_form`: a solution in terms of functions, accepted only after it is "
+        "substituted back into the equation.",
+    )
+
+
+class OdeNumericArgs(OdeNumericInput):
+    """Arguments of `ode_solve_numerical`. Every number comes from the user."""
+
+    kind: Literal["ivp"] = Field(
+        default="ivp",
+        description="`ivp`: an initial-value problem (initial values in `conditions`, all at one point).",
     )
 
 
@@ -1484,6 +1513,214 @@ def run_motion(args: MotionArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def _ode_status(result: OdeAnalysis | OdeSolution | OdeNumericReport) -> str:
+    return result.status.value
+
+
+def _ode_card(
+    tool: str,
+    kind: Literal["ode_analysis", "ode_solution", "ode_numeric"],
+    title: str,
+    result: OdeAnalysis | OdeSolution | OdeNumericReport,
+    request: OdeInput,
+) -> Card:
+    return Card(
+        id=uuid.uuid4().hex[:8],
+        tool=tool,
+        type=kind,
+        title=title,
+        data={"report": result.model_dump(mode="json"), "request": request.model_dump(mode="json")},
+    )
+
+
+def _ode_reading(
+    result: OdeAnalysis | OdeSolution | OdeNumericReport,
+) -> tuple[list[str], list[tuple[str, str]]]:
+    """How the equation was read, for the model; the equations are the user's input, so they are
+    quoted and never marked as verified."""
+    meaning = result.interpretation
+    if meaning is None:
+        return [], []
+    lines = [
+        "read as: unknowns "
+        + ", ".join(meaning.unknowns)
+        + f"; independent variable {meaning.independent}; parameters "
+        + (", ".join(meaning.parameters) or "none")
+    ]
+    lines.extend(f"equation as read: ${eq}$" for eq in meaning.equations_latex)
+    lines.extend(f"condition as read: ${c}$" for c in meaning.conditions_latex)
+    lines.extend(f"note: {n}" for n in meaning.notes)
+    quoted = [(eq, QUOTED_INPUT) for eq in [*meaning.equations_latex, *meaning.conditions_latex]]
+    return lines, quoted
+
+
+def run_ode_analyze(args: OdeAnalyzeArgs, ctx: ToolContext) -> ToolOutput:
+    request = OdeInput(**args.model_dump())
+    result = ctx.engine.ode_analyze(request)
+    log_ode("ode_analyze", _ode_status(result), result.diagnostics, result.duration_ms)
+    card = _ode_card("ode_analyze", "ode_analysis", "Differential equation", result, request)
+    lines = [f"status={result.status.value}; {result.message}".rstrip("; ")]
+    reading, quoted = _ode_reading(result)
+    lines.extend(reading)
+    known: list[str] = []
+    s = result.structure
+    if s is not None:
+        lines.append(
+            f"structure: {s.kind}, order {s.order}, {s.state_dimension} first-order states; "
+            f"linear={s.linear}; homogeneous={s.homogeneous}; constant coefficients="
+            f"{s.constant_coefficients}; autonomous={s.autonomous}; solved for the highest "
+            f"derivative={s.solved_for_highest}"
+        )
+        lines.append(
+            "classes (SymPy's classification; each solver verifies its own result): "
+            + (", ".join(result.classes) or "none recognised")
+        )
+        for solved in result.solved_latex:
+            lines.append(f"solved form: ${solved}$")
+            known.append(solved)
+        for restriction in result.restrictions_latex:
+            lines.append(f"valid where ${restriction}$")
+            known.append(restriction)
+        if result.problem_kind == "general":
+            lines.append("conditions: none given")
+        else:
+            lines.append(f"conditions: {result.problem_kind}")
+        if result.conditions_needed:
+            lines.append("still needed: " + ", ".join(result.conditions_needed))
+    ranked = [m for m in result.methods if m.applicable]
+    for m in ranked:
+        needs = "; ".join(m.requires)
+        lines.append(
+            f"{m.rank}. {m.id} (tool {m.tool}{', ' + m.action if m.action else ''}): {m.reason}"
+            + (f". Needs: {needs}" if needs else "")
+        )
+    skipped = [m for m in result.methods if not m.applicable]
+    if skipped:
+        lines.append("not applicable: " + "; ".join(f"{m.id} ({m.reason})" for m in skipped))
+    lines.extend(f"note: {n}" for n in result.notes)
+    if result.status.value == "ok":
+        lines.append(
+            "Offer only the applicable methods, in this order, in these words. 'Applicable' means Minerva "
+            "will try and check it, not that it will succeed. For a numerical solution the USER must give "
+            "every initial value, parameter value and the end of the interval: ask; the card has a form."
+        )
+    return ToolOutput(card, "\n".join(lines), known, result.status.value, quoted)
+
+
+def run_ode_symbolic(args: OdeSymbolicArgs, ctx: ToolContext) -> ToolOutput:
+    request = OdeInput(**args.model_dump(exclude={"method"}))
+    result = ctx.engine.ode_solve_symbolic(request)
+    log_ode("ode_solve_symbolic", _ode_status(result), result.diagnostics, result.duration_ms)
+    card = _ode_card("ode_solve_symbolic", "ode_solution", "Closed-form solution", result, request)
+    lines = [f"status={result.status.value}; {result.message}".rstrip("; ")]
+    reading, quoted = _ode_reading(result)
+    lines.extend(reading)
+    known: list[str] = []
+    for item in result.solutions:
+        v = item.verification
+        proof = (
+            "also proved by a symbolic zero test"
+            if v.symbolic_zero
+            else "NO symbolic proof (say 'numerically checked', never 'proved')"
+        )
+        family = {
+            "general": "general family",
+            "particular": "particular solution",
+            "partial": "family with fewer independent constants than the order",
+        }[item.family]
+        where = "" if item.evaluated else "; an integral remains unevaluated (a representation)"
+        lines.append(
+            f"solution ({item.kind}, {family}{', constants ' + ', '.join(item.constants) if item.constants else ''}"
+            f"{where}): numerically checked at {v.points_agreed} of {v.points_checked} points, "
+            f"derivatives taken numerically; {proof}"
+        )
+        for equation in item.equations_latex:
+            lines.append(f"  ${equation}$")
+            known.append(equation)
+            known.append(equation.split(" = ", 1)[-1])
+        for c in item.conditions:
+            lines.append(
+                f"  condition ${c.latex}$: {'satisfied' if c.satisfied else 'NOT satisfied'}"
+            )
+        if item.restrictions_latex:
+            lines.append(
+                "  valid only where " + ", ".join(f"${r}$" for r in item.restrictions_latex)
+            )
+            known.extend(item.restrictions_latex)
+    if result.dropped:
+        lines.append(f"{result.dropped} candidate(s) failed their checks and are NOT shown")
+    lines.extend(f"note: {n}" for n in result.notes[-2:])
+    if result.status.value != "ok":
+        lines.append(
+            "Nothing is claimed about whether a closed form exists. Say what the status means, and "
+            "offer the numerical method if the user can give the numbers."
+        )
+    return ToolOutput(card, "\n".join(lines), known, result.status.value, quoted)
+
+
+def _series_summary(report: OdeNumericReport) -> list[str]:
+    lines = []
+    for s in report.series:
+        values = s.values
+        lines.append(
+            f"{s.label_latex}: min {min(values):.6g}, max {max(values):.6g}, "
+            f"at the start {values[0]:.6g}, at the end {values[-1]:.6g}"
+        )
+    return lines
+
+
+def run_ode_numeric(args: OdeNumericArgs, ctx: ToolContext) -> ToolOutput:
+    request = OdeNumericInput(**args.model_dump(exclude={"kind"}))
+    report = ctx.engine.ode_solve_numerical(request)
+    log_ode("ode_solve_numerical", _ode_status(report), report.diagnostics, report.duration_ms)
+    card = _ode_card("ode_solve_numerical", "ode_numeric", "Numerical solution", report, request)
+    lines = [f"status={report.status.value}; {report.message}".rstrip("; ")]
+    reading, quoted = _ode_reading(report)
+    lines.extend(reading)
+    known: list[str] = []
+    if report.method_used:
+        lines.append(
+            f"method: {report.method_used} ({report.method_reason}); "
+            f"{report.steps or 0} steps, {report.evaluations or 0} evaluations of the equation"
+        )
+    if report.status.value == "ok":
+        lines.append(
+            f"interval [{report.t_start:g}, {report.t_end:g}]; rtol {report.rtol:g}, atol {report.atol:g}; "
+            "initial values: "
+            + ", ".join(f"{i.label_latex}={i.value:g}" for i in report.initial)
+            + (
+                "; parameters: " + ", ".join(f"{k}={v:g}" for k, v in report.parameters.items())
+                if report.parameters
+                else ""
+            )
+            + " (all supplied by the user)"
+        )
+        lines.extend(_series_summary(report))
+    if report.verification is not None:
+        for c in report.verification.checks:
+            detail = (
+                f" ({c.value:.2e} against {c.tolerance:.1e})"
+                if c.value is not None and c.tolerance
+                else ""
+            )
+            lines.append(f"check {c.name.replace('_', ' ')}: {c.status}{detail}")
+        if report.verification.first_integral_latex:
+            known.append(report.verification.first_integral_latex)
+            lines.append(
+                f"conserved quantity checked: ${report.verification.first_integral_latex}$"
+            )
+    if report.warnings:
+        lines.append("warnings: " + ", ".join(report.warnings))
+    if report.status.value == "ok":
+        lines.append(
+            "This is a numerical approximation on the interval given: not exact, not valid beyond it. "
+            "The checks are measurements, not an error bound."
+        )
+    else:
+        lines.append("No trajectory is shown. Do not describe or estimate one.")
+    return ToolOutput(card, "\n".join(lines), known, report.status.value, quoted)
+
+
 def run_dimensional(args: DimensionalArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.dimensional_analysis(
         args.quantities,
@@ -2071,6 +2308,42 @@ TOOLS: dict[str, Tool] = {
             run_motion,
         ),
         Tool(
+            "ode_analyze",
+            "Read an ordinary differential equation or system and describe it: the unknowns, the "
+            "independent variable, order, linearity, constant coefficients, autonomy, whether it can be "
+            "solved for its highest derivative, the equation class (separable, linear, exact, Bernoulli, "
+            "homogeneous, Euler-Cauchy, ...), whether conditions make it an initial-value or "
+            "boundary-value problem, and a RANKED list of approaches that can be tried, each with what "
+            "it needs and its limits. Call this first for any differential equation and use ITS method "
+            "names and order; do not classify the equation or choose a method yourself. It solves "
+            "nothing. Ask the user which variable is independent if the equation does not say.",
+            OdeAnalyzeArgs,
+            run_ode_analyze,
+        ),
+        Tool(
+            "ode_solve_symbolic",
+            "Find a closed-form solution of an ordinary differential equation or system with SymPy and "
+            "accept it only if the equation, as the user wrote it, holds when the solution is put in "
+            "(derivatives taken numerically at sample points); initial conditions are applied afterwards "
+            "and checked separately. The result says whether it is explicit, implicit or contains an "
+            "unevaluated integral, how many independent constants it has, and where it is valid. A "
+            "failure means SymPy found nothing, never that no solution exists.",
+            OdeSymbolicArgs,
+            run_ode_symbolic,
+        ),
+        Tool(
+            "ode_solve_numerical",
+            "Integrate an ordinary differential equation or system numerically (initial-value problem). "
+            "Higher orders become first-order systems; the integrator (explicit or stiff) is chosen from "
+            "measured behaviour. The trajectory is shown only if an independent integrator agrees, "
+            "refining the tolerance converges, the integral form of the equation holds and any verified "
+            "conserved quantity is conserved. It is an approximation on the interval given. Every number "
+            "(initial values, parameter values, the end of the interval) comes from the USER: never "
+            "choose them yourself, ask.",
+            OdeNumericArgs,
+            run_ode_numeric,
+        ),
+        Tool(
             "dimensional_analysis",
             "Dimensional analysis from the quantities of a problem (each with a unit or kind) and optionally "
             "the unknown: finds the independent dimensionless groups (Buckingham Pi), says whether the "
@@ -2150,7 +2423,7 @@ _BARE_E_POWER = re.compile(r"(?<![A-Za-z\\])e\s*\^")
 def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None:
     """Fixed advice for the model on failures it keeps repeating. It only ever adds text for the
     model; the card and the input are unchanged, and nothing is reinterpreted."""
-    text = " ".join(str(arguments.get(k, "")) for k in ("latex", "equation", "expression"))
+    text = " ".join(_argument_texts(arguments))
     hints: list[str] = []
     if output.status in ("unsupported", "unchanged", "parse_error") and _BARE_E_POWER.search(text):
         hints.append(
@@ -2183,22 +2456,30 @@ SCALAR_TOOLS = frozenset(
         "solve_polynomial",
         "find_identities",
         "distribution",
+        "ode_analyze",
+        "ode_solve_symbolic",
+        "ode_solve_numerical",
     }
 )
 _EXPRESSION_FIELDS = ("latex", "equation", "expression")
 
 
+def _argument_texts(arguments: dict[str, Any]) -> list[str]:
+    """The strings in a call that hold mathematics: expression fields, and for a differential equation
+    its equations and written conditions."""
+    texts = [arguments[f] for f in _EXPRESSION_FIELDS if isinstance(arguments.get(f), str)]
+    for field_name in ("equations", "conditions"):
+        value = arguments.get(field_name)
+        if isinstance(value, list):
+            texts.extend(item for item in value if isinstance(item, str))
+    return texts
+
+
 def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput | None:
     if name not in SCALAR_TOOLS or not ctx.matrices:
         return None
-    hit = sorted(
-        n
-        for n in ctx.matrices
-        if any(
-            isinstance(arguments.get(f), str) and mentions_name(arguments[f], {n})
-            for f in _EXPRESSION_FIELDS
-        )
-    )
+    texts = _argument_texts(arguments)
+    hit = sorted(n for n in ctx.matrices if any(mentions_name(text, {n}) for text in texts))
     if not hit:
         return None
     return _error(

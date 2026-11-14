@@ -196,6 +196,18 @@ _DISTRIBUTION_DETAIL = (
     "by sampling (use the distribution operation)"
 )
 
+# Leibniz notation: \frac{dy}{dt}, \frac{d^2 y}{dx^2}, \frac{\mathrm{d}}{\mathrm{d}x}, \frac{\partial f}{\partial x}.
+# The general parser cancels the d's (it reads \frac{dy}{dt} as y/t), which would let a differential
+# equation be "checked" as an identity about ratios.
+_DERIVATIVE = r"(?:\\mathrm\{d\}|\\operatorname\{d\}|\\partial|d)"
+_LEIBNIZ = re.compile(
+    rf"\\[dt]?frac\s*\{{\s*{_DERIVATIVE}[^{{}}]*\}}\s*\{{\s*{_DERIVATIVE}", re.DOTALL
+)
+_LEIBNIZ_DETAIL = (
+    "this uses derivative notation; an equation involving a derivative is a differential equation, "
+    "not an identity, and is not tested by sampling (use the ODE tools to analyse or solve it)"
+)
+
 
 class ClaimChecker:
     """Checks equations one after another against the definitions stated so far."""
@@ -285,6 +297,8 @@ class ClaimChecker:
             return ClaimCheck(status="unverified", kind="relation", detail=_MATRIX_DETAIL)
         if _TRANSPOSE.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_TRANSPOSE_DETAIL)
+        if _LEIBNIZ.search(latex):
+            return ClaimCheck(status="unverified", kind="relation", detail=_LEIBNIZ_DETAIL)
         if _DISTRIBUTION_NOTATION.search(latex):
             # \delta(x) and \theta(x) read as products here, which would make a true statement about
             # a delta or step function look false; a delta cannot be sampled at all.

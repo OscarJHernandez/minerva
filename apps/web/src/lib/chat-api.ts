@@ -1,4 +1,5 @@
 import { ApiError, extractDetail } from "./api";
+import type { OdeInput, OdeNumericInput } from "./ode-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
 import type {
   ChatStatus,
@@ -46,6 +47,18 @@ export const chatApi = {
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?" (no model involved). */
   distribution: (id: string, request: DistributionAnswer) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/distribution`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Finds a closed form when the user presses the button on an analysis card. */
+  odeSolveSymbolic: (id: string, request: OdeInput) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_solve_symbolic`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Integrates with the initial values, parameters and interval the user typed into the form. */
+  odeSolveNumerical: (id: string, request: OdeNumericInput) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_solve_numerical`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

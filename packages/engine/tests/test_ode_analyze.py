@@ -331,5 +331,14 @@ def test_diagnostics_hold_no_equation_name_or_value() -> None:
         "order",
         "state_dimension",
         "classes",
+        "method",
+        "methods_tried",
+        "steps",
+        "evaluations",
+        "candidates",
+        "verified",
+        "dropped",
+        "solution_kind",
+        "max_residual",
         "failure_reason",
-    }
+    }  # counters, durations and fixed words only: never an equation, a name or a value

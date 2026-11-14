@@ -19,6 +19,9 @@ const OPERATION_LABEL: Record<string, string> = {
   matrix_calculus: "Matrix calculus",
   geometry: "Geometry",
   distribution: "Distributions",
+  ode_analyze: "Differential equation",
+  ode_solve_symbolic: "ODE: closed form",
+  ode_solve_numerical: "ODE: numerical",
   identities: "Identities",
 };
 

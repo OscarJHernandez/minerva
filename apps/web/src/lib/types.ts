@@ -582,6 +582,9 @@ export type Operation =
   | "matrix_calculus"
   | "geometry"
   | "distribution"
+  | "ode_analyze"
+  | "ode_solve_symbolic"
+  | "ode_solve_numerical"
   | "rewrite"
   | "substitute"
   | "isolate";

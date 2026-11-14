@@ -85,6 +85,16 @@ ALLOWED_FIELDS = frozenset(
         "budget",
         "time_dependent",
         "parameters",
+        # differential equations (ode_log.py): counters, durations and fixed vocabulary only
+        "ode_method",
+        "methods_tried",
+        "order",
+        "classes",
+        "verified",
+        "dropped",
+        "solution_kind",
+        "evaluations",
+        "max_residual",
         # Agent trace events (agent/tracing.py): identifiers, counts, durations and fixed-vocabulary
         # values only. A test requires this list to cover every event field and nothing that could hold
         # content; adding a field here is a reviewed decision.

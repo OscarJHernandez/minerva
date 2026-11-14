@@ -19,6 +19,11 @@ from minerva_engine import (
     IsolateResult,
     MatrixCalculusInput,
     MatrixCalculusResult,
+    OdeAnalysis,
+    OdeInput,
+    OdeNumericInput,
+    OdeNumericReport,
+    OdeSolution,
     RuleCondition,
     SeriesResult,
     Status,
@@ -26,6 +31,7 @@ from minerva_engine import (
     TensorInput,
     TensorResult,
     Verification,
+    trace_scope,
 )
 from minerva_knowledge.identities import (
     EntrySummary,
@@ -42,6 +48,7 @@ from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .diagnostics import log_distribution
 from .geometry_log import log_geometry
 from .logging import get_logger
+from .ode_log import log_ode
 from .schemas import (
     ApplyIdentityRequest,
     ConservedRequest,
@@ -54,6 +61,8 @@ from .schemas import (
     Linked,
     Links,
     MatrixCalculusRequest,
+    OdeNumericRequest,
+    OdeRequest,
     RewriteRequest,
     SeriesRequest,
     SimplifyRequest,
@@ -91,6 +100,18 @@ class GeometryResponse(GeometryResult):
 
 
 class DistributionResponse(DistributionResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class OdeAnalysisResponse(OdeAnalysis):
+    calculation_id: uuid.UUID | None = None
+
+
+class OdeSolutionResponse(OdeSolution):
+    calculation_id: uuid.UUID | None = None
+
+
+class OdeNumericResponse(OdeNumericReport):
     calculation_id: uuid.UUID | None = None
 
 
@@ -760,3 +781,110 @@ def tensor_canonicalize(
         user_id=str(user.id),
     )
     return result
+
+
+def _ode_length(body: OdeInput) -> int:
+    texts = [*body.equations, *(c for c in body.conditions if isinstance(c, str))]
+    return sum(len(t) for t in texts)
+
+
+def _ode_label(request: OdeInput) -> str:
+    return "; ".join(request.equations)
+
+
+def _ode_run(
+    operation: str,
+    body: OdeRequest | OdeNumericRequest,
+    engine_request: OdeInput,
+    call: Any,
+    user: UserDep,
+    db: DbDep,
+    request: Request,
+) -> tuple[Any, uuid.UUID | None]:
+    trace_id = str(getattr(request.state, "request_id", "")) or None
+    with trace_scope(trace_id):
+        result = call(engine_request)
+    log.info(
+        "compute",
+        operation=operation,
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    log_ode(operation, result.status.value, result.diagnostics, result.duration_ms)
+    saved_id = None
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = engine_request.model_dump(mode="json")
+        saved_id = _save_row(
+            db, user, operation, _ode_label(engine_request), engine_request.format,
+            engine_request.assumptions, body, result.status.value, saved,
+        )  # fmt: skip
+    return result, saved_id
+
+
+@router.post("/ode/analyze", response_model=OdeAnalysisResponse)
+def ode_analyze(
+    body: OdeRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+    request: Request,
+) -> OdeAnalysisResponse:
+    """How the equation was read, its structure and the approaches that can be tried. Nothing is solved."""
+    _guard(user, limiter, settings, _ode_length(body))
+    _check_links(db, user, body)
+    engine_request = OdeInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result, saved_id = _ode_run(
+        "ode_analyze", body, engine_request, engine.ode_analyze, user, db, request
+    )
+    out = OdeAnalysisResponse(**result.model_dump())
+    out.calculation_id = saved_id
+    return out
+
+
+@router.post("/ode/solve", response_model=OdeSolutionResponse)
+def ode_solve(
+    body: OdeRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+    request: Request,
+) -> OdeSolutionResponse:
+    """Closed-form solutions, each shown only after the equation holds for it at sampled points."""
+    _guard(user, limiter, settings, _ode_length(body))
+    _check_links(db, user, body)
+    engine_request = OdeInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result, saved_id = _ode_run(
+        "ode_solve_symbolic", body, engine_request, engine.ode_solve_symbolic, user, db, request
+    )
+    out = OdeSolutionResponse(**result.model_dump())
+    out.calculation_id = saved_id
+    return out
+
+
+@router.post("/ode/numeric", response_model=OdeNumericResponse)
+def ode_numeric(
+    body: OdeNumericRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+    request: Request,
+) -> OdeNumericResponse:
+    """A numerical initial-value solution, shown only if its independent checks pass."""
+    _guard(user, limiter, settings, _ode_length(body))
+    _check_links(db, user, body)
+    engine_request = OdeNumericInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result, saved_id = _ode_run(
+        "ode_solve_numerical", body, engine_request, engine.ode_solve_numerical, user, db, request
+    )
+    out = OdeNumericResponse(**result.model_dump())
+    out.calculation_id = saved_id
+    return out
