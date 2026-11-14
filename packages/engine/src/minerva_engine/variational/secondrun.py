@@ -102,9 +102,17 @@ def _numeric(
     if len(data.paths) != 1:
         raise ParseError("give exactly one path for the second-variation diagnostics")
     num = prepare(problem, data, seed=20260502)
+    depth = max(problem.jets.orders)
+    field, _ = path_field(num, problem, data.paths[0], data, depth=depth)
+    return diagnostics(problem, num, field, form)
+
+
+def diagnostics(
+    problem: Problem, num: Numerics, field: JetField, form: QuadraticForm
+) -> SecondNumeric:
+    """Stationarity, Legendre samples, Ritz inertia and certified directions along a path."""
     jets = num.jets
     depth = max(jets.orders)
-    field, _ = path_field(num, problem, data.paths[0], data, depth=depth)
     real = _is_real(num)
     derived = first_variation(problem)
 

@@ -114,6 +114,7 @@ class VariationInput(FunctionalInput):
     sweep: Sweep | None = None
     perturbations: list[PerturbationSpec] = Field(default_factory=list, max_length=4)
     automatic_perturbations: bool = True
+    with_second: bool = False
 
     @model_validator(mode="after")
     def _functions_distinct(self) -> VariationInput:
@@ -387,6 +388,51 @@ class SecondVariation(BaseModel):
     numeric: SecondNumeric | None = None
 
 
+class PathSamples(BaseModel):
+    t: list[float]
+    values: dict[str, list[float]]
+    slopes: dict[str, list[float]]
+
+
+class MethodReport(BaseModel):
+    method: Literal["hermite_action", "chebyshev_euler_lagrange"]
+    ran: bool
+    converged: bool  # Newton converged on every level and the refinement check passed
+    levels: list[int] = Field(default_factory=list)  # elements (Hermite) or nodes (Chebyshev)
+    successive_differences: list[float] = Field(default_factory=list)
+    newton_iterations: list[int] = Field(default_factory=list)
+    note: str = ""
+
+
+class StationarityCheck(BaseModel):
+    residual: float  # worst |first variation| relative to the size of its terms
+    trials: int
+    tolerance: float
+    verdict: Literal["stationary_within_tolerance", "not_stationary"]
+
+
+class StationaryPath(BaseModel):
+    method: Literal["hermite_action", "chebyshev_euler_lagrange"]
+    samples: PathSamples
+    action: str
+    action_quadrature_error: float
+    stationarity: StationarityCheck
+
+
+class Solution(BaseModel):
+    paths: list[StationaryPath]
+    methods: list[MethodReport]
+    agreement: float | None = None  # largest relative difference between the two methods' paths
+    confirmed_by_both: bool = False
+    distinct_paths: bool = False
+    second: SecondNumeric | None = None
+    notes: list[str] = Field(default_factory=list)
+    statement: str = (
+        "A stationary path found from this starting guess. A stationary path may be a minimum, "
+        "a maximum or a saddle; it is not claimed to be unique, nor to minimise the action."
+    )
+
+
 class Diagnostics(BaseModel):
     """Counts, durations and enum codes only; never names, expressions or values."""
 
@@ -413,6 +459,7 @@ class VariationReport(BaseModel):
     evaluation: Evaluation | None = None
     verification: VerificationReport | None = None
     second: SecondVariation | None = None
+    solution: Solution | None = None
     notes: list[str] = Field(default_factory=list)
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     duration_ms: float = 0.0
