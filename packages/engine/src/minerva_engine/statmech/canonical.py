@@ -348,7 +348,7 @@ def levels_step(problem: Problem, canon: Canonical) -> StatStep:
     return StatStep(
         name="levels",
         title="Energy levels and degeneracies",
-        latex=r"\quad".join(rows) if len(rows) <= 8 else r"\text{" + f"{len(rows)} levels" + "}",
+        latex=r"\qquad ".join(rows) if len(rows) <= 8 else r"\text{" + f"{len(rows)} levels" + "}",
     )
 
 
@@ -490,22 +490,15 @@ def derive(
             checks=checks[n],
         )
         quantities.append(q)
+        if n == "Z":
+            continue  # the partition-function step above already shows it
         steps.append(
             StatStep(
                 name=n,
                 title=TITLES[n],
                 latex=_equation(n, canon, expr),
                 text=q.text,
-                conditions=[
-                    Condition(
-                        latex=r"\text{held fixed: }"
-                        + (", ".join(fixed) if fixed else r"\text{nothing else}"),
-                        established=True,
-                        how="every state variable other than the temperature is held fixed",
-                    )
-                ]
-                if n in {"U", "S", "Var_E"}
-                else [],
+                conditions=[_held_fixed_condition(fixed)] if n in {"U", "S", "Var_E"} else [],
             )
         )
     _attach_symbolic(canon, quantities, deadline)
@@ -515,11 +508,50 @@ def derive(
             StatStep(
                 name="partial",
                 title=quantities[-1].title,
-                latex=quantities[-1].latex,
+                latex=_partial_equation(canon, spec, quantities[-1]),
                 text=quantities[-1].text,
+                conditions=[_held_fixed_condition(quantities[-1].held_fixed)],
             )
         )
     return steps, quantities, partition_conditions(problem)
+
+
+def _held_fixed_condition(fixed: list[str]) -> Condition:
+    names = ", ".join(to_latex(sp.Symbol(n)) for n in fixed)
+    return Condition(
+        latex=rf"\text{{held fixed: }}{names}" if fixed else r"\text{no other state variable}",
+        established=True,
+        how=(
+            "every state variable other than the one differentiated is held fixed"
+            if fixed
+            else "the temperature is the only state variable here"
+        ),
+    )
+
+
+_SYMBOL = {
+    "Z": "Z",
+    "lnZ": r"\ln Z",
+    "F": "F",
+    "U": "U",
+    "S": "S",
+    "Var_E": r"\operatorname{Var}(E)",
+}
+
+
+def _partial_equation(canon: Canonical, spec: Partial, q: StatQuantity) -> str:
+    """label = scale * (d^n Q / dv^n)_fixed = result, as LaTeX."""
+    sym = _SYMBOL[spec.of]
+    var = to_latex(sp.Symbol(spec.variable))
+    n = "" if spec.order == 1 else f"^{{{spec.order}}}"
+    fixed = ", ".join(to_latex(sp.Symbol(name)) for name in q.held_fixed)
+    sub = f"_{{{fixed}}}" if fixed else ""
+    derivative = rf"\left(\frac{{\partial{n} {sym}}}{{\partial {var}{n}}}\right){sub}"
+    if spec.scale.strip() not in {"", "1"}:
+        derivative = rf"\left({to_latex(canon.p.parse(spec.scale))}\right) {derivative}"
+    label = to_latex(sp.Symbol(spec.label)) if spec.label else ""
+    head = f"{label} = " if label else ""
+    return rf"{head}{derivative} = {q.latex}"
 
 
 def _equation(name: str, canon: Canonical, expr: sp.Expr) -> str:
@@ -598,7 +630,7 @@ def _partial_quantity(
         label,
         total,
         title=f"Partial derivative of {TITLES[spec.of].lower()} with respect to {var}",
-        route=f"{d}{spec.of}/d{var} at fixed {', '.join(fixed) or 'nothing else'}, times {spec.scale}",
+        route=f"{d}{spec.of}/d{var} at fixed {', '.join(fixed) or 'no other state variable'}, times {spec.scale}",
         held_fixed=fixed,
         checks=[check],
         variable=var,

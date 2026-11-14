@@ -6,6 +6,7 @@ import { IdentitiesPanel } from "../identities-panel";
 import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
 import { DistributionCard } from "./distribution-card";
+import { StatMechCard } from "./statmech-card";
 import { MatrixPanel } from "../matrix-panel";
 import { StatisticsPanel } from "../statistics-panel";
 import { DimensionalCard } from "./dimensional-card";
@@ -64,6 +65,10 @@ export function CardView({ card }: { card: Card }) {
           methods={card.data.methods}
           request={card.data.request}
         />
+      );
+    case "statmech":
+      return (
+        <StatMechCard result={card.data.result} args={card.data.args} answers={card.data.answers} />
       );
     case "identities":
       return <IdentitiesPanel result={card.data} />;

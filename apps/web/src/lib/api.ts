@@ -1,4 +1,5 @@
 import type { DiscoveryReport } from "./chat-types";
+import type { StatMechRequest, StatMechResult } from "./statmech-types";
 import type {
   ApplyIdentityResult,
   Assumptions,
@@ -175,6 +176,14 @@ export const api = {
     link?: { derivation_id?: string; parent_id?: string; save?: boolean },
   ) =>
     request<StatModelResult>("/v1/compute/statistics", {
+      method: "POST",
+      body: JSON.stringify({ ...req, ...link }),
+    }),
+  statmech: (
+    req: StatMechRequest,
+    link?: { derivation_id?: string; parent_id?: string; save?: boolean },
+  ) =>
+    request<StatMechResult>("/v1/compute/statmech", {
       method: "POST",
       body: JSON.stringify({ ...req, ...link }),
     }),

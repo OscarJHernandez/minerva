@@ -298,6 +298,23 @@ def test_a_wrong_formula_is_never_shown(monkeypatch: pytest.MonkeyPatch) -> None
     assert not r.quantities and not r.steps
 
 
+def test_every_step_and_formula_is_renderable_latex() -> None:
+    """A control word glued to a letter (\\quadE) is not a command: the UI shows it as marked source."""
+    import re
+
+    for result in (
+        two_level(action="derive", quantities=["Z", "U", "S", "Var_E"]),
+        two_level(action="partition"),
+        two_level(action="expectation", observable="E", statistic="variance"),
+    ):
+        texts = [s.latex for s in result.steps] + [q.latex for q in result.quantities]
+        assert texts
+        for latex in texts:
+            assert not re.search(r"\\(?:q?quad|,|;|:|!)?(?:quad)[A-Za-z]", latex), latex
+            assert latex.count("{") == latex.count("}"), latex
+            assert latex.count(r"\left") == latex.count(r"\right"), latex
+
+
 def test_diagnostics_hold_no_expressions() -> None:
     r = two_level(action="derive", quantities=["U"])
     dumped = json.dumps(r.diagnostics.model_dump())
