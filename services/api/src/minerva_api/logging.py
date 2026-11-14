@@ -139,6 +139,11 @@ ALLOWED_FIELDS = frozenset(
         "evidence_pct",
         "stop_reason",
         "events_dropped",
+        # variation (functionals): the action name from a fixed set and counters only
+        "action",
+        "functions",
+        "highest_order",
+        "stages",
         # matrix calculus: enums only, never names, entries or expressions
         "matrix_method",
         "result_kind",

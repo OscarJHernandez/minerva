@@ -51,6 +51,7 @@ class Card(BaseModel):
         "invariants",
         "discovery",
         "motion",
+        "variation",
         "dimensional",
         "units",
         "step",

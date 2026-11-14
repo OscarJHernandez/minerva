@@ -69,7 +69,7 @@ from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
 from .textparse import parse_text
-from .variational import VariationInput, VariationReport
+from .variational import EndpointCondition, VariationInput, VariationReport
 
 __all__ = [
     "Applicability",
@@ -93,6 +93,7 @@ __all__ = [
     "DistributionResult",
     "DistributionStep",
     "DistributionVerification",
+    "EndpointCondition",
     "Engine",
     "ExpansionReport",
     "ExpressionInput",

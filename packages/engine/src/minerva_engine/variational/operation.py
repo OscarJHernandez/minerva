@@ -112,6 +112,8 @@ def variation(data: VariationInput, limits: Limits) -> VariationReport:
         if handler is None:
             raise UnsupportedInput(f"the action {data.action!r} is not available yet")
         report = handler(problem, data, deadline)
+        if report.analysis is None:
+            report.analysis = analyze(problem)  # structure and next steps accompany every result
         report.diagnostics.functions = problem.jets.count
         report.diagnostics.highest_order = max(problem.jets.orders)
     except MissingValues as exc:

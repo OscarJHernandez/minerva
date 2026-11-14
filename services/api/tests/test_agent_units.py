@@ -252,6 +252,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "search_invariants",
         "find_conserved_quantities",
         "integrate_motion",
+        "variation",
         "dimensional_analysis",
         "check_units",
     }
