@@ -1367,6 +1367,7 @@ Derivations from the field equations a user adopts as premises (Maxwell's equati
 **Limits**
 
 - Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems.
+- Electrostatics with numbers the user gives (field, multipole, boundary_value, check_solution): point charges and a density over a box, Dirichlet problems on a rectangle, Cartesian coordinates. Fourier and Laplace transform methods, retarded Green's functions, finite elements, FDTD and general PDE solving are planned and not implemented.
 - Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell's equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them.
 - A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for.
 - Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable.
@@ -1481,6 +1482,65 @@ Derivations from the field equations a user adopts as premises (Maxwell's equati
 - Not shown: needs c2 smoothness of B. vector.div_curl holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
 - Not shown: needs c2 smoothness of E. vector.time_div holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
 - route 1 (div(curl(B)) to 0) failed: no chain was found with the identities the declared smoothness allows: identities that need twice continuously differentiable fields were blocked (B, E). Declare the smoothness if it holds; this does not say that a chain then exists
+
+#### Potential and field of a dipole at a point (Coulomb sum, gradient and central difference agree)
+
+- **Problem:** `{"kind": "field", "charges": [{"q": "q", "position": ["0", "0", "0"]}, {"q": "-q", "position": ["0", "0", "d"]}], "point": ["1", "2", "3"]}` (plain text)
+- **Status:** `ok`
+- **Potential at the point:** $\frac{k_{e} q \left(\sqrt{14 \left(d - 3\right)^{2} + 70} - 14\right)}{14 \sqrt{\left(d - 3\right)^{2} + 5}}$
+- **Electric field at the point:** $\mathbf{E} = \left(\frac{\sqrt{14} k_{e} q}{196} - \frac{k_{e} q}{\left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}}}, \frac{\sqrt{14} k_{e} q}{98} - \frac{2 k_{e} q}{\left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}}}, \frac{k_{e} q \left(196 d + 3 \sqrt{14} \left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}} - 588\right)}{196 \left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}}}\right)$
+- **Check:** the Coulomb vector sum equals the negative gradient of the symbolic potential, and a central difference of the potential as a number agrees (relative 1.4e-11)
+- closed form; the Coulomb vector sum equals the negative gradient of the symbolic potential, and a central difference of the potential as a number agrees (relative 1.4e-11)
+
+#### Moments of three point charges, with the measured decay of the truncated expansion
+
+- **Problem:** `{"kind": "multipole", "charges": [{"q": "1", "position": ["0", "0", "1"]}, {"q": "-1", "position": ["0", "0", "-1"]}, {"q": "1", "position": ["1", "0", "0"]}]}` (plain text)
+- **Status:** `ok`
+- **Monopole moment Q:** $1$
+- **Dipole moment p:** $\mathbf{p} = \left(1, 0, 2\right)$
+- **Quadrupole moments Q_ij (traceless: 3 x_i x_j - r^2 delta_ij):** $Q_{ij} = \left[\begin{matrix}2 & 0 & 0\\0 & -1 & 0\\0 & 0 & -1\end{matrix}\right]$
+- **Error of the order-2 expansion at distance 4:** $8.681e-03$
+- **Error of the order-2 expansion at distance 8:** $5.073e-04$
+- **Error of the order-2 expansion at distance 16:** $3.099e-05$
+- **Error of the order-2 expansion at distance 32:** $1.920e-06$
+- **Check:** the error of the truncated expansion along the ray falls with measured exponents 4.10, 4.03, 4.01; the next multipole predicts 4. A measurement at these distances, never a bound
+- Error of the order-2 expansion at distance 4: exact potential 0.37586895837.
+- Error of the order-2 expansion at distance 8: exact potential 0.155780766335.
+- Error of the order-2 expansion at distance 16: exact potential 0.0702214234101.
+- Error of the order-2 expansion at distance 32: exact potential 0.0331897865908.
+- exact moments; the error of the truncated expansion along the ray falls with measured exponents 4.10, 4.03, 4.01; the next multipole predicts 4. A measurement at these distances, never a bound
+
+#### Laplace's equation on the unit square with a sine on one edge (series against a finite-difference solve)
+
+- **Problem:** `{"kind": "boundary_value", "a": "1", "b": "1", "top": "sin(pi*x)"}` (plain text)
+- **Status:** `ok`
+- **Sine coefficient of the top edge:** $A_n = \begin{cases} 0 & \text{for}\: n > 1 \\1 & \text{otherwise} \end{cases}$
+- **phi(0.5, 0.5):** $0.199268407669$
+- **phi(0.3, 0.5):** $0.161211528246$
+- **phi(0.5, 0.7):** $0.385588723456$
+- **phi(0.7, 0.3):** $0.0762405308614$
+- **Check:** the series (truncated at 40 terms) agrees with a finite-difference relaxation on two grids at 4 interior points (largest relative gap 8.3e-04; grid error by Richardson)
+- phi(0.5, 0.5): finite differences 0.19937085339, grid error about 1.0e-04, series tail 0.0e+00.
+- phi(0.3, 0.5): finite differences 0.161211241948, grid error about 3.5e-05, series tail 0.0e+00.
+- phi(0.5, 0.7): finite differences 0.385909744632, grid error about 2.3e-04, series tail 0.0e+00.
+- phi(0.7, 0.3): finite differences 0.0762915717689, grid error about 5.1e-05, series tail 0.0e+00.
+- A numerical approximation agreeing with an independent method.
+- numerical approximation; the series (truncated at 40 terms) agrees with a finite-difference relaxation on two grids at 4 interior points (largest relative gap 8.3e-04; grid error by Richardson)
+
+#### A field point inside the charge distribution is refused
+
+- **Problem:** `{"kind": "field", "density": "1", "box": {"bounds": [["0", "1"], ["0", "1"], ["0", "1"]]}, "point": ["0.5", "0.5", "0.5"]}` (plain text)
+- **Status:** `unsupported`
+- the field point is inside the charge distribution (or at its edge): the Coulomb integrand is singular there, so nothing is computed
+
+#### x^2 is not a solution of Laplace's equation, and Minerva says which requirement fails
+
+- **Problem:** `{"kind": "check_solution", "potential": "x**2", "box": {"bounds": [["0", "1"], ["0", "1"], ["0", "1"]]}}` (plain text)
+- **Status:** `ok`
+- **Residual of laplacian(phi) + source:** $2$
+- **Check:** the exact residual and the boundary differences were also read by Cartesian finite differences
+- Residual of laplacian(phi) + source: not zero: the candidate does not satisfy the equation.
+- the candidate does NOT satisfy every requirement: see which; a check of this candidate, not a proof that it is the only solution (uniqueness needs the boundary conditions to determine it)
 
 ### Lagrangian mechanics
 

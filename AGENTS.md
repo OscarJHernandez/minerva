@@ -417,6 +417,20 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `unsupported` / `singular_in_domain` for the integral and the theorem alike; the flux through a surface that avoids
   the pole is computed. Faces of zero extent (`r = 0`, the poles of the sphere) integrate to exactly zero. Not covered,
   and not claimed: piecewise or discontinuous fields, surface charges, non-box volumes, differentiation under the integral.
+- Electrostatics with the user's numbers (`vector/em_numeric.py`, tool `electromagnetism` actions `field`, `multipole`,
+  `boundary_value`, `check_solution`; `VectorInput.action="em_compute"`, `em` = one of four typed problems). Charges,
+  positions, densities, box sizes and boundary data come only from the USER; units k_e = 1/(4 pi epsilon_0); Cartesian
+  only. Every result is two methods that must agree or nothing is shown: a point-charge field is the Coulomb sum, the
+  negative gradient of the symbolic potential and a central difference of the potential as a number; a density field
+  is the Coulomb integral for E against the difference quotient of the potential integral, and a field point in or at
+  the edge of the source is `unsupported` / `field_point_in_source`; a multipole result states exact moments and
+  *measures* the decay of the truncated expansion's error (never a bound); a rectangle boundary-value problem is a
+  separated series against a finite-difference relaxation on two grids with a Richardson error, shown only if they
+  agree (`solver_disagreement` otherwise) and always labelled a numerical approximation (Poisson only with zero edges);
+  `check_solution` compares the exact residual with an independent five-point finite-difference Laplacian and reports
+  which requirement fails, and is a check of that candidate, not a uniqueness proof. Do not loosen the agreement
+  tolerances (the tests include a 5% perturbed relaxation). Fourier and Laplace transform methods, retarded Green's
+  functions, FEM, FDTD and general PDE solving are planned and not implemented: say so, never improvise them.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

@@ -202,6 +202,40 @@ export function VectorPanel({
         </div>
       )}
 
+      {shown && result.em && (
+        <div className="mt-3" data-testid="em-computation">
+          <div className="text-xs uppercase tracking-wide text-muted">{result.em.method}</div>
+          <ul className="mt-1 space-y-2">
+            {result.em.items.map((item) => (
+              <li key={item.label} className="min-w-0 overflow-x-auto">
+                <div className="text-sm font-medium">{item.label}</div>
+                {item.latex ? (
+                  <Math latex={item.latex} display label={item.label} />
+                ) : (
+                  <p className="font-mono text-sm">{item.numeric}</p>
+                )}
+                {item.note && <p className="text-xs text-muted">{item.note}</p>}
+              </li>
+            ))}
+          </ul>
+          {result.em.checks.map((c) => (
+            <p key={c} className="mt-1 text-xs text-muted">
+              {c}
+            </p>
+          ))}
+          {result.em.approximate && (
+            <p role="note" className="mt-2 rounded bg-warn-soft p-2 text-sm text-warn">
+              Numerical approximation agreeing with an independent method; not an exact value.
+            </p>
+          )}
+          {result.em.holds === false && (
+            <p role="note" className="mt-2 rounded bg-warn-soft p-2 text-sm text-warn">
+              The candidate does not satisfy every requirement.
+            </p>
+          )}
+        </div>
+      )}
+
       {shown && (result.equations_latex?.length ?? 0) > 0 && (
         <div className="mt-3" data-testid="equations">
           <div className="text-xs uppercase tracking-wide text-muted">Derived equation</div>

@@ -1156,6 +1156,31 @@
   informational: true
   source: "interface conditions need a pillbox argument (the integral theorems), which Minerva does not have yet: it says so (docs/capabilities.md, electromagnetism limits)"
 
+- id: es-laplace-rectangle
+  category: physics
+  prompt: 'Find the potential inside a square of side 1 whose top edge is held at sin(pi x) and whose other three edges are grounded. Give me its value at the centre.'
+  expected_tool: electromagnetism
+  args: {equals: {action: boundary_value, side_a: '1', side_b: '1', top: 'sin(pi*x)'}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: electromagnetism
+    arguments: {action: boundary_value, side_a: '1', side_b: '1', top: 'sin(pi*x)'}
+  reply_matches: 'approx|numerical|finite|agree'
+  source: "Griffiths, Introduction to Electrodynamics, section 3.3: phi = sin(pi x) sinh(pi y) / sinh(pi), centre value 1 / (2 cosh(pi / 2)) = 0.19927"
+
+- id: es-field-at-the-charge
+  category: ambiguous
+  prompt: 'What is the electric field of a point charge of 1 coulomb at the origin, evaluated at the origin itself?'
+  expected_tool: electromagnetism
+  expect_card: {status: unsupported}
+  max_calls: 2
+  reference:
+    tool: electromagnetism
+    arguments: {action: field, charges: [['1', '0', '0', '0']], point: ['0', '0', '0']}
+  reply_matches: 'infinite|singular|undefined|not defined|diverge'
+  source: "Coulomb's law is singular at the charge; the tool refuses (field_point_in_source) and the answer must not give a number"
+
 # ----------------------------------------------------------------------------- integrals
 - id: integral-flux-through-a-sphere
   category: calculus

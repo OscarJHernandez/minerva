@@ -37,7 +37,7 @@ from .models import FieldDecl, Premise, VectorInput, VectorResult
 
 LIMITS = Limits(timeout_seconds=60)
 # Listing identities and replacing a premise by its other side compute nothing to check numerically.
-NO_NUMERIC_CHECK = ("identities", "substitute", "em_derive", "integrate")
+NO_NUMERIC_CHECK = ("identities", "substitute", "em_derive", "integrate", "em_compute")
 GROUPS = (
     "valid",
     "consistency",
@@ -49,6 +49,7 @@ GROUPS = (
     "derivations",
     "electromagnetism",
     "integrals",
+    "electrostatics",
 )
 
 # Symbols of the references (the engine's text output is read back with these).
@@ -981,6 +982,138 @@ def _holds(r: VectorResult) -> bool:
     return bool(r.integral and r.integral.holds and r.integral.hypotheses)
 
 
+def _estat_cases() -> list[Case]:
+    from .models import (
+        BoundaryProblem,
+        CheckProblem,
+        FaceCondition,
+        FieldProblem,
+        MultipoleProblem,
+        PointCharge,
+        Region,
+    )
+
+    unit = Region(bounds=[("0", "1")] * 3)
+
+    def req(problem: Any, constants: list[str] | None = None) -> VectorInput:
+        return VectorInput(
+            expression="",
+            format="text",
+            action="em_compute",
+            em=problem,
+            constants=constants or [],
+        )
+
+    def central(label: str, value: float, tol: float) -> Callable[[VectorResult], bool]:
+        def check(r: VectorResult) -> bool:
+            if r.em is None:
+                return False
+            item = next((i for i in r.em.items if i.label.startswith(label)), None)
+            return item is not None and abs(float(item.numeric or "nan") - value) < tol
+
+        return check
+
+    return [
+        Case(
+            "es-field-dipole",
+            "Field of a dipole: Coulomb sum, gradient of the potential, central difference",
+            "electrostatics",
+            req(
+                FieldProblem(
+                    kind="field",
+                    charges=[
+                        PointCharge(q="q", position=("0", "0", "0")),
+                        PointCharge(q="-q", position=("0", "0", "d")),
+                    ],
+                    point=("1", "2", "3"),
+                ),
+                ["q", "d"],
+            ),
+            check=lambda r: (
+                r.em is not None and r.em.agreement is not None and r.em.agreement < 1e-6
+            ),
+        ),
+        Case(
+            "es-field-at-charge",
+            "The field at a point charge is refused",
+            "electrostatics",
+            req(
+                FieldProblem(
+                    kind="field",
+                    charges=[PointCharge(q="1", position=("0", "0", "0"))],
+                    point=("0", "0", "0"),
+                )
+            ),
+            Status.UNSUPPORTED,
+        ),
+        Case(
+            "es-field-inside-density",
+            "A field point inside the charge density is refused",
+            "electrostatics",
+            req(FieldProblem(kind="field", charges=[], density="1", box=unit, point=("0.5",) * 3)),
+            Status.UNSUPPORTED,
+        ),
+        Case(
+            "es-multipole-three-charges",
+            "Moments of three charges and the measured next-multipole decay",
+            "electrostatics",
+            req(
+                MultipoleProblem(
+                    kind="multipole",
+                    charges=[
+                        PointCharge(q="1", position=("0", "0", "1")),
+                        PointCharge(q="-1", position=("0", "0", "-1")),
+                        PointCharge(q="1", position=("1", "0", "0")),
+                    ],
+                )
+            ),
+            check=lambda r: r.em is not None and r.em.items[0].latex == "1",
+        ),
+        Case(
+            "es-laplace-sine-edge",
+            "Laplace on the unit square with a sine on the top edge (phi = sin(pi x) sinh(pi y) / sinh(pi))",
+            "electrostatics",
+            req(BoundaryProblem(kind="boundary_value", a="1", b="1", top="sin(pi*x)")),
+            check=central("phi(0.5, 0.5)", 0.1992684077, 1e-6),
+        ),
+        Case(
+            "es-poisson-unit-square",
+            "Poisson with source 1 on the unit square (centre value 0.0736713532)",
+            "electrostatics",
+            req(BoundaryProblem(kind="boundary_value", a="1", b="1", source="1")),
+            check=central("phi(0.5, 0.5)", 0.0736713532, 3e-5),
+        ),
+        Case(
+            "es-poisson-nonzero-edge",
+            "Poisson with a nonzero edge is refused, not half solved",
+            "electrostatics",
+            req(BoundaryProblem(kind="boundary_value", a="1", b="1", top="1", source="1")),
+            Status.UNSUPPORTED,
+        ),
+        Case(
+            "es-check-harmonic",
+            "A harmonic candidate with its face value",
+            "electrostatics",
+            req(
+                CheckProblem(
+                    kind="check_solution",
+                    potential="sin(pi*x)*sinh(pi*y)",
+                    box=unit,
+                    conditions=[FaceCondition(face="y=lo", value="0")],
+                )
+            ),
+            check=lambda r: r.em is not None and r.em.holds is True,
+        ),
+        Case(
+            "es-check-wrong-candidate",
+            "x^2 does not solve Laplace's equation: reported, not accepted",
+            "electrostatics",
+            req(CheckProblem(kind="check_solution", potential="x**2", box=unit)),
+            check=lambda r: r.em is not None and r.em.holds is False,
+        ),
+    ]
+
+
 def _integral_cases() -> list[Case]:
     from .models import Curve, Param, Region, Surface
 
@@ -1206,7 +1339,7 @@ def _integral_cases() -> list[Case]:
 
 
 def _all_cases() -> list[Case]:
-    return [*_cases(), *_step_cases(), *_em_cases(), *_integral_cases()]
+    return [*_cases(), *_step_cases(), *_em_cases(), *_integral_cases(), *_estat_cases()]
 
 
 CASES = _all_cases()

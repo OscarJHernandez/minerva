@@ -395,9 +395,17 @@ class VectorCalculusArgs(BaseModel):
 class ElectromagnetismArgs(BaseModel):
     """Arguments of `electromagnetism`."""
 
-    action: Literal["setup", "derive"] = Field(
-        description="setup: list the derivations Minerva can carry out, the field equations (premises) each "
-        "needs, and the field equations of the handbook the user may adopt. derive: carry one out."
+    action: Literal["setup", "derive", "field", "multipole", "boundary_value", "check_solution"] = (
+        Field(
+            description="setup: list the derivations Minerva can carry out, the field equations (premises) each "
+            "needs, and the field equations of the handbook the user may adopt. derive: carry one out. "
+            "field: potential and electric field of point charges and/or a charge density at a point. "
+            "multipole: monopole, dipole and quadrupole moments of point charges with a measured far-field "
+            "check. boundary_value: Laplace or Poisson on a rectangle with Dirichlet data (a numerical "
+            "approximation, shown only if two methods agree). check_solution: does a candidate potential "
+            "satisfy Poisson's equation and the stated face values. All positions, charges, sizes and "
+            "values come from the USER; never choose them. Units: k_e = 1/(4 pi epsilon_0). Cartesian only."
+        )
     )
     derivation: str | None = Field(
         default=None,
@@ -422,6 +430,60 @@ class ElectromagnetismArgs(BaseModel):
         description="derive: the smoothness the USER stated for the fields (twice continuously "
         "differentiable, or smooth). Without it identities that need equal mixed partial derivatives are "
         "blocked; never add it yourself.",
+    )
+    charges: list[tuple[str, str, str, str]] = Field(
+        default_factory=list,
+        max_length=12,
+        description="field/multipole: point charges as (q, x, y, z) text, e.g. ('q', '0', '0', 'd').",
+    )
+    point: tuple[str, str, str] | None = Field(
+        default=None, description="field: where to evaluate (x, y, z), given by the user."
+    )
+    density: str | None = Field(
+        default=None,
+        max_length=200,
+        description="field: charge density rho(x, y, z) as text syntax over `box`.",
+    )
+    box: list[tuple[str, str]] | None = Field(
+        default=None,
+        max_length=3,
+        description="field (density) / check_solution: [(x_lo, x_hi), (y_lo, y_hi), (z_lo, z_hi)].",
+    )
+    direction: tuple[str, str, str] = Field(
+        default=("0", "0", "1"), description="multipole: ray along which the far field is compared."
+    )
+    order: Literal[0, 1, 2] = Field(default=2, description="multipole: highest multipole kept.")
+    side_a: str | None = Field(
+        default=None, max_length=60, description="boundary_value: width (x)."
+    )
+    side_b: str | None = Field(
+        default=None, max_length=60, description="boundary_value: height (y)."
+    )
+    bottom: str = Field(default="0", max_length=200, description="boundary_value: phi(x, 0), in x.")
+    top: str = Field(default="0", max_length=200, description="boundary_value: phi(x, b), in x.")
+    left: str = Field(default="0", max_length=200, description="boundary_value: phi(0, y), in y.")
+    right: str = Field(default="0", max_length=200, description="boundary_value: phi(a, y), in y.")
+    source: str | None = Field(
+        default=None,
+        max_length=200,
+        description="boundary_value: Poisson source rho/eps0 in x, y (zero edges only); "
+        "check_solution: the source in laplacian(phi) = -source.",
+    )
+    sample_points: list[tuple[str, str]] = Field(
+        default_factory=list, max_length=8, description="boundary_value: interior points to report."
+    )
+    potential: str | None = Field(
+        default=None, max_length=300, description="check_solution: candidate phi(x, y, z)."
+    )
+    faces: list[tuple[str, str]] = Field(
+        default_factory=list,
+        max_length=6,
+        description="check_solution: (face, value) with face in x=lo, x=hi, y=lo, y=hi, z=lo, z=hi.",
+    )
+    constants: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="field/multipole/...: declared constant names.",
     )
 
 
@@ -1120,6 +1182,24 @@ def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
                 + (f" ({mc.note})" if mc.note else "")
                 + ". This is consistency evidence, not a verification: say so."
             )
+        if result.em is not None:
+            em = result.em
+            for item in em.items:
+                shown = item.latex if item.latex is not None else (item.numeric or "?")
+                lines.append(
+                    f"- {item.label}: ${shown}$" + (f" ({item.note})" if item.note else "")
+                )
+                if item.latex is not None:
+                    known.append(item.latex)
+            lines.extend(f"- check: {c}" for c in em.checks)
+            lines.append(f"- method: {em.method}" + (f"; units: {em.units}" if em.units else ""))
+            if em.approximate:
+                lines.append(
+                    "- this is a NUMERICAL APPROXIMATION agreeing with an independent method, not an "
+                    "exact value or a proof: say so"
+                )
+            if em.holds is False:
+                lines.append("- the candidate does NOT satisfy every requirement: say which")
         for a in result.applicable:
             suffix = f" BLOCKED: {a.note}" if a.blocked else ""
             lines.append(
@@ -1214,6 +1294,8 @@ def run_electromagnetism(args: ElectromagnetismArgs, ctx: ToolContext) -> ToolOu
         )
         lines.append("not available yet: " + "; ".join(PLANNED))
         return ToolOutput(card, "\n".join(lines), [], "ok")
+    if args.action != "derive":
+        return _em_compute(args, ctx)
     template = TEMPLATES.get(args.derivation or "")
     if template is None:
         return _error(
@@ -1254,6 +1336,73 @@ def run_electromagnetism(args: ElectromagnetismArgs, ctx: ToolContext) -> ToolOu
         action="em_derive",
         template=template.id,
         rules=vector_identity_rules(ctx.kb),
+    )
+    return _vector_output(ctx.engine.vector_calculus(request), request)
+
+
+def _em_compute(args: ElectromagnetismArgs, ctx: ToolContext) -> ToolOutput:
+    from minerva_engine.vector.models import (
+        BoundaryProblem,
+        CheckProblem,
+        FaceCondition,
+        FieldProblem,
+        MultipoleProblem,
+        PointCharge,
+    )
+
+    def invalid(text: str) -> ToolOutput:
+        return _error("electromagnetism", text, "invalid_arguments", arguments_valid=False)
+
+    charges = [PointCharge(q=q, position=(x, y, z)) for q, x, y, z in args.charges]
+    region = Region(bounds=args.box) if args.box is not None and len(args.box) == 3 else None
+    problem: FieldProblem | MultipoleProblem | BoundaryProblem | CheckProblem
+    if args.action == "field":
+        if args.point is None:
+            return invalid("field needs `point`")
+        problem = FieldProblem(
+            kind="field", charges=charges, density=args.density, box=region, point=args.point
+        )
+    elif args.action == "multipole":
+        if not charges:
+            return invalid("multipole needs `charges`")
+        problem = MultipoleProblem(
+            kind="multipole", charges=charges, direction=args.direction, order=args.order
+        )
+    elif args.action == "boundary_value":
+        if args.side_a is None or args.side_b is None:
+            return invalid("boundary_value needs `side_a` and `side_b`")
+        problem = BoundaryProblem(
+            kind="boundary_value",
+            a=args.side_a,
+            b=args.side_b,
+            bottom=args.bottom,
+            top=args.top,
+            left=args.left,
+            right=args.right,
+            source=args.source,
+            points=args.sample_points,
+        )
+    else:
+        if args.potential is None or region is None:
+            return invalid("check_solution needs `potential` and `box`")
+        try:
+            conditions = [FaceCondition(face=f, value=v) for f, v in args.faces]
+        except ValidationError:
+            return invalid("faces must be (face, value) with face one of x=lo, x=hi, y=lo, ...")
+        problem = CheckProblem(
+            kind="check_solution",
+            potential=args.potential,
+            source=args.source or "0",
+            box=region,
+            conditions=conditions,
+        )
+    request = VectorInput(
+        expression="",
+        format="text",
+        coordinates="cartesian",
+        constants=args.constants,
+        action="em_compute",
+        em=problem,
     )
     return _vector_output(ctx.engine.vector_calculus(request), request)
 
@@ -2444,7 +2593,13 @@ TOOLS: dict[str, Tool] = {
             "found by general vector-calculus steps and checked step by step; the result is evaluated on "
             "exact solutions of its premises. A result that used a premise is CONDITIONAL on it and is never "
             "called an identity, a proof or unconditional; only gauge invariance needs no premise. "
-            "Minerva never checks that a premise is true. Cartesian coordinates, fields depend on x, y, z, t.",
+            "Minerva never checks that a premise is true. Cartesian coordinates, fields depend on x, y, z, t. "
+            "Also electrostatics with numbers the USER gives: `field` (potential and E of point charges or a "
+            "density, two methods must agree), `multipole` (moments and a measured far-field error), "
+            "`boundary_value` (Laplace/Poisson on a rectangle by a series, a numerical approximation shown "
+            "only if a finite-difference solve agrees) and `check_solution` (does a candidate potential "
+            "satisfy the equation and the face values). Not available: Fourier/Laplace transforms, "
+            "retarded Green's functions, FEM or FDTD, general PDE solving.",
             ElectromagnetismArgs,
             run_electromagnetism,
         ),

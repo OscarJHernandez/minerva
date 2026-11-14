@@ -241,3 +241,44 @@ export const approximation: VectorResult = {
     values: [{ ...fluxResult.integral!.values[0]!, latex: null, text: null, exact: false }],
   },
 };
+
+export const boundaryValue: VectorResult = {
+  ...fluxResult,
+  action: "em_compute",
+  coordinates: "cartesian",
+  result_latex: null,
+  integral: null,
+  em: {
+    kind: "boundary_value",
+    items: [
+      {
+        label: "phi(0.5, 0.5)",
+        latex: null,
+        numeric: "0.199268",
+        note: "finite differences 0.199371",
+      },
+    ],
+    method: "separated series",
+    checks: ["the series agrees with a finite-difference relaxation on two grids"],
+    approximate: true,
+    units: "",
+    series_terms: 40,
+    agreement: 8e-4,
+    holds: null,
+  },
+};
+
+export const failedCandidate: VectorResult = {
+  ...boundaryValue,
+  em: {
+    kind: "check_solution",
+    items: [{ label: "Residual", latex: "2", numeric: null, note: "not zero" }],
+    method: "exact residual",
+    checks: [],
+    approximate: false,
+    units: "",
+    series_terms: null,
+    agreement: null,
+    holds: false,
+  },
+};

@@ -564,6 +564,68 @@ def _int_pole_refused(engine: Engine) -> tuple[str, str]:
     return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
 
 
+def _estat_request(problem: Any) -> Any:
+    from .vector import VectorInput
+
+    return VectorInput(expression="", format="text", action="em_compute", em=problem)
+
+
+def _estat_centre(result: Any) -> Any:
+    if result.status.value != "ok" or result.em is None:
+        return None
+    item = next((i for i in result.em.items if i.label.startswith("phi(0.5, 0.5)")), None)
+    return mp.mpf(item.numeric) if item is not None and item.numeric else None
+
+
+def _estat_laplace(engine: Engine) -> tuple[str, str]:
+    """phi(x, y) = sin(pi x) sinh(pi y) / sinh(pi) solves Laplace's equation with phi = sin(pi x) on the top
+    edge and 0 on the others: the oracle is that closed form at the centre, 1 / (2 cosh(pi / 2))."""
+    from .vector import BoundaryProblem
+
+    result = engine.vector_calculus(
+        _estat_request(BoundaryProblem(kind="boundary_value", a="1", b="1", top="sin(pi*x)"))
+    )
+    got = _estat_centre(result)
+    truth = 1 / (2 * mp.cosh(mp.pi / 2))
+    return _verdict(
+        "correct", got is not None, got is not None and abs(got - truth) < 1e-6, "centre value"
+    )
+
+
+def _estat_poisson(engine: Engine) -> tuple[str, str]:
+    """laplacian(phi) = -1 on the unit square with zero edges: the double sine series summed by mpmath
+    (odd p, q only), written by hand, not the engine's coefficients."""
+    from .vector import BoundaryProblem
+
+    result = engine.vector_calculus(
+        _estat_request(BoundaryProblem(kind="boundary_value", a="1", b="1", source="1"))
+    )
+    got = _estat_centre(result)
+    truth = sum(
+        16 * (-1) ** ((p - 1) // 2 + (q - 1) // 2) / (mp.pi**4 * p * q * (p * p + q * q))
+        for p in range(1, 400, 2)
+        for q in range(1, 400, 2)
+    )
+    return _verdict(
+        "correct", got is not None, got is not None and abs(got - truth) < 3e-5, "centre value"
+    )
+
+
+def _estat_point_charge_refused(engine: Engine) -> tuple[str, str]:
+    from .vector import FieldProblem, PointCharge
+
+    result = engine.vector_calculus(
+        _estat_request(
+            FieldProblem(
+                kind="field",
+                charges=[PointCharge(q="1", position=("0", "0", "0"))],
+                point=("0", "0", "0"),
+            )
+        )
+    )
+    return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "matrix-exp-product-noncommuting",
@@ -712,6 +774,27 @@ PROBLEMS: list[Problem] = [
         "Griffiths, Introduction to Electrodynamics, section 1.5 (the delta function at the origin)",
         "refused",
         _int_pole_refused,
+    ),
+    Problem(
+        "estat-laplace-closed-form",
+        "electrostatics",
+        "separation of variables on a rectangle, Griffiths, Introduction to Electrodynamics, section 3.3",
+        "correct",
+        _estat_laplace,
+    ),
+    Problem(
+        "estat-poisson-double-series",
+        "electrostatics",
+        "double sine series, summed by mpmath written by hand (Griffiths, section 3.3)",
+        "correct",
+        _estat_poisson,
+    ),
+    Problem(
+        "estat-field-at-a-point-charge-refused",
+        "electrostatics",
+        "Coulomb's law is singular at the charge (Griffiths, section 2.1)",
+        "refused",
+        _estat_point_charge_refused,
     ),
 ]
 

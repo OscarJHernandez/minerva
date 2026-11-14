@@ -153,6 +153,27 @@
       "source": "Griffiths, Introduction to Electrodynamics, section 1.5 (the delta function at the origin)",
       "expected": "refused",
       "outcome": "refused_as_expected"
+    },
+    {
+      "id": "estat-laplace-closed-form",
+      "category": "electrostatics",
+      "source": "separation of variables on a rectangle, Griffiths, Introduction to Electrodynamics, section 3.3",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "estat-poisson-double-series",
+      "category": "electrostatics",
+      "source": "double sine series, summed by mpmath written by hand (Griffiths, section 3.3)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "estat-field-at-a-point-charge-refused",
+      "category": "electrostatics",
+      "source": "Coulomb's law is singular at the charge (Griffiths, section 2.1)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
     }
   ]
 }

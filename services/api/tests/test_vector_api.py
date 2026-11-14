@@ -500,3 +500,59 @@ def test_the_route_integrates_and_stores_the_geometry(authed: TestClient) -> Non
     assert out["status"] == "ok" and out["integral"]["values"][0]["exact"] is True
     (item,) = authed.get("/v1/history").json()
     assert item["result"]["request"]["surface"]["u"]["name"] == "u"
+
+
+# -- electrostatics with the user's numbers ---------------------------------------------------------
+def test_the_dipole_field_is_computed_with_two_methods_and_the_numbers_are_the_users(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "electromagnetism",
+        {
+            "action": "field",
+            "charges": [["q", "0", "0", "0"], ["-q", "0", "0", "d"]],
+            "point": ["1", "2", "3"],
+            "constants": ["q", "d"],
+        },
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert "central difference" in out.for_model and "k_e" in out.for_model
+    assert out.card.data["result"]["em"]["kind"] == "field"
+    assert out.known_latex  # an exact closed form from the engine
+
+
+def test_a_boundary_value_result_is_called_a_numerical_approximation(ctx: ToolContext) -> None:
+    out = execute(
+        "electromagnetism",
+        {"action": "boundary_value", "side_a": "1", "side_b": "1", "top": "sin(pi*x)"},
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert "NUMERICAL APPROXIMATION" in out.for_model
+    assert out.card.data["result"]["em"]["approximate"] is True
+
+
+def test_electrostatics_arguments_are_checked_and_a_point_in_the_source_is_refused(
+    ctx: ToolContext,
+) -> None:
+    assert execute("electromagnetism", {"action": "field"}, ctx).status == "error"
+    assert execute("electromagnetism", {"action": "multipole"}, ctx).status == "error"
+    assert execute("electromagnetism", {"action": "boundary_value"}, ctx).status == "error"
+    refused = execute(
+        "electromagnetism",
+        {"action": "field", "charges": [["1", "0", "0", "0"]], "point": ["0", "0", "0"]},
+        ctx,
+    )
+    assert refused.status == "unsupported" and refused.known_latex == []
+
+
+def test_the_route_runs_an_electrostatic_problem(authed: TestClient) -> None:
+    body = {
+        "expression": "",
+        "format": "text",
+        "action": "em_compute",
+        "em": {"kind": "boundary_value", "a": "1", "b": "1", "top": "sin(pi*x)"},
+    }
+    out = authed.post("/v1/compute/vector", json=body).json()
+    assert out["status"] == "ok" and out["em"]["approximate"] is True

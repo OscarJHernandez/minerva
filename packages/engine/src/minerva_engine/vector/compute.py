@@ -145,11 +145,19 @@ def _run(
 ) -> None:
     system = get_system(inp.coordinates)
     deadline = started + TIME_BUDGET_SECONDS
-    if inp.action not in ("jacobian", "em_derive") and not inp.expression.strip():
+    if inp.action not in ("jacobian", "em_derive", "em_compute") and not inp.expression.strip():
         raise _Refused(Status.PARSE_ERROR, "an expression is required", "unsupported_expression")
     result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
     if inp.action == "jacobian":
         _jacobian(system, result, diag, deadline)
+        return
+
+    if inp.action == "em_compute":
+        from .em_numeric import run_em_compute
+
+        ctx = build_context(inp, limits, started)
+        result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
+        run_em_compute(ctx, result, diag)
         return
 
     if inp.action == "integrate":

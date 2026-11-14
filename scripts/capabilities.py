@@ -739,6 +739,15 @@ def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) 
                     if r.integral.method == "symbolic"
                     else "two quadrature rules agree; a numerical approximation, not an exact value"
                 )
+        if r.em is not None:
+            for item in r.em.items:
+                shown = item.latex if item.latex is not None else (item.numeric or "")
+                outputs.append({"label": item.label, "latex": shown})
+                if item.note:
+                    notes.append(f"{item.label}: {item.note}.")
+            checks.extend(r.em.checks)
+            if r.em.approximate:
+                notes.append("A numerical approximation agreeing with an independent method.")
         for eq in r.equations_latex:
             outputs.append({"label": "Derived equation", "latex": eq})
         if r.model_check is not None and r.model_check.status == "passed":
@@ -787,6 +796,25 @@ def run_electromagnetism(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase
     from minerva_engine.vector.em import TEMPLATES
     from minerva_knowledge.identities import resolve_premise_ids
 
+    if "problem" in spec:
+        from minerva_engine.vector.models import EMProblem
+        from pydantic import TypeAdapter
+
+        problem = TypeAdapter(EMProblem).validate_python(spec["problem"])
+        r = engine.vector_calculus(
+            VectorInput(
+                expression="",
+                format="text",
+                action="em_compute",
+                em=problem,
+                constants=spec.get("constants") or [],
+            )
+        )
+        return _vector_example(
+            spec,
+            r,
+            [{"label": "Problem", "source": json.dumps(spec["problem"]), "syntax": "text"}],
+        )
     template = TEMPLATES[spec["derivation"]]
     chosen = resolve_premise_ids(kb, spec.get("premise_ids") or [])
     premises = [Premise(equation=o.equation, label=o.title) for o in chosen]

@@ -7,6 +7,8 @@ import {
   derived,
   divergenceTheorem,
   fluxResult,
+  boundaryValue,
+  failedCandidate,
   divergenceRequest,
   jacobian,
   listed,
@@ -120,5 +122,18 @@ describe("VectorPanel", () => {
       /numerical approximation, not an exact value/,
     );
     expect(screen.getByTestId("integral")).toHaveTextContent(/no closed form was found/);
+  });
+
+  it("labels a boundary-value result as a numerical approximation with its check", () => {
+    render(<VectorPanel result={boundaryValue} />);
+    const block = screen.getByTestId("em-computation");
+    expect(block).toHaveTextContent(/0.199268/);
+    expect(block).toHaveTextContent(/finite-difference relaxation/);
+    expect(screen.getByRole("note")).toHaveTextContent(/Numerical approximation/);
+  });
+
+  it("says when a candidate does not satisfy the requirements", () => {
+    render(<VectorPanel result={failedCandidate} />);
+    expect(screen.getByRole("note")).toHaveTextContent(/does not satisfy every requirement/);
   });
 });

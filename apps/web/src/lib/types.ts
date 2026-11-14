@@ -760,6 +760,7 @@ export type VectorAction =
   | "apply"
   | "derive"
   | "em_derive"
+  | "em_compute"
   | "integrate";
 
 export interface VectorFieldDecl {
@@ -910,6 +911,25 @@ export interface VectorApplicable {
   note: string;
 }
 
+export interface VectorEMItem {
+  label: string;
+  latex: string | null;
+  numeric: string | null;
+  note: string;
+}
+
+export interface VectorEMComputation {
+  kind: "field" | "multipole" | "boundary_value" | "check_solution";
+  items: VectorEMItem[];
+  method: string;
+  checks: string[];
+  approximate: boolean;
+  units: string;
+  series_terms: number | null;
+  agreement: number | null;
+  holds: boolean | null;
+}
+
 export interface VectorResult {
   status: Status;
   message: string;
@@ -942,6 +962,7 @@ export interface VectorResult {
   model_check?: VectorModelCheck | null;
   derivation?: string | null;
   integral?: VectorIntegralResult | null;
+  em?: VectorEMComputation | null;
   duration_ms: number;
   calculation_id?: string | null;
 }

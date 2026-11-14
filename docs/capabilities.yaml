@@ -31,6 +31,7 @@
 #   electromagnetism derivation (wave_equation_e | wave_equation_b | continuity | poynting | gauge_invariance |
 #                poisson | laplace), premise_ids [handbook field equations the user adopts], premises [text], smoothness
 #                (c2 | smooth, declared by the user)
+#                electrostatics: problem {kind: field | multipole | boundary_value | check_solution, ...}, constants
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
@@ -918,6 +919,7 @@ capabilities:
       invariance of E and B needs no premise.
     limits:
       - 'Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems.'
+      - 'Electrostatics with numbers the user gives (field, multipole, boundary_value, check_solution): point charges and a density over a box, Dirichlet problems on a rectangle, Cartesian coordinates. Fourier and Laplace transform methods, retarded Green''s functions, finite elements, FDTD and general PDE solving are planned and not implemented.'
       - 'Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell''s equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them.'
       - 'A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for.'
       - 'Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable.'
@@ -963,6 +965,48 @@ capabilities:
         op: electromagnetism
         derivation: continuity
         premise_ids: [em.maxwell.ampere, em.maxwell.gauss]
+      - id: es-dipole-field
+        title: Potential and field of a dipole at a point (Coulomb sum, gradient and central difference agree)
+        op: electromagnetism
+        constants: [q, d]
+        problem:
+          kind: field
+          charges:
+            - { q: q, position: ['0', '0', '0'] }
+            - { q: -q, position: ['0', '0', d] }
+          point: ['1', '2', '3']
+      - id: es-multipole
+        title: Moments of three point charges, with the measured decay of the truncated expansion
+        op: electromagnetism
+        problem:
+          kind: multipole
+          charges:
+            - { q: '1', position: ['0', '0', '1'] }
+            - { q: '-1', position: ['0', '0', '-1'] }
+            - { q: '1', position: ['1', '0', '0'] }
+      - id: es-laplace-rectangle
+        title: Laplace's equation on the unit square with a sine on one edge (series against a finite-difference solve)
+        op: electromagnetism
+        problem:
+          kind: boundary_value
+          a: '1'
+          b: '1'
+          top: sin(pi*x)
+      - id: es-field-in-source
+        title: A field point inside the charge distribution is refused
+        op: electromagnetism
+        problem:
+          kind: field
+          density: '1'
+          box: { bounds: [['0', '1'], ['0', '1'], ['0', '1']] }
+          point: ['0.5', '0.5', '0.5']
+      - id: es-wrong-candidate
+        title: x^2 is not a solution of Laplace's equation, and Minerva says which requirement fails
+        op: electromagnetism
+        problem:
+          kind: check_solution
+          potential: x**2
+          box: { bounds: [['0', '1'], ['0', '1'], ['0', '1']] }
 
   - id: identities
     title: Identity search with applicability checks

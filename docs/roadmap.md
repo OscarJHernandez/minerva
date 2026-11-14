@@ -84,8 +84,9 @@ conversion, with an independent Cartesian finite-difference check and smoothness
 - Done: line, surface and volume integrals and the gradient, divergence and Stokes theorems with explicit domains
   (coordinate boxes and parametrised curves and surfaces). Next there: piecewise fields and surface charges, volumes
   that are not boxes, and interface conditions by a pillbox argument.
-- Analytical and numerical electromagnetic methods (point charges, multipoles, rectangle boundary-value problems);
-  Fourier and Laplace methods, Green's functions beyond the free-space kernel, FEM and FDTD stay out of scope.
+- Done: analytical and numerical electrostatics with the user's numbers (point charges, densities over a box,
+  multipoles, Dirichlet problems on a rectangle, a check of a candidate solution), each as two methods that must
+  agree. Fourier and Laplace methods, Green's functions beyond the free-space kernel, FEM and FDTD stay out of scope.
 - The electromagnetic field tensor in the geometry module; a vector mode in the workbench.
 
 ## Differential geometry

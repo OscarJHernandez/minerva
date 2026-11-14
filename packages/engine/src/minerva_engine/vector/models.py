@@ -29,6 +29,7 @@ Action = Literal[
     "derive",
     "em_derive",
     "integrate",
+    "em_compute",
 ]
 STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive", "em_derive")
 IntegralKind = Literal[
@@ -53,6 +54,8 @@ Reason = Literal[
     "needs_premises",
     "model_check_failed",
     "singular_in_domain",
+    "field_point_in_source",
+    "solver_disagreement",
     "missing_geometry",
     "integration_failed",
     "derivative_depth",
@@ -141,6 +144,71 @@ class Region(BaseModel):
     bounds: list[tuple[str, str]] = Field(min_length=3, max_length=3)
 
 
+class PointCharge(BaseModel):
+    """A point charge: its charge and position as text (numbers, `pi`, declared constants)."""
+
+    q: str = Field(max_length=80)
+    position: tuple[str, str, str]
+
+
+class FieldProblem(BaseModel):
+    """The electrostatic potential and field at a point, from point charges and/or a charge density
+    over a Cartesian box. Everything is in units of k_e = 1/(4 pi epsilon_0)."""
+
+    kind: Literal["field"] = "field"
+    charges: list[PointCharge] = Field(default_factory=list, max_length=8)
+    density: str | None = Field(default=None, max_length=200)  # rho(x, y, z), text
+    box: Region | None = None  # the support of the density, in Cartesian coordinates
+    point: tuple[str, str, str]
+
+
+class MultipoleProblem(BaseModel):
+    """Monopole, dipole and quadrupole moments of point charges, and how well the truncated expansion
+    reproduces the exact potential along a ray, measured at growing distances."""
+
+    kind: Literal["multipole"] = "multipole"
+    charges: list[PointCharge] = Field(min_length=1, max_length=8)
+    direction: tuple[str, str, str] = ("0", "0", "1")
+    order: Literal[0, 1, 2] = 2
+
+
+class BoundaryProblem(BaseModel):
+    """Laplace's equation (or Poisson's, with `source`) on the rectangle [0, a] x [0, b] with Dirichlet
+    data: `bottom` and `top` are functions of x, `left` and `right` functions of y (text; "0" for none).
+    Poisson: laplacian(phi) = -source(x, y), then the boundary data must be zero."""
+
+    kind: Literal["boundary_value"] = "boundary_value"
+    a: str = Field(max_length=40)
+    b: str = Field(max_length=40)
+    bottom: str = "0"
+    top: str = "0"
+    left: str = "0"
+    right: str = "0"
+    source: str | None = Field(default=None, max_length=200)
+    terms: int = Field(default=40, ge=4, le=200)
+    points: list[tuple[str, str]] = Field(default_factory=list, max_length=6)
+
+
+class FaceCondition(BaseModel):
+    """phi on one face of a box, as a function of the other two coordinates (text)."""
+
+    face: Literal["x=lo", "x=hi", "y=lo", "y=hi", "z=lo", "z=hi"]
+    value: str = Field(max_length=200)
+
+
+class CheckProblem(BaseModel):
+    """Does a candidate potential satisfy laplacian(phi) = -source and the stated boundary values?"""
+
+    kind: Literal["check_solution"] = "check_solution"
+    potential: str = Field(max_length=300)
+    source: str = Field(default="0", max_length=200)
+    box: Region
+    conditions: list[FaceCondition] = Field(default_factory=list, max_length=6)
+
+
+EMProblem = FieldProblem | MultipoleProblem | BoundaryProblem | CheckProblem
+
+
 class VectorRule(BaseModel):
     """A vector identity handed over by the knowledge layer: `lhs = rhs` in text syntax over typed
     pattern variables. `requires` is the smoothness the identity needs (a handbook fact, not an
@@ -182,6 +250,7 @@ class VectorInput(BaseModel):
     operator: Literal["grad", "div", "curl", "lap", "dt"] | None = None
     target: str | None = Field(default=None, max_length=1000)
     template: str | None = Field(default=None, max_length=40)
+    em: EMProblem | None = Field(default=None, discriminator="kind")
     # Integrals: the domain is always given, never invented (see integrals.py).
     integral: IntegralKind | None = None
     curve: Curve | None = None
@@ -332,6 +401,27 @@ class IntegralResult(BaseModel):
     method: Literal["symbolic", "numerical"] = "symbolic"
 
 
+class EMItem(BaseModel):
+    label: str
+    latex: str | None = None
+    numeric: str | None = None
+    note: str = ""
+
+
+class EMComputation(BaseModel):
+    """The result of a numerical or analytical electromagnetic computation, with how it was checked."""
+
+    kind: Literal["field", "multipole", "boundary_value", "check_solution"]
+    items: list[EMItem] = Field(default_factory=list)
+    method: str = ""
+    checks: list[str] = Field(default_factory=list)
+    approximate: bool = False
+    units: str = ""
+    series_terms: int | None = None
+    agreement: float | None = None  # largest measured disagreement between two methods
+    holds: bool | None = None  # check_solution: every requirement is met
+
+
 class Applicable(BaseModel):
     """An identity that matches a part of the expression (listed, not applied or verified)."""
 
@@ -378,5 +468,6 @@ class VectorResult(BaseModel):
     model_check: ModelCheck | None = None
     derivation: str | None = None
     integral: IntegralResult | None = None
+    em: EMComputation | None = None
     diagnostics: VectorDiagnostics = Field(default_factory=VectorDiagnostics)
     duration_ms: int = 0
