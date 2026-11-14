@@ -23,7 +23,9 @@
 #   geometry     coordinates, metric [[expression]], assumptions, functions [{name, args}], quantities, tensor {variance,
 #                components}, tensor_index
 #   vector       input (LaTeX or format: text), coordinates (cartesian | cylindrical | spherical), fields [{name, kind,
-#                components, depends_on, smoothness}], constants, assumptions, action (evaluate | jacobian | convert), to
+#                components, depends_on, smoothness}], constants, assumptions, action (evaluate | jacobian | convert |
+#                identities | apply_identity | substitute | apply | derive), to, rule_id, path, reverse, premises [text
+#                `lhs = rhs`, given by the user], premise, operator (grad | div | curl | lap | dt), target
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
@@ -668,7 +670,9 @@ capabilities:
       - Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
       - Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
       - The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
-      - Vector identities, controlled derivations, electromagnetism and integrals over curves, surfaces and volumes are planned (see the roadmap).
+      - 'Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and "not found" is not "does not exist". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.'
+      - 'A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true.'
+      - 'Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap).'
     examples:
       - id: vector-curl-spherical
         title: Curl of an arbitrary field in spherical coordinates
@@ -725,6 +729,58 @@ capabilities:
         to: cartesian
         fields:
           - { name: F, kind: vector, components: ['0', 'rho', '0'] }
+      - id: vector-apply-curl-curl
+        title: Rewrite curl curl A with the divergence and the Laplacian
+        op: vector
+        action: apply_identity
+        format: text
+        input: 'curl(curl(A))'
+        rule_id: vector.curl_curl
+        path: []
+        fields:
+          - { name: A, kind: vector, smoothness: c2 }
+      - id: vector-apply-curl-curl-refused
+        title: The same rewrite is blocked until the field is declared twice differentiable
+        op: vector
+        action: apply_identity
+        format: text
+        input: 'curl(curl(A))'
+        rule_id: vector.curl_curl
+        path: []
+        fields:
+          - { name: A, kind: vector }
+      - id: vector-list-identities
+        title: Which identities match a part of the expression
+        op: vector
+        action: identities
+        format: text
+        input: 'div(cross(A, B))'
+        fields:
+          - { name: A, kind: vector }
+          - { name: B, kind: vector }
+      - id: vector-derive-wave-equation
+        title: curl curl E from Faraday's and Ampere-Maxwell's laws, as supplied by the user
+        op: vector
+        action: derive
+        format: text
+        input: 'curl(curl(E))'
+        target: '-mu0*epsilon0*dt(dt(E))'
+        constants: [mu0, epsilon0]
+        premises:
+          - 'curl(E) = -dt(B)'
+          - 'curl(B) = mu0*epsilon0*dt(E)'
+        fields:
+          - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
+          - { name: B, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
+      - id: vector-derive-without-premise
+        title: Without the Gauss premise the target is not reached
+        op: vector
+        action: derive
+        format: text
+        input: 'curl(curl(E))'
+        target: '-lap(E)'
+        fields:
+          - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
       - id: vector-ambiguous-product
         title: Two vectors side by side are refused, not guessed
         op: vector

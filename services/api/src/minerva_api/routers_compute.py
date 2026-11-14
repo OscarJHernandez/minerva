@@ -36,6 +36,7 @@ from minerva_knowledge.identities import (
     find_identities,
     simplify_expression,
     summarize,
+    vector_identity_rules,
 )
 from pydantic import BaseModel, Field
 
@@ -443,6 +444,7 @@ def vector(
     user: UserDep,
     db: DbDep,
     engine: EngineDep,
+    kb: KbDep,
     limiter: LimiterDep,
     settings: SettingsDep,
 ) -> VectorResponse:
@@ -453,14 +455,17 @@ def vector(
     problem. A result is returned only if the independent numerical check passed."""
     _guard(user, limiter, settings, len(body.expression))
     _check_links(db, user, body)
-    request = VectorInput(**body.model_dump(exclude=set(Links.model_fields)))
+    # The identities come from the handbook, never from the request: a client cannot cite its own rule.
+    request = VectorInput(**body.model_dump(exclude={*Links.model_fields, "rules"}))
+    if request.action in ("identities", "apply_identity", "derive"):
+        request = request.model_copy(update={"rules": vector_identity_rules(kb)})
     result = engine.vector_calculus(request)
     log_vector(result)
     out = VectorResponse(**result.model_dump())
     if body.save:
         saved = result.model_dump(mode="json")
         # the whole problem is kept (even on failure) so that the workbench can restore the form
-        saved["request"] = request.model_dump(mode="json")
+        saved["request"] = request.model_dump(mode="json", exclude={"rules"})
         out.calculation_id = _save_row(
             db, user, "vector", request.expression or request.action, request.format,
             request.assumptions, body, result.status.value, saved,

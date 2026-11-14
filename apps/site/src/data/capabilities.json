@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 179,
+  "handbook_entries": 204,
   "groups": [
     {
       "id": "math",
@@ -1997,7 +1997,9 @@
         "Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.",
         "Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.",
         "The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.",
-        "Vector identities, controlled derivations, electromagnetism and integrals over curves, surfaces and volumes are planned (see the roadmap)."
+        "Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and \"not found\" is not \"does not exist\". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.",
+        "A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true.",
+        "Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap)."
       ],
       "examples": [
         {
@@ -2304,6 +2306,208 @@
           ],
           "notes": [
             "converted from cylindrical to cartesian and checked numerically by an independent route (through Cartesian coordinates); this is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "vector-apply-curl-curl",
+          "title": "Rewrite curl curl A with the divergence and the Laplacian",
+          "op": "vector",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "cartesian"
+            },
+            {
+              "label": "Expression",
+              "source": "curl(curl(A))",
+              "syntax": "text"
+            },
+            {
+              "label": "Field A",
+              "source": "vector field, c2"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}"
+            },
+            {
+              "label": "Step 1 (identity): vector.curl_curl",
+              "latex": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}"
+            }
+          ],
+          "checks": [
+            "each identity step: the whole expressions before and after differ by an exactly zero component residual, and an independent Cartesian evaluation agrees"
+          ],
+          "notes": [
+            "vector.curl_curl applied; the two expressions were compared by the exact components (difference identically zero) and by an independent Cartesian evaluation. It holds for fields of the smoothness you declared."
+          ]
+        },
+        {
+          "id": "vector-apply-curl-curl-refused",
+          "title": "The same rewrite is blocked until the field is declared twice differentiable",
+          "op": "vector",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "cartesian"
+            },
+            {
+              "label": "Expression",
+              "source": "curl(curl(A))",
+              "syntax": "text"
+            },
+            {
+              "label": "Field A",
+              "source": "vector field"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Not shown: needs c2 smoothness of A. vector.curl_curl holds for twice continuously differentiable fields; the smoothness of these fields was not declared.",
+            "vector.curl_curl needs twice continuously differentiable A; that was not declared, so the step was not applied"
+          ]
+        },
+        {
+          "id": "vector-list-identities",
+          "title": "Which identities match a part of the expression",
+          "op": "vector",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "cartesian"
+            },
+            {
+              "label": "Expression",
+              "source": "div(cross(A, B))",
+              "syntax": "text"
+            },
+            {
+              "label": "Field A",
+              "source": "vector field"
+            },
+            {
+              "label": "Field B",
+              "source": "vector field"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Match: vector.cross_anticommutes",
+              "latex": "\\mathbf{A} \\times \\mathbf{B} \\to \\nabla \\cdot \\left(- \\mathbf{B} \\times \\mathbf{A}\\right)"
+            },
+            {
+              "label": "Match: vector.div_cross",
+              "latex": "\\nabla \\cdot \\mathbf{A} \\times \\mathbf{B} \\to - \\mathbf{A} \\cdot \\left(\\nabla \\times \\mathbf{B}\\right) + \\mathbf{B} \\cdot \\left(\\nabla \\times \\mathbf{A}\\right)"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "2 way(s) to apply an identity; none was applied or verified. Choose one with `rule_id` and `path` (an identity that needs c2 is blocked unless the fields are declared)"
+          ]
+        },
+        {
+          "id": "vector-derive-wave-equation",
+          "title": "curl curl E from Faraday's and Ampere-Maxwell's laws, as supplied by the user",
+          "op": "vector",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "cartesian"
+            },
+            {
+              "label": "Expression",
+              "source": "curl(curl(E))",
+              "syntax": "text"
+            },
+            {
+              "label": "Premise 0 (given by the user)",
+              "source": "curl(E) = -dt(B)",
+              "syntax": "text"
+            },
+            {
+              "label": "Premise 1 (given by the user)",
+              "source": "curl(B) = mu0*epsilon0*dt(E)",
+              "syntax": "text"
+            },
+            {
+              "label": "Target",
+              "source": "-mu0*epsilon0*dt(dt(E))",
+              "syntax": "text"
+            },
+            {
+              "label": "Field E",
+              "source": "vector field, smooth"
+            },
+            {
+              "label": "Field B",
+              "source": "vector field, smooth"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "- \\epsilon_{0} \\mu_{0} \\frac{\\partial^{2} \\mathbf{E}}{\\partial t^{2}}"
+            },
+            {
+              "label": "Step 1 (conditional on curl(E) = -dt(B)): Substitute premise 1",
+              "latex": "- \\nabla \\times \\left(\\frac{\\partial \\mathbf{B}}{\\partial t}\\right)"
+            },
+            {
+              "label": "Step 2 (identity): vector.time_curl (right to left)",
+              "latex": "- \\frac{\\partial \\left(\\nabla \\times \\mathbf{B}\\right)}{\\partial t}"
+            },
+            {
+              "label": "Step 3 (conditional on curl(B) = mu0*epsilon0*dt(E)): Substitute premise 2",
+              "latex": "- \\epsilon_{0} \\mu_{0} \\frac{\\partial^{2} \\mathbf{E}}{\\partial t^{2}}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E). Supplied by the user and not checked: not an identity.",
+            "a chain of 3 step(s); each identity step was checked by comparing the whole expressions before and after; the result holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E) (supplied by you, not checked)"
+          ]
+        },
+        {
+          "id": "vector-derive-without-premise",
+          "title": "Without the Gauss premise the target is not reached",
+          "op": "vector",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "cartesian"
+            },
+            {
+              "label": "Expression",
+              "source": "curl(curl(E))",
+              "syntax": "text"
+            },
+            {
+              "label": "Target",
+              "source": "-lap(E)",
+              "syntax": "text"
+            },
+            {
+              "label": "Field E",
+              "source": "vector field, smooth"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "no chain of identities reached the target within the bounds (depth 4, width 8); this does not say that none exists"
           ]
         },
         {

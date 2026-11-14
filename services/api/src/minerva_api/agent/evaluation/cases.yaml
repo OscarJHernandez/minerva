@@ -1051,3 +1051,57 @@
   expected_tool: none
   informational: true
   source: "the product of two vectors is ambiguous (dot or cross); the tool refuses it and the model asks which was meant"
+
+- id: vector-curl-curl-rewrite
+  category: calculus
+  prompt: 'The vector field $\mathbf{A}$ is twice continuously differentiable. Rewrite $\nabla\times(\nabla\times\mathbf{A})$ in terms of the divergence and the Laplacian of $\mathbf{A}$.'
+  expected_tool: vector_calculus
+  args: {equals: {action: apply_identity, rule_id: vector.curl_curl}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla\times\mathbf{A})'
+      fields: [{name: A, kind: vector, smoothness: c2}]
+      action: apply_identity
+      rule_id: vector.curl_curl
+      path: []
+  wrong_formulas: ['\nabla\times(\nabla\times\mathbf{A}) = \nabla(\nabla\cdot\mathbf{A}) + \nabla^2\mathbf{A}']
+  source: "Griffiths, Introduction to Electrodynamics, chapter 1 (curl of a curl); the user stated the smoothness"
+
+- id: vector-curl-curl-rewrite-needs-smoothness
+  category: ambiguous
+  prompt: 'Rewrite $\nabla\times(\nabla\times\mathbf{A})$ using the divergence and the Laplacian.'
+  expected_tool: vector_calculus
+  max_calls: 2
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla\times\mathbf{A})'
+      fields: [{name: A, kind: vector}]
+      action: apply_identity
+      rule_id: vector.curl_curl
+      path: []
+  reply_matches: 'smooth|differentiab|C\^?2|continuous|mixed'
+  source: "the identity needs equal mixed partial derivatives; the user stated no smoothness, so the tool blocks the step and the answer asks"
+
+- id: vector-premise-is-conditional
+  category: calculus
+  prompt: 'Given Faraday''s law $\nabla\times\mathbf{E} = -\partial\mathbf{B}/\partial t$ for fields that depend on x, y, z and t, substitute it into $\nabla\times(\nabla\times\mathbf{E})$.'
+  expected_tool: vector_calculus
+  args: {equals: {action: substitute}, present: [premises]}
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla\times\mathbf{E})'
+      fields:
+        - {name: E, kind: vector, depends_on: [x, y, z, t]}
+        - {name: B, kind: vector, depends_on: [x, y, z, t]}
+      premises: ['\nabla\times\mathbf{E} = -\frac{\partial\mathbf{B}}{\partial t}']
+      action: substitute
+  reply_matches: 'given|premise|supplied|assum'
+  reply_forbids: 'proves?d?\b|unconditional'
+  source: "AGENTS.md (a result that depends on a premise is conditional, never called proved or an identity)"

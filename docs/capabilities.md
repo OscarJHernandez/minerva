@@ -725,7 +725,9 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
 - Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
 - The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
-- Vector identities, controlled derivations, electromagnetism and integrals over curves, surfaces and volumes are planned (see the roadmap).
+- Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and "not found" is not "does not exist". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.
+- A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true.
+- Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap).
 
 #### Curl of an arbitrary field in spherical coordinates
 
@@ -819,6 +821,63 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - **Component along \hat{z}:** $0$
 - **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
 - converted from cylindrical to cartesian and checked numerically by an independent route (through Cartesian coordinates); this is evidence, not a proof
+
+#### Rewrite curl curl A with the divergence and the Laplacian
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(A))` (plain text)
+- **Field A:** `vector field, c2`
+- **Status:** `ok`
+- **Result:** $\nabla \left(\nabla \cdot \mathbf{A}\right) - \nabla^{2} \mathbf{A}$
+- **Step 1 (identity): vector.curl_curl:** $\nabla \left(\nabla \cdot \mathbf{A}\right) - \nabla^{2} \mathbf{A}$
+- **Check:** each identity step: the whole expressions before and after differ by an exactly zero component residual, and an independent Cartesian evaluation agrees
+- vector.curl_curl applied; the two expressions were compared by the exact components (difference identically zero) and by an independent Cartesian evaluation. It holds for fields of the smoothness you declared.
+
+#### The same rewrite is blocked until the field is declared twice differentiable
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(A))` (plain text)
+- **Field A:** `vector field`
+- **Status:** `conditions_not_satisfied`
+- Not shown: needs c2 smoothness of A. vector.curl_curl holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
+- vector.curl_curl needs twice continuously differentiable A; that was not declared, so the step was not applied
+
+#### Which identities match a part of the expression
+
+- **Coordinates:** `cartesian`
+- **Expression:** `div(cross(A, B))` (plain text)
+- **Field A:** `vector field`
+- **Field B:** `vector field`
+- **Status:** `ok`
+- **Match: vector.cross_anticommutes:** $\mathbf{A} \times \mathbf{B} \to \nabla \cdot \left(- \mathbf{B} \times \mathbf{A}\right)$
+- **Match: vector.div_cross:** $\nabla \cdot \mathbf{A} \times \mathbf{B} \to - \mathbf{A} \cdot \left(\nabla \times \mathbf{B}\right) + \mathbf{B} \cdot \left(\nabla \times \mathbf{A}\right)$
+- 2 way(s) to apply an identity; none was applied or verified. Choose one with `rule_id` and `path` (an identity that needs c2 is blocked unless the fields are declared)
+
+#### curl curl E from Faraday's and Ampere-Maxwell's laws, as supplied by the user
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(E))` (plain text)
+- **Premise 0 (given by the user):** `curl(E) = -dt(B)` (plain text)
+- **Premise 1 (given by the user):** `curl(B) = mu0*epsilon0*dt(E)` (plain text)
+- **Target:** `-mu0*epsilon0*dt(dt(E))` (plain text)
+- **Field E:** `vector field, smooth`
+- **Field B:** `vector field, smooth`
+- **Status:** `ok`
+- **Result:** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Step 1 (conditional on curl(E) = -dt(B)): Substitute premise 1:** $- \nabla \times \left(\frac{\partial \mathbf{B}}{\partial t}\right)$
+- **Step 2 (identity): vector.time_curl (right to left):** $- \frac{\partial \left(\nabla \times \mathbf{B}\right)}{\partial t}$
+- **Step 3 (conditional on curl(B) = mu0*epsilon0*dt(E)): Substitute premise 2:** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- Holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E). Supplied by the user and not checked: not an identity.
+- a chain of 3 step(s); each identity step was checked by comparing the whole expressions before and after; the result holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E) (supplied by you, not checked)
+
+#### Without the Gauss premise the target is not reached
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(E))` (plain text)
+- **Target:** `-lap(E)` (plain text)
+- **Field E:** `vector field, smooth`
+- **Status:** `unchanged`
+- no chain of identities reached the target within the bounds (depth 4, width 8); this does not say that none exists
 
 #### Two vectors side by side are refused, not guessed
 

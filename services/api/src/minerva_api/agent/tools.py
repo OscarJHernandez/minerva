@@ -33,7 +33,7 @@ from minerva_engine import (
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
-from minerva_engine.vector import FieldDecl
+from minerva_engine.vector import FieldDecl, Premise
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
@@ -41,6 +41,7 @@ from minerva_knowledge.identities import (
     find_identities,
     simplify_expression,
     summarize,
+    vector_identity_rules,
 )
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
@@ -286,14 +287,59 @@ class VectorCalculusArgs(BaseModel):
         description='Properties of constants (e.g. {"k": ["positive"]}). Do not add what the user did '
         "not state.",
     )
-    action: Literal["evaluate", "jacobian", "convert"] = Field(
+    action: Literal[
+        "evaluate",
+        "jacobian",
+        "convert",
+        "identities",
+        "apply_identity",
+        "substitute",
+        "apply",
+        "derive",
+    ] = Field(
         default="evaluate",
         description="evaluate: compute the expression in the components of the system. jacobian: the "
         "Jacobian, determinant and scale factors of the map to Cartesian coordinates. convert: re-express "
-        "an expression of EXPLICIT fields in the system `to`.",
+        "an expression of EXPLICIT fields in the system `to`. identities: list the handbook identities "
+        "that match a part of the expression (applies none). apply_identity: apply `rule_id` at `path` "
+        "(or right to left with reverse=true), checked by comparing the whole expressions before and "
+        "after. substitute: replace one side of a premise the USER gave by the other. apply: apply "
+        "`operator` to both sides of an equation (`expression` is `lhs = rhs`). derive: search a chain "
+        "of identity (and premise) steps to `target`, or to a smaller form without one.",
     )
     to: Literal["cartesian", "cylindrical", "spherical"] | None = Field(
         default=None, description="Target system for convert."
+    )
+    rule_id: str | None = Field(
+        default=None,
+        description="apply_identity: the handbook id of the identity, e.g. vector.curl_curl (from a "
+        "previous `identities` call).",
+    )
+    path: list[int] | None = Field(
+        default=None,
+        max_length=24,
+        description="apply_identity or substitute: the part to act on, as the path the `identities` "
+        "call listed ([] is the whole expression). Never guess it: list first when several places match.",
+    )
+    reverse: bool = Field(default=False, description="Read the identity or premise right to left.")
+    premises: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="Field equations the USER stated, each `lhs = rhs` in the same syntax as the "
+        "expression, e.g. \\nabla\\times\\mathbf{E} = -\\frac{\\partial\\mathbf{B}}{\\partial t}. "
+        "Never invent or complete one: a result that uses a premise holds only given it, and Minerva does "
+        "not check that the premise is true.",
+    )
+    premise: int | None = Field(
+        default=None, ge=0, le=7, description="substitute: which premise (0-based) to use."
+    )
+    operator: Literal["grad", "div", "curl", "lap", "dt"] | None = Field(
+        default=None, description="apply: the operator to apply to both sides."
+    )
+    target: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description="derive: the expression to reach (same syntax as `expression`).",
     )
 
 
@@ -879,8 +925,19 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 
+_VECTOR_STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive")
+
+
 def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutput:
-    request = VectorInput(**args.model_dump(), format="latex")
+    fields = args.model_dump(exclude={"premises"})
+    request = VectorInput(
+        **fields,
+        premises=[Premise(equation=p) for p in args.premises],
+        format="latex",
+    )
+    if args.action in ("identities", "apply_identity", "derive"):
+        # The handbook proposes; the engine matches the identities and checks every rewrite.
+        request = request.model_copy(update={"rules": vector_identity_rules(ctx.kb)})
     result = ctx.engine.vector_calculus(request)
     log_vector(result)  # status, reason, counters: never a field name or an expression
     card = Card(
@@ -890,8 +947,8 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
         title="Vector calculus",
         data={
             "result": result.model_dump(mode="json"),
-            # the whole problem, so that the card can show it and a follow-up can resend it
-            "request": request.model_dump(mode="json"),
+            # the whole problem (without the handbook rules), so a follow-up can resend it
+            "request": request.model_dump(mode="json", exclude={"rules"}),
         },
     )
     ok = result.status.value == "ok"
@@ -909,8 +966,40 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
             head += f"jacobian=${result.result_latex}$; determinant=${result.determinant_latex}$; "
             known.extend(x for x in (result.result_latex, result.determinant_latex) if x)
             known.extend(result.scale_factors_latex)
+        for i, step in enumerate(result.steps, start=1):
+            kind = (
+                "CONDITIONAL on " + "; ".join(step.given)
+                if step.evidence == "conditional"
+                else "identity"
+            )
+            lines.append(
+                f"- step {i} ({kind}): {step.title}: ${step.before_latex}$ -> ${step.after_latex}$"
+            )
+            if step.evidence == "identity" and step.needs:
+                lines.append(
+                    f"  (holds for fields that are {', '.join(step.needs)}; the USER declared that)"
+                )
+        if result.evidence == "conditional":
+            lines.append(
+                "- CONDITIONAL: this holds only given "
+                + "; ".join(f"${g}$" for g in result.given)
+                + ". The user supplied it and Minerva does not check it: never call the result an "
+                "identity, a proof, or a consequence of Maxwell's equations unless that is what the "
+                "premises were, and say which premises it used."
+            )
+        elif result.evidence == "identity":
+            lines.append(
+                "- every identity step was checked by comparing the whole expressions before and after "
+                "(exact component difference zero, and an independent Cartesian evaluation agreeing)"
+            )
+        for a in result.applicable:
+            suffix = f" BLOCKED: {a.note}" if a.blocked else ""
+            lines.append(
+                f"- match: {a.rule_id}{' (right to left)' if a.reverse else ''} at path {a.path}: "
+                f"${a.part_latex}$ -> ${a.result_latex}$ (needs {', '.join(a.needs) or 'nothing'}){suffix}"
+            )
         v = result.verification
-        if v is not None:
+        if v is not None and not result.steps:
             lines.append(
                 f"- numerically checked at {v.points_agreed} sample points against an independent "
                 "evaluation; NO symbolic proof: say 'numerically checked', never 'proved'"
@@ -937,13 +1026,24 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
                 + ", ".join(result.undeclared)
                 + " (declare as a field or constant)"
             )
+        for a in result.applicable:
+            lines.append(
+                f"- candidate: {a.rule_id} at path {a.path}: ${a.part_latex}$ (choose one with `path`)"
+            )
     if result.input_latex:
         known.append(result.input_latex)
     lines.append(
         "to compute more about THESE fields call vector_calculus again with the same coordinates, "
-        "fields and constants."
+        "fields, constants and premises."
     )
-    return ToolOutput(card, "\n".join([head + result.message, *lines]), known, result.status.value)
+    quoted: list[tuple[str, str]] = []
+    if result.evidence == "conditional":
+        # a result that holds only given the user's premises is shown, never marked as verified
+        quoted = [(x, "holds only given the premises you supplied") for x in known]
+        known = []
+    return ToolOutput(
+        card, "\n".join([head + result.message, *lines]), known, result.status.value, quoted
+    )
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:

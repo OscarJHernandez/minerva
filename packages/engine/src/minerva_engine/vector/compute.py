@@ -14,15 +14,14 @@ import time
 import sympy as sp
 
 from ..errors import LimitError, MinervaMathError, ParseError
-from ..models import ALLOWED_ASSUMPTIONS, Limits, Status
-from ..textparse import parse_text
-from .coordinates import SYSTEMS, TIME, System, get_system, source_in_target
+from ..models import Limits, Status
+from .algebra import exact_zero, regularise
+from .context import MAX_OPERATOR_DEPTH, SEED, TIME_BUDGET_SECONDS, Refused, build_context, tidy
+from .coordinates import SYSTEMS, System, get_system, source_in_target
 from .expressions import depth_of_operators, kind_of
-from .lower import Declared, Lowered, Lowering, Undeclared, Vec
+from .lower import Lowered, Lowering, Undeclared, Vec
 from .models import (
     STEP_ACTIONS,
-    FieldDecl,
-    Reason,
     VectorDiagnostics,
     VectorInput,
     VectorResult,
@@ -32,126 +31,20 @@ from .numeric import verify_conversion, verify_jacobian, verify_result
 from .parse import parse_vector_latex, parse_vector_text
 from .printing import vector_latex
 
-MAX_OPERATOR_DEPTH = 4
-SIMPLIFY_MAX_OPS = 400
-SEED = 20260514
-TIME_BUDGET_SECONDS = 8.0
-
-_RESERVED = frozenset({TIME, "pi", "oo"})
-
 GENERAL_CONVENTIONS = (
     "Fields and constants are real-valued when sampled; coordinates are real.",
     "Square-root, logarithm and inverse-function branch domains are not analysed.",
 )
 
-
-class _Refused(Exception):
-    def __init__(self, status: Status, message: str, reason: Reason) -> None:
-        super().__init__(message)
-        self.status, self.message, self.reason = status, message, reason
-
-
-def _flags(items: list[str]) -> dict[str, bool]:
-    return {item: True for item in items if item in ALLOWED_ASSUMPTIONS}
+_Refused = Refused
+_tidy = tidy
 
 
 def _build(
     inp: VectorInput, system: System, limits: Limits
 ) -> tuple[Lowering, dict[str, list[str]], list[str]]:
-    """Validate the declarations and build the lowering context."""
-    taken: set[str] = set(system.coords) | _RESERVED
-    constants: dict[str, sp.Symbol] = {}
-    assumptions: dict[str, list[str]] = dict(system.assumptions())
-    assumptions[TIME] = ["real"]
-    names = [*inp.constants, *inp.assumptions]
-    for name in dict.fromkeys(names):
-        if name in taken:
-            raise _Refused(
-                Status.PARSE_ERROR,
-                f"{name!r} is reserved or already a coordinate",
-                "bad_declaration",
-            )
-        taken.add(name)
-        items = list(inp.assumptions.get(name, []))
-        constants[name] = sp.Symbol(name, **_flags(items))
-        if items:
-            assumptions[name] = items
-    declared: dict[str, Declared] = {}
-    allowed_args = [*system.coords, TIME]
-    pending_explicit: list[tuple[Declared, FieldDecl]] = []
-    vector_names: list[str] = []
-    for decl in inp.fields:
-        if decl.name in taken:
-            raise _Refused(
-                Status.PARSE_ERROR,
-                f"the name {decl.name!r} is declared twice or is reserved",
-                "bad_declaration",
-            )
-        taken.add(decl.name)
-        depends = tuple(decl.depends_on) if decl.depends_on is not None else system.coords
-        if any(a not in allowed_args for a in depends) or len(set(depends)) != len(depends):
-            raise _Refused(
-                Status.PARSE_ERROR,
-                f"{decl.name}: depends_on may list {', '.join(allowed_args)}",
-                "bad_declaration",
-            )
-        comps = (decl.name,) if decl.kind == "scalar" else system.component_names(decl.name)
-        if decl.kind == "vector":
-            vector_names.append(decl.name)
-        d = Declared(decl, tuple(comps), tuple(depends))
-        declared[decl.name] = d
-        if decl.components is not None:
-            pending_explicit.append((d, decl))
-    for d in declared.values():
-        for comp in d.comps:
-            if comp != d.decl.name and comp in taken:
-                raise _Refused(
-                    Status.PARSE_ERROR,
-                    f"component name {comp!r} clashes with a declared name",
-                    "bad_declaration",
-                )
-            taken.add(comp)
-    low = Lowering(system, declared, constants)
-    for d, decl in pending_explicit:
-        parts: list[sp.Expr] = []
-        for text in decl.components or []:
-            try:
-                parsed = parse_text(text, assumptions, limits)
-            except MinervaMathError as exc:
-                raise _Refused(
-                    Status.PARSE_ERROR, f"{decl.name}: {exc}", "bad_declaration"
-                ) from exc
-            unknown = low.unknown_symbols(parsed)
-            known_scalar = set(system.coords) | {TIME} | set(constants)
-            bad = sorted({s.name for s in parsed.free_symbols} - known_scalar)
-            if unknown or bad:
-                raise _Refused(
-                    Status.PARSE_ERROR,
-                    f"{decl.name}: components may use only the coordinates, t and declared constants "
-                    f"(found {', '.join(sorted(set(unknown) | set(bad)))})",
-                    "bad_declaration",
-                )
-            parts.append(parsed)
-        d.explicit = tuple(low._scalar(p) for p in parts)
-    return low, assumptions, vector_names
-
-
-def _tidy(expr: sp.Expr) -> sp.Expr:
-    expr = sp.sympify(expr)
-    if expr.count_ops() > SIMPLIFY_MAX_OPS:
-        return sp.cancel(expr)
-    return sp.simplify(expr)
-
-
-def _regularise(e: sp.Expr) -> sp.Expr:
-    """Write tan, cot, sec and csc with sin and cos, so that `1/tan(theta)` (defined at pi/2) is not
-    reported as excluding the zeros of tan(theta): only the zeros of the denominator that remains count."""
-    return (
-        e.replace(sp.tan, lambda a: sp.sin(a) / sp.cos(a))
-        .replace(sp.cot, lambda a: sp.cos(a) / sp.sin(a))
-        .replace(sp.sec, lambda a: 1 / sp.cos(a))
-        .replace(sp.csc, lambda a: 1 / sp.sin(a))
-    )
+    ctx = build_context(inp, limits, time.monotonic())
+    return ctx.low, ctx.assumptions, ctx.vector_names
 
 
 def _factors(den: sp.Expr) -> list[sp.Expr]:
@@ -163,7 +56,7 @@ def _denominators(exprs: list[sp.Expr]) -> list[sp.Expr]:
     and field jets)."""
     out: list[sp.Expr] = []
     for e in exprs:
-        _, den = sp.fraction(sp.together(_regularise(e)))
+        _, den = sp.fraction(sp.together(regularise(e)))
         if den.free_symbols:
             out += [f for f in _factors(den) if f not in out]
     return out
@@ -179,7 +72,7 @@ def _restrictions(
     try:
         found: list[sp.Expr] = []
         for d in written:
-            found += _factors(sp.together(_regularise(d)))
+            found += _factors(sp.together(regularise(d)))
         found += _denominators(results)
         for f in found:
             if f not in conditions:
@@ -260,11 +153,15 @@ def _run(
         return
 
     if inp.action in STEP_ACTIONS:
-        raise _Refused(
-            Status.UNSUPPORTED,
-            "controlled identity steps are not available yet",
-            "unsupported_expression",
-        )
+        from .steps import run_step
+
+        ctx = build_context(inp, limits, started)
+        diag.abstract_fields = sum(1 for d in ctx.low.declared.values() if d.explicit is None)
+        diag.explicit_fields = sum(1 for d in ctx.low.declared.values() if d.explicit is not None)
+        result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
+        run_step(ctx, result, diag)
+        return
+
     low, assumptions, vector_names = _build(inp, system, limits)
     diag.abstract_fields = sum(1 for d in low.declared.values() if d.explicit is None)
     diag.explicit_fields = sum(1 for d in low.declared.values() if d.explicit is not None)
@@ -314,6 +211,8 @@ def _run(
     _stage(diag.stages, "lower", t0)
     t0 = time.monotonic()
     comps = [_tidy(c) for c in lowered] if isinstance(lowered, tuple) else [_tidy(lowered)]
+    comps = [sp.Integer(0) if exact_zero(c) else c for c in comps]
+    comps = [sp.Integer(0) if exact_zero(c) else c for c in comps]
     _stage(diag.stages, "tidy", t0)
 
     blocked = low.merge_blocks(comps)

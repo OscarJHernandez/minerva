@@ -179,3 +179,126 @@ def test_model_prose_with_a_cross_product_is_never_marked_checked(
     events = sse(client, cid, r"Simplify $x + x$")
     message = next(d for e, d in events if e == "message")
     assert all(s["status"] != "contradicted" for s in segments_of(message) if s["type"] != "text")
+
+
+# -- identities and controlled derivations ---------------------------------------------------------
+def test_listing_identities_applies_none_and_marks_blocked_ones(ctx: ToolContext) -> None:
+    out = execute(
+        "vector_calculus",
+        {
+            "expression": r"\nabla\times(\nabla\times\mathbf{A})",
+            "fields": [{"name": "A", "kind": "vector"}],
+            "action": "identities",
+        },
+        ctx,
+    )
+    assert out.status == "ok" and "vector.curl_curl" in out.for_model
+    assert "BLOCKED" in out.for_model  # A was not declared twice differentiable
+    assert out.card.data["result"]["steps"] == [] and out.known_latex == []
+    assert "rules" not in out.card.data["request"]  # the handbook rules are not stored on the card
+
+
+def test_applying_curl_curl_gives_a_verified_identity_step(ctx: ToolContext) -> None:
+    arguments = {
+        "expression": r"\nabla\times(\nabla\times\mathbf{A})",
+        "fields": [{"name": "A", "kind": "vector", "smoothness": "c2"}],
+        "action": "apply_identity",
+        "rule_id": "vector.curl_curl",
+        "path": [],
+    }
+    out = execute("vector_calculus", arguments, ctx)
+    assert out.status == "ok", out.for_model
+    assert out.evidence and out.evidence.accepted
+    assert "(identity)" in out.for_model and "CONDITIONAL" not in out.for_model
+    assert out.known_latex  # an identity result may be repeated as verified
+    result = out.card.data["result"]
+    assert result["evidence"] == "identity" and result["steps"][0]["rule_id"] == "vector.curl_curl"
+    blocked = execute(
+        "vector_calculus",
+        {**arguments, "fields": [{"name": "A", "kind": "vector"}]},
+        ctx,
+    )
+    assert blocked.status == "conditions_not_satisfied" and blocked.known_latex == []
+    assert "do not declare it yourself" in blocked.for_model
+
+
+def test_a_result_that_uses_a_premise_is_conditional_and_never_marked_verified(
+    ctx: ToolContext,
+) -> None:
+    out = execute(
+        "vector_calculus",
+        {
+            "expression": r"\nabla\times(\nabla\times\mathbf{E})",
+            "fields": [
+                {"name": "E", "kind": "vector", "depends_on": ["x", "y", "z", "t"]},
+                {"name": "B", "kind": "vector", "depends_on": ["x", "y", "z", "t"]},
+            ],
+            "premises": [r"\nabla\times\mathbf{E} = -\frac{\partial\mathbf{B}}{\partial t}"],
+            "action": "substitute",
+        },
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert "CONDITIONAL" in out.for_model and "never call the result an identity" in out.for_model
+    assert out.known_latex == []  # shown, but not as a verified formula
+    assert any("premises you supplied" in why for _, why in out.quoted_latex)
+    assert out.card.data["result"]["evidence"] == "conditional"
+
+
+def test_derive_through_the_route_with_premises(authed: TestClient) -> None:
+    body = {
+        "expression": "curl(curl(E))",
+        "format": "text",
+        "fields": [
+            {
+                "name": "E",
+                "kind": "vector",
+                "smoothness": "smooth",
+                "depends_on": ["x", "y", "z", "t"],
+            },
+            {
+                "name": "B",
+                "kind": "vector",
+                "smoothness": "smooth",
+                "depends_on": ["x", "y", "z", "t"],
+            },
+        ],
+        "constants": ["mu0", "eps0"],
+        "premises": [
+            {"equation": "curl(E) = -dt(B)"},
+            {"equation": "curl(B) = mu0*eps0*dt(E)"},
+        ],
+        "action": "derive",
+        "target": "-mu0*eps0*dt(dt(E))",
+        "save": True,
+    }
+    r = authed.post("/v1/compute/vector", json=body)
+    assert r.status_code == 200
+    out = r.json()
+    assert out["status"] == "ok", out["message"]
+    assert out["evidence"] == "conditional"
+    assert set(out["given"]) == {"curl(E) = -dt(B)", "curl(B) = mu0*eps0*dt(E)"}
+    assert [s["evidence"] for s in out["steps"]].count("identity") >= 1
+    (item,) = authed.get("/v1/history").json()
+    assert item["result"]["request"]["premises"][0]["equation"] == "curl(E) = -dt(B)"
+    assert "rules" not in item["result"]["request"]
+
+
+def test_a_client_cannot_supply_its_own_identity(authed: TestClient) -> None:
+    own = {
+        "id": "vector.mine",
+        "lhs": "curl(curl(A))",
+        "rhs": "grad(div(A)) + lap(A)",
+        "variables": {"A": "vector"},
+        "requires": ["c2"],
+    }
+    body = {
+        "expression": "curl(curl(A))",
+        "format": "text",
+        "fields": [{"name": "A", "kind": "vector", "smoothness": "c2"}],
+        "action": "apply_identity",
+        "rule_id": "vector.mine",
+        "rules": [own],
+    }
+    out = authed.post("/v1/compute/vector", json=body).json()
+    assert out["status"] == "unsupported" and out["diagnostics"]["reason"] == "no_such_rule"

@@ -21,7 +21,7 @@ Status: **●** has entries, **○** planned.
 | ● | Special functions | Gamma now; Beta, Bessel, Legendre, hypergeometric, elliptic, zeta |
 | ○ | Integral transforms | Fourier, Laplace, Mellin tables with convergence conditions |
 | ○ | Linear algebra | Determinant, trace, eigenvalue identities, decompositions |
-| ○ | Vector calculus | Div/grad/curl identities, integral theorems |
+| ● | Vector calculus | Product rules, second derivatives, time and space derivatives and the algebra of the products: 21 identities checked by the vector engine in three coordinate systems (each says if it needs C2 fields); Levi-Civita contractions (stated); later: integral theorems |
 | ○ | Differential equations | Standard forms and solution families |
 | ○ | Probability and statistics | Distributions, moments, generating functions |
 | ○ | Group theory | Lie algebra relations, representation tables |

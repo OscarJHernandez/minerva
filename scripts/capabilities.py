@@ -24,7 +24,11 @@ from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
 from minerva_knowledge import KnowledgeBase
-from minerva_knowledge.identities import find_identities, simplify_expression
+from minerva_knowledge.identities import (
+    find_identities,
+    simplify_expression,
+    vector_identity_rules,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs" / "capabilities.yaml"
@@ -627,7 +631,10 @@ def run_geometry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
 
 
 def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
-    del kb
+    action = spec.get("action", "evaluate")
+    rules = (
+        vector_identity_rules(kb) if action in ("identities", "apply_identity", "derive") else []
+    )
     r = engine.vector_calculus(
         VectorInput(
             expression=spec.get("input", ""),
@@ -636,13 +643,27 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
             fields=spec.get("fields") or [],
             constants=spec.get("constants") or [],
             assumptions=spec.get("assumptions") or {},
-            action=spec.get("action", "evaluate"),
+            action=action,
             to=spec.get("to"),
+            rules=rules,
+            rule_id=spec.get("rule_id"),
+            path=spec.get("path"),
+            reverse=spec.get("reverse", False),
+            premises=[{"equation": p} for p in spec.get("premises") or []],
+            premise=spec.get("premise"),
+            operator=spec.get("operator"),
+            target=spec.get("target"),
         )
     )
     inputs = [{"label": "Coordinates", "source": spec.get("coordinates", "cartesian")}]
     if spec.get("input"):
         inputs.append({"label": "Expression", "source": spec["input"], "syntax": _syntax(spec)})
+    for i, p in enumerate(spec.get("premises") or []):
+        inputs.append(
+            {"label": f"Premise {i} (given by the user)", "source": p, "syntax": _syntax(spec)}
+        )
+    if spec.get("target"):
+        inputs.append({"label": "Target", "source": spec["target"], "syntax": _syntax(spec)})
     for f in spec.get("fields") or []:
         what = f["kind"] + (
             " field, components " + ", ".join(f["components"])
@@ -654,21 +675,47 @@ def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
     checks: list[str] = []
     notes: list[str] = []
     if r.status.value == "ok":
-        if r.result_kind == "vector":
+        if r.result_kind == "vector" and r.basis_latex and r.components_latex:
             outputs += [
                 {"label": f"Component along {b}", "latex": c}
                 for b, c in zip(r.basis_latex, r.components_latex, strict=True)
             ]
-        elif r.result_kind == "scalar" and r.result_latex:
+        elif r.result_kind in ("scalar", "vector") and r.result_latex:
             outputs.append({"label": "Result", "latex": r.result_latex})
         elif r.result_kind == "matrix" and r.result_latex and r.determinant_latex:
             outputs.append({"label": "Jacobian", "latex": r.result_latex})
             outputs.append({"label": "Determinant", "latex": r.determinant_latex})
+        for i, step in enumerate(r.steps, start=1):
+            kind = (
+                "conditional on " + "; ".join(step.given)
+                if step.evidence == "conditional"
+                else "identity"
+            )
+            outputs.append({"label": f"Step {i} ({kind}): {step.title}", "latex": step.after_latex})
+        for a in r.applicable[:6]:
+            outputs.append(
+                {
+                    "label": f"Match: {a.rule_id}" + (" (blocked)" if a.blocked else ""),
+                    "latex": rf"{a.part_latex} \to {a.result_latex}",
+                }
+            )
         v = r.verification
-        if v is not None:
+        if v is not None and not r.steps:
             checks.append(
                 f"{v.points_agreed} of {v.points_checked} sample points agree with an independent "
                 "Cartesian finite-difference evaluation; no symbolic proof is claimed"
+            )
+        if r.evidence == "identity":
+            checks.append(
+                "each identity step: the whole expressions before and after differ by an exactly zero "
+                "component residual, and an independent Cartesian evaluation agrees"
+            )
+        if r.evidence == "conditional":
+            notes.append(
+                "Holds only given: "
+                + "; ".join(r.given)
+                + ". Supplied by the user and not checked: "
+                "not an identity."
             )
         if r.restrictions_latex:
             notes.append(

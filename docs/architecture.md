@@ -196,6 +196,10 @@ one most likely to be wrong.
     fields the user declared `c2`/`smooth`; a result that would need `d/dx d/dy f = d/dy d/dx f` is
     `conditions_not_satisfied` with `blocked`. The axis and origin are reported as restrictions. Benchmark:
     `docs/vector-benchmark.md`; outside oracles in `docs/reference-benchmark.md`.
+    Controlled steps (`steps.py`) extend the same operation: the handbook's vector identities (`math.vector_calculus`)
+    are proposed to a typed matcher (`rules.py`), applied at a chosen part and accepted only if the exact component
+    residual of the *whole* expressions before and after is zero and the Cartesian reading agrees (`context.py`); a
+    field equation supplied by the user is a premise and makes the result conditional; `derive` is a bounded search.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 

@@ -70,13 +70,13 @@ analysis without a model; unit conversion and prefixes; searching three or more 
 
 ## Vector calculus and electromagnetism
 
-Done (phase 1): vector calculus in Cartesian, cylindrical and spherical coordinates (`vector_calculus`; chat and
+Done: vector calculus in Cartesian, cylindrical and spherical coordinates (`vector_calculus`; chat and
 API): gradient, divergence, curl, Laplacians, products, directional and partial derivatives, Jacobians and
 conversion, with an independent Cartesian finite-difference check and smoothness never assumed
 (`docs/vector-benchmark.md`). Next, in order:
 
-- Vector identities as handbook data and controlled derivations (apply an identity, substitute a field equation,
-  rewrite a selected part, derive toward a target).
+- Done: vector identities as handbook data and controlled derivations (apply an identity, substitute a premise,
+  apply an operator to both sides, derive toward a target).
 - Maxwell's equations in SI as stated premises, potentials and gauges, wave equation, continuity and Poynting
   derivations, labelled conditional on the premises they use.
 - Line, surface and volume integrals and the gradient, divergence and Stokes theorems with explicit domains.

@@ -33,10 +33,21 @@ import sympy as sp
 from ..latexparse import parse_latex
 from ..models import Limits, Status
 from .compute import vector_calculus
-from .models import FieldDecl, VectorInput, VectorResult
+from .models import FieldDecl, Premise, VectorInput, VectorResult
 
 LIMITS = Limits(timeout_seconds=60)
-GROUPS = ("valid", "consistency", "conditional", "singular", "invalid", "unsupported")
+# Listing identities and replacing a premise by its other side compute nothing to check numerically.
+NO_NUMERIC_CHECK = ("identities", "substitute")
+GROUPS = (
+    "valid",
+    "consistency",
+    "conditional",
+    "singular",
+    "invalid",
+    "unsupported",
+    "identities",
+    "derivations",
+)
 
 # Symbols of the references (the engine's text output is read back with these).
 r, th, ph = sp.symbols("r theta phi", positive=True)
@@ -177,6 +188,7 @@ class Case:
     oracle: Oracle | None = None
     needs: str | None = None  # expected `blocked[0].needs`
     restriction: str | None = None  # a restriction the result must state
+    check: Callable[[VectorResult], bool] | None = None  # extra requirement (steps, evidence)
 
 
 def make(
@@ -561,7 +573,290 @@ def _cases() -> list[Case]:
     return c
 
 
-CASES = _cases()
+# -- identities and controlled derivations (the handbook proposes, the engine verifies) --------------
+def _rules() -> list[Any]:
+    """The handbook's vector identities. The engine never reads the handbook: this benchmark asks the
+    knowledge layer for them (an import at run time, since the benchmark is a script, not the engine)."""
+    from minerva_knowledge import KnowledgeBase
+    from minerva_knowledge.identities import vector_identity_rules
+
+    return vector_identity_rules(KnowledgeBase.load())
+
+
+def _wrong_rule() -> Any:
+    from .models import VectorRule
+
+    return VectorRule(
+        id="wrong.curl_curl",
+        lhs="curl(curl(A))",
+        rhs="grad(div(A)) + lap(A)",
+        variables={"A": "vector"},
+        requires=["c2"],
+    )
+
+
+def _step(
+    expression: str,
+    action: str,
+    fields: tuple[FieldDecl, ...],
+    system: str = "cartesian",
+    rules: list[Any] | None = None,
+    **kw: Any,
+) -> VectorInput:
+    return VectorInput(
+        expression=expression,
+        format="text",
+        coordinates=system,
+        fields=list(fields),
+        rules=_rules() if rules is None else rules,
+        action=action,
+        **kw,
+    )
+
+
+def _timed(name: str, smoothness: str | None = "smooth") -> FieldDecl:
+    return FieldDecl(
+        name=name,
+        kind="vector",
+        smoothness=smoothness,
+        depends_on=["x", "y", "z", "t"],
+    )
+
+
+def _identity_step(r: VectorResult) -> bool:
+    return (
+        r.evidence == "identity"
+        and len(r.steps) >= 1
+        and all(s.evidence == "identity" and s.symbolic_zero is True for s in r.steps)
+        and r.given == []
+    )
+
+
+def _conditional_on(*texts: str) -> Callable[[VectorResult], bool]:
+    def check(r: VectorResult) -> bool:
+        return r.evidence == "conditional" and set(texts) <= set(r.given)
+
+    return check
+
+
+FARADAY = Premise(equation="curl(E) = -dt(B)", label="Faraday")
+AMPERE = Premise(equation="curl(B) = mu0*eps0*dt(E)", label="Ampere-Maxwell")
+GAUSS = Premise(equation="div(E) = 0", label="Gauss")
+
+
+def _step_cases() -> list[Case]:
+    c2a, c2b = abstract("A", "vector", "c2"), abstract("B", "vector", "c2")
+    c2f = abstract("f", "scalar", "c2")
+    em = (_timed("E"), _timed("B"))
+    out = [
+        Case(
+            "apply-curl-curl",
+            "Rewrite curl curl A with the divergence and the Laplacian",
+            "identities",
+            _step("curl(curl(A))", "apply_identity", (c2a,), rule_id="vector.curl_curl", path=[]),
+            check=lambda r: _identity_step(r) and "Lap(A)" in (r.result_text or ""),
+        ),
+        Case(
+            "apply-curl-grad",
+            "curl grad f becomes zero",
+            "identities",
+            _step("curl(grad(f))", "apply_identity", (c2f,), rule_id="vector.curl_grad", path=[]),
+            check=lambda r: _identity_step(r) and r.result_text == "0",
+        ),
+        Case(
+            "apply-div-cross-spherical",
+            "div(A x B) in spherical coordinates",
+            "identities",
+            _step(
+                "div(cross(A, B))",
+                "apply_identity",
+                (abstract("A", "vector"), abstract("B", "vector")),
+                "spherical",
+                rule_id="vector.div_cross",
+                path=[],
+            ),
+            check=_identity_step,
+        ),
+        Case(
+            "apply-curl-cross-cylindrical",
+            "curl(A x B) in cylindrical coordinates",
+            "identities",
+            _step(
+                "curl(cross(A, B))",
+                "apply_identity",
+                (abstract("A", "vector"), abstract("B", "vector")),
+                "cylindrical",
+                rule_id="vector.curl_cross",
+                path=[],
+            ),
+            check=_identity_step,
+        ),
+        Case(
+            "apply-reverse",
+            "grad div A - lap A read right to left",
+            "identities",
+            _step(
+                "grad(div(A)) - lap(A)",
+                "apply_identity",
+                (c2a,),
+                rule_id="vector.curl_curl",
+                reverse=True,
+            ),
+            check=lambda r: _identity_step(r) and r.steps[0].reverse,
+        ),
+        Case(
+            "apply-to-a-part",
+            "An identity on one part of a larger expression",
+            "identities",
+            _step(
+                "2*curl(curl(A)) + B",
+                "apply_identity",
+                (c2a, abstract("B", "vector")),
+                rule_id="vector.curl_curl",
+            ),
+            check=lambda r: _identity_step(r) and r.steps[0].path != [],
+        ),
+        Case(
+            "list-identities",
+            "List the identities that match, apply none",
+            "identities",
+            _step("curl(curl(A))", "identities", (c2a,)),
+            check=lambda r: bool(r.applicable) and r.steps == [] and r.result_latex is None,
+        ),
+        Case(
+            "substitute-faraday",
+            "Substitute a Maxwell equation the user gave",
+            "derivations",
+            _step("curl(curl(E))", "substitute", em, premises=[FARADAY], constants=["mu0", "eps0"]),
+            check=_conditional_on("curl(E) = -dt(B)"),
+        ),
+        Case(
+            "apply-curl-to-faraday",
+            "Apply curl to both sides of Faraday's law",
+            "derivations",
+            _step("curl(E) = -dt(B)", "apply", em, operator="curl"),
+            check=_conditional_on("curl(E) = -dt(B)"),
+        ),
+        Case(
+            "derive-wave-equation-lhs",
+            "curl curl E = -mu0 eps0 d2E/dt2 from Faraday and Ampere-Maxwell",
+            "derivations",
+            _step(
+                "curl(curl(E))",
+                "derive",
+                em,
+                premises=[FARADAY, AMPERE],
+                target="-mu0*eps0*dt(dt(E))",
+                constants=["mu0", "eps0"],
+            ),
+            check=_conditional_on("curl(E) = -dt(B)", "curl(B) = mu0*eps0*dt(E)"),
+        ),
+        Case(
+            "derive-wave-equation-rhs",
+            "curl curl E = -lap E from Gauss's law",
+            "derivations",
+            _step("curl(curl(E))", "derive", em, premises=[GAUSS], target="-lap(E)"),
+            check=_conditional_on("div(E) = 0"),
+        ),
+        Case(
+            "derive-one-identity",
+            "curl curl A to grad div A - lap A",
+            "derivations",
+            _step("curl(curl(A))", "derive", (c2a,), target="grad(div(A)) - lap(A)"),
+            check=lambda r: _identity_step(r) and len(r.steps) == 1,
+        ),
+        # refusals
+        Case(
+            "identity-without-smoothness",
+            "curl curl A without declared smoothness",
+            "conditional",
+            _step(
+                "curl(curl(A))",
+                "apply_identity",
+                (abstract("A", "vector"),),
+                rule_id="vector.curl_curl",
+                path=[],
+            ),
+            Status.CONDITIONS_NOT_SATISFIED,
+            needs="c2",
+        ),
+        Case(
+            "derive-respects-smoothness",
+            "derive does not use an identity the fields are not smooth enough for",
+            "conditional",
+            _step(
+                "curl(curl(A))",
+                "derive",
+                (abstract("A", "vector"),),
+                target="grad(div(A)) - lap(A)",
+            ),
+            Status.UNCHANGED,
+        ),
+        Case(
+            "wrong-identity",
+            "A rule with a sign error is not verified",
+            "invalid",
+            _step(
+                "curl(curl(A))",
+                "apply_identity",
+                (c2a,),
+                rules=[_wrong_rule()],
+                rule_id="wrong.curl_curl",
+                path=[],
+            ),
+            Status.NOT_VERIFIED,
+        ),
+        Case(
+            "ambiguous-part",
+            "Two places match: nothing is picked",
+            "invalid",
+            _step(
+                "curl(curl(A)) + curl(curl(B))",
+                "apply_identity",
+                (c2a, c2b),
+                rule_id="vector.curl_curl",
+            ),
+            Status.UNCHANGED,
+            check=lambda r: len(r.applicable) == 2,
+        ),
+        Case(
+            "premise-does-not-occur",
+            "A premise that is not in the expression changes nothing",
+            "invalid",
+            _step("curl(B)", "substitute", em, premises=[FARADAY]),
+            Status.UNCHANGED,
+        ),
+        Case(
+            "several-premises-no-order",
+            "Several premises: the user names one",
+            "invalid",
+            _step("curl(E) + curl(B)", "substitute", em, premises=[FARADAY, AMPERE]),
+            Status.PARSE_ERROR,
+        ),
+        Case(
+            "derive-without-premise",
+            "The target needs a premise that was not given",
+            "derivations",
+            _step("curl(curl(E))", "derive", em, target="-lap(E)"),
+            Status.UNCHANGED,
+            check=lambda r: r.search_complete is not None,
+        ),
+        Case(
+            "operator-of-the-wrong-kind",
+            "div of a scalar equation",
+            "invalid",
+            _step("div(E) = 0", "apply", em, operator="curl"),
+            Status.PARSE_ERROR,
+        ),
+    ]
+    return out
+
+
+def _all_cases() -> list[Case]:
+    return [*_cases(), *_step_cases()]
+
+
+CASES = _all_cases()
 
 
 def _read(text: str) -> sp.Expr:
@@ -571,11 +866,15 @@ def _read(text: str) -> sp.Expr:
 def _correct(case: Case, result: VectorResult) -> bool:
     if result.status is not case.status:
         return False
+    if case.check is not None and not case.check(result):
+        return False
     if case.status is not Status.OK:
         if case.needs is not None:
             return bool(result.blocked) and result.blocked[0].needs == case.needs
         return result.result_latex is None
-    if result.verification is None or not result.verification.numeric_passed:
+    if case.request.action not in NO_NUMERIC_CHECK and (
+        result.verification is None or not result.verification.numeric_passed
+    ):
         return False
     if case.restriction is not None and case.restriction not in result.restrictions_latex:
         return False

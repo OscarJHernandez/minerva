@@ -361,6 +361,26 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   Scalar tools refuse an expression that mentions a declared vector field (`SCALAR_TOOLS`), and claims with `\nabla`,
   bold or arrowed letters, `\partial` or `\times` between non-numerals are `unverified` and never sampled
   (`claims.uses_vector_notation`); a name declared as a vector in words ("let a and b be vectors") is never sampled.
+- Vector identities and controlled derivations (`vector/rules.py`, `context.py`, `steps.py`; actions `identities`,
+  `apply_identity`, `substitute`, `apply`, `derive` of the same tool and endpoint). Identities are handbook entries
+  (`math.vector_calculus`, check kind `vector_identity`, level `symbolic`): the checker evaluates `lhs - rhs` for
+  abstract fields in Cartesian, cylindrical and spherical coordinates and requires an exactly zero component residual
+  (`algebra.exact_zero`: the numerator reduced modulo `s^2 + c^2 = 1`) *and* the independent Cartesian reading to agree.
+  `requires: [c2]` is a fact about the identity, not an assumption. The engine never reads the handbook: the knowledge
+  layer hands over `VectorRule`s (`identities.vector_identity_rules`) and the API route and tool fill them in, a
+  client cannot supply its own. The matcher only *proposes* (`rules.rewrites`); `Context.residual` decides, by
+  evaluating the difference of the two *whole* expressions with both legs, so a mis-matched or wrong rule is
+  `not_verified` and never shown; a rule that needs `c2` is `blocked` unless the user declared every field in the part
+  that smooth, and a rule that lies about needing nothing is caught because the comparison itself needs the merge.
+  Several matches are never resolved for the user (`path`); a rewrite is shown only at a path the user or tool named.
+  A **premise** is a field equation the USER supplied (`Premise`): substituting it is `evidence="conditional"`,
+  names it in `given`, is never called an identity or a proof, and Minerva never checks that it is true; several
+  premises are never applied in an order Minerva picked (`premise` names one). `apply` (an operator on both sides)
+  is an implication from the given equation, verified by the linearity residual. `canonical` pulls constants out of
+  linear operators and drops operators of zero (each tidy is itself residual-checked). `derive` is a bounded search
+  (depth 4, width 8, 400 states) over verified identity steps and premise substitutions: "not found" means nothing
+  within the bounds. Results that use a premise go to `quoted_latex`, never `known_latex`. Benchmark cases cover
+  identities, derivations, blocked, wrong-rule and ambiguous steps (`docs/vector-benchmark.md`).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

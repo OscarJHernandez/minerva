@@ -145,6 +145,20 @@ class DistributionCheck(BaseModel):
     endpoint: Literal["half", "include", "exclude"] | None = None
 
 
+class VectorIdentityCheck(BaseModel):
+    """An identity between vector expressions, checked by the engine's vector calculus: the difference
+    of the two sides is evaluated for abstract fields in Cartesian, cylindrical and spherical
+    coordinates (exact components and an independent Cartesian finite-difference reading) and must be
+    zero. `requires: [c2]` means the identity needs equal mixed partial derivatives: it is checked for
+    fields declared twice continuously differentiable and applied only to such fields."""
+
+    kind: Literal["vector_identity"] = "vector_identity"
+    lhs: str  # text syntax over the typed variables of `fields`
+    rhs: str
+    fields: dict[str, Literal["scalar", "vector"]]
+    requires: list[Literal["c2"]] = Field(default_factory=list)
+
+
 Check = Annotated[
     DerivativeCheck
     | AntiderivativeCheck
@@ -153,7 +167,8 @@ Check = Annotated[
     | RootFormulaCheck
     | TensorCheck
     | EquationCheck
-    | DistributionCheck,
+    | DistributionCheck
+    | VectorIdentityCheck,
     Field(discriminator="kind"),
 ]
 
@@ -208,7 +223,7 @@ class Entry(BaseModel):
         if self.rule is None and not self.statement_latex:
             raise ValueError("entries without a rule need statement_latex")
         expected = {
-            "symbolic": ("rule", "derivative", "antiderivative"),
+            "symbolic": ("rule", "derivative", "antiderivative", "vector_identity"),
             "numeric": (
                 "rule",
                 "derivative",
@@ -260,5 +275,6 @@ __all__ = [
     "SeriesCheck",
     "SymbolDoc",
     "TensorCheck",
+    "VectorIdentityCheck",
     "Verification",
 ]

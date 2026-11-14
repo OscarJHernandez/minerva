@@ -12,10 +12,11 @@ from minerva_engine import (
     TransformResult,
     split_equation,
 )
+from minerva_engine.vector import VectorRule
 from pydantic import BaseModel, Field
 
 from .kb import KnowledgeBase
-from .models import Entry, Reference
+from .models import Entry, Reference, VectorIdentityCheck
 from .render import rhs_features, rule_features
 
 _ORDER = {
@@ -49,6 +50,34 @@ class FindIdentitiesResponse(BaseModel):
     matches: list[IdentityMatch] = Field(default_factory=list)
     candidates_considered: int = 0
     duration_ms: int = 0
+
+
+def vector_identity_rules(kb: KnowledgeBase, features: set[str] | None = None) -> list[VectorRule]:
+    """The handbook's machine-checked vector identities, as rules for the engine to match and verify.
+
+    Retrieval only proposes: with `features` (`vector:curl`, ...) the identities that mention one of
+    them come first. Whether a rule applies, and whether the rewrite is right, is decided by the
+    engine (`vector/steps.py`), which compares the whole expressions before and after."""
+    found: list[tuple[int, VectorRule]] = []
+    for entry in kb.entries:
+        check = entry.check
+        if not isinstance(check, VectorIdentityCheck) or entry.verification != "symbolic":
+            continue
+        overlap = len(features & set(entry.applies_to)) if features else 0
+        found.append(
+            (
+                -overlap,
+                VectorRule(
+                    id=entry.id,
+                    lhs=check.lhs,
+                    rhs=check.rhs,
+                    variables=dict(check.fields),
+                    requires=list(check.requires),
+                ),
+            )
+        )
+    found.sort(key=lambda item: (item[0], item[1].id))
+    return [rule for _, rule in found]
 
 
 def summarize(kb: KnowledgeBase, entry: Entry) -> EntrySummary:
