@@ -35,7 +35,7 @@ FALSE_IDENTITIES = [
     ("V-007", sp.log(sp.exp(x / 8)), x / 8, "branch"),
     ("V-008", sp.asin(sp.sin(x / 40)), x / 40, "scale"),
     ("V-009", sp.KroneckerDelta(n, 7), sp.Integer(0), "boundary"),
-    ("V-010", sp.prod([n - k for k in range(-6, 7)]), sp.Integer(0), "integer"),
+    ("V-010", sp.prod([n - k for k in range(-6, 7)]), sp.Integer(0), "special"),
     ("V-011", xr + sp.Rational(1, 10**11), xr, "random"),
     ("V-012", xr**2 + sp.Rational(1, 10**10), xr**2, "random"),
     ("V-013", sp.Piecewise((1, xp > sp.Rational(1, 1000)), (2, True)), sp.Integer(1), "boundary"),

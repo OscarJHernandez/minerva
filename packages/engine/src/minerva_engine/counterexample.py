@@ -14,7 +14,7 @@ Probe families (every point respects the declared assumptions of its symbols):
             or a fractional power changes sign or touches zero, probed on both sides of that point.
   branch    large imaginary parts (multiples of pi) for symbols without assumptions: log(exp(z)) and the
             inverse trigonometric functions only fail beyond the principal strip.
-  integer   integers outside the small pool `verify` draws from.
+  special   integers outside the small pool `verify` draws from; for other symbols simple values (0, +-1, 1/2...).
   scale     very large and very small magnitudes.
 
 A point where exactly one side is undefined is *not* a counterexample here (it can be a removable
@@ -30,7 +30,7 @@ import itertools
 import math
 import random
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -40,8 +40,10 @@ import sympy as sp
 from .distributions.guard import contains_distribution
 from .ncverify import noncommuting_symbols
 
-ProbeKind = Literal["random", "boundary", "branch", "integer", "scale"]
-KINDS: tuple[ProbeKind, ...] = ("random", "boundary", "branch", "integer", "scale")
+ProbeKind = Literal["random", "boundary", "branch", "special", "scale"]
+KINDS: tuple[ProbeKind, ...] = ("random", "boundary", "branch", "special", "scale")
+# What `verify_equal` runs after its own random points agreed: `random` would repeat them.
+TARGETED: tuple[ProbeKind, ...] = ("boundary", "scale", "branch", "special")
 
 SCREEN_DPS = 30
 CONFIRM_DPS = (60, 120)
@@ -115,9 +117,9 @@ def _admits(symbol: sp.Symbol, value: sp.Expr) -> bool:
     return all(getattr(value, f"is_{flag}") is True for flag in _assumption_names(symbol))
 
 
-def _snap(x: float) -> sp.Rational:
-    """Six significant digits, as an exact rational: reproducible and short to print."""
-    return sp.Rational(f"{x:.6g}")
+def _snap(x: float, digits: int = 6) -> sp.Rational:
+    """A few significant digits, as an exact rational: reproducible and short to print."""
+    return sp.Rational(f"{x:.{digits}g}")
 
 
 def _draw(symbol: sp.Symbol, rng: random.Random, magnitude: float) -> sp.Expr:
@@ -154,10 +156,32 @@ def _draw_all(
 _POLE = object()  # genuinely undefined here (zoo, oo, nan, division by zero)
 
 
+def _has_symbolic_power(expr: sp.Expr) -> bool:
+    """A power whose exponent contains a symbol (a**b): after substitution it is an arbitrary rational."""
+    return any(
+        isinstance(node, sp.Pow) and not node.exp.is_number for node in sp.preorder_traversal(expr)
+    )
+
+
+GUARD_DIGITS = 80
+
+
+def _inputs(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr], dps: int) -> dict[sp.Symbol, sp.Expr]:
+    """Exact points keep `evalf` adaptive: it adds precision against cancellation (sin^2 + cos^2 far from
+    the real axis loses hundreds of digits). A power with a symbolic exponent (885**(30864/25)) is the exception: with exact
+    inputs SymPy extracts roots symbolically, which can take minutes, so those go in as floats with guard digits.
+    Fixed exponents such as sqrt stay exact: float noise on a branch cut (an argument that is exactly negative
+    real) would flip the branch and reject sqrt(x^2 + 2x + 1) = sqrt((x + 1)^2).
+    """
+    if not _has_symbolic_power(expr):
+        return values
+    return {s: v if v.is_Integer else v.evalf(dps + GUARD_DIGITS) for s, v in values.items()}
+
+
 def _value(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr], dps: int) -> mpmath.mpc | object | None:
     """The value at `dps` digits, `_POLE` when undefined, `None` when it could not be evaluated."""
     try:
-        number = expr.xreplace(values).evalf(dps)
+        number = expr.xreplace(_inputs(expr, values, dps)).evalf(dps)
         if number is sp.nan or number.has(sp.zoo, sp.oo, -sp.oo, sp.nan):
             return _POLE
         if not number.is_number:
@@ -247,6 +271,51 @@ def _scan_grid(symbol: sp.Symbol) -> list[float]:
     return sorted({*magnitudes, *(-m for m in magnitudes), 0.0})
 
 
+def _real_at(f: Callable[[mpmath.mpf], object], x: float) -> float | None:
+    """`f(x)` as a finite real float, or None where it is undefined, complex or overflows."""
+    try:
+        y = f(mpmath.mpf(x))
+        if abs(mpmath.im(y)) > 1e-12 * (1 + abs(mpmath.re(y))):
+            return None
+        r = float(mpmath.re(y))
+    except (TypeError, ValueError, ZeroDivisionError, OverflowError, NameError, AttributeError):
+        return None
+    return r if math.isfinite(r) else None
+
+
+def _bisect(f: Callable[[mpmath.mpf], object], lo: float, hi: float, flo: float) -> float:
+    """A point between `lo` and `hi` where `f` changes sign (`flo` is f(lo))."""
+    for _ in range(50):
+        mid = (lo + hi) / 2
+        fm = _real_at(f, mid)
+        if fm is None:
+            break
+        if (fm < 0) == (flo < 0):
+            lo, flo = mid, fm
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def _refine_extremum(
+    f: Callable[[mpmath.mpf], object], lo: float, hi: float, minimise: bool
+) -> tuple[float, float] | None:
+    """Ternary search for the extremum of `f` on [lo, hi]: a region too narrow for the scan grid."""
+    sign = 1.0 if minimise else -1.0
+    for _ in range(60):
+        a, b = lo + (hi - lo) / 3, hi - (hi - lo) / 3
+        fa, fb = _real_at(f, a), _real_at(f, b)
+        if fa is None or fb is None:
+            return None
+        if sign * fa < sign * fb:
+            hi = b
+        else:
+            lo = a
+    x = (lo + hi) / 2
+    y = _real_at(f, x)
+    return None if y is None else (x, y)
+
+
 def _roots_in(g: sp.Expr, symbol: sp.Symbol) -> list[float]:
     """Real points where `g` (a function of `symbol` alone) changes sign or touches zero."""
     roots: list[float] = []
@@ -262,35 +331,55 @@ def _roots_in(g: sp.Expr, symbol: sp.Symbol) -> list[float]:
         pass
     try:
         f = sp.lambdify(symbol, g, "mpmath")
-        previous: tuple[float, float] | None = None
+    except (TypeError, ValueError, NameError, AttributeError):
+        f = None
+    if f is not None:
         with mpmath.workdps(15):
-            for x in _scan_grid(symbol):
-                if (symbol.is_positive and x <= 0) or (symbol.is_negative and x >= 0):
-                    continue
-                y = f(mpmath.mpf(x))
-                if abs(mpmath.im(y)) > 1e-12 * (1 + abs(mpmath.re(y))):
-                    previous = None
-                    continue
-                y = float(mpmath.re(y))
-                if y == 0.0:
-                    roots.append(x)
-                elif previous is not None and (previous[1] < 0) != (y < 0) and previous[1] != 0.0:
-                    lo, hi = previous[0], x
-                    if not symbol.is_integer:
-                        flo = previous[1]
-                        for _ in range(50):
-                            mid = (lo + hi) / 2
-                            fm = float(mpmath.re(f(mpmath.mpf(mid))))
-                            if (fm < 0) == (flo < 0):
-                                lo, flo = mid, fm
-                            else:
-                                hi = mid
-                    roots.extend([lo, hi])
-                previous = (x, y)
-    except (TypeError, ValueError, ZeroDivisionError, OverflowError, NameError, AttributeError):
-        pass
+            grid = [
+                x
+                for x in _scan_grid(symbol)
+                if not ((symbol.is_positive and x <= 0) or (symbol.is_negative and x >= 0))
+            ]
+            samples = [(x, _real_at(f, x)) for x in grid]
+            for (x0, y0), (x1, y1) in itertools.pairwise(samples):
+                if y0 is None or y1 is None:
+                    continue  # undefined at one end: a pole or a gap, not a sign change we can bracket
+                if y1 == 0.0:
+                    roots.append(x1)
+                elif y0 != 0.0 and (y0 < 0) != (y1 < 0):
+                    if symbol.is_integer:
+                        roots.extend([x0, x1])
+                    else:
+                        roots.append(_bisect(f, x0, x1, y0))
+            if not symbol.is_integer:
+                roots.extend(_narrow_roots(f, samples))
     unique = sorted({round(r, 9) for r in roots if math.isfinite(r)})
     return unique[:BOUNDARY_ROOTS_PER_ARGUMENT]
+
+
+def _narrow_roots(
+    f: Callable[[mpmath.mpf], object], samples: list[tuple[float, float | None]]
+) -> list[float]:
+    """Roots of a region narrower than the grid spacing: look near the grid points closest to zero that
+    are local extrema (|x - 1/3| - 1e-6 is positive on every grid point and negative between two)."""
+    extrema: list[tuple[float, int]] = []
+    for i in range(1, len(samples) - 1):
+        (_, lo), (_, mid), (_, hi) = samples[i - 1], samples[i], samples[i + 1]
+        if lo is None or mid is None or hi is None or mid == 0.0:
+            continue
+        if (mid <= lo and mid <= hi) or (mid >= lo and mid >= hi):
+            extrema.append((abs(mid), i))
+    found: list[float] = []
+    for _, i in sorted(extrema)[:3]:
+        (xl, yl), (xm, ym), (xr, yr) = samples[i - 1], samples[i], samples[i + 1]
+        assert yl is not None and ym is not None and yr is not None  # noqa: S101 - filtered above
+        peak = _refine_extremum(f, xl, xr, minimise=ym > 0)
+        if peak is None or (peak[1] < 0) == (ym < 0):
+            continue  # the extremum does not cross zero
+        xe, ye = peak
+        found.append(_bisect(f, xl, xe, yl) if (yl < 0) != (ye < 0) else _bisect(f, xm, xe, ym))
+        found.append(_bisect(f, xe, xr, ye) if (ye < 0) != (yr < 0) else _bisect(f, xe, xm, ye))
+    return found
 
 
 def _around(symbol: sp.Symbol, root: float) -> list[sp.Expr]:
@@ -301,10 +390,10 @@ def _around(symbol: sp.Symbol, root: float) -> list[sp.Expr]:
     else:
         spread = max(1.0, abs(root))
         candidates = [
-            _snap(root + e * spread) for e in (-1, -0.5, -0.01, -0.001, 0.001, 0.01, 0.5, 1)
+            _snap(root + e * spread) for e in (0.001, -0.001, 0.01, -0.01, 0.5, -0.5, 1, -1)
         ]
         # A tiny root (a threshold at 1/1000 for a positive symbol) needs offsets relative to itself.
-        candidates += [_snap(root * (1 + e)) for e in (-0.5, -0.01, 0.01, 0.5)]
+        candidates += [_snap(root * (1 + e)) for e in (0.01, -0.01, 0.5, -0.5)]
         if symbol.is_real is not True:  # off the real axis on both sides too
             candidates += [_snap(root) + sp.I * _snap(e) for e in (-0.01, 0.01)]
     return [c for c in candidates if _admits(symbol, c)]
@@ -320,7 +409,15 @@ def _boundary_points(
                 reduced = g.xreplace({s: v for s, v in base.items() if s != symbol})
                 if reduced.free_symbols - {symbol}:
                     continue
-                for root in _roots_in(reduced, symbol):
+                roots = _roots_in(reduced, symbol)
+                # Between two adjacent roots lies a region that may be too narrow for a fixed offset.
+                for low, high in itertools.pairwise(roots):
+                    middle = _snap((low + high) / 2, digits=12)
+                    if _admits(symbol, middle) or symbol.is_integer:
+                        mid = middle if not symbol.is_integer else sp.Integer(math.floor(middle))
+                        if _admits(symbol, mid):
+                            yield {**base, symbol: mid}
+                for root in roots:
                     for candidate in _around(symbol, root):
                         yield {**base, symbol: candidate}
 
@@ -338,21 +435,35 @@ def _branch_points(
     for symbol in symbols:
         if symbol.is_real is True:
             continue
-        for multiple in (1, 2, 4, 8, 16, 41):
+        for multiple in (2, 8, 41):
             base = _draw_all(symbols, rng, 3.5)
             imaginary = _snap(math.pi * multiple * 1.5)
             for sign in (1, -1):
                 yield {**base, symbol: _snap(rng.uniform(-3.5, 3.5)) + sign * sp.I * imaginary}
 
 
-def _integer_points(
+SPECIAL_INTEGERS = (7, 8, 10, 15, 31, 100, -7, -8, -40)
+SPECIAL_VALUES = (
+    0,
+    1,
+    -1,
+    2,
+    -2,
+    3,
+    -3,
+    sp.Rational(1, 2),
+    10,
+    100,
+)  # where a narrow bump is likely centred
+
+
+def _special_points(
     symbols: list[sp.Symbol], rng: random.Random
 ) -> Iterator[dict[sp.Symbol, sp.Expr]]:
     for symbol in symbols:
-        if symbol.is_integer is not True:
-            continue
-        for n in (7, 8, 10, 15, 31, 100, -7, -8, -40):
-            value = sp.Integer(n)
+        values = SPECIAL_INTEGERS if symbol.is_integer is True else SPECIAL_VALUES
+        for raw in values:
+            value = sp.sympify(raw)
             if _admits(symbol, value):
                 yield {**_draw_all(symbols, rng, 3.5), symbol: value}
 
@@ -371,7 +482,7 @@ def _streams(
         "random": _random_points(symbols, rng),
         "boundary": _boundary_points(a, b, symbols, rng),
         "branch": _branch_points(symbols, rng),
-        "integer": _integer_points(symbols, rng),
+        "special": _special_points(symbols, rng),
         "scale": _scale_points(symbols, rng),
     }
 

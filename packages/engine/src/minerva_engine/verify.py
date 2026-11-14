@@ -10,12 +10,16 @@ from __future__ import annotations
 
 import random
 from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 import mpmath
 import sympy as sp
 
 from .distributions.guard import contains_distribution
 from .models import Verification
+
+if TYPE_CHECKING:
+    from .counterexample import Counterexample
 
 MIN_VALID_POINTS = 4
 SAMPLE_ATTEMPTS = 40
@@ -144,25 +148,34 @@ def numeric_check(
     return checked, agreed
 
 
-def verify_equal(
-    original: sp.Expr, candidate: sp.Expr, *, symbolic: bool = True, max_points: int = 12
-) -> Verification:
-    """Numeric agreement is what decides `passed`; the symbolic zero test is extra evidence.
+PROBE_POINTS = 24  # targeted probes after the random points agree; see counterexample.py
+PROBE_SECONDS = 0.5
 
-    Pass `symbolic=False` where many verifications share one time budget (rule application):
-    `sp.simplify(a - b)` can be slower than everything else together. `max_points` (at least
-    `MIN_VALID_POINTS`) lowers the sample size for the many screening checks of a search; the
-    reported chain is re-verified with the default.
+
+def verify_with_witness(
+    original: sp.Expr,
+    candidate: sp.Expr,
+    *,
+    symbolic: bool = True,
+    max_points: int = 12,
+    probe: bool = True,
+) -> tuple[Verification, Counterexample | None]:
+    """`verify_equal` and, when a targeted probe disproved the identity, the point where it fails.
+
+    The witness holds expressions: hand it to the user's own conversation, never to a log.
     """
     if contains_distribution(original) or contains_distribution(candidate):
         # Sampling cannot see a delta (it is 0 at every sample), so it proves nothing here.
-        return Verification(
-            symbolic_zero=False,
-            numeric_points_checked=0,
-            numeric_points_agreed=0,
-            numeric_points_skipped=0,
-            passed=False,
-            note="distributions cannot be verified by sampling; use the distribution operation",
+        return (
+            Verification(
+                symbolic_zero=False,
+                numeric_points_checked=0,
+                numeric_points_agreed=0,
+                numeric_points_skipped=0,
+                passed=False,
+                note="distributions cannot be verified by sampling; use the distribution operation",
+            ),
+            None,
         )
     checked, agreed, skipped = numeric_detail(
         original, candidate, max_points=max(max_points, MIN_VALID_POINTS)
@@ -182,14 +195,65 @@ def verify_equal(
         note = "too many sample points were undefined to verify numerically"
     else:
         note = "numeric check agreed at all sampled points"
-    return Verification(
-        symbolic_zero=symbolic_zero,
-        numeric_points_checked=checked,
-        numeric_points_agreed=agreed,
-        numeric_points_skipped=skipped,
-        passed=passed,
-        note=note,
+    probed = 0
+    probe_kind: str | None = None
+    witness: Counterexample | None = None
+    # Only a candidate that passed is probed, and only on a full check (not a rule-search screen). Probes
+    # can turn a pass into a failure; they never turn a failure into a pass.
+    if passed and probe and max_points >= NARROW_POINTS:
+        # Imported late: ncverify imports this module. Errors in the search are not swallowed here (the
+        # search handles SymPy and mpmath evaluation failures itself); a bug must be visible, not a silent
+        # return to weaker checking.
+        from .counterexample import TARGETED, Budget, find_counterexample
+
+        found = find_counterexample(
+            original,
+            candidate,
+            budget=Budget(points=PROBE_POINTS, seconds=PROBE_SECONDS),
+            kinds=TARGETED,
+        )
+        probed = found.probes_tried
+        if found.counterexample is not None:
+            witness = found.counterexample
+            probe_kind = witness.probe
+            checked += 1  # the point where the sides differ is a checked point that did not agree
+            passed = False
+            note = "a targeted probe found a point where the two sides differ"
+    return (
+        Verification(
+            symbolic_zero=symbolic_zero,
+            numeric_points_checked=checked,
+            numeric_points_agreed=agreed,
+            numeric_points_skipped=skipped,
+            numeric_points_probed=probed,
+            probe_kind=probe_kind,
+            passed=passed,
+            note=note,
+        ),
+        witness,
     )
+
+
+def verify_equal(
+    original: sp.Expr,
+    candidate: sp.Expr,
+    *,
+    symbolic: bool = True,
+    max_points: int = 12,
+    probe: bool = True,
+) -> Verification:
+    """Numeric agreement is what decides `passed`; the symbolic zero test is extra evidence.
+
+    Pass `symbolic=False` where many verifications share one time budget (rule application):
+    `sp.simplify(a - b)` can be slower than everything else together. `max_points` (at least
+    `MIN_VALID_POINTS`) lowers the sample size for the many screening checks of a search; the
+    reported chain is re-verified with the default. When the random points agree, targeted probes
+    (`counterexample.py`) look for a disagreement near boundaries, branch cuts and large integers;
+    `probe=False` skips them. Agreement is evidence, never proof.
+    """
+    return verify_with_witness(
+        original, candidate, symbolic=symbolic, max_points=max_points, probe=probe
+    )[0]
 
 
 EL_POINTS = 6  # test paths per coordinate
