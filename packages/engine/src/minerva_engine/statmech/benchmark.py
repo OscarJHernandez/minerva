@@ -177,6 +177,26 @@ def _dos_constant_cumulant(r: StatMechResult) -> tuple[bool, str]:
     return agrees([("kappa_3", value(r, "cumulant_E", beta=b), 2 / b**3)])
 
 
+def _tilted_spin(r: StatMechResult) -> tuple[bool, str]:
+    b, h, d, kb = 0.8, 0.6, 0.9, 1.5
+    w = math.hypot(h, d)
+    x = b * w
+    kw = {"beta": b, "h": h, "d": d, "k_B": kb}
+    return agrees(
+        [
+            ("Z", value(r, "Z", **kw), 2 * math.cosh(x)),
+            ("U", value(r, "U", **kw), -w * math.tanh(x)),
+            ("S", value(r, "S", **kw), kb * (math.log(2 * math.cosh(x)) - x * math.tanh(x))),
+        ]
+    )
+
+
+def _tilted_spin_mean(r: StatMechResult) -> tuple[bool, str]:
+    b, h, d = 0.8, 0.6, 0.9
+    w = math.hypot(h, d)
+    return agrees([("<sz>", value(r, "mean_sz", beta=b, h=h, d=d), h * math.tanh(b * w) / w)])
+
+
 def _energy_derivative_identities(r: StatMechResult) -> tuple[bool, str]:
     """-d ln Z/d beta = U and d^2 ln Z/d beta^2 = Var(E) on the reference Z, by mpmath differentiation."""
     mp.mp.dps = 30
@@ -246,6 +266,10 @@ GAS = {
     "variables": [*BOX, *({"name": p} for p in ("px", "py", "pz"))],
     "phase_space_cell": "h**3",
 }
+QH = [["-h", "-d"], ["-d", "h"]]
+QSZ = [["1", "0"], ["0", "-1"]]
+QSX = [["0", "1"], ["1", "0"]]
+QPOS = {"h": ["positive"], "d": ["positive"]}
 THREE = {
     "kind": "levels",
     "levels": [
@@ -432,6 +456,33 @@ CASES: list[Case] = [
         judge=_dos_constant_cumulant,
     ),
     Case(
+        "spin-in-a-tilted-field",
+        "quantum systems",
+        "H = -h sz - d sx has eigenvalues +-sqrt(h^2 + d^2): Z = 2 cosh(beta w), von Neumann entropy",
+        {
+            "system": {"kind": "quantum", "hamiltonian": QH},
+            "assumptions": QPOS,
+            "action": "derive",
+            "quantities": ["Z", "U", "S"],
+        },
+        judge=_tilted_spin,
+    ),
+    Case(
+        "noncommuting-thermal-average",
+        "quantum systems",
+        "<sz> = (h/w) tanh(beta w) although [sz, H] != 0; d ln Z/dh = beta <sz> by trace cyclicity",
+        {
+            "system": {"kind": "quantum", "hamiltonian": QH, "observables": {"sz": QSZ}},
+            "assumptions": QPOS,
+            "parameters": ["h"],
+            "coupling": {"parameter": "h", "observable": "sz"},
+            "action": "expectation",
+            "observable": "sz",
+            "statistic": "mean",
+        },
+        judge=_tilted_spin_mean,
+    ),
+    Case(
         "independent-copies",
         "independent subsystems",
         "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
@@ -580,6 +631,49 @@ CASES: list[Case] = [
         },
         "refused",
         "ensemble_mismatch",
+    ),
+    Case(
+        "second-derivative-response-needs-commuting-operators",
+        "noncommuting quantum operators",
+        "d^2 ln Z/dh^2 is the Kubo-Duhamel covariance, not beta^2 Var(sz), when [sz, H] != 0",
+        {
+            "system": {"kind": "quantum", "hamiltonian": QH, "observables": {"sz": QSZ}},
+            "assumptions": QPOS,
+            "parameters": ["h"],
+            "coupling": {"parameter": "h", "observable": "sz"},
+            "action": "expectation",
+            "observable": "sz",
+            "statistic": "variance",
+        },
+        "refused",
+        "operators_do_not_commute",
+    ),
+    Case(
+        "covariance-of-noncommuting-operators",
+        "noncommuting quantum operators",
+        "the covariance of sz and sx depends on their ordering",
+        {
+            "system": {"kind": "quantum", "hamiltonian": QH, "observables": {"sz": QSZ, "sx": QSX}},
+            "assumptions": QPOS,
+            "action": "expectation",
+            "observable": "sz",
+            "other_observable": "sx",
+            "statistic": "covariance",
+        },
+        "refused",
+        "operators_do_not_commute",
+    ),
+    Case(
+        "non-hermitian-hamiltonian",
+        "invalid and divergent partition functions",
+        "a thermal state needs H equal to its conjugate transpose",
+        {
+            "system": {"kind": "quantum", "hamiltonian": [["0", "a"], ["b", "0"]]},
+            "assumptions": {"a": ["real"], "b": ["real"]},
+            "action": "partition",
+        },
+        "refused",
+        "not_hermitian",
     ),
     Case(
         "complex-energy",

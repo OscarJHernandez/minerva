@@ -20,6 +20,8 @@ export interface StatForm {
     variables: { name: string; lower: string; upper: string }[];
     cell: string;
   };
+  /** Rows on separate lines, entries separated by `;` (a matrix in text syntax). */
+  quantum: { hamiltonian: string; observableName: string; observable: string };
   copies: { on: boolean; count: string; identical: "yes" | "no" | "" };
   temperature: "beta" | "T";
   parameters: string;
@@ -78,6 +80,7 @@ export function blankForm(): StatForm {
       variables: [{ name: "p", lower: "-oo", upper: "oo" }],
       cell: "",
     },
+    quantum: { hamiltonian: "-h; -d\n-d; h", observableName: "sz", observable: "1; 0\n0; -1" },
     copies: { on: false, count: "N", identical: "" },
     temperature: "beta",
     parameters: "",
@@ -110,6 +113,16 @@ export const EXAMPLES: { id: string; label: string; form: StatForm }[] = [
       assumptions: { hbar: ["positive"], omega: ["positive"] },
       quantities: ["Z", "U", "Var_E"],
       partials: [{ of: "U", variable: "T", held: "", scale: "1", label: "C" }],
+    },
+  },
+  {
+    id: "spin-tilted-field",
+    label: "Spin-1/2 in a tilted field (operators that do not commute)",
+    form: {
+      ...blankForm(),
+      kind: "quantum",
+      assumptions: { h: ["positive"], d: ["positive"] },
+      quantities: ["Z", "U", "S"],
     },
   },
   {
@@ -166,6 +179,21 @@ export type BuildResult = { ok: true; request: StatMechRequest } | { ok: false; 
 
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,15}$/;
 
+/** `a; b` per line into rows of entries. */
+export function parseMatrix(text: string): string[][] | string {
+  const rows = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(";").map((cell) => cell.trim()));
+  if (rows.length === 0) return "Give the matrix, one row per line, entries separated by ;.";
+  if (rows.some((r) => r.length !== rows.length || r.some((c) => c === ""))) {
+    return "A matrix must be square with every entry filled in (rows on lines, entries separated by ;).";
+  }
+  if (rows.length > 4) return "At most 4 x 4.";
+  return rows;
+}
+
 export function splitNames(text: string): string[] {
   return text
     .split(/[,\s]+/)
@@ -221,6 +249,20 @@ function system(form: StatForm): StatSystem | string {
         lower: d.lower.trim() || "0",
         upper: d.upper.trim() || "oo",
       };
+    }
+    case "quantum": {
+      const h = parseMatrix(form.quantum.hamiltonian);
+      if (typeof h === "string") return h;
+      const name = form.quantum.observableName.trim();
+      if (name === "" && form.quantum.observable.trim() === "") {
+        return { kind: "quantum", hamiltonian: h };
+      }
+      const a = parseMatrix(form.quantum.observable);
+      if (typeof a === "string") return a;
+      if (!NAME.test(name) || name === "E")
+        return "Name the operator (not E, which is the energy).";
+      if (a.length !== h.length) return "The operator must have the size of H.";
+      return { kind: "quantum", hamiltonian: h, observables: { [name]: a } };
     }
     case "classical": {
       const c = form.classical;
@@ -333,6 +375,13 @@ export function restoreForm(request: StatMechRequest): StatForm {
       density: sys.density,
       lower: sys.lower,
       upper: sys.upper,
+    };
+  } else if (sys.kind === "quantum") {
+    const [name, matrix] = Object.entries(sys.observables ?? {})[0] ?? ["", [] as string[][]];
+    form.quantum = {
+      hamiltonian: sys.hamiltonian.map((r) => r.join("; ")).join("\n"),
+      observableName: name,
+      observable: matrix.map((r) => r.join("; ")).join("\n"),
     };
   } else {
     form.classical = {

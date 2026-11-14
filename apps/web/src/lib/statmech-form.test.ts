@@ -3,6 +3,7 @@ import {
   EXAMPLES,
   blankForm,
   buildRequest,
+  parseMatrix,
   parseValues,
   restoreForm,
   splitNames,
@@ -88,5 +89,43 @@ describe("statmech form", () => {
       const again = buildRequest(restoreForm(built.request), "derive");
       expect(again).toEqual(built);
     }
+  });
+
+  it("reads a matrix from lines and semicolons, and refuses a malformed one", () => {
+    expect(parseMatrix("1; 0\n0; -1")).toEqual([
+      ["1", "0"],
+      ["0", "-1"],
+    ]);
+    expect(typeof parseMatrix("1; 0")).toBe("string"); // not square
+    expect(typeof parseMatrix("1; \n0; 1")).toBe("string"); // an empty entry
+    expect(typeof parseMatrix("")).toBe("string");
+    expect(typeof parseMatrix("1;0;0;0;0\n".repeat(5))).toBe("string"); // larger than 4 x 4
+  });
+
+  it("builds a quantum system with an operator that is not assumed to commute", () => {
+    const example = EXAMPLES.find((e) => e.id === "spin-tilted-field")!.form;
+    const built = buildRequest(example, "expectation");
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.request.system).toEqual({
+      kind: "quantum",
+      hamiltonian: [
+        ["-h", "-d"],
+        ["-d", "h"],
+      ],
+      observables: {
+        sz: [
+          ["1", "0"],
+          ["0", "-1"],
+        ],
+      },
+    });
+    const wrong = { ...example, quantum: { ...example.quantum, observableName: "E" } };
+    expect(buildRequest(wrong, "expectation")).toEqual({
+      ok: false,
+      error: "Name the operator (not E, which is the energy).",
+    });
+    const size = { ...example, quantum: { ...example.quantum, observable: "1" } };
+    expect(buildRequest(size, "expectation").ok).toBe(false);
   });
 });

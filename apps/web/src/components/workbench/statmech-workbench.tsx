@@ -40,6 +40,7 @@ const KINDS: { id: StatKind; label: string }[] = [
   { id: "level_family", label: "Level family E(n)" },
   { id: "density_of_states", label: "Density of states" },
   { id: "classical", label: "Classical Hamiltonian" },
+  { id: "quantum", label: "Quantum (matrix H)" },
 ];
 
 interface Run {
@@ -325,6 +326,42 @@ export function StatMechWorkbench({
                 onChange={(e) => set("dos", { ...form.dos, upper: e.target.value })}
               />
             </Labelled>
+          </div>
+        )}
+
+        {form.kind === "quantum" && (
+          <div className="space-y-2">
+            <Labelled label="Hamiltonian matrix H: one row per line, entries separated by ; (I is the imaginary unit)">
+              <textarea
+                className={FIELD}
+                rows={3}
+                value={form.quantum.hamiltonian}
+                onChange={(e) => set("quantum", { ...form.quantum, hamiltonian: e.target.value })}
+              />
+            </Labelled>
+            <div className="grid gap-2 sm:grid-cols-[8rem_1fr]">
+              <Labelled label="Operator name">
+                <input
+                  className={FIELD}
+                  value={form.quantum.observableName}
+                  onChange={(e) =>
+                    set("quantum", { ...form.quantum, observableName: e.target.value })
+                  }
+                />
+              </Labelled>
+              <Labelled label="Operator matrix (optional; never assumed to commute with H)">
+                <textarea
+                  className={FIELD}
+                  rows={3}
+                  value={form.quantum.observable}
+                  onChange={(e) => set("quantum", { ...form.quantum, observable: e.target.value })}
+                />
+              </Labelled>
+            </div>
+            <p className="text-xs text-muted">
+              Declare the parameters real (or positive) so that H is provably Hermitian. Use the
+              operator name as the observable under “Thermal average options”.
+            </p>
           </div>
         )}
 

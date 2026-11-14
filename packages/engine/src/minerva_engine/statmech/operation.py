@@ -48,6 +48,8 @@ _STATUS_FOR_REASON: dict[Reason, Status] = {
     "convergence_not_provable": Status.CONDITIONS_NOT_SATISFIED,
     "not_separable": Status.UNSUPPORTED,
     "convention_unconfirmed": Status.CONDITIONS_NOT_SATISFIED,
+    "not_hermitian": Status.CONDITIONS_NOT_SATISFIED,
+    "operators_do_not_commute": Status.CONDITIONS_NOT_SATISFIED,
 }
 
 # Checks whose failure means the formula is not shown. A symbolic zero that is undecided is extra
@@ -60,6 +62,7 @@ _DECIDING = frozenset(
         "normalisation",
         "nonnegative_variance",
         "free_energy_identity",
+        "spectral_decomposition",
     }
 )
 

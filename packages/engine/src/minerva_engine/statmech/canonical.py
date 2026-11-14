@@ -56,6 +56,10 @@ def make_oracle(problem: Problem) -> BaseOracle:
     """The independent numerical oracle for the kind of system."""
     if problem.kind == "levels":
         return Oracle(problem)
+    if problem.kind == "quantum":
+        from .quantum import QuantumOracle
+
+        return QuantumOracle(problem)
     from .systems import ClassicalOracle, DosOracle, FamilyOracle
 
     if problem.kind == "level_family":
@@ -72,7 +76,7 @@ class Canonical:
         self.p = problem
         b, kB = problem.beta, problem.k_B
         terms: list[sp.Expr] = []
-        if problem.kind == "levels":
+        if problem.kind in {"levels", "quantum"}:
             terms = [
                 g * sp.exp(-b * e)
                 for e, g in zip(problem.energies, problem.degeneracies, strict=True)
@@ -106,7 +110,9 @@ class Canonical:
             "Var_E": tidy(sp.diff(self.lnZ, b, 2)),
         }
         self.probabilities: list[sp.Expr] = (
-            [t / self.Z for t in terms] if problem.kind == "levels" and n is None else []
+            [t / self.Z for t in terms]
+            if problem.kind in {"levels", "quantum"} and n is None
+            else []
         )
 
     # -- display -------------------------------------------------------------------------
@@ -579,7 +585,7 @@ def _attach_symbolic(canon: Canonical, quantities: list[StatQuantity], deadline:
     p = canon.p
     if p.copies_count is not None:
         return
-    if p.kind == "levels":
+    if p.kind in {"levels", "quantum"}:
         if not 0 < len(p.energies) <= SYMBOLIC_LEVELS:
             return
         w = canon.probabilities
@@ -641,6 +647,8 @@ def _partial_quantity(
 def expectation(
     problem: Problem, request: StatMechInput, deadline: float
 ) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
+    if problem.kind == "quantum" and request.observable != "E" and problem.copies_count is None:
+        return expectation_quantum(problem, request, deadline)
     if problem.kind != "levels" or problem.copies_count is not None:
         return expectation_energy(problem, request, deadline)
     canon = Canonical(problem)
@@ -852,6 +860,190 @@ def expectation_energy(
         ),
     ]
     return steps, [q], conditions
+
+
+def _order_needed(stat: str, order: int) -> int:
+    return {"mean": 1, "variance": 2, "covariance": 2}.get(stat, order)
+
+
+def expectation_quantum(
+    problem: Problem, request: StatMechInput, deadline: float
+) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
+    """Thermal statistics of a matrix observable: Tr(A^k exp(-beta H))/Z with every operator in place.
+
+    The first derivative of ln Z with respect to a coupled parameter is always beta times the mean (trace
+    cyclicity). Beyond it, and for a covariance, the answer depends on ordering unless the operators commute,
+    so those are refused (``operators_do_not_commute``) instead of being computed under a commuting assumption.
+    """
+    from .quantum import commutes, is_hermitian, thermal_matrix
+
+    name, stat, order = request.observable, request.statistic, request.order
+    matrices: dict[str, sp.Matrix] = problem.extra["matrices"]
+    if name not in matrices:
+        raise Refusal(
+            "unknown_observable", f"{name} is not an operator of this system (give its matrix)"
+        )
+    A = matrices[name]
+    H: sp.Matrix = problem.extra["H"]
+    b = problem.beta
+    other: sp.Matrix | None = None
+    if stat == "covariance":
+        if request.other_observable not in matrices:
+            raise Refusal(
+                "unknown_observable", "a covariance needs a second operator with a matrix"
+            )
+        other = matrices[request.other_observable or ""]
+        if not commutes(A, other):
+            raise Refusal(
+                "operators_do_not_commute",
+                "the covariance of operators that do not commute depends on their ordering, so "
+                "no single value is computed; ask for each ordering or a symmetrised form separately",
+            )
+    canon = Canonical(problem)
+    oracle = make_oracle(problem)
+    points = sample_points(problem)
+    eu, distinct = thermal_matrix(problem)
+    z = canon.Z
+    kn = _order_needed(stat, order)
+
+    def moment(k: int, op: sp.Matrix = A) -> sp.Expr:
+        return tidy(((op**k) * eu).trace() / z)
+
+    if other is not None:
+        m1a, m1b = moment(1), moment(1, other)
+        cov = tidy(((A * other) * eu).trace() / z - m1a * m1b)
+        expr, ref = (
+            cov,
+            lambda pt: _quantum_covariance(oracle, name, request.other_observable or "", pt),
+        )
+    else:
+        raw = {k: moment(k) for k in range(1, kn + 1)}
+        k = {1: raw[1]}
+        if kn >= 2:
+            k[2] = raw[2] - raw[1] ** 2
+        if kn >= 3:
+            k[3] = raw[3] - 3 * raw[2] * raw[1] + 2 * raw[1] ** 3
+        if kn >= 4:
+            k[4] = (
+                raw[4]
+                - 4 * raw[3] * raw[1]
+                - 3 * raw[2] ** 2
+                + 12 * raw[2] * raw[1] ** 2
+                - 6 * raw[1] ** 4
+            )
+        for j in range(1, 5):
+            k.setdefault(j, sp.Integer(0))
+        expr, _, cum_ref = _energy_statistic(k, stat, order)
+
+        def ref(pt: Point) -> Any:
+            return cum_ref([oracle.observable_cumulant(name, pt, j) for j in (1, 2, 3, 4)])  # type: ignore[attr-defined]
+
+        expr = tidy(expr)
+    shown = canon.shown(expr)
+    checks = [
+        compare(
+            "enumeration",
+            stat,
+            points,
+            _evaluator(oracle, shown),
+            ref,
+            "Tr(rho A^k) from mpmath.expm of the numerical matrix",
+            oracle.tol * 10**3,
+        ),
+        compare(
+            "spectral_decomposition",
+            "Z",
+            points,
+            lambda pt: oracle.lnZ1(pt, pt[problem.beta]),
+            lambda pt: oracle.lnZ_spectral(pt, pt[problem.beta]),  # type: ignore[attr-defined]
+            "ln Tr exp(-beta H) from expm equals ln of the sum of exp(-beta lambda) from eigh",
+            oracle.tol * 10**3,
+        ),
+    ]
+    conditions = partition_conditions(problem)
+    herm = is_hermitian(A)
+    conditions.append(
+        Condition(
+            latex=rf"{name} = {name}^{{\dagger}}",
+            established=herm,
+            how="the operator is Hermitian, so its thermal average is real"
+            if herm
+            else "the operator is not Hermitian: its thermal average may be complex",
+        )
+    )
+    comm = commutes(A, H)
+    conditions.append(
+        Condition(
+            latex=rf"[{name}, H] = 0",
+            established=comm,
+            how="the operator commutes with H; the order of A and exp(-beta H) does not matter"
+            if comm
+            else "the operator does not commute with H: Tr(A exp(-beta H)) keeps A where it is",
+        )
+    )
+    conditions.append(distinct)
+    if request.coupling is not None and request.coupling.observable == name and other is None:
+        lam = next((s for s in problem.params if s.name == request.coupling.parameter), None)
+        if lam is None:
+            raise Refusal(
+                "coupling_not_linear", "the coupling parameter must be a declared parameter"
+            )
+        if not all(sp.simplify(e) == 0 for e in (sp.diff(H, lam) + A)) or A.has(lam):
+            raise Refusal(
+                "coupling_not_linear",
+                "the response relation needs dH/d(parameter) = -A with A independent of the parameter",
+            )
+        if kn >= 2 and not comm:
+            raise Refusal(
+                "operators_do_not_commute",
+                f"{name} does not commute with H, so the second derivative of ln Z with respect to "
+                f"{lam.name} is the Kubo-Duhamel covariance, not beta^2 Var({name}); only the first "
+                "derivative (the mean) is a response relation here",
+            )
+        conditions.append(
+            Condition(
+                latex=rf"\partial H/\partial {to_latex(lam)} = -{name}",
+                established=True,
+                how="checked symbolically; the first derivative of ln Z is beta times the mean by trace cyclicity",
+            )
+        )
+        checks.append(
+            compare(
+                "fluctuation_response",
+                f"kappa_{kn}({name})",
+                points,
+                _evaluator(oracle, shown),
+                lambda pt: oracle.derivative_of("lnZ", pt, lam.name, kn) / pt[b] ** kn,
+                f"cumulant as beta^-{kn} times the {kn}-th numerical derivative of ln Z with respect to {lam.name}",
+                oracle.diff_tol * 10,
+            )
+        )
+    if (stat == "variance" or (stat == "cumulant" and order == 2)) and herm:
+        checks.append(_nonnegative(shown, oracle, points))
+    q = make_quantity(
+        canon,
+        f"{stat}_{name}",
+        expr,
+        title=f"{stat.replace('_', ' ').capitalize()} of {name}",
+        route="Tr(A^k exp(-beta H))/Z with the operators in the order given, exp(-beta H) from the spectral decomposition",
+        held_fixed=sorted(s.name for s in problem.params),
+        checks=checks,
+    )
+    steps = [
+        *partition_steps(problem, canon),
+        StatStep(
+            name="expectation", title=q.title, latex=q.latex, text=q.text, conditions=conditions
+        ),
+    ]
+    return steps, [q], conditions
+
+
+def _quantum_covariance(oracle: Any, a: str, b: str, pt: Point) -> Any:
+    beta = pt[oracle.problem.beta]
+    ma, mb = oracle.operator(a, pt), oracle.operator(b, pt)
+    return oracle.moment(pt, beta, ma * mb, 1) - oracle.moment(pt, beta, ma, 1) * oracle.moment(
+        pt, beta, mb, 1
+    )
 
 
 def _response_checks(

@@ -2,7 +2,7 @@ import type { Status } from "./types";
 
 /** Mirrors `minerva_engine.statmech.models`: the request is the whole problem, results are checked. */
 
-export type StatKind = "levels" | "level_family" | "density_of_states" | "classical";
+export type StatKind = "levels" | "level_family" | "density_of_states" | "classical" | "quantum";
 export type StatAction = "analyze" | "partition" | "derive" | "expectation" | "evaluate";
 export type StatQuantityName = "Z" | "lnZ" | "F" | "U" | "S" | "Var_E";
 export type StatStatistic =
@@ -31,6 +31,13 @@ export type StatSystem =
       density: string;
       lower: string;
       upper: string;
+    }
+  | {
+      kind: "quantum";
+      /** Rows of the Hermitian matrix H, entries in text syntax (at most 4x4). */
+      hamiltonian: string[][];
+      /** Operator matrices of the same size; never assumed to commute with H or each other. */
+      observables?: Record<string, string[][]>;
     }
   | {
       kind: "classical";

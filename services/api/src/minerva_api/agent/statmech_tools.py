@@ -23,6 +23,7 @@ from minerva_engine.statmech.models import (
     FamilySystem,
     LevelsSystem,
     PhaseVariable,
+    QuantumSystem,
     Statistic,
 )
 from pydantic import BaseModel, Field
@@ -49,7 +50,8 @@ class AgentClassical(BaseModel):
 
 
 AgentSystem = Annotated[
-    LevelsSystem | FamilySystem | DosSystem | AgentClassical, Field(discriminator="kind")
+    LevelsSystem | FamilySystem | DosSystem | AgentClassical | QuantumSystem,
+    Field(discriminator="kind"),
 ]
 
 
@@ -82,7 +84,9 @@ class StatMechArgs(BaseModel):
         description="levels: explicit energies and degeneracies (with optional observables per "
         "level). level_family: E(n), g(n) over an integer index, finite or infinite (oo). "
         "density_of_states: rho(En) over [lower, upper]; call the energy En, because E means Euler's "
-        "number in text syntax. classical: a separable Hamiltonian over phase space."
+        "number in text syntax. classical: a separable Hamiltonian over phase space. quantum: an "
+        "explicit Hermitian matrix H (at most 4x4) and optional operator matrices; they are never "
+        "assumed to commute, and Z = Tr exp(-beta H)."
     )
     copies_count: str | None = Field(
         default=None,

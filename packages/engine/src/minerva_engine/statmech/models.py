@@ -36,6 +36,8 @@ Reason = Literal[
     "convergence_not_provable",
     "not_separable",
     "convention_unconfirmed",
+    "not_hermitian",
+    "operators_do_not_commute",
 ]
 Stage = Literal["parse", "build", "symbolic", "verify", "expectation", "analyze"]
 
@@ -99,8 +101,20 @@ class ClassicalSystem(BaseModel):
     phase_space_cell: str | None = Field(default=None, max_length=64)
 
 
+class QuantumSystem(BaseModel):
+    """A finite-dimensional quantum system: an explicit Hermitian matrix H and optional operators.
+
+    Operators are matrices of the same size; they are never assumed to commute with H or each other.
+    """
+
+    kind: Literal["quantum"] = "quantum"
+    hamiltonian: list[list[str]] = Field(min_length=1, max_length=4)
+    observables: dict[str, list[list[str]]] = Field(default_factory=dict, max_length=6)
+
+
 System = Annotated[
-    LevelsSystem | FamilySystem | DosSystem | ClassicalSystem, Field(discriminator="kind")
+    LevelsSystem | FamilySystem | DosSystem | ClassicalSystem | QuantumSystem,
+    Field(discriminator="kind"),
 ]
 
 

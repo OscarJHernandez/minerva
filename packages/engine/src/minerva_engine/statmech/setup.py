@@ -140,6 +140,10 @@ def build_problem(request: StatMechInput, limits: Limits) -> Problem:
         from .systems import fill_dos
 
         free |= fill_dos(problem, system)
+    elif system.kind == "quantum":
+        from .quantum import fill_quantum
+
+        free |= fill_quantum(problem, system)
     else:
         from .systems import fill_classical
 

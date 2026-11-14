@@ -58,6 +58,8 @@ def test_the_corpus_covers_the_requested_systems() -> None:
         "thermodynamic derivative identities",
         "fluctuation-response relations",
         "invalid and divergent partition functions",
+        "quantum systems",
+        "noncommuting quantum operators",
     }
     assert len({c.id for c in CASES}) == len(CASES) and all(c.source for c in CASES)
     refusals = [c for c in CASES if c.expected == "refused"]
@@ -71,6 +73,8 @@ def test_the_corpus_covers_the_requested_systems() -> None:
         "convention_unconfirmed",
         "ensemble_mismatch",
         "coupling_not_linear",
+        "operators_do_not_commute",
+        "not_hermitian",
     }
 
 

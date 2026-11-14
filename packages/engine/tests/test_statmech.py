@@ -315,6 +315,17 @@ def test_every_step_and_formula_is_renderable_latex() -> None:
             assert latex.count(r"\left") == latex.count(r"\right"), latex
 
 
+def test_every_reason_maps_to_a_status() -> None:
+    """A reason without a status would crash the refusal itself instead of reporting it."""
+    from typing import get_args
+
+    from minerva_engine.statmech.models import Reason
+    from minerva_engine.statmech.operation import _STATUS_FOR_REASON
+
+    assert set(get_args(Reason)) == set(_STATUS_FOR_REASON)
+    assert all(status is not Status.OK for status in _STATUS_FOR_REASON.values())
+
+
 def test_diagnostics_hold_no_expressions() -> None:
     r = two_level(action="derive", quantities=["U"])
     dumped = json.dumps(r.diagnostics.model_dump())

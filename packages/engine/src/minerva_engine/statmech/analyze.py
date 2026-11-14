@@ -13,6 +13,10 @@ from .setup import Problem
 # Methods Minerva can run today. Later phases add to this set as they land.
 IMPLEMENTED: frozenset[str] = frozenset(
     {
+        "ratio_test_sum",
+        "dos_integral",
+        "phase_space_factorisation",
+        "spectral_decomposition",
         "closed_form_sum",
         "enumeration_check",
         "derivative_route",
@@ -22,25 +26,76 @@ IMPLEMENTED: frozenset[str] = frozenset(
 
 NOT_SUPPORTED: tuple[str, ...] = (
     "Grand canonical and microcanonical ensembles",
-    "Infinite level sums and density-of-states integrals",
-    "Classical phase-space integrals",
-    "Quantum systems given by a Hamiltonian matrix",
+    "Quantum systems larger than 4x4 or without closed-form eigenvalues",
     "Asymptotic expansions, saddle-point methods and transfer matrices",
-    "Monte Carlo sampling and many-body solvers",
+    "Interacting classical systems, Monte Carlo sampling and many-body solvers",
 )
+
+
+def _structure(problem: Problem) -> MethodSuggestion | None:
+    """The method that follows from the kind of system, with the reason it applies."""
+    kind = problem.kind
+    if kind == "quantum":
+        return MethodSuggestion(
+            id="spectral_decomposition",
+            title="Spectral decomposition of a Hermitian matrix",
+            applies=True,
+            implemented=True,
+            why="H is an explicit Hermitian matrix, so Z = Tr exp(-beta H) is the sum of exp(-beta "
+            "lambda) over its eigenvalues; a thermal average Tr(A exp(-beta H))/Z keeps every operator "
+            "in place, and [A, H] = 0 is checked, never assumed",
+        )
+    if kind == "level_family":
+        return MethodSuggestion(
+            id="ratio_test_sum",
+            title="Infinite level sum with a convergence proof",
+            applies=True,
+            implemented=True,
+            why="the levels form a family E(n): a geometric closed form or SymPy's sum is accepted "
+            "only after the ratio test shows convergence for every beta > 0",
+        )
+    if kind == "density_of_states":
+        return MethodSuggestion(
+            id="dos_integral",
+            title="Density-of-states integral",
+            applies=True,
+            implemented=True,
+            why="Z is the Laplace transform of rho(E): evaluated by the verified definite integrator "
+            "for E^k rho e^(-beta E), k = 0, 1, 2, which also justifies differentiating under the integral",
+        )
+    if kind == "classical":
+        return MethodSuggestion(
+            id="phase_space_factorisation",
+            title="Factorisation of a separable Hamiltonian",
+            applies=True,
+            implemented=True,
+            why="H splits term by term into one-variable parts, so the phase-space integral is a "
+            "product of one-variable integrals; the cell and N! are your conventions",
+        )
+    return None
 
 
 def suggest(problem: Problem) -> list[MethodSuggestion]:
     n = len(problem.energies)
-    has_observables = any(name != "E" for name in problem.observables)
+    has_observables = any(name != "E" for name in problem.observables) or bool(
+        problem.extra.get("matrices")
+    )
     out = [
         MethodSuggestion(
             id="closed_form_sum",
             title="Closed-form partition function",
-            applies=True,
+            applies=problem.kind in {"levels", "quantum"} or problem.Z1 is not None,
             implemented="closed_form_sum" in IMPLEMENTED,
-            why=f"the system is a list of {n} levels, so Z is a finite sum of exponentials that "
-            "always converges and can be differentiated term by term",
+            why=(
+                f"the system is a list of {n} levels, so Z is a finite sum of exponentials that "
+                "always converges and can be differentiated term by term"
+                if problem.kind == "levels"
+                else (
+                    "Z has a closed form for this system, so derivatives of ln Z are taken exactly"
+                    if problem.Z1 is not None or problem.kind == "quantum"
+                    else "no closed form was found: only numerical evaluation is available"
+                )
+            ),
         ),
         MethodSuggestion(
             id="enumeration_check",
@@ -96,4 +151,5 @@ def suggest(problem: Problem) -> list[MethodSuggestion]:
             why="needs a lattice or chain with nearest-neighbour couplings, not a list of levels",
         ),
     ]
-    return out
+    first = _structure(problem)
+    return [first, *out] if first is not None else out

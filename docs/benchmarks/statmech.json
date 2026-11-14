@@ -97,6 +97,22 @@
       "outcome": "correct"
     },
     {
+      "id": "spin-in-a-tilted-field",
+      "category": "quantum systems",
+      "source": "H = -h sz - d sx has eigenvalues +-sqrt(h^2 + d^2): Z = 2 cosh(beta w), von Neumann entropy",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "noncommuting-thermal-average",
+      "category": "quantum systems",
+      "source": "<sz> = (h/w) tanh(beta w) although [sz, H] != 0; d ln Z/dh = beta <sz> by trace cyclicity",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
       "id": "independent-copies",
       "category": "independent subsystems",
       "source": "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
@@ -190,6 +206,30 @@
       "source": "dF/dV in the canonical ensemble holds T fixed, not nothing",
       "expected": "refused",
       "reason": "ensemble_mismatch",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "second-derivative-response-needs-commuting-operators",
+      "category": "noncommuting quantum operators",
+      "source": "d^2 ln Z/dh^2 is the Kubo-Duhamel covariance, not beta^2 Var(sz), when [sz, H] != 0",
+      "expected": "refused",
+      "reason": "operators_do_not_commute",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "covariance-of-noncommuting-operators",
+      "category": "noncommuting quantum operators",
+      "source": "the covariance of sz and sx depends on their ordering",
+      "expected": "refused",
+      "reason": "operators_do_not_commute",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "non-hermitian-hamiltonian",
+      "category": "invalid and divergent partition functions",
+      "source": "a thermal state needs H equal to its conjugate transpose",
+      "expected": "refused",
+      "reason": "not_hermitian",
       "outcome": "refused_as_expected"
     },
     {
