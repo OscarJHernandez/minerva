@@ -12,9 +12,12 @@ from .corpus import CASES, Case
 Outcome = Literal["correct", "false_accept", "false_reject"]
 
 
-def verify_case(case: Case) -> Verification:
-    """Sampling and probes only (`symbolic=False`): the symbolic zero test is separate evidence."""
-    return verify_equal(case.a, case.b, symbolic=False)
+def verify_case(case: Case, *, probe: bool = True) -> Verification:
+    """Sampling and probes only (`symbolic=False`): the symbolic zero test is separate evidence.
+
+    `probe=False` is the verifier as it was before targeted probes existed (the "before" of a comparison).
+    """
+    return verify_equal(case.a, case.b, symbolic=False, probe=probe)
 
 
 def outcome_of(case: Case, verification: Verification) -> Outcome:
@@ -24,7 +27,10 @@ def outcome_of(case: Case, verification: Verification) -> Outcome:
     return "false_accept" if accepted else "correct"
 
 
-def run_all(cases: list[Case] | None = None) -> list[tuple[Case, Outcome, Verification]]:
+def run_all(
+    cases: list[Case] | None = None, *, probe: bool = True
+) -> list[tuple[Case, Outcome, Verification]]:
     return [
-        (c, outcome_of(c, v := verify_case(c)), v) for c in (cases if cases is not None else CASES)
+        (c, outcome_of(c, v := verify_case(c, probe=probe)), v)
+        for c in (cases if cases is not None else CASES)
     ]
