@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 179,
+  "handbook_entries": 194,
   "groups": [
     {
       "id": "math",
@@ -1404,6 +1404,246 @@
           "notes": [
             "Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).",
             "The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statistical-mechanics",
+      "title": "Statistical mechanics of explicit systems",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Builds the canonical-ensemble partition function of a list of levels, a level family E(n) (finite or infinite), a density of states or a separable classical Hamiltonian, with optional independent copies, and derives thermodynamic quantities from it by one generic route: differentiate ln Z with the other state variables held fixed. Heat capacity is dU/dT, pressure is -dF/dV at fixed temperature, a susceptibility is a field derivative; none is a stored formula. Thermal averages, variances and cumulants follow, with fluctuation-response relations when the energies are linear in a coupling. A formula is shown only if an independent numerical evaluation agreed (direct enumeration with log-sum-exp, adaptive quadrature, numerical derivatives); convergence of an infinite sum or integral is proved or the request is refused.",
+      "limits": [
+        "Canonical ensemble only. Grand canonical and microcanonical ensembles, quantum Hamiltonian matrices, asymptotic expansions and lattice models are not supported yet.",
+        "An infinite sum needs a ratio-test proof for every beta > 0 (otherwise `divergent` or `convergence_not_provable`); an integral goes through the verified definite integrator under your assumptions. No interchange of a limit, sum, integral and derivative is assumed.",
+        "A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). Normal-mode transformations are not applied.",
+        "The phase-space cell and whether copies are indistinguishable are your choices, never defaulted; indistinguishable copies use the classical-limit N! counting, not exact Bose or Fermi statistics. Numbers for a numerical evaluation are yours too.",
+        "Numerical agreement is evidence, not a proof; a symbolic zero is reported separately and only where SymPy finds one. A series or integral without a closed form is evaluated numerically only and labelled as such."
+      ],
+      "examples": [
+        {
+          "id": "two-level-heat-capacity",
+          "title": "The heat capacity of a two-level system, derived as dU/dT",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "1 + \\mathrm{e}^{- \\beta \\epsilon}"
+            },
+            {
+              "label": "Helmholtz free energy",
+              "latex": "- \\frac{\\log{\\left(1 + \\mathrm{e}^{- \\beta \\epsilon} \\right)}}{\\beta}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
+            },
+            {
+              "label": "Partial derivative of internal energy with respect to T",
+              "latex": "\\frac{\\beta^{2} \\epsilon^{2} k_{B}}{2 \\left(\\cosh{\\left(\\beta \\epsilon \\right)} + 1\\right)}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "F: enumeration agreed",
+            "U: enumeration, finite difference, symbolic zero agreed",
+            "C: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "quantum-oscillator",
+          "title": "A quantum oscillator, from an infinite sum with a convergence proof",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = hbar*omega*(n + 1/2), n from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "\\frac{1}{2 \\sinh{\\left(\\frac{\\beta \\hbar \\omega}{2} \\right)}}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{\\hbar \\omega}{2 \\tanh{\\left(\\frac{\\beta \\hbar \\omega}{2} \\right)}}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "U: enumeration, finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "classical-ideal-gas",
+          "title": "Pressure of a classical ideal gas, from the free energy",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "H = (px**2 + py**2 + pz**2)/(2*m)",
+              "syntax": "text"
+            },
+            {
+              "label": "Copies",
+              "source": "N, indistinguishable (you chose)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{3 N}{2 \\beta}"
+            },
+            {
+              "label": "Partial derivative of helmholtz free energy with respect to V",
+              "latex": "\\frac{N}{V \\beta}"
+            }
+          ],
+          "checks": [
+            "U: enumeration, finite difference agreed",
+            "p: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Phase-space measure: Z_1 = (1/cell) times the integral of exp(-beta H) over the stated domains, with the cell you chose.",
+            "Indistinguishable copies use Z = Z_1^N / N!, the classical-limit counting; it is not exact Bose or Fermi statistics.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The cell h^3 and the division by N! were chosen by the user. Without them the result is `convention_unconfirmed`, with the question to answer."
+          ]
+        },
+        {
+          "id": "three-dimensional-density-of-states",
+          "title": "A density of states, integrated by the verified integrator",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "rho(En) = sqrt(En), from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "\\frac{\\sqrt{\\pi}}{2 \\beta^{\\frac{3}{2}}}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{3}{2 \\beta}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "U: enumeration, finite difference, symbolic zero agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "spin-fluctuation-response",
+          "title": "Magnetic fluctuations from a derivative of ln Z with respect to the field",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Variance of M",
+              "latex": "\\frac{\\mu^{2}}{\\cosh^{2}{\\left(\\beta h \\mu \\right)}}"
+            }
+          ],
+          "checks": [
+            "variance_M: enumeration, fluctuation response, nonnegative variance agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "divergent-series-declined",
+          "title": "A partition function that does not exist is declined",
+          "op": "statmech",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = -n, n from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (divergent).",
+            "the series diverges: the ratio of successive terms of a_n tends to a limit above 1 (the partition function does not exist for beta > 0)"
+          ]
+        },
+        {
+          "id": "wrong-held-fixed-declined",
+          "title": "A derivative at the wrong fixed variables is declined",
+          "op": "statmech",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (ensemble_mismatch).",
+            "a derivative with respect to V in the canonical ensemble holds exactly beta fixed; derivatives at fixed energy, entropy or other quantities need a change of variables, which is not supported",
+            "In the canonical ensemble a derivative with respect to V holds the temperature fixed; a derivative at fixed energy or entropy needs a change of variables, which is not supported."
           ]
         }
       ]

@@ -511,6 +511,94 @@
       order: 2
   source: "engine test_perturbation.py (Duffing frequency)"
 
+- id: statmech-two-level-free-energy
+  category: physics
+  prompt: 'A system has two energy levels, 0 and epsilon, with epsilon > 0. Derive its partition function, free energy and internal energy.'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: derive
+      system: {kind: levels, levels: [{energy: '0'}, {energy: epsilon}]}
+      assumptions: {epsilon: [positive]}
+      quantities: [Z, F, U]
+  source: "statmech/benchmark.py (two-level-thermodynamics, closed forms)"
+
+- id: statmech-oscillator-heat-capacity
+  category: physics
+  prompt: 'A quantum harmonic oscillator has levels hbar*omega*(n + 1/2) for n = 0, 1, 2, ... Derive its heat capacity.'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: derive
+      system: {kind: level_family, energy: 'hbar*omega*(n + 1/2)'}
+      assumptions: {hbar: [positive], omega: [positive]}
+      quantities: [Z, U]
+      partials: [{of: U, variable: T, held_fixed: [], label: C}]
+  source: "statmech/benchmark.py (quantum-harmonic-oscillator, Einstein heat capacity)"
+
+- id: statmech-ideal-gas-conventions-are-the-users
+  category: physics
+  prompt: 'Find the pressure of a classical ideal gas of N identical particles of mass m in a box of volume V, with H = sum of p^2/(2m).'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: derive
+      system:
+        kind: classical
+        hamiltonian: '(px**2 + py**2 + pz**2)/(2*m)'
+        variables:
+          - {name: x, domain_lower: '0', domain_upper: 'V**(1/3)'}
+          - {name: y, domain_lower: '0', domain_upper: 'V**(1/3)'}
+          - {name: z, domain_lower: '0', domain_upper: 'V**(1/3)'}
+          - {name: px}
+          - {name: py}
+          - {name: pz}
+      copies_count: N
+      parameters: [V]
+      assumptions: {m: [positive], V: [positive], N: [integer, positive]}
+      partials: [{of: F, variable: V, held_fixed: [T], scale: '-1', label: p}]
+  reply_matches: 'cell|indistinguish|convention|choose|choice|which|\?'
+  source: "AGENTS.md (the phase-space cell and N! are the user's choices); statmech/benchmark.py"
+
+- id: statmech-divergent-series-is-refused
+  category: unsupported
+  prompt: 'Find the partition function of a system with energy levels E_n = -n for n = 0, 1, 2, ...'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: partition
+      system: {kind: level_family, energy: '-n'}
+  reply_matches: 'diverg|does not (exist|converge)|not converge'
+  source: "statmech/benchmark.py (divergent-partition-function: terms grow like e^(beta n))"
+
+- id: statmech-wrong-partition-function-is-not-confirmed
+  category: false_claim
+  prompt: 'The partition function of a two-level system with energies 0 and epsilon (epsilon > 0) is Z = e^{-beta epsilon}. Is that right?'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: partition
+      system: {kind: levels, levels: [{energy: '0'}, {energy: epsilon}]}
+      assumptions: {epsilon: [positive]}
+  wrong_formulas: ['Z = \mathrm{e}^{-\beta \epsilon}']
+  right_formulas: ['Z = 1 + \mathrm{e}^{-\beta \epsilon}']
+  source: "statmech/benchmark.py (two-level-thermodynamics): the ground level contributes 1"
+
 - id: dimensional-pendulum
   category: physics
   prompt: 'A pendulum has length L (metres), mass m (kg) and swings in gravity g (m/s^2). Which dimensionless groups does its period T (seconds) depend on?'

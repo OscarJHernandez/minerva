@@ -51,7 +51,15 @@ Ordering favours correctness infrastructure before breadth.
    the argument (recall@1 of the handbook identities is 7 %).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
-4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
+4. **Statistical mechanics beyond the canonical ensemble.** Canonical partition functions, held-fixed
+   derivations and thermal averages are done for levels, level families, densities of states and separable
+   classical systems (`statmech`, [statistical-mechanics.md](statistical-mechanics.md)). Next, in this order:
+   grand canonical and microcanonical ensembles (occupation statistics, chemical potential, particle-number
+   fluctuations, exact counting), finite-dimensional quantum systems (`Tr exp(-beta H)` with explicit matrices,
+   density matrices, commutator-gated fluctuation-response), and approximations that report their assumptions,
+   order and a measured error (high- and low-temperature expansions, Stirling, Laplace, Legendre, mean field,
+   transfer matrices and thermodynamic limits).
+5. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
 
 ## Dimensional analysis follow-ups

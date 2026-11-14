@@ -111,6 +111,9 @@
   title: Thermodynamics and statistical mechanics
   sections:
     - {id: gases, title: Gases and entropy}
+    - {id: canonical, title: Canonical ensemble}
+    - {id: quantum-statistics, title: Quantum occupation statistics}
+    - {id: approximations, title: Approximations and limits}
 - id: physics.quantum
   book: physics
   title: Quantum mechanics
