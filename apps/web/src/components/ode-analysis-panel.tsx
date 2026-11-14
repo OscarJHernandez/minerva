@@ -1,7 +1,9 @@
 import { Math as Formula } from "@minerva/ui/math";
 import type { ReactNode } from "react";
 import type { MethodSuggestion, OdeAnalysis, ProblemKind } from "@/lib/ode-types";
+import { OdeQualitativePanel } from "./ode-qualitative-panel";
 import { StatusPill } from "./result-panel";
+import type { PlotSeries } from "./chat/line-plot";
 
 const KIND: Record<ProblemKind, string> = {
   general: "No conditions were given: this asks for the general solution.",
@@ -81,9 +83,12 @@ function Method({ m, action }: { m: MethodSuggestion; action?: ReactNode }) {
 export function OdeAnalysisPanel({
   report,
   actions,
+  trajectories,
   children,
 }: {
   report: OdeAnalysis;
+  /** Numerical trajectories (two states) to draw over a direction field. */
+  trajectories?: PlotSeries[];
   /** An element to put next to a method (a button), by method id. */
   actions?: (m: MethodSuggestion) => ReactNode;
   children?: ReactNode;
@@ -186,6 +191,13 @@ export function OdeAnalysisPanel({
             </p>
           )}
         </div>
+      )}
+      {report.qualitative && (
+        <OdeQualitativePanel
+          qualitative={report.qualitative}
+          trajectories={trajectories}
+          independent={meaning?.independent ?? "t"}
+        />
       )}
       {applicable.length > 0 && (
         <div className="mt-4">

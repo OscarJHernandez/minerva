@@ -551,3 +551,85 @@ def test_the_engine_runs_the_solver_in_the_sandbox(engine: Engine) -> None:
     assert r.diagnostics.method == "DOP853" and r.diagnostics.steps
     refused = engine.ode_solve_numerical(request.model_copy(update={"conditions": []}))
     assert refused.status is Status.PARSE_ERROR
+
+
+# --- comparing two verified results ---------------------------------------------------------
+
+
+def test_a_closed_form_is_compared_with_the_trajectory_on_the_same_grid() -> None:
+    r = run(
+        "y'' + w^2 y = 0",
+        independent="t",
+        conditions=["y(0) = 1", "y'(0) = 0"],
+        parameters={"w": 2.0},
+        t_end=6,
+        compare_with=["cos(w*t)"],
+    )
+    assert r.status is Status.OK and r.comparison is not None
+    c = r.comparison
+    assert c.status is Status.OK and c.labels_latex == ["y"]
+    assert len(c.closed_form[0]) == len(r.t)
+    assert c.max_difference is not None and c.max_difference < 1e-6
+    assert "not a bound" in c.message
+
+
+def test_a_closed_form_that_does_not_agree_is_measured_not_hidden_and_does_not_change_the_run() -> (
+    None
+):
+    r = run(
+        "y'' + y = 0",
+        independent="t",
+        conditions=["y(0) = 1", "y'(0) = 0"],
+        t_end=6,
+        compare_with=["cos(1.1*t)"],
+    )
+    assert r.status is Status.OK and r.comparison is not None
+    assert r.comparison.max_difference is not None and r.comparison.max_difference > 0.1
+    assert r.comparison.worst_at is not None
+
+
+@pytest.mark.parametrize(
+    ("compare_with", "status", "fragment"),
+    [
+        (["C1*cos(t)"], Status.PARSE_ERROR, "neither the variable nor a parameter"),
+        (["cos(t)", "sin(t)"], Status.PARSE_ERROR, "one closed form for each unknown"),
+        (["cos(t"], Status.PARSE_ERROR, "could not be read"),
+        (["1/t"], Status.NOT_VERIFIED, "not real and finite"),
+        (["sqrt(t - 3)"], Status.NOT_VERIFIED, "not real and finite"),
+    ],
+)
+def test_a_closed_form_that_cannot_be_compared_says_why(
+    compare_with: list[str], status: Status, fragment: str
+) -> None:
+    r = run(
+        "y'' + y = 0",
+        independent="t",
+        conditions=["y(0) = 1", "y'(0) = 0"],
+        t_end=6,
+        compare_with=compare_with,
+    )
+    assert r.status is Status.OK  # the numerical result itself stands on its own checks
+    assert r.comparison is not None and r.comparison.status is status
+    assert fragment in r.comparison.message and r.comparison.closed_form == []
+
+
+def test_a_boundary_solution_can_be_compared_too() -> None:
+    from minerva_engine.ode.boundary import solve_boundary
+
+    r = solve_boundary(
+        OdeNumericInput(
+            equations=["y'' = -y"],
+            independent="x",
+            kind="bvp",
+            conditions=["y(0) = 0", "y(1) = 1"],
+            compare_with=["sin(x)/sin(1)"],
+        ),
+        L,
+    )
+    assert r.status is Status.OK and r.comparison is not None
+    assert r.comparison.max_difference is not None and r.comparison.max_difference < 1e-6
+
+
+def test_no_comparison_is_made_unless_asked() -> None:
+    r = run("y' = y", independent="t", conditions=["y(0) = 1"], t_end=1)
+    assert r.comparison is None

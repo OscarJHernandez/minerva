@@ -18,6 +18,13 @@ export interface OdeInput {
   conditions: (OdeCondition | string)[];
 }
 
+export interface OdeAnalyzeInput extends OdeInput {
+  detail: "structure" | "qualitative";
+  parameters: Record<string, number>;
+  /** [x_min, x_max, y_min, y_max] of the phase plane. */
+  window: number[] | null;
+}
+
 export type SolveMethod = "closed_form" | "series" | "perturbation";
 
 export interface OdeSolveInput extends OdeInput {
@@ -34,6 +41,8 @@ export interface OdeNumericInput extends OdeInput {
   parameters: Record<string, number>;
   /** ivp: where the interval ends. bvp: not used (the two points of the conditions are the ends). */
   t_end: number | null;
+  /** A verified closed form to compare with: one right-hand side (text) per unknown. */
+  compare_with: string[] | null;
   method: NumericMethod;
   rtol: number;
   atol: number;
@@ -92,6 +101,50 @@ export interface MethodSuggestion {
 export type ProblemKind =
   "general" | "initial_value" | "boundary_value" | "incomplete" | "overdetermined";
 
+export type Classification =
+  | "stable_node"
+  | "stable_spiral"
+  | "unstable_node"
+  | "unstable_spiral"
+  | "saddle"
+  | "centre"
+  | "non_hyperbolic"
+  | "undecided";
+
+export interface Equilibrium {
+  point_latex: string[];
+  point_numeric: number[];
+  jacobian_latex: string;
+  eigenvalues_latex: string[];
+  eigenvalues_numeric: string[];
+  characteristic_latex: string;
+  classification: Classification;
+  classification_text: string;
+  decided: boolean;
+}
+
+export interface DirectionField {
+  window: number[];
+  x: number[];
+  y: number[];
+  dx: number[];
+  dy: number[];
+  speed: number[];
+}
+
+export interface OdeQualitative {
+  status: Status;
+  message: string;
+  states_latex: string[];
+  field_latex: string[];
+  equilibria: Equilibrium[];
+  complete: boolean;
+  jacobian_checked: boolean;
+  direction_field: DirectionField | null;
+  notes: string[];
+  local_note: string;
+}
+
 export interface OdeDiagnostics {
   trace_id: string | null;
   stages: { name: string; ms: number }[];
@@ -109,6 +162,7 @@ export interface OdeAnalysis {
   solved_latex: string[];
   restrictions_latex: string[];
   methods: MethodSuggestion[];
+  qualitative: OdeQualitative | null;
   notes: string[];
   diagnostics: OdeDiagnostics;
   duration_ms: number;
@@ -211,6 +265,15 @@ export interface OdeSeries {
 export type NumericWarning =
   "stiffness_indicated" | "step_collapse" | "not_converged" | "blow_up_suspected" | "domain_left";
 
+export interface OdeComparison {
+  status: Status;
+  message: string;
+  labels_latex: string[];
+  closed_form: number[][];
+  max_difference: number | null;
+  worst_at: number | null;
+}
+
 export interface OdeNumericReport {
   status: Status;
   message: string;
@@ -229,6 +292,7 @@ export interface OdeNumericReport {
   t: number[];
   series: OdeSeries[];
   verification: NumericVerification | null;
+  comparison: OdeComparison | null;
   warnings: NumericWarning[];
   notes: string[];
   diagnostics: OdeDiagnostics;

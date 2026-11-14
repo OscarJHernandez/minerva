@@ -4,6 +4,8 @@ import {
   ODE_EXAMPLES,
   blankBoundaryForm,
   blankNumericForm,
+  blankQualitativeForm,
+  buildQualitativeRequest,
   blankSolveForm,
   buildBoundaryRequest,
   buildSolveRequest,
@@ -128,6 +130,7 @@ describe("buildNumericRequest", () => {
         kind: "ivp",
         parameters: { c: 0.5 },
         t_end: 10,
+        compare_with: null,
         method: "auto",
         rtol: 1e-8,
         atol: 1e-10,
@@ -365,5 +368,56 @@ describe("buildBoundaryRequest", () => {
     });
     expect(buildBoundaryRequest(base, meaning, { ...form(), rtol: "1" }).ok).toBe(false);
     expect(buildBoundaryRequest(base, meaning, { ...form(), atol: "0" }).ok).toBe(false);
+  });
+});
+
+describe("buildQualitativeRequest", () => {
+  const form = () => blankQualitativeForm(meaning);
+
+  it("asks for nothing: no parameters and no window is a valid request", () => {
+    const built = buildQualitativeRequest(base, meaning, form());
+    expect(built.ok && built.request).toMatchObject({
+      detail: "qualitative",
+      parameters: {},
+      window: null,
+      conditions: [],
+    });
+  });
+
+  it("takes all the parameters or none, and never completes a partial set", () => {
+    expect(buildQualitativeRequest(base, meaning, { ...form(), parameters: { c: "0.5" } }).ok).toBe(
+      true,
+    );
+    const two: OdeInterpretation = { ...meaning, parameters: ["a", "b"] };
+    expect(
+      buildQualitativeRequest(base, two, {
+        ...blankQualitativeForm(two),
+        parameters: { a: "1", b: "" },
+      }),
+    ).toEqual({ ok: false, error: "Give a value for every parameter, or for none of them." });
+    expect(
+      buildQualitativeRequest(base, two, {
+        ...blankQualitativeForm(two),
+        parameters: { a: "1", b: "x" },
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("takes the window as four numbers, or not at all", () => {
+    const window = { xMin: "-2", xMax: "2", yMin: "-1", yMax: "1" };
+    const built = buildQualitativeRequest(base, meaning, {
+      ...form(),
+      parameters: { c: "1" },
+      window,
+    });
+    expect(built.ok && built.request.window).toEqual([-2, 2, -1, 1]);
+    for (const bad of [
+      { ...window, yMax: "" },
+      { ...window, xMax: "-3" },
+      { ...window, yMin: "1" },
+      { ...window, xMin: "left" },
+    ]) {
+      expect(buildQualitativeRequest(base, meaning, { ...form(), window: bad }).ok).toBe(false);
+    }
   });
 });

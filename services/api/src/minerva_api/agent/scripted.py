@@ -440,7 +440,23 @@ class ScriptedLLM:
             async for c in self._say("Which variable is independent (for example t or x)?"):
                 yield c
             return
-        if "boundary" in lower and conditions:
+        if re.search(r"equilibri|stability|phase plane", lower):
+            given = {
+                k: float(v)
+                for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)
+                if k != "window"
+            }
+            args.update({"detail": "qualitative", "parameters": given})
+            box = re.search(
+                r"window\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)", plain
+            )
+            if box:
+                args["window"] = [float(x) for x in box.groups()]
+            args.pop("conditions", None)
+            async for c in self._say("I will find the equilibria and classify them locally. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_analyze", args)])
+        elif "boundary" in lower and conditions:
             parameters = {
                 k: float(v)
                 for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)

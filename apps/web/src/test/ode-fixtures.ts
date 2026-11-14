@@ -1,6 +1,7 @@
 import type {
   MethodSuggestion,
   OdeAnalysis,
+  OdeQualitative,
   OdeInput,
   OdeInterpretation,
   OdeNumericReport,
@@ -102,6 +103,7 @@ export const analysis: OdeAnalysis = {
       reason: "not implemented in Minerva",
     }),
   ],
+  qualitative: null,
   notes: ["Classes marked by SymPy's classification are candidates."],
   diagnostics,
   duration_ms: 12,
@@ -182,8 +184,45 @@ export const numeric: OdeNumericReport = {
     refinement_errors: [2e-8, 2e-9],
     first_integral_latex: null,
   },
+  comparison: null,
   warnings: [],
   notes: ["A numerical approximation on the interval given."],
   diagnostics,
   duration_ms: 90,
+};
+
+export const qualitative: OdeQualitative = {
+  status: "ok",
+  message: "",
+  states_latex: ["y", "y'"],
+  field_latex: ["y' = y'", "y'' = - y^{3} - y - \\frac{y'}{5}"],
+  equilibria: [
+    {
+      point_latex: ["y = 0", "y' = 0"],
+      point_numeric: [0, 0],
+      jacobian_latex: "\\left[\\begin{matrix}0 & 1\\\\-1 & - \\frac{1}{5}\\end{matrix}\\right]",
+      eigenvalues_latex: [
+        "- \\frac{1}{10} - \\frac{3 \\sqrt{11} i}{10}",
+        "- \\frac{1}{10} + \\frac{3 \\sqrt{11} i}{10}",
+      ],
+      eigenvalues_numeric: ["-0.1 - 0.99498744i", "-0.1 + 0.99498744i"],
+      characteristic_latex: "\\lambda^{2} + \\frac{\\lambda}{5} + 1",
+      classification: "stable_spiral",
+      classification_text: "linearly asymptotically stable (a sink: a spiral)",
+      decided: true,
+    },
+  ],
+  complete: true,
+  jacobian_checked: true,
+  direction_field: {
+    window: [-1, 1, -1, 1],
+    x: [-1, 0, 1, -1, 0, 1, -1, 0, 1],
+    y: [-1, -1, -1, 0, 0, 0, 1, 1, 1],
+    dx: [-1, -1, -1, 0, 0, 0, 1, 1, 1],
+    dy: [2.2, 1.2, 0.2, 1, 0, -1, -0.2, -1.2, -2.2],
+    speed: [2.4, 1.6, 1, 1, 0, 1, 1, 1.6, 2.4],
+  },
+  notes: [],
+  local_note:
+    "Local and from the linearisation only: it describes orbits that start close to the point.",
 };

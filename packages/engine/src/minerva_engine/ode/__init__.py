@@ -4,6 +4,7 @@ from .analyze import analyze
 from .models import (
     MethodSuggestion,
     OdeAnalysis,
+    OdeAnalyzeInput,
     OdeCondition,
     OdeDiagnostics,
     OdeInput,
@@ -21,6 +22,7 @@ from .models import (
 __all__ = [
     "MethodSuggestion",
     "OdeAnalysis",
+    "OdeAnalyzeInput",
     "OdeCondition",
     "OdeDiagnostics",
     "OdeInput",

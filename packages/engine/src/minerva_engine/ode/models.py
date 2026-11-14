@@ -89,6 +89,35 @@ class OdeInput(BaseModel):
         return value
 
 
+class OdeAnalyzeInput(OdeInput):
+    """An equation to describe. `detail="qualitative"` adds equilibria, linearisation and local stability
+    of an autonomous system, and (for two states, with a `window`) a direction field."""
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    detail: Literal["structure", "qualitative"] = "structure"
+    parameters: dict[str, float] = Field(
+        default_factory=dict,
+        max_length=32,
+        description="Numerical values of the parameters (all or none), for numerical eigenvalues and the "
+        "direction field. Ask the user: never choose them.",
+    )
+    window: list[float] | None = Field(
+        default=None,
+        min_length=4,
+        max_length=4,
+        description="[x_min, x_max, y_min, y_max] of the phase plane for the direction field. Ask the "
+        "user: never choose it.",
+    )
+
+    @field_validator("window")
+    @classmethod
+    def _window(cls, value: list[float] | None) -> list[float] | None:
+        if value is not None and not (value[0] < value[1] and value[2] < value[3]):
+            raise ValueError("the window must be [x_min, x_max, y_min, y_max] with min < max")
+        return value
+
+
 SolveMethod = Literal["closed_form", "series", "perturbation"]
 MAX_SERIES_ORDER = 12
 
@@ -209,6 +238,8 @@ class OdeStage(BaseModel):
         "conditions",
         "integrate",
         "refine",
+        "qualitative",
+        "compare",
         "total",
     ]
     ms: float = 0.0
@@ -233,6 +264,54 @@ class OdeDiagnostics(BaseModel):
     failure_reason: str | None = None
 
 
+Classification = Literal[
+    "stable_node",
+    "stable_spiral",
+    "unstable_node",
+    "unstable_spiral",
+    "saddle",
+    "centre",
+    "non_hyperbolic",
+    "undecided",
+]
+
+
+class Equilibrium(BaseModel):
+    point_latex: list[str]  # one `state = value` per state
+    point_numeric: list[float] = Field(default_factory=list)  # empty while a parameter is symbolic
+    jacobian_latex: str
+    eigenvalues_latex: list[str] = Field(default_factory=list)  # exact, for one or two states
+    eigenvalues_numeric: list[str] = Field(default_factory=list)  # with numerical parameter values
+    characteristic_latex: str = ""
+    classification: Classification
+    classification_text: str
+    decided: bool
+
+
+class DirectionField(BaseModel):
+    """f evaluated on a grid in the window the user chose: a picture of the field, not of a solution."""
+
+    window: list[float]
+    x: list[float]
+    y: list[float]
+    dx: list[float]
+    dy: list[float]
+    speed: list[float]
+
+
+class OdeQualitative(BaseModel):
+    status: Status
+    message: str = ""
+    states_latex: list[str] = Field(default_factory=list)
+    field_latex: list[str] = Field(default_factory=list)
+    equilibria: list[Equilibrium] = Field(default_factory=list)
+    complete: bool = False  # the list is certainly all of them (a polynomial field)
+    jacobian_checked: bool = False
+    direction_field: DirectionField | None = None
+    notes: list[str] = Field(default_factory=list)
+    local_note: str = ""
+
+
 class OdeAnalysis(BaseModel):
     status: Status
     message: str = ""
@@ -244,6 +323,7 @@ class OdeAnalysis(BaseModel):
     solved_latex: list[str] = Field(default_factory=list)
     restrictions_latex: list[str] = Field(default_factory=list)
     methods: list[MethodSuggestion] = Field(default_factory=list)
+    qualitative: OdeQualitative | None = None
     notes: list[str] = Field(default_factory=list)
     diagnostics: OdeDiagnostics = Field(default_factory=OdeDiagnostics)
     duration_ms: int = 0
@@ -352,6 +432,13 @@ class OdeNumericInput(OdeInput):
         description="`ivp`: initial values at one point (in `conditions`). `bvp`: conditions at two "
         "points (the ends of the interval).",
     )
+    compare_with: list[str] | None = Field(
+        default=None,
+        max_length=MAX_EQUATIONS,
+        description="Optional: a closed-form solution to compare with, as the right-hand side of each "
+        "unknown in text syntax (one per unknown, in order), from a verified result. It may contain "
+        "only the variable and the parameters.",
+    )
     t_end: float | None = Field(
         default=None,
         description="ivp: where the interval ends (it starts at the point of the initial values). Ask "
@@ -405,6 +492,20 @@ class InitialValue(BaseModel):
     value: float
 
 
+class OdeComparison(BaseModel):
+    """A numerical solution against a closed form: a measurement of their difference on the grid. Both
+    are separately verified results; this is not a bound on the error of either."""
+
+    status: Status
+    message: str = ""
+    labels_latex: list[str] = Field(default_factory=list)
+    closed_form: list[list[float]] = Field(default_factory=list)  # per unknown, on the same grid
+    max_difference: float | None = (
+        None  # largest |difference|, scaled by the size of the closed form
+    )
+    worst_at: float | None = None
+
+
 class OdeNumericReport(BaseModel):
     status: Status
     message: str = ""
@@ -423,6 +524,7 @@ class OdeNumericReport(BaseModel):
     t: list[float] = Field(default_factory=list)
     series: list[OdeSeries] = Field(default_factory=list)
     verification: NumericVerification | None = None
+    comparison: OdeComparison | None = None
     warnings: list[NumericWarning] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     diagnostics: OdeDiagnostics = Field(default_factory=OdeDiagnostics)

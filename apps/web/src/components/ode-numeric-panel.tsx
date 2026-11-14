@@ -103,7 +103,16 @@ export function OdeNumericPanel({
             )}
           </dl>
           <LinePlot
-            series={trajectories(report)}
+            series={[
+              ...trajectories(report),
+              ...(report.comparison?.status === "ok"
+                ? report.comparison.closed_form.map((values, i) => ({
+                    label: `${plainLabel(report.comparison?.labels_latex[i] ?? "")} (closed form)`,
+                    x: report.t,
+                    y: values,
+                  }))
+                : []),
+            ]}
             xLabel={variable}
             yLabel="value"
             label={`The solution against ${variable}`}
@@ -117,6 +126,16 @@ export function OdeNumericPanel({
             />
           )}
         </>
+      )}
+      {report.comparison && (
+        <p
+          className={`mt-2 text-sm ${report.comparison.status === "ok" ? "" : "text-warn"}`}
+          data-comparison={report.comparison.status}
+        >
+          {report.comparison.status === "ok" && report.comparison.max_difference !== null
+            ? `Compared with the closed form: the largest difference is ${format(report.comparison.max_difference)} (relative to the size of the closed form), at ${report.comparison.worst_at}. ${report.comparison.message}`
+            : report.comparison.message}
+        </p>
       )}
       {report.verification && (
         <details className="mt-3 text-sm" open={report.status !== "ok"}>

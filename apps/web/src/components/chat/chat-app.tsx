@@ -8,7 +8,7 @@ import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
-import type { OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
+import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 import type {
   AssistantContent,
@@ -308,6 +308,17 @@ export function ChatApp() {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
         try {
           const message = await chatApi.odeSolveSymbolic(activeId, request);
+          setMessages((m) => [...m, message]);
+          await refreshList();
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) router.push("/login");
+          throw e;
+        }
+      },
+      qualitative: async (request: OdeAnalyzeInput) => {
+        if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        try {
+          const message = await chatApi.odeQualitative(activeId, request);
           setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {

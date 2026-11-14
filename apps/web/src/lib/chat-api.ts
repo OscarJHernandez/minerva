@@ -1,5 +1,5 @@
 import { ApiError, extractDetail } from "./api";
-import type { OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
+import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
 import type {
   ChatStatus,
@@ -47,6 +47,12 @@ export const chatApi = {
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?" (no model involved). */
   distribution: (id: string, request: DistributionAnswer) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/distribution`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Equilibria and local stability, with the parameter values and window the user typed. */
+  odeQualitative: (id: string, request: OdeAnalyzeInput) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_analyze`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

@@ -1,6 +1,7 @@
 import type { DiscoveryReport } from "./chat-types";
 import type {
   OdeAnalysis,
+  OdeAnalyzeInput,
   OdeInput,
   OdeNumericInput,
   OdeNumericReport,
@@ -147,7 +148,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, variable, ...bounds }),
     }),
-  odeAnalyze: (req: OdeInput) =>
+  odeAnalyze: (req: OdeInput | OdeAnalyzeInput) =>
     request<OdeAnalysis>("/v1/compute/ode/analyze", { method: "POST", body: JSON.stringify(req) }),
   odeSolve: (req: OdeInput | OdeSolveInput) =>
     request<OdeSolution>("/v1/compute/ode/solve", { method: "POST", body: JSON.stringify(req) }),

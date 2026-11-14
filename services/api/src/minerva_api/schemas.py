@@ -11,6 +11,7 @@ from minerva_engine import (
     ExpressionInput,
     GeometryInput,
     MatrixDecl,
+    OdeAnalyzeInput,
     OdeInput,
     OdeNumericInput,
     OdeSolveInput,
@@ -152,7 +153,11 @@ class GeometryRequest(GeometryInput, Links):
 
 
 class OdeRequest(OdeInput, Links):
-    """A differential equation or system (analysis and closed-form solutions)."""
+    """A differential equation or system."""
+
+
+class OdeAnalyzeRequest(OdeAnalyzeInput, Links):
+    """A differential equation to describe (structure, or equilibria and local stability)."""
 
 
 class OdeSolveRequest(OdeSolveInput, Links):

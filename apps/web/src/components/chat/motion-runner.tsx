@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
-import type { OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
+import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 
 /**
@@ -21,6 +21,7 @@ export interface MotionRunner {
   ode?: {
     symbolic: (request: OdeInput | OdeSolveInput) => Promise<void>;
     numeric: (request: OdeNumericInput) => Promise<void>;
+    qualitative: (request: OdeAnalyzeInput) => Promise<void>;
   };
 }
 

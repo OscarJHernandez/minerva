@@ -417,6 +417,9 @@ def solve_boundary(
         )
         for index, (u, k) in enumerate(labels)
     ]
+    from .compare import compare_closed_form
+
+    comparison = compare_closed_form(problem, data, values, grid, series, limits)
     return finish(
         OdeNumericReport(
             status=Status.OK,
@@ -435,6 +438,7 @@ def solve_boundary(
             t=[_round(float(x)) for x in grid],
             series=series,
             verification=verification,
+            comparison=comparison,
             warnings=warnings,
             notes=[
                 "A boundary-value problem can have no solution, one or several. This is a numerical "

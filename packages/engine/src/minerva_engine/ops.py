@@ -232,10 +232,11 @@ def op_distribution(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def op_ode_analyze(payload: dict[str, Any]) -> dict[str, Any]:
-    from .ode import OdeInput, analyze
+    from .ode import analyze
+    from .ode.models import OdeAnalyzeInput
 
     result = analyze(
-        OdeInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
+        OdeAnalyzeInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
     )
     return result.model_dump(mode="json")
 

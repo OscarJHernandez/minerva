@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
 import type { OdeInput, OdeNumericInput } from "@/lib/ode-types";
-import { analysis, numeric, request, solution } from "@/test/ode-fixtures";
+import { analysis, numeric, qualitative, request, solution } from "@/test/ode-fixtures";
 import { OdeWorkbench } from "./ode-workbench";
 
 const analyze = vi.fn<(r: OdeInput) => Promise<typeof analysis>>();
@@ -205,5 +205,73 @@ describe("OdeWorkbench", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Find a closed form" }));
     await userEvent.click(await screen.findByRole("button", { name: /Use the right-hand side/ }));
     expect(onUse).toHaveBeenCalledWith("exp(-t)", expect.any(String));
+  });
+
+  it("opens the equilibria form from the method's action and shows the stability result", async () => {
+    const withMethods = {
+      ...analysis,
+      methods: [
+        ...analysis.methods,
+        {
+          ...analysis.methods[0]!,
+          id: "equilibrium_analysis" as const,
+          title: "Equilibria",
+          rank: 3,
+        },
+      ],
+    };
+    analyze
+      .mockResolvedValueOnce(withMethods)
+      .mockResolvedValueOnce({ ...withMethods, qualitative });
+    mount();
+    await analyse();
+    await userEvent.click(await screen.findByRole("button", { name: "Equilibria and stability…" }));
+    const form = screen.getByRole("form", { name: "Equilibria and stability" });
+    await userEvent.type(within(form).getByLabelText("c"), "0.5");
+    await userEvent.click(within(form).getByRole("button", { name: "Find the equilibria" }));
+    await waitFor(() => expect(analyze).toHaveBeenCalledTimes(2));
+    expect(analyze.mock.calls[1]![0]).toMatchObject({
+      detail: "qualitative",
+      parameters: { c: 0.5 },
+    });
+    expect(await screen.findByText("sink (spiral)")).toBeInTheDocument();
+  });
+
+  it("offers a verified closed form of the same equation to compare a numerical run with", async () => {
+    const particular = {
+      ...solution,
+      solutions: [
+        {
+          ...solution.solutions[0]!,
+          constants: [],
+          family: "particular" as const,
+          rhs_text: ["exp(-t)"],
+        },
+      ],
+    };
+    solve.mockResolvedValue(particular);
+    mount();
+    await analyse();
+    await userEvent.click(await screen.findByRole("button", { name: "Find a closed form" }));
+    await screen.findByRole("region", { name: "Closed-form solution" });
+    await userEvent.click(screen.getByRole("button", { name: "Solve numerically…" }));
+    const form = screen.getByRole("form", { name: "Numerical solution" });
+    await userEvent.selectOptions(within(form).getByLabelText("Compare with a closed form"), "0");
+    await userEvent.type(within(form).getByLabelText("at t ="), "0");
+    await userEvent.type(within(form).getByLabelText("y(t₀)"), "1");
+    await userEvent.type(within(form).getByLabelText("y'(t₀)"), "0");
+    await userEvent.type(within(form).getByLabelText("c"), "0.5");
+    await userEvent.type(within(form).getByLabelText(/t from 0 to/), "5");
+    await userEvent.click(within(form).getByRole("button", { name: "Solve and check" }));
+    await waitFor(() => expect(numericRun).toHaveBeenCalledOnce());
+    expect(numericRun.mock.calls[0]![0].compare_with).toEqual(["exp(-t)"]);
+  });
+
+  it("does not offer a comparison when there is no closed form to compare with", async () => {
+    mount();
+    await analyse();
+    await userEvent.click(await screen.findByRole("button", { name: "Solve numerically…" }));
+    const form = screen.getByRole("form", { name: "Numerical solution" });
+    expect(within(form).queryByLabelText("Compare with a closed form")).not.toBeInTheDocument();
   });
 });

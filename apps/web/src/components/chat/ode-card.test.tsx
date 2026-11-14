@@ -2,8 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
-import type { OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
-import { analysis, numeric, request, solution } from "@/test/ode-fixtures";
+import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
+import { analysis, numeric, qualitative, request, solution } from "@/test/ode-fixtures";
 import { CardView } from "./card-view";
 import { OdeAnalysisCard } from "./ode-card";
 import { MotionRunnerProvider } from "./motion-runner";
@@ -16,18 +16,24 @@ function withRunner(
   ode: {
     symbolic?: (r: OdeInput | OdeSolveInput) => Promise<void>;
     numeric?: (r: OdeNumericInput) => Promise<void>;
+    qualitative?: (r: OdeAnalyzeInput) => Promise<void>;
   } = {},
 ) {
   const symbolic = vi.fn<(r: OdeInput | OdeSolveInput) => Promise<void>>(
     ode.symbolic ?? (async () => {}),
   );
   const numericRun = vi.fn<(r: OdeNumericInput) => Promise<void>>(ode.numeric ?? (async () => {}));
+  const qualitative = vi.fn<(r: OdeAnalyzeInput) => Promise<void>>(
+    ode.qualitative ?? (async () => {}),
+  );
   render(
-    <MotionRunnerProvider value={{ run: vi.fn(), ode: { symbolic, numeric: numericRun } }}>
+    <MotionRunnerProvider
+      value={{ run: vi.fn(), ode: { symbolic, numeric: numericRun, qualitative } }}
+    >
       {node}
     </MotionRunnerProvider>,
   );
-  return { symbolic, numeric: numericRun };
+  return { symbolic, numeric: numericRun, qualitative };
 }
 
 describe("OdeAnalysisCard", () => {
@@ -46,7 +52,9 @@ describe("OdeAnalysisCard", () => {
       m.id === "numerical_ivp" ? { ...m, applicable: false } : m,
     );
     render(
-      <MotionRunnerProvider value={{ run: vi.fn(), ode: { symbolic: vi.fn(), numeric: vi.fn() } }}>
+      <MotionRunnerProvider
+        value={{ run: vi.fn(), ode: { symbolic: vi.fn(), numeric: vi.fn(), qualitative: vi.fn() } }}
+      >
         <OdeAnalysisCard report={{ ...analysis, methods }} request={request} />
       </MotionRunnerProvider>,
     );
@@ -262,5 +270,81 @@ describe("the other methods on the analysis card", () => {
       parameters: { c: 0.5 },
       t_end: null,
     });
+  });
+});
+
+describe("the equilibria form on the analysis card", () => {
+  const withEquilibria = {
+    ...analysis,
+    methods: [
+      ...analysis.methods,
+      {
+        ...analysis.methods[0]!,
+        id: "equilibrium_analysis" as const,
+        title: "Equilibria",
+        rank: 5,
+        action: "qualitative",
+      },
+    ],
+  };
+
+  it("sends no parameter and no window unless the user types them", async () => {
+    const { qualitative: run } = withRunner(
+      <OdeAnalysisCard report={withEquilibria} request={request} />,
+    );
+    await userEvent.click(screen.getByText(/Equilibria and local stability/));
+    const form = within(screen.getByRole("form", { name: "Equilibria and stability" }));
+    await userEvent.click(form.getByRole("button", { name: "Find the equilibria" }));
+    expect(run).toHaveBeenCalledOnce();
+    expect(run.mock.calls[0]?.[0]).toMatchObject({
+      detail: "qualitative",
+      parameters: {},
+      window: null,
+    });
+  });
+
+  it("sends the window and the parameter values the user typed", async () => {
+    const { qualitative: run } = withRunner(
+      <OdeAnalysisCard report={withEquilibria} request={request} />,
+    );
+    await userEvent.click(screen.getByText(/Equilibria and local stability/));
+    const form = within(screen.getByRole("form", { name: "Equilibria and stability" }));
+    await userEvent.type(form.getByLabelText("c"), "0.5");
+    await userEvent.type(form.getByLabelText("x from"), "-2");
+    await userEvent.type(form.getByLabelText("x to"), "2");
+    await userEvent.type(form.getByLabelText("y from"), "-1");
+    await userEvent.type(form.getByLabelText("y to"), "1");
+    await userEvent.click(form.getByRole("button", { name: "Find the equilibria" }));
+    expect(run.mock.calls[0]?.[0]).toMatchObject({
+      parameters: { c: 0.5 },
+      window: [-2, 2, -1, 1],
+    });
+  });
+
+  it("refuses a partial window", async () => {
+    const { qualitative: run } = withRunner(
+      <OdeAnalysisCard report={withEquilibria} request={request} />,
+    );
+    await userEvent.click(screen.getByText(/Equilibria and local stability/));
+    const form = within(screen.getByRole("form", { name: "Equilibria and stability" }));
+    await userEvent.type(form.getByLabelText("x from"), "-2");
+    await userEvent.click(form.getByRole("button", { name: "Find the equilibria" }));
+    expect(form.getByRole("alert")).toHaveTextContent("all four numbers");
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("renders the stability result carried by a card", () => {
+    render(
+      <CardView
+        card={{
+          id: "q",
+          tool: "ode_analyze",
+          title: "t",
+          type: "ode_analysis",
+          data: { report: { ...analysis, qualitative }, request },
+        }}
+      />,
+    );
+    expect(screen.getByText("sink (spiral)")).toBeInTheDocument();
   });
 });

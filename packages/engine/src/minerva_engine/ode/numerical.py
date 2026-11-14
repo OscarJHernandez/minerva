@@ -711,6 +711,9 @@ def solve_numerical(
         )
         for index, (u, k) in enumerate(system.labels)
     ]
+    from .compare import compare_closed_form
+
+    comparison = compare_closed_form(problem, data, values, times, series, limits)
     notes.append(
         "A numerical approximation on the interval given: it is not exact and says nothing beyond it. "
         "The checks above are measurements, not a bound on the error."
@@ -740,6 +743,7 @@ def solve_numerical(
             t=[_round(float(x)) for x in times],
             series=series,
             verification=verification,
+            comparison=comparison,
             warnings=warnings,
             notes=notes,
         )

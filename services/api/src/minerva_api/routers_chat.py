@@ -31,6 +31,7 @@ from .agent.segments import normalize, split_segments
 from .agent.tools import (
     DistributionArgs,
     GeometryArgs,
+    OdeAnalyzeArgs,
     OdeNumericArgs,
     OdeSymbolicArgs,
     PerturbationArgs,
@@ -507,6 +508,35 @@ def ode_solve_numerical_directly(
     """Integrate with the initial values, parameters and interval the user typed into a card's form."""
     return _run_tool_directly(
         "ode_solve_numerical",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/ode_analyze",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def ode_analyze_directly(
+    conversation_id: uuid.UUID,
+    body: OdeAnalyzeArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Analyse equilibria and local stability with the parameter values and window the user typed."""
+    return _run_tool_directly(
+        "ode_analyze",
         body.model_dump(mode="json"),
         conversation_id,
         user,

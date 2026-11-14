@@ -196,3 +196,26 @@ def test_solve_runs_a_series_and_numeric_runs_a_boundary_problem(authed: TestCli
     assert {h["operation"] for h in saved} == {"ode_solve_symbolic", "ode_solve_numerical"}
     for payload in ({**GROWTH, "method": "magic"}, {**GROWTH, "order": 99}):
         assert authed.post("/v1/compute/ode/solve", json=payload).status_code == 422
+
+
+def test_analyze_can_describe_equilibria_and_stability(authed: TestClient) -> None:
+    body = authed.post(
+        "/v1/compute/ode/analyze",
+        json={
+            "equations": ["y'' + 0.2 y' + y + y^3 = 0"],
+            "independent": "t",
+            "detail": "qualitative",
+            "window": [-2, 2, -1, 1],
+        },
+    ).json()
+    q = body["qualitative"]
+    assert body["status"] == "ok" and q["status"] == "ok" and q["complete"] is True
+    assert [e["classification"] for e in q["equilibria"]] == ["stable_spiral"]
+    assert "linearisation" in q["local_note"] and len(q["direction_field"]["x"]) == 225
+    plain = authed.post(
+        "/v1/compute/ode/analyze", json={"equations": ["y' = y"], "independent": "t"}
+    ).json()
+    assert plain["qualitative"] is None
+    for bad in ({"window": [1, 1, 0, 1]}, {"window": [0, 1, 0]}, {"detail": "everything"}):
+        payload = {"equations": ["y' = y"], "independent": "t", **bad}
+        assert authed.post("/v1/compute/ode/analyze", json=payload).status_code == 422

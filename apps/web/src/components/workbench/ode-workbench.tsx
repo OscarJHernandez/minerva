@@ -12,6 +12,7 @@ import {
 import type {
   MethodSuggestion,
   OdeAnalysis,
+  OdeAnalyzeInput,
   OdeInput,
   OdeNumericInput,
   OdeNumericReport,
@@ -20,7 +21,7 @@ import type {
 } from "@/lib/ode-types";
 import { AssumptionsEditor } from "../assumptions-editor";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
-import { OdeBoundaryForm, OdeNumericForm, OdeSolveForm } from "../ode-forms";
+import { OdeBoundaryForm, OdeNumericForm, OdeQualitativeForm, OdeSolveForm } from "../ode-forms";
 import { OdeNumericPanel } from "../ode-numeric-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 
@@ -29,15 +30,15 @@ const FIELD =
 const ACTION =
   "rounded border border-rule px-2 py-1 text-xs hover:border-accent disabled:opacity-50";
 
-type FormName = "ivp" | "bvp" | "series" | "perturbation";
+type FormName = "ivp" | "bvp" | "series" | "perturbation" | "qualitative";
 
 type Run =
-  | { key: number; kind: "analysis"; request: OdeInput; report: OdeAnalysis }
+  | { key: number; kind: "analysis"; request: OdeInput | OdeAnalyzeInput; report: OdeAnalysis }
   | { key: number; kind: "symbolic"; request: OdeInput; report: OdeSolution }
   | { key: number; kind: "numeric"; request: OdeNumericInput; report: OdeNumericReport };
 
 type NewRun =
-  | { kind: "analysis"; request: OdeInput; report: OdeAnalysis }
+  | { kind: "analysis"; request: OdeInput | OdeAnalyzeInput; report: OdeAnalysis }
   | { kind: "symbolic"; request: OdeInput; report: OdeSolution }
   | { kind: "numeric"; request: OdeNumericInput; report: OdeNumericReport };
 
@@ -157,6 +158,9 @@ export function OdeWorkbench({
         return open("ivp", "Solve numerically…");
       case "numerical_bvp":
         return open("bvp", "Solve the boundary-value problem…");
+      case "equilibrium_analysis":
+      case "phase_plane":
+        return open("qualitative", "Equilibria and stability…");
       case "power_series":
         return open("series", "Build a series…");
       case "regular_perturbation":
@@ -177,12 +181,70 @@ export function OdeWorkbench({
     }
   }
 
+  /** Throws, so that the form can show the message next to its fields. */
+  async function solveQualitative(request: OdeAnalyzeInput) {
+    try {
+      add({ kind: "analysis", request, report: await api.odeAnalyze(request) });
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) onUnauthorized();
+      throw e;
+    }
+  }
+
+  /** Verified closed forms of this same equation that a numerical run may be compared with. */
+  function compareOptions(run: Extract<Run, { kind: "analysis" }>) {
+    const same = (other: OdeInput) =>
+      JSON.stringify([other.equations, other.format]) ===
+      JSON.stringify([run.request.equations, run.request.format]);
+    const unknowns = run.report.interpretation?.unknowns.length ?? 0;
+    return runs.flatMap((r) =>
+      r.kind === "symbolic" && same(r.request)
+        ? r.report.solutions
+            .filter(
+              (item) =>
+                item.kind === "explicit" &&
+                item.constants.length === 0 &&
+                item.rhs_text.length === unknowns,
+            )
+            .map((item) => ({
+              label: `closed form (result ${r.key}): ${item.rhs_text.join(", ").slice(0, 60)}`,
+              rhs: item.rhs_text,
+            }))
+        : [],
+    );
+  }
+
+  /** Numerical trajectories of two states for the same equation, to draw over its direction field. */
+  function trajectoriesFor(run: Extract<Run, { kind: "analysis" }>) {
+    return runs.flatMap((r) =>
+      r.kind === "numeric" &&
+      r.report.status === "ok" &&
+      r.report.series.length === 2 &&
+      JSON.stringify(r.request.equations) === JSON.stringify(run.request.equations)
+        ? [
+            {
+              label: `run ${r.key}`,
+              x: r.report.series[0]?.values ?? [],
+              y: r.report.series[1]?.values ?? [],
+            },
+          ]
+        : [],
+    );
+  }
+
   function formBody(run: Extract<Run, { kind: "analysis" }>) {
     const meaning = run.report.interpretation;
     if (formFor?.key !== run.key || !meaning || run.report.status !== "ok") return null;
     const body =
-      formFor.form === "ivp" ? (
-        <OdeNumericForm base={run.request} meaning={meaning} onRun={solveNumeric} />
+      formFor.form === "qualitative" ? (
+        <OdeQualitativeForm base={run.request} meaning={meaning} onRun={solveQualitative} />
+      ) : formFor.form === "ivp" ? (
+        <OdeNumericForm
+          base={run.request}
+          meaning={meaning}
+          onRun={solveNumeric}
+          compareOptions={compareOptions(run)}
+        />
       ) : formFor.form === "bvp" ? (
         <OdeBoundaryForm base={run.request} meaning={meaning} onRun={solveNumeric} />
       ) : (
@@ -326,7 +388,11 @@ export function OdeWorkbench({
       {runs.map((run) => (
         <div key={run.key} data-run={run.kind}>
           {run.kind === "analysis" ? (
-            <OdeAnalysisPanel report={run.report} actions={(m) => action(run, m)}>
+            <OdeAnalysisPanel
+              report={run.report}
+              actions={(m) => action(run, m)}
+              trajectories={trajectoriesFor(run)}
+            >
               {formBody(run)}
             </OdeAnalysisPanel>
           ) : run.kind === "symbolic" ? (

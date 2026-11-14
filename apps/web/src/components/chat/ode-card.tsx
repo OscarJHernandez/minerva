@@ -3,7 +3,13 @@
 import type { ReactNode } from "react";
 import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "@/lib/ode-types";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
-import { OdeBoundaryForm, OdeNumericForm, OdeSolveForm, OdeSymbolicForm } from "../ode-forms";
+import {
+  OdeBoundaryForm,
+  OdeNumericForm,
+  OdeQualitativeForm,
+  OdeSolveForm,
+  OdeSymbolicForm,
+} from "../ode-forms";
 import { OdeNumericPanel } from "../ode-numeric-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 import { useMotionRunner } from "./motion-runner";
@@ -57,6 +63,13 @@ export function OdeAnalysisCard({ report, request }: { report: OdeAnalysis; requ
             title: "Solve numerically",
             note: "(you choose the numbers): show",
             body: <OdeNumericForm base={request} meaning={meaning} onRun={ode.numeric} />,
+          },
+          {
+            id: "qualitative",
+            show: applicable("equilibrium_analysis", "phase_plane"),
+            title: "Equilibria and local stability",
+            note: "(local, from the linearisation)",
+            body: <OdeQualitativeForm base={request} meaning={meaning} onRun={ode.qualitative} />,
           },
           {
             id: "bvp",

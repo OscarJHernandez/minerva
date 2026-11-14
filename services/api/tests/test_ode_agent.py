@@ -391,3 +391,95 @@ def test_the_scripted_chat_builds_a_series_and_solves_a_boundary_problem(chat_cl
     (card,) = cards_of(message)
     assert card["type"] == "ode_numeric" and card["data"]["request"]["kind"] == "bvp"
     assert card["data"]["report"]["status"] == "ok"
+
+
+# --- equilibria, stability and comparison --------------------------------------------------------
+
+
+def test_the_qualitative_analysis_is_local_and_asks_for_the_numbers(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_analyze",
+        {
+            "equations": [r"y'' + 0.2 y' + y + y^3 = 0"],
+            "independent": "t",
+            "detail": "qualitative",
+            "window": [-2, 2, -2, 2],
+        },
+        ctx,
+    )
+    assert out.status == "ok"
+    text = out.for_model
+    assert "linearly asymptotically stable (a sink: a spiral)" in text
+    assert "Local and from the linearisation only" in text
+    assert "complete list: True" in text and "a picture of f, not of a solution" in text
+    assert out.card.data["report"]["qualitative"]["direction_field"] is not None
+    description = TOOLS["ode_analyze"].description
+    assert "LOCAL" in description and "never say 'globally stable'" in description
+    schema = TOOLS["ode_analyze"].schema()["function"]["parameters"]["properties"]
+    assert "never choose" in schema["parameters"]["description"]
+    assert "never choose" in schema["window"]["description"]
+
+
+def test_stability_is_undecided_without_parameter_values(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_analyze",
+        {
+            "equations": [r"\dot{x} = a x - b x y", r"\dot{y} = -c y + d x y"],
+            "detail": "qualitative",
+        },
+        ctx,
+    )
+    assert out.status == "ok" and "undecided" in out.for_model
+    assert "classification_text" in out.card.data["report"]["qualitative"]["equilibria"][0]
+
+
+def test_the_comparison_with_a_closed_form_reaches_the_model(ctx: ToolContext) -> None:
+    out = execute(
+        "ode_solve_numerical",
+        {**NUMERIC, "equations": ["y'' + y = 0"], "parameters": {}, "compare_with": ["cos(t)"]},
+        ctx,
+    )
+    assert out.status == "ok"
+    assert "compared with the closed form given: largest difference" in out.for_model
+    assert "not a bound on either" in out.for_model
+
+
+def test_the_scripted_chat_analyses_equilibria(chat_client: Any) -> None:
+    client, cid = chat_client
+    message = message_of(
+        sse(
+            client,
+            cid,
+            "Find the equilibria and their stability of this ODE, independent variable t, window -2,2,-2,2: "
+            "$y'' + 0.2 y' + y + y^3 = 0$",
+        )
+    )
+    (card,) = cards_of(message)
+    q = card["data"]["report"]["qualitative"]
+    assert card["type"] == "ode_analysis" and q["status"] == "ok"
+    assert q["equilibria"][0]["classification"] == "stable_spiral"
+    assert len(q["direction_field"]["x"]) == 225
+
+
+def test_the_qualitative_card_form_posts_straight_to_the_tool(chat_client: Any) -> None:
+    client, cid = chat_client
+    r = client.post(
+        f"/v1/chat/conversations/{cid}/tools/ode_analyze",
+        json={
+            "equations": ["y'' + k*y = 0"],
+            "format": "text",
+            "independent": "t",
+            "detail": "qualitative",
+            "parameters": {"k": 4.0},
+            "window": [-1, 1, -1, 1],
+        },
+    )
+    assert r.status_code == 201
+    card = r.json()["content"]["blocks"][0]["card"]
+    assert card["type"] == "ode_analysis"
+    assert card["data"]["report"]["qualitative"]["equilibria"][0]["classification"] == "centre"
+    bad = client.post(
+        f"/v1/chat/conversations/{cid}/tools/ode_analyze",
+        json={"equations": ["y' = y"], "independent": "t", "window": [1, 0, 0, 1]},
+    )
+    assert bad.status_code == 422

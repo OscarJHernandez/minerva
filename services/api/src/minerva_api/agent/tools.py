@@ -26,6 +26,7 @@ from minerva_engine import (
     MatrixDecl,
     MotionRequest,
     OdeAnalysis,
+    OdeAnalyzeInput,
     OdeInput,
     OdeNumericInput,
     OdeNumericReport,
@@ -248,8 +249,9 @@ class GeometryArgs(BaseModel):
     )
 
 
-class OdeAnalyzeArgs(OdeInput):
-    """Arguments of `ode_analyze`: the equation(s) exactly as the user wrote them."""
+class OdeAnalyzeArgs(OdeAnalyzeInput):
+    """Arguments of `ode_analyze`: the equation(s) exactly as the user wrote them. `detail=qualitative`
+    adds equilibria, linearisation and local stability (and a direction field with a window)."""
 
 
 class OdeSymbolicArgs(OdeSolveInput):
@@ -1545,7 +1547,7 @@ def _ode_reading(
 
 
 def run_ode_analyze(args: OdeAnalyzeArgs, ctx: ToolContext) -> ToolOutput:
-    request = OdeInput(**args.model_dump())
+    request = OdeAnalyzeInput(**args.model_dump())
     result = ctx.engine.ode_analyze(request)
     log_ode("ode_analyze", _ode_status(result), result.diagnostics, result.duration_ms)
     card = _ode_card("ode_analyze", "ode_analysis", "Differential equation", result, request)
@@ -1587,6 +1589,31 @@ def run_ode_analyze(args: OdeAnalyzeArgs, ctx: ToolContext) -> ToolOutput:
     skipped = [m for m in result.methods if not m.applicable]
     if skipped:
         lines.append("not applicable: " + "; ".join(f"{m.id} ({m.reason})" for m in skipped))
+    q = result.qualitative
+    if q is not None:
+        lines.append(
+            f"equilibria and local stability: status={q.status.value}; {q.message}".rstrip("; ")
+        )
+        for e in q.equilibria:
+            lam = ", ".join(f"${x}$" for x in e.eigenvalues_latex) or ", ".join(
+                e.eigenvalues_numeric
+            )
+            lines.append(
+                f"- equilibrium ${', '.join(e.point_latex)}$; eigenvalues {lam or 'not given'}; "
+                f"{e.classification_text}"
+            )
+            known.extend(e.point_latex)
+        if q.status.value == "ok":
+            lines.append(
+                f"equilibria found by solving f = 0 exactly (complete list: {q.complete}); each confirmed by "
+                "substitution; the Jacobian was checked against numerical differences. "
+                + q.local_note
+            )
+            if q.direction_field is not None:
+                lines.append(
+                    "a direction field was computed on the user's window (a picture of f, not of a solution)"
+                )
+        lines.extend(f"note: {n}" for n in q.notes)
     lines.extend(f"note: {n}" for n in result.notes)
     if result.status.value == "ok":
         lines.append(
@@ -1722,6 +1749,16 @@ def run_ode_numeric(args: OdeNumericArgs, ctx: ToolContext) -> ToolOutput:
             lines.append(
                 f"conserved quantity checked: ${report.verification.first_integral_latex}$"
             )
+    comparison = report.comparison
+    if comparison is not None:
+        if comparison.status.value == "ok" and comparison.max_difference is not None:
+            lines.append(
+                f"compared with the closed form given: largest difference {comparison.max_difference:.2e} "
+                "(relative to the size of the closed form); two separately verified results, a "
+                "measurement and not a bound on either's error"
+            )
+        else:
+            lines.append(f"comparison with the closed form not made: {comparison.message}")
     if report.warnings:
         lines.append("warnings: " + ", ".join(report.warnings))
     if report.status.value == "ok":
@@ -2329,7 +2366,12 @@ TOOLS: dict[str, Tool] = {
             "boundary-value problem, and a RANKED list of approaches that can be tried, each with what "
             "it needs and its limits. Call this first for any differential equation and use ITS method "
             "names and order; do not classify the equation or choose a method yourself. It solves "
-            "nothing. Ask the user which variable is independent if the equation does not say.",
+            "nothing. detail=qualitative also gives, for an autonomous system of at most three states, "
+            "its equilibria (each confirmed), the Jacobian, eigenvalues and a classification that is "
+            "LOCAL and from the linearisation only (never say 'globally stable'; a zero real part or "
+            "unknown parameters leave it undecided), and with a `window` a direction field. The "
+            "parameter values and the window come from the USER: ask, never choose. Ask the user "
+            "which variable is independent if the equation does not say.",
             OdeAnalyzeArgs,
             run_ode_analyze,
         ),

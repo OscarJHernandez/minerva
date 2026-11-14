@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import sympy as sp
 
@@ -20,6 +21,7 @@ from .models import (
     EquationClass,
     MethodSuggestion,
     OdeAnalysis,
+    OdeAnalyzeInput,
     OdeDiagnostics,
     OdeInput,
     OdeInterpretation,
@@ -509,7 +511,40 @@ def interpretation(problem: OdeProblem) -> OdeInterpretation:
     )
 
 
-def analyze(data: OdeInput, limits: Limits, trace_id: str | None = None) -> OdeAnalysis:
+def _qualitative(
+    problem: OdeProblem,
+    structure: OdeStructure,
+    solved: Solved | None,
+    data: OdeAnalyzeInput,
+    limits: Limits,
+) -> tuple[Any, str | None]:
+    """Equilibria and local stability, when the system is autonomous and small; else why not."""
+    from .qualitative import MAX_STATES, qualitative
+
+    if solved is None:
+        return None, "Equilibria need the system solved for its highest derivatives."
+    if not structure.autonomous:
+        return (
+            None,
+            "Equilibria are defined for autonomous systems: this one depends on the variable.",
+        )
+    if structure.state_dimension > MAX_STATES:
+        return None, f"Equilibria are analysed for at most {MAX_STATES} states."
+    w = data.window
+    window = (w[0], w[1], w[2], w[3]) if w is not None else None
+    result = qualitative(
+        problem,
+        solved.rhs,
+        data.parameters,
+        window,
+        0.4 * limits.timeout_seconds,
+    )
+    return result, None
+
+
+def analyze(
+    data: OdeInput | OdeAnalyzeInput, limits: Limits, trace_id: str | None = None
+) -> OdeAnalysis:
     """Read the equation and describe it. The only failures are an unreadable or unsupported input."""
     stages: list[OdeStage] = []
     started = time.perf_counter()
@@ -542,12 +577,21 @@ def analyze(data: OdeInput, limits: Limits, trace_id: str | None = None) -> OdeA
     clock = mark("classify", clock)
 
     methods = suggest_methods(problem, structure, classes, solved, reason, kind)
-    mark("methods", clock)
+    clock = mark("methods", clock)
+    qualitative_result = None
+    qualitative_note = None
+    if isinstance(data, OdeAnalyzeInput) and data.detail == "qualitative":
+        qualitative_result, qualitative_note = _qualitative(
+            problem, structure, solved, data, limits
+        )
+        mark("qualitative", clock)
     mark("total", started)
 
     notes = [
         "Classes marked by SymPy's classification are candidates: each solver verifies its own result."
     ]
+    if qualitative_note:
+        notes.append(qualitative_note)
     if solved is None:
         notes.append(f"Not solved for the highest derivative: {reason}.")
     if kind == "overdetermined":
@@ -577,6 +621,7 @@ def analyze(data: OdeInput, limits: Limits, trace_id: str | None = None) -> OdeA
         solved_latex=solved_latex,
         restrictions_latex=restrictions,
         methods=methods,
+        qualitative=qualitative_result,
         notes=notes,
         diagnostics=diagnostics,
     )

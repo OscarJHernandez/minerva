@@ -1,6 +1,7 @@
 import type { Assumptions } from "./types";
 import type {
   NumericMethod,
+  OdeAnalyzeInput,
   OdeCondition,
   OdeInput,
   OdeInterpretation,
@@ -181,6 +182,7 @@ export function buildNumericRequest(
   base: OdeInput,
   meaning: OdeInterpretation,
   form: NumericForm,
+  compareWith: string[] | null = null,
 ): Built<OdeNumericInput> {
   const start = parseNumber(form.start);
   if (start === null)
@@ -224,6 +226,7 @@ export function buildNumericRequest(
       conditions,
       parameters,
       t_end: end,
+      compare_with: compareWith,
       method: form.method,
       rtol,
       atol,
@@ -449,10 +452,64 @@ export function buildBoundaryRequest(
       conditions,
       parameters,
       t_end: null,
+      compare_with: null,
       method: "auto",
       rtol,
       atol,
       samples: 200,
     },
+  };
+}
+
+export interface QualitativeForm {
+  /** A value for every parameter, or none (the eigenvalues are then exact and may stay undecided). */
+  parameters: Record<string, string>;
+  /** Blank, or the four numbers of the phase-plane window. */
+  window: { xMin: string; xMax: string; yMin: string; yMax: string };
+}
+
+export function blankQualitativeForm(meaning: OdeInterpretation): QualitativeForm {
+  return {
+    parameters: Object.fromEntries(meaning.parameters.map((p) => [p, ""])),
+    window: { xMin: "", xMax: "", yMin: "", yMax: "" },
+  };
+}
+
+/**
+ * The request for equilibria and local stability. Parameter values are all given or none (a partial set
+ * is refused, never completed); the window is the user's, four numbers or nothing.
+ */
+export function buildQualitativeRequest(
+  base: OdeInput,
+  meaning: OdeInterpretation,
+  form: QualitativeForm,
+): Built<OdeAnalyzeInput> {
+  const given = meaning.parameters.filter((p) => (form.parameters[p] ?? "").trim() !== "");
+  if (given.length !== 0 && given.length !== meaning.parameters.length) {
+    return { ok: false, error: "Give a value for every parameter, or for none of them." };
+  }
+  const parameters: Record<string, number> = {};
+  for (const name of given) {
+    const value = parseNumber(form.parameters[name] ?? "");
+    if (value === null) return { ok: false, error: `Give a number for the parameter ${name}.` };
+    parameters[name] = value;
+  }
+  const w = form.window;
+  const raw = [w.xMin, w.xMax, w.yMin, w.yMax];
+  let window: number[] | null = null;
+  if (raw.some((v) => v.trim() !== "")) {
+    const numbers = raw.map(parseNumber);
+    if (numbers.some((v) => v === null)) {
+      return { ok: false, error: "Give all four numbers of the window, or none of them." };
+    }
+    const [x0, x1, y0, y1] = numbers as number[];
+    if (!((x0 as number) < (x1 as number) && (y0 as number) < (y1 as number))) {
+      return { ok: false, error: "The window needs minimum < maximum on both axes." };
+    }
+    window = numbers as number[];
+  }
+  return {
+    ok: true,
+    request: { ...base, conditions: [], detail: "qualitative", parameters, window },
   };
 }

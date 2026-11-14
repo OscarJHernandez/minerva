@@ -20,6 +20,7 @@ from minerva_engine import (
     MatrixCalculusInput,
     MatrixCalculusResult,
     OdeAnalysis,
+    OdeAnalyzeInput,
     OdeInput,
     OdeNumericInput,
     OdeNumericReport,
@@ -62,6 +63,7 @@ from .schemas import (
     Linked,
     Links,
     MatrixCalculusRequest,
+    OdeAnalyzeRequest,
     OdeNumericRequest,
     OdeRequest,
     OdeSolveRequest,
@@ -796,7 +798,7 @@ def _ode_label(request: OdeInput) -> str:
 
 def _ode_run(
     operation: str,
-    body: OdeRequest | OdeSolveRequest | OdeNumericRequest,
+    body: OdeRequest | OdeAnalyzeRequest | OdeSolveRequest | OdeNumericRequest,
     engine_request: OdeInput,
     call: Any,
     user: UserDep,
@@ -828,7 +830,7 @@ def _ode_run(
 
 @router.post("/ode/analyze", response_model=OdeAnalysisResponse)
 def ode_analyze(
-    body: OdeRequest,
+    body: OdeAnalyzeRequest,
     user: UserDep,
     db: DbDep,
     engine: EngineDep,
@@ -839,7 +841,7 @@ def ode_analyze(
     """How the equation was read, its structure and the approaches that can be tried. Nothing is solved."""
     _guard(user, limiter, settings, _ode_length(body))
     _check_links(db, user, body)
-    engine_request = OdeInput(**body.model_dump(exclude=set(Links.model_fields)))
+    engine_request = OdeAnalyzeInput(**body.model_dump(exclude=set(Links.model_fields)))
     result, saved_id = _ode_run(
         "ode_analyze", body, engine_request, engine.ode_analyze, user, db, request
     )

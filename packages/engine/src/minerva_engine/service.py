@@ -33,7 +33,15 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest
 from .observe import Observer, SandboxCall, current_trace_id
-from .ode import OdeAnalysis, OdeDiagnostics, OdeInput, OdeSolution, OdeSolveInput, OdeStage
+from .ode import (
+    OdeAnalysis,
+    OdeAnalyzeInput,
+    OdeDiagnostics,
+    OdeInput,
+    OdeSolution,
+    OdeSolveInput,
+    OdeStage,
+)
 from .ode.models import OdeNumericInput, OdeNumericReport
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
@@ -286,7 +294,7 @@ class Engine:
         result.duration_ms = ms
         return result
 
-    def ode_analyze(self, request: OdeInput) -> OdeAnalysis:
+    def ode_analyze(self, request: OdeInput | OdeAnalyzeInput) -> OdeAnalysis:
         """Read a differential equation or system, describe its structure and rank the approaches that
         can be tried on it. Nothing is solved; the active trace id becomes the diagnostics' trace id."""
         active = current_trace_id()

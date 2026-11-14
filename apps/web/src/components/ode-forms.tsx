@@ -8,9 +8,11 @@ import {
   MAX_SERIES_ORDER,
   blankBoundaryForm,
   blankNumericForm,
+  blankQualitativeForm,
   blankSolveForm,
   buildBoundaryRequest,
   buildNumericRequest,
+  buildQualitativeRequest,
   buildSolveRequest,
   buildSymbolicRequest,
   prefillFromConditions,
@@ -18,10 +20,12 @@ import {
   stateKey,
   type BoundaryForm,
   type NumericForm,
+  type QualitativeForm,
   type SolveForm,
 } from "@/lib/ode-form";
 import type {
   NumericMethod,
+  OdeAnalyzeInput,
   OdeInput,
   OdeInterpretation,
   OdeNumericInput,
@@ -82,11 +86,15 @@ export function OdeNumericForm({
   base,
   meaning,
   onRun,
+  compareOptions = [],
 }: {
   base: OdeInput;
   meaning: OdeInterpretation;
   onRun: (request: OdeNumericInput) => Promise<void>;
+  /** Verified closed forms (right-hand sides, text syntax) the result may be compared with. */
+  compareOptions?: { label: string; rhs: string[] }[];
 }) {
+  const [compare, setCompare] = useState("");
   const id = useId();
   const [form, setForm] = useState<NumericForm>(() => ({
     ...blankNumericForm(meaning),
@@ -100,7 +108,13 @@ export function OdeNumericForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const built = buildNumericRequest(base, meaning, form);
+    const chosen = compareOptions[Number(compare)];
+    const built = buildNumericRequest(
+      base,
+      meaning,
+      form,
+      compare !== "" && chosen ? chosen.rhs : null,
+    );
     if (!built.ok) return setError(built.error);
     setBusy(true);
     try {
@@ -162,6 +176,19 @@ export function OdeNumericForm({
           />
         </div>
       </fieldset>
+      {compareOptions.length > 0 && (
+        <label className="block text-xs text-muted">
+          Compare with a closed form
+          <select className={FIELD} value={compare} onChange={(e) => setCompare(e.target.value)}>
+            <option value="">no comparison</option>
+            {compareOptions.map((o, i) => (
+              <option key={o.label} value={String(i)}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <details>
         <summary className="cursor-pointer text-sm text-muted">Method and tolerances</summary>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -519,6 +546,101 @@ export function OdeBoundaryForm({
         className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
       >
         {busy ? "Solving and checking…" : "Solve the boundary-value problem"}
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Equilibria and local stability. Parameter values are all or none; the phase-plane window is optional and
+ * the user's. Nothing is filled in on their behalf.
+ */
+export function OdeQualitativeForm({
+  base,
+  meaning,
+  onRun,
+}: {
+  base: OdeInput;
+  meaning: OdeInterpretation;
+  onRun: (request: OdeAnalyzeInput) => Promise<void>;
+}) {
+  const [form, setForm] = useState<QualitativeForm>(() => blankQualitativeForm(meaning));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const built = buildQualitativeRequest(base, meaning, form);
+    if (!built.ok) return setError(built.error);
+    setBusy(true);
+    try {
+      await onRun(built.request);
+    } catch (err) {
+      setError(message(err, "The analysis could not be run."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const window = form.window;
+  const edge = (key: keyof QualitativeForm["window"], label: string) => (
+    <Box
+      key={key}
+      label={label}
+      value={window[key]}
+      onChange={(v) => setForm((f) => ({ ...f, window: { ...f.window, [key]: v } }))}
+    />
+  );
+  return (
+    <form onSubmit={submit} className="space-y-3" aria-label="Equilibria and stability">
+      {meaning.parameters.length > 0 && (
+        <fieldset>
+          <legend className="text-sm font-medium">
+            Parameter values <span className="font-normal text-muted">(all or none)</span>
+          </legend>
+          <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {meaning.parameters.map((p) => (
+              <Box
+                key={p}
+                label={p}
+                value={form.parameters[p] ?? ""}
+                onChange={(v) =>
+                  setForm((s) => ({ ...s, parameters: { ...s.parameters, [p]: v } }))
+                }
+              />
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            Without values the eigenvalues are exact and the stability may be undecided.
+          </p>
+        </fieldset>
+      )}
+      <fieldset>
+        <legend className="text-sm font-medium">
+          Phase-plane window <span className="font-normal text-muted">(optional; two states)</span>
+        </legend>
+        <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {edge("xMin", "x from")}
+          {edge("xMax", "x to")}
+          {edge("yMin", "y from")}
+          {edge("yMax", "y to")}
+        </div>
+      </fieldset>
+      <p className="text-xs text-muted">
+        The result is local and from the linearisation: it says nothing about global behaviour.
+      </p>
+      {error && (
+        <p role="alert" className="text-sm text-bad">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={busy}
+        className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
+      >
+        {busy ? "Analysing…" : "Find the equilibria"}
       </button>
     </form>
   );

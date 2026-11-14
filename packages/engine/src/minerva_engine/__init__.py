@@ -59,6 +59,7 @@ from .observe import SandboxCall, current_trace_id, trace_scope
 from .ode import (
     MethodSuggestion,
     OdeAnalysis,
+    OdeAnalyzeInput,
     OdeCondition,
     OdeInput,
     OdeNumericInput,
@@ -125,6 +126,7 @@ __all__ = [
     "MotionReport",
     "MotionRequest",
     "OdeAnalysis",
+    "OdeAnalyzeInput",
     "OdeCondition",
     "OdeInput",
     "OdeNumericInput",

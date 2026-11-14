@@ -1,7 +1,14 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { analysis, meaning, numeric, solution, solutionItem } from "@/test/ode-fixtures";
+import {
+  analysis,
+  meaning,
+  numeric,
+  qualitative,
+  solution,
+  solutionItem,
+} from "@/test/ode-fixtures";
 import { OdeAnalysisPanel } from "./ode-analysis-panel";
 import { OdeNumericPanel } from "./ode-numeric-panel";
 import { OdeSolutionPanel } from "./ode-solution-panel";
@@ -398,5 +405,137 @@ describe("a boundary-value result", () => {
     expect(screen.getByText("The conditions hold at both ends")).toBeInTheDocument();
     expect(screen.getByText("A refined mesh gives the same solution")).toBeInTheDocument();
     expect(screen.getByText("not run")).toBeInTheDocument();
+  });
+});
+
+describe("equilibria and local stability", () => {
+  const withQualitative = { ...analysis, qualitative };
+
+  it("shows each equilibrium with its classification and says that it is local", () => {
+    render(<OdeAnalysisPanel report={withQualitative} />);
+    const item = document.querySelector('[data-classification="stable_spiral"]') as HTMLElement;
+    expect(within(item).getByText("sink (spiral)")).toBeInTheDocument();
+    expect(within(item).getByText(/linearly asymptotically stable/)).toBeInTheDocument();
+    expect(screen.getByText(/Local and from the linearisation only/)).toBeInTheDocument();
+    expect(screen.getByText(/These are all of the equilibria/)).toBeInTheDocument();
+    expect(screen.getByText(/checked against numerical differences/)).toBeInTheDocument();
+    expect(screen.queryByText(/globally/i)).not.toBeInTheDocument();
+  });
+
+  it("never calls an incomplete list complete", () => {
+    render(
+      <OdeAnalysisPanel
+        report={{ ...analysis, qualitative: { ...qualitative, complete: false } }}
+      />,
+    );
+    expect(screen.getByText(/there may be others/)).toBeInTheDocument();
+    expect(screen.queryByText(/These are all of the equilibria/)).not.toBeInTheDocument();
+  });
+
+  it("shows an undecided classification as undecided, in a neutral tone", () => {
+    const undecided = {
+      ...qualitative,
+      equilibria: [
+        {
+          ...qualitative.equilibria[0]!,
+          classification: "undecided" as const,
+          classification_text:
+            "the signs of the eigenvalues depend on parameters that were not given",
+          decided: false,
+        },
+      ],
+    };
+    render(<OdeAnalysisPanel report={{ ...analysis, qualitative: undecided }} />);
+    const badge = screen.getByText("undecided");
+    expect(badge.className).toContain("bg-sunk");
+    expect(screen.getByText(/depend on parameters that were not given/)).toBeInTheDocument();
+  });
+
+  it("draws the direction field with the equilibria and any trajectories", () => {
+    render(
+      <OdeAnalysisPanel
+        report={withQualitative}
+        trajectories={[{ label: "run 1", x: [0.5, 0.2, 0], y: [0, -0.3, -0.1] }]}
+      />,
+    );
+    const plot = screen.getByRole("img", { name: "Phase plane: y' against y" });
+    expect(plot.querySelectorAll("line").length).toBeGreaterThan(9);
+    expect(plot.querySelectorAll("[data-trajectory]")).toHaveLength(1);
+    expect(screen.getByText(/a picture of f, not of a solution/)).toBeInTheDocument();
+    expect(screen.getByText(/y = 0, y' = 0: sink \(spiral\)/)).toBeInTheDocument();
+  });
+
+  it("draws no phase plane without a direction field", () => {
+    render(
+      <OdeAnalysisPanel
+        report={{ ...analysis, qualitative: { ...qualitative, direction_field: null } }}
+      />,
+    );
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("states a refusal and shows nothing else", () => {
+    render(
+      <OdeAnalysisPanel
+        report={{
+          ...analysis,
+          qualitative: {
+            ...qualitative,
+            status: "not_verified",
+            message: "The Jacobian did not agree with numerical differences of the field.",
+            equilibria: [],
+            direction_field: null,
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText(/Jacobian did not agree/)).toBeInTheDocument();
+    expect(document.querySelector("[data-classification]")).toBeNull();
+  });
+});
+
+describe("a comparison with a closed form", () => {
+  const compared = {
+    ...numeric,
+    comparison: {
+      status: "ok" as const,
+      message: "Two separately verified results compared on the numerical grid: not a bound.",
+      labels_latex: ["y"],
+      closed_form: [[1, 0.6, 0.1, -0.3, -0.4]],
+      max_difference: 3e-9,
+      worst_at: 2,
+    },
+  };
+
+  it("overlays the closed form and reports the measured difference", () => {
+    render(<OdeNumericPanel report={compared} />);
+    expect(
+      screen.getByText(/Compared with the closed form: the largest difference is 3.0e-9/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("y (closed form)")).toBeInTheDocument();
+  });
+
+  it("explains a comparison that could not be made without hiding the numerical result", () => {
+    render(
+      <OdeNumericPanel
+        report={{
+          ...compared,
+          comparison: {
+            status: "parse_error",
+            message:
+              "The closed form has symbols that are neither the variable nor a parameter: C1",
+            labels_latex: [],
+            closed_form: [],
+            max_difference: null,
+            worst_at: null,
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText(/neither the variable nor a parameter/)).toHaveAttribute(
+      "data-comparison",
+      "parse_error",
+    );
+    expect(screen.getByRole("img", { name: "The solution against t" })).toBeInTheDocument();
   });
 });
