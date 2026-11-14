@@ -108,7 +108,7 @@ def test_unknown_tool_and_bad_arguments_become_errors_the_model_can_read(ctx: To
                 Chunk(
                     tool_calls=[
                         ToolCall("rm_rf", {"path": "/"}),
-                        ToolCall("simplify", {"latex": 5}),
+                        ToolCall("simplify", {"latex": ["x"]}),
                         ToolCall("simplify", {"latex": "x", "assumptions": {"x": ["evil"]}}),
                         ToolCall("simplify", {}),
                     ]
@@ -1163,6 +1163,9 @@ def test_a_hallucinated_formula_is_never_marked_as_checked(ctx: ToolContext) -> 
         ("{{x}}", "x"),
         (r"\int_0^\infty \mathrm{e}^{-a x}\,dx", r"\int_0^\infty\mathrm{e}^{-ax}\;dx"),
         (r"\left( a \right) \quad b", "(a)b"),
+        # the printer's spelling of a function call and the ordinary one are the same reading
+        (r"x \sin x + \cos(x)", r"x \sin{\left(x \right)} + \cos{\left(x \right)}"),
+        (r"\sin^2 x", r"\sin^{2}{\left(x \right)}"),
     ],
 )
 def test_normalize_treats_these_as_the_same_formula(a: str, b: str) -> None:
@@ -1180,6 +1183,9 @@ def test_normalize_treats_these_as_the_same_formula(a: str, b: str) -> None:
         ("e^{x}", r"\mathrm{e}^{x}"),  # a bare e is a variable, not the constant
         ("i x", r"\mathrm{i}x"),
         (r"\mathrm{e}", r"\mathrm{i}"),
+        (r"\sin xy", r"\sin(xy)"),  # sin(x) times y is not sin(xy)
+        (r"\sin 2x", r"\sin(2x)"),
+        (r"\sin x", r"\cos x"),
     ],
 )
 def test_normalize_keeps_these_apart(a: str, b: str) -> None:

@@ -34,6 +34,12 @@ _ALIASES = (
     (re.compile(r"\\imaginaryI(?![A-Za-z])"), r"\\mathrm{i}"),
 )
 _COMMAND_GAP = re.compile(r"(\\[A-Za-z]+)\s+(?=[A-Za-z])")
+# A function applied to one argument is written `\\sin x`, `\\sin(x)` or `\\sin{\\left(x \\right)}` (the
+# printer's form). All three become `\\sin(x)`: the same reading, so a correct answer is not shown as
+# unchecked for its spelling. `\\sin xy` stays `\\sin(x)y`, as in TeX, so it never equals `\\sin(xy)`.
+_FUNCTION = r"\\(?:sin|cos|tan|cot|sec|csc|sinh|cosh|tanh|exp|log|ln|arcsin|arccos|arctan)"
+_PRINTED_CALL = re.compile(rf"({_FUNCTION}(?:\^\w)?)\{{\(([^(){{}}]*)\)\}}")
+_BARE_ARGUMENT = re.compile(rf"({_FUNCTION}(?:\^\w)?)\x01?([A-Za-z0-9])(?![A-Za-z0-9])")
 _BRACED = re.compile(r"(?<!\\mathrm)\{(\w)\}")
 
 
@@ -49,11 +55,13 @@ def normalize(latex: str) -> str:
     text = _SPACING.sub(" ", text.replace("\\\\", "\x00")).replace("\x00", "\\\\")
     text = text.replace("{}", "")
     text = _COMMAND_GAP.sub("\\1\x01", text)
-    text = re.sub(r"\s+", "", text).replace("\x01", " ")
+    text = re.sub(r"\s+", "", text)
     # Redundant braces around single tokens, e.g. x^{2} versus x^2 (repeated: {{x}} is x)
     while (reduced := _BRACED.sub(r"\1", text)) != text:
         text = reduced
-    return text
+    text = _PRINTED_CALL.sub(r"\1(\2)", text)
+    text = _BARE_ARGUMENT.sub(r"\1(\2)", text)
+    return text.replace("\x01", " ")
 
 
 _TOKEN = re.compile(r"[\w^+\-*/().{}\\|=<>!,]+")

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -594,7 +595,8 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
             f"result=${result.result_latex}$; "
             if result.status.value == "ok"
             else "result=none (the input is unchanged: no rewrite was applied, so there is no "
-            "simplified form to report); "
+            "simplified form to report; this is the answer, so do not try the same input with another "
+            "tool to get one); "
         )
         + (
             f"end to end: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
@@ -2105,6 +2107,70 @@ def schemas() -> list[dict[str, Any]]:
     return [t.schema() for t in TOOLS.values()]
 
 
+_SHAPE_HINTS = {
+    "assumptions": 'an object mapping each symbol to a list of words, e.g. {"x": ["positive"]}',
+    "quantities": 'a list of objects, e.g. [{"symbol": "F", "unit": "N"}]',
+    "matrices": 'a list of objects, e.g. [{"name": "A", "rows": 2}]',
+    "variables": 'a list of names, e.g. ["x", "y"]',
+}
+
+
+def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[str, Any]:
+    """A number where the schema wants text (`point: 0`) is the same thing written differently."""
+    fields = model.model_fields
+    out = dict(arguments)
+    for key, value in arguments.items():
+        field_info = fields.get(key)
+        if (
+            field_info is not None
+            and isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and field_info.annotation in (str, str | None)
+        ):
+            out[key] = str(value)
+    return out
+
+
+def _validation_message(exc: ValidationError) -> str:
+    """Every problem (up to three) with the fix for the usual wrong shapes, not only the first."""
+    parts: list[str] = []
+    for err in exc.errors()[:3]:
+        where = ".".join(str(p) for p in err["loc"])
+        hint = _SHAPE_HINTS.get(str(err["loc"][0])) if err["loc"] else None
+        parts.append(f"{where}: {err['msg']}" + (f" (it must be {hint})" if hint else ""))
+    more = len(exc.errors()) - 3
+    return (
+        "invalid arguments (" + "; ".join(parts) + (f"; and {more} more" if more > 0 else "") + ")"
+    )
+
+
+_BARE_E_POWER = re.compile(r"(?<![A-Za-z\\])e\s*\^")
+
+
+def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None:
+    """Fixed advice for the model on failures it keeps repeating. It only ever adds text for the
+    model; the card and the input are unchanged, and nothing is reinterpreted."""
+    text = " ".join(str(arguments.get(k, "")) for k in ("latex", "equation", "expression"))
+    hints: list[str] = []
+    if output.status in ("unsupported", "unchanged", "parse_error") and _BARE_E_POWER.search(text):
+        hints.append(
+            "hint: `e` was read as an ordinary symbol, not Euler's number; write exponentials as "
+            "\\exp(...) (a bare `e^x` is the symbol e to the power x)."
+        )
+    if output.status == "parse_error" and "reserved" in output.for_model:
+        hints.append(
+            "hint: E, I, pi and oo are reserved names; rename a symbol called E or I (for example "
+            "En or Ik) and try again."
+        )
+    if name == "tensor_canonicalize" and output.status == "parse_error":
+        hints.append(
+            "hint: write each index as a call, e.g. S(a,b)*A(-a,-b), with - for a lower index; "
+            "LaTeX subscripts such as S_{ab} are not read."
+        )
+    if hints:
+        output.for_model += "\n" + "\n".join(hints)
+
+
 # Tools whose engine treats every symbol as a commuting number: on a declared matrix they would give a
 # plausible but wrong answer, which the loop would then mark as verified.
 SCALAR_TOOLS = frozenset(
@@ -2156,16 +2222,9 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
             arguments_valid=False,
         )
     try:
-        args = tool.args_model(**arguments)
+        args = tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except ValidationError as exc:
-        first = exc.errors()[0]
-        where = ".".join(str(p) for p in first["loc"])
-        return _error(
-            name,
-            f"invalid arguments ({where}): {first['msg']}",
-            "invalid_arguments",
-            arguments_valid=False,
-        )
+        return _error(name, _validation_message(exc), "invalid_arguments", arguments_valid=False)
     except TypeError:
         return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
     refused = _matrix_refusal(name, arguments, ctx)
@@ -2188,6 +2247,7 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     category = category_for(output.status)
     output.error_category = category.value if category else None
     _classify_known(name, output)
+    _add_hints(name, arguments, output)
     return output
 
 

@@ -274,7 +274,24 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         for s in segments
         if s.get("status") == "contradicted" and _matches_any(str(s["value"]), case.right_formulas)
     )
-    result.contradicted = marks.count("contradicted") - result.checker_false_positive
+    # Quoting the case's own false statement so that it is shown as contradicted is the model refuting
+    # it, which is what the interface is for, provided the reply does refute it (it says what the case
+    # requires and nothing it forbids). A reply that confirms the claim is still counted.
+    refutes = bool(case.reply_matches) and bool(
+        re.search(case.reply_matches or "", text, re.IGNORECASE)
+        and not (case.reply_forbids and re.search(case.reply_forbids, text, re.IGNORECASE))
+    )
+    refuted = (
+        sum(
+            1
+            for s in segments
+            if s.get("status") == "contradicted"
+            and _matches_any(str(s["value"]), case.wrong_formulas)
+        )
+        if refutes
+        else 0
+    )
+    result.contradicted = marks.count("contradicted") - result.checker_false_positive - refuted
     result.reply = " ".join(text.split())[:REPLY_KEPT]
     truncated = bool(final.get("truncated"))
     stop = final.get("stop_reason") or ("truncated" if truncated else "completed")
