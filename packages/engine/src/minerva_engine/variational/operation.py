@@ -80,11 +80,18 @@ def _verify(problem: Problem, data: VariationInput, deadline: float) -> Variatio
     return verify(problem, data, deadline)
 
 
+def _second(problem: Problem, data: VariationInput, deadline: float) -> VariationReport:
+    from .secondrun import second
+
+    return second(problem, data, deadline)
+
+
 HANDLERS: dict[str, Handler] = {
     "analyze": _analyze,
     "first": _first,
     "evaluate": _evaluate,
     "verify": _verify,
+    "second": _second,
 }
 
 

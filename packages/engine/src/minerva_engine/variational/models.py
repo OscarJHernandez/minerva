@@ -322,6 +322,71 @@ class VerificationReport(BaseModel):
     )
 
 
+Fact = Literal[
+    "not_a_weak_minimum",
+    "not_a_weak_maximum",
+    "legendre_violated_for_minimum",
+    "legendre_violated_for_maximum",
+    "no_negative_direction_found",
+    "no_positive_direction_found",
+]
+
+
+class DirectionResult(BaseModel):
+    label: str
+    second_variation: str
+    sign: Literal["negative", "zero", "positive"]
+    certified: (
+        bool  # quadrature rules agree, finite differences confirm, measured change has the sign
+    )
+
+
+class RitzResult(BaseModel):
+    """The quadratic form restricted to a space of admissible polynomial perturbations.
+
+    The counts are the inertia of the restriction: k negative eigenvalues prove that the second
+    variation is negative on a k-dimensional space of admissible perturbations. Positive
+    eigenvalues prove nothing about perturbations outside the chosen space.
+    """
+
+    dimension: int
+    eigenvalues: list[float]
+    negative: int
+    zero: int
+    positive: int
+
+
+class LegendreSamples(BaseModel):
+    points: int
+    smallest_eigenvalue: float
+    largest_eigenvalue: float
+
+
+class SecondNumeric(BaseModel):
+    stationary: Literal["consistent", "violated", "not_tested"]
+    stationary_residual: float  # worst |first variation| relative to the size of its terms
+    legendre: LegendreSamples | None = None
+    directions: list[DirectionResult] = Field(default_factory=list)
+    ritz: RitzResult | None = None
+    facts: list[Fact] = Field(default_factory=list)
+    not_established: list[str] = Field(default_factory=list)
+    statement: str = (
+        "Only facts that follow from the computed values are listed. The necessary condition "
+        "(second variation not negative, Legendre) and the sufficient conditions (strengthened "
+        "Legendre and no conjugate points) are different things, and a limited set of "
+        "perturbations cannot establish a minimum."
+    )
+
+
+class SecondVariation(BaseModel):
+    convention_latex: str
+    quadratic_form_latex: str
+    endpoint_form_latex: str
+    legendre_matrix_latex: str
+    checks: FirstVariationChecks
+    numeric: SecondNumeric | None = None
+
+
 class Diagnostics(BaseModel):
     """Counts, durations and enum codes only; never names, expressions or values."""
 
@@ -347,6 +412,7 @@ class VariationReport(BaseModel):
     first: FirstVariation | None = None
     evaluation: Evaluation | None = None
     verification: VerificationReport | None = None
+    second: SecondVariation | None = None
     notes: list[str] = Field(default_factory=list)
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     duration_ms: float = 0.0

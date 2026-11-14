@@ -193,3 +193,13 @@ def build(
         checks=checks,
         verification=verification,
     )
+
+
+def checks_out(problem: Problem, check: VariationCheck, statement: str) -> FirstVariationChecks:
+    """The finite-difference evidence of a single-leg check (second variation)."""
+    return FirstVariationChecks(
+        deciding=check.verdict,
+        comparisons=[comparison_out(problem, c) for c in check.comparisons],
+        seed=check.seed,
+        statement=statement,
+    )
