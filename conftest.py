@@ -14,6 +14,17 @@ import zlib
 import pytest
 
 SHARD_ENV = "MINERVA_TEST_SHARD"
+TIER_ENV = "MINERVA_TEST_TIER"
+TIERS = ("pr", "extended")
+
+
+def parse_tier(value: str | None) -> str:
+    """`MINERVA_TEST_TIER`: `pr` (default) skips tests marked `extended`; `extended` runs everything."""
+    if value is None or value == "":
+        return "pr"
+    if value not in TIERS:
+        raise ValueError(f"{TIER_ENV} must be one of {', '.join(TIERS)}, got {value!r}")
+    return value
 
 
 def parse_shard(value: str) -> tuple[int, int]:
@@ -33,6 +44,16 @@ def shard_of(nodeid: str, count: int) -> int:
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    # Tier first, so the shard split is computed over the tests that will actually run.
+    try:
+        tier = parse_tier(os.environ.get(TIER_ENV))
+    except ValueError as exc:
+        raise pytest.UsageError(str(exc)) from None
+    if tier == "pr":
+        slow = [item for item in items if item.get_closest_marker("extended")]
+        if slow:
+            config.hook.pytest_deselected(items=slow)
+            items[:] = [item for item in items if not item.get_closest_marker("extended")]
     value = os.environ.get(SHARD_ENV)
     if value is None:
         return

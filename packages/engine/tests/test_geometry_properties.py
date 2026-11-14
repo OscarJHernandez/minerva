@@ -15,12 +15,8 @@ from minerva_engine.geometry.compute import Workspace
 from minerva_engine.geometry.setup import build_geometry
 from minerva_engine.geometry.verify import Verifier
 
-PROFILE = settings(
-    max_examples=8,
-    deadline=None,
-    derandomize=True,  # fixed seed: the same examples on every run, so CI is deterministic
-    suppress_health_check=[HealthCheck.too_slow],
-)
+# Example count, seed and database come from the profile loaded in conftest.py (pr: 8 derandomized examples).
+PROFILE = settings(suppress_health_check=[HealthCheck.too_slow])
 LIMITS = Limits(timeout_seconds=120)
 COORDS = ["x", "y", "z"]
 
