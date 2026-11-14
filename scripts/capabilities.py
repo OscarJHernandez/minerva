@@ -666,7 +666,7 @@ def run_statmech(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
     request = StatMechInput(**spec["request"])
     r = engine.statmech(request)
     system = request.system
-    description = {
+    descriptions = {
         "levels": lambda s: f"{len(s.levels)} levels",
         "level_family": lambda s: (
             f"E({s.index}) = {s.energy}, {s.index} from {s.lower} to {s.upper}"
@@ -675,8 +675,20 @@ def run_statmech(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
             f"rho({s.variable}) = {s.density}, from {s.lower} to {s.upper}"
         ),
         "classical": lambda s: f"H = {s.hamiltonian}",
-    }[system.kind](system)
-    inputs = [{"label": "System", "source": description, "syntax": "text"}]
+        "quantum": lambda s: (
+            f"a {len(s.hamiltonian)}x{len(s.hamiltonian)} Hermitian matrix H"
+            + (f" and operators {', '.join(s.observables)}" if s.observables else "")
+        ),
+        "occupation": lambda s: (
+            f"{s.statistics} particles in {len(s.levels)} levels, chemical potential {s.mu}"
+        ),
+        "chain": lambda s: f"periodic chain of N = {s.length} sites, bond {s.bond}, site {s.site}",
+    }
+    inputs = [{"label": "System", "source": descriptions[system.kind](system), "syntax": "text"}]
+    if request.ensemble != "canonical":
+        inputs.append({"label": "Ensemble", "source": request.ensemble.replace("_", " ")})
+    if request.total_energy is not None:
+        inputs.append({"label": "Fixed total energy", "source": request.total_energy})
     if request.copies is not None:
         inputs.append(
             {
@@ -689,6 +701,8 @@ def run_statmech(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
                 ),
             }
         )
+    if request.method is not None:
+        inputs.append({"label": "Method", "source": request.method.replace("_", " ")})
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     notes: list[str] = []
@@ -703,6 +717,18 @@ def run_statmech(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
                 f"{r.verification.points_agreed} of {r.verification.points_checked} sample points "
                 "agree with an independent evaluation (evidence, not a proof)"
             )
+        if r.approximation is not None:
+            a = r.approximation
+            notes.append(
+                f"An approximation, not an identity. Expansion parameter: {a.parameter}. "
+                f"Expected accuracy: {a.order}. Valid: {a.validity}."
+            )
+            notes.append("Assumes: " + "; ".join(a.assumptions) + ".")
+            if a.error_table:
+                notes.append(
+                    f"Measured error against the independent evaluation ({len(a.error_table)} points; "
+                    "a measurement, not a bound)."
+                )
         notes += r.notes
     else:
         notes.append(f"Refused ({r.reason}).")

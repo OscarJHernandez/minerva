@@ -186,3 +186,58 @@
   validity: "Asymptotic as N grows; it is an equivalence of leading behaviour, not an identity. The error of the form shown falls like 1/(12 N)."
   reference: {source: DLMF, locator: "§5.11", url: "https://dlmf.nist.gov/5.11"}
   keywords: [stirling, factorial, asymptotic, thermodynamic limit]
+- id: statmech.grand_potential
+  title: Grand potential and mean particle number
+  kind: identity
+  chapter: physics.thermodynamics
+  section: grand-canonical
+  verification: stated
+  statement_latex: '\Omega = -k_B T \ln \Xi,\quad \langle N\rangle = -\frac{\partial \Omega}{\partial \mu} = \frac{1}{\beta}\frac{\partial \ln \Xi}{\partial \mu}'
+  validity: "Grand canonical ensemble, derivatives at fixed temperature and the other state variables; U - mu N = -d ln Xi / d beta at fixed mu."
+  keywords: [grand potential, chemical potential, particle number, grand canonical]
+- id: statmech.number_fluctuation
+  title: Particle-number fluctuations
+  kind: identity
+  chapter: physics.thermodynamics
+  section: grand-canonical
+  verification: stated
+  statement_latex: '\operatorname{Var}(N) = \frac{1}{\beta^{2}}\frac{\partial^{2} \ln \Xi}{\partial \mu^{2}} = k_B T\,\frac{\partial \langle N\rangle}{\partial \mu}'
+  validity: "Grand canonical ensemble at fixed temperature and the other state variables; never negative."
+  keywords: [fluctuation, particle number, variance, compressibility]
+- id: statmech.trace_cyclicity_response
+  title: First-order response of ln Z needs no commutation
+  kind: theorem
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'H(h) = H_0 - hB \ \Rightarrow\ \frac{\partial \ln Z}{\partial h} = \beta\langle B\rangle'
+  validity: "Holds for matrices that do not commute with H by the cyclicity of the trace. The second derivative equals beta^2 Var(B) only when B commutes with H; otherwise it is a Kubo-Duhamel covariance."
+  keywords: [trace cyclicity, response, noncommuting, kubo, quantum]
+- id: statmech.microcanonical_counting
+  title: Microstate count of N copies at fixed energy
+  kind: method
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: '\Omega(E) = \sum_{\{n_k\}:\ \sum_k n_k\varepsilon_k = E} \frac{N!}{\prod_k n_k!}\prod_k g_k^{n_k},\quad S = k_B \ln \Omega'
+  validity: "Distinguishable (labelled) copies of a list of levels with sum n_k = N; dividing by N! is the classical-limit counting for indistinguishable copies. The temperature of a finite system is a finite difference of ln Omega, not a derivative."
+  keywords: [microcanonical, multiplicity, entropy, counting, binomial]
+- id: statmech.sackur_tetrode
+  title: Entropy of a classical ideal gas
+  kind: equation
+  chapter: physics.thermodynamics
+  section: approximations
+  verification: stated
+  statement_latex: 'S = N k_B\left[\ln\left(\frac{V}{N}\left(\frac{2\pi m}{\beta h^{2}}\right)^{3/2}\right) + \frac{5}{2}\right]'
+  validity: "Classical ideal gas of N indistinguishable particles with phase-space cell h^3 and Stirling's approximation for ln N!; an asymptotic form, not an identity."
+  keywords: [ideal gas, entropy, sackur tetrode, stirling]
+- id: statmech.ising_chain_partition_function
+  title: Periodic Ising chain by the transfer matrix
+  kind: method
+  chapter: physics.thermodynamics
+  section: lattice
+  verification: stated
+  statement_latex: 'Z_N = \lambda_{+}^{N} + \lambda_{-}^{N},\quad \lambda_{\pm} = \mathrm{e}^{\beta J}\cosh\beta h \pm \sqrt{\mathrm{e}^{2\beta J}\sinh^{2}\beta h + \mathrm{e}^{-2\beta J}}'
+  validity: "Ring of N spins with H = -J sum s_i s_{i+1} - h sum s_i. The matrix has positive entries, so lambda_+ is simple and dominant: f = -(1/beta) ln lambda_+ per site as N grows, analytic in beta."
+  keywords: [ising, transfer matrix, one dimension, thermodynamic limit]
+

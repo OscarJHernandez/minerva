@@ -599,6 +599,90 @@
   right_formulas: ['Z = 1 + \mathrm{e}^{-\beta \epsilon}']
   source: "statmech/benchmark.py (two-level-thermodynamics): the ground level contributes 1"
 
+- id: statmech-noncommuting-response-is-not-claimed
+  category: false_claim
+  prompt: 'A spin has H = -h sz - d sx with the Pauli matrices sz = [[1,0],[0,-1]] and sx = [[0,1],[1,0]]. Show that the variance of sz equals beta^-2 d^2 ln Z / dh^2.'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: expectation
+      system:
+        kind: quantum
+        hamiltonian: [['-h', '-d'], ['-d', 'h']]
+        observables: {sz: [['1', '0'], ['0', '-1']]}
+      assumptions: {h: [positive], d: [positive]}
+      parameters: [h]
+      coupling: {parameter: h, observable: sz}
+      observable: sz
+      statistic: variance
+  reply_matches: 'commut|Kubo|covariance|not (equal|true|hold)|cannot'
+  source: "statmech/benchmark.py (second-derivative-response-needs-commuting-operators): [sz, H] != 0"
+
+- id: statmech-fermi-number-and-variance
+  category: physics
+  prompt: 'Non-interacting fermions occupy three single-particle levels with energies 0, eps and 2 eps (the last twofold degenerate), at temperature T and chemical potential mu. Find the mean particle number and its variance.'
+  expected_tool: statistical_mechanics
+  args: {present: [system], equals: {ensemble: grand_canonical}}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      ensemble: grand_canonical
+      action: derive
+      system:
+        kind: occupation
+        statistics: fermi
+        levels: [{energy: '0'}, {energy: eps}, {energy: '2*eps', degeneracy: '2'}]
+      assumptions: {eps: [positive]}
+      quantities: [N, Var_N]
+  source: "statmech/benchmark.py (fermi-dirac-thermodynamics, per-state formulas)"
+
+- id: statmech-ising-thermodynamic-limit
+  category: physics
+  prompt: 'Find the free energy per site of the one-dimensional Ising model with H = -J sum s_i s_{i+1} - h sum s_i in the thermodynamic limit, using a transfer matrix.'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: approximate
+      method: thermodynamic_limit
+      system: {kind: chain, states: ['1', '-1'], bond: '-J*s*t', site: '-h*s', length: N}
+      assumptions: {J: [real], h: [real], N: [integer, positive]}
+  source: "statmech/benchmark.py (ising-thermodynamic-limit, brute-force enumeration)"
+
+- id: statmech-stirling-is-an-approximation
+  category: physics
+  prompt: 'For N indistinguishable ideal-gas particles in a box (volume V, H = sum of p^2/(2m), phase-space cell h^3 per particle), apply Stirling to ln N! in the entropy.'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: approximate
+      method: stirling
+      system:
+        kind: classical
+        hamiltonian: '(px**2 + py**2 + pz**2)/(2*m)'
+        variables:
+          - {name: x, domain_lower: '0', domain_upper: 'V**(1/3)'}
+          - {name: y, domain_lower: '0', domain_upper: 'V**(1/3)'}
+          - {name: z, domain_lower: '0', domain_upper: 'V**(1/3)'}
+          - {name: px}
+          - {name: py}
+          - {name: pz}
+      copies_count: N
+      parameters: [V]
+      assumptions: {m: [positive], h: [positive], V: [positive], N: [integer, positive]}
+  reply_matches: 'cell|indistinguish|convention|choose|choice|which|\\?'
+  reply_forbids: 'exactly equal|exact result|is an identity'
+  source: "AGENTS.md (the cell and N! are the user's choices; an approximation is not an identity); statmech/benchmark.py"
+
 - id: dimensional-pendulum
   category: physics
   prompt: 'A pendulum has length L (metres), mass m (kg) and swings in gravity g (m/s^2). Which dimensionless groups does its period T (seconds) depend on?'

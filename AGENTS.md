@@ -411,9 +411,24 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `dE_i/dh = -A_i` with `A_i` independent of `h` (`coupling_not_linear` otherwise). Text syntax reads `E` as Euler's
   number: a density-of-states energy is `En`. Diagnostics and logs hold stage names, counts and the enumerated
   reasons only, never an energy or expression (`logging.ALLOWED_FIELDS`, a test enforces it); add a corpus case in
-  `statmech/benchmark.py` for every new system kind, quantity or refusal. Not supported yet (reported by `analyze`,
-  never guessed): grand canonical and microcanonical ensembles, quantum Hamiltonian matrices, asymptotic expansions
-  and lattice models.
+  `statmech/benchmark.py` for every new system kind, quantity or refusal. Quantum matrices (at most 4x4, `quantum.py`)
+  are never reordered and never assumed to commute: Hermiticity and `[A, H] = 0` are checked and reported, the first
+  derivative of ln Z with a coupled parameter is beta times the mean (trace cyclicity), but a second derivative and a
+  covariance of non-commuting operators are refused (`operators_do_not_commute`: it is the Kubo-Duhamel covariance,
+  not `beta^2 Var`); the oracle is `mpmath.expm`/`eigh`, never the symbolic eigenvalues. The ensemble is never
+  substituted (`ensemble_mismatch`): grand canonical needs an occupation system (Bose needs mu provably below every
+  level), its state variables include mu and a derivative must hold exactly the others fixed (the oracle enumerates
+  occupation numbers; classical counting needs the Gibbs correction `-sum p ln(p n!)` in its entropy), and microcanonical
+  counting is exact (generating function checked by two other algorithms) with a finite-difference temperature and a
+  *measured* comparison with the canonical ensemble, never assumed equal. An approximation (`approximate`) is never
+  an identity: it reports assumptions, parameter, claimed order, validity and a measured error table (a measurement,
+  not a bound), its claimed order is a deciding check, and it is `asymptotic`; `high_temperature` is verified with
+  `check_series` and refused where ln Z is not analytic at beta = 0, `low_temperature` needs a decided level order,
+  `stirling` needs an indistinguishable-copies ln N!, `thermodynamic_limit` needs a chain with a symbolic length.
+  The chain's transfer matrix is verified against brute-force enumeration of every configuration (at most 14 sites).
+  Sample points are generic (never exactly zero): closed forms from eigenvalues and derivatives are 0/0 at special
+  points. Not supported yet (reported by `analyze`, never guessed): saddle-point and Laplace methods, Legendre
+  transforms, mean field, quantum systems beyond 4x4, interacting classical systems and open boundaries.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

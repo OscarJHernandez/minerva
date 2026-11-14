@@ -1081,13 +1081,14 @@ Mechanics and other physical systems, from a Lagrangian to its conserved quantit
 
 *Available in:* workbench, chat, HTTP API.
 
-Builds the canonical-ensemble partition function of a list of levels, a level family E(n) (finite or infinite), a density of states or a separable classical Hamiltonian, with optional independent copies, and derives thermodynamic quantities from it by one generic route: differentiate ln Z with the other state variables held fixed. Heat capacity is dU/dT, pressure is -dF/dV at fixed temperature, a susceptibility is a field derivative; none is a stored formula. Thermal averages, variances and cumulants follow, with fluctuation-response relations when the energies are linear in a coupling. A formula is shown only if an independent numerical evaluation agreed (direct enumeration with log-sum-exp, adaptive quadrature, numerical derivatives); convergence of an infinite sum or integral is proved or the request is refused.
+Builds the partition function of a list of levels, a level family E(n) (finite or infinite), a density of states, a separable classical Hamiltonian, a Hermitian matrix, particles with Bose, Fermi or classical counting, or a periodic chain (transfer matrix), and derives thermodynamic quantities from it by one generic route: differentiate ln Z (or ln Xi) with the other state variables held fixed. Heat capacity is dU/dT, pressure is -dF/dV at fixed temperature, a particle number is a chemical-potential derivative; none is a stored formula. Thermal averages, variances, cumulants and fluctuation-response relations follow, as do microcanonical counts and approximations that report their assumptions, order, validity and a measured error. A formula is shown only if an independent numerical evaluation agreed (direct enumeration with log-sum-exp, adaptive quadrature, matrix exponentials, occupation numbers, brute force over every chain configuration, numerical derivatives); convergence is proved or the request is refused.
 
 **Limits**
 
-- Canonical ensemble only. Grand canonical and microcanonical ensembles, quantum Hamiltonian matrices, asymptotic expansions and lattice models are not supported yet.
+- An approximation is never an identity. High- and low-temperature expansions, Stirling's ln N! and the thermodynamic limit of a chain are labelled asymptotic and carry a measured error table (a measurement, not a bound); saddle-point and Laplace methods, Legendre transforms and mean field are not supported.
 - An infinite sum needs a ratio-test proof for every beta > 0 (otherwise `divergent` or `convergence_not_provable`); an integral goes through the verified definite integrator under your assumptions. No interchange of a limit, sum, integral and derivative is assumed.
-- A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). Normal-mode transformations are not applied.
+- A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). A matrix is at most 4x4 with closed-form eigenvalues and is never assumed to commute with anything, so a response relation beyond the first derivative, and a covariance, are refused for operators that do not commute. A chain is periodic, with at most three site values, a symmetric bond and at most 14 sites for the brute-force check.
+- The ensemble is never substituted. Grand canonical needs particles with a statistic (Bose needs mu provably below every level); microcanonical counting needs numeric levels, a number of copies and a total energy that some microstate has, and its comparison with the canonical ensemble is measured, never assumed.
 - The phase-space cell and whether copies are indistinguishable are your choices, never defaulted; indistinguishable copies use the classical-limit N! counting, not exact Bose or Fermi statistics. Numbers for a numerical evaluation are yours too.
 - Numerical agreement is evidence, not a proof; a symbolic zero is reported separately and only where SymPy finds one. A series or integral without a closed form is evaluated numerically only and labelled as such.
 
@@ -1156,6 +1157,113 @@ Builds the canonical-ensemble partition function of a list of levels, a level fa
 - **Check:** 8 of 8 sample points agree with an independent evaluation (evidence, not a proof)
 - Every result above agreed with an independent numerical evaluation.
 - Verified against an independent numerical evaluation.
+
+#### A spin in a tilted field, with an operator that does not commute with H
+
+- **System:** `a 2x2 Hermitian matrix H and operators sz` (plain text)
+- **Status:** `ok`
+- **Mean of sz:** $\frac{h \tanh{\left(\beta \sqrt{d^{2} + h^{2}} \right)}}{\sqrt{d^{2} + h^{2}}}$
+- **Check:** mean_sz: enumeration, fluctuation response, spectral decomposition agreed
+- **Check:** 8 of 8 sample points agree with an independent evaluation (evidence, not a proof)
+- Every result above agreed with an independent numerical evaluation.
+- Verified against an independent numerical evaluation.
+- The mean is computed with the operator where it stands, and d ln Z/dh = beta times it holds by trace cyclicity. Asking for the variance through the second derivative is refused (`operators_do_not_commute`): there it would be the Kubo-Duhamel covariance.
+
+#### Fermions in three levels, with a chemical potential
+
+- **System:** `fermi particles in 3 levels, chemical potential mu` (plain text)
+- **Ensemble:** `grand canonical`
+- **Status:** `ok`
+- **Mean particle number:** $\frac{2 \left(\mathrm{e}^{\beta \mu} + 1\right) \left(\mathrm{e}^{\beta \left(eps - \mu\right)} + 1\right) + \left(\mathrm{e}^{\beta \mu} + 1\right) \left(\mathrm{e}^{\beta \left(2 eps - \mu\right)} + 1\right) + \left(\mathrm{e}^{\beta \left(eps - \mu\right)} + 1\right) \left(\mathrm{e}^{\beta \left(2 eps - \mu\right)} + 1\right) \mathrm{e}^{\beta \mu}}{\left(\mathrm{e}^{\beta \mu} + 1\right) \left(\mathrm{e}^{\beta \left(eps - \mu\right)} + 1\right) \left(\mathrm{e}^{\beta \left(2 eps - \mu\right)} + 1\right)}$
+- **Internal energy:** $\frac{eps \left(\mathrm{e}^{2 \beta eps} + 4 \mathrm{e}^{\beta eps} + 5 \mathrm{e}^{\beta \mu}\right) \mathrm{e}^{\beta \mu}}{\mathrm{e}^{3 \beta eps} + \mathrm{e}^{2 \beta \mu} + \mathrm{e}^{\beta \left(eps + \mu\right)} + \mathrm{e}^{\beta \left(2 eps + \mu\right)}}$
+- **Particle-number variance:** $\frac{2}{\mathrm{e}^{2 \beta eps - \beta \mu} + 1} - \frac{2 \mathrm{e}^{2 \beta eps - \beta \mu}}{\left(\mathrm{e}^{2 \beta eps - \beta \mu} + 1\right)^{3}} - \frac{2}{\left(\mathrm{e}^{2 \beta eps - \beta \mu} + 1\right)^{3}} + \frac{1}{\mathrm{e}^{\beta eps - \beta \mu} + 1} - \frac{\mathrm{e}^{\beta eps - \beta \mu}}{\left(\mathrm{e}^{\beta eps - \beta \mu} + 1\right)^{3}} - \frac{1}{\left(\mathrm{e}^{\beta eps - \beta \mu} + 1\right)^{3}} + \frac{\mathrm{e}^{\beta \mu}}{\mathrm{e}^{\beta \mu} + 1} - \frac{\mathrm{e}^{3 \beta \mu}}{\left(\mathrm{e}^{\beta \mu} + 1\right)^{3}} - \frac{\mathrm{e}^{2 \beta \mu}}{\left(\mathrm{e}^{\beta \mu} + 1\right)^{3}}$
+- **Partial derivative of internal energy with respect to T:** $\frac{\beta^{2} eps k_{B} \left(\left(\mathrm{e}^{2 \beta eps} + 4 \mathrm{e}^{\beta eps} + 5 \mathrm{e}^{\beta \mu}\right) \left(3 eps \mathrm{e}^{3 \beta eps} + 2 \mu \mathrm{e}^{2 \beta \mu} + \left(eps + \mu\right) \mathrm{e}^{\beta \left(eps + \mu\right)} + \left(2 eps + \mu\right) \mathrm{e}^{\beta \left(2 eps + \mu\right)}\right) - \left(2 eps \mathrm{e}^{2 \beta eps} + 4 eps \mathrm{e}^{\beta eps} + \mu \left(\mathrm{e}^{2 \beta eps} + 4 \mathrm{e}^{\beta eps} + 5 \mathrm{e}^{\beta \mu}\right) + 5 \mu \mathrm{e}^{\beta \mu}\right) \left(\mathrm{e}^{3 \beta eps} + \mathrm{e}^{2 \beta \mu} + \mathrm{e}^{\beta \left(eps + \mu\right)} + \mathrm{e}^{\beta \left(2 eps + \mu\right)}\right)\right) \mathrm{e}^{\beta \mu}}{\left(\mathrm{e}^{3 \beta eps} + \mathrm{e}^{2 \beta \mu} + \mathrm{e}^{\beta \left(eps + \mu\right)} + \mathrm{e}^{\beta \left(2 eps + \mu\right)}\right)^{2}}$
+- **Check:** N: enumeration, finite difference agreed
+- **Check:** U: enumeration, finite difference agreed
+- **Check:** Var_N: enumeration, finite difference, nonnegative variance agreed
+- **Check:** C_mu: finite difference agreed
+- **Check:** 8 of 8 sample points agree with an independent evaluation (evidence, not a proof)
+- Fermi-Dirac: independent particles; each of the g_i states of a level is counted separately.
+- Every result above agreed with an independent numerical evaluation.
+- Verified against an independent numerical evaluation.
+
+#### Counting the microstates of 40 two-level units at fixed energy
+
+- **System:** `2 levels` (plain text)
+- **Ensemble:** `microcanonical`
+- **Fixed total energy:** `16`
+- **Copies:** `40, distinguishable`
+- **Status:** `ok`
+- **Number of microstates:** $62852101650$
+- **Microcanonical entropy:** $k_{B} \ln \left(62852101650\right)$
+- **Temperature estimate and canonical comparison (a measurement):** $\beta \approx \frac{\Delta \ln \Omega}{\Delta E}$
+- **Check:** Omega: enumeration, normalisation agreed
+- **Check:** 1 of 1 sample points agree with an independent evaluation (evidence, not a proof)
+- Every result above agreed with an independent numerical evaluation.
+- Verified against an independent numerical evaluation.
+- Omega is an exact count, checked against two other algorithms. The temperature estimate is a finite difference and its comparison with the canonical ensemble is a measurement that improves with N.
+
+#### The 1-D Ising ring in a field by the transfer matrix, and its thermodynamic limit
+
+- **System:** `periodic chain of N = N sites, bond -J*s*t, site -h*s` (plain text)
+- **Method:** `thermodynamic limit`
+- **Status:** `ok`
+- **Free energy per site, N -> infinity:** $- \frac{\log{\left(\frac{\sqrt{\left(\mathrm{e}^{\beta \left(J - h\right)} + \mathrm{e}^{\beta \left(J + h\right)}\right)^{2} - 8 \sinh{\left(2 J \beta \right)}}}{2} + \frac{\mathrm{e}^{\beta \left(J - h\right)}}{2} + \frac{\mathrm{e}^{\beta \left(J + h\right)}}{2} \right)}}{\beta}$
+- **Energy per site, N -> infinity:** $- \frac{- 8 J \cosh{\left(2 J \beta \right)} + \left(\left(J - h\right) \mathrm{e}^{\beta \left(J - h\right)} + \left(J + h\right) \mathrm{e}^{\beta \left(J + h\right)}\right) \sqrt{\left(\mathrm{e}^{\beta \left(J - h\right)} + \mathrm{e}^{\beta \left(J + h\right)}\right)^{2} - 8 \sinh{\left(2 J \beta \right)}} + \left(\left(J - h\right) \mathrm{e}^{\beta \left(J - h\right)} + \left(J + h\right) \mathrm{e}^{\beta \left(J + h\right)}\right) \left(\mathrm{e}^{\beta \left(J - h\right)} + \mathrm{e}^{\beta \left(J + h\right)}\right)}{\sqrt{\left(\mathrm{e}^{\beta \left(J - h\right)} + \mathrm{e}^{\beta \left(J + h\right)}\right)^{2} - 8 \sinh{\left(2 J \beta \right)}} \left(\sqrt{\left(\mathrm{e}^{\beta \left(J - h\right)} + \mathrm{e}^{\beta \left(J + h\right)}\right)^{2} - 8 \sinh{\left(2 J \beta \right)}} + \mathrm{e}^{\beta \left(J - h\right)} + \mathrm{e}^{\beta \left(J + h\right)}\right)}$
+- **Check:** f_inf: residual order agreed
+- **Check:** 6 of 6 sample points agree with an independent evaluation (evidence, not a proof)
+- An approximation, not an identity. Expansion parameter: N. Expected accuracy: finite-size error of F/N is -(1/(beta N)) ln(1 + (lambda_2/lambda_1)^N + ...): exponentially small in N (ratio |lambda_2/lambda_1| = 0.286481 at the first sample point). Valid: the free energy per site is analytic in beta for beta > 0 (a simple dominant eigenvalue), so this chain has no phase transition at finite temperature.
+- Assumes: N tends to infinity at a fixed temperature, with periodic boundary conditions; the largest transfer-matrix eigenvalue is simple and strictly dominant (positive matrix).
+- Measured error against the independent evaluation (6 points; a measurement, not a bound).
+- Every result above agreed with an independent numerical evaluation.
+- Verified against an independent numerical evaluation.
+- The transfer matrix is checked against brute-force enumeration of every configuration; the free energy per site comes from the dominant eigenvalue (Perron-Frobenius), with the finite-size error measured for N = 2 to 12.
+
+#### A high-temperature expansion, as an approximation with a measured error
+
+- **System:** `2 levels` (plain text)
+- **Method:** `high temperature`
+- **Status:** `ok`
+- **ln Z, order 4 in beta:** $- \frac{\beta^{4} \epsilon^{4}}{192} + \frac{\beta^{2} \epsilon^{2}}{8} - \frac{\beta \epsilon}{2} + \log{\left(2 \right)}$
+- **Internal energy, order 3 in beta:** $\frac{\beta^{3} \epsilon^{4}}{48} - \frac{\beta \epsilon^{2}}{4} + \frac{\epsilon}{2}$
+- **Check:** lnZ_series: residual order, series check agreed
+- **Check:** U_series: residual order agreed
+- **Check:** 2 of 2 sample points agree with an independent evaluation (evidence, not a proof)
+- An approximation, not an identity. Expansion parameter: beta. Expected accuracy: truncation error O(beta^5) for ln Z, O(beta^4) for U. Valid: inside the radius of convergence of the series, set by the nearest zero of Z(beta) in the complex plane; Cauchy-estimate radius at the checked parameter values: 0.5.
+- Assumes: beta is small: beta times the spread of the energies is much less than 1; ln Z is analytic at beta = 0 (Z(0) finite and positive); the levels do not depend on beta and the other state variables are fixed.
+- Measured error against the independent evaluation (3 points; a measurement, not a bound).
+- Every result above agreed with an independent numerical evaluation.
+- Verified against an independent numerical evaluation.
+
+#### Stirling's approximation turns the exact ideal-gas entropy into the Sackur-Tetrode form
+
+- **System:** `H = (px**2 + py**2 + pz**2)/(2*m)` (plain text)
+- **Copies:** `N, indistinguishable (you chose)`
+- **Method:** `stirling`
+- **Status:** `ok`
+- **ln Z with Stirling's ln N!:** $- N \log{\left(N \right)} + N \log{\left(\frac{2 \sqrt{2} \pi^{\frac{3}{2}} V m^{\frac{3}{2}}}{\beta^{\frac{3}{2}} h^{3}} \right)} + N - \frac{\log{\left(2 \pi N \right)}}{2}$
+- **Free energy with Stirling's ln N!:** $\frac{- N + \frac{\log{\left(2 \pi N N^{2 N} \left(\frac{2 \sqrt{2} \pi^{\frac{3}{2}} V m^{\frac{3}{2}}}{\beta^{\frac{3}{2}} h^{3}}\right)^{- 2 N} \right)}}{2}}{\beta}$
+- **Entropy with Stirling's ln N!:** $\frac{k_{B} \left(5 N - \log{\left(2 \pi N^{2 N + 1} \left(\frac{2 \sqrt{2} \pi^{\frac{3}{2}} V m^{\frac{3}{2}}}{\beta^{\frac{3}{2}} h^{3}}\right)^{- 2 N} \right)}\right)}{2}$
+- **Entropy at leading order (the Sackur-Tetrode form for an ideal gas):** $\frac{N k_{B} \left(\log{\left(\frac{8 \pi^{3} V^{2} m^{3}}{N^{2} \beta^{3} h^{6}} \right)} + 5\right)}{2}$
+- **Free energy at leading order:** $\frac{N \left(\log{\left(\frac{\sqrt{2} N \beta^{\frac{3}{2}} h^{3}}{4 \pi^{\frac{3}{2}} V m^{\frac{3}{2}}} \right)} - 1\right)}{\beta}$
+- **Check:** lnZ_stirling: residual order agreed
+- **Check:** 6 of 6 sample points agree with an independent evaluation (evidence, not a proof)
+- An approximation, not an identity. Expansion parameter: 1/N. Expected accuracy: the error of the form shown in ln N! is about 1/(12 N); the leading form drops 1/2 ln(2 pi N). Valid: N of about 10 or more for the full form; it is an asymptotic equivalence, not an identity, and the internal energy is untouched (ln N! does not depend on beta).
+- Assumes: N is large: N >> 1; the copies are indistinguishable (the user's choice), so ln N! is part of ln Z.
+- Measured error against the independent evaluation (4 points; a measurement, not a bound).
+- Phase-space measure: Z_1 = (1/cell) times the integral of exp(-beta H) over the stated domains, with the cell you chose.
+- Indistinguishable copies use Z = Z_1^N / N!, the classical-limit counting; it is not exact Bose or Fermi statistics.
+- Every result above agreed with an independent numerical evaluation.
+- Verified against an independent numerical evaluation.
+- The result is asymptotic, never exact: its error table shows N times the error of ln N! approaching 1/12.
+
+#### An expansion where ln Z is not analytic is declined
+
+- **System:** `E(n) = hbar*omega*(n + 1/2), n from 0 to oo` (plain text)
+- **Method:** `high temperature`
+- **Status:** `unsupported`
+- Refused (singular_expansion_point).
+- Z is not finite and positive at beta = 0 (it diverges there, as for an oscillator or a density of states), so ln Z has no Taylor series about beta = 0; Laurent and logarithmic expansions are not supported
 
 #### A partition function that does not exist is declined
 

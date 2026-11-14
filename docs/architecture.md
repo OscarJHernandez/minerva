@@ -98,17 +98,22 @@ one most likely to be wrong.
     server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
   - `statmech` (`statmech/`, `Engine.statmech`, `POST /v1/compute/statmech`, chat tool `statistical_mechanics`):
-    canonical-ensemble partition functions of an explicit list of levels, a level family (finite or infinite
-    sums, proved convergent by the ratio test), a density of states (the verified definite integrator) or a
-    separable classical Hamiltonian, with optional independent copies. One generic route derives the
-    thermodynamic quantities: differentiate ln Z with a validated held-fixed set. Thermal averages and
-    fluctuation-response relations follow, and `evaluate` gives numbers and sweeps at the user's values.
-    `oracle.py` is the independent second route (direct enumeration with log-sum-exp and a tail test, adaptive
-    quadrature with an error estimate, fourth-order finite differences of the enumerated quantity); `canonical.py`
-    decides what is shown (a formula needs every numeric check to agree; a symbolic zero is reported separately).
-    The phase-space cell, indistinguishable copies and numerical values are the user's: they are not arguments of
-    the chat tool and arrive through the card (`/tools/statistical_mechanics`). Refusals carry one of an
-    enumerated list of reasons. `statmech/benchmark.py` is the closed-form corpus (`docs/statmech-benchmark.md`,
+    partition functions and thermodynamics of explicit systems: a list of levels, a level family (finite or
+    infinite sums, proved convergent by the ratio test), a density of states (the verified definite integrator),
+    a separable classical Hamiltonian, a Hermitian matrix (spectral decomposition, operators never assumed to
+    commute), particles with Bose, Fermi or classical-counting statistics (grand canonical), and a periodic chain
+    (transfer matrix); optionally N independent copies, and microcanonical counting of microstates. One generic
+    route derives the quantities: differentiate ln Z (or ln Xi) with a validated held-fixed set. Thermal averages,
+    fluctuation-response relations, numerical evaluation with sweeps, and approximations that report their
+    assumptions, order, validity and a measured error (high- and low-temperature expansions, Stirling, the
+    thermodynamic limit of a chain) follow. `oracle.py`, `quantum.py`, `grand.py`, `micro.py` and `lattice.py`
+    each hold a second, independent route (direct enumeration with log-sum-exp and a tail test, adaptive
+    quadrature with an error estimate, `mpmath.expm`/`eigh`, occupation-number enumeration, brute force over every
+    chain configuration, fourth-order finite differences of the enumerated quantity); `canonical.py` decides what is
+    shown (a formula needs every numeric check to agree; a symbolic zero is reported separately). The phase-space
+    cell, indistinguishable copies and numerical values are the user's: they are not arguments of the chat tool and
+    arrive through the card (`/tools/statistical_mechanics`). Refusals carry one of an enumerated list of reasons.
+    `statmech/benchmark.py` is the closed-form corpus (`docs/statmech-benchmark.md`,
     `docs/benchmarks/statmech.json`); see [statistical-mechanics.md](statistical-mechanics.md).
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
