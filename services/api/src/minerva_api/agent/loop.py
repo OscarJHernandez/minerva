@@ -21,7 +21,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
-from .declarations import declared_matrices
+from .declarations import declared_matrices, declared_vectors
 from .events import (
     AssistantMessage,
     Block,
@@ -944,13 +944,15 @@ async def check_model_claims(
             for name, items in declared.items():
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
-    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(_prose_of(blocks))
+    prose = _prose_of(blocks)
+    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(prose)
     results = await run_in_threadpool(
         ctx.engine.check_claims,
         [s.value for s in pending],
         assumptions,
         list(prior_relations),
         sorted(matrices),
+        sorted(declared_vectors(prose)),
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):

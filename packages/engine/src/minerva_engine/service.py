@@ -398,12 +398,14 @@ class Engine:
         assumptions: dict[str, list[str]] | None = None,
         relations: list[str] | None = None,
         matrices: list[str] | None = None,
+        vectors: list[str] | None = None,
     ) -> list[ClaimCheck]:
         """Numerically test equations written by the model. Failures leave claims unchecked.
 
         `relations` are formulas stated earlier in the conversation; definitions among them are used
         by substitution (see `claims.py`). `matrices` are names declared as matrices in the
-        conversation: equations that mention them are never tested by sampling numbers."""
+        conversation: equations that mention them are never tested by sampling numbers. `vectors`
+        are names declared as vector fields; vector notation is never sampled either way."""
         if not formulas:
             return []
         # A `noncommutative` declaration means "matrix" here; it must not reach the engine as an
@@ -416,6 +418,7 @@ class Engine:
                 "assumptions": clean,
                 "relations": relations or [],
                 "matrices": sorted({*(matrices or []), *noncommutative}),
+                "vectors": sorted(vectors or []),
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:
