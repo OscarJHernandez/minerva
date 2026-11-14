@@ -5,6 +5,9 @@
       "category": "matrix",
       "source": "Higham, Functions of Matrices (matrix exponential)",
       "expected": "correct",
+      "oracle": "mpmath_expm",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
       "outcome": "correct"
     },
     {
@@ -12,6 +15,9 @@
       "category": "matrix",
       "source": "Higham, Functions of Matrices (matrix exponential: exp(A)exp(B) = exp(A+B) needs commuting A, B in general)",
       "expected": "refused",
+      "oracle": "mpmath_expm",
+      "evidence": "refusal",
+      "tier": "pr",
       "outcome": "refused_as_expected"
     },
     {
@@ -19,6 +25,59 @@
       "category": "matrix",
       "source": "Higham, Functions of Matrices (Frechet derivative of the exponential)",
       "expected": "correct",
+      "oracle": "finite_difference",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "matrix-exp-jordan-block",
+      "category": "matrix",
+      "source": "Higham, Functions of Matrices (exponential of a defective matrix)",
+      "expected": "correct",
+      "oracle": "mpmath_expm",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "matrix-power-jordan-block",
+      "category": "matrix",
+      "source": "Horn and Johnson, Matrix Analysis (powers of a Jordan block)",
+      "expected": "correct",
+      "oracle": "arithmetic",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "matrix-square-of-sum-noncommuting",
+      "category": "matrix",
+      "source": "Horn and Johnson, Matrix Analysis (matrix multiplication is not commutative)",
+      "expected": "correct",
+      "oracle": "arithmetic",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "matrix-singular-inverse-refused",
+      "category": "matrix",
+      "source": "Horn and Johnson, Matrix Analysis (a matrix is invertible iff its determinant is nonzero)",
+      "expected": "refused",
+      "oracle": "arithmetic",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "matrix-derivative-of-defective-exponential",
+      "category": "matrix",
+      "source": "Higham, Functions of Matrices (d/dt exp(tA) = A exp(tA))",
+      "expected": "correct",
+      "oracle": "finite_difference",
+      "evidence": "symbolic_proof",
+      "tier": "pr",
       "outcome": "correct"
     },
     {
@@ -26,6 +85,9 @@
       "category": "distribution",
       "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (delta of a function)",
       "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
       "outcome": "correct"
     },
     {
@@ -33,6 +95,9 @@
       "category": "distribution",
       "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (delta of a function with a repeated root is not defined)",
       "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
       "outcome": "refused_as_expected"
     },
     {
@@ -40,13 +105,70 @@
       "category": "distribution",
       "source": "convention of the integral at an endpoint (ambiguous without a stated one)",
       "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
       "outcome": "refused_as_expected"
+    },
+    {
+      "id": "delta-scaled-argument",
+      "category": "distribution",
+      "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (delta(ax) = delta(x) / |a|)",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "delta-sifting-property",
+      "category": "distribution",
+      "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (sifting property)",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "delta-outside-the-range",
+      "category": "distribution",
+      "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (support of the delta)",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "delta-squared-refused",
+      "category": "distribution",
+      "source": "Gel'fand and Shilov, Generalized Functions vol. 1 (the product of distributions is not defined in general)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "heaviside-weighted-integral",
+      "category": "distribution",
+      "source": "DLMF \u00a71.16 (the Heaviside step function integrates to a truncated range)",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "pending",
+      "pending": "CAP-001"
     },
     {
       "id": "substitution-with-premise",
       "category": "substitution",
       "source": "arithmetic",
       "expected": "correct",
+      "oracle": "arithmetic",
+      "evidence": "conditional",
+      "tier": "pr",
       "outcome": "correct"
     },
     {
@@ -54,6 +176,9 @@
       "category": "substitution",
       "source": "arithmetic (the two orders differ)",
       "expected": "refused",
+      "oracle": "arithmetic",
+      "evidence": "refusal",
+      "tier": "pr",
       "outcome": "refused_as_expected"
     },
     {
@@ -61,6 +186,279 @@
       "category": "mechanics",
       "source": "Landau and Lifshitz, Mechanics, section 28 (anharmonic oscillations)",
       "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "lagrangian-time-dependent-energy-refused",
+      "category": "mechanics",
+      "source": "Landau and Lifshitz, Mechanics, section 6 (energy is conserved only if L has no explicit time)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "lagrangian-rotation-constant-along-the-motion",
+      "category": "mechanics",
+      "source": "Landau and Lifshitz, Mechanics, section 9 (angular momentum of a central field)",
+      "expected": "correct",
+      "oracle": "exact_solution",
+      "evidence": "symbolic_proof",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "discovery-isotropic-oscillator",
+      "category": "mechanics",
+      "source": "Landau and Lifshitz, Mechanics, section 15 (the isotropic oscillator has 2n - 1 independent constants)",
+      "expected": "correct",
+      "oracle": "exact_bracket",
+      "evidence": "symbolic_proof",
+      "tier": "extended",
+      "outcome": "correct"
+    },
+    {
+      "id": "integral-beta-function",
+      "category": "calculus",
+      "source": "DLMF \u00a75.12 (the beta integral)",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "integral-gaussian-full-line",
+      "category": "calculus",
+      "source": "DLMF \u00a75.4 (Gamma(1/2) = sqrt(pi))",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "integral-sine-squared",
+      "category": "calculus",
+      "source": "DLMF \u00a74.21 (double-angle formulas)",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "integral-three-halves-power",
+      "category": "calculus",
+      "source": "elementary power rule",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "antiderivative-arctangent",
+      "category": "calculus",
+      "source": "DLMF \u00a74.26 (integrals of rational functions: arctangent)",
+      "expected": "correct",
+      "oracle": "mpmath_diff",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "antiderivative-by-parts",
+      "category": "calculus",
+      "source": "integration by parts",
+      "expected": "correct",
+      "oracle": "mpmath_diff",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "derivative-x-to-the-x",
+      "category": "calculus",
+      "source": "logarithmic differentiation",
+      "expected": "correct",
+      "oracle": "mpmath_diff",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "derivative-product-with-gaussian",
+      "category": "calculus",
+      "source": "product and chain rules",
+      "expected": "correct",
+      "oracle": "mpmath_diff",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "derivative-absolute-value-refused",
+      "category": "calculus",
+      "source": "|z| is nowhere complex-differentiable (Cauchy-Riemann)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "integral-reciprocal-across-the-pole-refused",
+      "category": "calculus",
+      "source": "improper integrals: 1/x on [-1, 1] has no value (only a principal value)",
+      "expected": "refused",
+      "oracle": "mpmath_quad",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "integral-oscillating-without-a-limit-refused",
+      "category": "calculus",
+      "source": "improper integrals: the integral of sin over [0, infinity) does not converge",
+      "expected": "refused",
+      "oracle": "mpmath_quad",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "series-sine",
+      "category": "series",
+      "source": "DLMF \u00a74.19 (Maclaurin series of the sine)",
+      "expected": "correct",
+      "oracle": "mpmath_taylor",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "series-exponential-times-cosine",
+      "category": "series",
+      "source": "Cauchy product of the Maclaurin series of exp and cos",
+      "expected": "correct",
+      "oracle": "mpmath_taylor",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "series-arctangent",
+      "category": "series",
+      "source": "DLMF \u00a74.24 (Maclaurin series of the arctangent)",
+      "expected": "correct",
+      "oracle": "mpmath_taylor",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "series-pole-refused",
+      "category": "series",
+      "source": "1/x has a pole at 0: no Taylor series (a Laurent series would be a different object)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "series-branch-point-refused",
+      "category": "series",
+      "source": "sqrt(x) is not analytic at 0: no Taylor series",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "roots-cubic-distinct",
+      "category": "algebra",
+      "source": "Vieta's formulas for x^3 - 6x^2 + 11x - 6 = (x-1)(x-2)(x-3)",
+      "expected": "correct",
+      "oracle": "mpmath_polyroots",
+      "evidence": "structural",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "roots-triple-root",
+      "category": "algebra",
+      "source": "multiplicity of a root: p, p', p'' vanish and p''' does not",
+      "expected": "correct",
+      "oracle": "mpmath_diff",
+      "evidence": "structural",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "roots-quintic-without-radicals",
+      "category": "algebra",
+      "source": "Galois theory: x^5 - x - 1 has Galois group S5 (not solvable by radicals)",
+      "expected": "correct",
+      "oracle": "mpmath_polyroots",
+      "evidence": "structural",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "simplify-pythagorean-identity",
+      "category": "algebra",
+      "source": "DLMF \u00a74.21 (sin^2 + cos^2 = 1)",
+      "expected": "correct",
+      "oracle": "arithmetic",
+      "evidence": "symbolic_proof",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "simplify-log-of-product-positive",
+      "category": "algebra",
+      "source": "DLMF \u00a74.8 (log of a product, positive arguments)",
+      "expected": "correct",
+      "oracle": "arithmetic",
+      "evidence": "symbolic_proof",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "simplify-log-of-product-complex-refused",
+      "category": "algebra",
+      "source": "DLMF \u00a74.8 (the principal logarithm of a product of complex numbers)",
+      "expected": "refused",
+      "oracle": "arithmetic",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "simplify-sqrt-of-square-complex-refused",
+      "category": "algebra",
+      "source": "DLMF \u00a74.2 (principal square root of a complex number)",
+      "expected": "refused",
+      "oracle": "arithmetic",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "simplify-cancelled-pole-is-reported",
+      "category": "algebra",
+      "source": "domain of a rational function (a cancelled factor remains a point of exclusion)",
+      "expected": "correct",
+      "oracle": "arithmetic",
+      "evidence": "structural",
+      "tier": "pr",
       "outcome": "correct"
     }
   ]
