@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from minerva_engine import DistributionInput, Engine, GeometryInput, Limits
+from minerva_engine import DistributionInput, Engine, GeometryInput, Limits, VectorInput
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
@@ -626,6 +626,62 @@ def run_geometry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    r = engine.vector_calculus(
+        VectorInput(
+            expression=spec.get("input", ""),
+            format=spec.get("format", "latex"),
+            coordinates=spec.get("coordinates", "cartesian"),
+            fields=spec.get("fields") or [],
+            constants=spec.get("constants") or [],
+            assumptions=spec.get("assumptions") or {},
+            action=spec.get("action", "evaluate"),
+            to=spec.get("to"),
+        )
+    )
+    inputs = [{"label": "Coordinates", "source": spec.get("coordinates", "cartesian")}]
+    if spec.get("input"):
+        inputs.append({"label": "Expression", "source": spec["input"], "syntax": _syntax(spec)})
+    for f in spec.get("fields") or []:
+        what = f["kind"] + (
+            " field, components " + ", ".join(f["components"])
+            if f.get("components")
+            else " field" + (f", {f['smoothness']}" if f.get("smoothness") else "")
+        )
+        inputs.append({"label": f"Field {f['name']}", "source": what})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        if r.result_kind == "vector":
+            outputs += [
+                {"label": f"Component along {b}", "latex": c}
+                for b, c in zip(r.basis_latex, r.components_latex, strict=True)
+            ]
+        elif r.result_kind == "scalar" and r.result_latex:
+            outputs.append({"label": "Result", "latex": r.result_latex})
+        elif r.result_kind == "matrix" and r.result_latex and r.determinant_latex:
+            outputs.append({"label": "Jacobian", "latex": r.result_latex})
+            outputs.append({"label": "Determinant", "latex": r.determinant_latex})
+        v = r.verification
+        if v is not None:
+            checks.append(
+                f"{v.points_agreed} of {v.points_checked} sample points agree with an independent "
+                "Cartesian finite-difference evaluation; no symbolic proof is claimed"
+            )
+        if r.restrictions_latex:
+            notes.append(
+                "Valid only where "
+                + ", ".join(f"${x}$" for x in r.restrictions_latex)
+                + " (the coordinates break down there)."
+            )
+    for b in r.blocked:
+        notes.append(f"Not shown: needs {b.needs} smoothness of {', '.join(b.fields)}. {b.note}.")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 _READING_WORDS = {
     "dirac_delta": "a Dirac delta",
     "heaviside": "a step function",
@@ -820,6 +876,7 @@ RUNNERS = {
     "series": run_series,
     "matrix": run_matrix,
     "geometry": run_geometry,
+    "vector": run_vector,
     "distribution": run_distribution,
     "identities": run_identities,
     "tensor": run_tensor,

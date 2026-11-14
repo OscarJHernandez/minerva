@@ -69,6 +69,7 @@ from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
 from .textparse import parse_text
+from .vector import FieldDecl, VectorInput, VectorResult
 
 __all__ = [
     "Applicability",
@@ -95,6 +96,7 @@ __all__ = [
     "Engine",
     "ExpansionReport",
     "ExpressionInput",
+    "FieldDecl",
     "FormulaReading",
     "GeometryInput",
     "GeometryResult",
@@ -145,6 +147,8 @@ __all__ = [
     "TransformStep",
     "UnitsCheckReport",
     "UnsupportedInput",
+    "VectorInput",
+    "VectorResult",
     "Verification",
     "apply_rule",
     "check_claim",

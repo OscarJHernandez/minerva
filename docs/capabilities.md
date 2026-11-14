@@ -713,6 +713,122 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - **Status:** `parse_error`
 - The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
 
+### Vector calculus in three coordinate systems
+
+*Available in:* chat, HTTP API.
+
+Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and triple products, directional derivatives and partial derivatives of scalar and vector fields in Cartesian, cylindrical and spherical coordinates, with fields that are arbitrary functions of position (and time) or given explicitly. Nested operators are supported (up to four). A result is shown only if an independent reading agrees: the input is evaluated directly in Cartesian coordinates by nested finite differences on random smooth fields, sharing no scale factor with the symbolic result. Nothing is assumed smooth: an identity such as curl grad f = 0 needs equal mixed partial derivatives and is withheld until the field is declared twice continuously differentiable. The Jacobian of each system and the conversion of explicit fields between systems are included.
+
+**Limits**
+
+- Three orthogonal coordinate systems, physical (orthonormal) components, right-handed frames. No general curvilinear coordinates and no tensor fields (see differential geometry).
+- Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
+- Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
+- The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
+- Vector identities, controlled derivations, electromagnetism and integrals over curves, surfaces and volumes are planned (see the roadmap).
+
+#### Curl of an arbitrary field in spherical coordinates
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla\times\mathbf{A}` (LaTeX)
+- **Field A:** `vector field`
+- **Status:** `ok`
+- **Component along \hat{r}:** $\frac{\frac{A_{\phi}}{\tan{\left(\theta \right)}} + \frac{\partial}{\partial \theta} A_{\phi} - \frac{\frac{\partial}{\partial \phi} A_{\theta}}{\sin{\left(\theta \right)}}}{r}$
+- **Component along \hat{\theta}:** $\frac{- r \frac{\partial}{\partial r} A_{\phi} - A_{\phi} + \frac{\frac{\partial}{\partial \phi} A_{r}}{\sin{\left(\theta \right)}}}{r}$
+- **Component along \hat{\phi}:** $\frac{r \frac{\partial}{\partial r} A_{\theta} + A_{\theta} - \frac{\partial}{\partial \theta} A_{r}}{r}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The vector Laplacian in cylindrical coordinates is not componentwise
+
+- **Coordinates:** `cylindrical`
+- **Expression:** `\nabla^2\mathbf{A}` (LaTeX)
+- **Field A:** `vector field`
+- **Status:** `ok`
+- **Component along \hat{\rho}:** $\frac{\rho^{2} \frac{\partial^{2}}{\partial \rho^{2}} A_{\rho} + \rho^{2} \frac{\partial^{2}}{\partial z^{2}} A_{\rho} + \rho \frac{\partial}{\partial \rho} A_{\rho} - A_{\rho} - 2 \frac{\partial}{\partial \phi} A_{\phi} + \frac{\partial^{2}}{\partial \phi^{2}} A_{\rho}}{\rho^{2}}$
+- **Component along \hat{\phi}:** $\frac{\rho^{2} \frac{\partial^{2}}{\partial \rho^{2}} A_{\phi} + \rho^{2} \frac{\partial^{2}}{\partial z^{2}} A_{\phi} + \rho \frac{\partial}{\partial \rho} A_{\phi} - A_{\phi} + \frac{\partial^{2}}{\partial \phi^{2}} A_{\phi} + 2 \frac{\partial}{\partial \phi} A_{\rho}}{\rho^{2}}$
+- **Component along \hat{z}:** $\frac{\partial^{2}}{\partial \rho^{2}} A_{z} + \frac{\partial^{2}}{\partial z^{2}} A_{z} + \frac{\frac{\partial}{\partial \rho} A_{z}}{\rho} + \frac{\frac{\partial^{2}}{\partial \phi^{2}} A_{z}}{\rho^{2}}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $\rho \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The field of a point charge has no divergence away from the origin
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)` (LaTeX)
+- **Status:** `ok`
+- **Result:** $0$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### Curl of a gradient vanishes for a twice differentiable field
+
+- **Coordinates:** `cylindrical`
+- **Expression:** `\nabla\times(\nabla f)` (LaTeX)
+- **Field f:** `scalar field, c2`
+- **Status:** `ok`
+- **Component along \hat{\rho}:** $0$
+- **Component along \hat{\phi}:** $0$
+- **Component along \hat{z}:** $0$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $\rho \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The same statement is withheld when no smoothness is declared
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\nabla\times(\nabla f)` (LaTeX)
+- **Field f:** `scalar field`
+- **Status:** `conditions_not_satisfied`
+- Not shown: needs c2 smoothness of f. the result contains mixed partial derivatives in both orders; they are equal only if the field is twice continuously differentiable.
+- not shown: the result needs mixed partial derivatives of f to commute, and the smoothness of that field was not declared (use smoothness c2, or smooth for higher orders)
+
+#### Curl of a scalar times a vector
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\nabla\times(f\mathbf{A})` (LaTeX)
+- **Field f:** `scalar field, c2`
+- **Field A:** `vector field, c2`
+- **Status:** `ok`
+- **Component along \hat{x}:** $- A_{y} \frac{\partial}{\partial z} f + A_{z} \frac{\partial}{\partial y} f - f \frac{\partial}{\partial z} A_{y} + f \frac{\partial}{\partial y} A_{z}$
+- **Component along \hat{y}:** $A_{x} \frac{\partial}{\partial z} f - A_{z} \frac{\partial}{\partial x} f + f \frac{\partial}{\partial z} A_{x} - f \frac{\partial}{\partial x} A_{z}$
+- **Component along \hat{z}:** $- A_{x} \frac{\partial}{\partial y} f + A_{y} \frac{\partial}{\partial x} f - f \frac{\partial}{\partial y} A_{x} + f \frac{\partial}{\partial x} A_{y}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The Jacobian of spherical coordinates
+
+- **Coordinates:** `spherical`
+- **Status:** `ok`
+- **Jacobian:** $\left[\begin{matrix}\sin{\left(\theta \right)} \cos{\left(\phi \right)} & r \cos{\left(\phi \right)} \cos{\left(\theta \right)} & - r \sin{\left(\phi \right)} \sin{\left(\theta \right)}\\\sin{\left(\phi \right)} \sin{\left(\theta \right)} & r \sin{\left(\phi \right)} \cos{\left(\theta \right)} & r \sin{\left(\theta \right)} \cos{\left(\phi \right)}\\\cos{\left(\theta \right)} & - r \sin{\left(\theta \right)} & 0\end{matrix}\right]$
+- **Determinant:** $r^{2} \sin{\left(\theta \right)}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $r \neq 0$, $\sin\theta \neq 0$ (the coordinates break down there).
+- Jacobian of the map to Cartesian coordinates, checked against central differences of the map; this is evidence, not a proof
+
+#### A rotation field in cylindrical components, converted to Cartesian
+
+- **Coordinates:** `cylindrical`
+- **Expression:** `\mathbf{F}` (LaTeX)
+- **Field F:** `vector field, components 0, rho, 0`
+- **Status:** `ok`
+- **Component along \hat{x}:** $- y$
+- **Component along \hat{y}:** $x$
+- **Component along \hat{z}:** $0$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- converted from cylindrical to cartesian and checked numerically by an independent route (through Cartesian coordinates); this is evidence, not a proof
+
+#### Two vectors side by side are refused, not guessed
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\mathbf{A}\mathbf{B}` (LaTeX)
+- **Field A:** `vector field`
+- **Field B:** `vector field`
+- **Status:** `parse_error`
+- the product of two vectors is ambiguous: write a dot product (\cdot) or a cross product (\times)
+
 ### Substituting relations
 
 *Available in:* workbench, chat, HTTP API.

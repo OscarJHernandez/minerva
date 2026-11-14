@@ -581,6 +581,7 @@ export type Operation =
   | "apply_identity"
   | "matrix_calculus"
   | "geometry"
+  | "vector"
   | "distribution"
   | "rewrite"
   | "substitute"
@@ -742,6 +743,135 @@ export interface GeometryResult {
   diagnostics: GeometryStage[];
   peak_memory_mb: number | null;
   message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+}
+
+// --- vector calculus ------------------------------------------------------------------------
+
+export type VectorCoordinates = "cartesian" | "cylindrical" | "spherical";
+export type VectorAction =
+  | "evaluate"
+  | "jacobian"
+  | "convert"
+  | "identities"
+  | "apply_identity"
+  | "substitute"
+  | "apply"
+  | "derive";
+
+export interface VectorFieldDecl {
+  name: string;
+  kind: "scalar" | "vector";
+  /** Explicit components in text syntax (1 for a scalar, 3 for a vector); absent: an arbitrary field. */
+  components?: string[] | null;
+  depends_on?: string[] | null;
+  /** What the USER declared; never added by Minerva. */
+  smoothness?: "c1" | "c2" | "smooth" | null;
+}
+
+/** The whole vector problem. It is sent with every request: nothing is remembered server-side. */
+export interface VectorRequest {
+  expression: string;
+  format?: "latex" | "text";
+  coordinates: VectorCoordinates;
+  fields: VectorFieldDecl[];
+  constants: string[];
+  assumptions: Assumptions;
+  action: VectorAction;
+  to?: VectorCoordinates | null;
+  /** Controlled steps: the identity, the part it acts on, and the USER's premises. */
+  rule_id?: string | null;
+  path?: number[] | null;
+  reverse?: boolean;
+  premises?: { equation: string; label?: string | null }[];
+  premise?: number | null;
+  operator?: "grad" | "div" | "curl" | "lap" | "dt" | null;
+  target?: string | null;
+}
+
+export interface VectorBlocked {
+  needs: "c2" | "smooth";
+  fields: string[];
+  note: string;
+}
+
+export interface VectorCheck {
+  name: string;
+  passed: boolean | null;
+  note: string;
+}
+
+export interface VectorVerification {
+  method: string;
+  numeric_passed: boolean;
+  points_checked: number;
+  points_agreed: number;
+  points_skipped: number;
+  max_residual: number | null;
+  /** Null: no independent symbolic route was run. Numerical agreement is evidence, not proof. */
+  symbolic_zero: boolean | null;
+  checks: VectorCheck[];
+  note: string;
+}
+
+/** "identity": holds under the declared smoothness; "conditional": only given the premises named. */
+export type VectorStepEvidence = "identity" | "conditional";
+
+export interface VectorStep {
+  action: VectorAction;
+  title: string;
+  before_latex: string;
+  after_latex: string;
+  rule_id: string | null;
+  reverse: boolean;
+  path: number[];
+  part_latex: string | null;
+  evidence: VectorStepEvidence;
+  given: string[];
+  needs: string[];
+  verification: VectorVerification | null;
+  symbolic_zero: boolean | null;
+}
+
+export interface VectorApplicable {
+  rule_id: string;
+  reverse: boolean;
+  path: number[];
+  part_latex: string;
+  result_latex: string;
+  needs: string[];
+  blocked: boolean;
+  note: string;
+}
+
+export interface VectorResult {
+  status: Status;
+  message: string;
+  action: VectorAction;
+  coordinates: string;
+  to: string | null;
+  result_kind: "scalar" | "vector" | "matrix" | null;
+  input_latex: string;
+  result_latex: string | null;
+  result_text: string | null;
+  components_latex: string[];
+  components_text: string[];
+  basis_latex: string[];
+  scale_factors_latex: string[];
+  determinant_latex: string | null;
+  verification: VectorVerification | null;
+  conventions: string[];
+  assumptions_used: string[];
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  blocked: VectorBlocked[];
+  undeclared: string[];
+  steps: VectorStep[];
+  applicable: VectorApplicable[];
+  evidence: VectorStepEvidence | null;
+  given: string[];
+  search_complete: boolean | null;
   duration_ms: number;
   calculation_id?: string | null;
 }

@@ -1002,3 +1002,52 @@
     arguments: {latex: 'x^2 + y', relations: ['y = 3x']}
   reply_matches: 'given|premise|relation'
   source: "arithmetic: x^2 + 3x, derivative 2x + 3; the relation is the user's premise (AGENTS.md, controlled steps)"
+
+# ----------------------------------------------------------------------------- vector calculus
+# The tool must be chosen, the fields declared, and nothing assumed smooth that the user did not say is.
+- id: vector-divergence-spherical
+  category: calculus
+  prompt: 'In spherical coordinates, what is the divergence of a vector field $\mathbf{A}(r,\theta,\phi)$?'
+  expected_tool: vector_calculus
+  args: {equals: {coordinates: spherical}, present: [fields]}
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\cdot\mathbf{A}'
+      coordinates: spherical
+      fields: [{name: A, kind: vector}]
+  wrong_formulas: ['\nabla\cdot\mathbf{A} = \frac{\partial A_r}{\partial r} + \frac{\partial A_\theta}{\partial \theta} + \frac{\partial A_\phi}{\partial \phi}']
+  source: "textbook: Griffiths, Introduction to Electrodynamics, inside front cover (divergence in spherical coordinates)"
+
+- id: vector-curl-grad-needs-smoothness
+  category: ambiguous
+  prompt: 'Compute the curl of the gradient of a scalar field $f(x,y,z)$ in Cartesian coordinates.'
+  expected_tool: vector_calculus
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla f)'
+      fields: [{name: f, kind: scalar}]
+  reply_matches: 'smooth|differentiab|C\^?2|continuous|mixed'
+  source: "Marsden and Tromba, Vector Calculus (curl grad f = 0 needs C^2): the user stated no smoothness, so the tool withholds the result and the answer asks"
+
+- id: vector-curl-grad-with-smoothness
+  category: calculus
+  prompt: 'The scalar field $f(x,y,z)$ is twice continuously differentiable. Compute the curl of its gradient.'
+  expected_tool: vector_calculus
+  expect_card: {status: ok, result_text: "(0, 0, 0)"}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla f)'
+      fields: [{name: f, kind: scalar, smoothness: c2}]
+  source: "Marsden and Tromba, Vector Calculus (curl grad f = 0 for C^2 fields); the smoothness was stated by the user"
+
+- id: vector-two-vectors-side-by-side
+  category: unsupported
+  prompt: 'Simplify $\mathbf{A}\mathbf{B}$ for two vector fields.'
+  expected_tool: none
+  informational: true
+  source: "the product of two vectors is ambiguous (dot or cross); the tool refuses it and the model asks which was meant"

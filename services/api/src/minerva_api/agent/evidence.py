@@ -27,6 +27,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "integrate_motion": "numeric",
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
+    "vector_calculus": "numeric",  # independent Cartesian finite differences; never a proof
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
     "substitute": "numeric",  # the replaced form reproduces the original (a congruence check, sampled)
     "rewrite_part": "numeric",  # the whole expression before and after, sampled

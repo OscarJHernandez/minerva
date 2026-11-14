@@ -14,6 +14,8 @@ import type {
   SimplifyResult,
   Status,
   StepResult,
+  VectorRequest,
+  VectorResult,
 } from "./types";
 
 export interface ExpansionReport {
@@ -441,6 +443,13 @@ export type Card =
       type: "geometry";
       title: string;
       data: { result: GeometryResult; request: GeometryRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "vector";
+      title: string;
+      data: { result: VectorResult; request: VectorRequest };
     }
   | {
       id: string;

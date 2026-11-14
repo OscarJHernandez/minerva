@@ -25,6 +25,8 @@ from minerva_engine import (
     StepResult,
     TensorInput,
     TensorResult,
+    VectorInput,
+    VectorResult,
     Verification,
 )
 from minerva_knowledge.identities import (
@@ -59,8 +61,10 @@ from .schemas import (
     SimplifyRequest,
     SubstituteRequest,
     SubtermsRequest,
+    VectorRequest,
 )
 from .search_log import log_search_events
+from .vector_log import log_vector
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -87,6 +91,10 @@ class MatrixCalculusResponse(MatrixCalculusResult):
 
 
 class GeometryResponse(GeometryResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class VectorResponse(VectorResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -425,6 +433,37 @@ def geometry(
         out.calculation_id = _save_row(
             db, user, "geometry", label, request.format, request.assumptions, body,
             result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+@router.post("/vector", response_model=VectorResponse)
+def vector(
+    body: VectorRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> VectorResponse:
+    """Gradient, divergence, curl, Laplacian and products of declared fields; Jacobians and
+    conversions between Cartesian, cylindrical and spherical coordinates.
+
+    The declarations are part of the request, so repeating it with another expression reuses the same
+    problem. A result is returned only if the independent numerical check passed."""
+    _guard(user, limiter, settings, len(body.expression))
+    _check_links(db, user, body)
+    request = VectorInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result = engine.vector_calculus(request)
+    log_vector(result)
+    out = VectorResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json")
+        out.calculation_id = _save_row(
+            db, user, "vector", request.expression or request.action, request.format,
+            request.assumptions, body, result.status.value, saved,
         )  # fmt: skip
     return out
 

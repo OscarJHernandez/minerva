@@ -22,6 +22,8 @@
 #   identities   input, assumptions, show [rule ids to display]
 #   geometry     coordinates, metric [[expression]], assumptions, functions [{name, args}], quantities, tensor {variance,
 #                components}, tensor_index
+#   vector       input (LaTeX or format: text), coordinates (cartesian | cylindrical | spherical), fields [{name, kind,
+#                components, depends_on, smoothness}], constants, assumptions, action (evaluate | jacobian | convert), to
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
@@ -645,6 +647,91 @@ capabilities:
           - ["1", "x"]
           - ["0", "1"]
         quantities: [christoffel]
+
+  - id: vector-calculus
+    title: Vector calculus in three coordinate systems
+    status: available
+    group: math
+    where: [chat, api]
+    summary: >-
+      Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and triple products,
+      directional derivatives and partial derivatives of scalar and vector fields in Cartesian, cylindrical
+      and spherical coordinates, with fields that are arbitrary functions of position (and time) or given
+      explicitly. Nested operators are supported (up to four). A result is shown only if an independent
+      reading agrees: the input is evaluated directly in Cartesian coordinates by nested finite differences
+      on random smooth fields, sharing no scale factor with the symbolic result. Nothing is assumed smooth:
+      an identity such as curl grad f = 0 needs equal mixed partial derivatives and is withheld until the
+      field is declared twice continuously differentiable. The Jacobian of each system and the conversion of
+      explicit fields between systems are included.
+    limits:
+      - Three orthogonal coordinate systems, physical (orthonormal) components, right-handed frames. No general curvilinear coordinates and no tensor fields (see differential geometry).
+      - Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
+      - Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
+      - The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
+      - Vector identities, controlled derivations, electromagnetism and integrals over curves, surfaces and volumes are planned (see the roadmap).
+    examples:
+      - id: vector-curl-spherical
+        title: Curl of an arbitrary field in spherical coordinates
+        op: vector
+        input: '\nabla\times\mathbf{A}'
+        coordinates: spherical
+        fields:
+          - { name: A, kind: vector }
+      - id: vector-laplacian-cylindrical
+        title: The vector Laplacian in cylindrical coordinates is not componentwise
+        op: vector
+        input: '\nabla^2\mathbf{A}'
+        coordinates: cylindrical
+        fields:
+          - { name: A, kind: vector }
+      - id: vector-point-charge
+        title: The field of a point charge has no divergence away from the origin
+        op: vector
+        input: '\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)'
+        coordinates: spherical
+      - id: vector-curl-grad-declared
+        title: Curl of a gradient vanishes for a twice differentiable field
+        op: vector
+        input: '\nabla\times(\nabla f)'
+        coordinates: cylindrical
+        fields:
+          - { name: f, kind: scalar, smoothness: c2 }
+      - id: vector-curl-grad-refused
+        title: The same statement is withheld when no smoothness is declared
+        op: vector
+        input: '\nabla\times(\nabla f)'
+        coordinates: cartesian
+        fields:
+          - { name: f, kind: scalar }
+      - id: vector-product-rule
+        title: Curl of a scalar times a vector
+        op: vector
+        input: '\nabla\times(f\mathbf{A})'
+        coordinates: cartesian
+        fields:
+          - { name: f, kind: scalar, smoothness: c2 }
+          - { name: A, kind: vector, smoothness: c2 }
+      - id: vector-jacobian
+        title: The Jacobian of spherical coordinates
+        op: vector
+        action: jacobian
+        coordinates: spherical
+      - id: vector-convert
+        title: A rotation field in cylindrical components, converted to Cartesian
+        op: vector
+        action: convert
+        input: '\mathbf{F}'
+        coordinates: cylindrical
+        to: cartesian
+        fields:
+          - { name: F, kind: vector, components: ['0', 'rho', '0'] }
+      - id: vector-ambiguous-product
+        title: Two vectors side by side are refused, not guessed
+        op: vector
+        input: '\mathbf{A}\mathbf{B}'
+        fields:
+          - { name: A, kind: vector }
+          - { name: B, kind: vector }
 
   - id: identities
     title: Identity search with applicability checks

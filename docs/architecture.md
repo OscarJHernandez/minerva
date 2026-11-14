@@ -179,6 +179,23 @@ one most likely to be wrong.
     `diagnostics` because the sandbox child cannot log; the API turns them into allow-listed log lines (trace id,
     operation, stage, status, duration, enumerated reason) and never logs expressions. Benchmark:
     `docs/distribution-benchmark.md`.
+  - `vector/` (`vector_calculus`: gradient, divergence, curl, scalar and vector Laplacian, dot, cross and triple
+    products, directional and partial derivatives, Jacobians and conversion of explicit fields, in Cartesian,
+    cylindrical and spherical coordinates). A vector expression is an ordinary SymPy tree (`expressions.py`):
+    vector fields are noncommutative symbols, the operators are inert heads (`Grad`, `Div`, `Curl`, `Lap`, `Dot`,
+    `Cross`, `Pd`, `Adv`, `Pos`, `Unit`) that never evaluate, and `kind_of` types every node, so the product of two
+    vectors or a gradient of a vector is a `parse_error` (`parse.py` extends the strict scalar parser; `\nabla`
+    acts on the one factor after it). Fields are declared (`FieldDecl`: arbitrary functions of the coordinates, and
+    of `t` if the user says so, or explicit components in text syntax); every symbol must be a coordinate, `t`, a
+    declared field or a declared constant. Two routes, kept apart: the exact result (`lower.py`) uses scale factors
+    and the orthonormal frame; the independent check (`numeric.py`) evaluates the *input* at Cartesian points by
+    nested central differences in mpmath on random smooth fields, finding the frame by differencing the map
+    `x(q)`, so a dropped scale factor cannot agree with it. The result is shown only if that check passes and is
+    worded "numerically checked": the evaluated result carries no symbolic proof. Smoothness is never assumed:
+    derivatives of an abstract field are *jets* (one plain symbol per ordered word of derivatives), merged only for
+    fields the user declared `c2`/`smooth`; a result that would need `d/dx d/dy f = d/dy d/dx f` is
+    `conditions_not_satisfied` with `blocked`. The axis and origin are reported as restrictions. Benchmark:
+    `docs/vector-benchmark.md`; outside oracles in `docs/reference-benchmark.md`.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 

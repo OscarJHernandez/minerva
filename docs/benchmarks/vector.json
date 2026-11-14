@@ -1,0 +1,525 @@
+{
+  "deterministic": {
+    "cases": {
+      "ambiguous-operator-scope": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "cartesian-cross": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-directional": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-div-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-triple": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "convert-abstract": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "unsupported",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "convert-radial": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "convert-scalar": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cross-of-scalars": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "curl-curl-identity": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "curl-grad-no-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "cylindrical-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-div-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-vector-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "div-cross-identity": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "div-curl-no-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "div-of-scalar": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "grad-of-vector": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "jacobian-cylindrical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "jacobian-spherical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "line-charge-field": {
+        "correct": true,
+        "expected": "ok",
+        "group": "singular",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "operator-depth": {
+        "correct": true,
+        "expected": "resource_limit",
+        "group": "unsupported",
+        "operator_depth": 5,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "resource_limit"
+      },
+      "partial-vector-phi": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "point-charge-field": {
+        "correct": true,
+        "expected": "ok",
+        "group": "singular",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "polar-axis-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "singular",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "position-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "position-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "scalar-plus-vector": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "spherical-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-curl-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-div-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "time-swap-no-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "two-vectors-side-by-side": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "undeclared-symbol": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "undeclared-vector": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      }
+    },
+    "coverage": {
+      "corpus": 48,
+      "correct": 48,
+      "refused_as_expected": 13,
+      "shown_results": 35
+    },
+    "groups": {
+      "conditional": {
+        "cases": 3,
+        "correct": 3
+      },
+      "consistency": {
+        "cases": 8,
+        "correct": 8
+      },
+      "invalid": {
+        "cases": 8,
+        "correct": 8
+      },
+      "singular": {
+        "cases": 3,
+        "correct": 3
+      },
+      "unsupported": {
+        "cases": 2,
+        "correct": 2
+      },
+      "valid": {
+        "cases": 24,
+        "correct": 24
+      }
+    }
+  },
+  "measurements": {
+    "median_ms": {
+      "ambiguous-operator-scope": 0.0,
+      "cartesian-cross": 6.4,
+      "cartesian-curl": 9.4,
+      "cartesian-curl-grad": 25.6,
+      "cartesian-directional": 3.6,
+      "cartesian-div-curl": 83.7,
+      "cartesian-divergence": 8.4,
+      "cartesian-gradient": 4.2,
+      "cartesian-laplacian": 3.5,
+      "cartesian-triple": 8.3,
+      "convert-abstract": 0.0,
+      "convert-radial": 25.3,
+      "convert-scalar": 2.5,
+      "cross-of-scalars": 0.0,
+      "curl-curl-identity": 615.7,
+      "curl-grad-no-smoothness": 3.9,
+      "cylindrical-curl": 16.5,
+      "cylindrical-curl-grad": 26.1,
+      "cylindrical-div-curl": 101.9,
+      "cylindrical-divergence": 17.1,
+      "cylindrical-gradient": 14.1,
+      "cylindrical-laplacian": 17.6,
+      "cylindrical-vector-laplacian": 75.7,
+      "div-cross-identity": 118.5,
+      "div-curl-no-smoothness": 39.8,
+      "div-of-scalar": 0.0,
+      "grad-of-vector": 0.0,
+      "jacobian-cylindrical": 7.5,
+      "jacobian-spherical": 28.9,
+      "line-charge-field": 7.6,
+      "operator-depth": 0.1,
+      "partial-vector-phi": 13.3,
+      "point-charge-field": 3.4,
+      "polar-axis-gradient": 22.4,
+      "position-curl": 2.2,
+      "position-divergence": 1.2,
+      "scalar-plus-vector": 0.0,
+      "spherical-curl": 31.6,
+      "spherical-curl-curl": 159.1,
+      "spherical-curl-grad": 31.5,
+      "spherical-div-curl": 124.0,
+      "spherical-divergence": 43.3,
+      "spherical-gradient": 21.9,
+      "spherical-laplacian": 21.6,
+      "time-swap-no-smoothness": 6.9,
+      "two-vectors-side-by-side": 0.0,
+      "undeclared-symbol": 0.0,
+      "undeclared-vector": 0.0
+    },
+    "python": "3.13.16",
+    "repeats": 3,
+    "slowest_ms": 615.7
+  }
+}

@@ -62,6 +62,41 @@
       "source": "Landau and Lifshitz, Mechanics, section 28 (anharmonic oscillations)",
       "expected": "correct",
       "outcome": "correct"
+    },
+    {
+      "id": "vector-laplacian-across-coordinates",
+      "category": "vector",
+      "source": "Arfken and Weber, Mathematical Methods for Physicists (vector Laplacian; Cartesian components)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "divergence-of-position-vector",
+      "category": "vector",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 1 (div r = 3)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "point-charge-field-away-from-origin",
+      "category": "vector",
+      "source": "Griffiths, Introduction to Electrodynamics, section 1.5 (divergence of r-hat / r^2)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "div-curl-without-smoothness-refused",
+      "category": "vector",
+      "source": "Marsden and Tromba, Vector Calculus (div curl = 0 for C^2 fields)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "cross-product-of-scalars-refused",
+      "category": "vector",
+      "source": "definition of the cross product (two vectors)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
     }
   ]
 }

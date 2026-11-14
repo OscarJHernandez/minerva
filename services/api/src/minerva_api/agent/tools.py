@@ -29,9 +29,11 @@ from minerva_engine import (
     QuantitySpec,
     TensorInput,
     TensorSpec,
+    VectorInput,
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
+from minerva_engine.vector import FieldDecl
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
@@ -45,6 +47,7 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
 from ..search_log import log_search_events
+from ..vector_log import log_vector
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .segments import normalize
@@ -238,6 +241,59 @@ class GeometryArgs(BaseModel):
         ge=0,
         le=2,
         description="Which index (0-based) raise_index or lower_index acts on",
+    )
+
+
+class VectorCalculusArgs(BaseModel):
+    """Arguments of `vector_calculus`. The declarations are sent every time: nothing is remembered."""
+
+    expression: str = Field(
+        default="",
+        max_length=MAX_INPUT,
+        description="A scalar or vector expression in LaTeX, e.g. \\nabla\\times(f\\mathbf{A}), "
+        "\\nabla\\cdot(\\mathbf{A}\\times\\mathbf{B}), \\nabla^2\\mathbf{A}, "
+        "(\\mathbf{A}\\cdot\\nabla)\\mathbf{B}, \\frac{\\partial\\mathbf{E}}{\\partial t}, "
+        "\\mathbf{r}/r^3 (position vector). \\nabla acts on the ONE factor after it: write \\nabla(fg), "
+        "never \\nabla f g. \\cdot between two vectors is the dot product, \\times between two "
+        "vectors the cross product; the product of two vectors written side by side is refused. "
+        "Not needed for action=jacobian.",
+    )
+    coordinates: Literal["cartesian", "cylindrical", "spherical"] = Field(
+        default="cartesian",
+        description="cartesian (x, y, z), cylindrical (rho, phi, z) or spherical (r, theta, phi, theta "
+        "the polar angle). Vector components are physical components along the unit vectors. "
+        "Use the coordinate the user's problem is written in; do not change it.",
+    )
+    fields: list[FieldDecl] = Field(
+        default_factory=list,
+        max_length=8,
+        description='Every scalar or vector field in the expression, e.g. [{"name": "A", "kind": '
+        '"vector"}, {"name": "f", "kind": "scalar"}]. Without `components` the field is an arbitrary '
+        'function of the coordinates (add depends_on: [..., "t"] only if the user says it depends on '
+        "time). `components` gives it explicitly in TEXT syntax (rho*cos(phi), r**2*sin(theta); 1 "
+        "expression for a scalar, 3 for a vector). `smoothness` (c1, c2, smooth) is only what the USER "
+        "states: without it a result that needs mixed partial derivatives to commute (curl of a "
+        "gradient, divergence of a curl) is withheld; ask the user, never declare it yourself.",
+    )
+    constants: list[str] = Field(
+        default_factory=list,
+        max_length=16,
+        description="Names of constants (k, mu_0, c) that do not depend on position or time. Every symbol "
+        "that is not a coordinate, t or a declared field must be listed here.",
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of constants (e.g. {"k": ["positive"]}). Do not add what the user did '
+        "not state.",
+    )
+    action: Literal["evaluate", "jacobian", "convert"] = Field(
+        default="evaluate",
+        description="evaluate: compute the expression in the components of the system. jacobian: the "
+        "Jacobian, determinant and scale factors of the map to Cartesian coordinates. convert: re-express "
+        "an expression of EXPLICIT fields in the system `to`.",
+    )
+    to: Literal["cartesian", "cylindrical", "spherical"] | None = Field(
+        default=None, description="Target system for convert."
     )
 
 
@@ -821,6 +877,73 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
         "assumptions and functions."
     )
     return ToolOutput(card, "\n".join(lines), known, result.status.value)
+
+
+def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutput:
+    request = VectorInput(**args.model_dump(), format="latex")
+    result = ctx.engine.vector_calculus(request)
+    log_vector(result)  # status, reason, counters: never a field name or an expression
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="vector_calculus",
+        type="vector",
+        title="Vector calculus",
+        data={
+            "result": result.model_dump(mode="json"),
+            # the whole problem, so that the card can show it and a follow-up can resend it
+            "request": request.model_dump(mode="json"),
+        },
+    )
+    ok = result.status.value == "ok"
+    head = f"status={result.status.value}; coordinates={result.coordinates}; "
+    known: list[str] = []
+    lines: list[str] = []
+    if ok:
+        if result.result_kind in ("scalar", "vector") and result.result_latex:
+            head += f"result=${result.result_latex}$; "
+            known.append(result.result_latex)
+            for label, comp in zip(result.basis_latex, result.components_latex, strict=False):
+                lines.append(f"- component along ${label}$: ${comp}$")
+                known.append(comp)
+        elif result.result_kind == "matrix":
+            head += f"jacobian=${result.result_latex}$; determinant=${result.determinant_latex}$; "
+            known.extend(x for x in (result.result_latex, result.determinant_latex) if x)
+            known.extend(result.scale_factors_latex)
+        v = result.verification
+        if v is not None:
+            lines.append(
+                f"- numerically checked at {v.points_agreed} sample points against an independent "
+                "evaluation; NO symbolic proof: say 'numerically checked', never 'proved'"
+            )
+        lines.extend(f"- convention: {c}" for c in result.conventions)
+        lines.extend(f"- assumption: {a}" for a in result.assumptions_used)
+        if result.restrictions_latex:
+            lines.append(
+                "- valid only where "
+                + ", ".join(f"${r}$" for r in result.restrictions_latex)
+                + ("" if result.restrictions_complete else " (and possibly elsewhere)")
+                + ". These are where the coordinates break down, not statements about the field."
+            )
+            known.extend(result.restrictions_latex)
+    else:
+        for b in result.blocked:
+            lines.append(
+                f"- blocked: needs {b.needs} smoothness of {', '.join(b.fields)}: {b.note}. Ask the "
+                "user whether the field is that smooth; do not declare it yourself."
+            )
+        if result.undeclared:
+            lines.append(
+                "- undeclared: "
+                + ", ".join(result.undeclared)
+                + " (declare as a field or constant)"
+            )
+    if result.input_latex:
+        known.append(result.input_latex)
+    lines.append(
+        "to compute more about THESE fields call vector_calculus again with the same coordinates, "
+        "fields and constants."
+    )
+    return ToolOutput(card, "\n".join([head + result.message, *lines]), known, result.status.value)
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
@@ -1985,6 +2108,20 @@ TOOLS: dict[str, Tool] = {
             run_geometry,
         ),
         Tool(
+            "vector_calculus",
+            "Vector calculus in Cartesian, cylindrical or spherical coordinates: gradient, divergence, curl, "
+            "Laplacian (scalar and vector), dot, cross and triple products, directional derivatives, partial "
+            "derivatives with respect to a coordinate or time, the Jacobian of a coordinate system, and "
+            "conversion of explicit fields between systems. Declare each field (scalar or vector, arbitrary "
+            "or explicit) and each constant. A result is shown only if an independent Cartesian "
+            "finite-difference evaluation agrees (numerically checked, not a proof). Nothing is assumed "
+            "smooth: a result that needs mixed partial derivatives to commute is withheld until the USER "
+            "states the smoothness. The origin and axes are reported as restrictions, never analysed. "
+            "The declarations are not remembered: resend them with every call.",
+            VectorCalculusArgs,
+            run_vector_calculus,
+        ),
+        Tool(
             "distribution",
             "Calculus with Dirac delta and Heaviside (step) functions: simplify a delta of a polynomial "
             "(scaling, translation, several simple roots, a continuous factor taking its value), integrate "
@@ -2203,10 +2340,10 @@ def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> T
         return None
     return _error(
         name,
-        f"{', '.join(hit)} was declared as a matrix or operator in this conversation; `{name}` treats "
-        "symbols as commuting numbers and would give a wrong answer for it. Use `matrix_calculus` "
-        "(it needs each matrix's size or entries), or say that this is not supported. Do not "
-        "compute it yourself.",
+        f"{', '.join(hit)} was declared as a matrix, operator or vector field in this conversation; "
+        f"`{name}` treats symbols as commuting numbers and would give a wrong answer for it. Use "
+        "`matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a vector "
+        "field, or say that this is not supported. Do not compute it yourself.",
         "unsupported",
     )
 

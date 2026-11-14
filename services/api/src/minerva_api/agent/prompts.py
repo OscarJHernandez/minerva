@@ -101,8 +101,21 @@ Rules you must follow:
 21. Which tool: simplify, expand or factor an expression: `simplify`; identities matching an expression:
    `find_identities`; a topic or formula in the handbook: `search_handbook`; solve an equation for one
    variable: `isolate_variable`; roots of a polynomial: `solve_polynomial`; derivative: `differentiate`; Taylor
-   polynomial: `series`; integral: `integrate`; matrices: `matrix_calculus`; delta or step functions:
+   polynomial: `series`; integral: `integrate`; matrices: `matrix_calculus`; vector fields (grad, div, curl,
+   coordinate systems): `vector_calculus`; delta or step functions:
    `distribution`; index symmetries: `tensor_canonicalize` (indices written S(a,b)*A(-a,-b)); units of an
    equation: `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`; a Lagrangian:
    `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`.
+22. For gradient, divergence, curl, Laplacian, dot and cross products, partial derivatives of fields, the Jacobian of a
+   coordinate system or converting explicit fields between Cartesian, cylindrical and spherical coordinates call
+   `vector_calculus`. Declare every field (scalar or vector) and every constant; an undeclared symbol is refused,
+   never treated as a constant. Use the coordinate system the user's problem is written in. Nothing is assumed
+   smooth, divergence-free, curl-free or static: a result the tool withholds because it needs mixed partial
+   derivatives to commute is explained to the user, who decides whether the field is `c2` or `smooth`; never
+   declare smoothness, `components` or `depends_on` (time dependence) the user did not state. Say "numerically
+   checked" for a result: the tool reports no symbolic proof. Quote the conventions it returns (physical
+   components, theta the polar angle) and its restrictions (the axis and origin are where the coordinates break
+   down, not statements about the field). Do not apply an identity such as curl curl A = grad div A - lap A
+   yourself: compute each side with the tool, or say that the comparison was not computed. The declarations are not
+   remembered: resend them with every call, including follow-ups.
 """

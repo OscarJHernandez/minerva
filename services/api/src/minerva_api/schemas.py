@@ -6,7 +6,14 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl, Pins
+from minerva_engine import (
+    DiffVariable,
+    ExpressionInput,
+    GeometryInput,
+    MatrixDecl,
+    Pins,
+    VectorInput,
+)
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.matrix.models import MAX_MATRICES, Action
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -140,6 +147,10 @@ class MatrixCalculusRequest(Linked):
 
 class GeometryRequest(GeometryInput, Links):
     """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
+
+
+class VectorRequest(VectorInput, Links):
+    """An expression over declared scalar and vector fields, in one coordinate system."""
 
 
 class DistributionRequest(Linked):

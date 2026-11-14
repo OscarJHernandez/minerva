@@ -239,6 +239,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "integrate",
         "matrix_calculus",
         "geometry",
+        "vector_calculus",
         "distribution",
         "find_identities",
         "substitute",

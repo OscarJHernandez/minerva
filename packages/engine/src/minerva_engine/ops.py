@@ -223,6 +223,13 @@ def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_vector_calculus(payload: dict[str, Any]) -> dict[str, Any]:
+    from .vector import VectorInput, vector_calculus
+
+    result = vector_calculus(VectorInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_distribution(payload: dict[str, Any]) -> dict[str, Any]:
     from .distributions.models import DistributionInput
     from .distributions.operation import distribution
@@ -771,6 +778,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "transform": op_transform,
     "features": op_features,
     "check_claims": op_check_claims,
+    "vector_calculus": op_vector_calculus,
     "read_formulas": op_read_formulas,
     "solve": op_solve,
     "differentiate": op_differentiate,

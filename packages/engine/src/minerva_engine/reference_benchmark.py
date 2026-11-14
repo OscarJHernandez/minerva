@@ -32,6 +32,7 @@ from .matrix import MatrixCalculusInput, MatrixDecl
 from .models import ExpressionInput, Limits
 from .service import Engine
 from .textparse import parse_text
+from .vector import FieldDecl, VectorInput
 
 mp.mp.dps = 30
 
@@ -269,6 +270,89 @@ def _duffing(engine: Engine) -> tuple[str, str]:
     )
 
 
+def _vector_field(name: str, parts: list[str]) -> FieldDecl:
+    return FieldDecl(name=name, kind="vector", components=parts)
+
+
+def _cartesian_symbols() -> dict[str, sp.Symbol]:
+    return {n: sp.Symbol(n, real=True) for n in ("x", "y", "z")}
+
+
+def _laplacian_across_coordinates(engine: Engine) -> tuple[str, str]:
+    """The vector Laplacian computed in cylindrical coordinates (grad div - curl curl in the
+    cylindrical frame) must equal the componentwise Cartesian Laplacian, which plain SymPy gives."""
+    parts = ["x**2*y", "y*z**2 + x", "x*z + y**3"]
+    sym = _cartesian_symbols()
+    field = [sp.sympify(p, locals=sym) for p in parts]
+    truth = [sum(sp.diff(c, v, 2) for v in sym.values()) for c in field]
+    to_cyl = engine.vector_calculus(
+        VectorInput(expression="F", coordinates="cartesian", to="cylindrical", action="convert",
+                    fields=[_vector_field("F", parts)])
+    )  # fmt: skip
+    if to_cyl.status.value != "ok":
+        return _verdict("correct", False, None, f"conversion: {to_cyl.status.value}")
+    lap = engine.vector_calculus(
+        VectorInput(expression=r"\nabla^2 \mathbf{G}", coordinates="cylindrical",
+                    fields=[_vector_field("G", to_cyl.components_text)])
+    )  # fmt: skip
+    if lap.status.value != "ok":
+        return _verdict("correct", False, None, f"laplacian: {lap.status.value}")
+    back = engine.vector_calculus(
+        VectorInput(expression="H", coordinates="cylindrical", to="cartesian", action="convert",
+                    fields=[_vector_field("H", lap.components_text)])
+    )  # fmt: skip
+    if back.status.value != "ok":
+        return _verdict("correct", False, None, f"back-conversion: {back.status.value}")
+    got = [sp.sympify(t, locals=sym) for t in back.components_text]
+    agrees = all(sp.simplify(g - t) == 0 for g, t in zip(got, truth, strict=True))
+    return _verdict(
+        "correct", True, agrees, "cylindrical result rotated back vs Cartesian componentwise"
+    )
+
+
+def _div_position(engine: Engine) -> tuple[str, str]:
+    """div r = 3 in every coordinate system (the dimension of space)."""
+    values = []
+    for system in ("cartesian", "cylindrical", "spherical"):
+        result = engine.vector_calculus(
+            VectorInput(expression=r"\nabla\cdot\mathbf{r}", coordinates=system)
+        )
+        if result.status.value != "ok":
+            return _verdict("correct", False, None, f"{system}: {result.status.value}")
+        values.append(result.result_text)
+    return _verdict("correct", True, values == ["3", "3", "3"], "div r = 3")
+
+
+def _point_charge_field(engine: Engine) -> tuple[str, str]:
+    """div(r_vec/r^3) = 0 away from the origin, with r != 0 stated (the origin carries the delta)."""
+    result = engine.vector_calculus(
+        VectorInput(expression=r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)",
+                    coordinates="spherical")
+    )  # fmt: skip
+    if result.status.value != "ok":
+        return _verdict("correct", False, None, f"status {result.status.value}")
+    agrees = result.result_text == "0" and r"r \neq 0" in result.restrictions_latex
+    return _verdict("correct", True, agrees, "zero away from the origin; origin excluded")
+
+
+def _div_curl_without_smoothness(engine: Engine) -> tuple[str, str]:
+    """div curl A = 0 needs equal mixed partials: with no smoothness declared nothing may be shown."""
+    result = engine.vector_calculus(
+        VectorInput(expression=r"\nabla\cdot(\nabla\times\mathbf{A})", coordinates="spherical",
+                    fields=[FieldDecl(name="A", kind="vector")])
+    )  # fmt: skip
+    return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
+def _cross_of_scalars(engine: Engine) -> tuple[str, str]:
+    """a x b is not defined for scalars: it must not be read as a product."""
+    result = engine.vector_calculus(
+        VectorInput(expression=r"a \times b", fields=[FieldDecl(name="a", kind="scalar"),
+                                                         FieldDecl(name="b", kind="scalar")])
+    )  # fmt: skip
+    return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "matrix-exp-product-noncommuting",
@@ -326,6 +410,41 @@ PROBLEMS: list[Problem] = [
         "Landau and Lifshitz, Mechanics, section 28 (anharmonic oscillations)",
         "correct",
         _duffing,
+    ),
+    Problem(
+        "vector-laplacian-across-coordinates",
+        "vector",
+        "Arfken and Weber, Mathematical Methods for Physicists (vector Laplacian; Cartesian components)",
+        "correct",
+        _laplacian_across_coordinates,
+    ),
+    Problem(
+        "divergence-of-position-vector",
+        "vector",
+        "Griffiths, Introduction to Electrodynamics, chapter 1 (div r = 3)",
+        "correct",
+        _div_position,
+    ),
+    Problem(
+        "point-charge-field-away-from-origin",
+        "vector",
+        "Griffiths, Introduction to Electrodynamics, section 1.5 (divergence of r-hat / r^2)",
+        "correct",
+        _point_charge_field,
+    ),
+    Problem(
+        "div-curl-without-smoothness-refused",
+        "vector",
+        "Marsden and Tromba, Vector Calculus (div curl = 0 for C^2 fields)",
+        "refused",
+        _div_curl_without_smoothness,
+    ),
+    Problem(
+        "cross-product-of-scalars-refused",
+        "vector",
+        "definition of the cross product (two vectors)",
+        "refused",
+        _cross_of_scalars,
     ),
 ]
 

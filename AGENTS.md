@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, vector calculus, differential geometry, Dirac delta and Heaviside distributions
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
@@ -57,6 +57,7 @@ uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/
 uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
+uv run python -m minerva_engine.vector.benchmark [--check]  # vector calculus corpus (textbook references, refusals); writes docs/benchmarks/vector.json + docs/vector-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
@@ -335,6 +336,31 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
   add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
   connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
+- Vector calculus (`vector/`, tool and endpoint `vector_calculus` / `POST /v1/compute/vector`) works on a typed expression
+  that is an ordinary SymPy tree: vector fields are noncommutative symbols and the operators are inert heads
+  (`Grad`, `Div`, `Curl`, `Lap`, `Dot`, `Cross`, `Pd`, `Adv`, `Pos`, `Unit` in `expressions.py`); `kind_of` types every node
+  and a product of two vectors, a scalar plus a vector or a cross product of scalars is a `parse_error`, never a guess
+  (`\nabla` acts on the one factor after it). Every symbol must be a coordinate, `t`, a declared field or a declared
+  constant: an undeclared symbol is refused, never read as a constant (a silent zero gradient is a plausible-looking
+  wrong answer). The result is built exactly (`lower.py`, scale factors, physical components, vector Laplacian as
+  the scalar Laplacian of each Cartesian component, which needs no commuting of mixed partials, unlike grad div -
+  curl curl) and shown only if `numeric.py` agrees: it evaluates the *input* directly at Cartesian points by
+  nested central differences on random smooth fields, finds the frame by differencing the map `x(q)`, and shares no
+  scale factor with the exact route (the tests include a dropped `sin(theta)`, a componentwise cylindrical vector
+  Laplacian, a flipped curl component and a 1e-6 error). The evaluated result carries no symbolic proof
+  (`symbolic_zero` is None) and is worded "numerically checked". **Nothing is assumed smooth**: derivatives of an
+  abstract field are jets (plain symbols per ordered word, so SymPy cannot identify `d/dx d/dy f` with
+  `d/dy d/dx f`); they are merged only for a field the USER declared `c2` (words up to length 2) or `smooth`, and a
+  result that contains a mixed partial in two orders is `conditions_not_satisfied` with `blocked`
+  (`curl grad f`, `div curl A`, swapping `d/dt` and curl). The model never declares smoothness, `components` or time
+  dependence itself. The origin and axes are `restrictions_latex` (where the coordinates break down), not statements
+  about the field; a delta at the origin is not represented. Explicit `components` are always text syntax. Conversion
+  between systems (`convert`) is checked through Cartesian coordinates by an independent route and refuses abstract
+  fields. `E`, `I` are allowed field names here (the electric field and a current). Diagnostics hold enums and
+  counters only (`VectorDiagnostics`; the log allow-list has `coordinate_system`, `vector_action`, `operator_depth`).
+  Scalar tools refuse an expression that mentions a declared vector field (`SCALAR_TOOLS`), and claims with `\nabla`,
+  bold or arrowed letters, `\partial` or `\times` between non-numerals are `unverified` and never sampled
+  (`claims.uses_vector_notation`); a name declared as a vector in words ("let a and b be vectors") is never sampled.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

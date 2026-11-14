@@ -573,7 +573,11 @@ async def _run_turn(
                 if refusal is not None:
                     output = refusal
                 else:
-                    ctx.matrices = frozenset(matrix_names(trace)) | frozenset(prior_matrices)
+                    ctx.matrices = (
+                        frozenset(matrix_names(trace))
+                        | frozenset(vector_names(trace))
+                        | frozenset(prior_matrices)
+                    )
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -863,6 +867,25 @@ def matrix_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
     return names
 
 
+def vector_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
+    """Names this conversation declared as vector fields in `vector_calculus` calls (a refused or
+    failed call counts: the cautious reading)."""
+    names: set[str] = set()
+    for step in trace:
+        name = step.name if isinstance(step, TraceStep) else step.get("name")
+        arguments = step.arguments if isinstance(step, TraceStep) else step.get("arguments", {})
+        if name != "vector_calculus" or not isinstance(arguments, dict):
+            continue
+        for decl in arguments.get("fields", []) or []:
+            if (
+                isinstance(decl, dict)
+                and decl.get("kind") == "vector"
+                and isinstance(decl.get("name"), str)
+            ):
+                names.add(decl["name"])
+    return names
+
+
 def _prose_of(blocks: list[Block]) -> list[str]:
     """The model's own text of this turn, formulas put back in `$...$`, to read declarations from."""
     texts: list[str] = []
@@ -952,7 +975,7 @@ async def check_model_claims(
         assumptions,
         list(prior_relations),
         sorted(matrices),
-        sorted(declared_vectors(prose)),
+        sorted(declared_vectors(prose) | vector_names(trace)),
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):
