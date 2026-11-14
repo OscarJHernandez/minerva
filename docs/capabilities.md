@@ -689,6 +689,57 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - Assumes: r: positive.
 - 1 of 1 requested quantities computed and numerically verified.
 
+#### The invariant F_{mu nu}F^{mu nu} of a field strength in Minkowski space (signature -+++, c = 1)
+
+- **Coordinates:** `t, x, y, z` (plain text)
+- **Metric row 1:** `-1,  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1,  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  1,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  1` (plain text)
+- **Assumptions:** a real; b real
+- **Status:** `ok`
+- **Invariant F_(mu nu) F^(mu nu):** $2 \left(- a t + b x\right) \left(a t + b x\right)$
+- **Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu):** $J^{x} = a$
+- **Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu):** $J^{y} = b$
+- **Check:** field_invariant: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** antisymmetric_divergence: 2 independent numeric checks passed; symbolic proof not attempted
+- Signature (-, +, +, +), decided from the declared assumptions.
+- Assumes: coordinates are real: t, x, y, z.
+- Assumes: a: real.
+- Assumes: b: real.
+- 2 of 2 requested quantities computed and numerically verified.
+
+#### F = dA from a potential 1-form, with dF = 0 checked
+
+- **Coordinates:** `t, x, y, z` (plain text)
+- **Metric row 1:** `-1,  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1,  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  1,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  1` (plain text)
+- **Status:** `ok`
+- **Exterior derivative:** $F_{t x} = - y + z$
+- **Exterior derivative:** $F_{t y} = 1 - x$
+- **Exterior derivative:** $F_{x y} = 2 x$
+- **Exterior derivative:** $F_{x z} = - t$
+- **Exterior derivative:** $F_{y z} = z$
+- **Check:** exterior_derivative: 2 independent numeric checks passed; symbolic proof proved
+- Signature (-, +, +, +), decided from the declared assumptions.
+- Assumes: coordinates are real: t, x, y, z.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### A symmetric tensor is not a field strength and is declined
+
+- **Coordinates:** `t, x, y, z` (plain text)
+- **Metric row 1:** `-1,  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1,  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  1,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  1` (plain text)
+- **Status:** `parse_error`
+- field_invariant: parse_error. The tensor is not antisymmetric (F_{ij} + F_{ji} is not zero), so it is not a field strength; nothing is computed.
+- Signature (-, +, +, +), decided from the declared assumptions.
+- Assumes: coordinates are real: t, x, y, z.
+- 0 of 1 quantities computed; not shown: field_invariant (parse_error).
+
 #### A degenerate metric is declined
 
 - **Coordinates:** `x, y` (plain text)

@@ -629,6 +629,47 @@ capabilities:
         assumptions: { r: [positive] }
         quantities: [covariant_derivative]
         tensor: { variance: [up], components: ["1", "0"] }
+      - id: geometry-field-invariant
+        title: The invariant F_{mu nu}F^{mu nu} of a field strength in Minkowski space (signature -+++, c = 1)
+        op: geometry
+        format: text
+        coordinates: [t, x, y, z]
+        metric:
+          - ["-1", "0", "0", "0"]
+          - ["0", "1", "0", "0"]
+          - ["0", "0", "1", "0"]
+          - ["0", "0", "0", "1"]
+        assumptions: { a: [real], b: [real] }
+        quantities: [field_invariant, antisymmetric_divergence]
+        tensor:
+          variance: [down, down]
+          components: ["0", "-a*t", "0", "0", "a*t", "0", "b*x", "0", "0", "-b*x", "0", "0", "0", "0", "0", "0"]
+      - id: geometry-exterior-derivative
+        title: F = dA from a potential 1-form, with dF = 0 checked
+        op: geometry
+        format: text
+        coordinates: [t, x, y, z]
+        metric:
+          - ["-1", "0", "0", "0"]
+          - ["0", "1", "0", "0"]
+          - ["0", "0", "1", "0"]
+          - ["0", "0", "0", "1"]
+        quantities: [exterior_derivative]
+        tensor: { variance: [down], components: ["x*y", "t*z", "x^2+t", "y*z"] }
+      - id: geometry-not-antisymmetric
+        title: A symmetric tensor is not a field strength and is declined
+        op: geometry
+        format: text
+        coordinates: [t, x, y, z]
+        metric:
+          - ["-1", "0", "0", "0"]
+          - ["0", "1", "0", "0"]
+          - ["0", "0", "1", "0"]
+          - ["0", "0", "0", "1"]
+        quantities: [field_invariant]
+        tensor:
+          variance: [down, down]
+          components: ["0", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
       - id: geometry-degenerate
         title: A degenerate metric is declined
         op: geometry

@@ -336,6 +336,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
   add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
   connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
+- Electromagnetic field tensors (`geometry/field.py`, quantities `exterior_derivative`, `antisymmetric_divergence`,
+  `field_invariant`, `hodge_dual` of the existing `geometry` tool) act on a tensor the USER gives with all indices
+  down, on a metric the user gives; signature, `c` and units are never assumed. A tensor that is not antisymmetric is
+  `parse_error` (never silently antisymmetrised), `hodge_dual` is four-dimensional only with `eps_{0123} = +sqrt|det g|`
+  in the order of the coordinates (returned as a convention) and needs the sign of `det g` decided by the declared
+  assumptions (`unsupported` otherwise). Each is compared with a numerical recomputation sharing no code with the
+  symbolic one, plus identity legs that are separate: `d(dA) = 0` by finite differences of the candidate F, the
+  divergence as `|g|^{-1/2} d_m(|g|^{1/2} F^{mn})` against the Christoffel form, and `** = sign(det g)`. A 1e-6
+  perturbed candidate is `not_verified` (test). Forms of other degrees, other connections and the Maxwell equations as
+  covariant premises are not covered: say so.
 - Vector calculus (`vector/`, tool and endpoint `vector_calculus` / `POST /v1/compute/vector`) works on a typed expression
   that is an ordinary SymPy tree: vector fields are noncommutative symbols and the operators are inert heads
   (`Grad`, `Div`, `Curl`, `Lap`, `Dot`, `Cross`, `Pd`, `Adv`, `Pos`, `Unit` in `expressions.py`); `kind_of` types every node

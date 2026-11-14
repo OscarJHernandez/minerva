@@ -556,3 +556,41 @@ def test_the_route_runs_an_electrostatic_problem(authed: TestClient) -> None:
     }
     out = authed.post("/v1/compute/vector", json=body).json()
     assert out["status"] == "ok" and out["em"]["approximate"] is True
+
+
+def test_the_geometry_tool_computes_the_field_invariant(ctx: ToolContext) -> None:
+    metric = [
+        ["-1", "0", "0", "0"],
+        ["0", "1", "0", "0"],
+        ["0", "0", "1", "0"],
+        ["0", "0", "0", "1"],
+    ]
+    out = execute(
+        "geometry",
+        {
+            "coordinates": ["t", "x", "y", "z"],
+            "metric": metric,
+            "format": "text",
+            "assumptions": {"a": ["real"], "b": ["real"]},
+            "quantities": ["field_invariant"],
+            "tensor": {
+                "variance": ["down", "down"],
+                "components": [
+                    "0",
+                    "-a*t",
+                    "0",
+                    "0",
+                    "a*t",
+                    "0",
+                    "b*x",
+                    "0",
+                    "0",
+                    "-b*x",
+                    *["0"] * 6,
+                ],
+            },
+        },
+        ctx,
+    )
+    assert out.status == "ok", out.for_model
+    assert out.card.data

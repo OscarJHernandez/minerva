@@ -233,12 +233,16 @@ class GeometryArgs(BaseModel):
         max_length=len(QUANTITIES),
         description="What to compute: inverse_metric, determinant, christoffel, riemann, ricci, ricci_scalar, "
         "einstein, kretschmann, ricci_squared, geodesics (symbolic geodesic equations), "
-        "covariant_derivative, raise_index, lower_index. The last three need `tensor`.",
+        "covariant_derivative, raise_index, lower_index, and for electromagnetic fields on a metric you give: "
+        "exterior_derivative (F = dA from a 1-form, or dF of a 2-form), antisymmetric_divergence "
+        "(J^nu = nabla_mu F^(mu nu)), field_invariant (F_(mu nu) F^(mu nu)), hodge_dual (four dimensions). "
+        "Everything from covariant_derivative on needs `tensor` (covariant components for the "
+        "electromagnetic ones). The metric, signature and units are the user's; never assume them.",
     )
     tensor: TensorField | None = Field(
         default=None,
         description="A tensor field given by variance (up/down per index) and its n**rank components, "
-        "row-major, as LaTeX strings. Only for covariant_derivative, raise_index and lower_index.",
+        "row-major, as LaTeX strings. Only for the tensor quantities.",
     )
     tensor_index: int = Field(
         default=0,

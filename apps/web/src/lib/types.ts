@@ -654,7 +654,11 @@ export type GeometryQuantity =
   | "geodesics"
   | "covariant_derivative"
   | "raise_index"
-  | "lower_index";
+  | "lower_index"
+  | "exterior_derivative"
+  | "antisymmetric_divergence"
+  | "field_invariant"
+  | "hodge_dual";
 
 export type GeometryVariance = "up" | "down";
 

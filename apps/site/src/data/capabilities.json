@@ -1897,6 +1897,171 @@
           ]
         },
         {
+          "id": "geometry-field-invariant",
+          "title": "The invariant F_{mu nu}F^{mu nu} of a field strength in Minkowski space (signature -+++, c = 1)",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, x, y, z",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-1,  0,  0,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  1,  0,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 3",
+              "source": "0,  0,  1,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 4",
+              "source": "0,  0,  0,  1",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": "a real; b real",
+          "outputs": [
+            {
+              "label": "Invariant F_(mu nu) F^(mu nu)",
+              "latex": "2 \\left(- a t + b x\\right) \\left(a t + b x\\right)"
+            },
+            {
+              "label": "Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu)",
+              "latex": "J^{x} = a"
+            },
+            {
+              "label": "Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu)",
+              "latex": "J^{y} = b"
+            }
+          ],
+          "checks": [
+            "field_invariant: 1 independent numeric checks passed; symbolic proof proved",
+            "antisymmetric_divergence: 2 independent numeric checks passed; symbolic proof not attempted"
+          ],
+          "notes": [
+            "Signature (-, +, +, +), decided from the declared assumptions.",
+            "Assumes: coordinates are real: t, x, y, z.",
+            "Assumes: a: real.",
+            "Assumes: b: real.",
+            "2 of 2 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-exterior-derivative",
+          "title": "F = dA from a potential 1-form, with dF = 0 checked",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, x, y, z",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-1,  0,  0,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  1,  0,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 3",
+              "source": "0,  0,  1,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 4",
+              "source": "0,  0,  0,  1",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Exterior derivative",
+              "latex": "F_{t x} = - y + z"
+            },
+            {
+              "label": "Exterior derivative",
+              "latex": "F_{t y} = 1 - x"
+            },
+            {
+              "label": "Exterior derivative",
+              "latex": "F_{x y} = 2 x"
+            },
+            {
+              "label": "Exterior derivative",
+              "latex": "F_{x z} = - t"
+            },
+            {
+              "label": "Exterior derivative",
+              "latex": "F_{y z} = z"
+            }
+          ],
+          "checks": [
+            "exterior_derivative: 2 independent numeric checks passed; symbolic proof proved"
+          ],
+          "notes": [
+            "Signature (-, +, +, +), decided from the declared assumptions.",
+            "Assumes: coordinates are real: t, x, y, z.",
+            "1 of 1 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-not-antisymmetric",
+          "title": "A symmetric tensor is not a field strength and is declined",
+          "op": "geometry",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, x, y, z",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-1,  0,  0,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  1,  0,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 3",
+              "source": "0,  0,  1,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 4",
+              "source": "0,  0,  0,  1",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "field_invariant: parse_error. The tensor is not antisymmetric (F_{ij} + F_{ji} is not zero), so it is not a field strength; nothing is computed.",
+            "Signature (-, +, +, +), decided from the declared assumptions.",
+            "Assumes: coordinates are real: t, x, y, z.",
+            "0 of 1 quantities computed; not shown: field_invariant (parse_error)."
+          ]
+        },
+        {
           "id": "geometry-degenerate",
           "title": "A degenerate metric is declined",
           "op": "geometry",

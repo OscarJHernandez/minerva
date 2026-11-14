@@ -626,6 +626,53 @@ def _estat_point_charge_refused(engine: Engine) -> tuple[str, str]:
     return _verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
 
 
+def _field_tensor_request(quantity: str, components: list[str]) -> Any:
+    from .geometry import GeometryInput
+    from .geometry.models import TensorField
+
+    metric = [
+        [("-1" if i == j == 0 else "1") if i == j else "0" for j in range(4)] for i in range(4)
+    ]
+    return GeometryInput(
+        coordinates=["t", "x", "y", "z"],
+        metric=metric,
+        format="text",
+        quantities=[quantity],
+        tensor=TensorField(variance=["down", "down"], components=components),
+    )
+
+
+def _field_invariant_numbers(engine: Engine) -> tuple[str, str]:
+    """F_{mu nu} F^{mu nu} = 2 (B^2 - E^2) for E = (4, 5, 6), B = (1, 2, 3) in signature (-+++), c = 1:
+    2 (14 - 77) = -126, the right-hand side typed by hand (Jackson, Classical Electrodynamics, section 11.9)."""
+    from .geometry import geometry
+
+    ex, ey, ez, bx, by, bz = 4, 5, 6, 1, 2, 3
+    f = [
+        [0, -ex, -ey, -ez],
+        [ex, 0, bz, -by],
+        [ey, -bz, 0, bx],
+        [ez, by, -bx, 0],
+    ]
+    result = geometry(
+        _field_tensor_request("field_invariant", [str(v) for row in f for v in row]),
+        Limits(timeout_seconds=60),
+    )
+    q = result.quantities[0]
+    ok = q.status.value == "ok" and q.scalar_text is not None
+    return _verdict("correct", ok, ok and sp.sympify(q.scalar_text) == -126, "invariant")
+
+
+def _field_not_antisymmetric_refused(engine: Engine) -> tuple[str, str]:
+    from .geometry import geometry
+
+    result = geometry(
+        _field_tensor_request("field_invariant", ["0", "1", "0", "0", "1", *["0"] * 11]),
+        Limits(timeout_seconds=60),
+    )
+    return _verdict("refused", result.quantities[0].status.value == "ok", None, "symmetric input")
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "matrix-exp-product-noncommuting",
@@ -795,6 +842,20 @@ PROBLEMS: list[Problem] = [
         "Coulomb's law is singular at the charge (Griffiths, section 2.1)",
         "refused",
         _estat_point_charge_refused,
+    ),
+    Problem(
+        "field-tensor-invariant",
+        "electromagnetic tensor",
+        "Jackson, Classical Electrodynamics, section 11.9 (F_{mu nu}F^{mu nu} = 2(B^2 - E^2/c^2))",
+        "correct",
+        _field_invariant_numbers,
+    ),
+    Problem(
+        "field-tensor-symmetric-refused",
+        "electromagnetic tensor",
+        "a field strength is antisymmetric (Jackson, section 11.9)",
+        "refused",
+        _field_not_antisymmetric_refused,
     ),
 ]
 

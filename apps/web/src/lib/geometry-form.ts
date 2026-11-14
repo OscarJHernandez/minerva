@@ -32,6 +32,10 @@ export const QUANTITY_OPTIONS: QuantityOption[] = [
   { id: "covariant_derivative", label: "Covariant derivative", tensor: true },
   { id: "raise_index", label: "Raise an index", tensor: true },
   { id: "lower_index", label: "Lower an index", tensor: true },
+  { id: "exterior_derivative", label: "Exterior derivative (F = dA)", tensor: true },
+  { id: "antisymmetric_divergence", label: "Divergence of F (J = ∇F)", tensor: true },
+  { id: "field_invariant", label: "Invariant F_{μν}F^{μν}", tensor: true },
+  { id: "hodge_dual", label: "Hodge dual of F (4D)", tensor: true },
 ];
 
 /** The editable state of the geometry form: text exactly as the user typed it. */
