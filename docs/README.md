@@ -8,7 +8,10 @@
 | [architecture.md](architecture.md) | How the engine, handbook, API, agent and web app fit together |
 | [roadmap.md](roadmap.md) | What is planned, in order |
 | [observability.md](observability.md) | Traces, structured events, debug reports, replay, the agent benchmark, troubleshooting and what is never logged |
-| [reference-benchmark.md](reference-benchmark.md) | Problems with answers established outside Minerva: matrix exponentials, delta integrals, substitutions, mechanics |
+| [reference-benchmark.md](reference-benchmark.md) | Problems with answers established outside Minerva (calculus, series, algebra, matrices, deltas, substitutions, mechanics), with oracle, evidence kind and tier |
+| [verification-testing.md](verification-testing.md) | How the verifier itself is tested: targeted probes, adversarial corpus, property and metamorphic tests, tiers, what it cannot establish |
+| [verification-report.md](verification-report.md) | Measured state: correct, false accepts, false rejects, counterexamples by domain, with a before/after (generated) |
+| [verification-defects.md](verification-defects.md) | Mathematical defects found by this work, separate from harness defects, with status |
 | [model-evaluation.md](model-evaluation.md) | How candidate language models score on tool calling and honesty |
 | [conserved-quantities.md](conserved-quantities.md) | How conserved quantities are discovered, what is and is not established, and the generated-Hamiltonian benchmarks |
 | [invariant-benchmark.md](invariant-benchmark.md) | Adaptive against fixed-parameter search on generated Hamiltonians (generated) |
