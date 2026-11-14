@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from minerva_engine import DistributionInput, Engine, GeometryInput, Limits
+from minerva_engine import DistributionInput, Engine, GeometryInput, Limits, VariationInput
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
@@ -349,6 +349,77 @@ def run_lagrangian(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
         [
             _source_line(spec, "Lagrangian", reading=r.lagrangian_latex),
             {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
+        ],
+        outputs,
+        checks,
+        notes,
+    )
+
+
+def run_variation(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    request = VariationInput(
+        action=spec.get("action", "first"),
+        integrand=spec["input"],
+        format=_syntax(spec),  # type: ignore[arg-type]
+        functions=spec["functions"],
+        given_functions=spec.get("given_functions", []),
+        lower=spec.get("lower"),
+        upper=spec.get("upper"),
+        lower_term=spec.get("lower_term"),
+        upper_term=spec.get("upper_term"),
+        conditions=spec.get("conditions", []),
+        assumptions=spec.get("assumptions") or {},
+        values=spec.get("values", {}),
+        definitions=spec.get("definitions", {}),
+        paths=spec.get("paths", []),
+        with_second=bool(spec.get("with_second", False)),
+    )
+    r = engine.variation(request)
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    functional = r.analysis.functional_latex if r.analysis else None
+    if r.status.value == "ok":
+        if r.first is not None:
+            f = r.first
+            outputs.append({"label": "First variation", "latex": f.first_variation_latex})
+            for eq in f.equations:
+                outputs.append(
+                    {"label": f"Euler-Lagrange ({eq.function})", "latex": eq.equation_latex}
+                )
+            outputs.append({"label": "Boundary form", "latex": f.boundary_form_latex})
+            for b in f.boundary:
+                if b.effect == "natural_condition" and b.natural_condition_latex:
+                    outputs.append(
+                        {
+                            "label": f"Natural condition ({b.end} end, {b.function}, order {b.order})",
+                            "latex": b.natural_condition_latex,
+                        }
+                    )
+            checks.append(f.checks.statement)
+            notes.extend(f.notes)
+        if r.second is not None:
+            outputs.append({"label": "Second variation", "latex": r.second.quadratic_form_latex})
+            checks.append(r.second.checks.statement)
+        if r.evaluation is not None:
+            for t in r.evaluation.trials:
+                outputs.append({"label": f"Action of {t.label}", "text": t.action})
+            notes.append(r.evaluation.statement)
+        if r.solution is not None:
+            for p in r.solution.paths:
+                outputs.append({"label": f"Stationary path action ({p.method})", "text": p.action})
+            if r.solution.second is not None:
+                outputs.append({"label": "Facts", "text": ", ".join(r.solution.second.facts)})
+                notes.extend(r.solution.second.not_established)
+            notes.append(r.solution.statement)
+    elif r.message:
+        notes.append(r.message)
+    return _example(
+        spec,
+        r.status.value,
+        [
+            _source_line(spec, "Integrand", reading=functional),
+            {"label": "Unknown functions", "text": ", ".join(spec["functions"])},
         ],
         outputs,
         checks,
@@ -825,6 +896,7 @@ RUNNERS = {
     "tensor": run_tensor,
     "solve": run_solve,
     "lagrangian": run_lagrangian,
+    "variation": run_variation,
     "invariants": run_invariants,
     "discovery": run_discovery,
     "entry": run_entry,

@@ -58,6 +58,7 @@ uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
+uv run python -m minerva_engine.variational.benchmark [--check]  # 21 closed-form cases; docs/variational-benchmark.md + docs/benchmarks/variational.json
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
@@ -335,6 +336,25 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
   add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
   connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
+- Variational calculus (`variational/`, tool and endpoint `variation`, `docs/variational-calculus.md`) works on a jet space
+  (`jets.py`: unknown functions and their derivatives are registered jets with a total derivative `D`, never symbols
+  recognised by a name suffix). The first variation keeps every integration by parts and the whole boundary form;
+  a boundary term is removed only by a *fixed* condition on that very derivative at that very end (fixing `x` does
+  not fix `x'`), an undeclared condition is never assumed, and the convention is `EL = sum_k (-1)^k D^k dL/dx^(k)`
+  (the negative of `analyze_lagrangian` for n = 1). A result is shown only if finite differences of the *original
+  action* along polynomial perturbations that do not vanish at the ends agree with it (`verify.py`); that is numerical
+  evidence, never a proof (`symbolic_zero` stays false: SymPy's `euler_equations` is a reported second route). The
+  parser hook (`build.JetBinding`) is off for every other operation; `\dddot` and `x^{(k)}` are derivatives only there.
+  Interval, endpoint values, parameter values, definitions, trial paths and starting guesses are the user's: the
+  model's `VariationArgs` has none of those fields and only `analyze|first|second`; numerical actions run from the
+  card form through the direct route (`ToolContext.numeric`). `solve` shows a path only if its refinement sequence
+  converged and the first variation of the original integrand vanishes along admissible perturbations (method B
+  discretises the action, method A solves the derived equations by collocation; they share no discretisation);
+  disagreement is reported as two paths. A stationary path is "found from this starting guess", never unique and
+  never called a minimum. `classify.py` returns facts only (no member says "minimum"); a limited set of positive
+  directions proves nothing, and the sufficient conditions are listed as not established. Do not weaken `fd_table`
+  (its tests include a 1e-7 error, an exact quotient and a noise floor), `check_discretisation` or the certification
+  of directions. The benchmark corpus is `variational/benchmark.py` (`make bench-variational`; `--check` in tests).
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

@@ -33,6 +33,8 @@ import { ExpressionEditor, type EditorFormat } from "./expression-editor";
 import { restoreMatrixForm, type MatrixForm } from "@/lib/matrix-form";
 import { GeometryWorkbench } from "./geometry-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
+import { VariationalWorkbench, type VariationRestore } from "./variational-workbench";
+import type { VariationRequest } from "@/lib/variation-types";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
 import { PartPicker, type PartAction } from "./part-picker";
@@ -107,11 +109,14 @@ export function Workbench() {
   const [earlier, setEarlier] = useState<HistoryItem[]>([]);
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
-  const [mode, setMode] = useState<"expression" | "geometry" | "matrix">("expression");
+  const [mode, setMode] = useState<"expression" | "geometry" | "matrix" | "variational">(
+    "expression",
+  );
   const [matrixRestore, setMatrixRestore] = useState<{
     form: MatrixForm;
     nonce: number;
   } | null>(null);
+  const [variationRestore, setVariationRestore] = useState<VariationRestore | null>(null);
   const [geometryRestore, setGeometryRestore] = useState<{
     request: GeometryRequest;
     nonce: number;
@@ -353,12 +358,21 @@ export function Workbench() {
     setFormat("latex");
     setLatex("");
     setText("");
+    // the variational form starts over too (a new derivation, or another problem was opened)
+    setVariationRestore({ nonce: Date.now(), derivationId: null, steps: [] });
   }
 
   async function openDerivation(id: string) {
     try {
       const derivation = await api.derivation(id);
       reset();
+      if (derivation.steps[0]?.operation === "variation") {
+        // a variational derivation lives in its own mode, which keeps its steps and form
+        setMode("variational");
+        setVariationRestore({ nonce: Date.now(), derivationId: id, steps: derivation.steps });
+        return;
+      }
+      setMode("expression");
       setDerivationId(id);
       setSteps(derivation.steps);
       const last = [...derivation.steps].reverse().find((s) => continuation(s) !== null);
@@ -399,6 +413,15 @@ export function Workbench() {
         setGeometryRestore({ request, nonce: Date.now() });
       }
       return;
+    }
+    if (item.operation === "variation") {
+      // the whole functional was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: Partial<VariationRequest> }).request;
+      if (request) {
+        setMode("variational");
+        setVariationRestore({ nonce: Date.now(), derivationId: null, steps: [], request });
+        return;
+      }
     }
     if (item.operation === "matrix_calculus") {
       // the declarations were stored with the result, so the form can be restored and changed
@@ -452,8 +475,8 @@ export function Workbench() {
             Find its conserved quantities
           </Link>
         </p>
-        <div role="group" aria-label="Workbench mode" className="flex gap-2">
-          {(["expression", "matrix", "geometry"] as const).map((m) => (
+        <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
+          {(["expression", "matrix", "geometry", "variational"] as const).map((m) => (
             <button
               key={m}
               type="button"
@@ -465,7 +488,13 @@ export function Workbench() {
                   : "border-rule bg-raised text-ink hover:bg-sunk"
               }`}
             >
-              {m === "expression" ? "Expression" : m === "matrix" ? "Matrices" : "Geometry"}
+              {m === "expression"
+                ? "Expression"
+                : m === "matrix"
+                  ? "Matrices"
+                  : m === "geometry"
+                    ? "Geometry"
+                    : "Variational calculus"}
             </button>
           ))}
         </div>
@@ -580,6 +609,12 @@ export function Workbench() {
         {mode === "matrix" ? (
           <MatrixWorkbench
             restore={matrixRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+          />
+        ) : mode === "variational" ? (
+          <VariationalWorkbench
+            restore={variationRestore}
             onUnauthorized={() => router.push("/login")}
             onSaved={() => void refreshSaved()}
           />

@@ -22,6 +22,7 @@ import type {
   StepResult,
   User,
 } from "./types";
+import type { VariationReport, VariationRequest } from "./variation-types";
 
 export class ApiError extends Error {
   constructor(
@@ -153,6 +154,12 @@ export const api = {
     request<GeometryResult>("/v1/compute/geometry", {
       method: "POST",
       body: JSON.stringify({ ...req, format: "latex", ...link }),
+    }),
+  /** One step of a variational derivation: the whole functional is sent every time (nothing is remembered). */
+  variation: (req: VariationRequest, link?: { derivation_id?: string; parent_id?: string }) =>
+    request<VariationReport>("/v1/compute/variation", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...req, ...link, save: true }),
     }),
   distribution: (c: ComputeInput, req: DistributionRequest) =>
     request<DistributionResult>("/v1/compute/distribution", {

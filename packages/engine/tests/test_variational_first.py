@@ -330,3 +330,13 @@ def test_engine_flags_boundary_terms_that_stay(engine: Engine) -> None:
     kept = [(b.end, b.order) for b in r.first.boundary if b.effect == "kept_unspecified"]
     assert kept == [("lower", 1), ("upper", 1)]
     assert any("kept" in n for n in r.first.notes)
+
+
+def test_a_null_lagrangian_goes_through_the_whole_action(engine: Engine) -> None:
+    r = engine.variation(
+        VariationInput(action="first", integrand=r"x\dot{x}", functions=["x"], lower="0", upper="1")
+    )
+    assert r.status is Status.OK and r.first is not None
+    assert r.first.null_lagrangian and r.first.equations[0].expression_latex == "0"
+    assert r.first.stationarity_latex == []  # nothing interior to satisfy
+    assert r.first.verification.symbolic_zero is False  # a second derivation route is not a proof

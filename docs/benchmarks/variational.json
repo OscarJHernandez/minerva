@@ -1,0 +1,702 @@
+{
+  "deterministic": {
+    "cases": [
+      {
+        "checks": [
+          {
+            "expected": "-m*x_ddot",
+            "got": "-m*x_ddot",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "m*x_dot",
+            "got": "m*x_dot",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "-m*x_dot",
+            "got": "-m*x_dot",
+            "name": "coefficient lower x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "9.0",
+            "got": "9.0",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "free-particle",
+        "ok": true,
+        "title": "Free particle: EL, boundary term, action m X^2 / 2T"
+      },
+      {
+        "checks": [
+          {
+            "expected": "-x - x_ddot",
+            "got": "-x - x_ddot",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "x_dot",
+            "got": "x_dot",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "0.321046",
+            "got": "0.321046",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "harmonic",
+        "ok": true,
+        "title": "Harmonic oscillator on [0, 1]: action cot(1)/2"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "0.431846",
+            "got": "0.431846",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          },
+          {
+            "expected": "not_a_weak_minimum",
+            "got": "not_a_weak_minimum,not_a_weak_maximum,legendre_violated_for_maximum",
+            "name": "a negative direction",
+            "ok": true
+          }
+        ],
+        "id": "harmonic-long",
+        "ok": true,
+        "title": "Harmonic oscillator on [0, 4]: stationary, not a minimum"
+      },
+      {
+        "checks": [
+          {
+            "expected": "not_verified",
+            "got": "not_verified",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "paths shown",
+            "ok": true
+          }
+        ],
+        "id": "harmonic-resonant",
+        "ok": true,
+        "title": "Harmonic oscillator on [0, pi] with x(pi)=1: no solution"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "-0.0683056",
+            "got": "-0.0683056",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "coupled",
+        "ok": true,
+        "title": "Two coupled oscillators: action cot(1)/4 + cot(2)/2"
+      },
+      {
+        "checks": [
+          {
+            "expected": "-(t*x_ddot + x_dot)",
+            "got": "-(t*x_ddot + x_dot)",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "2*x_dot",
+            "got": "2*x_dot",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "-x_dot",
+            "got": "-x_dot",
+            "name": "coefficient lower x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "0.721348",
+            "got": "0.721348",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "time-dependent",
+        "ok": true,
+        "title": "Explicit time dependence: d/dt versus partial"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "-0.0111111",
+            "got": "-0.0111111",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "forced",
+        "ok": true,
+        "title": "Forced oscillator-free problem: action -1/90"
+      },
+      {
+        "checks": [
+          {
+            "expected": "alpha*x_d4 - m*x_ddot - Derivative(V(x), x)",
+            "got": "alpha*x_d4 - m*x_ddot - Derivative(V(x), x)",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "m*x_dot - alpha*x_d3",
+            "got": "m*x_dot - alpha*x_d3",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "alpha*x_ddot",
+            "got": "alpha*x_ddot",
+            "name": "coefficient upper x^(1)",
+            "ok": true
+          },
+          {
+            "expected": "-(m*x_dot - alpha*x_d3)",
+            "got": "-(m*x_dot - alpha*x_d3)",
+            "name": "coefficient lower x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "-alpha*x_ddot",
+            "got": "-alpha*x_ddot",
+            "name": "coefficient lower x^(1)",
+            "ok": true
+          }
+        ],
+        "id": "higher-derivative",
+        "ok": true,
+        "title": "m/2 x'^2 + alpha/2 x''^2 - V(x): EL and boundary form"
+      },
+      {
+        "checks": [
+          {
+            "expected": "-x_d3",
+            "got": "-x_d3",
+            "name": "natural x'''(1)=0 coefficient",
+            "ok": true
+          },
+          {
+            "expected": "x_ddot",
+            "got": "x_ddot",
+            "name": "natural x''(1)=0 coefficient",
+            "ok": true
+          },
+          {
+            "expected": "natural_condition",
+            "got": "natural_condition",
+            "name": "upper end terms stay",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "-0.025",
+            "got": "-0.025",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "cantilever",
+        "ok": true,
+        "title": "Cantilever beam: natural conditions, action -1/40"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "-0.00416667",
+            "got": "-0.00416667",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "simply-supported",
+        "ok": true,
+        "title": "Simply supported beam: slopes free, action -1/240"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "0.5",
+            "got": "0.5",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "stiff",
+        "ok": true,
+        "title": "Stiff higher-derivative problem (alpha = 1e-4): action 1/2"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "-0.166667",
+            "got": "-0.166667",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "free-end",
+        "ok": true,
+        "title": "Free end: natural condition x'(1)=0, action -1/6"
+      },
+      {
+        "checks": [
+          {
+            "expected": "-x_ddot",
+            "got": "-x_ddot",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "x_dot + kappa*x - c",
+            "got": "x_dot + kappa*x - c",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "-1.5",
+            "got": "-1.5",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "endpoint-term",
+        "ok": true,
+        "title": "Endpoint term: action -c^2 / 2(1+k)"
+      },
+      {
+        "checks": [
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "EL of x\\dot{x}",
+            "ok": true
+          },
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "EL of x\\ddot{x}+\\dot{x}^2",
+            "ok": true
+          }
+        ],
+        "id": "null-lagrangians",
+        "ok": true,
+        "title": "Total derivatives have no interior equation"
+      },
+      {
+        "checks": [
+          {
+            "expected": "-p_dot - x",
+            "got": "-p_dot - x",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "x_dot - p",
+            "got": "x_dot - p",
+            "name": "EL[p]",
+            "ok": true
+          },
+          {
+            "expected": "p",
+            "got": "p",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          }
+        ],
+        "id": "phase-space",
+        "ok": true,
+        "title": "p x' - H(x, p): orders (1, 0)"
+      },
+      {
+        "checks": [
+          {
+            "expected": "x_d4 + y",
+            "got": "x_d4 + y",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "-y_ddot + x",
+            "got": "-y_ddot + x",
+            "name": "EL[y]",
+            "ok": true
+          },
+          {
+            "expected": "-x_d3",
+            "got": "-x_d3",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "x_ddot",
+            "got": "x_ddot",
+            "name": "coefficient upper x^(1)",
+            "ok": true
+          },
+          {
+            "expected": "y_dot",
+            "got": "y_dot",
+            "name": "coefficient upper y^(0)",
+            "ok": true
+          }
+        ],
+        "id": "mixed-orders",
+        "ok": true,
+        "title": "Mixed orders (2, 1)"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "not_a_weak_minimum",
+            "got": "not_a_weak_minimum,legendre_violated_for_minimum,no_positive_direction_found",
+            "name": "not a weak minimum",
+            "ok": true
+          },
+          {
+            "expected": "legendre_violated_for_minimum",
+            "got": "not_a_weak_minimum,legendre_violated_for_minimum,no_positive_direction_found",
+            "name": "Legendre",
+            "ok": true
+          }
+        ],
+        "id": "cubic",
+        "ok": true,
+        "title": "x'^3 with x(1) = -1: a stationary non-minimum"
+      },
+      {
+        "checks": [
+          {
+            "expected": "-x_ddot/(1+x_dot**2)**(3/2)",
+            "got": "-x_ddot/(1+x_dot**2)**(3/2)",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "x_dot/sqrt(1+x_dot**2)",
+            "got": "x_dot/sqrt(1+x_dot**2)",
+            "name": "coefficient upper x^(0)",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "1.41421",
+            "got": "1.41421",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          }
+        ],
+        "id": "arc-length",
+        "ok": true,
+        "title": "Arc length: EL and the straight line"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "3.8145",
+            "got": "3.8145",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "4.35808",
+            "got": "4.35808",
+            "name": "action",
+            "ok": true
+          },
+          {
+            "expected": "within tolerance",
+            "got": "stationary_within_tolerance",
+            "name": "stationarity",
+            "ok": true
+          },
+          {
+            "expected": "different",
+            "got": "0.543583",
+            "name": "two different stationary paths",
+            "ok": true
+          }
+        ],
+        "id": "catenary",
+        "ok": true,
+        "title": "Catenary: two distinct stationary paths"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "2 t",
+            "got": "2 t",
+            "name": "Legendre determinant",
+            "ok": true
+          },
+          {
+            "expected": "conditional",
+            "got": "conditional",
+            "name": "regularity",
+            "ok": true
+          }
+        ],
+        "id": "singular",
+        "ok": true,
+        "title": "t x'^2: the Legendre determinant 2t vanishes at an end"
+      },
+      {
+        "checks": [
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "0.0",
+            "got": "0.0",
+            "name": "S(c=0)",
+            "ok": true
+          },
+          {
+            "expected": "-0.03125",
+            "got": "-0.03125",
+            "name": "S(c=1/4)",
+            "ok": true
+          },
+          {
+            "expected": "-0.0416667",
+            "got": "-0.0416667",
+            "name": "S(c=1/2)",
+            "ok": true
+          },
+          {
+            "expected": "0.0",
+            "got": "-1.84889e-32",
+            "name": "S(c=1)",
+            "ok": true
+          }
+        ],
+        "id": "ritz",
+        "ok": true,
+        "title": "Trial family c t (1 - t): action c^2/6 - c/6"
+      }
+    ],
+    "passed": 21,
+    "total": 21
+  },
+  "measurements": {
+    "seconds": {
+      "arc-length": 0.8,
+      "cantilever": 1.06,
+      "catenary": 1.76,
+      "coupled": 1.7,
+      "cubic": 0.31,
+      "endpoint-term": 0.74,
+      "forced": 0.72,
+      "free-end": 0.73,
+      "free-particle": 0.72,
+      "harmonic": 0.72,
+      "harmonic-long": 2.18,
+      "harmonic-resonant": 0.27,
+      "higher-derivative": 0.0,
+      "mixed-orders": 0.0,
+      "null-lagrangians": 0.0,
+      "phase-space": 0.0,
+      "ritz": 0.03,
+      "simply-supported": 1.01,
+      "singular": 0.0,
+      "stiff": 1.09,
+      "time-dependent": 0.75
+    }
+  }
+}

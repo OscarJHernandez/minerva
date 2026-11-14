@@ -62,6 +62,27 @@
       "source": "Landau and Lifshitz, Mechanics, section 28 (anharmonic oscillations)",
       "expected": "correct",
       "outcome": "correct"
+    },
+    {
+      "id": "variation-stationary-action-harmonic",
+      "category": "variational",
+      "source": "closed-form stationary path of the harmonic action (quadrature of x = 2 sin t / sin 1)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "variation-first-variation-arc-length",
+      "category": "variational",
+      "source": "central difference of the arc-length action (mpmath quadrature), independent of the symbolic variation",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "variation-nonsmooth-integrand-refused",
+      "category": "variational",
+      "source": "the first variation needs a smooth integrand (|x'| is not differentiable at x' = 0)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
     }
   ]
 }

@@ -1007,7 +1007,18 @@ def run_variation(args: VariationArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.variation(request)
     log_variation(report)  # the action, the status and counters only
     shown = {k: v for k, v in args.model_dump().items()}
-    data: dict[str, Any] = {"report": report.model_dump(mode="json"), "request": shown}
+    features = ["variation", *(["variation:second"] if report.second is not None else [])]
+    methods = (
+        ctx.kb.search(SearchQuery(features=features, chapter="physics.mechanics", limit=6))
+        if report.status.value == "ok"
+        else []
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    data: dict[str, Any] = {
+        "report": report.model_dump(mode="json"),
+        "request": shown,
+        "methods": method_data,
+    }
     if report.analysis is not None:
         data["functional_latex"] = report.analysis.functional_latex
     card = Card(
@@ -1032,7 +1043,14 @@ def run_variation(args: VariationArgs, ctx: ToolContext) -> ToolOutput:
             "need numbers only the USER can choose: the interval, endpoint conditions, parameter values, "
             "trial paths. Never choose them; ask, or tell the user the card has a form for them."
         )
-    return ToolOutput(card, "\n".join(lines), _variation_known(report), report.status.value)
+    known = _variation_known(report)
+    if method_data:
+        lines.append(
+            "handbook methods: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:

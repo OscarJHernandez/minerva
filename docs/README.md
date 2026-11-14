@@ -14,6 +14,8 @@
 | [invariant-benchmark.md](invariant-benchmark.md) | Adaptive against fixed-parameter search on generated Hamiltonians (generated) |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
 | [transformations-benchmark.md](transformations-benchmark.md) | Substitute, collect, solve for a variable and change one part: baseline of the older operations, results and latency |
+| [variational-calculus.md](variational-calculus.md) | Functionals of several functions: first and second variation, boundary terms, numerical action, stationary paths; conventions, limits and how results are checked |
+| [variational-benchmark.md](variational-benchmark.md) | 21 closed-form reference cases (generated; data in [benchmarks/variational.json](benchmarks/variational.json)) |
 | [geometry-benchmark.md](geometry-benchmark.md) | Differential geometry: correctness against closed forms and `sympy.diffgeom`, latency, expression growth and memory (generated; data in [benchmarks/geometry.json](benchmarks/geometry.json)) |
 | [matrix-benchmark.md](matrix-benchmark.md) | Matrix calculus: coverage, method selection, verification and timing on hand-written cases, with a baseline |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |

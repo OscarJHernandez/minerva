@@ -214,6 +214,19 @@ export function stepLabel(item: HistoryItem): string {
       const point = r.point_requested ? ` about ${r.point_requested}` : "";
       return `Taylor polynomial${about}${point}${r.order ? `, order ${r.order}` : ""}`;
     }
+    case "variation": {
+      const r = item.result as unknown as { action?: string };
+      return (
+        {
+          analyze: "Structure of the functional",
+          first: "First variation",
+          second: "Second variation",
+          evaluate: "Action on a trial path",
+          verify: "Finite-difference check of the first variation",
+          solve: "Stationary path",
+        }[r.action ?? ""] ?? "Variational calculus"
+      );
+    }
     case "distribution": {
       const r = item.result as unknown as DistributionResult;
       return (

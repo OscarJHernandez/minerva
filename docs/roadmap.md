@@ -54,6 +54,21 @@ Ordering favours correctness infrastructure before breadth.
 4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
 
+## Variational calculus
+
+Done: functionals of several functions with derivatives up to order four on fixed intervals, with the first
+variation (every integration by parts, the complete boundary form, natural conditions), numerical action
+evaluation, finite-difference verification, stationary paths by two independent methods, and the second variation
+(`docs/variational-calculus.md`, benchmarked in `docs/variational-benchmark.md`). Next, in order of value:
+
+* Jacobi fields and conjugate points, so that a *sufficient* condition for a local minimum can be checked
+  (today only necessary conditions and certified negative directions are reported).
+* Moving endpoints and variable integration domains (transversality conditions), and endpoint terms coupling
+  the two ends, such as periodic conditions.
+* Algebraic unknowns (Lagrange multipliers, phase-space forms) in `solve`, and orders above two.
+* Field functionals `S[φ] = ∫ L(φ, ∂_μ φ, x) d^d x`: the jet space already has a tuple of independent variables and
+  the stages carry a flux, but there is no PDE machinery yet.
+
 ## Dimensional analysis follow-ups
 
 Done: Pi groups, missing-quantity report with handbook constants, equation unit check (chat tools).

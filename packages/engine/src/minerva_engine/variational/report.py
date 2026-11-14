@@ -169,7 +169,9 @@ def build(
         seed=check.seed,
     )
     verification = Verification(
-        symbolic_zero=sympy_agrees,
+        # SymPy's own derivation agreeing is a second route, reported as checks.sympy_agrees; it is
+        # not a symbolic zero test of the claim, so it must never read as one.
+        symbolic_zero=False,
         numeric_points_checked=check.points_checked,
         numeric_points_agreed=check.points_agreed,
         passed=check.passed,

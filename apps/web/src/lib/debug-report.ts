@@ -138,6 +138,21 @@ function cardSummary(card: Card | null | undefined): string[] {
       `- stages: ${d.diagnostics.events.map((e) => `${e.stage}${e.status === "failed" ? "!" : ""}`).join(" > ")}`,
     );
     out.push(`- engine message: ${d.message}`);
+  } else if (card.type === "variation") {
+    const r = card.data.report;
+    out.push(`- status: ${r.status}`, `- action: ${r.action}`, `- message: ${r.message}`);
+    if (r.first) {
+      out.push(
+        `- first variation: ${r.first.stages.length} stages, ${r.first.boundary.length} boundary terms, checks ${r.first.checks.deciding}`,
+      );
+    }
+    if (r.evaluation) out.push(`- trials: ${r.evaluation.trials.length}`);
+    if (r.verification) out.push(`- verification: ${r.verification.verdict}`);
+    if (r.solution) {
+      out.push(
+        `- solution: ${r.solution.paths.length} path(s), both methods ${r.solution.confirmed_by_both}`,
+      );
+    }
   } else if (card.type === "error") {
     out.push(`- message: ${card.data.message}`);
   } else if ("status" in card.data) {

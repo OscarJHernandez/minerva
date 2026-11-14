@@ -97,6 +97,13 @@ one most likely to be wrong.
     and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
     server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
+- `variational/` is the general variational calculus: `jets.py` (the jet space and its total derivative), `setup.py`
+  (strict reading of a functional), `firstvar.py` (integration by parts, Euler-Lagrange expressions, boundary
+  coefficients), `boundary.py`, `verify.py` (finite-difference checks of the original action), `action.py` and
+  `paths.py` (trial paths), `secondvar.py` and `classify.py`, `hermite.py` and `cheb.py` (the two stationary-path
+  methods), `stationary.py`, and `benchmark.py`. Endpoint `POST /v1/compute/variation`; chat tool `variation`
+  (numbers reach it only through the card's direct route); workbench mode that saves each action as a derivation
+  step. See `docs/variational-calculus.md`.
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;

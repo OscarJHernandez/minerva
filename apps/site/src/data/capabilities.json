@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 179,
+  "handbook_entries": 183,
   "groups": [
     {
       "id": "math",
@@ -3209,6 +3209,280 @@
             "cyclic coordinates: none (every coordinate appears in L)",
             "energy function: not conserved (L depends explicitly on time)",
             "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "variation",
+      "title": "Variational calculus",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Give an action functional of one or several functions, with derivatives of any order up to four and fixed bounds, and Minerva derives its first variation with every integration by parts listed, the Euler–Lagrange equations (the sum over k of (−1)^k d^k/dt^k of ∂L/∂x^(k)), the complete boundary form, which boundary terms the conditions you declared remove, and the natural boundary conditions. Fixing a value never fixes its derivative, and a condition you did not declare is not assumed. The result is shown only if finite differences of the action itself agree with it. With numbers you supply, it evaluates the action on a trial path or family, verifies the variation along your own path, finds a stationary path by two independent methods, and computes the second variation with honest local diagnostics.",
+      "limits": [
+        "Numerical agreement with finite differences is evidence, not a proof, and the result says so.",
+        "Bounds are fixed (no moving endpoints), and the integrand must be smooth (no absolute value, sign or piecewise definitions). Field functionals and partial differential equations are not covered.",
+        "A stationary path may be a minimum, a maximum or a saddle, and none is claimed to be unique. A negative direction proves the path is not a minimum; the absence of one among the directions tried proves nothing, and the sufficient conditions (no conjugate points) are not checked.",
+        "Stationary paths are found for derivatives up to order two with at most four orders in total, and no unknown may appear without a derivative."
+      ],
+      "examples": [
+        {
+          "id": "variation-higher-derivative",
+          "title": "A higher-derivative Lagrangian, with its boundary form",
+          "op": "variation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac{m}{2}\\dot{x}^2+\\frac{\\alpha}{2}\\ddot{x}^2-V(x)",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "First variation",
+              "latex": "\\delta S = \\int_{a}^{b} \\left(\\left(\\alpha x^{(4)} - m \\ddot{x} - V'\\left(x\\right)\\right)\\,\\eta_{x}\\right)\\mathrm{d}t + \\left[\\left(- \\alpha x^{(3)} + m \\dot{x}\\right)\\,\\eta_{x} + \\alpha \\ddot{x}\\,\\dot{\\eta}_{x}\\right]_{a}^{b}"
+            },
+            {
+              "label": "Euler-Lagrange (x)",
+              "latex": "\\alpha x^{(4)} - m \\ddot{x} - V'\\left(x\\right) = 0"
+            },
+            {
+              "label": "Boundary form",
+              "latex": "\\left[\\left(- \\alpha x^{(3)} + m \\dot{x}\\right)\\,\\eta_{x} + \\alpha \\ddot{x}\\,\\dot{\\eta}_{x}\\right]_{a}^{b}"
+            }
+          ],
+          "checks": [
+            "Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof."
+          ],
+          "notes": [
+            "4 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it."
+          ]
+        },
+        {
+          "id": "variation-cantilever",
+          "title": "A cantilever beam, with its natural boundary conditions",
+          "op": "variation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac12\\ddot{x}^2-qx",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "First variation",
+              "latex": "\\delta S = \\int_{0}^{1} \\left(\\left(- q + x^{(4)}\\right)\\,\\eta_{x}\\right)\\mathrm{d}t + \\left[- x^{(3)}\\,\\eta_{x} + \\ddot{x}\\,\\dot{\\eta}_{x}\\right]_{0}^{1}"
+            },
+            {
+              "label": "Euler-Lagrange (x)",
+              "latex": "- q + x^{(4)} = 0"
+            },
+            {
+              "label": "Boundary form",
+              "latex": "\\left[- x^{(3)}\\,\\eta_{x} + \\ddot{x}\\,\\dot{\\eta}_{x}\\right]_{0}^{1}"
+            },
+            {
+              "label": "Natural condition (upper end, x, order 0)",
+              "latex": "- x^{(3)} = 0"
+            },
+            {
+              "label": "Natural condition (upper end, x, order 1)",
+              "latex": "\\ddot{x} = 0"
+            }
+          ],
+          "checks": [
+            "Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof."
+          ],
+          "notes": []
+        },
+        {
+          "id": "variation-total-derivative",
+          "title": "A total derivative has no interior equation",
+          "op": "variation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "x\\dot{x}",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "First variation",
+              "latex": "\\delta S = \\int_{0}^{1} \\left(0\\right)\\mathrm{d}t + \\left[x\\,\\eta_{x}\\right]_{0}^{1}"
+            },
+            {
+              "label": "Euler-Lagrange (x)",
+              "latex": "0 = 0"
+            },
+            {
+              "label": "Boundary form",
+              "latex": "\\left[x\\,\\eta_{x}\\right]_{0}^{1}"
+            }
+          ],
+          "checks": [
+            "Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof."
+          ],
+          "notes": [
+            "The Euler-Lagrange expressions vanish identically: the integrand is a total derivative and the first variation consists of boundary terms only.",
+            "2 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it."
+          ]
+        },
+        {
+          "id": "variation-stationary-path",
+          "title": "A stationary path of the harmonic action, found by two methods",
+          "op": "variation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac12\\dot{x}^2-\\frac12 x^2",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Stationary path action (chebyshev_euler_lagrange)",
+              "text": "0.321046307967165"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "A stationary path found from this starting guess. A stationary path may be a minimum, a maximum or a saddle; it is not claimed to be unique, nor to minimise the action."
+          ]
+        },
+        {
+          "id": "variation-not-a-minimum",
+          "title": "On a longer interval the same stationary path is not a minimum",
+          "op": "variation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac12\\dot{x}^2-\\frac12 x^2",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Stationary path action (chebyshev_euler_lagrange)",
+              "text": "0.431845577225308"
+            },
+            {
+              "label": "Facts",
+              "text": "not_a_weak_minimum, not_a_weak_maximum, legendre_violated_for_maximum"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "positivity of the second variation on all admissible perturbations",
+            "the strengthened Legendre condition on the whole interval",
+            "absence of conjugate points (Jacobi condition)",
+            "A stationary path found from this starting guess. A stationary path may be a minimum, a maximum or a saddle; it is not claimed to be unique, nor to minimise the action."
+          ]
+        },
+        {
+          "id": "variation-undeclared-function",
+          "title": "V(x) must be declared, never read as a product",
+          "op": "variation",
+          "status": "parse_error",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac12\\dot{x}^2-V(x)",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "V(…) is ambiguous: declare V as a function, or write V\\cdot(…) for a product"
+          ]
+        },
+        {
+          "id": "variation-not-smooth",
+          "title": "A non-smooth integrand is refused",
+          "op": "variation",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "|\\dot{x}|",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "the integrand must be smooth: absolute values, sign, piecewise definitions, conjugates and real/imaginary parts are not supported"
+          ]
+        },
+        {
+          "id": "variation-needs-values",
+          "title": "Numbers are asked for, never chosen",
+          "op": "variation",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac{m}{2}\\dot{x}^2",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Numerical values are needed for: m"
           ]
         }
       ]
