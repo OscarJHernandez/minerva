@@ -17,6 +17,11 @@
       "summary": "A citable, machine-checked collection of identities and equations, and the search over it."
     },
     {
+      "id": "statistics",
+      "title": "Statistics",
+      "summary": "Sums, expectations, probability models, estimators, information and Bayesian updates, derived and checked rather than looked up."
+    },
+    {
       "id": "interfaces",
       "title": "Using Minerva",
       "summary": "How to reach the tools, through the chat, photos of equations and the workbench."
@@ -3877,6 +3882,831 @@
             "strict parser: the formula is parsed, never simplified or evaluated"
           ],
           "notes": []
+        }
+      ]
+    },
+    {
+      "id": "finite-sums",
+      "title": "Finite sums and products",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Expand, factor and differentiate finite sums and products with symbolic bounds, over indexed data (`Sum(x[i]^2, (i, 1, n))` in text, `\\sum_{i=1}^{n} x_i^2` in LaTeX). A rewrite is shown only if it agrees with the original on explicit expansions at several sizes (always including n of at least 2) with a separate unknown for every element; sampling one number per symbol would accept `sum x^2 = (sum x)^2 / n`, which is true for n = 1, so no other operation accepts a sum. Agreement at those sizes is evidence, not a proof for every n.",
+      "limits": [
+        "Bounds must be provably non-empty integers (declare the upper bound an integer and positive); infinite sums are declined.",
+        "At most two nested sums; `x_{ij}` and `x_{i,j}` are declined as ambiguous.",
+        "The result is worded \"checked for n = ...\", never \"proved for every n\".",
+        "`log(prod f) = sum log f` needs every factor provably positive."
+      ],
+      "examples": [
+        {
+          "id": "sum-expand-squares",
+          "title": "Expand a sum of squared deviations",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum((x[i] - mu)^2, (i, 1, n))",
+              "syntax": "text",
+              "latex": "\\sum_{i=1}^{n} \\left(- \\mu + x_{i}\\right)^{2}"
+            }
+          ],
+          "assumptions": "n integer, positive; x real; mu real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\mu^{2} n - 2 \\mu \\sum_{i=1}^{n} x_{i} + \\sum_{i=1}^{n} x_{i}^{2}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-sample-variance-identity",
+          "title": "The identity behind the sample variance",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)^2, (i, 1, n))",
+              "syntax": "text",
+              "latex": "\\sum_{i=1}^{n} \\left(x_{i} - \\frac{\\sum_{j=1}^{n} x_{j}}{n}\\right)^{2}"
+            }
+          ],
+          "assumptions": "n integer, positive; x real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sum_{i=1}^{n} x_{i}^{2} - \\frac{\\left(\\sum_{j=1}^{n} x_{j}\\right)^{2}}{n}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-latex",
+          "title": "The same in LaTeX",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\sum_{i=1}^{n}(x_i-\\mu)^2",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "n integer, positive; x real; mu real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\mu^{2} n - 2 \\mu \\sum_{i=1}^{n} x_{i} + \\sum_{i=1}^{n} x_{i}^{2}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-log-of-product",
+          "title": "The log of a product, for positive factors",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "log(Product(x[i], (i, 1, n)))",
+              "syntax": "text",
+              "latex": "\\log{\\left(\\prod_{i=1}^{n} x_{i} \\right)}"
+            }
+          ],
+          "assumptions": "n integer, positive; x positive",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sum_{i=1}^{n} \\log{\\left(x_{i} \\right)}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-false-identity",
+          "title": "A false identity that holds for n = 1 is rejected",
+          "op": "sums",
+          "status": "not_verified",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum(x[i]^2, (i, 1, n))",
+              "syntax": "text",
+              "latex": "\\sum_{i=1}^{n} x_{i}^{2}"
+            },
+            {
+              "label": "Answer to check",
+              "source": "Sum(x[i], (i, 1, n))^2/n"
+            }
+          ],
+          "assumptions": "n integer, positive; x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (verification_failed).",
+            "the result did not agree with the original on explicit instances; not shown"
+          ]
+        },
+        {
+          "id": "sum-range-not-provable",
+          "title": "A range that cannot be shown non-empty is declined",
+          "op": "sums",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum(x[i], (i, 1, m))",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (range_not_provable).",
+            "cannot show that the bounds are integers: declare the symbols in them integer (and the upper one positive or nonnegative)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "expectations",
+      "title": "Expectation, variance and covariance",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Linearity of expectation and bilinearity of covariance for declared random variables, including sums over indexed variables. Independence is never assumed: covariance terms stay unless you state independence, and a result that used it holds given it (Minerva does not check that it is true). A result is shown only if it agrees with the original on explicit finite joint distributions that are dependent unless independence was declared.",
+      "limits": [
+        "Only variables you list are random; an expectation with none of them is declined.",
+        "One independence group is supported, and `[[\"X\"]]` for an indexed X means its components are mutually independent.",
+        "Moments are assumed to exist (the check uses finite supports).",
+        "The check is evidence from explicit distributions, not a proof for every distribution."
+      ],
+      "examples": [
+        {
+          "id": "var-of-sum",
+          "title": "Variance of a sum keeps the covariance",
+          "op": "expectation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Var(X + Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Var}\\left(X + Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "2 \\operatorname{Cov}\\left(X, Y\\right) + \\operatorname{Var}\\left(X\\right) + \\operatorname{Var}\\left(Y\\right)"
+            }
+          ],
+          "checks": [
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ],
+          "notes": [
+            "No independence was used.",
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ]
+        },
+        {
+          "id": "var-of-sum-independent",
+          "title": "With independence stated, the result holds given it",
+          "op": "expectation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Var(X + Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Var}\\left(X + Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            },
+            {
+              "label": "Independence you stated",
+              "source": "X and Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\operatorname{Var}\\left(X\\right) + \\operatorname{Var}\\left(Y\\right)"
+            }
+          ],
+          "checks": [
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ],
+          "notes": [
+            "Holds given: X and Y are independent (Minerva does not check that this is true).",
+            "holds given: X and Y are independent. agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ]
+        },
+        {
+          "id": "covariance-from-moments",
+          "title": "Covariance from raw moments",
+          "op": "expectation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Cov(X, Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Cov}\\left(X, Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "- \\mathbb{E}\\left[X\\right] \\mathbb{E}\\left[Y\\right] + \\mathbb{E}\\left[X Y\\right]"
+            }
+          ],
+          "checks": [
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ],
+          "notes": [
+            "No independence was used.",
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ]
+        },
+        {
+          "id": "product-without-independence",
+          "title": "E[XY] does not factor without independence",
+          "op": "expectation",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "E[X*Y]",
+              "syntax": "text",
+              "latex": "\\mathbb{E}\\left[X Y\\right]"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "nothing more can be derived without further assumptions (independence is never assumed)"
+          ]
+        },
+        {
+          "id": "var-wrong-answer",
+          "title": "Dropping the covariance term is rejected",
+          "op": "expectation",
+          "status": "not_verified",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Var(X + Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Var}\\left(X + Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (verification_failed).",
+            "the result did not agree with the original on explicit joint distributions; not shown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statistical-derivations",
+      "title": "Maximum likelihood, Fisher information and Bayesian updates",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Derive, from a density, the moments of a family (Bernoulli, binomial, Poisson, normal, beta, gamma, Cauchy, uniform), the log-likelihood and score, the maximum-likelihood estimator, the Fisher information and the posterior for a prior. Estimators come from the score equations and are accepted only if the direct log-likelihood has zero slope there, the point lies in the parameter space and the Hessian is negative definite; an optimum is called global only when concavity is proved. Posteriors are found by matching the kernel, never from a table. Independence of observations is never assumed; a likelihood of several observations needs you to state it.",
+      "limits": [
+        "Estimates that lie outside the parameter space for the data (a Bernoulli sample of all zeros, identical normal observations) are declined, not invented.",
+        "Families whose support depends on the parameter (uniform on (0, theta)) have no score or information.",
+        "The score equations are solved one parameter at a time (triangular systems); moments of the Cauchy family do not exist and are declined.",
+        "A prior is your assumption; the posterior holds for it. Only kernels of the supported families are recognised.",
+        "Numerical agreement (quadrature, a direct log-likelihood) is evidence, not a proof; the symbolic parts are stated separately."
+      ],
+      "examples": [
+        {
+          "id": "gaussian-mle",
+          "title": "Maximum-likelihood estimators of a normal mean and variance",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "normal, action mle"
+            },
+            {
+              "label": "Observations",
+              "source": "n observations of x (stated: independent and identically distributed)"
+            },
+            {
+              "label": "Parameters",
+              "source": "mu, v"
+            }
+          ],
+          "assumptions": "n integer, positive; x real",
+          "outputs": [
+            {
+              "label": "Estimator of mu",
+              "latex": "\\frac{\\sum_{i=1}^{n} x_{i}}{n}"
+            },
+            {
+              "label": "Estimator of v",
+              "latex": "\\frac{\\sum_{i=1}^{n} \\left(x_{i} - \\frac{\\sum_{j=1}^{n} x_{j}}{n}\\right)^{2}}{n}"
+            }
+          ],
+          "checks": [
+            "the expanded log-likelihood against the direct sum of log densities, on explicit data: 8 of 8",
+            "the score against central differences of the direct log-likelihood, on explicit data: 8 of 8",
+            "the direct log-likelihood has zero slope at the estimators, on explicit data: 4 of 4",
+            "second differences of the direct log-likelihood: negative definite at the estimators: 4 of 4"
+          ],
+          "notes": [
+            "mu: local maximum (proved); no condition on the data.",
+            "v: local maximum (proved); valid only if $\\frac{\\sum_{i=1}^{n} \\left(x_{i} - \\frac{\\sum_{j=1}^{n} x_{j}}{n}\\right)^{2}}{n} > 0$.",
+            "Holds given: the observations are independent and identically distributed.",
+            "the Hessian is negative definite at the estimators (given the admissibility condition); checked on 4 explicit data sets (numerical agreement is evidence, not a proof)"
+          ]
+        },
+        {
+          "id": "bernoulli-mle",
+          "title": "The sample proportion, and where it exists",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "bernoulli, action mle"
+            },
+            {
+              "label": "Observations",
+              "source": "n observations of x (stated: independent and identically distributed)"
+            },
+            {
+              "label": "Parameters",
+              "source": "p"
+            }
+          ],
+          "assumptions": "n integer, positive",
+          "outputs": [
+            {
+              "label": "Estimator of p",
+              "latex": "\\frac{\\sum_{i=1}^{n} x_{i}}{n}"
+            }
+          ],
+          "checks": [
+            "the expanded log-likelihood against the direct sum of log densities, on explicit data: 8 of 8",
+            "the score against central differences of the direct log-likelihood, on explicit data: 8 of 8",
+            "the direct log-likelihood has zero slope at the estimators, on explicit data: 4 of 4",
+            "second differences of the direct log-likelihood: negative definite at the estimators: 4 of 4"
+          ],
+          "notes": [
+            "p: global maximum (proved); valid only if $0 < \\frac{\\sum_{i=1}^{n} x_{i}}{n} < 1$.",
+            "Holds given: the observations are independent and identically distributed.",
+            "the log-likelihood is concave on the whole parameter space; checked on 4 explicit data sets (numerical agreement is evidence, not a proof)"
+          ]
+        },
+        {
+          "id": "bernoulli-all-zeros",
+          "title": "No maximum-likelihood estimate for a sample of all zeros",
+          "op": "statistics",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Model",
+              "source": "bernoulli, action mle"
+            },
+            {
+              "label": "Observations",
+              "source": "4 observations of x (stated: independent and identically distributed)"
+            },
+            {
+              "label": "Data",
+              "source": "0, 0, 0, 0"
+            },
+            {
+              "label": "Parameters",
+              "source": "p"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (candidate_inadmissible).",
+            "for these data the maximum would be at p = 0, which is outside the parameter space: the supremum of the likelihood is not attained, so there is no maximum-likelihood estimate"
+          ]
+        },
+        {
+          "id": "mle-needs-independence",
+          "title": "Several observations need a statement of independence",
+          "op": "statistics",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Model",
+              "source": "normal, action mle"
+            },
+            {
+              "label": "Known parameters",
+              "source": "v = v"
+            },
+            {
+              "label": "Observations",
+              "source": "n observations of x (NOT stated)"
+            },
+            {
+              "label": "Parameters",
+              "source": "mu"
+            }
+          ],
+          "assumptions": "n integer, positive; v positive; x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (independence_not_declared).",
+            "a likelihood of several observations is a product of densities only if they are independent; state that the observations are independent and identically distributed"
+          ]
+        },
+        {
+          "id": "normal-fisher-information",
+          "title": "Fisher information of a normal mean and standard deviation",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "normal, action fisher_information"
+            },
+            {
+              "label": "Parameters",
+              "source": "mu, sigma"
+            }
+          ],
+          "assumptions": "mu real; sigma positive",
+          "outputs": [
+            {
+              "label": "Fisher information",
+              "latex": "\\begin{pmatrix}\\frac{1}{\\sigma^{2}} & 0 \\\\ 0 & \\frac{2}{\\sigma^{2}}\\end{pmatrix}"
+            }
+          ],
+          "checks": [
+            "the information against the variance of the score (quadrature or summation, numerically differentiated log density): 5 of 5",
+            "the expected score is 0 (regularity), by quadrature or summation: 5 of 5"
+          ],
+          "notes": [
+            "equal to the variance of the score by quadrature, and the expected score is 0; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "beta-binomial-posterior",
+          "title": "A Beta prior and a binomial likelihood",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "binomial, action posterior"
+            },
+            {
+              "label": "Known parameters",
+              "source": "n = n"
+            },
+            {
+              "label": "Prior (yours)",
+              "source": "beta(alpha = alpha, beta = beta)"
+            },
+            {
+              "label": "Parameters",
+              "source": "p"
+            }
+          ],
+          "assumptions": "n integer, positive; k integer, nonnegative; alpha positive; beta positive",
+          "outputs": [
+            {
+              "label": "Posterior (beta)",
+              "latex": "\\alpha = \\alpha + k,\\; \\beta = \\beta - k + n"
+            }
+          ],
+          "checks": [
+            "posterior density against prior x likelihood divided by its integral (quadrature), at several values of the parameter: 4 of 4",
+            "the posterior density integrates to 1 (quadrature): 4 of 4"
+          ],
+          "notes": [
+            "Holds given: the prior is as stated; it is an assumption, not a fact.",
+            "equal to prior times likelihood divided by its integral (quadrature) at sampled values; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "gamma-moments",
+          "title": "Moments derived from a density",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "gamma, action moments"
+            },
+            {
+              "label": "Known parameters",
+              "source": "alpha = alpha, beta = beta"
+            }
+          ],
+          "assumptions": "alpha positive; beta positive",
+          "outputs": [
+            {
+              "label": "Mean",
+              "latex": "\\frac{\\alpha}{\\beta}"
+            },
+            {
+              "label": "Variance",
+              "latex": "\\frac{\\alpha}{\\beta^{2}}"
+            },
+            {
+              "label": "Second",
+              "latex": "\\frac{\\alpha \\left(\\alpha + 1\\right)}{\\beta^{2}}"
+            }
+          ],
+          "checks": [
+            "quadrature or summation of the density at sampled parameter values: 5 of 5",
+            "mean: quadrature or summation of the density at sampled parameter values: 5 of 5",
+            "variance: quadrature or summation of the density at sampled parameter values: 5 of 5",
+            "second: quadrature or summation of the density at sampled parameter values: 5 of 5"
+          ],
+          "notes": [
+            "each moment agrees with quadrature or summation of the density at 5 parameter points; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "cauchy-mean-does-not-exist",
+          "title": "The mean of a Cauchy variable is declined",
+          "op": "statistics",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Model",
+              "source": "cauchy, action moments"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (convergence_not_established).",
+            "the mean and variance of the Cauchy family do not exist (the integral of |x| f(x) does not converge); a principal value is not the mean"
+          ]
+        },
+        {
+          "id": "uniform-has-no-information",
+          "title": "A support that depends on the parameter has no Fisher information",
+          "op": "statistics",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Model",
+              "source": "uniform_0_theta, action fisher_information"
+            },
+            {
+              "label": "Parameters",
+              "source": "theta"
+            }
+          ],
+          "assumptions": "theta positive",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (regularity_not_satisfied).",
+            "the support of the Uniform on (0, theta) family depends on its parameter: differentiation under the integral sign is not allowed, so the Fisher information (as -E[second derivative] or as the variance of the score) is not defined"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "matrix-gradients",
+      "title": "Gradients, Jacobians and Hessians of matrix functions",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Derivatives of scalar functions of vectors and matrices, such as the Gaussian log-likelihood with respect to the mean or the covariance (`-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)`), built by differentials and accepted only if central differences of the original function agree at random real matrices of the declared sizes. Matrices keep their order; the derivative with respect to a symmetric matrix is the gradient within the symmetric matrices (the unconstrained gradient is never returned for it), with the entrywise form labelled separately.",
+      "limits": [
+        "Plain-text syntax only for these actions (`tr`, `det`, `logdet`, `transpose`, `inv`, `*` for the matrix product); `logdet` means log of the absolute determinant.",
+        "Over the real numbers (a transpose, not a conjugate transpose); Hermitian and Wirtinger derivatives are not supported.",
+        "`inv`, `logdet` and the derivative of `det` need the matrix declared invertible (or positive definite) by you.",
+        "Matrix-valued functions have no gradient here (the derivative of a matrix by a matrix is a fourth-order tensor).",
+        "The symbolic leg is not run; numerical agreement is evidence, not a proof."
+      ],
+      "examples": [
+        {
+          "id": "gaussian-gradient-mean",
+          "title": "The Gaussian log-density with respect to the mean",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "-1/2*transpose(x - mu)*inv(S)*(x - mu)",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "x: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "mu: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "S: 3 by 3, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Gradient",
+              "latex": "S^{-1} \\left(x - \\mu\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples"
+          ],
+          "notes": [
+            "Convention: unconstrained derivative (every entry free); real field, a transpose and not a conjugate transpose.",
+            "Method: Gradient by differentials (gradient_differential).",
+            "verified against the numerical derivative; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "gaussian-gradient-covariance",
+          "title": "With respect to a positive definite covariance",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "x: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "mu: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "S: 3 by 3, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Gradient",
+              "latex": "- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}"
+            },
+            {
+              "label": "Entrywise form (independent entries, i <= j)",
+              "latex": "- S^{-1} + S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1} - \\operatorname{diag}\\left(- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples"
+          ],
+          "notes": [
+            "Convention: gradient within the symmetric matrices (Frobenius inner product); real field, a transpose and not a conjugate transpose.",
+            "Method: Gradient by differentials (gradient_differential).",
+            "verified against the numerical derivative; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "quadratic-form-hessian",
+          "title": "The Hessian of a quadratic form",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "transpose(x)*A*x",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 3 by 3, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "x: 3 by 1, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Hessian",
+              "latex": "A + A^{\\top}"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples"
+          ],
+          "notes": [
+            "Convention: unconstrained derivative (every entry free); real field, a transpose and not a conjugate transpose.",
+            "Method: Hessian by differentials (hessian_differential).",
+            "verified against the numerical derivative; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "logdet-needs-invertible",
+          "title": "An inverse is never assumed",
+          "op": "matrix",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "logdet(X)",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "X: 3 by 3, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (invertibility_not_declared).",
+            "X must be declared invertible: the derivative needs its inverse"
+          ]
         }
       ]
     },

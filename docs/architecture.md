@@ -179,6 +179,20 @@ one most likely to be wrong.
     `diagnostics` because the sandbox child cannot log; the API turns them into allow-listed log lines (trace id,
     operation, stage, status, duration, enumerated reason) and never logs expressions. Benchmark:
     `docs/distribution-benchmark.md`.
+  - `indexed/` and `stats/` (operations `sums`, `expectation`, `statistical_model`; benchmark
+    `docs/statistics-benchmark.md`). Finite sums, products, indexed data (`x[i]`) and `E`/`Var`/`Cov` are read only when
+    an operation opts in (`Builder(allow_sums=..., random_variables=...)`); every pointwise checker refuses them
+    (`indexed/guard.py`), because one sample per symbol gives every `x[i]` the same value. `sums` verifies a rewrite on
+    explicit expansions at several sizes (`indexed/instantiate.py`), `expectation` on explicit finite joint
+    distributions that are dependent unless independence is declared (`stats/pmf_check.py`), and a result that used a
+    declared independence is `conditional`. `statistical_model` derives moments (integration/summation, with
+    absolute convergence established first), the log-likelihood and score, maximum-likelihood estimators (triangular
+    score systems, checked against a direct numerical log-likelihood, `global` only with a proof of concavity),
+    Fisher information (as -E[Hessian], checked against the variance of the score) and posteriors (kernel matching, no
+    conjugacy table), from a registry that holds only parameters, constraints, support and density
+    (`stats/families.py`). Matrix functions gain `gradient`, `jacobian` and `hessian` (`matrix/mexpr.py`,
+    `matrix/gradient.py`): differentials over the reals, checked by central differences, with the symmetric-matrix
+    convention stated.
 - **Extension point:** a future Cadabra or SageManifolds backend implements the same operations
   behind the engine interface, in its own process (see `docs/licensing.md`).
 

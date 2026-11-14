@@ -19,6 +19,9 @@ const OPERATION_LABEL: Record<string, string> = {
   matrix_calculus: "Matrix calculus",
   geometry: "Geometry",
   distribution: "Distributions",
+  sums: "Sums",
+  expectation: "Expectation",
+  statistical_model: "Statistics",
   identities: "Identities",
 };
 

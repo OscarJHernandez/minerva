@@ -254,6 +254,9 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "integrate_motion",
         "dimensional_analysis",
         "check_units",
+        "sums",
+        "expectation",
+        "statistical_model",
     }
     for tool in TOOLS.values():
         assert tool.schema()["function"]["parameters"]["type"] == "object"

@@ -7,13 +7,16 @@ import type {
   GeometryResult,
   DistributionAnswer,
   DistributionResult,
+  ExpectationResult,
   IntegrateResult,
   IsolateResult,
   MatrixCalculusResult,
   MatrixRequest,
   SimplifyResult,
+  StatModelResult,
   Status,
   StepResult,
+  SumsResult,
 } from "./types";
 
 export interface ExpansionReport {
@@ -453,6 +456,28 @@ export type Card =
         /** The call as made (with the expression), so the question's buttons can ask again. */
         request: DistributionAnswer;
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "sums";
+      title: string;
+      /** `request`: the call as made (the expression and its settings). */
+      data: { result: SumsResult; request: Record<string, unknown> };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "expectation";
+      title: string;
+      data: { result: ExpectationResult; request: Record<string, unknown> };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "statistics";
+      title: string;
+      data: { result: StatModelResult; request: Record<string, unknown> };
     }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {

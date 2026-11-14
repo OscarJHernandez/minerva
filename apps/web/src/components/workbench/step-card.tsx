@@ -7,6 +7,7 @@ import {
   assumptionsSummary,
   continuation,
   resultLatex,
+  statContinuations,
   stepLabel,
   verificationSummary,
 } from "@/lib/derivation";
@@ -15,18 +16,22 @@ import type {
   DifferentiateResult,
   DistributionNotation,
   DistributionResult,
+  ExpectationResult,
   HistoryItem,
   IntegrateResult,
   IsolateResult,
   SeriesResult,
   SimplifyResult,
+  StatModelResult,
   StepResult,
+  SumsResult,
 } from "@/lib/types";
 import { DerivativePanel } from "../derivative-panel";
 import { DistributionPanel } from "../distribution-panel";
 import { IntegralPanel } from "../integral-panel";
 import { ResultPanel, StatusPill } from "../result-panel";
 import { SeriesPanel } from "../series-panel";
+import { StatisticsPanel } from "../statistics-panel";
 import { DiagnosticsView, IsolatePanel, Premises, StepResultPanel } from "../step-result-panel";
 
 interface Props {
@@ -46,11 +51,39 @@ interface Props {
 function FullResult({
   item,
   onAnswerNotation,
+  onContinue,
 }: {
   item: HistoryItem;
   onAnswerNotation?: Props["onAnswerNotation"];
+  onContinue?: (index: number) => void;
 }) {
   switch (item.operation) {
+    case "sums":
+      return (
+        <StatisticsPanel
+          kind="sums"
+          result={item.result as unknown as SumsResult}
+          headingId={`stat-${item.id}`}
+        />
+      );
+    case "expectation":
+      return (
+        <StatisticsPanel
+          kind="expectation"
+          result={item.result as unknown as ExpectationResult}
+          headingId={`stat-${item.id}`}
+        />
+      );
+    case "statistical_model":
+      return (
+        <StatisticsPanel
+          kind="statistics"
+          result={item.result as unknown as StatModelResult}
+          headingId={`stat-${item.id}`}
+          continuations={statContinuations(item)}
+          onContinue={onContinue}
+        />
+      );
     case "simplify":
       return <ResultPanel result={item.result as SimplifyResult} />;
     case "differentiate":
@@ -126,7 +159,6 @@ export function StepCard({
   onAnswerNotation,
 }: Props) {
   const cont = continuation(item);
-  const latex = resultLatex(item);
   const failed = item.status !== "ok" && item.status !== "unchanged";
   // A delta step that is waiting for the user's answer shows its question open: nothing was computed.
   const asking =
@@ -149,8 +181,20 @@ export function StepCard({
     item.operation === "substitute" || item.operation === "rewrite"
       ? (item.result as unknown as StepResult)
       : null;
-  const okLabel =
-    stepped?.evidence === "conditional"
+  const evidence = (item.result as unknown as { evidence?: string }).evidence;
+  const statistical =
+    item.operation === "sums" ||
+    item.operation === "expectation" ||
+    item.operation === "statistical_model";
+  // the statistics panel shows the result itself, with how it was checked
+  const latex = statistical ? null : resultLatex(item);
+  const okLabel = statistical
+    ? item.operation === "sums"
+      ? "Checked on explicit instances"
+      : evidence === "conditional"
+        ? "Holds given your premises"
+        : "Derived and checked"
+    : stepped?.evidence === "conditional"
       ? "Holds given your relation"
       : isolated?.complete
         ? "Verified, none dropped"
@@ -268,12 +312,20 @@ export function StepCard({
         </button>
       </div>
 
-      <details className="mt-3 text-sm" open={asking}>
+      <details className="mt-3 text-sm" open={asking || statistical}>
         <summary className="cursor-pointer text-muted">
-          {asking ? "Answer to continue" : "Full verification"}
+          {asking
+            ? "Answer to continue"
+            : statistical
+              ? "Result and how it was checked"
+              : "Full verification"}
         </summary>
         <div className="mt-2">
-          <FullResult item={item} onAnswerNotation={onAnswerNotation} />
+          <FullResult
+            item={item}
+            onAnswerNotation={onAnswerNotation}
+            onContinue={(i) => onContinue(item, false, i)}
+          />
         </div>
       </details>
     </li>

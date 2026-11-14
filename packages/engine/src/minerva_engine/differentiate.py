@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from .build import Builder
 from .distributions.guard import contains_distribution
 from .errors import LimitError, MinervaMathError, UnsupportedInput
+from .indexed.guard import contains_indexed
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, REL_TOL, SAMPLE_ATTEMPTS, _sample, verify_equal
@@ -120,6 +121,11 @@ def check_derivative(
     `passed` needs at least `MIN_VALID_POINTS` valid points, and every valid point must agree
     in every direction that applies to `var`.
     """
+    if contains_indexed(f) or contains_indexed(candidate):
+        return DerivativeVerification(
+            passed=False,
+            note="sums, indexed variables and expectations cannot be checked at sampled numbers",
+        )
     directions: list[Literal["real", "imaginary"]] = ["real"]
     if var.is_real is not True:
         directions.append("imaginary")

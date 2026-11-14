@@ -139,6 +139,46 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("rewrite_part", args_rw)])
+        elif "maximum likelihood" in lower or "mle" in lower.split() or "estimator" in lower:
+            # Development stand-in: independence must be stated by the user, as a real model must ask.
+            independent = any(w in lower for w in ("independent", "i.i.d", "iid"))
+            if not independent:
+                async for c in self._say(
+                    "Before I derive it: are the observations independent and identically distributed?"
+                ):
+                    yield c
+            else:
+                stat_args: dict[str, Any] = {
+                    "family": "normal",
+                    "parametrization": "variance",
+                    "observation": "x",
+                    "sample_size": "n",
+                    "iid": True,
+                    "action": "mle",
+                    "assumptions": {"n": ["integer", "positive"], "x": ["real"], "v": ["positive"]},
+                }
+                if "known variance" in lower:
+                    stat_args.update(parameters={"v": "v"}, estimate=["mu"])
+                else:
+                    stat_args.update(estimate=["mu", "v"])
+                async for c in self._say(
+                    "I will derive and verify the estimator from the likelihood. "
+                ):
+                    yield c
+                yield Chunk(tool_calls=[ToolCall("statistical_model", stat_args)])
+        elif re.search(r"\bvar(?:iance)?\b", lower) and (
+            "var(" in lower or "operatorname{var}" in lower or "variance of" in lower
+        ):
+            exp_args: dict[str, Any] = {
+                "latex": latex or "\\operatorname{Var}(X+Y)",
+                "random": ["X", "Y"],
+                "action": "expand",
+            }
+            if "independent" in lower:
+                exp_args["independent"] = [["X", "Y"]]
+            async for c in self._say("I will expand it by linearity and verify it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("expectation", exp_args)])
         elif any(w in lower for w in ("christoffel", "geodesic", "curvature", "riemann", "ricci")):
             # Development stand-in: three named metrics; a real model asks the user for the metric.
             geometry_args = _scripted_geometry(lower)
@@ -623,6 +663,23 @@ class ScriptedLLM:
                 )
             else:
                 text = f"I could not complete that ({status}). The card gives the reason."
+        elif tool in ("statistical_model", "expectation", "sums"):
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok" and "HOLDS GIVEN" in content:
+                text = (
+                    "The card shows the derivation and its checks. The result holds **given** the "
+                    "independence you stated: Minerva did not check that it is true."
+                )
+            elif status == "ok":
+                text = (
+                    "The card shows each step and the checks it passed. Numerical and explicit-instance "
+                    "agreement is evidence, not a proof for every case."
+                )
+            elif "independent" in content and "Ask the user" in content:
+                text = "Are the observations independent and identically distributed?"
+            else:
+                text = f"I could not complete that ({status}). The card gives the reason; no partial answer is shown."
         elif tool == "integrate_motion":
             text = (
                 "The card shows the verified trajectory, the drift of the constants of motion and the "

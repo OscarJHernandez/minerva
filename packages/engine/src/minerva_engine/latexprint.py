@@ -12,6 +12,7 @@ from typing import Any
 
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
+from sympy.printing.str import StrPrinter
 
 
 class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
@@ -67,6 +68,58 @@ class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
             tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}\right)"
         return str(self._do_exponent(tex, exp))
 
+    def _print_beta(self, expr: sp.Basic, exp: Any = None) -> str:
+        # SymPy prints the arguments of B(a, b) as raw names (alpha, not \\alpha)
+        tex = rf"\operatorname{{B}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+        return str(self._do_exponent(tex, exp))
+
+    # Indexed data prints as x_{i}; sums and products as nested single-limit operators (SymPy's
+    # multi-limit form is not something the parsers read), the term of an Add in parentheses.
+    def _print_Indexed(self, expr: sp.Indexed) -> str:
+        label = str(self._print(expr.base.label))
+        return rf"{label}_{{{', '.join(str(self._print(i)) for i in expr.indices)}}}"
+
+    def _print_IndexedBase(self, expr: sp.IndexedBase) -> str:
+        return str(self._print(expr.label))
+
+    def _big_operator(self, expr: sp.Basic, operator: str) -> str:
+        body = expr.function
+        text = str(self._print(body))
+        if body.is_Add:
+            text = rf"\left({text}\right)"
+        for index, lower, upper in expr.limits:
+            head = rf"{operator}_{{{self._print(index)}={self._print(lower)}}}^{{{self._print(upper)}}}"
+            text = f"{head} {text}"
+        return text
+
+    def _print_Sum(self, expr: sp.Basic) -> str:
+        return self._big_operator(expr, r"\sum")
+
+    def _print_Product(self, expr: sp.Basic) -> str:
+        return self._big_operator(expr, r"\prod")
+
+    def _print_Expectation(self, expr: sp.Basic) -> str:
+        return rf"\mathbb{{E}}\left[{self._print(expr.args[0])}\right]"
+
+    def _print_Variance(self, expr: sp.Basic) -> str:
+        return rf"\operatorname{{Var}}\left({self._print(expr.args[0])}\right)"
+
+    def _print_Covariance(self, expr: sp.Basic) -> str:
+        return rf"\operatorname{{Cov}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"
+
+
+class MinervaTextPrinter(StrPrinter):  # type: ignore[misc]
+    """Plain-text output that `textparse` reads back; expectations print as E[...], Var(...), Cov(...)."""
+
+    def _print_Expectation(self, expr: sp.Basic) -> str:
+        return f"E[{self._print(expr.args[0])}]"
+
+    def _print_Variance(self, expr: sp.Basic) -> str:
+        return f"Var({self._print(expr.args[0])})"
+
+    def _print_Covariance(self, expr: sp.Basic) -> str:
+        return f"Cov({self._print(expr.args[0])}, {self._print(expr.args[1])})"
+
 
 _DEFAULTS: dict[str, Any] = {"imaginary_unit": "ri", "inv_trig_style": "full"}
 
@@ -74,3 +127,8 @@ _DEFAULTS: dict[str, Any] = {"imaginary_unit": "ri", "inv_trig_style": "full"}
 def to_latex(expr: Any, **settings: Any) -> str:
     """Print ``expr`` as LaTeX with Minerva's constant convention."""
     return str(MinervaLatexPrinter({**_DEFAULTS, **settings}).doprint(expr))
+
+
+def to_text(expr: Any) -> str:
+    """Print ``expr`` in the plain-text syntax (``Sum(f, (i, 1, n))``, ``x[i]``, ``E[X]``)."""
+    return str(MinervaTextPrinter().doprint(expr))

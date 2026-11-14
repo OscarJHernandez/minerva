@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`)
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
@@ -53,6 +53,7 @@ uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge matrix-benchmark   # matrix calculus coverage, methods, verification, time (docs/matrix-benchmark.md)
+uv run python -m minerva_knowledge stat-benchmark [--group G] [--json P] [--compare docs/benchmarks/statistics.json]  # statistical derivations (docs/statistics-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
@@ -335,6 +336,52 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
   add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
   connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
+- Finite sums, products and indexed data (`indexed/`, operation `sums`): the parsers refuse `Sum`, `Product`, `x[i]`, `\sum`,
+  `\prod` and `E[...]` unless the operation opts in (`Builder(allow_sums=...)`, default off), and every pointwise checker
+  (`verify_equal`, `check_derivative`, `check_antiderivative`, `check_definite`, `verify_equal_nc`, the rule matcher,
+  `domain_restrictions`, claims) refuses them through `indexed.guard.contains_indexed`: sampling one number per symbol gives
+  every `x[i]` the same value, so `sum x_i^2 = (sum x_i)^2 / n` "agreed". Do not remove those guards or route a sum through
+  a sampler. A rewrite is shown only if original and result agree on **explicit instances** (`indexed.instantiate`: the sums
+  expanded by us, never `Sum.doit`/`simplify`, at several sizes that always include n >= 2, one fresh symbol per element)
+  under the ordinary sampled check and symbolic zero; it is worded "checked for n = ...", never "proved for every n".
+  Ranges must be provably non-empty (`range_not_provable` otherwise), indices are bound once (no shadowing, no use outside
+  the sum), at most two nested, infinite sums are `unsupported`, and `x_{ij}`/`x_{i,j}` are refused as ambiguous.
+- Expectations (`stats/`, operation `expectation`): `E`, `Var`, `Cov` are unevaluated functions of **declared** random
+  variables (`random`); an undeclared symbol is a `parse_error`. Independence is never assumed: `independent` groups are
+  the only source of it, a result that used one is `conditional` ("holds given ...") and Minerva never checks the premise,
+  and a result is shown only if it agrees with the original on explicit finite joint distributions with exact weights that
+  are dependent unless independence was declared (`stats.pmf_check`). Only one independence group is modelled.
+- Gradients of matrix functions (`matrix/mexpr.py`, `matrix/gradient.py`; actions `gradient`, `jacobian`, `hessian` of
+  `matrix_calculus`, plain-text syntax only): built by differentials (never SymPy's matrix `diff`, which returns 0 for
+  `log det`), over the **reals**, and shown only if central differences of the original function at random matrices of the
+  declared sizes agree. A symmetric or positive definite variable gets the gradient *within the symmetric matrices*
+  (Frobenius), the candidate must itself be symmetric (a directional check cannot tell the unconstrained gradient from its
+  symmetric part), and `2G - diag(G)` is a separately verified, labelled alternative; the unconstrained gradient is never
+  returned for a symmetric variable. `inv`, `logdet` and the derivative of `det` of a matrix need it declared invertible
+  (`invertibility_not_declared`); declarations are checked against explicit entries; products are never reordered; a 1x1
+  product is a scalar factor and an ambiguous grouping is refused. `logdet` means log |det|. The symbolic leg is not run.
+  Matrix-valued functions have no gradient here (`non_scalar_gradient`).
+- Probability families (`stats/families.py`, operation `statistical_model`, action `moments`): a family is a parameter list
+  with constraints, a support and a density, nothing else; no estimator, moment or posterior is stored. Moments come from
+  `integrate`/`summation` (a size parameter is fitted from exact sums and verified at further sizes) and are shown only if
+  mpmath quadrature or summation of the density agrees at sampled parameters and the density normalises. **Absolute
+  convergence is established first** (`Numeric.absolute_moment_exists`: the tails of |x|^k f must shrink), because quadrature
+  "agrees" with a divergent integral; such a moment is `convergence_not_established`. Parameter constraints are decided by
+  `stats/domain.py`: provably violated is `parameter_invalid`, undecidable (`0 < p < 1` cannot be an assumption) is a premise
+  of the result, never silently true. `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
+- Statistical derivations (`stats/likelihood.py`, `mle.py`, `fisher.py`, `posterior.py`; operation `statistical_model`):
+  **independence is never assumed** (`iid` must be stated, else `independence_not_declared`, and a result that used it is
+  `conditional`); a prior is an assumption of the result and the result says so. Estimators are derived by solving the score
+  equations of the expanded log-likelihood (triangular systems only) and shown only if, on explicit data inside the support,
+  the score of the **direct** log-likelihood (sum of log densities, central differences) vanishes there, the point is inside
+  the parameter space and the Hessian is negative definite (second differences). `global` needs a symbolic proof of concavity
+  on the whole parameter space; otherwise `local` (proved at the point, or `measured`, saying so). A candidate estimator may
+  not depend on the unknowns it estimates, and a stationary point that is not a maximum is rejected. An estimate outside the
+  parameter space for the data is `candidate_inadmissible` (no MLE shown); a family whose support depends on the parameter
+  is `regularity_not_satisfied`. Fisher information is -E[Hessian] with derived moments, checked against the variance of the
+  score by quadrature (tolerance 1e-9: a 1e-6 error must be rejected). Posteriors are found by kernel matching, never from a
+  conjugacy table, and checked against prior x likelihood normalised by quadrature. Do not loosen those tolerances or add a
+  hardcoded estimator, information matrix or posterior; `docs/statistics-benchmark.md` and `stat-benchmark` measure them.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

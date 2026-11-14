@@ -6,9 +6,18 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from minerva_engine import DiffVariable, ExpressionInput, GeometryInput, MatrixDecl, Pins
+from minerva_engine import (
+    DiffVariable,
+    ExpressionInput,
+    GeometryInput,
+    MatrixDecl,
+    Pins,
+    StatModelInput,
+)
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
+from minerva_engine.indexed.models import SumAction
 from minerva_engine.matrix.models import MAX_MATRICES, Action
+from minerva_engine.stats.models import ExpectationAction
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
@@ -136,6 +145,8 @@ class MatrixCalculusRequest(Linked):
     variable: str | None = Field(default=None, min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
+    # gradient, jacobian, hessian: an answer to check instead of deriving one ({"result": "..."})
+    candidate: dict[str, str] | None = Field(default=None, max_length=4)
 
 
 class GeometryRequest(GeometryInput, Links):
@@ -159,6 +170,31 @@ class DistributionRequest(Linked):
     @classmethod
     def _sensible_readings(cls, value: dict[str, str]) -> dict[str, str]:
         return check_readings(value)
+
+
+class SumsRequest(Linked):
+    """Finite sums, products and indexed data: `Sum(f, (i, 1, n))`, `x[i]` (text) or `\\sum_{i=1}^{n} x_i`."""
+
+    action: SumAction = "expand"
+    variable: str | None = Field(default=None, min_length=1, max_length=32)
+    candidate: dict[str, str] | None = Field(default=None, max_length=4)
+
+
+class ExpectationRequest(Linked):
+    """`E[...]`, `Var(...)` and `Cov(...)` of declared random variables; independence only as stated."""
+
+    random: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
+        min_length=1, max_length=8
+    )
+    independent: list[list[Annotated[str, Field(min_length=1, max_length=32)]]] = Field(
+        default_factory=list, max_length=8
+    )
+    action: ExpectationAction = "expand"
+    candidate: dict[str, str] | None = Field(default=None, max_length=4)
+
+
+class StatisticsRequest(StatModelInput, Links):
+    """A probability model and what to derive from it (moments, MLE, Fisher information, posterior)."""
 
 
 class HistoryItem(BaseModel):

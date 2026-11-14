@@ -13,7 +13,7 @@ Ordering favours correctness infrastructure before breadth.
 ## Next
 
 1. **Handbook breadth** (see `handbook-outline.md`): transforms (Fourier, Laplace), linear algebra, vector
-   calculus, differential equations, probability, group theory; physics chapters in depth. Tooling to import
+   calculus, differential equations, more probability (distribution tables, generating functions), group theory; physics chapters in depth. Tooling to import
    entries from openly licensed sources with provenance tracking; per-entry review status.
 2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
    `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial

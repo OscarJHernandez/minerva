@@ -1339,6 +1339,321 @@ Handbook entries state identities, integrals, series, special functions and phys
 - **Check:** verification level: stated
 - Validity: Free scalar field, natural units (ħ = c = 1).
 
+## Statistics
+
+Sums, expectations, probability models, estimators, information and Bayesian updates, derived and checked rather than looked up.
+
+### Finite sums and products
+
+*Available in:* workbench, chat, HTTP API.
+
+Expand, factor and differentiate finite sums and products with symbolic bounds, over indexed data (`Sum(x[i]^2, (i, 1, n))` in text, `\sum_{i=1}^{n} x_i^2` in LaTeX). A rewrite is shown only if it agrees with the original on explicit expansions at several sizes (always including n of at least 2) with a separate unknown for every element; sampling one number per symbol would accept `sum x^2 = (sum x)^2 / n`, which is true for n = 1, so no other operation accepts a sum. Agreement at those sizes is evidence, not a proof for every n.
+
+**Limits**
+
+- Bounds must be provably non-empty integers (declare the upper bound an integer and positive); infinite sums are declined.
+- At most two nested sums; `x_{ij}` and `x_{i,j}` are declined as ambiguous.
+- The result is worded "checked for n = ...", never "proved for every n".
+- `log(prod f) = sum log f` needs every factor provably positive.
+
+#### Expand a sum of squared deviations
+
+- **Expression:** `Sum((x[i] - mu)^2, (i, 1, n))` (plain text), read as $\sum_{i=1}^{n} \left(- \mu + x_{i}\right)^{2}$
+- **Assumptions:** n integer, positive; x real; mu real
+- **Status:** `ok`
+- **Result:** $\mu^{2} n - 2 \mu \sum_{i=1}^{n} x_{i} + \sum_{i=1}^{n} x_{i}^{2}$
+- **Check:** 4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+- checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+
+#### The identity behind the sample variance
+
+- **Expression:** `Sum((x[i] - Sum(x[j], (j, 1, n))/n)^2, (i, 1, n))` (plain text), read as $\sum_{i=1}^{n} \left(x_{i} - \frac{\sum_{j=1}^{n} x_{j}}{n}\right)^{2}$
+- **Assumptions:** n integer, positive; x real
+- **Status:** `ok`
+- **Result:** $\sum_{i=1}^{n} x_{i}^{2} - \frac{\left(\sum_{j=1}^{n} x_{j}\right)^{2}}{n}$
+- **Check:** 4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+- checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+
+#### The same in LaTeX
+
+- **Expression:** `\sum_{i=1}^{n}(x_i-\mu)^2` (LaTeX)
+- **Assumptions:** n integer, positive; x real; mu real
+- **Status:** `ok`
+- **Result:** $\mu^{2} n - 2 \mu \sum_{i=1}^{n} x_{i} + \sum_{i=1}^{n} x_{i}^{2}$
+- **Check:** 4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+- checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+
+#### The log of a product, for positive factors
+
+- **Expression:** `log(Product(x[i], (i, 1, n)))` (plain text), read as $\log{\left(\prod_{i=1}^{n} x_{i} \right)}$
+- **Assumptions:** n integer, positive; x positive
+- **Status:** `ok`
+- **Result:** $\sum_{i=1}^{n} \log{\left(x_{i} \right)}$
+- **Check:** 4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+- checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size
+
+#### A false identity that holds for n = 1 is rejected
+
+- **Expression:** `Sum(x[i]^2, (i, 1, n))` (plain text), read as $\sum_{i=1}^{n} x_{i}^{2}$
+- **Answer to check:** `Sum(x[i], (i, 1, n))^2/n`
+- **Assumptions:** n integer, positive; x real
+- **Status:** `not_verified`
+- Refused (verification_failed).
+- the result did not agree with the original on explicit instances; not shown
+
+#### A range that cannot be shown non-empty is declined
+
+- **Expression:** `Sum(x[i], (i, 1, m))` (plain text)
+- **Assumptions:** x real
+- **Status:** `conditions_not_satisfied`
+- Refused (range_not_provable).
+- cannot show that the bounds are integers: declare the symbols in them integer (and the upper one positive or nonnegative)
+
+### Expectation, variance and covariance
+
+*Available in:* workbench, chat, HTTP API.
+
+Linearity of expectation and bilinearity of covariance for declared random variables, including sums over indexed variables. Independence is never assumed: covariance terms stay unless you state independence, and a result that used it holds given it (Minerva does not check that it is true). A result is shown only if it agrees with the original on explicit finite joint distributions that are dependent unless independence was declared.
+
+**Limits**
+
+- Only variables you list are random; an expectation with none of them is declined.
+- One independence group is supported, and `[["X"]]` for an indexed X means its components are mutually independent.
+- Moments are assumed to exist (the check uses finite supports).
+- The check is evidence from explicit distributions, not a proof for every distribution.
+
+#### Variance of a sum keeps the covariance
+
+- **Expression:** `Var(X + Y)` (plain text), read as $\operatorname{Var}\left(X + Y\right)$
+- **Random variables:** `X, Y`
+- **Status:** `ok`
+- **Result:** $2 \operatorname{Cov}\left(X, Y\right) + \operatorname{Var}\left(X\right) + \operatorname{Var}\left(Y\right)$
+- **Check:** agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution
+- No independence was used.
+- agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution
+
+#### With independence stated, the result holds given it
+
+- **Expression:** `Var(X + Y)` (plain text), read as $\operatorname{Var}\left(X + Y\right)$
+- **Random variables:** `X, Y`
+- **Independence you stated:** `X and Y`
+- **Status:** `ok`
+- **Result:** $\operatorname{Var}\left(X\right) + \operatorname{Var}\left(Y\right)$
+- **Check:** agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution
+- Holds given: X and Y are independent (Minerva does not check that this is true).
+- holds given: X and Y are independent. agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution
+
+#### Covariance from raw moments
+
+- **Expression:** `Cov(X, Y)` (plain text), read as $\operatorname{Cov}\left(X, Y\right)$
+- **Random variables:** `X, Y`
+- **Status:** `ok`
+- **Result:** $- \mathbb{E}\left[X\right] \mathbb{E}\left[Y\right] + \mathbb{E}\left[X Y\right]$
+- **Check:** agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution
+- No independence was used.
+- agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution
+
+#### E[XY] does not factor without independence
+
+- **Expression:** `E[X*Y]` (plain text), read as $\mathbb{E}\left[X Y\right]$
+- **Random variables:** `X, Y`
+- **Status:** `unchanged`
+- nothing more can be derived without further assumptions (independence is never assumed)
+
+#### Dropping the covariance term is rejected
+
+- **Expression:** `Var(X + Y)` (plain text), read as $\operatorname{Var}\left(X + Y\right)$
+- **Random variables:** `X, Y`
+- **Status:** `not_verified`
+- Refused (verification_failed).
+- the result did not agree with the original on explicit joint distributions; not shown
+
+### Maximum likelihood, Fisher information and Bayesian updates
+
+*Available in:* workbench, chat, HTTP API.
+
+Derive, from a density, the moments of a family (Bernoulli, binomial, Poisson, normal, beta, gamma, Cauchy, uniform), the log-likelihood and score, the maximum-likelihood estimator, the Fisher information and the posterior for a prior. Estimators come from the score equations and are accepted only if the direct log-likelihood has zero slope there, the point lies in the parameter space and the Hessian is negative definite; an optimum is called global only when concavity is proved. Posteriors are found by matching the kernel, never from a table. Independence of observations is never assumed; a likelihood of several observations needs you to state it.
+
+**Limits**
+
+- Estimates that lie outside the parameter space for the data (a Bernoulli sample of all zeros, identical normal observations) are declined, not invented.
+- Families whose support depends on the parameter (uniform on (0, theta)) have no score or information.
+- The score equations are solved one parameter at a time (triangular systems); moments of the Cauchy family do not exist and are declined.
+- A prior is your assumption; the posterior holds for it. Only kernels of the supported families are recognised.
+- Numerical agreement (quadrature, a direct log-likelihood) is evidence, not a proof; the symbolic parts are stated separately.
+
+#### Maximum-likelihood estimators of a normal mean and variance
+
+- **Model:** `normal, action mle`
+- **Observations:** `n observations of x (stated: independent and identically distributed)`
+- **Parameters:** `mu, v`
+- **Assumptions:** n integer, positive; x real
+- **Status:** `ok`
+- **Estimator of mu:** $\frac{\sum_{i=1}^{n} x_{i}}{n}$
+- **Estimator of v:** $\frac{\sum_{i=1}^{n} \left(x_{i} - \frac{\sum_{j=1}^{n} x_{j}}{n}\right)^{2}}{n}$
+- **Check:** the expanded log-likelihood against the direct sum of log densities, on explicit data: 8 of 8
+- **Check:** the score against central differences of the direct log-likelihood, on explicit data: 8 of 8
+- **Check:** the direct log-likelihood has zero slope at the estimators, on explicit data: 4 of 4
+- **Check:** second differences of the direct log-likelihood: negative definite at the estimators: 4 of 4
+- mu: local maximum (proved); no condition on the data.
+- v: local maximum (proved); valid only if $\frac{\sum_{i=1}^{n} \left(x_{i} - \frac{\sum_{j=1}^{n} x_{j}}{n}\right)^{2}}{n} > 0$.
+- Holds given: the observations are independent and identically distributed.
+- the Hessian is negative definite at the estimators (given the admissibility condition); checked on 4 explicit data sets (numerical agreement is evidence, not a proof)
+
+#### The sample proportion, and where it exists
+
+- **Model:** `bernoulli, action mle`
+- **Observations:** `n observations of x (stated: independent and identically distributed)`
+- **Parameters:** `p`
+- **Assumptions:** n integer, positive
+- **Status:** `ok`
+- **Estimator of p:** $\frac{\sum_{i=1}^{n} x_{i}}{n}$
+- **Check:** the expanded log-likelihood against the direct sum of log densities, on explicit data: 8 of 8
+- **Check:** the score against central differences of the direct log-likelihood, on explicit data: 8 of 8
+- **Check:** the direct log-likelihood has zero slope at the estimators, on explicit data: 4 of 4
+- **Check:** second differences of the direct log-likelihood: negative definite at the estimators: 4 of 4
+- p: global maximum (proved); valid only if $0 < \frac{\sum_{i=1}^{n} x_{i}}{n} < 1$.
+- Holds given: the observations are independent and identically distributed.
+- the log-likelihood is concave on the whole parameter space; checked on 4 explicit data sets (numerical agreement is evidence, not a proof)
+
+#### No maximum-likelihood estimate for a sample of all zeros
+
+- **Model:** `bernoulli, action mle`
+- **Observations:** `4 observations of x (stated: independent and identically distributed)`
+- **Data:** `0, 0, 0, 0`
+- **Parameters:** `p`
+- **Status:** `conditions_not_satisfied`
+- Refused (candidate_inadmissible).
+- for these data the maximum would be at p = 0, which is outside the parameter space: the supremum of the likelihood is not attained, so there is no maximum-likelihood estimate
+
+#### Several observations need a statement of independence
+
+- **Model:** `normal, action mle`
+- **Known parameters:** `v = v`
+- **Observations:** `n observations of x (NOT stated)`
+- **Parameters:** `mu`
+- **Assumptions:** n integer, positive; v positive; x real
+- **Status:** `conditions_not_satisfied`
+- Refused (independence_not_declared).
+- a likelihood of several observations is a product of densities only if they are independent; state that the observations are independent and identically distributed
+
+#### Fisher information of a normal mean and standard deviation
+
+- **Model:** `normal, action fisher_information`
+- **Parameters:** `mu, sigma`
+- **Assumptions:** mu real; sigma positive
+- **Status:** `ok`
+- **Fisher information:** $\begin{pmatrix}\frac{1}{\sigma^{2}} & 0 \\ 0 & \frac{2}{\sigma^{2}}\end{pmatrix}$
+- **Check:** the information against the variance of the score (quadrature or summation, numerically differentiated log density): 5 of 5
+- **Check:** the expected score is 0 (regularity), by quadrature or summation: 5 of 5
+- equal to the variance of the score by quadrature, and the expected score is 0; numerical agreement is evidence, not a proof
+
+#### A Beta prior and a binomial likelihood
+
+- **Model:** `binomial, action posterior`
+- **Known parameters:** `n = n`
+- **Prior (yours):** `beta(alpha = alpha, beta = beta)`
+- **Parameters:** `p`
+- **Assumptions:** n integer, positive; k integer, nonnegative; alpha positive; beta positive
+- **Status:** `ok`
+- **Posterior (beta):** $\alpha = \alpha + k,\; \beta = \beta - k + n$
+- **Check:** posterior density against prior x likelihood divided by its integral (quadrature), at several values of the parameter: 4 of 4
+- **Check:** the posterior density integrates to 1 (quadrature): 4 of 4
+- Holds given: the prior is as stated; it is an assumption, not a fact.
+- equal to prior times likelihood divided by its integral (quadrature) at sampled values; numerical agreement is evidence, not a proof
+
+#### Moments derived from a density
+
+- **Model:** `gamma, action moments`
+- **Known parameters:** `alpha = alpha, beta = beta`
+- **Assumptions:** alpha positive; beta positive
+- **Status:** `ok`
+- **Mean:** $\frac{\alpha}{\beta}$
+- **Variance:** $\frac{\alpha}{\beta^{2}}$
+- **Second:** $\frac{\alpha \left(\alpha + 1\right)}{\beta^{2}}$
+- **Check:** quadrature or summation of the density at sampled parameter values: 5 of 5
+- **Check:** mean: quadrature or summation of the density at sampled parameter values: 5 of 5
+- **Check:** variance: quadrature or summation of the density at sampled parameter values: 5 of 5
+- **Check:** second: quadrature or summation of the density at sampled parameter values: 5 of 5
+- each moment agrees with quadrature or summation of the density at 5 parameter points; numerical agreement is evidence, not a proof
+
+#### The mean of a Cauchy variable is declined
+
+- **Model:** `cauchy, action moments`
+- **Status:** `conditions_not_satisfied`
+- Refused (convergence_not_established).
+- the mean and variance of the Cauchy family do not exist (the integral of |x| f(x) does not converge); a principal value is not the mean
+
+#### A support that depends on the parameter has no Fisher information
+
+- **Model:** `uniform_0_theta, action fisher_information`
+- **Parameters:** `theta`
+- **Assumptions:** theta positive
+- **Status:** `unsupported`
+- Refused (regularity_not_satisfied).
+- the support of the Uniform on (0, theta) family depends on its parameter: differentiation under the integral sign is not allowed, so the Fisher information (as -E[second derivative] or as the variance of the score) is not defined
+
+### Gradients, Jacobians and Hessians of matrix functions
+
+*Available in:* workbench, chat, HTTP API.
+
+Derivatives of scalar functions of vectors and matrices, such as the Gaussian log-likelihood with respect to the mean or the covariance (`-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)`), built by differentials and accepted only if central differences of the original function agree at random real matrices of the declared sizes. Matrices keep their order; the derivative with respect to a symmetric matrix is the gradient within the symmetric matrices (the unconstrained gradient is never returned for it), with the entrywise form labelled separately.
+
+**Limits**
+
+- Plain-text syntax only for these actions (`tr`, `det`, `logdet`, `transpose`, `inv`, `*` for the matrix product); `logdet` means log of the absolute determinant.
+- Over the real numbers (a transpose, not a conjugate transpose); Hermitian and Wirtinger derivatives are not supported.
+- `inv`, `logdet` and the derivative of `det` need the matrix declared invertible (or positive definite) by you.
+- Matrix-valued functions have no gradient here (the derivative of a matrix by a matrix is a fourth-order tensor).
+- The symbolic leg is not run; numerical agreement is evidence, not a proof.
+
+#### The Gaussian log-density with respect to the mean
+
+- **Expression:** `-1/2*transpose(x - mu)*inv(S)*(x - mu)` (plain text)
+- **Matrix:** `x: 3 by 1, entries not given`
+- **Matrix:** `mu: 3 by 1, entries not given`
+- **Matrix:** `S: 3 by 3, entries not given`
+- **Status:** `ok`
+- **Gradient:** $S^{-1} \left(x - \mu\right)$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- Convention: unconstrained derivative (every entry free); real field, a transpose and not a conjugate transpose.
+- Method: Gradient by differentials (gradient_differential).
+- verified against the numerical derivative; numerical agreement is evidence, not a proof
+
+#### With respect to a positive definite covariance
+
+- **Expression:** `-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)` (plain text)
+- **Matrix:** `x: 3 by 1, entries not given`
+- **Matrix:** `mu: 3 by 1, entries not given`
+- **Matrix:** `S: 3 by 3, entries not given`
+- **Status:** `ok`
+- **Gradient:** $- \frac{1}{2} S^{-1} + \frac{1}{2} S^{-1} \left(x - \mu\right) \left(x - \mu\right)^{\top} S^{-1}$
+- **Entrywise form (independent entries, i <= j):** $- S^{-1} + S^{-1} \left(x - \mu\right) \left(x - \mu\right)^{\top} S^{-1} - \operatorname{diag}\left(- \frac{1}{2} S^{-1} + \frac{1}{2} S^{-1} \left(x - \mu\right) \left(x - \mu\right)^{\top} S^{-1}\right)$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- Convention: gradient within the symmetric matrices (Frobenius inner product); real field, a transpose and not a conjugate transpose.
+- Method: Gradient by differentials (gradient_differential).
+- verified against the numerical derivative; numerical agreement is evidence, not a proof
+
+#### The Hessian of a quadratic form
+
+- **Expression:** `transpose(x)*A*x` (plain text)
+- **Matrix:** `A: 3 by 3, entries not given`
+- **Matrix:** `x: 3 by 1, entries not given`
+- **Status:** `ok`
+- **Hessian:** $A + A^{\top}$
+- **Check:** numeric check agreed at 4 of 4 random samples
+- Convention: unconstrained derivative (every entry free); real field, a transpose and not a conjugate transpose.
+- Method: Hessian by differentials (hessian_differential).
+- verified against the numerical derivative; numerical agreement is evidence, not a proof
+
+#### An inverse is never assumed
+
+- **Expression:** `logdet(X)` (plain text)
+- **Matrix:** `X: 3 by 3, entries not given`
+- **Status:** `conditions_not_satisfied`
+- Refused (invertibility_not_declared).
+- X must be declared invertible: the derivative needs its inverse
+
 ## Using Minerva
 
 How to reach the tools, through the chat, photos of equations and the workbench.

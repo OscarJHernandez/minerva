@@ -13,6 +13,7 @@ from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
 from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
+from .indexed.models import SumsInput, SumsResult
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -43,6 +44,7 @@ from .pi_groups import (
 from .sandbox import Outcome, Sandbox, SandboxResult
 from .series import SeriesResult
 from .solve import SolveReport
+from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
 
 # Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
 NONCOMMUTATIVE_OPERATIONS = frozenset({"substitute", "rewrite_at", "subterms"})
@@ -234,6 +236,58 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return IntegrateResult(status=status, message=message, duration_ms=ms)
         result = IntegrateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def statistical_model(self, request: StatModelInput) -> StatModelResult:
+        """Moments, likelihoods, estimators, Fisher information and posteriors of a probability
+        family, derived from its density; each result is shown only if an independent check passed."""
+        outcome, ms = self._run("statistical_model", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return StatModelResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = StatModelResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def expectation(self, request: ExpectationInput) -> ExpectationResult:
+        """Expand E, Var and Cov of declared random variables by linearity; independence only where
+        declared (the result is then conditional on it). Shown only if it agrees with the original on
+        explicit finite joint distributions."""
+        outcome, ms = self._run("expectation", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return ExpectationResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = ExpectationResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def sums(self, request: SumsInput) -> SumsResult:
+        """Linearity, closed forms, factoring, log of a product and derivatives of finite sums; the
+        result is shown only if it agrees with the original on explicit instances at several sizes."""
+        outcome, ms = self._run("sums", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return SumsResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = SumsResult(**outcome.value)
         result.duration_ms = ms
         return result
 

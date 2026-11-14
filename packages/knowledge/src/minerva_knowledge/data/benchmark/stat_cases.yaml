@@ -1,0 +1,1304 @@
+# Statistical derivation benchmark cases.
+#
+# Written by hand before the operations exist, and never derived from an engine run. Every reference
+# answer is an independently established result (textbook identity or a hand derivation by
+# differentials), and tests/test_stat_references.py checks the references themselves against
+# independent numerics (finite differences, quadrature, explicit joint distributions).
+# Sources are locators only (chapter level), never quoted text.
+#
+# kind:
+#   supported          the operation must answer ok, verified, and every `outputs` entry must agree
+#                      with the reference at concrete data (stat_oracle.py)
+#   unsupported        the operation must refuse with `status` (and `reason` when given), showing nothing
+#   invalid_candidate  `request` plus `candidate` asks the engine to check a wrong answer: it must be
+#                      rejected (not_verified / conditions_not_satisfied) while `control`, a correct
+#                      answer to the same request, is accepted
+#
+# `vars` says how the oracle draws numbers: size, real, positive, unit, bit, count, upto:<size>,
+# vector_<kind> (length n), random / random_vector (random variables with a joint distribution that
+# is dependent unless `request.independent` says otherwise).
+# `pending: true` marks a case whose operation is not implemented yet: reported, never asserted, and
+# the suite fails once it passes (remove `pending` then).
+
+# ------------------------------------------------------------------ sums (Phase 1)
+
+- id: sum-expand-squares
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Elementary algebra: expand the square, apply linearity of finite sums"
+  input: "Sum((x[i] - mu)**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], mu: [real], x: [real]}
+  vars: {n: size, mu: real, x: vector_real}
+  request: {action: expand}
+  expect:
+    outputs: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2"}
+
+- id: sum-deviation-identity
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Casella & Berger, Statistical Inference 2e, ch. 5 (the sample-variance identity)"
+  input: "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {action: expand}
+  expect:
+    outputs: {result: "Sum(x[i]**2, (i, 1, n)) - Sum(x[i], (i, 1, n))**2/n"}
+
+- id: sum-deviations-vanish
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Elementary algebra: the deviations from the mean sum to zero"
+  input: "Sum(x[i] - Sum(x[j], (j, 1, n))/n, (i, 1, n))"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {action: expand}
+  expect:
+    outputs: {result: "0"}
+
+- id: sum-constant-summand
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Elementary algebra: a sum of n copies of c"
+  input: "Sum(c, (i, 1, n))"
+  assumptions: {n: [integer, positive], c: [real]}
+  vars: {n: size, c: real}
+  request: {action: evaluate_constant}
+  expect:
+    outputs: {result: "n*c"}
+
+- id: sum-differentiate-parameter
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Calculus: differentiation is linear, so it passes through a finite sum"
+  input: "Sum((x[i] - mu)**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], mu: [real], x: [real]}
+  vars: {n: size, mu: real, x: vector_real}
+  request: {action: differentiate, variable: mu}
+  expect:
+    outputs: {result: "-2*Sum(x[i] - mu, (i, 1, n))"}
+
+- id: sum-log-of-product-positive
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Elementary algebra: log of a product of positive numbers"
+  input: "log(Product(x[i], (i, 1, n)))"
+  assumptions: {n: [integer, positive], x: [positive]}
+  vars: {n: size, x: vector_positive}
+  request: {action: log_of_product}
+  expect:
+    outputs: {result: "Sum(log(x[i]), (i, 1, n))"}
+
+- id: sum-product-of-sums-factor
+  group: sums
+  kind: supported
+  operation: sums
+  source: "Elementary algebra: a double sum of a product of independent indices factorises"
+  input: "Sum(Sum(x[i]*y[j], (j, 1, n)), (i, 1, n))"
+  assumptions: {n: [integer, positive], x: [real], y: [real]}
+  vars: {n: size, x: vector_real, y: vector_real}
+  request: {action: factor}
+  expect:
+    outputs: {result: "Sum(x[i], (i, 1, n))*Sum(y[j], (j, 1, n))"}
+
+- id: sum-log-of-product-complex-refused
+  group: sums
+  kind: unsupported
+  operation: sums
+  source: "log(ab) = log a + log b needs a, b > 0 (AGENTS.md: conditions are provable or reported)"
+  input: "log(Product(x[i], (i, 1, n)))"
+  assumptions: {n: [integer, positive]}
+  vars: {n: size}
+  request: {action: log_of_product}
+  expect: {status: conditions_not_satisfied}
+
+- id: sum-range-not-provable
+  group: sums
+  kind: unsupported
+  operation: sums
+  source: "A sum with a symbolic upper bound needs a provably non-empty range"
+  input: "Sum(x[i], (i, 1, n))"
+  assumptions: {x: [real]}
+  vars: {}
+  request: {action: expand}
+  expect: {status: conditions_not_satisfied, reason: range_not_provable}
+
+- id: sum-infinite-range-unsupported
+  group: sums
+  kind: unsupported
+  operation: sums
+  source: "Out of scope: infinite sums and products"
+  input: "Sum(1/2**i, (i, 1, oo))"
+  assumptions: {}
+  vars: {}
+  request: {action: evaluate_constant}
+  expect: {status: unsupported}
+
+- id: sum-oversized-input
+  group: sums
+  kind: unsupported
+  operation: sums
+  source: "Resource limits: the input exceeds the configured size"
+  input: "x[1]"
+  inflate: {unit: "+x[1]", count: 700}
+  assumptions: {x: [real]}
+  vars: {}
+  request: {action: expand}
+  expect: {status: resource_limit}
+
+- id: sum-check-sum-of-squares-wrong
+  group: sums
+  kind: invalid_candidate
+  operation: sums
+  source: "Dropped middle term: sum (x - mu)^2 = sum x^2 - 2 mu sum x + n mu^2"
+  input: "Sum((x[i] - mu)**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], mu: [real], x: [real]}
+  vars: {n: size, mu: real, x: vector_real}
+  request: {action: check}
+  candidate: {result: "Sum(x[i]**2, (i, 1, n)) - n*mu**2"}
+  control: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2"}
+
+- id: sum-check-square-of-sum-wrong
+  group: sums
+  kind: invalid_candidate
+  operation: sums
+  source: "sum x^2 is not (sum x)^2 / n; both agree when n = 1"
+  input: "Sum(x[i]**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {action: check}
+  candidate: {result: "Sum(x[i], (i, 1, n))**2/n"}
+  control: {result: "Sum(x[i]**2, (i, 1, n-1)) + x[n]**2"}
+
+- id: sum-check-off-by-one-range
+  group: sums
+  kind: invalid_candidate
+  operation: sums
+  source: "Range off by one"
+  input: "Sum(x[i], (i, 1, n))"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {action: check}
+  candidate: {result: "Sum(x[i], (i, 1, n-1))"}
+  control: {result: "Sum(x[i], (i, 1, n-1)) + x[n]"}
+
+- id: sum-check-perturbed-by-1e-6
+  group: sums
+  kind: invalid_candidate
+  operation: sums
+  source: "A correct expansion plus 1e-6 must not be accepted"
+  input: "Sum((x[i] - mu)**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], mu: [real], x: [real]}
+  vars: {n: size, mu: real, x: vector_real}
+  request: {action: check}
+  candidate: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2 + 1/1000000"}
+  control: {result: "Sum(x[i]**2, (i, 1, n)) - 2*mu*Sum(x[i], (i, 1, n)) + n*mu**2"}
+
+- id: sum-check-sample-variance-identity-wrong
+  group: sums
+  kind: invalid_candidate
+  operation: sums
+  source: "Dropped factor n: sum (x - xbar)^2 = sum x^2 - n xbar^2, not sum x^2 - xbar^2"
+  input: "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {action: check}
+  candidate: {result: "Sum(x[i]**2, (i, 1, n)) - (Sum(x[i], (i, 1, n))/n)**2"}
+  control: {result: "Sum(x[i]**2, (i, 1, n)) - Sum(x[i], (i, 1, n))**2/n"}
+
+# ------------------------------------------------------------------ expectation (Phase 1)
+
+- id: expectation-linearity
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 2 (expectation of a linear function)"
+  input: "E[a*X + b*Y + c]"
+  assumptions: {a: [real], b: [real], c: [real]}
+  vars: {a: real, b: real, c: real, X: random, Y: random}
+  request: {action: expand, random: [X, Y]}
+  expect:
+    outputs: {result: "a*E[X] + b*E[Y] + c"}
+    evidence: identity
+
+- id: expectation-of-indexed-sum
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 2 (linearity needs no independence)"
+  input: "E[Sum(X[i], (i, 1, n))]"
+  assumptions: {n: [integer, positive]}
+  vars: {n: size, X: random_vector}
+  request: {action: expand, random: [X]}
+  expect:
+    outputs: {result: "Sum(E[X[i]], (i, 1, n))"}
+    evidence: identity
+
+- id: variance-of-sum-keeps-covariance
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 4 (variance of a sum of two variables)"
+  input: "Var(X + Y)"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: expand, random: [X, Y]}
+  expect:
+    outputs: {result: "Var(X) + Var(Y) + 2*Cov(X, Y)"}
+    evidence: identity
+
+- id: variance-of-sum-independent
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 4 (independent variables are uncorrelated)"
+  input: "Var(X + Y)"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: expand, random: [X, Y], independent: [[X, Y]]}
+  expect:
+    outputs: {result: "Var(X) + Var(Y)"}
+    evidence: conditional
+
+- id: variance-of-affine
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 2 (variance of aX + b)"
+  input: "Var(a*X + b)"
+  assumptions: {a: [real], b: [real]}
+  vars: {a: real, b: real, X: random}
+  request: {action: expand, random: [X]}
+  expect:
+    outputs: {result: "a**2*Var(X)"}
+    evidence: identity
+
+- id: covariance-definition
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 4 (covariance in terms of moments)"
+  input: "Cov(X, Y)"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: to_moments, random: [X, Y]}
+  expect:
+    outputs: {result: "E[X*Y] - E[X]*E[Y]"}
+
+- id: expectation-of-product-independent
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 4 (expectation of a product of independent variables)"
+  input: "E[X*Y]"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: expand, random: [X, Y], independent: [[X, Y]]}
+  expect:
+    outputs: {result: "E[X]*E[Y]"}
+    evidence: conditional
+
+- id: variance-of-indexed-sum-independent
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Casella & Berger, Statistical Inference 2e, ch. 5 (variance of a sum of independent variables)"
+  input: "Var(Sum(X[i], (i, 1, n)))"
+  assumptions: {n: [integer, positive]}
+  vars: {n: size, X: random_vector}
+  request: {action: expand, random: [X], independent: [[X]]}
+  expect:
+    outputs: {result: "Sum(Var(X[i]), (i, 1, n))"}
+    evidence: conditional
+
+- id: variance-of-indexed-sum-keeps-covariances
+  group: expectation
+  kind: supported
+  operation: expectation
+  source: "Bilinearity of covariance (Casella & Berger, Statistical Inference 2e, ch. 4)"
+  input: "Var(Sum(X[i], (i, 1, n)))"
+  assumptions: {n: [integer, positive]}
+  vars: {n: size, X: random_vector}
+  request: {action: expand, random: [X]}
+  expect:
+    outputs: {result: "Sum(Sum(Cov(X[i], X[j]), (j, 1, n)), (i, 1, n))"}
+    evidence: identity
+
+- id: expectation-of-product-undeclared-unchanged
+  group: expectation
+  kind: unsupported
+  operation: expectation
+  source: "E[XY] does not factor without independence; nothing may be invented"
+  input: "E[X*Y]"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: expand, random: [X, Y]}
+  expect: {status: unchanged}
+
+- id: expectation-undeclared-variable
+  group: expectation
+  kind: unsupported
+  operation: expectation
+  source: "A symbol that is not declared random is not guessed to be one"
+  input: "E[Z]"
+  assumptions: {}
+  vars: {}
+  request: {action: expand, random: [X]}
+  expect: {status: parse_error}
+
+- id: expectation-check-assumed-independence
+  group: expectation
+  kind: invalid_candidate
+  operation: expectation
+  source: "E[XY] = E[X]E[Y] holds only for uncorrelated variables"
+  input: "E[X*Y]"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: check, random: [X, Y]}
+  candidate: {result: "E[X]*E[Y]"}
+  control: {result: "Cov(X, Y) + E[X]*E[Y]"}
+
+- id: variance-check-missing-covariance
+  group: expectation
+  kind: invalid_candidate
+  operation: expectation
+  source: "Var(X + Y) = Var X + Var Y holds only for uncorrelated variables"
+  input: "Var(X + Y)"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: check, random: [X, Y]}
+  candidate: {result: "Var(X) + Var(Y)"}
+  control: {result: "Var(X) + Var(Y) + 2*Cov(X, Y)"}
+
+- id: variance-check-scale-not-squared
+  group: expectation
+  kind: invalid_candidate
+  operation: expectation
+  source: "Var(aX) = a^2 Var(X)"
+  input: "Var(a*X)"
+  assumptions: {a: [real]}
+  vars: {a: real, X: random}
+  request: {action: check, random: [X]}
+  candidate: {result: "a*Var(X)"}
+  control: {result: "a**2*Var(X)"}
+
+- id: covariance-check-raw-moment
+  group: expectation
+  kind: invalid_candidate
+  operation: expectation
+  source: "Cov(X, Y) is E[XY] minus the product of means, not E[XY]"
+  input: "Cov(X, Y)"
+  assumptions: {}
+  vars: {X: random, Y: random}
+  request: {action: check, random: [X, Y]}
+  candidate: {result: "E[X*Y]"}
+  control: {result: "E[X*Y] - E[X]*E[Y]"}
+
+# ------------------------------------------------------------------ families (Phase 3)
+
+- id: family-normal-moments
+  group: families
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 3 (table of common families)"
+  assumptions: {mu: [real], sigma: [positive]}
+  vars: {mu: real, sigma: positive}
+  request: {family: normal, parameters: {mu: mu, sigma: sigma}, action: moments}
+  expect:
+    outputs: {"moment:mean": "mu", "moment:variance": "sigma**2", "moment:second": "mu**2 + sigma**2"}
+
+- id: family-bernoulli-moments
+  group: families
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 3 (table of common families)"
+  assumptions: {p: [positive]}
+  vars: {p: unit}
+  request: {family: bernoulli, parameters: {p: p}, action: moments}
+  expect:
+    outputs: {"moment:mean": "p", "moment:variance": "p*(1 - p)"}
+
+- id: family-binomial-moments
+  group: families
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 3 (table of common families)"
+  assumptions: {n: [integer, positive], p: [positive]}
+  vars: {n: size, p: unit}
+  request: {family: binomial, parameters: {n: n, p: p}, action: moments}
+  expect:
+    outputs: {"moment:mean": "n*p", "moment:variance": "n*p*(1 - p)"}
+
+- id: family-poisson-moments
+  group: families
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 3 (table of common families)"
+  assumptions: {lam: [positive]}
+  vars: {lam: positive}
+  request: {family: poisson, parameters: {lam: lam}, action: moments}
+  expect:
+    outputs: {"moment:mean": "lam", "moment:variance": "lam", "moment:second": "lam**2 + lam"}
+
+- id: family-beta-moments
+  group: families
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 3 (table of common families)"
+  assumptions: {alpha: [positive], beta: [positive]}
+  vars: {alpha: positive, beta: positive}
+  request: {family: beta, parameters: {alpha: alpha, beta: beta}, action: moments}
+  expect:
+    outputs:
+      "moment:mean": "alpha/(alpha + beta)"
+      "moment:variance": "alpha*beta/((alpha + beta)**2*(alpha + beta + 1))"
+
+- id: family-gamma-moments
+  group: families
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 3 (table of common families; shape and rate)"
+  assumptions: {alpha: [positive], beta: [positive]}
+  vars: {alpha: positive, beta: positive}
+  request: {family: gamma, parameters: {alpha: alpha, beta: beta}, action: moments}
+  expect:
+    outputs: {"moment:mean": "alpha/beta", "moment:variance": "alpha/beta**2"}
+
+- id: family-cauchy-mean-does-not-exist
+  group: families
+  kind: unsupported
+  operation: statistical_model
+  source: "The Cauchy mean integral is not absolutely convergent (a principal value of 0 is not the mean)"
+  assumptions: {}
+  vars: {}
+  request: {family: cauchy, parameters: {}, action: moments}
+  expect: {status: conditions_not_satisfied, reason: convergence_not_established}
+
+- id: family-normal-negative-sd
+  group: families
+  kind: unsupported
+  operation: statistical_model
+  source: "A standard deviation must be positive"
+  assumptions: {mu: [real]}
+  vars: {}
+  request: {family: normal, parameters: {mu: mu, sigma: "-1"}, action: moments}
+  expect: {status: conditions_not_satisfied, reason: parameter_invalid}
+
+- id: family-bernoulli-probability-above-one
+  group: families
+  kind: unsupported
+  operation: statistical_model
+  source: "A probability lies in (0, 1)"
+  assumptions: {}
+  vars: {}
+  request: {family: bernoulli, parameters: {p: "3/2"}, action: moments}
+  expect: {status: conditions_not_satisfied, reason: parameter_invalid}
+
+- id: family-weibull-unsupported
+  group: families
+  kind: unsupported
+  operation: statistical_model
+  source: "Not in the starting set of families"
+  assumptions: {k: [positive], lam: [positive]}
+  vars: {}
+  request: {family: weibull, parameters: {k: k, lam: lam}, action: moments}
+  expect: {status: unsupported, reason: unsupported_family}
+
+- id: family-check-gamma-mean-wrong
+  group: families
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "Gamma(shape, rate) has mean alpha/beta, not alpha/beta^2 (that is its variance)"
+  assumptions: {alpha: [positive], beta: [positive]}
+  vars: {alpha: positive, beta: positive}
+  request: {family: gamma, parameters: {alpha: alpha, beta: beta}, action: moments}
+  candidate: {"moment:mean": "alpha/beta**2"}
+  control: {"moment:mean": "alpha/beta"}
+
+- id: family-check-binomial-variance-wrong
+  group: families
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "Binomial variance is np(1 - p), not np"
+  assumptions: {n: [integer, positive], p: [positive]}
+  vars: {n: size, p: unit}
+  request: {family: binomial, parameters: {n: n, p: p}, action: moments}
+  candidate: {"moment:variance": "n*p"}
+  control: {"moment:variance": "n*p*(1 - p)"}
+
+- id: family-check-beta-mean-perturbed
+  group: families
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "A mean that is off by 1e-6 must be rejected"
+  assumptions: {alpha: [positive], beta: [positive]}
+  vars: {alpha: positive, beta: positive}
+  request: {family: beta, parameters: {alpha: alpha, beta: beta}, action: moments}
+  candidate: {"moment:mean": "alpha/(alpha + beta) + 1/1000000"}
+  control: {"moment:mean": "alpha/(alpha + beta)"}
+
+- id: family-check-poisson-second-moment-wrong
+  group: families
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "Poisson E[X^2] = lambda^2 + lambda, not lambda^2"
+  assumptions: {lam: [positive]}
+  vars: {lam: positive}
+  request: {family: poisson, parameters: {lam: lam}, action: moments}
+  candidate: {"moment:second": "lam**2"}
+  control: {"moment:second": "lam**2 + lam"}
+
+# ------------------------------------------------------------------ maximum likelihood (Phase 4)
+
+- id: mle-gaussian-mean-known-variance
+  group: mle
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (normal mean, known variance)"
+  assumptions: {n: [integer, positive], v: [positive], x: [real]}
+  vars: {n: size, v: positive, x: vector_real}
+  request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
+  expect:
+    outputs: {"estimate:mu": "Sum(x[i], (i, 1, n))/n"}
+    evidence: conditional
+    optimum: global
+
+- id: mle-gaussian-mean-and-variance
+  group: mle
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (normal mean and variance; denominator n)"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [mu, v], action: mle}
+  expect:
+    outputs:
+      "estimate:mu": "Sum(x[i], (i, 1, n))/n"
+      "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/n"
+    evidence: conditional
+    optimum: local
+    has_conditions: true
+  forbid:
+    "estimate:v": ["Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/(n - 1)"]
+
+- id: mle-bernoulli
+  group: mle
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (Bernoulli success probability)"
+  assumptions: {n: [integer, positive], x: [nonnegative]}
+  vars: {n: size, x: vector_bit}
+  request: {family: bernoulli, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [p], action: mle}
+  expect:
+    outputs: {"estimate:p": "Sum(x[i], (i, 1, n))/n"}
+    evidence: conditional
+    optimum: global
+    has_conditions: true
+
+- id: mle-poisson
+  group: mle
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (Poisson mean)"
+  assumptions: {n: [integer, positive], x: [nonnegative, integer]}
+  vars: {n: size, x: vector_count}
+  request: {family: poisson, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [lam], action: mle}
+  expect:
+    outputs: {"estimate:lam": "Sum(x[i], (i, 1, n))/n"}
+    evidence: conditional
+    optimum: global
+    has_conditions: true
+
+- id: mle-bernoulli-all-zeros-has-no-maximiser
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "With every observation 0 the likelihood (1 - p)^n increases towards p = 0, which is not in (0, 1)"
+  assumptions: {}
+  vars: {}
+  request: {family: bernoulli, parameters: {}, observation: x, sample_size: "4", iid: true, estimate: [p], action: mle, data: ["0", "0", "0", "0"]}
+  expect: {status: conditions_not_satisfied, reason: candidate_inadmissible}
+
+- id: mle-bernoulli-all-ones-has-no-maximiser
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "With every observation 1 the likelihood p^n increases towards p = 1, which is not in (0, 1)"
+  assumptions: {}
+  vars: {}
+  request: {family: bernoulli, parameters: {}, observation: x, sample_size: "3", iid: true, estimate: [p], action: mle, data: ["1", "1", "1"]}
+  expect: {status: conditions_not_satisfied, reason: candidate_inadmissible}
+
+- id: mle-gaussian-constant-data-degenerate-variance
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "Identical observations give a variance estimate 0, outside the parameter space (0, infinity)"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: "3", iid: true, estimate: [mu, v], action: mle, data: ["2", "2", "2"]}
+  expect: {status: conditions_not_satisfied, reason: candidate_inadmissible}
+
+- id: mle-uniform-is-not-regular
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "Uniform(0, theta): the support depends on theta, the score does not exist (the maximiser is the sample maximum)"
+  assumptions: {n: [integer, positive], x: [positive]}
+  vars: {}
+  request: {family: uniform_0_theta, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [theta], action: mle}
+  expect: {status: unsupported, reason: regularity_not_satisfied}
+
+- id: mle-independence-not-declared
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A likelihood of n observations is a product only under independence (AGENTS.md: never assumed)"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {}
+  request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, estimate: [mu], action: mle}
+  expect: {status: conditions_not_satisfied, reason: independence_not_declared}
+
+- id: mle-negative-known-variance
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A variance must be positive"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {}
+  request: {family: normal, parametrization: variance, parameters: {v: "-2"}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
+  expect: {status: conditions_not_satisfied, reason: parameter_invalid}
+
+- id: mle-unsupported-family
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "Not in the starting set of families"
+  assumptions: {n: [integer, positive], x: [positive]}
+  vars: {}
+  request: {family: weibull, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [lam], action: mle}
+  expect: {status: unsupported, reason: unsupported_family}
+
+- id: mle-score-system-oversized
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "Resource limits: a known parameter that is an enormous expression"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {}
+  inflate: {path: "parameters.v", unit: "+(a+1)*(b+2)", count: 400}
+  request: {family: normal, parametrization: variance, parameters: {v: "1"}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
+  expect: {status: resource_limit}
+
+- id: mle-check-variance-denominator-n-minus-1
+  group: mle
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "The unbiased sample variance divides by n - 1; the maximum-likelihood estimator divides by n"
+  assumptions: {n: [integer, positive], x: [real]}
+  vars: {n: size, x: vector_real}
+  request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [mu, v], action: mle}
+  candidate: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/(n - 1)"}
+  control: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/n"}
+
+- id: mle-check-mean-denominator-n-plus-1
+  group: mle
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "Dividing by n + 1 does not solve the score equation"
+  assumptions: {n: [integer, positive], v: [positive], x: [real]}
+  vars: {n: size, v: positive, x: vector_real}
+  request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, iid: true, estimate: [mu], action: mle}
+  candidate: {"estimate:mu": "Sum(x[i], (i, 1, n))/(n + 1)"}
+  control: {"estimate:mu": "Sum(x[i], (i, 1, n))/n"}
+
+- id: mle-check-variance-with-unsubstituted-mean
+  group: mle
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "The variance estimate uses the sample mean, not the unknown mu"
+  assumptions: {n: [integer, positive], x: [real], mu: [real]}
+  vars: {n: size, x: vector_real, mu: real}
+  request: {family: normal, parametrization: variance, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [mu, v], action: mle}
+  candidate: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - mu)**2, (i, 1, n))/n"}
+  control: {"estimate:mu": "Sum(x[i], (i, 1, n))/n", "estimate:v": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)**2, (i, 1, n))/n"}
+
+# ------------------------------------------------------------------ Fisher information (Phase 4)
+
+- id: fisher-normal-mean-known-sd
+  group: fisher
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (Fisher information of the normal mean)"
+  assumptions: {mu: [real], sigma: [positive]}
+  vars: {mu: real, sigma: positive}
+  request: {family: normal, parameters: {sigma: sigma}, estimate: [mu], action: fisher_information}
+  expect:
+    matrix: [["1/sigma**2"]]
+
+- id: fisher-normal-mean-and-sd
+  group: fisher
+  kind: supported
+  operation: statistical_model
+  source: "Lehmann & Casella, Theory of Point Estimation 2e, ch. 2 (information of the normal location-scale family)"
+  assumptions: {mu: [real], sigma: [positive]}
+  vars: {mu: real, sigma: positive}
+  request: {family: normal, parameters: {}, estimate: [mu, sigma], action: fisher_information}
+  expect:
+    matrix: [["1/sigma**2", "0"], ["0", "2/sigma**2"]]
+  forbid:
+    "matrix[1][1]": ["1/sigma**2"]
+
+- id: fisher-normal-mean-and-variance
+  group: fisher
+  kind: supported
+  operation: statistical_model
+  source: "Lehmann & Casella, Theory of Point Estimation 2e, ch. 2 (information changes with the parametrisation)"
+  assumptions: {mu: [real], v: [positive]}
+  vars: {mu: real, v: positive}
+  request: {family: normal, parametrization: variance, parameters: {}, estimate: [mu, v], action: fisher_information}
+  expect:
+    matrix: [["1/v", "0"], ["0", "1/(2*v**2)"]]
+
+- id: fisher-normal-n-observations
+  group: fisher
+  kind: supported
+  operation: statistical_model
+  source: "Information is additive over independent observations"
+  assumptions: {n: [integer, positive], mu: [real], sigma: [positive]}
+  vars: {mu: real, n: size, sigma: positive}
+  request: {family: normal, parameters: {}, estimate: [mu, sigma], sample_size: n, iid: true, action: fisher_information}
+  expect:
+    matrix: [["n/sigma**2", "0"], ["0", "2*n/sigma**2"]]
+    evidence: conditional
+
+- id: fisher-bernoulli
+  group: fisher
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (Bernoulli information)"
+  assumptions: {p: [positive]}
+  vars: {p: unit}
+  request: {family: bernoulli, parameters: {}, estimate: [p], action: fisher_information}
+  expect:
+    matrix: [["1/(p*(1 - p))"]]
+
+- id: fisher-poisson
+  group: fisher
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (Poisson information)"
+  assumptions: {lam: [positive]}
+  vars: {lam: positive}
+  request: {family: poisson, parameters: {}, estimate: [lam], action: fisher_information}
+  expect:
+    matrix: [["1/lam"]]
+
+- id: fisher-uniform-is-not-regular
+  group: fisher
+  kind: unsupported
+  operation: statistical_model
+  source: "The support depends on theta, so differentiation under the integral is not allowed"
+  assumptions: {theta: [positive]}
+  vars: {}
+  request: {family: uniform_0_theta, parameters: {}, estimate: [theta], action: fisher_information}
+  expect: {status: unsupported, reason: regularity_not_satisfied}
+
+- id: fisher-check-sd-information-doubled
+  group: fisher
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "I(sigma) is 2/sigma^2, not 1/sigma^2"
+  assumptions: {mu: [real], sigma: [positive]}
+  vars: {mu: real, sigma: positive}
+  request: {family: normal, parameters: {}, estimate: [mu, sigma], action: fisher_information}
+  candidate: {matrix: [["1/sigma**2", "0"], ["0", "1/sigma**2"]]}
+  control: {matrix: [["1/sigma**2", "0"], ["0", "2/sigma**2"]]}
+
+- id: fisher-check-nonzero-off-diagonal
+  group: fisher
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "Mean and scale of the normal family are orthogonal parameters"
+  assumptions: {mu: [real], sigma: [positive]}
+  vars: {mu: real, sigma: positive}
+  request: {family: normal, parameters: {}, estimate: [mu, sigma], action: fisher_information}
+  candidate: {matrix: [["1/sigma**2", "1/sigma"], ["1/sigma", "2/sigma**2"]]}
+  control: {matrix: [["1/sigma**2", "0"], ["0", "2/sigma**2"]]}
+
+- id: fisher-check-sd-matrix-under-variance
+  group: fisher
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "The (mu, sigma) information is not the (mu, variance) information"
+  assumptions: {mu: [real], v: [positive]}
+  vars: {mu: real, v: positive}
+  request: {family: normal, parametrization: variance, parameters: {}, estimate: [mu, v], action: fisher_information}
+  candidate: {matrix: [["1/v", "0"], ["0", "2/v"]]}
+  control: {matrix: [["1/v", "0"], ["0", "1/(2*v**2)"]]}
+
+- id: fisher-check-perturbed-by-1e-6
+  group: fisher
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "An entry that is off by 1e-6 must be rejected"
+  assumptions: {p: [positive]}
+  vars: {p: unit}
+  request: {family: bernoulli, parameters: {}, estimate: [p], action: fisher_information}
+  candidate: {matrix: [["1/(p*(1 - p)) + 1/1000000"]]}
+  control: {matrix: [["1/(p*(1 - p))"]]}
+
+# ------------------------------------------------------------------ Bayesian updates (Phase 4)
+
+- id: posterior-beta-binomial
+  group: posterior
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (binomial likelihood with a beta prior)"
+  assumptions: {n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive]}
+  vars: {n: size, k: "upto:n", alpha: positive, beta: positive}
+  request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
+  expect:
+    labels: {"posterior:family": beta}
+    outputs: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n - k"}
+
+- id: posterior-beta-bernoulli-sample
+  group: posterior
+  kind: supported
+  operation: statistical_model
+  source: "Casella & Berger, Statistical Inference 2e, ch. 7 (independent Bernoulli observations, beta prior)"
+  assumptions: {n: [integer, positive], x: [nonnegative], alpha: [positive], beta: [positive]}
+  vars: {n: size, x: vector_bit, alpha: positive, beta: positive}
+  request: {family: bernoulli, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [p], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
+  expect:
+    labels: {"posterior:family": beta}
+    outputs:
+      "posterior:alpha": "alpha + Sum(x[i], (i, 1, n))"
+      "posterior:beta": "beta + n - Sum(x[i], (i, 1, n))"
+    evidence: conditional
+
+- id: posterior-gamma-poisson
+  group: posterior
+  kind: supported
+  operation: statistical_model
+  source: "Gelman et al., Bayesian Data Analysis 3e, ch. 2 (Poisson likelihood, gamma prior; shape and rate)"
+  assumptions: {n: [integer, positive], x: [nonnegative, integer], alpha: [positive], beta: [positive]}
+  vars: {n: size, x: vector_count, alpha: positive, beta: positive}
+  request: {family: poisson, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [lam], prior: {family: gamma, parameters: {alpha: alpha, beta: beta}}, action: posterior}
+  expect:
+    labels: {"posterior:family": gamma}
+    outputs:
+      "posterior:alpha": "alpha + Sum(x[i], (i, 1, n))"
+      "posterior:beta": "beta + n"
+    evidence: conditional
+
+- id: posterior-normal-normal-known-variance
+  group: posterior
+  kind: supported
+  operation: statistical_model
+  source: "Gelman et al., Bayesian Data Analysis 3e, ch. 2 (normal likelihood with known variance, normal prior)"
+  assumptions: {n: [integer, positive], x: [real], v: [positive], mu0: [real], tau2: [positive]}
+  vars: {n: size, x: vector_real, v: positive, mu0: real, tau2: positive}
+  request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, iid: true, estimate: [mu], prior: {family: normal, parametrization: variance, parameters: {mu: mu0, v: tau2}}, action: posterior}
+  expect:
+    labels: {"posterior:family": normal}
+    outputs:
+      "posterior:mu": "(mu0/tau2 + Sum(x[i], (i, 1, n))/v)/(1/tau2 + n/v)"
+      "posterior:v": "1/(1/tau2 + n/v)"
+    evidence: conditional
+
+- id: posterior-non-conjugate-kernel-not-recognised
+  group: posterior
+  kind: unsupported
+  operation: statistical_model
+  source: "A beta prior on a Poisson rate gives a kernel outside the supported families; no posterior is invented"
+  assumptions: {n: [integer, positive], x: [nonnegative, integer], alpha: [positive], beta: [positive]}
+  vars: {}
+  request: {family: poisson, parameters: {}, observation: x, sample_size: n, iid: true, estimate: [lam], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
+  expect: {status: unsupported, reason: kernel_not_recognised}
+
+- id: posterior-invalid-prior-parameter
+  group: posterior
+  kind: unsupported
+  operation: statistical_model
+  source: "Beta parameters must be positive"
+  assumptions: {n: [integer, positive], k: [integer, nonnegative], beta: [positive]}
+  vars: {}
+  request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: "-1", beta: beta}}, action: posterior}
+  expect: {status: conditions_not_satisfied, reason: parameter_invalid}
+
+- id: posterior-check-beta-not-updated
+  group: posterior
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "The second beta parameter gains the failures, n - k"
+  assumptions: {n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive]}
+  vars: {n: size, k: "upto:n", alpha: positive, beta: positive}
+  request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
+  candidate: {"posterior:alpha": "alpha + k", "posterior:beta": "beta"}
+  control: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n - k"}
+
+- id: posterior-check-beta-adds-trials-not-failures
+  group: posterior
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "beta + n counts the successes twice"
+  assumptions: {n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive]}
+  vars: {n: size, k: "upto:n", alpha: positive, beta: positive}
+  request: {family: binomial, parameters: {n: n}, observation: k, estimate: [p], prior: {family: beta, parameters: {alpha: alpha, beta: beta}}, action: posterior}
+  candidate: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n"}
+  control: {"posterior:alpha": "alpha + k", "posterior:beta": "beta + n - k"}
+
+- id: posterior-check-normal-prior-variance-not-updated
+  group: posterior
+  kind: invalid_candidate
+  operation: statistical_model
+  source: "The posterior precision is the prior precision plus n over the data variance"
+  assumptions: {n: [integer, positive], x: [real], v: [positive], mu0: [real], tau2: [positive]}
+  vars: {n: size, x: vector_real, v: positive, mu0: real, tau2: positive}
+  request: {family: normal, parametrization: variance, parameters: {v: v}, observation: x, sample_size: n, iid: true, estimate: [mu], prior: {family: normal, parametrization: variance, parameters: {mu: mu0, v: tau2}}, action: posterior}
+  candidate: {"posterior:mu": "(mu0/tau2 + Sum(x[i], (i, 1, n))/v)/(1/tau2 + n/v)", "posterior:v": "tau2"}
+  control: {"posterior:mu": "(mu0/tau2 + Sum(x[i], (i, 1, n))/v)/(1/tau2 + n/v)", "posterior:v": "1/(1/tau2 + n/v)"}
+
+# ------------------------------------------------------------------ matrix derivatives (Phase 2)
+# Text syntax: `*` is the matrix product, `transpose`, `inv`, `tr`, `det`, `logdet` (= log |det|; the
+# derivative is the same), `diagpart`. All matrix derivatives are over the reals.
+
+- id: matrix-gradient-trace-linear
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (derivatives of traces)"
+  input: "tr(A*X*B)"
+  matrices: [{name: A, rows: 2, cols: 3}, {name: X, rows: 3, cols: 4}, {name: B, rows: 4, cols: 2}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect:
+    outputs: {result: "transpose(A)*transpose(B)"}
+
+- id: matrix-gradient-trace-quadratic
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (derivatives of traces)"
+  input: "tr(transpose(X)*A*X)"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: X, rows: 3, cols: 2}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect:
+    outputs: {result: "A*X + transpose(A)*X"}
+
+- id: matrix-gradient-quadratic-form
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (quadratic forms; A need not be symmetric)"
+  input: "transpose(x)*A*x"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: x, rows: 3, cols: 1}]
+  vars: {}
+  request: {action: gradient, variable: x}
+  expect:
+    outputs: {result: "(A + transpose(A))*x"}
+
+- id: matrix-gradient-trace-of-inverse
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (derivative of the inverse)"
+  input: "tr(inv(X)*A)"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X, invertible: [X]}
+  expect:
+    outputs: {result: "-transpose(inv(X))*transpose(A)*transpose(inv(X))"}
+
+- id: matrix-gradient-logdet
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (derivative of the log determinant)"
+  input: "logdet(X)"
+  matrices: [{name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X, invertible: [X]}
+  expect:
+    outputs: {result: "transpose(inv(X))"}
+
+- id: matrix-gradient-det
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (derivative of the determinant)"
+  input: "det(X)"
+  matrices: [{name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X, invertible: [X]}
+  expect:
+    outputs: {result: "det(X)*transpose(inv(X))"}
+
+- id: matrix-gradient-logdet-gram
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation: d log det(X^T X) = tr((X^T X)^-1 (dX^T X + X^T dX))"
+  input: "logdet(transpose(X)*X)"
+  matrices: [{name: X, rows: 4, cols: 2}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect:
+    outputs: {result: "2*X*inv(transpose(X)*X)"}
+
+- id: matrix-gaussian-gradient-mean
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation by differentials (Gaussian log-density, symmetric positive definite covariance)"
+  input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 3, cols: 1}, {name: mu, rows: 3, cols: 1}, {name: S, rows: 3, cols: 3, positive_definite: true}]
+  vars: {}
+  request: {action: gradient, variable: mu}
+  expect:
+    outputs: {result: "inv(S)*(x - mu)"}
+
+- id: matrix-gaussian-gradient-mean-general-covariance
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation by differentials; without symmetry the gradient is (S^-1 + S^-T)(x - mu)/2"
+  input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 3, cols: 1}, {name: mu, rows: 3, cols: 1}, {name: S, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: mu, invertible: [S]}
+  expect:
+    outputs: {result: "1/2*(inv(S) + transpose(inv(S)))*(x - mu)"}
+
+- id: matrix-gaussian-gradient-covariance-unconstrained
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation by differentials (every entry of the covariance treated as free)"
+  input: "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 3, cols: 1}, {name: mu, rows: 3, cols: 1}, {name: S, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: S, invertible: [S]}
+  expect:
+    outputs:
+      result: "-1/2*transpose(inv(S)) + 1/2*transpose(inv(S))*(x - mu)*transpose(x - mu)*transpose(inv(S))"
+    labels: {constraint: none, convention: unconstrained}
+
+- id: matrix-gaussian-gradient-covariance-symmetric
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation: gradient within the symmetric matrices (Frobenius); the entrywise form is 2G - diag(G)"
+  input: "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 3, cols: 1}, {name: mu, rows: 3, cols: 1}, {name: S, rows: 3, cols: 3, positive_definite: true}]
+  vars: {}
+  request: {action: gradient, variable: S}
+  expect:
+    outputs:
+      result: "-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S)"
+      "alternative:entrywise": "2*(-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S)) - diagpart(-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S))"
+    labels: {constraint: positive_definite, convention: symmetric_frobenius}
+
+- id: matrix-gaussian-loglikelihood-scatter
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation: n observations summarised by the scatter matrix T = sum (x_i - mu)(x_i - mu)^T"
+  input: "-n/2*logdet(S) - 1/2*tr(inv(S)*T)"
+  matrices: [{name: S, rows: 3, cols: 3, positive_definite: true}, {name: T, rows: 3, cols: 3, positive_definite: true}]
+  vars: {n: size}
+  request: {action: gradient, variable: S}
+  expect:
+    outputs: {result: "-n/2*inv(S) + 1/2*inv(S)*T*inv(S)"}
+
+- id: matrix-hessian-quadratic-form
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (second derivative of a quadratic form)"
+  input: "transpose(x)*A*x"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: x, rows: 3, cols: 1}]
+  vars: {}
+  request: {action: hessian, variable: x}
+  expect:
+    outputs: {result: "A + transpose(A)"}
+
+- id: matrix-hessian-gaussian-mean
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Hand derivation: the observed information for the mean is the precision matrix"
+  input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 3, cols: 1}, {name: mu, rows: 3, cols: 1}, {name: S, rows: 3, cols: 3, positive_definite: true}]
+  vars: {}
+  request: {action: hessian, variable: mu}
+  expect:
+    outputs: {result: "-inv(S)"}
+
+- id: matrix-jacobian-linear-map
+  group: matrix
+  kind: supported
+  operation: matrix_calculus
+  source: "Petersen & Pedersen, The Matrix Cookbook, ch. 2 (derivative of a linear map)"
+  input: "A*x"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: x, rows: 3, cols: 1}]
+  vars: {}
+  request: {action: jacobian, variable: x}
+  expect:
+    outputs: {result: "A"}
+
+- id: matrix-inverse-not-declared-invertible
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "A matrix is never assumed invertible (AGENTS.md)"
+  input: "tr(inv(X)*A)"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect: {status: conditions_not_satisfied, reason: invertibility_not_declared}
+
+- id: matrix-determinant-not-declared-invertible
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "d det X = det X tr(X^-1 dX) introduces an inverse that was not declared"
+  input: "det(X)"
+  matrices: [{name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect: {status: conditions_not_satisfied, reason: invertibility_not_declared}
+
+- id: matrix-valued-function-has-no-gradient
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "A matrix by matrix derivative is a fourth-order tensor: out of scope"
+  input: "X*A"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect: {status: unsupported, reason: non_scalar_gradient}
+
+- id: matrix-shape-mismatch
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "A (2x3) times X (2x2) is not conformable"
+  input: "tr(A*X)"
+  matrices: [{name: A, rows: 2, cols: 3}, {name: X, rows: 2, cols: 2}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  expect: {status: parse_error}
+
+- id: matrix-trace-of-non-square
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "The trace needs a square matrix"
+  input: "tr(A)"
+  matrices: [{name: A, rows: 2, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: A}
+  expect: {status: parse_error}
+
+- id: matrix-singular-covariance-declared-invertible
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "A declaration contradicted by the entries is an error (det [[1, 2], [2, 4]] = 0)"
+  input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 2, cols: 1}, {name: mu, rows: 2, cols: 1}, {name: S, entries: [["1", "2"], ["2", "4"]]}]
+  vars: {}
+  request: {action: gradient, variable: mu, invertible: [S]}
+  expect: {status: parse_error}
+
+- id: matrix-nonsymmetric-covariance-declared-symmetric
+  group: matrix
+  kind: unsupported
+  operation: matrix_calculus
+  source: "A declaration contradicted by the entries is an error ([[1, 2], [3, 4]] is not symmetric)"
+  input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 2, cols: 1}, {name: mu, rows: 2, cols: 1}, {name: S, entries: [["1", "2"], ["3", "4"]], symmetric: true}]
+  vars: {}
+  request: {action: gradient, variable: mu}
+  expect: {status: parse_error}
+
+- id: matrix-check-missing-transposed-term
+  group: matrix
+  kind: invalid_candidate
+  operation: matrix_calculus
+  source: "d tr(X^T A X) has two terms; A X alone is right only for symmetric A"
+  input: "tr(transpose(X)*A*X)"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: X, rows: 3, cols: 2}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  candidate: {result: "A*X"}
+  control: {result: "A*X + transpose(A)*X"}
+
+- id: matrix-check-inverse-for-inverse-transpose
+  group: matrix
+  kind: invalid_candidate
+  operation: matrix_calculus
+  source: "d log det X is X^-T, not X^-1, for a matrix that is not declared symmetric"
+  input: "logdet(X)"
+  matrices: [{name: X, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X, invertible: [X]}
+  candidate: {result: "inv(X)"}
+  control: {result: "transpose(inv(X))"}
+
+- id: matrix-check-quadratic-form-half-gradient
+  group: matrix
+  kind: invalid_candidate
+  operation: matrix_calculus
+  source: "The gradient of x^T A x is (A + A^T) x, not A x, when A is not symmetric"
+  input: "transpose(x)*A*x"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: x, rows: 3, cols: 1}]
+  vars: {}
+  request: {action: gradient, variable: x}
+  candidate: {result: "A*x"}
+  control: {result: "(A + transpose(A))*x"}
+
+- id: matrix-check-unconstrained-gradient-for-symmetric-variable
+  group: matrix
+  kind: invalid_candidate
+  operation: matrix_calculus
+  source: "For a symmetric variable the gradient must itself be symmetric; the unconstrained one is not"
+  input: "tr(inv(S)*A)"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: S, rows: 3, cols: 3, positive_definite: true}]
+  vars: {}
+  request: {action: gradient, variable: S}
+  candidate: {result: "-inv(S)*transpose(A)*inv(S)"}
+  control: {result: "-1/2*inv(S)*(A + transpose(A))*inv(S)"}
+
+- id: matrix-check-reordered-product
+  group: matrix
+  kind: invalid_candidate
+  operation: matrix_calculus
+  source: "Matrix factors are never reordered: d tr(AXB) = A^T B^T, not B^T A^T"
+  input: "tr(A*X*B)"
+  matrices: [{name: A, rows: 3, cols: 3}, {name: X, rows: 3, cols: 3}, {name: B, rows: 3, cols: 3}]
+  vars: {}
+  request: {action: gradient, variable: X}
+  candidate: {result: "transpose(B)*transpose(A)"}
+  control: {result: "transpose(A)*transpose(B)"}
+
+- id: matrix-check-gradient-perturbed-by-1e-6
+  group: matrix
+  kind: invalid_candidate
+  operation: matrix_calculus
+  source: "A gradient that is off by a relative 1e-6 must be rejected"
+  input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+  matrices: [{name: x, rows: 3, cols: 1}, {name: mu, rows: 3, cols: 1}, {name: S, rows: 3, cols: 3, positive_definite: true}]
+  vars: {}
+  request: {action: gradient, variable: mu}
+  candidate: {result: "1000001/1000000*inv(S)*(x - mu)"}
+  control: {result: "inv(S)*(x - mu)"}

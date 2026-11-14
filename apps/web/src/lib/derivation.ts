@@ -6,13 +6,18 @@ import type {
   DistributionAction,
   DistributionEndpoint,
   DistributionResult,
+  ExpectationAction,
+  ExpectationResult,
   HistoryItem,
   IntegrateResult,
   IsolateResult,
   SeriesResult,
   SimplifyResult,
+  StatModelResult,
   Status,
   StepResult,
+  SumsAction,
+  SumsResult,
 } from "./types";
 import { MAX_DERIVATIVE_ORDER, MAX_SERIES_ORDER } from "./types";
 
@@ -25,7 +30,9 @@ export type StepOperation =
   | "distribution"
   | "substitute"
   | "collect"
-  | "isolate";
+  | "isolate"
+  | "sums"
+  | "expectation";
 
 export interface Settings {
   variable: string;
@@ -46,6 +53,14 @@ export interface Settings {
   distAction: DistributionAction;
   /** A delta on an integration limit counts only under a convention the user chose. */
   endpoint: DistributionEndpoint | "";
+  /** Sums step: what to do with the finite sums. */
+  sumsAction: SumsAction;
+  /** Expectation step: what to do with E, Var and Cov. */
+  expectAction: ExpectationAction;
+  /** The random variables, separated by commas. Only these are random: nothing else is guessed. */
+  random: string;
+  /** Groups of mutually independent variables, one group per line. Empty: no independence is assumed. */
+  independent: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -61,6 +76,10 @@ export const DEFAULT_SETTINGS: Settings = {
   solveFor: "x",
   distAction: "simplify",
   endpoint: "",
+  sumsAction: "expand",
+  expectAction: "expand",
+  random: "X, Y",
+  independent: "",
 };
 
 export const MAX_RELATIONS = 4;
@@ -82,6 +101,24 @@ export function collectTargets(text: string): string[] {
     .filter((part) => part !== "");
 }
 
+export const MAX_RANDOM = 8;
+
+/** The random variables named in the field. */
+export function randomNames(text: string): string[] {
+  return text
+    .split(/[,\s]+/)
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
+/** One independence group per line, its variables separated by commas. */
+export function independenceGroups(text: string): string[][] {
+  return text
+    .split("\n")
+    .map((line) => randomNames(line))
+    .filter((group) => group.length > 0);
+}
+
 // A finite real number as the server reads it in text syntax: 0, -2, 1/2, 0.5, pi.
 export const POINT_PATTERN = /^-?(\d+(\.\d+)?(\/\d+)?|pi)$/;
 export const VARIABLE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
@@ -89,6 +126,25 @@ export const VARIABLE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
 /** A message for the first thing wrong with the settings of `operation`, or null. */
 export function validateSettings(operation: StepOperation, s: Settings): string | null {
   if (operation === "simplify") return null;
+  if (operation === "sums") {
+    if (s.sumsAction === "differentiate" && !VARIABLE_PATTERN.test(s.variable)) {
+      return "Enter the variable to differentiate by, for example mu.";
+    }
+    return null;
+  }
+  if (operation === "expectation") {
+    const names = randomNames(s.random);
+    if (names.length === 0) return "Name the random variables, for example X, Y.";
+    if (names.length > MAX_RANDOM) return `Use at most ${MAX_RANDOM} random variables.`;
+    if (names.some((n) => !VARIABLE_PATTERN.test(n))) {
+      return "Write the random variables as names, for example X, Y.";
+    }
+    for (const group of independenceGroups(s.independent)) {
+      const unknown = group.find((n) => !names.includes(n));
+      if (unknown) return `${unknown} is in an independence group but is not a random variable.`;
+    }
+    return null;
+  }
   if (operation === "substitute") {
     const lines = relationLines(s.relations);
     if (lines.length === 0) return "Write at least one relation, for example y^2 = 1 - x^2.";
@@ -162,9 +218,40 @@ export function continuation(item: HistoryItem, which = 0): Continuation | null 
     const chosen = solutions[which];
     return chosen ? { text: chosen.text, latex: chosen.latex } : null;
   }
+  if (item.operation === "statistical_model") {
+    return statContinuations(item)[which] ?? null;
+  }
   const r = shown(item);
   if (!r.result_text) return null;
   return { text: r.result_text, latex: r.result_latex };
+}
+
+/** A statistical step continues from any one of its expressions: a moment, an estimate, a score. */
+export interface StatContinuation extends Continuation {
+  label: string;
+}
+
+export function statContinuations(item: HistoryItem): StatContinuation[] {
+  if (item.status !== "ok" && item.status !== "unchanged") return [];
+  const r = item.result as unknown as StatModelResult;
+  const out: StatContinuation[] = [];
+  for (const e of r.estimates ?? []) {
+    out.push({ label: `estimate of ${e.parameter}`, text: e.text, latex: e.latex });
+  }
+  for (const [name, text] of Object.entries(r.moments ?? {})) {
+    out.push({ label: name, text, latex: r.moments_latex?.[name] ?? null });
+  }
+  for (const [name, text] of Object.entries(r.expressions ?? {})) {
+    out.push({ label: name, text, latex: r.expressions_latex?.[name] ?? null });
+  }
+  for (const [name, text] of Object.entries(r.posterior?.parameters ?? {})) {
+    out.push({
+      label: `posterior ${name}`,
+      text,
+      latex: r.posterior?.parameters_latex?.[name] ?? null,
+    });
+  }
+  return out;
 }
 
 /** Every way a step can be continued: the result, or for an equation each of its solutions. */
@@ -176,12 +263,14 @@ export function continuations(item: HistoryItem): Continuation[] {
       latex: s.latex,
     }));
   }
+  if (item.operation === "statistical_model") return statContinuations(item);
   const one = continuation(item);
   return one ? [one] : [];
 }
 
 export function resultLatex(item: HistoryItem): string | null {
   if (item.operation === "isolate") return null; // the solutions are listed by the panel
+  if (item.operation === "statistical_model") return null; // the panel lists every expression
   const r = shown(item);
   return item.status === "ok" || item.status === "unchanged" ? r.result_latex : null;
 }
@@ -224,6 +313,40 @@ export function stepLabel(item: HistoryItem): string {
         }[r.action ?? "simplify"] ?? "Distributions"
       );
     }
+    case "sums": {
+      const a = (item.result as unknown as SumsResult).action;
+      return (
+        {
+          expand: "Linearity of finite sums",
+          evaluate_constant: "Closed form of a sum without data",
+          factor: "Product of sums",
+          log_of_product: "Logarithm of a product",
+          differentiate: "Derivative of a finite sum",
+          check: "Check an answer",
+        }[a] ?? "Sums"
+      );
+    }
+    case "expectation": {
+      const a = (item.result as unknown as ExpectationResult).action;
+      return a === "to_moments"
+        ? "Variance and covariance through raw moments"
+        : a === "check"
+          ? "Check an answer"
+          : "Expectation, variance and covariance";
+    }
+    case "statistical_model": {
+      const r = item.result as unknown as StatModelResult;
+      const family = r.request?.family ?? "";
+      const names: Record<string, string> = {
+        moments: "Moments",
+        log_likelihood: "Log-likelihood",
+        score: "Score",
+        mle: "Maximum-likelihood estimator",
+        fisher_information: "Fisher information",
+        posterior: "Posterior",
+      };
+      return `${names[r.action] ?? "Statistical model"}${family ? `, ${family}` : ""}`;
+    }
     case "apply_identity":
       return (item.result as unknown as ApplyIdentityResult).entry?.title ?? "Identity";
     case "substitute": {
@@ -258,8 +381,20 @@ export function stepLabel(item: HistoryItem): string {
 /** One line on how the result was checked. Never claims more than the stored verification. */
 export function verificationSummary(item: HistoryItem): string | null {
   const r = item.result as unknown as Record<string, unknown>;
+  if (item.operation === "statistical_model") {
+    const checks =
+      (r.checks as { points_checked: number; points_agreed: number }[] | undefined) ?? [];
+    if (checks.length === 0) return null;
+    const agreed = checks.reduce((a, c) => a + c.points_agreed, 0);
+    const total = checks.reduce((a, c) => a + c.points_checked, 0);
+    return `${checks.length} independent checks: ${agreed}/${total} points agree (evidence, not a proof)`;
+  }
   const v = r.verification as Record<string, unknown> | null | undefined;
   if (!v) return null;
+  if (item.operation === "sums") return instanceWording(v as never);
+  if (item.operation === "expectation") {
+    return `agrees on ${v.models_agreed}/${v.models_checked} explicit joint distributions (evidence, not a proof)`;
+  }
   if (item.operation === "distribution") {
     if (typeof v.pairings_checked !== "number") return null;
     return `${v.pairings_agreed}/${v.pairings_checked} test-function pairings agree (not a proof)${
@@ -287,4 +422,19 @@ export function assumptionsSummary(a: Assumptions): string | null {
     .filter(([, list]) => list.length > 0)
     .map(([name, list]) => `${name} ${list.join(", ")}`);
   return parts.length ? parts.join("; ") : null;
+}
+
+/** "checked for n = 1; 2; 3; 5": what an instance check covered, never "proved for every n". */
+export function instanceWording(v: {
+  sizes: Record<string, number>[];
+  instances_checked: number;
+  instances_agreed: number;
+}): string {
+  const first = v.sizes[0];
+  const names = first ? Object.keys(first).sort() : [];
+  const where =
+    names.length > 0
+      ? `checked for ${v.sizes.map((size) => names.map((n) => `${n} = ${size[n]}`).join(", ")).join("; ")}`
+      : "checked on explicit instances";
+  return `${where} (explicit expansion; ${v.instances_agreed}/${v.instances_checked} agree), not proved for every size`;
 }

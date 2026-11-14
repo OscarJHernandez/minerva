@@ -186,9 +186,27 @@ export interface IntegrateResult {
   calculation_id?: string | null;
 }
 
-export type MatrixAction = "evaluate" | "simplify" | "differentiate" | "integrate" | "evolve";
+export type MatrixAction =
+  | "evaluate"
+  | "simplify"
+  | "differentiate"
+  | "integrate"
+  | "evolve"
+  | "gradient"
+  | "jacobian"
+  | "hessian";
+
+/** The actions that read the plain-text syntax (transpose(x), inv(S), tr(A*X), logdet(S)). */
+export const GRADIENT_ACTIONS: readonly MatrixAction[] = ["gradient", "jacobian", "hessian"];
 export type MatrixResultKind =
-  "explicit" | "expression" | "equation" | "representation" | "numeric";
+  | "explicit"
+  | "expression"
+  | "equation"
+  | "representation"
+  | "numeric"
+  | "gradient"
+  | "jacobian"
+  | "hessian";
 
 /** A declared matrix: a size (abstract) or explicit entries (LaTeX expressions). */
 export interface MatrixDecl {
@@ -198,6 +216,10 @@ export interface MatrixDecl {
   entries?: string[][] | null;
   /** The variable this matrix is a function of, A(t); absent for a constant matrix. */
   depends_on?: string | null;
+  /** Declared by the user: a derivative with respect to it is then taken within the symmetric matrices. */
+  symmetric?: boolean;
+  /** Symmetric positive definite (implies symmetric and invertible). */
+  positive_definite?: boolean;
 }
 
 export interface MatrixRequest {
@@ -210,6 +232,25 @@ export interface MatrixRequest {
   variable: string | null;
   lower: string | null;
   upper: string | null;
+}
+
+/** What kind of derivative a gradient, Jacobian or Hessian result is. Always over the reals. */
+export interface MatrixDerivative {
+  kind: "gradient" | "jacobian" | "hessian";
+  variable_shape: [number, number];
+  result_shape: [number, number];
+  layout: "shape_of_variable" | "numerator";
+  field: "real";
+  constraint: "none" | "symmetric" | "positive_definite";
+  convention: "unconstrained" | "symmetric_frobenius";
+  alternatives: {
+    convention: "symmetric_entrywise";
+    latex: string;
+    text: string;
+    points_checked: number;
+    points_agreed: number;
+    note: string;
+  }[];
 }
 
 export interface MatrixStep {
@@ -263,6 +304,11 @@ export interface MatrixDiagnostics {
 
 export interface MatrixCalculusResult {
   status: Status;
+  /** A code for a refusal (invertibility_not_declared, non_scalar_gradient, ...). */
+  reason?: string | null;
+  /** Gradient, Jacobian, Hessian: the result in the plain-text syntax (it reads back). */
+  result_text?: string | null;
+  derivative?: MatrixDerivative | null;
   action: MatrixAction | null;
   input_latex: string | null;
   structure: string;
@@ -573,6 +619,9 @@ export interface IsolateResult {
 }
 
 export type Operation =
+  | "sums"
+  | "expectation"
+  | "statistical_model"
   | "simplify"
   | "identities"
   | "differentiate"
@@ -744,4 +793,166 @@ export interface GeometryResult {
   message: string;
   duration_ms: number;
   calculation_id?: string | null;
+}
+
+// ---- sums, expectations and statistical models -------------------------------------------------
+
+export type SumsAction =
+  "expand" | "evaluate_constant" | "factor" | "log_of_product" | "differentiate" | "check";
+export type ExpectationAction = "expand" | "to_moments" | "check";
+export type StatAction =
+  "moments" | "log_likelihood" | "score" | "mle" | "fisher_information" | "posterior";
+
+/** A condition a result holds under, and whether the declarations establish it or it is assumed. */
+export interface ResultCondition {
+  latex: string;
+  established: boolean;
+  how: string;
+}
+
+export interface StatStep {
+  title: string;
+  before_latex: string;
+  after_latex: string;
+  after_text: string;
+  evidence: "definition" | "identity" | "conditional";
+}
+
+/** Evidence from explicit instances: several sizes, an independent symbol for every element. */
+export interface InstanceVerification {
+  sizes: Record<string, number>[];
+  instances_checked: number;
+  instances_agreed: number;
+  exact_zero_instances: number;
+  general_symbolic_zero: boolean | null;
+  passed: boolean;
+  note: string;
+}
+
+export interface SumsResult {
+  status: Status;
+  action: SumsAction;
+  reason: string | null;
+  input_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  steps: StatStep[];
+  verification: InstanceVerification | null;
+  derivative_verification: {
+    passed: boolean;
+    points_checked: number;
+    points_agreed: number;
+  } | null;
+  conditions: ResultCondition[];
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  /** Only in saved history items. */
+  request?: SumsRequest;
+}
+
+export interface SumsRequest {
+  action: SumsAction;
+  variable?: string | null;
+  candidate?: Record<string, string> | null;
+}
+
+export interface PmfVerification {
+  sizes: Record<string, number>[];
+  models_checked: number;
+  models_agreed: number;
+  exact_zero_models: number;
+  passed: boolean;
+  note: string;
+}
+
+export interface ExpectationResult {
+  status: Status;
+  action: ExpectationAction;
+  reason: string | null;
+  input_latex: string | null;
+  result_latex: string | null;
+  result_text: string | null;
+  evidence: "identity" | "conditional" | null;
+  given: string[];
+  steps: StatStep[];
+  verification: PmfVerification | null;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  request?: ExpectationRequest;
+}
+
+export interface ExpectationRequest {
+  random: string[];
+  independent: string[][];
+  action: ExpectationAction;
+  candidate?: Record<string, string> | null;
+}
+
+export type StatOptimum = "global" | "local" | "stationary_only";
+
+export interface StatEstimate {
+  parameter: string;
+  latex: string;
+  text: string;
+  optimum: StatOptimum | null;
+  optimum_evidence: "proved" | "measured" | null;
+  admissible_if: ResultCondition[];
+}
+
+export interface StatCheck {
+  kind: string;
+  method: string;
+  points_checked: number;
+  points_agreed: number;
+  passed: boolean;
+  note: string;
+}
+
+export interface StatModelRequest {
+  family: string;
+  parametrization?: string | null;
+  parameters: Record<string, string>;
+  observation?: string | null;
+  sample_size?: string | null;
+  iid?: boolean | null;
+  estimate: string[];
+  action: StatAction;
+  prior?: {
+    family: string;
+    parametrization?: string | null;
+    parameters: Record<string, string>;
+  } | null;
+  data?: string[] | null;
+  candidate?: Record<string, string> | null;
+  assumptions: Assumptions;
+}
+
+export interface StatModelResult {
+  status: Status;
+  action: StatAction;
+  reason: string | null;
+  steps: StatStep[];
+  moments: Record<string, string>;
+  moments_latex: Record<string, string>;
+  expressions: Record<string, string>;
+  expressions_latex: Record<string, string>;
+  estimates: StatEstimate[];
+  matrix_text: string[][] | null;
+  matrix_latex: string[][] | null;
+  posterior: {
+    family: string;
+    parameters: Record<string, string>;
+    parameters_latex: Record<string, string>;
+    dropped_factors_latex: string[];
+  } | null;
+  checks: StatCheck[];
+  premises: string[];
+  conditions: ResultCondition[];
+  evidence: "identity" | "conditional" | null;
+  message: string;
+  duration_ms: number;
+  calculation_id?: string | null;
+  request?: StatModelRequest;
 }

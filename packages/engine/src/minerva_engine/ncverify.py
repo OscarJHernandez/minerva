@@ -23,6 +23,7 @@ import mpmath
 import sympy as sp
 
 from .errors import LimitError, UnsupportedInput
+from .indexed.guard import SUMS_REFUSAL, contains_indexed
 from .models import Verification
 from .verify import _POLE, MIN_VALID_POINTS, _evaluate_ex, _sample
 
@@ -130,6 +131,8 @@ def _close(a: Value, b: Value, n: int) -> bool:
 
 def verify_equal_nc(a: sp.Expr, b: sp.Expr, *, seed: int = 20260103) -> Verification:
     """Do `a` and `b` agree on random matrices substituted for the noncommuting symbols?"""
+    if contains_indexed(a) or contains_indexed(b):
+        raise UnsupportedInput(SUMS_REFUSAL)
     nc = noncommuting_symbols(a, b)
     n = matrix_size(max(nc_degree(a, nc), nc_degree(b, nc)))
     commuting = sorted((a.free_symbols | b.free_symbols) - nc, key=lambda s: s.name)

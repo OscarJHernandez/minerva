@@ -49,6 +49,33 @@ def _distribution_benchmark(args: list[str]) -> int:
     return 1 if report.failures or regressed else 0
 
 
+def _stat_benchmark(args: list[str]) -> int:
+    import json
+    from pathlib import Path
+
+    from minerva_engine import Engine, Limits
+
+    from .stat_benchmark import compare, format_report, run_stat_benchmark
+
+    report = run_stat_benchmark(
+        Engine(Limits(timeout_seconds=30, max_concurrency=2)), group=_flag(args, "--group")
+    )
+    print(format_report(report))
+    document = report.to_json(label=_flag(args, "--label") or "")
+    out = _flag(args, "--json")
+    if out:
+        Path(out).write_text(
+            json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        print(f"wrote {out}")
+    regressed = False
+    baseline = _flag(args, "--compare")
+    if baseline:
+        text, regressed = compare(json.loads(Path(baseline).read_text(encoding="utf-8")), document)
+        print("\n== comparison with " + baseline + " ==\n" + text)
+    return 1 if report.failures or report.stale_pending or regressed else 0
+
+
 def _benchmark(args: list[str] | None = None) -> int:
     from minerva_engine import Engine, Limits
 
@@ -186,6 +213,8 @@ def main(argv: list[str]) -> int:
     command = argv[0] if argv else "verify"
     if command == "benchmark":
         return _benchmark(argv[1:])
+    if command == "stat-benchmark":
+        return _stat_benchmark(argv[1:])
     if command == "matrix-benchmark":
         return _matrix_benchmark(argv[1:])
     if command == "step-benchmark":
@@ -197,6 +226,7 @@ def main(argv: list[str]) -> int:
             "usage: python -m minerva_knowledge verify | benchmark [--only distributions] "
             "[--json PATH] [--compare BASELINE.json] [--label NAME] | matrix-benchmark "
             "[--repeat N] [--trace] [--convergence] [--section LABEL] [--out FILE] | "
+            "stat-benchmark [--group G] [--json PATH] [--compare BASELINE.json] [--label NAME] | "
             "step-benchmark [--adapter existing|steps] [--repeat N] [--timing] [--write-baseline] | "
             "generate [--check]",
             file=sys.stderr,

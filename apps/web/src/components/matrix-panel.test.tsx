@@ -6,6 +6,7 @@ import {
   matrixRepresentation,
   okMatrixIntegral,
 } from "@/test/fixtures";
+import { gradientRefused, gradientSymmetric } from "@/test/stat-fixtures";
 import { MatrixPanel } from "./matrix-panel";
 
 describe("MatrixPanel", () => {
@@ -146,5 +147,30 @@ describe("MatrixPanel", () => {
   it("copes with a result that has no diagnostics (a saved older result)", () => {
     render(<MatrixPanel result={{ ...okMatrixIntegral, diagnostics: undefined }} />);
     expect(screen.queryByTestId("matrix-diagnostics")).not.toBeInTheDocument();
+  });
+});
+
+describe("MatrixPanel: gradients", () => {
+  it("says what kind of derivative a symmetric variable gets and labels the entrywise form", () => {
+    render(<MatrixPanel result={gradientSymmetric} />);
+    expect(
+      screen.getByText("Gradient, checked against the numerical derivative"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("derivative-convention")).toHaveTextContent(
+      /within the symmetric matrices/i,
+    );
+    expect(screen.getByTestId("derivative-convention")).toHaveTextContent(/real numbers/);
+    const alt = screen.getByTestId("entrywise-alternative");
+    expect(alt).toHaveTextContent(/labelled/);
+    expect(alt).toHaveTextContent(/not the result above/);
+    expect(alt).toHaveTextContent(/4 of 4 sample points agree/);
+    expect(screen.getByText(/Not run \(the numeric check decides\)/)).toBeInTheDocument();
+  });
+
+  it("explains a refusal in plain words and shows no result", () => {
+    render(<MatrixPanel result={gradientRefused} />);
+    expect(screen.getByTestId("matrix-reason")).toHaveTextContent(/not declared invertible/);
+    expect(screen.queryByLabelText("Result")).toBeNull();
+    expect(screen.queryByTestId("derivative-convention")).toBeNull();
   });
 });

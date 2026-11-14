@@ -91,6 +91,64 @@ class _Parser:
         self.b = builder
         self.abs_depth = 0
         self.depth = 0
+        # Bases that are subscripted by a summation index somewhere in the text: `x_1` is then `x[1]`
+        # everywhere, not the symbol "x_1" (see _prescan_indexed).
+        self._indexed_bases = self._prescan_indexed() if builder.allow_sums else frozenset()
+
+    # -- indexed data ------------------------------------------------------------------
+    @staticmethod
+    def _name_of(tok: Token) -> str | None:
+        if tok.kind == "letter":
+            return tok.text
+        if tok.kind == "cmd" and tok.text in _GREEK:
+            return _GREEK_NAME.get(tok.text, tok.text)
+        return None
+
+    def _prescan_indexed(self) -> frozenset[str]:
+        """Names of bases subscripted by a summation index, found before parsing."""
+        toks = self.t
+        indices: set[str] = set()
+        for k, tok in enumerate(toks):
+            if tok.kind == "cmd" and tok.text in ("sum", "prod"):
+                j = k + 1
+                if toks[j].kind == "op" and toks[j].text == "_":
+                    j += 1
+                    if toks[j].kind == "op" and toks[j].text == "{":
+                        j += 1
+                    name = self._name_of(toks[j])
+                    if name:
+                        indices.add(name)
+        bases: set[str] = set()
+        for k, tok in enumerate(toks[:-2]):
+            base = self._name_of(tok)
+            nxt = toks[k + 1]
+            if base and nxt.kind == "op" and nxt.text == "_":
+                j, content = k + 2, []
+                if toks[j].kind == "op" and toks[j].text == "{":
+                    j += 1
+                    while j < len(toks) and not (toks[j].kind == "op" and toks[j].text == "}"):
+                        content.append(self._name_of(toks[j]))
+                        j += 1
+                else:
+                    content.append(self._name_of(toks[j]))
+                if indices & {c for c in content if c}:
+                    bases.add(base)
+        return frozenset(bases)
+
+    def _index_script(self) -> sp.Expr:
+        """The subscript of an indexed variable: one integer expression, `i`, `i+1`, `2i`, `n-i`."""
+        if self.accept_op("{"):
+            index = self.expr()
+            if not self.accept_op("}"):
+                raise ParseError("an index must be a single expression (x_{i,j} is not supported)")
+            bound = self.b.bound_names
+            bound_factors = [
+                f for f in sp.Mul.make_args(index) if isinstance(f, sp.Symbol) and f.name in bound
+            ]
+            if len(bound_factors) >= 2:
+                raise ParseError("x_{ij} is ambiguous and x_{i,j} is not supported: use one index")
+            return index
+        return self.script()
 
     # -- token helpers -----------------------------------------------------------------
     @property
@@ -253,6 +311,8 @@ class _Parser:
 
     def _symbol_with_subscript(self, name: str) -> sp.Expr:
         if self.accept_op("_"):
+            if name in self._indexed_bases:
+                return self.b.indexed(name, self._index_script())
             name = f"{name}_{self._subscript_text()}"
         if name in self.b.functions:
             return self._declared_call(name)
@@ -346,9 +406,58 @@ class _Parser:
             return self.b.root(self._braced(), index)
         if name in _FUNCTION_COMMANDS:
             return self._apply(name, None)
+        if name in {"sum", "prod"} and self.b.allow_sums:
+            return self._big_operator(name)
+        if name == "mathbb" and self.b.random:
+            return self._moment("E")
         if name in {"int", "sum", "prod", "lim", "partial", "nabla", "infty", "frac"}:
             raise ParseError(f"\\{name} is not supported in this operation")
         raise ParseError(f"unsupported LaTeX command \\{name}")
+
+    def _moment(self, word: str) -> sp.Expr:
+        """`\\mathbb{E}[...]`, `\\operatorname{Var}(...)`, `\\operatorname{Cov}(..., ...)`."""
+        if word == "E" and self.cur.kind == "op" and self.cur.text == "{":  # after \\mathbb
+            self.advance()
+            tok = self.advance()
+            self.expect_op("}")
+            if tok.kind != "letter" or tok.text != "E":
+                raise ParseError("only \\mathbb{E} (expectation) is supported")
+        if not (self.cur.kind == "op" and self.cur.text in "(["):
+            raise ParseError(f"{word} needs its argument in brackets, as in {word}[X]")
+        closer = ")" if self.advance().text == "(" else "]"
+        first = self.expr()
+        second = None
+        if word == "Cov":
+            self.expect_op(",")
+            second = self.expr()
+        self.expect_op(closer)
+        if word == "E":
+            return self.b.expectation(first)
+        if word == "Var":
+            return self.b.variance(first)
+        if second is None:
+            raise ParseError("Cov needs two arguments")
+        return self.b.covariance(first, second)
+
+    def _big_operator(self, name: str) -> sp.Expr:
+        """`\\sum_{i=a}^{b} term` and `\\prod`; the term is one product (up to the next + or -)."""
+        if not (self.accept_op("_") and self.accept_op("{")):
+            raise ParseError(f"write the bounds as \\{name}_{{i=a}}^{{b}}")
+        index_name = self._name_of(self.advance())
+        if index_name is None:
+            raise ParseError("the index must be a single letter")
+        self.expect_op("=")
+        lower = self.expr()
+        self.expect_op("}")
+        if not self.accept_op("^"):
+            raise ParseError(f"write the bounds as \\{name}_{{i=a}}^{{b}}")
+        upper = self.script()
+        index = self.b.open_sum(index_name, lower)
+        try:
+            body = self.term()
+        finally:
+            self.b.close_sum(index_name)
+        return self.b.summation("sum" if name == "sum" else "product", body, index, lower, upper)
 
     def _time_derivative(self, name: str) -> sp.Expr:
         """`\\dot{q}` and `\\ddot{q}` are the symbols `q_dot` and `q_ddot` (velocity, acceleration)."""
@@ -381,6 +490,8 @@ class _Parser:
             return sp.E
         if cmd == "mathrm" and word == "i":
             return sp.I
+        if self.b.random and word in ("E", "Var", "Cov"):
+            return self._moment(word)
         if word in FUNCTIONS:
             return self._apply(word, None)
         raise ParseError(f"unsupported \\{cmd}{{{word}}}")
@@ -433,6 +544,8 @@ def parse_latex(
     notation: NotationLog | None = None,
     *,
     allow_noncommutative: bool = False,
+    allow_sums: bool = False,
+    random_variables: Iterable[str] = (),
 ) -> sp.Expr:
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
@@ -445,6 +558,8 @@ def parse_latex(
         strict_calls,
         notation,
         allow_noncommutative=allow_noncommutative,
+        allow_sums=allow_sums,
+        random_variables=random_variables,
     )
     if denominators is not None:
         builder.denominators = denominators

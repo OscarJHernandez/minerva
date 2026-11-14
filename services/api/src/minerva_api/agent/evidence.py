@@ -18,6 +18,9 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "integrate": "numeric",
     "series": "series_checks",
     "matrix_calculus": "numeric",
+    "sums": "numeric",  # explicit instances at several sizes, never a proof for every n
+    "expectation": "numeric",  # explicit finite joint distributions
+    "statistical_model": "numeric",  # quadrature / direct log-likelihood / prior x likelihood
     "solve_polynomial": "symbolic_zero",
     "analyze_lagrangian": "numeric",
     "expand_motion": "series_checks",
@@ -95,8 +98,16 @@ def evidence_for(tool: str, status: str, card_data: dict[str, Any]) -> Evidence:
         check = "quadrature"
 
     source = quadrature or verification
-    checked = _first_int(source, "points_checked", "numeric_points_checked")
-    agreed = _first_int(source, "points_agreed", "numeric_points_agreed")
+    checked = _first_int(
+        source, "points_checked", "numeric_points_checked", "instances_checked", "models_checked"
+    )
+    agreed = _first_int(
+        source, "points_agreed", "numeric_points_agreed", "instances_agreed", "models_agreed"
+    )
+    checks = [c for c in data.get("checks", []) if isinstance(c, dict)]
+    if checks and checked is None:  # a statistical model: several independent checks
+        checked = sum(c.get("points_checked", 0) for c in checks)
+        agreed = sum(c.get("points_agreed", 0) for c in checks)
 
     restrictions = data.get("restrictions_latex")
     complete = data.get("restrictions_complete")
