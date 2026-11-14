@@ -18,7 +18,7 @@ expression with numerical differentiation (`check_el_pointwise`), each integrati
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -31,8 +31,8 @@ from . import polypath
 from .firstvar import FirstVariationData, Stage
 from .jets import apply_standins
 from .models import End
-from .numerics import Numerics, Poly
-from .quadrature import FDTable, fd_table, integrate
+from .numerics import JetField, Numerics, Poly, ShiftedField
+from .quadrature import FDTable, fd_table, integrate, integrate_breaks
 from .setup import Problem
 
 STEPS = (mp.mpf("1e-3"), mp.mpf("5e-4"), mp.mpf("2.5e-4"))
@@ -104,31 +104,37 @@ def perturbation(
     return Poly(coefficients)
 
 
-def action_value(num: Numerics, path: Poly) -> tuple[Any, mp.mpf]:
+def action_value(
+    num: Numerics, path: JetField, breaks: list[mp.mpf] | None = None
+) -> tuple[Any, mp.mpf]:
     """S[path] = ∫ L dt + G_upper(b) + G_lower(a) by two agreeing Gauss-Legendre rules."""
     problem = num.problem
-    table = num.with_depth(path)
     lagrangian = num.compile(problem.lagrangian)
-    integral = integrate(
-        lambda s: lagrangian(num.jet_values(s, path, table)), num.lower, num.upper, fast=True
+
+    def integrand(s: mp.mpf) -> Any:
+        return lagrangian(num.jet_values(s, path))
+
+    integral = (
+        integrate_breaks(integrand, breaks)
+        if breaks is not None
+        else integrate(integrand, num.lower, num.upper, fast=True)
     )
     total = integral.value
     for term, point in ((problem.lower_term, num.lower), (problem.upper_term, num.upper)):
         if term != 0:
-            total += num.compile(term)(num.jet_values(point, path, table))
+            total += num.compile(term)(num.jet_values(point, path))
     return total, integral.error
 
 
 def claimed_variation(
-    num: Numerics, candidate: VariationForm, path: Poly, eta: Poly
+    num: Numerics, candidate: VariationForm, path: JetField, eta: JetField
 ) -> tuple[Any, mp.mpf, mp.mpf]:
     """∫ Σ EL_i η_i dt + Σ c η^(j)(end): (value, scale = sum of absolute sizes, quadrature error)."""
     jets = num.jets
-    table, eta_table = num.with_depth(path), num.with_depth(eta)
     euler = [num.compile(e) for e in candidate.interior]
 
     def terms(s: mp.mpf) -> tuple[Any, mp.mpf]:
-        values = num.jet_values(s, path, table, eta, eta_table)
+        values = num.jet_values(s, path, eta)
         total: Any = mp.mpf(0)
         size = mp.mpf(0)
         for i, fn in enumerate(euler):
@@ -142,11 +148,71 @@ def claimed_variation(
     value = integral.value
     for (end, i, j), coefficient in candidate.boundary.items():
         point = num.lower if end == "lower" else num.upper
-        values = num.jet_values(point, path, table, eta, eta_table)
+        values = num.jet_values(point, path, eta)
         piece = num.compile(coefficient)(values) * values[jets.eta[i][j]]
         value += piece
         scale += abs(piece)
     return value, mp.mpf(scale), integral.error
+
+
+Claim = Callable[[JetField, JetField], tuple[Any, mp.mpf, mp.mpf]]
+
+
+def _integrated_claim(num: Numerics, candidate: VariationForm) -> Claim:
+    return lambda path, eta: claimed_variation(num, candidate, path, eta)
+
+
+@dataclass(frozen=True)
+class Trial:
+    """A path perturbation to test: its kind, the function it moves (None: all) and the field."""
+
+    kind: str
+    function: int | None
+    eta: JetField
+    label: str = ""
+    admissible: bool | None = None
+
+
+def compare_first_variation(
+    num: Numerics,
+    candidate: VariationForm,
+    path: JetField,
+    trials: list[Trial],
+    *,
+    seed: int = 0,
+    deadline: float | None = None,
+    steps: tuple[mp.mpf, ...] = STEPS,
+    claim: Claim | None = None,
+    breaks: list[mp.mpf] | None = None,
+) -> VariationCheck:
+    """For each trial: finite differences of S[path + e eta] against the claimed first variation."""
+    result = VariationCheck("passed", seed=seed)
+    verdicts: list[str] = []
+    floor = mp.mpf("1e-12") * (1 + abs(action_value(num, path, breaks)[0]))
+    for trial in trials:
+        if deadline is not None and time.monotonic() > deadline:
+            raise LimitError("the verification ran out of time")
+        analytic, scale, quad_error = (claim or _integrated_claim(num, candidate))(path, trial.eta)
+        errors: list[mp.mpf] = [quad_error]
+
+        def action(e: mp.mpf, eta: JetField = trial.eta, errors: list[mp.mpf] = errors) -> Any:
+            value, err = action_value(num, ShiftedField(path, eta, e), breaks)
+            errors.append(err)
+            return value
+
+        table = fd_table(action, analytic, scale, steps, order=1, noise=max(errors), floor=floor)
+        result.comparisons.append(
+            Comparison(trial.kind, trial.function, analytic, scale, table, max(errors))
+        )
+        verdicts.append(table.verdict)
+    if "disagree" in verdicts:
+        result.verdict = "failed"
+    elif any(v != "agree" for v in verdicts):
+        result.verdict, result.note = (
+            "inconclusive",
+            "a finite-difference comparison was inconclusive",
+        )
+    return result
 
 
 def check_first_variation(
@@ -160,36 +226,16 @@ def check_first_variation(
     """Compare a claimed first variation with finite differences of the action itself."""
     num = Numerics(problem, seed)
     jets = num.jets
-    path = num.random_path(2 * max(jets.orders) + 2)
+    path = num.field(num.random_path(2 * max(jets.orders) + 2))
     plan: list[tuple[str, int | None]] = [("bubble", None), ("generic", None)]
     plan += [("bubble", None), ("generic", None)][: max(0, comparisons - 2)]
     if jets.count > 1:
         plan += [("bubble", i) for i in range(jets.count)]
-    result = VariationCheck("passed", seed=seed)
-    verdicts: list[str] = []
-    for kind, function in plan:
-        if deadline is not None and time.monotonic() > deadline:
-            raise LimitError("the verification ran out of time")
-        eta = perturbation(num, kind, function=function)
-        analytic, scale, quad_error = claimed_variation(num, candidate, path, eta)
-        errors: list[mp.mpf] = [quad_error]
-
-        def action(e: mp.mpf, eta: Poly = eta, errors: list[mp.mpf] = errors) -> Any:
-            value, err = action_value(num, path.plus(eta, e))
-            errors.append(err)
-            return value
-
-        table = fd_table(action, analytic, scale, STEPS, order=1, noise=max(errors))
-        result.comparisons.append(Comparison(kind, function, analytic, scale, table, max(errors)))
-        verdicts.append(table.verdict)
-    if "disagree" in verdicts:
-        result.verdict = "failed"
-    elif any(v != "agree" for v in verdicts):
-        result.verdict, result.note = (
-            "inconclusive",
-            "a finite-difference comparison was inconclusive",
-        )
-    return result
+    trials = [
+        Trial(kind, function, num.field(perturbation(num, kind, function=function)))
+        for kind, function in plan
+    ]
+    return compare_first_variation(num, candidate, path, trials, seed=seed, deadline=deadline)
 
 
 # -- weaker legs ---------------------------------------------------------------------------------
@@ -210,8 +256,7 @@ def check_el_pointwise(
     """
     num = Numerics(problem, seed)
     jets = num.jets
-    path = num.random_path(2 * max(jets.orders) + 2)
-    table = num.with_depth(path)
+    path = num.field(num.random_path(2 * max(jets.orders) + 2))
     worst = 0.0
     with mp.workdps(60):
         for _ in range(points):
@@ -222,10 +267,10 @@ def check_el_pointwise(
                     partial = num.compile(jets.partial(problem.lagrangian, i, k))
 
                     def g(s: mp.mpf, partial: Any = partial) -> Any:
-                        return partial(num.jet_values(s, path, table))
+                        return partial(num.jet_values(s, path))
 
                     reference += (-1) ** k * (mp.diff(g, s0, k) if k else g(s0))
-                value = num.compile(claimed)(num.jet_values(s0, path, table))
+                value = num.compile(claimed)(num.jet_values(s0, path))
                 scale = max(abs(reference), abs(value), mp.mpf(1))
                 worst = max(worst, float(abs(value - reference) / scale))
     return PointwiseCheck(worst < 1e-12, points * len(interior), worst)
@@ -247,17 +292,16 @@ def check_ibp_step(
     """
     num = Numerics(problem, seed)
     jets = num.jets
-    path = num.random_path(2 * max(jets.orders) + 2)
-    eta = perturbation(num, "generic")
-    table, eta_table = num.with_depth(path), num.with_depth(eta)
+    path = num.field(num.random_path(2 * max(jets.orders) + 2))
+    eta = num.field(perturbation(num, "generic"))
     flux = num.compile(after.boundary - before.boundary)
     drop = num.compile(before.interior - after.interior)
     worst = 0.0
     with mp.workdps(50):
         for _ in range(points):
             s0 = num.lower + (num.upper - num.lower) * mp.mpf(num.rng.uniform(0.2, 0.8))
-            numeric = mp.diff(lambda s: flux(num.jet_values(s, path, table, eta, eta_table)), s0)
-            direct = drop(num.jet_values(s0, path, table, eta, eta_table))
+            numeric = mp.diff(lambda s: flux(num.jet_values(s, path, eta)), s0)
+            direct = drop(num.jet_values(s0, path, eta))
             scale = max(abs(numeric), abs(direct), mp.mpf(1))
             worst = max(worst, float(abs(numeric - direct) / scale))
     return StageCheck(after.index, worst < 1e-12, worst)

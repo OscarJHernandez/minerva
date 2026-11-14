@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import cache
+from itertools import pairwise
 from typing import Any, Literal
 
 import mpmath as mp
@@ -85,6 +86,7 @@ Verdict = Literal["agree", "disagree", "inconclusive"]
 
 EXACT_REL_TOL = mp.mpf("1e-14")  # every step agrees to this: the difference quotient is exact
 RICHARDSON_REL_TOL = mp.mpf("1e-10")
+DISAGREE_RICHARDSON = mp.mpf("1e-9")
 PERSISTENT_REL = mp.mpf("1e-12")  # an error this large that stops shrinking is a disagreement
 
 
@@ -114,17 +116,19 @@ def fd_table(
     *,
     order: Literal[1, 2] = 1,
     noise: mp.mpf | None = None,
+    floor: mp.mpf | None = None,
 ) -> FDTable:
     """Central differences of `action(h)`-type data against an analytic value.
 
     `action(e)` is S[x + e η]. For `order=1` the quotient is (S(h) - S(-h)) / 2h; for `order=2` it is
     (S(h) - 2 S(0) + S(-h)) / h². `scale` is the size of the terms that cancel (never |analytic|),
-    `noise` the quadrature error of one S evaluation: a noise floor above the tolerance makes the
+    `floor` the smallest scale worth resolving (about 1e-12 of the action itself, so that a variation
+    that is exactly zero is not judged by rounding noise), `noise` the quadrature error of one S evaluation: a noise floor above the tolerance makes the
     verdict `inconclusive`. Agreement means the error is at rounding level at every step (the
     quotient is exact, as for a quadratic action) or falls like h² and the Richardson value agrees.
     """
     noise = mp.mpf(0) if noise is None else noise
-    scale = max(abs(scale), mp.mpf("1e-30"))
+    scale = max(abs(scale), floor or mp.mpf(0), mp.mpf("1e-30"))
     zero = action(mp.mpf(0)) if order == 2 else mp.mpf(0)
     rows: list[FDRow] = []
     for h in steps:
@@ -153,6 +157,16 @@ def fd_table(
         return FDTable(
             tuple(rows), richardson, r_err, observed, "agree", "second-order convergence"
         )
+    if len(richardson) >= 2:
+        # Richardson values cancel the h^2 truncation. If they sit at one value that is clearly
+        # not the claimed one, the claim is wrong however neatly the raw quotients converge.
+        offset = abs(richardson[-1] - analytic)
+        spread = abs(richardson[-1] - richardson[-2])
+        if r_err > DISAGREE_RICHARDSON and spread <= offset / 4:
+            return FDTable(
+                tuple(rows), richardson, r_err, observed, "disagree",
+                "the extrapolated difference quotients settle on a different value",
+            )  # fmt: skip
     falling = ratio is not None and ratio >= 2.5
     if rows[-1].rel_error > PERSISTENT_REL and not falling:
         return FDTable(
@@ -160,3 +174,19 @@ def fd_table(
             "the error does not fall with the step",
         )  # fmt: skip
     return FDTable(tuple(rows), richardson, r_err, observed, "inconclusive", "no clear convergence")
+
+
+def integrate_breaks(f: Callable[[mp.mpf], Number], points: Sequence[Number]) -> Integral:
+    """Sum over the pieces between consecutive break points of two Gauss-Legendre rules.
+
+    Used for piecewise-defined integrands (sampled paths): each piece is smooth, and the two rules
+    (16 and 24 nodes) must agree on every piece.
+    """
+    total: Number = mp.mpf(0)
+    worst = mp.mpf(0)
+    for a, b in pairwise(points):
+        coarse = gauss_legendre(f, a, b, panels=1, order=16)
+        fine = gauss_legendre(f, a, b, panels=1, order=24)
+        total += fine
+        worst = max(worst, abs(fine - coarse))
+    return Integral(total, worst)

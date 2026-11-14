@@ -68,8 +68,52 @@ class FunctionalInput(BaseModel):
         return value
 
 
+class SampledFunction(BaseModel):
+    """Samples of one function: values at increasing times, optionally with slopes."""
+
+    t: list[float] = Field(min_length=4, max_length=400)
+    values: list[float] = Field(min_length=4, max_length=400)
+    slopes: list[float] | None = Field(default=None, max_length=400)
+
+    @model_validator(mode="after")
+    def _finite(self) -> SampledFunction:
+        import math
+
+        data = [*self.t, *self.values, *(self.slopes or [])]
+        if not all(math.isfinite(v) for v in data):
+            raise ValueError("samples must be finite numbers")
+        return self
+
+
+class TrialPath(BaseModel):
+    """A path given either by one expression per function in the variable, or by samples."""
+
+    label: str | None = Field(default=None, max_length=40)
+    analytic: dict[str, str] = Field(default_factory=dict)
+    sampled: dict[str, SampledFunction] = Field(default_factory=dict)
+
+
+class Sweep(BaseModel):
+    """A trial family: the symbol `name` in the path takes each of 2 to 6 values."""
+
+    name: str = Field(min_length=1, max_length=SYMBOL_NAME_MAX)
+    values: list[str] = Field(min_length=2, max_length=6)
+
+
+class PerturbationSpec(BaseModel):
+    label: str | None = Field(default=None, max_length=40)
+    expressions: dict[str, str]
+
+
 class VariationInput(FunctionalInput):
     action: Action = "analyze"
+    # Numerical actions (evaluate, verify, solve, second) only; the model must ask the user for these.
+    values: dict[str, str] = Field(default_factory=dict, max_length=32)
+    definitions: dict[str, str] = Field(default_factory=dict, max_length=8)
+    paths: list[TrialPath] = Field(default_factory=list, max_length=6)
+    sweep: Sweep | None = None
+    perturbations: list[PerturbationSpec] = Field(default_factory=list, max_length=4)
+    automatic_perturbations: bool = True
 
     @model_validator(mode="after")
     def _functions_distinct(self) -> VariationInput:
@@ -221,6 +265,63 @@ class FirstVariation(BaseModel):
     verification: Verification
 
 
+class PathCondition(BaseModel):
+    function: str
+    order: int
+    end: End
+    required: str
+    found: str
+    met: bool
+
+
+class TrialResult(BaseModel):
+    label: str
+    parameter_value: str | None = None
+    action: str  # S[path]
+    integral: str
+    endpoint_terms: str
+    quadrature_error: float  # disagreement of independent quadrature rules: an estimate
+    route: Literal["analytic", "sampled"]
+    conditions: list[PathCondition] = Field(default_factory=list)
+    half_data_difference: float | None = (
+        None  # sampled paths: S with half the samples, a measurement
+    )
+
+
+class Evaluation(BaseModel):
+    lower: str
+    upper: str
+    parameters: dict[str, str]
+    trials: list[TrialResult]
+    ordering: list[str] | None = None
+    notes: list[str] = Field(default_factory=list)
+    statement: str = (
+        "These values are for the paths given only. The smallest of them is not claimed to be a "
+        "minimum of the functional, and a stationary path is not implied."
+    )
+
+
+class PerturbationResult(BaseModel):
+    label: str
+    kind: Literal["bubble", "free_end", "generic", "given"]
+    admissible: bool | None = None  # satisfies every declared fixed condition
+    interior_part: str
+    boundary_part: str
+    analytic: str
+    comparison: Comparison
+
+
+class VerificationReport(BaseModel):
+    route: Literal["integrated", "direct"]
+    perturbations: list[PerturbationResult]
+    verdict: Literal["passed", "failed", "inconclusive"]
+    notes: list[str] = Field(default_factory=list)
+    statement: str = (
+        "Finite differences of the action agree with the analytic first variation to the stated "
+        "error. This is numerical evidence, not a proof."
+    )
+
+
 class Diagnostics(BaseModel):
     """Counts, durations and enum codes only; never names, expressions or values."""
 
@@ -244,6 +345,8 @@ class VariationReport(BaseModel):
     action: Action = "analyze"
     analysis: Analysis | None = None
     first: FirstVariation | None = None
+    evaluation: Evaluation | None = None
+    verification: VerificationReport | None = None
     notes: list[str] = Field(default_factory=list)
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     duration_ms: float = 0.0

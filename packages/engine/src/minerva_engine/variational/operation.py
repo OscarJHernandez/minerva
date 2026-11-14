@@ -9,6 +9,7 @@ from ..errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from ..models import Limits, Status
 from .analysis import analyze
 from .models import Diagnostics, VariationInput, VariationReport
+from .numeric_setup import MissingValues
 from .setup import Problem, read_problem
 
 Handler = Callable[[Problem, VariationInput, float], VariationReport]
@@ -67,7 +68,24 @@ def _first(problem: Problem, data: VariationInput, deadline: float) -> Variation
     )
 
 
-HANDLERS: dict[str, Handler] = {"analyze": _analyze, "first": _first}
+def _evaluate(problem: Problem, data: VariationInput, deadline: float) -> VariationReport:
+    from .action import evaluate
+
+    return evaluate(problem, data, deadline)
+
+
+def _verify(problem: Problem, data: VariationInput, deadline: float) -> VariationReport:
+    from .userverify import verify
+
+    return verify(problem, data, deadline)
+
+
+HANDLERS: dict[str, Handler] = {
+    "analyze": _analyze,
+    "first": _first,
+    "evaluate": _evaluate,
+    "verify": _verify,
+}
 
 
 def variation(data: VariationInput, limits: Limits) -> VariationReport:
@@ -82,6 +100,10 @@ def variation(data: VariationInput, limits: Limits) -> VariationReport:
         report = handler(problem, data, deadline)
         report.diagnostics.functions = problem.jets.count
         report.diagnostics.highest_order = max(problem.jets.orders)
+    except MissingValues as exc:
+        report = VariationReport(
+            status=Status.CONDITIONS_NOT_SATISFIED, action=data.action, message=str(exc)
+        )
     except ParseError as exc:
         report = VariationReport(status=Status.PARSE_ERROR, action=data.action, message=str(exc))
     except UnsupportedInput as exc:

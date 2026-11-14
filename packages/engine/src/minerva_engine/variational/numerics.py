@@ -10,7 +10,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 import mpmath as mp
 import sympy as sp
@@ -58,7 +58,12 @@ class Numerics:
     """A problem with sampled parameter values, stand-ins for given functions and compiled pieces."""
 
     def __init__(
-        self, problem: Problem, seed: int, *, values: Mapping[sp.Symbol, Any] | None = None
+        self,
+        problem: Problem,
+        seed: int,
+        *,
+        values: Mapping[sp.Symbol, Any] | None = None,
+        definitions: Mapping[Any, sp.Lambda] | None = None,
     ):
         self.problem = problem
         self.jets: JetSpace = problem.jets
@@ -67,6 +72,8 @@ class Numerics:
         mp.mp.dps = DPS
         expr_all = sum([problem.lagrangian, problem.lower_term, problem.upper_term], sp.Integer(0))
         self.replacements = standins(expr_all, self.rng, self.depth + 2)
+        if definitions:
+            self.replacements.update(definitions)
         self.params: dict[sp.Symbol, Any]
         self.lower: Any
         self.upper: Any
@@ -107,21 +114,18 @@ class Numerics:
 
     # -- paths --------------------------------------------------------------------------
     def jet_values(
-        self,
-        s: mp.mpf,
-        path: Poly,
-        path_table: list[list[polypath.Coeffs]],
-        perturbation: Poly | None = None,
-        perturbation_table: list[list[polypath.Coeffs]] | None = None,
+        self, s: Any, path: JetField, perturbation: JetField | None = None
     ) -> dict[sp.Symbol, Any]:
         values: dict[sp.Symbol, Any] = {self.jets.variable: s, **self.params}
+        u = path.at(s)
         for i in range(self.jets.count):
-            for k in range(self.depth + 1):
-                values[self.jets.u[i][k]] = polypath.evaluate(path_table[i][k], s)
-        if perturbation is not None and perturbation_table is not None:
+            for k in range(min(self.depth, len(u[i]) - 1) + 1):
+                values[self.jets.u[i][k]] = u[i][k]
+        if perturbation is not None:
+            e = perturbation.at(s)
             for i in range(self.jets.count):
-                for k in range(self.depth + 1):
-                    values[self.jets.eta[i][k]] = polypath.evaluate(perturbation_table[i][k], s)
+                for k in range(min(self.depth, len(e[i]) - 1) + 1):
+                    values[self.jets.eta[i][k]] = e[i][k]
         return values
 
     def random_path(self, degree: int, scale: float = 0.8) -> Poly:
@@ -129,8 +133,37 @@ class Numerics:
             [polypath.random_coefficients(self.rng, degree, scale) for _ in self.jets.names]
         )
 
-    def with_depth(self, path: Poly) -> list[list[polypath.Coeffs]]:
-        return path.table(self.depth + 1)
+    def field(self, poly: Poly) -> PolyField:
+        return PolyField(poly, self.depth)
+
+
+class JetField(Protocol):
+    """A path (or a perturbation): the value and every derivative up to the jet depth at a point."""
+
+    def at(self, s: Any) -> list[list[Any]]: ...
+
+
+class PolyField:
+    def __init__(self, poly: Poly, depth: int) -> None:
+        self.depth = depth
+        self.table = poly.table(depth)
+
+    def at(self, s: Any) -> list[list[Any]]:
+        return [
+            [polypath.evaluate(self.table[i][k], s) for k in range(self.depth + 1)]
+            for i in range(len(self.table))
+        ]
+
+
+class ShiftedField:
+    """base + scale * other, derivative by derivative."""
+
+    def __init__(self, base: JetField, other: JetField, scale: Any) -> None:
+        self.base, self.other, self.scale = base, other, scale
+
+    def at(self, s: Any) -> list[list[Any]]:
+        b, o = self.base.at(s), self.other.at(s)
+        return [[b[i][k] + self.scale * o[i][k] for k in range(len(b[i]))] for i in range(len(b))]
 
 
 def compile_expr(expr: sp.Expr, extra: Sequence[sp.Symbol]) -> Compiled:
