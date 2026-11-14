@@ -33,7 +33,7 @@ from .events import (
 )
 from .llm import LLMClient, LLMError, ToolCall, Usage
 from .prompts import SYSTEM_PROMPT
-from .refs import ResultStore
+from .refs import ResultStore, inherited_note
 from .segments import split_segments
 from .tools import (
     TOOLS,
@@ -261,6 +261,7 @@ async def run_agent(
     prior_assumptions: dict[str, list[str]] | None = None,
     prior_matrices: Sequence[str] = (),
     prior_results: Mapping[str, str] | None = None,
+    prior_restrictions: Mapping[str, Sequence[str]] | None = None,
     info: TurnInfo | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
@@ -287,6 +288,7 @@ async def run_agent(
                 prior_assumptions,
                 prior_results,
                 prior_matrices,
+                prior_restrictions,
             ):
                 yield event
     finally:
@@ -306,10 +308,11 @@ async def _run_turn(
     prior_assumptions: dict[str, list[str]] | None,
     prior_results: Mapping[str, str] | None,
     prior_matrices: Sequence[str] = (),
+    prior_restrictions: Mapping[str, Sequence[str]] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
-    store = ResultStore.from_prior(prior_results)
+    store = ResultStore.from_prior(prior_results, prior_restrictions)
     outputs: list[ToolOutput] = []
     order: list[str | Card] = []  # prose and cards in the order they happened
     trace: list[TraceStep] = []
@@ -492,6 +495,8 @@ async def _run_turn(
                 tool_calls_made += 1
                 call_id = uuid.uuid4().hex[:8]
                 arguments, references, refusal = call.arguments, 0, None
+                inherited: list[str] = []
+                inherited_from: list[str] = []
                 if call.malformed or not call.name:
                     defect = MALFORMED_TEXT.get(call.malformed or "missing_name", "it was unusable")
                     refusal = _error(
@@ -512,6 +517,7 @@ async def _run_turn(
                         )
                     else:
                         arguments, references = resolution.arguments, resolution.count
+                        inherited, inherited_from = resolution.inherited, resolution.inherited_from
                 key = _call_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
@@ -600,7 +606,18 @@ async def _run_turn(
                 if timed_out:
                     category = ErrorCategory.TIMEOUT
                 error_category = category.value if category else output.error_category
-                result_id = store.register(call.name, output) if refusal is None else None
+                if refusal is None and inherited and output.status == "ok":
+                    own = output.card.data.get("restrictions_latex") or []
+                    new = [r for r in inherited if r not in own]
+                    if new:
+                        # The new result is valid only where the one it was computed from was.
+                        output.card.data["inherited_restrictions_latex"] = new
+                        output.for_model += "\n" + inherited_note(new, inherited_from)
+                result_id = (
+                    store.register(call.name, output, inherited if output.status == "ok" else ())
+                    if refusal is None
+                    else None
+                )
 
                 output.card.id = call_id
                 outputs.append(output)

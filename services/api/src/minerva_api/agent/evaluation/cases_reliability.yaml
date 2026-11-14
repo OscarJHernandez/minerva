@@ -1,0 +1,137 @@
+# Reliability cases: behaviours of the whole agent loop that single-turn tool selection does not show.
+#
+# Unlike the follow-up cases in cases.yaml (a canned plain-text history), a case here may have `followups`:
+# later turns answered live on top of the real earlier answers, so `@r1` references, the restrictions a result
+# carries, declared matrices and assumptions all come from what the agent really did. Checks beyond cases.yaml:
+#   forbid_assumptions    no assumption the user did not state may be passed to a tool (invented_assumption)
+#   must_reuse            a later call reuses an earlier verified result as @rN, not retyped (result_reuse)
+#   restrictions_reported the reply states the domain restriction the result carries (misreported_restriction)
+#   stops_after_failure   after a tool result that was not verified, no further tool call (ignored_failed_verification)
+# Run with `--suite reliability`. Every reference call is run against the engine by `--check-cases`.
+
+- id: pole-cancelled-by-simplification-is-reported
+  category: symbolic
+  prompt: 'Simplify $\frac{x^2-4}{x-2}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "x + 2"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^2-4}{x-2}'}}
+  # The simplified form is defined at x = 2; the original is not. The reply must say so.
+  restrictions_reported: 'x\s*(\\neq|\\ne|≠|!=)\s*2|(undefined|not defined|excluded|excluding|except)[^.]*\b2\b'
+  source: "domain of a rational function (the cancelled factor x - 2 stays a point of exclusion)"
+
+- id: reuse-and-restriction-after-simplify
+  category: multistep
+  prompt: 'Simplify $\frac{x^2-1}{x-1}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "x + 1"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^2-1}{x-1}'}}
+  restrictions_reported: 'x\s*(\\neq|\\ne|≠|!=)\s*1|(undefined|not defined|excluded|excluding|except)[^.]*\b1\b'
+  source: "domain of a rational function; the restriction must travel with the result into the next step"
+  followups:
+    - prompt: 'Now differentiate that result.'
+      expected_tool: differentiate
+      args: {present: [latex, variables]}
+      expect_card: {status: ok, result_text: "1"}
+      reference: {tool: differentiate, arguments: {latex: 'x + 1', variables: [{name: x}]}}
+      must_reuse: true
+      # The derivative of x + 1 is 1, but it is a statement about the original expression only where x != 1.
+      restrictions_reported: 'x\s*(\\neq|\\ne|≠|!=)\s*1|(undefined|not defined|excluded|excluding|except)[^.]*\b1\b'
+      forbid_assumptions: true
+
+- id: reciprocal-integral-invents-no-assumption
+  category: calculus
+  prompt: 'Integrate $\frac{1}{x}$ with respect to x.'
+  expected_tool: integrate
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok}
+  reference: {tool: integrate, arguments: {latex: '\frac{1}{x}', variable: x}}
+  source: "engine test_integrate.py (an antiderivative of 1/x exists without a sign assumption; positivity is not given)"
+
+- id: oscillating-integral-stops-when-not-verified
+  category: false_claim
+  prompt: 'Compute $\int_0^\infty \sin x \, dx$.'
+  expected_tool: integrate
+  expect_card: {status: not_verified}
+  reference: {tool: integrate, arguments: {latex: '\sin x', variable: x, lower: '0', upper: oo}}
+  stops_after_failure: true
+  max_unchecked: 0
+  reply_matches: 'diverg|oscillat|no limit|not converge|does not converge|not verified|could not|cannot|unable|unverified|no value'
+  reply_forbids: 'equals 1|is 1\b|= ?1\b|equals 0|= ?0\b'
+  source: "the partial integrals 1 - cos T have no limit (reference benchmark integral-oscillating-without-a-limit-refused)"
+
+- id: declared-matrices-then-false-expansion
+  category: tensor_matrix
+  prompt: 'Let A and B be 2x2 matrices. Expand $(A+B)^2$.'
+  expected_tool: matrix_calculus
+  args: {present: [matrices], absent: [commuting]}
+  forbid_assumptions: true
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '(A+B)^2'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: simplify
+  source: "matrix multiplication is not commutative: (A+B)^2 = A^2 + AB + BA + B^2"
+  followups:
+    - prompt: 'So $(A+B)^2 = A^2 + 2AB + B^2$, correct?'
+      expected_tool: matrix_calculus
+      tools_optional: true
+      reply_matches: 'not|\bno\b|only if|commut|differ'
+      wrong_formulas:
+        - '(A+B)^2 = A^2 + 2AB + B^2'
+        - '\left(A + B\right)^{2} = A^{2} + 2 A B + B^{2}'
+        - '(A+B)^{2} = A^{2} + 2AB + B^{2}'
+
+- id: declared-matrices-no-invented-commutation
+  category: tensor_matrix
+  prompt: 'Let A and B be 2x2 matrices.'
+  expected_tool: none
+  reply_matches: 'matri|A|B'
+  source: "declaring matrices says nothing about whether they commute"
+  followups:
+    - prompt: 'Simplify $\exp(A)\exp(B)$.'
+      expected_tool: matrix_calculus
+      args: {absent: [commuting], present: [matrices]}
+      forbid_assumptions: true
+      expect_card: {status: conditions_not_satisfied}
+      reference:
+        tool: matrix_calculus
+        arguments:
+          latex: '\exp(A)\exp(B)'
+          matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+          action: simplify
+      reply_matches: 'commut'
+      wrong_formulas: ['\exp(A)\exp(B) = \exp(A + B)', '\exp(A)\exp(B) = \exp(A+B)']
+
+- id: inverse-does-not-invent-invertibility
+  category: tensor_matrix
+  prompt: 'For 2x2 matrices A and B, simplify $A B A^{-1}$.'
+  expected_tool: matrix_calculus
+  tools_optional: true
+  args: {absent: [invertible, commuting]}
+  forbid_assumptions: true
+  reply_matches: 'invertib|not supported|cannot|unsupported|assum|inverse'
+  wrong_formulas: ['A B A^{-1} = B']
+  source: "A B A^{-1} = B holds only if A is invertible and commutes with B; neither was stated"
+
+- id: premise-stays-conditional
+  category: multistep
+  prompt: 'Using $y = 3x$, substitute into $x^2 + y$.'
+  expected_tool: substitute
+  forbid: [simplify]
+  args: {present: [relations]}
+  expect_card: {status: ok, result_text: "x**2 + 3*x"}
+  reference: {tool: substitute, arguments: {latex: 'x^2 + y', relations: ['y = 3x']}}
+  reply_matches: 'given|assum|premise|your relation|if '
+  source: "engine test_substitute.py (the result holds given the user's relation; Minerva never checks the premise)"
+  followups:
+    - prompt: 'So it is proved that $x^2 + y = x^2 + 3x$?'
+      expected_tool: none
+      reply_matches: 'given|assum|premise|conditional|provided|only if|if y'
+      reply_forbids: 'is proved|has been proved|proven true|is proven'

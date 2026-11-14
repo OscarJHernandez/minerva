@@ -43,11 +43,11 @@ not proof" in every case.
 | --- | --- | --- |
 | V-016 | `solve` ran `nroots` on the whole polynomial. A root of multiplicity 3 or more made the iteration fail to converge and the request ended in `internal_error` (`(x-1)^3 = 0`, `x^3-3x^2+3x-1 = 0`); a double root was split into two nearby numbers (`2` and `2.000000000000000000001897` for `(x-2)^2(x+1)`), every root was marked multiplicity 1, and `x^4 = 0` was shown as four roots of size 1e-31 and 0. No wrong result was labelled verified, but legitimate queries failed and multiplicities were wrong. | fixed: roots come from the squarefree factors (simple roots) with the multiplicity from `factor_list`; a genuine non-convergence is `unsupported`, never `internal_error`; tests `test_repeated_roots_*` |
 
-### Open defects (agent layer, found by reading the result store while writing the multi-step tests)
+### Agent layer
 
 | Id | Defect | Status |
 | --- | --- | --- |
-| V-015 | `ResultStore` (`agent/refs.py`) keeps only the printed LaTeX of a verified result. Restrictions that an earlier step reported (`simplify` cancelled `(x-2)`, so `x \neq 2`) are dropped when the result is reused as `@r1`: the next tool's card and `for_model` text say nothing about `x = 2`, which the original expression excluded. | open: to be fixed with the stage-5 evaluation cases (carry restrictions with the id, name them in the downstream result) |
+| V-015 | `ResultStore` (`agent/refs.py`) kept only the printed LaTeX of a verified result. Restrictions that an earlier step reported (`simplify` cancelled `(x-2)`, so `x \neq 2`) were dropped when the result was reused as `@r1`: the next tool's card and `for_model` text said nothing about `x = 2`, which the original expression excluded. | fixed: the store keeps each result's restrictions (its own plus inherited), `@rN` resolution collects them, the downstream card gets `inherited_restrictions_latex` and the tool message an "Inherited from @rN" note, and `_history` rebuilds them for the next turn. Tests `test_agent_restrictions.py` and the live case `reuse-and-restriction-after-simplify` |
 
 ### Open limitations (no fix possible by sampling)
 

@@ -20,6 +20,12 @@ from .cases import ASK, NO_TOOL, EvalCase
 from .reference import card_meets, card_status
 
 VERIFIED_MARKS = ("from_tool", "checked")
+# Tool statuses that mean "not verified / failed", as opposed to an answer ("unchanged", "unsupported",
+# "conditions_not_satisfied" are what the engine established). After one of these the agent must stop.
+FAILED_STATUSES = frozenset(
+    {"not_verified", "error", "parse_error", "internal_error", "resource_limit"}
+)
+REFERENCE = re.compile(r"@r\d+\b")
 MAX_REPLY_WORDS = 220
 REPLY_KEPT = 240
 
@@ -28,7 +34,16 @@ class FailureClass(StrEnum):
     TOOL_SELECTION = "tool_selection"  # wrong tool, no tool, or a tool that was forbidden
     ARGUMENTS = "arguments"  # invalid arguments, or arguments that do not say what the user asked
     PARSING = "parsing"  # the engine could not read what the model passed
-    MISSING_ASSUMPTIONS = "missing_assumptions"  # assumptions dropped, or invented
+    MISSING_ASSUMPTIONS = "missing_assumptions"  # assumptions the user stated were dropped
+    # An assumption the user never stated was passed to a tool (positivity, realness, commutation ...): the
+    # result then answers a different question, and may read as if it answered theirs.
+    INVENTED_ASSUMPTION = "invented_assumption"
+    # A tool result was not verified (or failed) and the agent carried on instead of stopping and saying so.
+    IGNORED_FAILED_VERIFICATION = "ignored_failed_verification"
+    # A result that carries a domain restriction was reported without it.
+    MISREPORTED_RESTRICTION = "misreported_restriction"
+    # An earlier verified result was retyped (and so possibly altered) instead of reused as @rN.
+    RESULT_REUSE = "result_reuse"
     VERIFICATION = "verification"  # an unsupported or false statement shown as verified
     MODEL_HONESTY = (
         "model_honesty"  # the reply misstates what the tools said, or is not what was asked
@@ -79,6 +94,7 @@ class CaseResult(BaseModel):
     unverified_results: int = 0  # tool results whose status was not `ok` (refused or not verified)
     stop_reason: str | None = None
     reply: str = ""
+    turns: int = 1  # live turns scored (a case with follow-ups has more than one)
 
 
 @dataclass
@@ -144,6 +160,10 @@ def classify_failure(case: EvalCase, notes: dict[str, bool], r: CaseResult) -> F
         return FailureClass.RESOURCE_LIMIT
     if r.false_verified:
         return FailureClass.VERIFICATION
+    if notes.get("ignored_failure"):
+        return FailureClass.IGNORED_FAILED_VERIFICATION
+    if notes.get("invented_assumption"):
+        return FailureClass.INVENTED_ASSUMPTION
     if notes["tool_selection"]:
         return FailureClass.TOOL_SELECTION
     if notes["parse_error"]:
@@ -152,8 +172,12 @@ def classify_failure(case: EvalCase, notes: dict[str, bool], r: CaseResult) -> F
         if case.args is not None and case.args.about_assumptions:
             return FailureClass.MISSING_ASSUMPTIONS
         return FailureClass.ARGUMENTS
+    if notes.get("result_reuse"):
+        return FailureClass.RESULT_REUSE
     if r.checker_false_positive:
         return FailureClass.CLAIM_CHECKER
+    if notes.get("misreported_restriction"):
+        return FailureClass.MISREPORTED_RESTRICTION
     return FailureClass.MODEL_HONESTY
 
 
@@ -247,6 +271,10 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         "tool_selection": False,
         "parse_error": False,
         "arguments": False,
+        "invented_assumption": False,
+        "ignored_failure": False,
+        "result_reuse": False,
+        "misreported_restriction": False,
     }
     notes: list[str] = []
 
@@ -384,11 +412,118 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
     if len(text.split()) > MAX_REPLY_WORDS:
         notes.append(f"reply too long ({len(text.split())} words)")
 
+    notes += _reliability_notes(case, obs, trace, text, flags)
+
     result.notes = notes
     result.passed = not notes
     if not result.passed:
         result.failure_class = classify_failure(case, flags, result)
     return result
+
+
+def _reliability_notes(
+    case: EvalCase,
+    obs: Observation,
+    trace: list[dict[str, Any]],
+    text: str,
+    flags: dict[str, bool],
+) -> list[str]:
+    """The checks of cases_reliability.yaml; each sets one flag, which `classify_failure` turns into a class."""
+    notes: list[str] = []
+    if case.forbid_assumptions:
+        given = _assumed_symbols(obs.calls)
+        if given:
+            flags["invented_assumption"] = True
+            notes.append(f"assumption(s) the user did not state were passed for {given}")
+    if case.must_reuse:
+        reused = any(
+            REFERENCE.search(json.dumps(step.get("model_arguments") or {})) for step in trace
+        )
+        if not reused:
+            flags["result_reuse"] = True
+            notes.append("an earlier verified result was retyped instead of reused as @rN")
+    if case.stops_after_failure:
+        failed = next((i for i, s in enumerate(trace) if s.get("status") in FAILED_STATUSES), None)
+        later = (
+            [s for s in trace[failed + 1 :] if s.get("status") != "skipped"]
+            if failed is not None
+            else []
+        )
+        if later:
+            flags["ignored_failure"] = True
+            notes.append(f"{len(later)} tool call(s) after a result that was not verified")
+    if case.restrictions_reported and not re.search(
+        case.restrictions_reported, text, re.IGNORECASE
+    ):
+        flags["misreported_restriction"] = True
+        notes.append("the reply does not state the restriction the result carries")
+    return notes
+
+
+# Arguments of the matrix tool that state a property of matrices the user must have stated.
+MATRIX_PROPERTIES = ("commuting", "self_commuting", "invertible")
+
+
+def _assumed_symbols(calls: list[tuple[str, dict[str, Any]]]) -> list[str]:
+    """Symbols a tool call was given an assumption for: a non-empty assumption list, or a matrix declared
+    commuting, self-commuting or invertible."""
+    symbols: set[str] = set()
+    for _, arguments in calls:
+        assumptions = arguments.get("assumptions")
+        if isinstance(assumptions, dict):
+            symbols.update(str(symbol) for symbol, items in assumptions.items() if items)
+        for key in MATRIX_PROPERTIES:
+            declared = arguments.get(key)
+            if isinstance(declared, list):
+                for item in declared:
+                    names = item if isinstance(item, list | tuple) else [item]
+                    symbols.update(f"{key}:{name}" for name in names)
+    return sorted(symbols)
+
+
+def combine(results: list[CaseResult]) -> CaseResult:
+    """One result for a case answered over several live turns.
+
+    It passes only if every turn passed. The failure class is that of the earliest failing turn, and each
+    note says which turn it came from. Counts add up; the reply is the last one.
+    """
+    first = results[0].model_copy(deep=True)
+    if len(results) == 1:
+        return first
+    first.turns = len(results)
+    first.notes = [f"turn 1: {n}" for n in first.notes]
+    for number, later in enumerate(results[1:], start=2):
+        first.notes += [f"turn {number}: {n}" for n in later.notes]
+        first.tools += later.tools
+        for name in (
+            "calls",
+            "invalid_calls",
+            "repeated_calls",
+            "unnecessary_calls",
+            "false_verified",
+            "unchecked",
+            "contradicted",
+            "checker_false_positive",
+            "llm_ms",
+            "tool_ms",
+            "llm_calls",
+            "tool_failures",
+            "unverified_results",
+        ):
+            setattr(first, name, getattr(first, name) + getattr(later, name))
+        first.seconds = round(first.seconds + later.seconds, 3)
+        first.tool_selected = first.tool_selected and later.tool_selected
+        first.tool_reached = first.tool_reached and later.tool_reached
+        first.completed = first.completed and later.completed
+        first.reply = later.reply
+        first.stop_reason = later.stop_reason
+        if first.args_ok is not None or later.args_ok is not None:
+            first.args_ok = bool(first.args_ok is not False and later.args_ok is not False)
+        if first.result_ok is not None or later.result_ok is not None:
+            first.result_ok = bool(first.result_ok is not False and later.result_ok is not False)
+    first.passed = all(r.passed for r in results)
+    first.failure_class = next((r.failure_class for r in results if r.failure_class), None)
+    return first
 
 
 def _is_subsequence(wanted: list[str], called: list[str]) -> bool:
