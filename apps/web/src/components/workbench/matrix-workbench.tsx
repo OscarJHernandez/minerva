@@ -8,6 +8,7 @@ import {
   MAX_MATRICES,
   blankMatrix,
   buildMatrixRequest,
+  isGradientAction,
   resize,
   setKind,
   type MatrixDeclForm,
@@ -19,7 +20,7 @@ import { AssumptionsEditor } from "../assumptions-editor";
 import { MatrixPanel } from "../matrix-panel";
 
 const FIELD =
-  "min-w-0 rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink disabled:opacity-50";
+  "min-w-0 max-w-full rounded border border-rule bg-raised px-2 py-1.5 font-mono text-sm text-ink disabled:opacity-50";
 
 interface Run {
   key: number;
@@ -48,6 +49,7 @@ export function MatrixWorkbench({
   const [error, setError] = useState<string | null>(null);
   const uid = useId();
   const needsVariable = form.action !== "simplify" && form.action !== "evaluate";
+  const gradient = isGradientAction(form.action);
 
   useEffect(() => {
     if (!restore) return;
@@ -94,7 +96,7 @@ export function MatrixWorkbench({
           <h2 id={`${uid}-heading`} className="font-serif text-xl">
             Matrices
           </h2>
-          <label className="flex items-center gap-2 text-xs text-muted">
+          <label className="flex min-w-0 max-w-full items-center gap-2 text-xs text-muted">
             Start from
             <select
               aria-label="Start from an example"
@@ -209,6 +211,31 @@ export function MatrixWorkbench({
                     value={m.dependsOn}
                     onChange={(e) => update(i, { ...m, dependsOn: e.target.value })}
                   />
+                </label>
+                <label className="flex items-center gap-1.5 pb-1.5 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    aria-label={`Matrix ${i + 1} is symmetric`}
+                    checked={m.symmetric || m.positiveDefinite}
+                    disabled={m.positiveDefinite}
+                    onChange={(e) => update(i, { ...m, symmetric: e.target.checked })}
+                  />
+                  symmetric
+                </label>
+                <label className="flex items-center gap-1.5 pb-1.5 text-xs text-muted">
+                  <input
+                    type="checkbox"
+                    aria-label={`Matrix ${i + 1} is positive definite`}
+                    checked={m.positiveDefinite}
+                    onChange={(e) =>
+                      update(i, {
+                        ...m,
+                        positiveDefinite: e.target.checked,
+                        symmetric: e.target.checked || m.symmetric,
+                      })
+                    }
+                  />
+                  positive definite
                 </label>
                 {form.matrices.length > 1 && (
                   <button
@@ -325,16 +352,32 @@ export function MatrixWorkbench({
                   type="radio"
                   name={`${uid}-action`}
                   checked={form.action === a.id}
-                  onChange={() => setForm((f) => ({ ...f, action: a.id }))}
+                  onChange={() =>
+                    setForm((f) => ({
+                      ...f,
+                      action: a.id,
+                      // these read the plain-text syntax only
+                      format: isGradientAction(a.id) ? "text" : f.format,
+                    }))
+                  }
                 />
                 {a.label}
               </label>
             ))}
           </div>
+          {gradient && (
+            <p className="max-w-prose text-xs text-muted">
+              Plain-text syntax over the real numbers: <code>*</code> is the matrix product, with{" "}
+              <code>transpose(x)</code>, <code>inv(S)</code>, <code>tr(A*X)</code>,{" "}
+              <code>det(X)</code> and <code>logdet(S)</code> (log of the absolute determinant). An
+              inverse or determinant needs the matrix declared invertible. For a symmetric matrix
+              the derivative is taken within the symmetric matrices, and the result says so.
+            </p>
+          )}
           {needsVariable && (
             <div className="flex flex-wrap gap-3">
               <label className="text-xs text-muted">
-                Variable
+                {gradient ? "Differentiate with respect to (a declared matrix)" : "Variable"}
                 <input
                   aria-label="Variable"
                   className={`${FIELD} mt-0.5 block w-24`}
@@ -342,26 +385,30 @@ export function MatrixWorkbench({
                   onChange={(e) => setForm((f) => ({ ...f, variable: e.target.value }))}
                 />
               </label>
-              <label className="text-xs text-muted">
-                {form.action === "evolve" ? "Start (optional)" : "Lower bound (optional)"}
-                <input
-                  aria-label="Lower bound"
-                  className={`${FIELD} mt-0.5 block w-28`}
-                  value={form.lower}
-                  onChange={(e) => setForm((f) => ({ ...f, lower: e.target.value }))}
-                />
-              </label>
-              <label className="text-xs text-muted">
-                {form.action === "evolve"
-                  ? "End of the span (you choose)"
-                  : "Upper bound (optional)"}
-                <input
-                  aria-label="Upper bound"
-                  className={`${FIELD} mt-0.5 block w-28`}
-                  value={form.upper}
-                  onChange={(e) => setForm((f) => ({ ...f, upper: e.target.value }))}
-                />
-              </label>
+              {!gradient && (
+                <label className="text-xs text-muted">
+                  {form.action === "evolve" ? "Start (optional)" : "Lower bound (optional)"}
+                  <input
+                    aria-label="Lower bound"
+                    className={`${FIELD} mt-0.5 block w-28`}
+                    value={form.lower}
+                    onChange={(e) => setForm((f) => ({ ...f, lower: e.target.value }))}
+                  />
+                </label>
+              )}
+              {!gradient && (
+                <label className="text-xs text-muted">
+                  {form.action === "evolve"
+                    ? "End of the span (you choose)"
+                    : "Upper bound (optional)"}
+                  <input
+                    aria-label="Upper bound"
+                    className={`${FIELD} mt-0.5 block w-28`}
+                    value={form.upper}
+                    onChange={(e) => setForm((f) => ({ ...f, upper: e.target.value }))}
+                  />
+                </label>
+              )}
             </div>
           )}
         </fieldset>

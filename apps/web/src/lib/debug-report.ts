@@ -93,6 +93,12 @@ function cardSummary(card: Card | null | undefined): string[] {
     out.push(
       `- method: ${r.method ?? "-"}; kind: ${r.result_kind ?? "-"}; evaluated: ${r.evaluated}`,
     );
+    if (r.reason) out.push(`- reason: ${r.reason}`);
+    if (r.derivative) {
+      out.push(
+        `- derivative: ${r.derivative.kind}, constraint ${r.derivative.constraint}, convention ${r.derivative.convention}, result ${r.result_text ?? "-"}`,
+      );
+    }
     if (r.verification) {
       out.push(
         `- verification: numeric ${r.verification.points_agreed}/${r.verification.points_checked}, exact leg ${r.verification.symbolic_zero ?? "not run"}`,
@@ -108,6 +114,37 @@ function cardSummary(card: Card | null | undefined): string[] {
           `fallbacks [${d.fallbacks.join(", ")}]; failure ${d.failure_reason ?? "-"}; ${stages}`,
       );
     }
+  } else if (card.type === "sums" || card.type === "expectation") {
+    const r = card.data.result;
+    out.push(`- status: ${r.status}${r.reason ? ` (${r.reason})` : ""}`, `- action: ${r.action}`);
+    out.push(`- input as read: ${r.input_latex ?? "-"}`, `- result: ${r.result_latex ?? "-"}`);
+    if ("given" in r)
+      out.push(`- evidence: ${r.evidence ?? "-"}; given: ${r.given.join("; ") || "-"}`);
+    if (r.verification) {
+      const v = r.verification;
+      out.push(
+        "instances_agreed" in v
+          ? `- verification: instances ${v.instances_agreed}/${v.instances_checked}, sizes ${JSON.stringify(v.sizes)}`
+          : `- verification: joint distributions ${v.models_agreed}/${v.models_checked}`,
+      );
+    }
+    out.push(`- engine message: ${r.message}`);
+  } else if (card.type === "statistics") {
+    const r = card.data.result;
+    out.push(`- status: ${r.status}${r.reason ? ` (${r.reason})` : ""}`, `- action: ${r.action}`);
+    out.push(`- evidence: ${r.evidence ?? "-"}; premises: ${r.premises.join("; ") || "-"}`);
+    for (const e of r.estimates) {
+      out.push(
+        `- estimate ${e.parameter}: ${e.text} [${e.optimum ?? "-"}/${e.optimum_evidence ?? "-"}]`,
+      );
+    }
+    if (r.matrix_text) out.push(`- matrix: ${JSON.stringify(r.matrix_text)}`);
+    if (r.posterior)
+      out.push(`- posterior ${r.posterior.family}: ${JSON.stringify(r.posterior.parameters)}`);
+    out.push(
+      `- checks: ${r.checks.map((c) => `${c.kind} ${c.points_agreed}/${c.points_checked}${c.passed ? "" : "!"}`).join(", ") || "-"}`,
+    );
+    out.push(`- engine message: ${r.message}`);
   } else if (card.type === "geometry") {
     const r = card.data.result;
     out.push(`- status: ${r.status}`, `- dimension: ${r.dimension}`, `- message: ${r.message}`);

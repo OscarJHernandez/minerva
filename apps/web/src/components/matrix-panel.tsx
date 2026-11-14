@@ -17,6 +17,9 @@ const OK_LABEL: Record<MatrixResultKind, string> = {
   equation: "Reduced, not evaluated",
   representation: "Represented exactly, not evaluated",
   numeric: "Numerical approximation, verified",
+  gradient: "Gradient, checked against the numerical derivative",
+  jacobian: "Jacobian, checked against the numerical derivative",
+  hessian: "Hessian, checked against the numerical derivative",
 };
 
 const RESULT_HEADING: Record<MatrixResultKind, string> = {
@@ -25,7 +28,34 @@ const RESULT_HEADING: Record<MatrixResultKind, string> = {
   equation: "Equation",
   representation: "Exact representation",
   numeric: "Numerical value (approximation)",
+  gradient: "Gradient",
+  jacobian: "Jacobian",
+  hessian: "Hessian",
 };
+
+/** Why a gradient, Jacobian or Hessian was refused, in plain words. */
+const REASON_TEXT: Record<string, string> = {
+  invertibility_not_declared:
+    "An inverse or determinant is needed and the matrix is not declared invertible. Declare it invertible (only you can).",
+  non_scalar_gradient:
+    "The function is not scalar here (or not a vector for a Jacobian): the derivative of a matrix by a matrix is a fourth-order tensor and is not computed.",
+  declaration_contradicted: "A declaration is contradicted by the explicit entries.",
+  domain_empty: "The function is not defined at any sampled point of the declared sizes.",
+  shape_mismatch: "The answer has the wrong shape.",
+  numeric_disagreement:
+    "The result did not agree with the numerical derivative, so it is not shown.",
+  identically_zero: "The derivative is identically zero.",
+  unsupported_form: "This form is not supported.",
+  parse_error: "The expression could not be read.",
+  resource_limit: "The computation reached a resource limit.",
+};
+
+const CONSTRAINT_TEXT = {
+  none: "Unconstrained: every entry of the variable is treated as free.",
+  symmetric: "Within the symmetric matrices (Frobenius inner product).",
+  positive_definite:
+    "Within the symmetric matrices (Frobenius inner product); the variable is positive definite.",
+} as const;
 
 /** Why a verified result is still not an evaluated closed form. */
 function notEvaluatedText(kind: MatrixResultKind, action: MatrixCalculusResult["action"]): string {
@@ -91,6 +121,36 @@ export function MatrixPanel({
         </p>
       )}
 
+      {!shown && result.reason && REASON_TEXT[result.reason] && (
+        <p
+          role="note"
+          className="mt-3 rounded bg-warn-soft p-3 text-sm text-warn"
+          data-testid="matrix-reason"
+        >
+          {REASON_TEXT[result.reason]}
+        </p>
+      )}
+
+      {shown && result.derivative && (
+        <div
+          className="mt-3 rounded border border-rule bg-sunk px-3 py-2 text-sm"
+          data-testid="derivative-convention"
+        >
+          <div className="text-xs uppercase tracking-wide text-muted">What this derivative is</div>
+          <p>
+            {CONSTRAINT_TEXT[result.derivative.constraint]} Over the real numbers (a transpose, not
+            a conjugate transpose).{" "}
+            {result.derivative.layout === "numerator"
+              ? "Rows are the outputs, columns the inputs."
+              : "It has the shape of the variable (" +
+                result.derivative.variable_shape[0] +
+                "×" +
+                result.derivative.variable_shape[1] +
+                ")."}
+          </p>
+        </div>
+      )}
+
       {shown && kind && !result.evaluated && (
         <p
           role="note"
@@ -118,6 +178,25 @@ export function MatrixPanel({
           >
             {copied ? "Copied" : "Copy LaTeX"}
           </button>
+        </div>
+      )}
+
+      {shown && result.derivative && result.derivative.alternatives.length > 0 && (
+        <div className="mt-2" data-testid="entrywise-alternative">
+          {result.derivative.alternatives.map((alt) => (
+            <div key={alt.convention}>
+              <div className="text-xs uppercase tracking-wide text-muted">
+                Entrywise form, labelled (partial derivatives with respect to the independent
+                entries; not the result above)
+              </div>
+              <div className="overflow-x-auto">
+                <Math latex={alt.latex} display label="Entrywise form" />
+              </div>
+              <p className="text-xs text-muted">
+                {alt.points_agreed} of {alt.points_checked} sample points agree · {alt.note}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 

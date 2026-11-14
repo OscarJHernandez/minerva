@@ -1,4 +1,10 @@
-import type { Assumptions, MatrixAction, MatrixDecl, MatrixRequest } from "./types";
+import {
+  GRADIENT_ACTIONS,
+  type Assumptions,
+  type MatrixAction,
+  type MatrixDecl,
+  type MatrixRequest,
+} from "./types";
 
 export const MAX_MATRICES = 6;
 export const MAX_ABSTRACT_SIZE = 8;
@@ -15,7 +21,27 @@ export const ACTIONS: { id: MatrixAction; label: string; hint: string }[] = [
     hint: "with respect to a variable, optionally between bounds",
   },
   { id: "evolve", label: "Evolve", hint: "solve dU/dt = A(t) U" },
+  {
+    id: "gradient",
+    label: "Gradient",
+    hint: "of a scalar function with respect to a matrix or vector (plain text, real matrices)",
+  },
+  {
+    id: "jacobian",
+    label: "Jacobian",
+    hint: "of a vector function with respect to a vector (plain text, real matrices)",
+  },
+  {
+    id: "hessian",
+    label: "Hessian",
+    hint: "of a scalar function with respect to a vector (plain text, real matrices)",
+  },
 ];
+
+/** The actions that read the plain-text syntax and differentiate with respect to a declared matrix. */
+export function isGradientAction(action: MatrixAction): boolean {
+  return GRADIENT_ACTIONS.includes(action);
+}
 
 /** One declared matrix as typed: a size (abstract) or a grid of entries (explicit). */
 export interface MatrixDeclForm {
@@ -25,6 +51,10 @@ export interface MatrixDeclForm {
   cols: number;
   entries: string[][];
   dependsOn: string;
+  /** Declared symmetric: a derivative with respect to it is taken within the symmetric matrices. */
+  symmetric: boolean;
+  /** Declared symmetric positive definite (implies symmetric and invertible). */
+  positiveDefinite: boolean;
 }
 
 /** The editable state of the matrix form: text exactly as the user typed it. */
@@ -44,7 +74,16 @@ export interface MatrixForm {
 }
 
 export function blankMatrix(name: string): MatrixDeclForm {
-  return { name, kind: "abstract", rows: 2, cols: 2, entries: grid(2, 2), dependsOn: "" };
+  return {
+    name,
+    kind: "abstract",
+    rows: 2,
+    cols: 2,
+    entries: grid(2, 2),
+    dependsOn: "",
+    symmetric: false,
+    positiveDefinite: false,
+  };
 }
 
 export function grid(rows: number, cols: number, from: string[][] = []): string[][] {
@@ -127,8 +166,15 @@ export function buildMatrixRequest(form: MatrixForm): Built {
     if (declared.has(name)) return { ok: false, error: `Matrix ${name} is declared twice.` };
     declared.add(name);
     const dependsOn = m.dependsOn.trim() || null;
+    const flags = {
+      ...(m.symmetric ? { symmetric: true } : {}),
+      ...(m.positiveDefinite ? { positive_definite: true } : {}),
+    };
+    if ((m.symmetric || m.positiveDefinite) && m.rows !== m.cols) {
+      return { ok: false, error: `${name} is declared symmetric, so it must be square.` };
+    }
     if (m.kind === "abstract") {
-      matrices.push({ name, rows: m.rows, cols: m.cols, depends_on: dependsOn });
+      matrices.push({ name, rows: m.rows, cols: m.cols, depends_on: dependsOn, ...flags });
     } else {
       const entries = grid(m.rows, m.cols, m.entries).map((row) => row.map((c) => c.trim()));
       if (entries.some((row) => row.some((c) => c === ""))) {
@@ -137,7 +183,7 @@ export function buildMatrixRequest(form: MatrixForm): Built {
           error: `Fill in every entry of ${name} (write 0 for zero entries), or declare only its size.`,
         };
       }
-      matrices.push({ name, entries, depends_on: dependsOn });
+      matrices.push({ name, entries, depends_on: dependsOn, ...flags });
     }
   }
   const commuting = pairs(form.commuting);
@@ -147,6 +193,23 @@ export function buildMatrixRequest(form: MatrixForm): Built {
   for (const n of [...commuting.flat(), ...invertible, ...selfCommuting]) {
     if (!declared.has(n))
       return { ok: false, error: `${n} is used in a declaration but is not one of the matrices.` };
+  }
+  const gradient = isGradientAction(form.action);
+  if (gradient) {
+    if (form.format !== "text") {
+      return {
+        ok: false,
+        error:
+          "Gradients, Jacobians and Hessians read the plain-text syntax: choose Plain text and write " +
+          "transpose(x), inv(S), tr(A*X), logdet(S), x - mu.",
+      };
+    }
+    if (!declared.has(form.variable.trim())) {
+      return {
+        ok: false,
+        error: "Name one of the declared matrices to differentiate with respect to.",
+      };
+    }
   }
   const needsVariable = form.action !== "simplify" && form.action !== "evaluate";
   if (needsVariable && form.variable.trim() === "") {
@@ -174,8 +237,8 @@ export function buildMatrixRequest(form: MatrixForm): Built {
       self_commuting: selfCommuting,
       action: form.action,
       variable: needsVariable ? form.variable.trim() : null,
-      lower: needsVariable && form.lower.trim() ? form.lower.trim() : null,
-      upper: needsVariable && form.upper.trim() ? form.upper.trim() : null,
+      lower: needsVariable && !gradient && form.lower.trim() ? form.lower.trim() : null,
+      upper: needsVariable && !gradient && form.upper.trim() ? form.upper.trim() : null,
     },
   };
 }
@@ -201,6 +264,8 @@ export function restoreMatrixForm(
         cols,
         entries: grid(rows, cols, m.entries ?? []),
         dependsOn: m.depends_on ?? "",
+        symmetric: !!m.symmetric,
+        positiveDefinite: !!m.positive_definite,
       };
     }),
     commuting: request.commuting.map(([a, b]) => `${a},${b}`).join("; "),
@@ -260,3 +325,38 @@ export const EXAMPLES: MatrixExample[] = [
     form: { ...blankForm(), input: "\\exp(A+tB)", action: "differentiate", variable: "t" },
   },
 ];
+
+/** Gaussian log-density examples: the derivative of a scalar with respect to a vector and to a matrix. */
+EXAMPLES.push(
+  {
+    id: "gaussian-gradient-covariance",
+    label: "Gaussian log-density: gradient in the covariance (positive definite)",
+    form: {
+      ...blankForm(),
+      format: "text",
+      input: "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)",
+      matrices: [
+        { ...blankMatrix("x"), rows: 3, cols: 1, entries: grid(3, 1) },
+        { ...blankMatrix("mu"), rows: 3, cols: 1, entries: grid(3, 1) },
+        { ...blankMatrix("S"), rows: 3, cols: 3, entries: grid(3, 3), positiveDefinite: true },
+      ],
+      action: "gradient",
+      variable: "S",
+    },
+  },
+  {
+    id: "quadratic-form-hessian",
+    label: "Hessian of x^T A x",
+    form: {
+      ...blankForm(),
+      format: "text",
+      input: "transpose(x)*A*x",
+      matrices: [
+        { ...blankMatrix("A"), rows: 3, cols: 3, entries: grid(3, 3) },
+        { ...blankMatrix("x"), rows: 3, cols: 1, entries: grid(3, 1) },
+      ],
+      action: "hessian",
+      variable: "x",
+    },
+  },
+);

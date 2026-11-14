@@ -7,6 +7,7 @@ import { SeriesPanel } from "../series-panel";
 import { IntegralPanel } from "../integral-panel";
 import { DistributionCard } from "./distribution-card";
 import { MatrixPanel } from "../matrix-panel";
+import { StatisticsPanel } from "../statistics-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { DiscoveryCard } from "./discovery-card";
 import { GeometryCard } from "./geometry-card";
@@ -34,6 +35,26 @@ export function CardView({ card }: { card: Card }) {
       return <IntegralPanel result={card.data} />;
     case "matrix":
       return <MatrixPanel result={card.data.result} methods={card.data.methods} />;
+    case "sums":
+      return (
+        <StatisticsPanel kind="sums" result={card.data.result} headingId={`stat-${card.id}`} />
+      );
+    case "expectation":
+      return (
+        <StatisticsPanel
+          kind="expectation"
+          result={card.data.result}
+          headingId={`stat-${card.id}`}
+        />
+      );
+    case "statistics":
+      return (
+        <StatisticsPanel
+          kind="statistics"
+          result={card.data.result}
+          headingId={`stat-${card.id}`}
+        />
+      );
     case "geometry":
       return <GeometryCard result={card.data.result} request={card.data.request} />;
     case "distribution":
