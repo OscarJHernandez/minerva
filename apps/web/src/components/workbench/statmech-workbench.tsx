@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import {
-  BASE_QUANTITIES,
   EXAMPLES,
+  quantityOptions,
   STATISTICS,
   blankForm,
   buildRequest,
@@ -41,6 +41,7 @@ const KINDS: { id: StatKind; label: string }[] = [
   { id: "density_of_states", label: "Density of states" },
   { id: "classical", label: "Classical Hamiltonian" },
   { id: "quantum", label: "Quantum (matrix H)" },
+  { id: "occupation", label: "Particles (Bose, Fermi)" },
 ];
 
 interface Run {
@@ -195,8 +196,35 @@ export function StatMechWorkbench({
           ))}
         </div>
 
-        {form.kind === "levels" && (
+        {(form.kind === "levels" || form.kind === "occupation") && (
           <div className="space-y-2">
+            {form.kind === "occupation" && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Labelled label="Statistics">
+                  <select
+                    className={FIELD}
+                    value={form.occupation.statistics}
+                    onChange={(e) =>
+                      set("occupation", {
+                        ...form.occupation,
+                        statistics: e.target.value as "bose" | "fermi" | "boltzmann",
+                      })
+                    }
+                  >
+                    <option value="fermi">Fermi–Dirac</option>
+                    <option value="bose">Bose–Einstein (declare μ below every level)</option>
+                    <option value="boltzmann">Classical (Boltzmann) counting</option>
+                  </select>
+                </Labelled>
+                <Labelled label="Chemical potential name">
+                  <input
+                    className={FIELD}
+                    value={form.occupation.mu}
+                    onChange={(e) => set("occupation", { ...form.occupation, mu: e.target.value })}
+                  />
+                </Labelled>
+              </div>
+            )}
             {form.levels.map((l, i) => (
               <div key={i} className="grid grid-cols-[1fr_6rem_auto] items-end gap-2">
                 <Labelled label={`Energy of level ${i + 1}`}>
@@ -445,6 +473,32 @@ export function StatMechWorkbench({
           </div>
         )}
 
+        {form.kind === "levels" && (
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.microcanonical.on}
+                onChange={(e) =>
+                  set("microcanonical", { ...form.microcanonical, on: e.target.checked })
+                }
+              />
+              Fix the total energy and count microstates (microcanonical; needs the copies below)
+            </label>
+            {form.microcanonical.on && (
+              <Labelled label="Total energy (a rational number)">
+                <input
+                  className={`${FIELD} w-32`}
+                  value={form.microcanonical.energy}
+                  onChange={(e) =>
+                    set("microcanonical", { ...form.microcanonical, energy: e.target.value })
+                  }
+                />
+              </Labelled>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -513,7 +567,7 @@ export function StatMechWorkbench({
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium">Quantities to derive</legend>
           <div className="flex flex-wrap gap-3">
-            {BASE_QUANTITIES.map((q) => (
+            {quantityOptions(form.kind).map((q) => (
               <label key={q.id} className="flex items-center gap-1.5 text-sm">
                 <input
                   type="checkbox"
@@ -539,7 +593,7 @@ export function StatMechWorkbench({
                     )
                   }
                 >
-                  {BASE_QUANTITIES.map((q) => (
+                  {quantityOptions(form.kind).map((q) => (
                     <option key={q.id} value={q.id}>
                       {q.id}
                     </option>

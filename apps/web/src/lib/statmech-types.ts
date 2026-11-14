@@ -2,9 +2,11 @@ import type { Status } from "./types";
 
 /** Mirrors `minerva_engine.statmech.models`: the request is the whole problem, results are checked. */
 
-export type StatKind = "levels" | "level_family" | "density_of_states" | "classical" | "quantum";
+export type StatKind =
+  "levels" | "level_family" | "density_of_states" | "classical" | "quantum" | "occupation";
 export type StatAction = "analyze" | "partition" | "derive" | "expectation" | "evaluate";
-export type StatQuantityName = "Z" | "lnZ" | "F" | "U" | "S" | "Var_E";
+export type StatQuantityName =
+  "Z" | "lnZ" | "F" | "U" | "S" | "Var_E" | "Xi" | "lnXi" | "Omega" | "N" | "Var_N";
 export type StatStatistic =
   "mean" | "moment" | "central_moment" | "cumulant" | "variance" | "covariance";
 export type ResultKind = "exact" | "representation" | "numeric" | "asymptotic";
@@ -31,6 +33,13 @@ export type StatSystem =
       density: string;
       lower: string;
       upper: string;
+    }
+  | {
+      kind: "occupation";
+      /** bose and fermi count each single-particle state; boltzmann is the classical-counting limit. */
+      statistics: "bose" | "fermi" | "boltzmann";
+      levels: { energy: string; degeneracy: string }[];
+      mu: string;
     }
   | {
       kind: "quantum";
@@ -66,7 +75,9 @@ export interface StatSweep {
 
 /** What `POST /v1/compute/statmech` accepts (and what a saved run stores as its `request`). */
 export interface StatMechRequest {
-  ensemble?: "canonical";
+  ensemble?: "canonical" | "grand_canonical" | "microcanonical";
+  /** Microcanonical only: the fixed total energy (a rational number). */
+  total_energy?: string | null;
   system: StatSystem;
   copies?: { count: string; identical: boolean | null } | null;
   format?: "text" | "latex";

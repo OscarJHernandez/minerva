@@ -22,6 +22,7 @@ from minerva_engine.statmech.models import (
     DosSystem,
     FamilySystem,
     LevelsSystem,
+    OccupationSystem,
     PhaseVariable,
     QuantumSystem,
     Statistic,
@@ -50,7 +51,7 @@ class AgentClassical(BaseModel):
 
 
 AgentSystem = Annotated[
-    LevelsSystem | FamilySystem | DosSystem | AgentClassical | QuantumSystem,
+    LevelsSystem | FamilySystem | DosSystem | AgentClassical | QuantumSystem | OccupationSystem,
     Field(discriminator="kind"),
 ]
 
@@ -86,7 +87,23 @@ class StatMechArgs(BaseModel):
         "density_of_states: rho(En) over [lower, upper]; call the energy En, because E means Euler's "
         "number in text syntax. classical: a separable Hamiltonian over phase space. quantum: an "
         "explicit Hermitian matrix H (at most 4x4) and optional operator matrices; they are never "
-        "assumed to commute, and Z = Tr exp(-beta H)."
+        "assumed to commute, and Z = Tr exp(-beta H). occupation: independent particles in "
+        "single-particle levels with a statistic (bose, fermi or boltzmann) for the grand canonical "
+        "ensemble; Bose needs mu declared below every energy (for example mu negative, energies "
+        "nonnegative)."
+    )
+    ensemble: Literal["canonical", "grand_canonical", "microcanonical"] = Field(
+        default="canonical",
+        description="canonical (fixed temperature, the default), grand_canonical (fixed temperature "
+        "and chemical potential: needs an occupation system, and only that) or microcanonical (fixed "
+        "total energy: needs levels, copies_count and total_energy). A system does not change its "
+        "ensemble silently: a mismatch is refused.",
+    )
+    total_energy: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Microcanonical only: the fixed total energy of the N copies, a rational number "
+        "the user gave.",
     )
     copies_count: str | None = Field(
         default=None,
@@ -134,6 +151,8 @@ def build_request(args: StatMechArgs, answers: dict[str, Any]) -> StatMechInput:
     if args.copies_count:
         copies = {"count": args.copies_count, "identical": answers.get("identical")}
     return StatMechInput(
+        ensemble=args.ensemble,
+        total_energy=args.total_energy,
         system=system,
         copies=copies,
         temperature=args.temperature,

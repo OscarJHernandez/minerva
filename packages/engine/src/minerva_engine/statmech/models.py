@@ -15,10 +15,10 @@ from pydantic import BaseModel, Field
 from ..distributions.models import Condition
 from ..models import Status
 
-Ensemble = Literal["canonical"]
+Ensemble = Literal["canonical", "grand_canonical", "microcanonical"]
 Action = Literal["analyze", "partition", "derive", "expectation", "evaluate"]
 TemperatureVariable = Literal["beta", "T"]
-BaseQuantity = Literal["Z", "lnZ", "F", "U", "S", "Var_E"]
+BaseQuantity = Literal["Z", "lnZ", "F", "U", "S", "Var_E", "Xi", "lnXi", "Omega", "N", "Var_N"]
 Statistic = Literal["mean", "moment", "central_moment", "cumulant", "variance", "covariance"]
 ResultKind = Literal["exact", "representation", "numeric", "asymptotic"]
 
@@ -38,10 +38,12 @@ Reason = Literal[
     "convention_unconfirmed",
     "not_hermitian",
     "operators_do_not_commute",
+    "energy_not_attainable",
 ]
 Stage = Literal["parse", "build", "symbolic", "verify", "expectation", "analyze"]
 
 BASE_QUANTITIES: tuple[str, ...] = ("Z", "lnZ", "F", "U", "S", "Var_E")
+GRAND_QUANTITIES: tuple[str, ...] = ("Xi", "lnXi", "Omega", "N", "U", "S", "Var_N")
 
 MAX_LEVELS = 64
 MAX_ORDER = 4
@@ -112,8 +114,26 @@ class QuantumSystem(BaseModel):
     observables: dict[str, list[list[str]]] = Field(default_factory=dict, max_length=6)
 
 
+class OccupationLevel(BaseModel):
+    energy: str = Field(max_length=300)
+    degeneracy: str = Field(default="1", max_length=100)
+
+
+class OccupationSystem(BaseModel):
+    """Non-interacting particles in single-particle levels, in the grand canonical ensemble.
+
+    ``bose`` and ``fermi`` count each of the g single-particle states of a level separately;
+    ``boltzmann`` is the classical-counting limit (Poisson occupation, no exclusion or bunching).
+    """
+
+    kind: Literal["occupation"] = "occupation"
+    statistics: Literal["bose", "fermi", "boltzmann"]
+    levels: list[OccupationLevel] = Field(min_length=1, max_length=MAX_LEVELS)
+    mu: str = Field(default="mu", max_length=16)
+
+
 System = Annotated[
-    LevelsSystem | FamilySystem | DosSystem | ClassicalSystem | QuantumSystem,
+    LevelsSystem | FamilySystem | DosSystem | ClassicalSystem | QuantumSystem | OccupationSystem,
     Field(discriminator="kind"),
 ]
 
@@ -190,6 +210,8 @@ class StatMechInput(BaseModel):
     # evaluate: the numbers are chosen by the user, never by the model
     values: dict[str, str] = Field(default_factory=dict, max_length=16)
     sweep: Sweep | None = None
+    # microcanonical: the fixed total energy of N distinguishable or counted copies of the levels
+    total_energy: str | None = Field(default=None, max_length=32)
 
 
 class StatStep(BaseModel):

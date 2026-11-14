@@ -5,6 +5,7 @@ import {
   buildRequest,
   parseMatrix,
   parseValues,
+  quantityOptions,
   restoreForm,
   splitNames,
 } from "./statmech-form";
@@ -127,5 +128,40 @@ describe("statmech form", () => {
     });
     const size = { ...example, quantum: { ...example.quantum, observable: "1" } };
     expect(buildRequest(size, "expectation").ok).toBe(false);
+  });
+
+  it("builds a grand canonical request for particles, with the chemical potential and statistics", () => {
+    const form = EXAMPLES.find((e) => e.id === "fermi-levels")!.form;
+    const built = buildRequest(form, "derive");
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.request.ensemble).toBe("grand_canonical");
+    expect(built.request.system).toMatchObject({
+      kind: "occupation",
+      statistics: "fermi",
+      mu: "mu",
+    });
+    expect(built.request.quantities).toEqual(["lnXi", "Omega", "N", "U", "S"]);
+    expect(quantityOptions("occupation").map((q) => q.id)).toContain("Var_N");
+    expect(quantityOptions("levels").map((q) => q.id)).not.toContain("Omega");
+  });
+
+  it("builds a microcanonical count only with the copies and a fixed energy given", () => {
+    const form = EXAMPLES.find((e) => e.id === "two-level-counting")!.form;
+    const built = buildRequest(form, "partition");
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.request.ensemble).toBe("microcanonical");
+    expect(built.request.total_energy).toBe("4");
+    expect(built.request.copies).toEqual({ count: "10", identical: false });
+    const noCopies = { ...form, copies: { ...form.copies, on: false } };
+    expect(buildRequest(noCopies, "partition").ok).toBe(false);
+    const noEnergy = { ...form, microcanonical: { on: true, energy: " " } };
+    expect(buildRequest(noEnergy, "partition")).toEqual({
+      ok: false,
+      error: "Give the fixed total energy.",
+    });
+    const restored = restoreForm(built.request);
+    expect(restored.microcanonical).toEqual({ on: true, energy: "4" });
   });
 });

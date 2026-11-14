@@ -60,6 +60,10 @@ def make_oracle(problem: Problem) -> BaseOracle:
         from .quantum import QuantumOracle
 
         return QuantumOracle(problem)
+    if problem.kind == "occupation":
+        from .grand import GrandOracle
+
+        return GrandOracle(problem)
     from .systems import ClassicalOracle, DosOracle, FamilyOracle
 
     if problem.kind == "level_family":
@@ -460,9 +464,22 @@ def probability_checks(canon: Canonical, oracle: Oracle, points: list[Point]) ->
     return checks
 
 
+def make_canonical(problem: Problem) -> Canonical:
+    """The symbolic quantities of the problem's ensemble."""
+    if problem.kind == "occupation":
+        from .grand import GrandCanonical
+
+        return GrandCanonical(problem)
+    return Canonical(problem)
+
+
 def derive(
     problem: Problem, request: StatMechInput, deadline: float
 ) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
+    if problem.kind == "occupation":
+        from .grand import derive_grand
+
+        return derive_grand(problem, request, deadline)
     canon = Canonical(problem)
     oracle = make_oracle(problem)
     points = sample_points(problem)
@@ -647,6 +664,10 @@ def _partial_quantity(
 def expectation(
     problem: Problem, request: StatMechInput, deadline: float
 ) -> tuple[list[StatStep], list[StatQuantity], list[Condition]]:
+    if problem.kind == "occupation":
+        from .grand import expectation_grand
+
+        return expectation_grand(problem, request, deadline)
     if problem.kind == "quantum" and request.observable != "E" and problem.copies_count is None:
         return expectation_quantum(problem, request, deadline)
     if problem.kind != "levels" or problem.copies_count is not None:
@@ -809,8 +830,12 @@ def expectation_energy(
     oracle = make_oracle(problem)
     points = sample_points(problem)
     b = problem.beta
-    k = {n: tidy((-1) ** n * sp.diff(canon.lnZ, b, n)) for n in (1, 2, 3, 4)}
     order, stat = request.order, request.statistic
+    needed = _order_needed(stat, order)
+    k = {  # only the orders asked for are differentiated and simplified
+        n: tidy((-1) ** n * sp.diff(canon.lnZ, b, n)) if n <= needed else sp.Integer(0)
+        for n in (1, 2, 3, 4)
+    }
     expr, kn, ref = _energy_statistic(k, stat, order)
     expr = tidy(expr)
     shown = canon.shown(expr)

@@ -18,11 +18,20 @@ from .canonical import (
     TITLES,
     Canonical,
     compare,
+    make_canonical,
     make_oracle,
     partition_conditions,
     partition_steps,
 )
-from .models import BASE_QUANTITIES, StatCheck, StatMechInput, StatQuantity, StatStep, StatTable
+from .models import (
+    BASE_QUANTITIES,
+    GRAND_QUANTITIES,
+    StatCheck,
+    StatMechInput,
+    StatQuantity,
+    StatStep,
+    StatTable,
+)
 from .oracle import DPS, BaseOracle, Point
 from .setup import Problem, Refusal
 
@@ -87,13 +96,16 @@ def _fmt(x: Any) -> str:
 def evaluate(
     problem: Problem, request: StatMechInput, deadline: float
 ) -> tuple[list[StatStep], list[StatQuantity], list[Condition], StatTable | None]:
-    names = list(request.quantities) or ["lnZ", "F", "U", "S", "Var_E"]
+    grand = problem.kind == "occupation"
+    names = list(request.quantities) or (
+        ["lnXi", "Omega", "N", "U", "S"] if grand else ["lnZ", "F", "U", "S", "Var_E"]
+    )
     for n in names:
-        if n not in BASE_QUANTITIES:
+        if n not in (GRAND_QUANTITIES if grand else BASE_QUANTITIES):
             raise Refusal("unsupported_system", "unknown quantity")
     oracle = make_oracle(problem)
     try:
-        canon: Canonical | None = Canonical(problem)
+        canon: Canonical | None = make_canonical(problem)
     except Refusal:
         canon = None  # no closed form: numerical evaluation only
     values = {k: _number(problem, v) for k, v in request.values.items()}
@@ -154,7 +166,9 @@ def evaluate(
             variable=swept_name,
         )
     steps = (
-        partition_steps(problem, canon)
+        _grand_steps(problem, canon)
+        if grand and canon is not None
+        else partition_steps(problem, canon)
         if canon is not None
         else [step.model_copy(deep=True) for step in problem.setup_steps]
     )
@@ -168,6 +182,13 @@ def evaluate(
     )
     conditions = partition_conditions(problem)
     return steps, quantities, conditions, table
+
+
+def _grand_steps(problem: Problem, canon: Canonical) -> list[StatStep]:
+    from .grand import GrandCanonical, _setup_steps
+
+    assert isinstance(canon, GrandCanonical)  # noqa: S101 - narrowing for the type checker
+    return _setup_steps(problem, canon)
 
 
 def _checks(

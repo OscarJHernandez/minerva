@@ -197,6 +197,57 @@ def _tilted_spin_mean(r: StatMechResult) -> tuple[bool, str]:
     return agrees([("<sz>", value(r, "mean_sz", beta=b, h=h, d=d), h * math.tanh(b * w) / w)])
 
 
+def _grand(statistics: str) -> Judge:
+    """N, U, S and Var(N) of non-interacting particles, from the per-state occupation formulas."""
+    b, mu, eps, kb = 0.8, -0.3, 1.1, 1.7
+    states = [(0.0, 1), (eps, 1), (2 * eps, 2)]
+
+    def judge(r: StatMechResult) -> tuple[bool, str]:
+        n = {}
+        for e, _ in states:
+            x = b * (e - mu)
+            n[e] = {
+                "fermi": 1 / (math.exp(x) + 1),
+                "bose": 1 / (math.exp(x) - 1),
+                "boltzmann": math.exp(-x),
+            }[statistics]
+        total = sum(g * n[e] for e, g in states)
+        if statistics == "fermi":
+            var = sum(g * n[e] * (1 - n[e]) for e, g in states)
+            ent = -sum(
+                g * (n[e] * math.log(n[e]) + (1 - n[e]) * math.log(1 - n[e])) for e, g in states
+            )
+        elif statistics == "bose":
+            var = sum(g * n[e] * (1 + n[e]) for e, g in states)
+            ent = sum(
+                g * ((1 + n[e]) * math.log(1 + n[e]) - n[e] * math.log(n[e])) for e, g in states
+            )
+        else:
+            var = total
+            ent = sum(g * n[e] * (1 - math.log(n[e])) for e, g in states)
+        kw = {"beta": b, "mu": mu, "eps": eps, "k_B": kb}
+        return agrees(
+            [
+                ("N", value(r, "N", **kw), total),
+                ("U", value(r, "U", **kw), sum(g * e * n[e] for e, g in states)),
+                ("Var N", value(r, "Var_N", **kw), var),
+                ("S", value(r, "S", **kw), kb * ent),
+            ]
+        )
+
+    return judge
+
+
+def _binomial(n: int, k: int) -> Judge:
+    def judge(r: StatMechResult) -> tuple[bool, str]:
+        q = next(q for q in r.quantities if q.name == "Omega")
+        s_q = next(q for q in r.quantities if q.name == "S")
+        ok = q.text == str(math.comb(n, k)) and s_q.text == f"k_B*log({math.comb(n, k)})"
+        return ok, f"Omega = {q.text}, expected C({n}, {k}) = {math.comb(n, k)}"
+
+    return judge
+
+
 def _energy_derivative_identities(r: StatMechResult) -> tuple[bool, str]:
     """-d ln Z/d beta = U and d^2 ln Z/d beta^2 = Var(E) on the reference Z, by mpmath differentiation."""
     mp.mp.dps = 30
@@ -266,6 +317,12 @@ GAS = {
     "variables": [*BOX, *({"name": p} for p in ("px", "py", "pz"))],
     "phase_space_cell": "h**3",
 }
+POS_E = {"eps": ["positive"]}
+GRAND_LEVELS = [
+    {"energy": "0"},
+    {"energy": "eps"},
+    {"energy": "2*eps", "degeneracy": "2"},
+]
 QH = [["-h", "-d"], ["-d", "h"]]
 QSZ = [["1", "0"], ["0", "-1"]]
 QSX = [["0", "1"], ["1", "0"]]
@@ -483,6 +540,58 @@ CASES: list[Case] = [
         judge=_tilted_spin_mean,
     ),
     Case(
+        "fermi-dirac-thermodynamics",
+        "Bose and Fermi occupation numbers",
+        "per state n = 1/(e^x + 1), Var n = n(1 - n), entropy -[n ln n + (1 - n) ln(1 - n)]",
+        {
+            "ensemble": "grand_canonical",
+            "system": {"kind": "occupation", "statistics": "fermi", "levels": GRAND_LEVELS},
+            "assumptions": POS_E,
+            "action": "derive",
+            "quantities": ["N", "U", "S", "Var_N"],
+        },
+        judge=_grand("fermi"),
+    ),
+    Case(
+        "bose-einstein-thermodynamics",
+        "Bose and Fermi occupation numbers",
+        "per state n = 1/(e^x - 1), Var n = n(1 + n), entropy (1 + n) ln(1 + n) - n ln n",
+        {
+            "ensemble": "grand_canonical",
+            "system": {"kind": "occupation", "statistics": "bose", "levels": GRAND_LEVELS},
+            "assumptions": {"eps": ["positive"], "mu": ["negative"]},
+            "action": "derive",
+            "quantities": ["N", "U", "S", "Var_N"],
+        },
+        judge=_grand("bose"),
+    ),
+    Case(
+        "classical-counting-limit",
+        "Bose and Fermi occupation numbers",
+        "Poisson occupation: n = e^(-x), Var N = N, entropy n(1 - ln n) per state",
+        {
+            "ensemble": "grand_canonical",
+            "system": {"kind": "occupation", "statistics": "boltzmann", "levels": GRAND_LEVELS},
+            "assumptions": POS_E,
+            "action": "derive",
+            "quantities": ["N", "U", "S", "Var_N"],
+        },
+        judge=_grand("boltzmann"),
+    ),
+    Case(
+        "microcanonical-two-level-counting",
+        "microcanonical counting",
+        "Omega = C(N, k) microstates for N distinguishable two-level units with k excited",
+        {
+            "ensemble": "microcanonical",
+            "system": {"kind": "levels", "levels": [{"energy": "0"}, {"energy": "1"}]},
+            "copies": {"count": "40", "identical": False},
+            "total_energy": "16",
+            "action": "partition",
+        },
+        judge=_binomial(40, 16),
+    ),
+    Case(
         "independent-copies",
         "independent subsystems",
         "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
@@ -674,6 +783,61 @@ CASES: list[Case] = [
         },
         "refused",
         "not_hermitian",
+    ),
+    Case(
+        "bose-needs-mu-below-the-levels",
+        "invalid and divergent partition functions",
+        "n = 1/(e^x - 1) diverges for x <= 0: mu must be provably below every level",
+        {
+            "ensemble": "grand_canonical",
+            "system": {"kind": "occupation", "statistics": "bose", "levels": GRAND_LEVELS},
+            "assumptions": POS_E,
+            "action": "partition",
+        },
+        "refused",
+        "convergence_not_provable",
+    ),
+    Case(
+        "ensemble-is-not-substituted",
+        "invalid ensemble substitutions",
+        "an occupation system with a chemical potential belongs to the grand canonical ensemble",
+        {
+            "ensemble": "canonical",
+            "system": {"kind": "occupation", "statistics": "fermi", "levels": GRAND_LEVELS},
+            "assumptions": POS_E,
+            "action": "partition",
+        },
+        "refused",
+        "ensemble_mismatch",
+    ),
+    Case(
+        "heat-capacity-must-hold-mu-fixed",
+        "invalid ensemble substitutions",
+        "dU/dT in the grand canonical ensemble holds mu fixed; leaving it free is another derivative",
+        {
+            "ensemble": "grand_canonical",
+            "system": {"kind": "occupation", "statistics": "fermi", "levels": GRAND_LEVELS},
+            "assumptions": POS_E,
+            "action": "derive",
+            "quantities": [],
+            "partials": [{"of": "U", "variable": "T", "held_fixed": []}],
+        },
+        "refused",
+        "ensemble_mismatch",
+    ),
+    Case(
+        "energy-that-no-microstate-has",
+        "microcanonical counting",
+        "E = 9/2 is not a sum of four integer level energies",
+        {
+            "ensemble": "microcanonical",
+            "system": {"kind": "levels", "levels": [{"energy": "0"}, {"energy": "1"}]},
+            "copies": {"count": "4", "identical": False},
+            "total_energy": "9/2",
+            "action": "partition",
+        },
+        "refused",
+        "energy_not_attainable",
     ),
     Case(
         "complex-energy",

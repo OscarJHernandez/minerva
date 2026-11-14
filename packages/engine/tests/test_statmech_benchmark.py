@@ -60,6 +60,8 @@ def test_the_corpus_covers_the_requested_systems() -> None:
         "invalid and divergent partition functions",
         "quantum systems",
         "noncommuting quantum operators",
+        "Bose and Fermi occupation numbers",
+        "microcanonical counting",
     }
     assert len({c.id for c in CASES}) == len(CASES) and all(c.source for c in CASES)
     refusals = [c for c in CASES if c.expected == "refused"]
@@ -75,6 +77,7 @@ def test_the_corpus_covers_the_requested_systems() -> None:
         "coupling_not_linear",
         "operators_do_not_commute",
         "not_hermitian",
+        "energy_not_attainable",
     }
 
 

@@ -2435,8 +2435,10 @@ TOOLS["statistical_mechanics"] = Tool(
     "shown only if an independent enumeration or quadrature agreed; convergence of an infinite sum or "
     "integral is proved or the tool refuses (divergent, convergence_not_provable, not_separable). "
     "Conventions (phase-space cell, indistinguishable copies) and numbers for numerical evaluation belong "
-    "to the USER: the tool asks on its card, never choose them. Not supported: grand canonical and "
-    "microcanonical ensembles, quantum Hamiltonian matrices, asymptotic expansions.",
+    "to the USER: the tool asks on its card, never choose them. Also quantum systems given by an explicit "
+    "Hermitian matrix (operators are never assumed to commute), the grand canonical ensemble for Bose, "
+    "Fermi or classical-counting particles (chemical potential, particle-number fluctuations) and "
+    "microcanonical counting of microstates. Not supported: asymptotic expansions, lattice models.",
     StatMechArgs,
     run_statistical_mechanics,
 )

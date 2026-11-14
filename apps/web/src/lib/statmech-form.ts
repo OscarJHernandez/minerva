@@ -22,6 +22,10 @@ export interface StatForm {
   };
   /** Rows on separate lines, entries separated by `;` (a matrix in text syntax). */
   quantum: { hamiltonian: string; observableName: string; observable: string };
+  /** Particles in single-particle levels (the `levels` rows are reused); grand canonical. */
+  occupation: { statistics: "bose" | "fermi" | "boltzmann"; mu: string };
+  /** Count the microstates of fixed total energy (needs the copies); microcanonical. */
+  microcanonical: { on: boolean; energy: string };
   copies: { on: boolean; count: string; identical: "yes" | "no" | "" };
   temperature: "beta" | "T";
   parameters: string;
@@ -57,6 +61,20 @@ export const BASE_QUANTITIES: { id: StatQuantityName; label: string }[] = [
   { id: "Var_E", label: "Energy variance" },
 ];
 
+export const GRAND_QUANTITIES: { id: StatQuantityName; label: string }[] = [
+  { id: "Xi", label: "Grand partition function Ξ" },
+  { id: "lnXi", label: "ln Ξ" },
+  { id: "Omega", label: "Grand potential Ω" },
+  { id: "N", label: "Mean particle number N" },
+  { id: "U", label: "Internal energy U" },
+  { id: "S", label: "Entropy S" },
+  { id: "Var_N", label: "Number variance" },
+];
+
+export function quantityOptions(kind: StatKind): { id: StatQuantityName; label: string }[] {
+  return kind === "occupation" ? GRAND_QUANTITIES : BASE_QUANTITIES;
+}
+
 export const STATISTICS: { id: StatStatistic; label: string }[] = [
   { id: "mean", label: "mean" },
   { id: "variance", label: "variance" },
@@ -81,6 +99,8 @@ export function blankForm(): StatForm {
       cell: "",
     },
     quantum: { hamiltonian: "-h; -d\n-d; h", observableName: "sz", observable: "1; 0\n0; -1" },
+    occupation: { statistics: "fermi", mu: "mu" },
+    microcanonical: { on: false, energy: "" },
     copies: { on: false, count: "N", identical: "" },
     temperature: "beta",
     parameters: "",
@@ -123,6 +143,35 @@ export const EXAMPLES: { id: string; label: string; form: StatForm }[] = [
       kind: "quantum",
       assumptions: { h: ["positive"], d: ["positive"] },
       quantities: ["Z", "U", "S"],
+    },
+  },
+  {
+    id: "fermi-levels",
+    label: "Fermions in three levels (grand canonical)",
+    form: {
+      ...blankForm(),
+      kind: "occupation",
+      levels: [
+        { energy: "0", degeneracy: "1" },
+        { energy: "eps", degeneracy: "1" },
+        { energy: "2*eps", degeneracy: "2" },
+      ],
+      assumptions: { eps: ["positive"] },
+      quantities: ["lnXi", "Omega", "N", "U", "S"],
+    },
+  },
+  {
+    id: "two-level-counting",
+    label: "Counting microstates: N two-level units at fixed energy",
+    form: {
+      ...blankForm(),
+      levels: [
+        { energy: "0", degeneracy: "1" },
+        { energy: "1", degeneracy: "1" },
+      ],
+      assumptions: {},
+      copies: { on: true, count: "10", identical: "no" },
+      microcanonical: { on: true, energy: "4" },
     },
   },
   {
@@ -250,6 +299,21 @@ function system(form: StatForm): StatSystem | string {
         upper: d.upper.trim() || "oo",
       };
     }
+    case "occupation": {
+      const rows = form.levels.filter((l) => l.energy.trim() !== "");
+      if (rows.length === 0) return "Give at least one single-particle level.";
+      const mu = form.occupation.mu.trim() || "mu";
+      if (!NAME.test(mu)) return "Invalid name for the chemical potential.";
+      return {
+        kind: "occupation",
+        statistics: form.occupation.statistics,
+        levels: rows.map((l) => ({
+          energy: l.energy.trim(),
+          degeneracy: l.degeneracy.trim() || "1",
+        })),
+        mu,
+      };
+    }
     case "quantum": {
       const h = parseMatrix(form.quantum.hamiltonian);
       if (typeof h === "string") return h;
@@ -306,8 +370,20 @@ export function buildRequest(form: StatForm, action: StatAction): BuildResult {
   if (typeof parts === "string") return { ok: false, error: parts };
   const parameters = splitNames(form.parameters);
   if (parameters.some((p) => !NAME.test(p))) return { ok: false, error: "Invalid parameter name." };
+  const micro = form.kind === "levels" && form.microcanonical.on;
+  if (micro && !form.copies.on) {
+    return {
+      ok: false,
+      error: "Counting microstates needs the number of copies (N units share the energy).",
+    };
+  }
+  if (micro && form.microcanonical.energy.trim() === "") {
+    return { ok: false, error: "Give the fixed total energy." };
+  }
   const request: StatMechRequest = {
-    ensemble: "canonical",
+    ensemble:
+      form.kind === "occupation" ? "grand_canonical" : micro ? "microcanonical" : "canonical",
+    ...(micro ? { total_energy: form.microcanonical.energy.trim() } : {}),
     system: sys,
     format: "text",
     temperature: form.temperature,
@@ -359,7 +435,13 @@ export function restoreForm(request: StatMechRequest): StatForm {
   const form = blankForm();
   const sys = request.system;
   form.kind = sys.kind;
-  if (sys.kind === "levels") {
+  if (request.ensemble === "microcanonical") {
+    form.microcanonical = { on: true, energy: request.total_energy ?? "" };
+  }
+  if (sys.kind === "occupation") {
+    form.levels = sys.levels.map((l) => ({ energy: l.energy, degeneracy: l.degeneracy }));
+    form.occupation = { statistics: sys.statistics, mu: sys.mu };
+  } else if (sys.kind === "levels") {
     form.levels = sys.levels.map((l) => ({ energy: l.energy, degeneracy: l.degeneracy }));
   } else if (sys.kind === "level_family") {
     form.family = {

@@ -50,6 +50,7 @@ _STATUS_FOR_REASON: dict[Reason, Status] = {
     "convention_unconfirmed": Status.CONDITIONS_NOT_SATISFIED,
     "not_hermitian": Status.CONDITIONS_NOT_SATISFIED,
     "operators_do_not_commute": Status.CONDITIONS_NOT_SATISFIED,
+    "energy_not_attainable": Status.CONDITIONS_NOT_SATISFIED,
 }
 
 # Checks whose failure means the formula is not shown. A symbolic zero that is undecided is extra
@@ -136,7 +137,15 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
             trace.mark("analyze")
             result.diagnostics = _diagnostics(diag, trace)
             return result
-        if request.action == "partition":
+        if request.ensemble == "microcanonical":
+            from .micro import microcanonical
+
+            steps, quantities, conditions = microcanonical(problem, request, deadline)
+        elif request.action == "partition" and problem.kind == "occupation":
+            from .grand import partition_grand
+
+            steps, quantities, conditions = partition_grand(problem, request, deadline)
+        elif request.action == "partition":
             steps, quantities, conditions = derive(
                 problem,
                 request.model_copy(update={"quantities": ["Z", "lnZ"], "partials": []}),
@@ -178,9 +187,8 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
         )
         diag.points_checked = verification.points_checked
         diag.points_agreed = verification.points_agreed
-        if failed or verification.points_checked < (
-            1 if request.action == "evaluate" else MIN_POINTS
-        ):
+        exact_counts = request.action == "evaluate" or request.ensemble == "microcanonical"
+        if failed or verification.points_checked < (1 if exact_counts else MIN_POINTS):
             trace.mark("verify", "failed", "verification_failed")
             return _failure(
                 request,

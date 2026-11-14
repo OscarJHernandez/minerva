@@ -95,7 +95,37 @@ def _positive(assumptions: dict[str, list[str]], name: str) -> None:
     assumptions[name] = current
 
 
+def _check_ensemble(request: StatMechInput) -> None:
+    """The ensemble must match the system: no silent substitution of one ensemble for another."""
+    kind, ensemble = request.system.kind, request.ensemble
+    if kind == "occupation" and ensemble != "grand_canonical":
+        raise Refusal(
+            "ensemble_mismatch",
+            "an occupation system with a chemical potential belongs to the grand canonical ensemble; "
+            f"it was given as {ensemble.replace('_', ' ')}",
+        )
+    if ensemble == "grand_canonical" and kind != "occupation":
+        raise Refusal(
+            "ensemble_mismatch",
+            "the grand canonical ensemble needs single-particle levels with a statistic (an "
+            "occupation system); the other systems have a fixed number of particles",
+        )
+    if ensemble == "microcanonical" and kind != "levels":
+        raise Refusal(
+            "ensemble_mismatch",
+            "the microcanonical ensemble is treated for an explicit list of levels (counting "
+            "microstates of fixed total energy)",
+        )
+    if ensemble != "microcanonical" and request.total_energy is not None:
+        raise Refusal(
+            "ensemble_mismatch",
+            "a fixed total energy belongs to the microcanonical ensemble; the "
+            f"{ensemble.replace('_', ' ')} ensemble fixes the temperature instead",
+        )
+
+
 def build_problem(request: StatMechInput, limits: Limits) -> Problem:
+    _check_ensemble(request)
     names = [request.beta, request.T, request.k_B, *request.parameters]
     if len(set(names)) != len(names):
         raise Refusal("parse_error", "the temperature, k_B and parameter names must be distinct")
@@ -144,6 +174,10 @@ def build_problem(request: StatMechInput, limits: Limits) -> Problem:
         from .quantum import fill_quantum
 
         free |= fill_quantum(problem, system)
+    elif system.kind == "occupation":
+        from .grand import fill_occupation
+
+        free |= fill_occupation(problem, system)
     else:
         from .systems import fill_classical
 

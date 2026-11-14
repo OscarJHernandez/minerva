@@ -113,6 +113,38 @@
       "outcome": "correct"
     },
     {
+      "id": "fermi-dirac-thermodynamics",
+      "category": "Bose and Fermi occupation numbers",
+      "source": "per state n = 1/(e^x + 1), Var n = n(1 - n), entropy -[n ln n + (1 - n) ln(1 - n)]",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "bose-einstein-thermodynamics",
+      "category": "Bose and Fermi occupation numbers",
+      "source": "per state n = 1/(e^x - 1), Var n = n(1 + n), entropy (1 + n) ln(1 + n) - n ln n",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "classical-counting-limit",
+      "category": "Bose and Fermi occupation numbers",
+      "source": "Poisson occupation: n = e^(-x), Var N = N, entropy n(1 - ln n) per state",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "microcanonical-two-level-counting",
+      "category": "microcanonical counting",
+      "source": "Omega = C(N, k) microstates for N distinguishable two-level units with k excited",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
       "id": "independent-copies",
       "category": "independent subsystems",
       "source": "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
@@ -230,6 +262,38 @@
       "source": "a thermal state needs H equal to its conjugate transpose",
       "expected": "refused",
       "reason": "not_hermitian",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "bose-needs-mu-below-the-levels",
+      "category": "invalid and divergent partition functions",
+      "source": "n = 1/(e^x - 1) diverges for x <= 0: mu must be provably below every level",
+      "expected": "refused",
+      "reason": "convergence_not_provable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ensemble-is-not-substituted",
+      "category": "invalid ensemble substitutions",
+      "source": "an occupation system with a chemical potential belongs to the grand canonical ensemble",
+      "expected": "refused",
+      "reason": "ensemble_mismatch",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "heat-capacity-must-hold-mu-fixed",
+      "category": "invalid ensemble substitutions",
+      "source": "dU/dT in the grand canonical ensemble holds mu fixed; leaving it free is another derivative",
+      "expected": "refused",
+      "reason": "ensemble_mismatch",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "energy-that-no-microstate-has",
+      "category": "microcanonical counting",
+      "source": "E = 9/2 is not a sum of four integer level energies",
+      "expected": "refused",
+      "reason": "energy_not_attainable",
       "outcome": "refused_as_expected"
     },
     {
