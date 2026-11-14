@@ -18,10 +18,12 @@ from typing import Annotated, Any, Literal
 from minerva_engine import StatMechInput, StatMechResult
 from minerva_engine.statmech.models import (
     BaseQuantity,
+    ChainSystem,
     Coupling,
     DosSystem,
     FamilySystem,
     LevelsSystem,
+    Method,
     OccupationSystem,
     PhaseVariable,
     QuantumSystem,
@@ -51,7 +53,13 @@ class AgentClassical(BaseModel):
 
 
 AgentSystem = Annotated[
-    LevelsSystem | FamilySystem | DosSystem | AgentClassical | QuantumSystem | OccupationSystem,
+    LevelsSystem
+    | FamilySystem
+    | DosSystem
+    | AgentClassical
+    | QuantumSystem
+    | OccupationSystem
+    | ChainSystem,
     Field(discriminator="kind"),
 ]
 
@@ -73,13 +81,17 @@ class Partial(BaseModel):
 
 
 class StatMechArgs(BaseModel):
-    action: Literal["analyze", "partition", "derive", "expectation", "evaluate"] = Field(
-        default="partition",
-        description="analyze: which methods apply and which Minerva implements. partition: the "
-        "partition function (and level probabilities). derive: Z, lnZ, F, U, S, Var_E and partial "
-        "derivatives with a held-fixed set (heat capacity, pressure, susceptibility ...). expectation: "
-        "moments, variance, cumulants of the energy or of an observable given per level. evaluate: "
-        "numbers; it needs values only the USER can give, so it works through the card.",
+    action: Literal["analyze", "partition", "derive", "expectation", "evaluate", "approximate"] = (
+        Field(
+            default="partition",
+            description="analyze: which methods apply and which Minerva implements. partition: the "
+            "partition function (and level probabilities). derive: Z, lnZ, F, U, S, Var_E and partial "
+            "derivatives with a held-fixed set (heat capacity, pressure, susceptibility ...). expectation: "
+            "moments, variance, cumulants of the energy or of an observable given per level. evaluate: "
+            "numbers; it needs values only the USER can give, so it works through the card. approximate: one "
+            "of the methods in `method`, each reporting its assumptions, expansion parameter, order, "
+            "validity and a measured error; an approximation is never an identity.",
+        )
     )
     system: AgentSystem = Field(
         description="levels: explicit energies and degeneracies (with optional observables per "
@@ -90,7 +102,8 @@ class StatMechArgs(BaseModel):
         "assumed to commute, and Z = Tr exp(-beta H). occupation: independent particles in "
         "single-particle levels with a statistic (bose, fermi or boltzmann) for the grand canonical "
         "ensemble; Bose needs mu declared below every energy (for example mu negative, energies "
-        "nonnegative)."
+        "nonnegative). chain: a periodic one-dimensional chain by the transfer matrix: states (2 or 3 "
+        "site values), bond(s, t) symmetric, site(s), length N (a symbol or at most 14)."
     )
     ensemble: Literal["canonical", "grand_canonical", "microcanonical"] = Field(
         default="canonical",
@@ -131,6 +144,13 @@ class StatMechArgs(BaseModel):
         default_factory=list, max_length=6, description="Base quantities to derive."
     )
     partials: list[Partial] = Field(default_factory=list, max_length=6)
+    method: Method | None = Field(
+        default=None,
+        description="For action approximate: high_temperature (Taylor series of ln Z in beta, "
+        "needs ln Z analytic at beta = 0), low_temperature (levels with a decided order), stirling "
+        "(needs N indistinguishable copies, whose ln N! it replaces) or thermodynamic_limit (a chain "
+        "with a symbolic length N). `order` is the order of the expansion.",
+    )
     observable: str = Field(default="E", max_length=32)
     statistic: Statistic = "mean"
     order: int = Field(default=1, ge=1, le=4)
@@ -153,6 +173,7 @@ def build_request(args: StatMechArgs, answers: dict[str, Any]) -> StatMechInput:
     return StatMechInput(
         ensemble=args.ensemble,
         total_energy=args.total_energy,
+        method=args.method,
         system=system,
         copies=copies,
         temperature=args.temperature,

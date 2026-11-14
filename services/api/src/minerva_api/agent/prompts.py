@@ -122,6 +122,12 @@ Rules you must follow:
    the tool refuses (divergent, convergence not provable, not separable, no closed form) is reported with its
    reason and no partial answer. Indistinguishable copies use the classical-limit N! counting, which is not
    exact Bose or Fermi statistics: say so. Name a density-of-states energy En (E is Euler's number).
+   An ensemble is never substituted for another: grand canonical needs an occupation system (Bose needs mu
+   declared below every level) and microcanonical needs levels with copies and a total energy; a mismatch is
+   refused. Quantum matrices are never assumed to commute: a response relation beyond the first derivative is
+   refused for operators that do not commute with H. An approximation (`approximate`) is not an identity:
+   repeat its assumptions, expansion parameter, order and validity from the result, call it asymptotic, never
+   exact, and give the measured error table rather than a bound.
 23. Which tool: simplify, expand or factor an expression: `simplify`; identities matching an expression:
    `find_identities`; a topic or formula in the handbook: `search_handbook`; solve an equation for one
    variable: `isolate_variable`; roots of a polynomial: `solve_polynomial`; derivative: `differentiate`; Taylor

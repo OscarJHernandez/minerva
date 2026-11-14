@@ -62,6 +62,10 @@ def test_the_corpus_covers_the_requested_systems() -> None:
         "noncommuting quantum operators",
         "Bose and Fermi occupation numbers",
         "microcanonical counting",
+        "Ising chains",
+        "thermodynamic limits",
+        "high- and low-temperature expansions",
+        "Stirling approximation",
     }
     assert len({c.id for c in CASES}) == len(CASES) and all(c.source for c in CASES)
     refusals = [c for c in CASES if c.expected == "refused"]
@@ -78,6 +82,9 @@ def test_the_corpus_covers_the_requested_systems() -> None:
         "operators_do_not_commute",
         "not_hermitian",
         "energy_not_attainable",
+        "singular_expansion_point",
+        "ordering_not_decided",
+        "nothing_to_approximate",
     }
 
 

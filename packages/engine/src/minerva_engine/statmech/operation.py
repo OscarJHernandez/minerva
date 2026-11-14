@@ -51,6 +51,9 @@ _STATUS_FOR_REASON: dict[Reason, Status] = {
     "not_hermitian": Status.CONDITIONS_NOT_SATISFIED,
     "operators_do_not_commute": Status.CONDITIONS_NOT_SATISFIED,
     "energy_not_attainable": Status.CONDITIONS_NOT_SATISFIED,
+    "singular_expansion_point": Status.UNSUPPORTED,
+    "ordering_not_decided": Status.CONDITIONS_NOT_SATISFIED,
+    "nothing_to_approximate": Status.UNSUPPORTED,
 }
 
 # Checks whose failure means the formula is not shown. A symbolic zero that is undecided is extra
@@ -64,6 +67,8 @@ _DECIDING = frozenset(
         "nonnegative_variance",
         "free_energy_identity",
         "spectral_decomposition",
+        "series_check",
+        "residual_order",
     }
 )
 
@@ -137,7 +142,12 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
             trace.mark("analyze")
             result.diagnostics = _diagnostics(diag, trace)
             return result
-        if request.ensemble == "microcanonical":
+        approximation = None
+        if request.action == "approximate":
+            from .approximate import approximate
+
+            steps, quantities, conditions, approximation = approximate(problem, request, deadline)
+        elif request.ensemble == "microcanonical":
             from .micro import microcanonical
 
             steps, quantities, conditions = microcanonical(problem, request, deadline)
@@ -187,7 +197,9 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
         )
         diag.points_checked = verification.points_checked
         diag.points_agreed = verification.points_agreed
-        exact_counts = request.action == "evaluate" or request.ensemble == "microcanonical"
+        exact_counts = (
+            request.action in {"evaluate", "approximate"} or request.ensemble == "microcanonical"
+        )
         if failed or verification.points_checked < (1 if exact_counts else MIN_POINTS):
             trace.mark("verify", "failed", "verification_failed")
             return _failure(
@@ -208,6 +220,7 @@ def statmech(request: StatMechInput, limits: Limits) -> StatMechResult:
             quantities=quantities,
             conditions=conditions,
             table=table,
+            approximation=approximation,
             verification=verification,
             diagnostics=_diagnostics(diag, trace),
             notes=notes,

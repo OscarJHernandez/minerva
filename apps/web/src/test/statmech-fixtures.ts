@@ -139,3 +139,47 @@ export const classicalArgs: StatToolArgs = {
   },
   quantities: ["U"],
 };
+
+export const approximated: StatMechResult = {
+  ...twoLevel,
+  action: "approximate",
+  quantities: [
+    {
+      name: "lnZ_series",
+      title: "ln Z, order 4 in beta",
+      latex: "\\ln 2 - \\frac{\\beta \\epsilon}{2}",
+      text: "log(2) - beta*epsilon/2",
+      result_kind: "asymptotic",
+      held_fixed: [],
+      variable: null,
+      route: "Taylor series about beta = 0",
+      checks: [
+        { name: "series_check", subject: "lnZ", passed: true, points: 4, agreed: 4, detail: "" },
+        { name: "residual_order", subject: "lnZ", passed: true, points: 2, agreed: 2, detail: "" },
+      ],
+    },
+  ],
+  approximation: {
+    method: "high_temperature",
+    assumptions: ["beta is small", "ln Z is analytic at beta = 0"],
+    parameter: "beta",
+    order: "truncation error O(beta^5) for ln Z",
+    validity: "inside the radius of convergence of the series",
+    error_table: [
+      {
+        label: "beta = 0.3",
+        exact: "0.437488",
+        approximate: "0.437472",
+        error: "-1.57699e-5",
+        note: "ln Z",
+      },
+      {
+        label: "beta = 0.15",
+        exact: "0.554355",
+        approximate: "0.554355",
+        error: "-2.51409e-7",
+        note: "ln Z",
+      },
+    ],
+  },
+};

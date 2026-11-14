@@ -33,6 +33,7 @@ const ACTIONS: { id: StatAction; label: string }[] = [
   { id: "derive", label: "Derive quantities" },
   { id: "expectation", label: "Thermal average" },
   { id: "evaluate", label: "Evaluate numbers" },
+  { id: "approximate", label: "Approximate" },
 ];
 
 const KINDS: { id: StatKind; label: string }[] = [
@@ -42,6 +43,7 @@ const KINDS: { id: StatKind; label: string }[] = [
   { id: "classical", label: "Classical Hamiltonian" },
   { id: "quantum", label: "Quantum (matrix H)" },
   { id: "occupation", label: "Particles (Bose, Fermi)" },
+  { id: "chain", label: "Chain (transfer matrix)" },
 ];
 
 interface Run {
@@ -357,6 +359,39 @@ export function StatMechWorkbench({
           </div>
         )}
 
+        {form.kind === "chain" && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Labelled label="Site values (two or three, comma-separated)">
+              <input
+                className={FIELD}
+                value={form.chain.states}
+                onChange={(e) => set("chain", { ...form.chain, states: e.target.value })}
+              />
+            </Labelled>
+            <Labelled label="Length N (a symbol declared integer and positive, or up to 14)">
+              <input
+                className={FIELD}
+                value={form.chain.length}
+                onChange={(e) => set("chain", { ...form.chain, length: e.target.value })}
+              />
+            </Labelled>
+            <Labelled label="Bond energy bond(s, t), symmetric in s and t">
+              <input
+                className={FIELD}
+                value={form.chain.bond}
+                onChange={(e) => set("chain", { ...form.chain, bond: e.target.value })}
+              />
+            </Labelled>
+            <Labelled label="Site energy site(s)">
+              <input
+                className={FIELD}
+                value={form.chain.site}
+                onChange={(e) => set("chain", { ...form.chain, site: e.target.value })}
+              />
+            </Labelled>
+          </div>
+        )}
+
         {form.kind === "quantum" && (
           <div className="space-y-2">
             <Labelled label="Hamiltonian matrix H: one row per line, entries separated by ; (I is the imaginary unit)">
@@ -651,6 +686,38 @@ export function StatMechWorkbench({
             Add a partial derivative (heat capacity, pressure, …)
           </button>
         </fieldset>
+
+        <details className="rounded border border-rule p-3">
+          <summary className="cursor-pointer text-sm font-medium">Approximation options</summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Labelled label="Method (an approximation is never an identity)">
+              <select
+                className={FIELD}
+                value={form.method}
+                onChange={(e) => set("method", e.target.value as typeof form.method)}
+              >
+                <option value="high_temperature">High-temperature expansion of ln Z</option>
+                <option value="low_temperature">
+                  Low-temperature limit (decided order of levels)
+                </option>
+                <option value="stirling">Stirling for ln N! (indistinguishable copies)</option>
+                <option value="thermodynamic_limit">
+                  Thermodynamic limit of a chain (N symbol)
+                </option>
+              </select>
+            </Labelled>
+            <Labelled label="Order of the expansion (1 to 4)">
+              <input
+                className={FIELD}
+                type="number"
+                min={1}
+                max={4}
+                value={form.order}
+                onChange={(e) => set("order", Number(e.target.value) || 1)}
+              />
+            </Labelled>
+          </div>
+        </details>
 
         <details className="rounded border border-rule p-3">
           <summary className="cursor-pointer text-sm font-medium">Thermal average options</summary>

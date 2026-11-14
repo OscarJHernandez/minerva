@@ -14,6 +14,7 @@ CI does through `tests/test_statmech_benchmark.py`. Latencies are recorded and n
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 import sys
@@ -248,6 +249,96 @@ def _binomial(n: int, k: int) -> Judge:
     return judge
 
 
+def _ising_ring(n: int, beta: float, j: float, h: float) -> float:
+    """Brute-force partition function of a ring of n spins, H = -J sum s s' - h sum s."""
+    total = 0.0
+    for spins in itertools.product((1, -1), repeat=n):
+        energy = -h * sum(spins) - j * sum(spins[i] * spins[(i + 1) % n] for i in range(n))
+        total += math.exp(-beta * energy)
+    return total
+
+
+def _ising(r: StatMechResult) -> tuple[bool, str]:
+    b, j, h, n = 0.6, 0.9, 0.4, 7
+    return agrees(
+        [
+            (
+                "Z (brute force over 2^7 spin configurations)",
+                value(r, "Z", beta=b, J=j, h=h, N=n),
+                _ising_ring(n, b, j, h),
+            )
+        ]
+    )
+
+
+def _ising_zero_field(r: StatMechResult) -> tuple[bool, str]:
+    b, j, n = 0.7, 1.3, 6
+    want = (2 * math.cosh(b * j)) ** n + (2 * math.sinh(b * j)) ** n
+    return agrees([("Z = (2 cosh bJ)^N + (2 sinh bJ)^N", value(r, "Z", beta=b, J=j, N=n), want)])
+
+
+def _ising_limit(r: StatMechResult) -> tuple[bool, str]:
+    b, j, h = 0.6, 0.9, 0.4
+    lam = math.exp(b * j) * math.cosh(b * h) + math.sqrt(
+        math.exp(2 * b * j) * math.sinh(b * h) ** 2 + math.exp(-2 * b * j)
+    )
+    errors = [
+        abs(float(row.error)) for row in (r.approximation.error_table if r.approximation else [])
+    ]
+    decreasing = (
+        bool(errors) and errors == sorted(errors, reverse=True) and errors[-1] < errors[0] / 100
+    )
+    ok, detail = agrees(
+        [
+            (
+                "f_inf = -(1/beta) ln lambda_max",
+                value(r, "f_inf", beta=b, J=j, h=h),
+                -math.log(lam) / b,
+            )
+        ]
+    )
+    return ok and decreasing, detail + (
+        "" if decreasing else "; the finite-size error does not shrink"
+    )
+
+
+def _high_temperature(r: StatMechResult) -> tuple[bool, str]:
+    b, e = 0.4, 0.9
+    x = b * e
+    series = math.log(2) - x / 2 + x**2 / 8 - x**4 / 192  # ln(1 + e^-x) to fourth order
+    approx = r.approximation
+    scaled = [float(row.error) for row in (approx.error_table if approx else [])]
+    falls = len(scaled) == 3 and abs(scaled[0] / scaled[1]) > 2**5 / 3
+    ok, detail = agrees([("ln Z series", value(r, "lnZ_series", beta=b, epsilon=e), series)])
+    return ok and falls, detail + (
+        "" if falls else "; the error does not fall at the claimed order"
+    )
+
+
+def _low_temperature(r: StatMechResult) -> tuple[bool, str]:
+    b, e = 4.0, 1.0
+    want = e * 0.5 * math.exp(-b * e) + 3 * e * 1.0 * math.exp(-3 * b * e)
+    return agrees(
+        [("U to first order in the excited levels", value(r, "U_low", beta=b, eps=e), want)]
+    )
+
+
+def _sackur_tetrode(r: StatMechResult) -> tuple[bool, str]:
+    b, m, h, v, n, kb = 0.8, 1.3, 1.1, 2.5, 50, 1.7
+    kw = {"beta": b, "m": m, "h": h, "V": v, "N": n, "k_B": kb}
+    st = kb * n * (math.log(v / n * (2 * math.pi * m / (b * h**2)) ** 1.5) + 2.5)
+    return agrees(
+        [
+            ("Sackur-Tetrode entropy", value(r, "S_leading", **kw), st),
+            (
+                "with the 1/2 ln(2 pi N) term",
+                value(r, "S_stirling", **kw),
+                st - kb * 0.5 * math.log(2 * math.pi * n),
+            ),
+        ]
+    )
+
+
 def _energy_derivative_identities(r: StatMechResult) -> tuple[bool, str]:
     """-d ln Z/d beta = U and d^2 ln Z/d beta^2 = Var(E) on the reference Z, by mpmath differentiation."""
     mp.mp.dps = 30
@@ -318,6 +409,14 @@ GAS = {
     "phase_space_cell": "h**3",
 }
 POS_E = {"eps": ["positive"]}
+ISING_CHAIN = {
+    "kind": "chain",
+    "states": ["1", "-1"],
+    "bond": "-J*s*t",
+    "site": "-h*s",
+    "length": "N",
+}
+ISING_ASSUME = {"J": ["real"], "h": ["real"], "N": ["integer", "positive"]}
 GRAND_LEVELS = [
     {"energy": "0"},
     {"energy": "eps"},
@@ -592,6 +691,94 @@ CASES: list[Case] = [
         judge=_binomial(40, 16),
     ),
     Case(
+        "ising-ring-partition-function",
+        "Ising chains",
+        "Z of a ring of 7 spins in a field, summed over all 2^7 configurations",
+        {
+            "system": ISING_CHAIN,
+            "assumptions": ISING_ASSUME,
+            "action": "derive",
+            "quantities": ["Z"],
+        },
+        judge=_ising,
+    ),
+    Case(
+        "ising-zero-field-closed-form",
+        "Ising chains",
+        "Z = (2 cosh beta J)^N + (2 sinh beta J)^N for a ring without a field",
+        {
+            "system": {**ISING_CHAIN, "site": "0"},
+            "assumptions": {"J": ["positive"], "N": ["integer", "positive"]},
+            "action": "derive",
+            "quantities": ["Z"],
+        },
+        judge=_ising_zero_field,
+    ),
+    Case(
+        "ising-thermodynamic-limit",
+        "thermodynamic limits",
+        "f = -(1/beta) ln lambda_max with lambda_max = e^(bJ) cosh(bh) + sqrt(e^(2bJ) sinh^2(bh) + e^(-2bJ)); "
+        "finite-size error from brute force falls exponentially",
+        {
+            "system": ISING_CHAIN,
+            "assumptions": ISING_ASSUME,
+            "action": "approximate",
+            "method": "thermodynamic_limit",
+        },
+        judge=_ising_limit,
+    ),
+    Case(
+        "high-temperature-expansion",
+        "high- and low-temperature expansions",
+        "ln(1 + e^-x) = ln 2 - x/2 + x^2/8 - x^4/192 + ...; the error falls at O(beta^5)",
+        {
+            "system": TWO,
+            "assumptions": POS_EPS,
+            "action": "approximate",
+            "method": "high_temperature",
+            "order": 4,
+        },
+        judge=_high_temperature,
+    ),
+    Case(
+        "low-temperature-corrections",
+        "high- and low-temperature expansions",
+        "U = E0 + sum_j (g_j/g_0) eps_j e^(-beta eps_j) to first order, levels 0 (g=2), eps, 3 eps (g=2)",
+        {
+            "system": {
+                "kind": "levels",
+                "levels": [
+                    {"energy": "0", "degeneracy": "2"},
+                    {"energy": "eps"},
+                    {"energy": "3*eps", "degeneracy": "2"},
+                ],
+            },
+            "assumptions": POS_E,
+            "action": "approximate",
+            "method": "low_temperature",
+        },
+        judge=_low_temperature,
+    ),
+    Case(
+        "stirling-sackur-tetrode",
+        "Stirling approximation",
+        "S = N k [ln(V/N (2 pi m/(beta h^2))^(3/2)) + 5/2] from the exact ln Z and Stirling's ln N!",
+        {
+            "system": GAS,
+            "copies": {"count": "N", "identical": True},
+            "parameters": ["V"],
+            "assumptions": {
+                "m": ["positive"],
+                "h": ["positive"],
+                "V": ["positive"],
+                "N": ["integer", "positive"],
+            },
+            "action": "approximate",
+            "method": "stirling",
+        },
+        judge=_sackur_tetrode,
+    ),
+    Case(
         "independent-copies",
         "independent subsystems",
         "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
@@ -838,6 +1025,54 @@ CASES: list[Case] = [
         },
         "refused",
         "energy_not_attainable",
+    ),
+    Case(
+        "expansion-at-a-singular-point",
+        "invalid saddle-point and expansion points",
+        "ln Z of an oscillator is not analytic at beta = 0 (Z ~ 1/beta): no Taylor series",
+        {
+            "system": {"kind": "level_family", "energy": "hbar*omega*(n + 1/2)"},
+            "assumptions": {"hbar": ["positive"], "omega": ["positive"]},
+            "action": "approximate",
+            "method": "high_temperature",
+            "order": 2,
+        },
+        "refused",
+        "singular_expansion_point",
+    ),
+    Case(
+        "low-temperature-order-is-not-decided",
+        "invalid saddle-point and expansion points",
+        "which of two unrelated levels is the ground level cannot be decided",
+        {
+            "system": {"kind": "levels", "levels": [{"energy": "a"}, {"energy": "b"}]},
+            "assumptions": {"a": ["real"], "b": ["real"]},
+            "action": "approximate",
+            "method": "low_temperature",
+        },
+        "refused",
+        "ordering_not_decided",
+    ),
+    Case(
+        "stirling-needs-a-ln-n-factorial",
+        "Stirling approximation",
+        "without indistinguishable copies there is no ln N! to approximate",
+        {"system": TWO, "assumptions": POS_EPS, "action": "approximate", "method": "stirling"},
+        "refused",
+        "nothing_to_approximate",
+    ),
+    Case(
+        "thermodynamic-limit-needs-a-symbolic-length",
+        "thermodynamic limits",
+        "a fixed length has no limit N -> infinity to study",
+        {
+            "system": {**ISING_CHAIN, "length": "8"},
+            "assumptions": {"J": ["real"], "h": ["real"]},
+            "action": "approximate",
+            "method": "thermodynamic_limit",
+        },
+        "refused",
+        "assumptions_insufficient",
     ),
     Case(
         "complex-energy",

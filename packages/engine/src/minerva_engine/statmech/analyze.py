@@ -13,6 +13,7 @@ from .setup import Problem
 # Methods Minerva can run today. Later phases add to this set as they land.
 IMPLEMENTED: frozenset[str] = frozenset(
     {
+        "transfer_matrix",
         "ratio_test_sum",
         "dos_integral",
         "phase_space_factorisation",
@@ -62,6 +63,16 @@ def _structure(problem: Problem) -> MethodSuggestion | None:
             implemented=True,
             why="Z is the Laplace transform of rho(E): evaluated by the verified definite integrator "
             "for E^k rho e^(-beta E), k = 0, 1, 2, which also justifies differentiating under the integral",
+        )
+    if kind == "chain":
+        return MethodSuggestion(
+            id="transfer_matrix",
+            title="Transfer matrix of a periodic chain",
+            applies=True,
+            implemented=True,
+            why="nearest-neighbour coupling on a ring: Z = Tr T^N from the eigenvalues of a small "
+            "matrix, checked against brute-force enumeration; the thermodynamic limit follows from "
+            "the dominant eigenvalue (Perron-Frobenius)",
         )
     if kind == "classical":
         return MethodSuggestion(

@@ -145,6 +145,54 @@
       "outcome": "correct"
     },
     {
+      "id": "ising-ring-partition-function",
+      "category": "Ising chains",
+      "source": "Z of a ring of 7 spins in a field, summed over all 2^7 configurations",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "ising-zero-field-closed-form",
+      "category": "Ising chains",
+      "source": "Z = (2 cosh beta J)^N + (2 sinh beta J)^N for a ring without a field",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "ising-thermodynamic-limit",
+      "category": "thermodynamic limits",
+      "source": "f = -(1/beta) ln lambda_max with lambda_max = e^(bJ) cosh(bh) + sqrt(e^(2bJ) sinh^2(bh) + e^(-2bJ)); finite-size error from brute force falls exponentially",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "high-temperature-expansion",
+      "category": "high- and low-temperature expansions",
+      "source": "ln(1 + e^-x) = ln 2 - x/2 + x^2/8 - x^4/192 + ...; the error falls at O(beta^5)",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "low-temperature-corrections",
+      "category": "high- and low-temperature expansions",
+      "source": "U = E0 + sum_j (g_j/g_0) eps_j e^(-beta eps_j) to first order, levels 0 (g=2), eps, 3 eps (g=2)",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "stirling-sackur-tetrode",
+      "category": "Stirling approximation",
+      "source": "S = N k [ln(V/N (2 pi m/(beta h^2))^(3/2)) + 5/2] from the exact ln Z and Stirling's ln N!",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
       "id": "independent-copies",
       "category": "independent subsystems",
       "source": "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
@@ -294,6 +342,38 @@
       "source": "E = 9/2 is not a sum of four integer level energies",
       "expected": "refused",
       "reason": "energy_not_attainable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "expansion-at-a-singular-point",
+      "category": "invalid saddle-point and expansion points",
+      "source": "ln Z of an oscillator is not analytic at beta = 0 (Z ~ 1/beta): no Taylor series",
+      "expected": "refused",
+      "reason": "singular_expansion_point",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "low-temperature-order-is-not-decided",
+      "category": "invalid saddle-point and expansion points",
+      "source": "which of two unrelated levels is the ground level cannot be decided",
+      "expected": "refused",
+      "reason": "ordering_not_decided",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "stirling-needs-a-ln-n-factorial",
+      "category": "Stirling approximation",
+      "source": "without indistinguishable copies there is no ln N! to approximate",
+      "expected": "refused",
+      "reason": "nothing_to_approximate",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "thermodynamic-limit-needs-a-symbolic-length",
+      "category": "thermodynamic limits",
+      "source": "a fixed length has no limit N -> infinity to study",
+      "expected": "refused",
+      "reason": "assumptions_insufficient",
       "outcome": "refused_as_expected"
     },
     {

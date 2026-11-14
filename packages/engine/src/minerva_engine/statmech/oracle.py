@@ -44,11 +44,22 @@ def sample_points(
     out: list[Point] = []
     with mp.workdps(DPS):
         for _ in range(count):
-            exact = {s: sample_symbol(s, rng) for s in symbols}
+            exact = {s: _generic(s, rng) for s in symbols}
             point: Point = {s: _mp(v) for s, v in exact.items()}
             point[problem.T] = 1 / (point[problem.k_B] * point[problem.beta])
             out.append(point)
     return out
+
+
+def _generic(symbol: sp.Symbol, rng: random.Random) -> sp.Rational:
+    """A sample that respects the assumptions and is not zero: closed forms from eigenvalues and
+    derivatives are 0/0 at special points, and the parameters are generic."""
+    value = sample_symbol(symbol, rng)
+    for _ in range(12):
+        if value != 0:
+            break
+        value = sample_symbol(symbol, rng)
+    return value
 
 
 def _mp(value: sp.Expr) -> Any:

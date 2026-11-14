@@ -178,6 +178,10 @@ def build_problem(request: StatMechInput, limits: Limits) -> Problem:
         from .grand import fill_occupation
 
         free |= fill_occupation(problem, system)
+    elif system.kind == "chain":
+        from .lattice import fill_chain
+
+        free |= fill_chain(problem, system)
     else:
         from .systems import fill_classical
 

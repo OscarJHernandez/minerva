@@ -2,6 +2,7 @@ import type {
   StatAction,
   StatKind,
   StatMechRequest,
+  StatMethodName,
   StatPartial,
   StatQuantityName,
   StatStatistic,
@@ -22,6 +23,10 @@ export interface StatForm {
   };
   /** Rows on separate lines, entries separated by `;` (a matrix in text syntax). */
   quantum: { hamiltonian: string; observableName: string; observable: string };
+  /** A periodic chain by the transfer matrix: site values separated by `,`, bond(s, t), site(s). */
+  chain: { states: string; bond: string; site: string; length: string };
+  /** The approximation to apply (its order is `order`). */
+  method: StatMethodName;
   /** Particles in single-particle levels (the `levels` rows are reused); grand canonical. */
   occupation: { statistics: "bose" | "fermi" | "boltzmann"; mu: string };
   /** Count the microstates of fixed total energy (needs the copies); microcanonical. */
@@ -99,6 +104,8 @@ export function blankForm(): StatForm {
       cell: "",
     },
     quantum: { hamiltonian: "-h; -d\n-d; h", observableName: "sz", observable: "1; 0\n0; -1" },
+    chain: { states: "1, -1", bond: "-J*s*t", site: "-h*s", length: "N" },
+    method: "high_temperature",
     occupation: { statistics: "fermi", mu: "mu" },
     microcanonical: { on: false, energy: "" },
     copies: { on: false, count: "N", identical: "" },
@@ -172,6 +179,17 @@ export const EXAMPLES: { id: string; label: string; form: StatForm }[] = [
       assumptions: {},
       copies: { on: true, count: "10", identical: "no" },
       microcanonical: { on: true, energy: "4" },
+    },
+  },
+  {
+    id: "ising-chain",
+    label: "Ising ring in a field (transfer matrix)",
+    form: {
+      ...blankForm(),
+      kind: "chain",
+      assumptions: { J: ["real"], h: ["real"], N: ["integer", "positive"] },
+      quantities: ["Z", "U"],
+      method: "thermodynamic_limit",
     },
   },
   {
@@ -299,6 +317,20 @@ function system(form: StatForm): StatSystem | string {
         upper: d.upper.trim() || "oo",
       };
     }
+    case "chain": {
+      const states = splitNames(form.chain.states.replace(/,/g, " "));
+      if (states.length < 2 || states.length > 3) return "Give two or three site values.";
+      if (!form.chain.bond.trim()) return "Give the bond energy as an expression in s and t.";
+      if (!form.chain.length.trim())
+        return "Give the length N (a symbol or a number of at most 14).";
+      return {
+        kind: "chain",
+        states,
+        bond: form.chain.bond.trim(),
+        site: form.chain.site.trim() || "0",
+        length: form.chain.length.trim(),
+      };
+    }
     case "occupation": {
       const rows = form.levels.filter((l) => l.energy.trim() !== "");
       if (rows.length === 0) return "Give at least one single-particle level.";
@@ -409,6 +441,10 @@ export function buildRequest(form: StatForm, action: StatAction): BuildResult {
     request.statistic = form.statistic;
     request.order = form.order;
   }
+  if (action === "approximate") {
+    request.method = form.method;
+    request.order = form.order;
+  }
   if (action === "evaluate") {
     const values = parseValues(form.values);
     if (typeof values === "string") return { ok: false, error: values };
@@ -438,7 +474,15 @@ export function restoreForm(request: StatMechRequest): StatForm {
   if (request.ensemble === "microcanonical") {
     form.microcanonical = { on: true, energy: request.total_energy ?? "" };
   }
-  if (sys.kind === "occupation") {
+  if (request.method) form.method = request.method;
+  if (sys.kind === "chain") {
+    form.chain = {
+      states: sys.states.join(", "),
+      bond: sys.bond,
+      site: sys.site ?? "0",
+      length: sys.length,
+    };
+  } else if (sys.kind === "occupation") {
     form.levels = sys.levels.map((l) => ({ energy: l.energy, degeneracy: l.degeneracy }));
     form.occupation = { statistics: sys.statistics, mu: sys.mu };
   } else if (sys.kind === "levels") {

@@ -164,4 +164,29 @@ describe("statmech form", () => {
     const restored = restoreForm(built.request);
     expect(restored.microcanonical).toEqual({ on: true, energy: "4" });
   });
+
+  it("builds a chain and an approximation request with the method and order the user chose", () => {
+    const form = EXAMPLES.find((e) => e.id === "ising-chain")!.form;
+    const built = buildRequest({ ...form, order: 3 }, "approximate");
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.request.system).toEqual({
+      kind: "chain",
+      states: ["1", "-1"],
+      bond: "-J*s*t",
+      site: "-h*s",
+      length: "N",
+    });
+    expect(built.request.action).toBe("approximate");
+    expect(built.request.method).toBe("thermodynamic_limit");
+    expect(built.request.order).toBe(3);
+    expect(restoreForm(built.request).method).toBe("thermodynamic_limit");
+    const one = { ...form, chain: { ...form.chain, states: "1" } };
+    expect(buildRequest(one, "partition").ok).toBe(false);
+    const noBond = { ...form, chain: { ...form.chain, bond: " " } };
+    expect(buildRequest(noBond, "partition")).toEqual({
+      ok: false,
+      error: "Give the bond energy as an expression in s and t.",
+    });
+  });
 });

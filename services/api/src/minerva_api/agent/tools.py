@@ -2438,7 +2438,10 @@ TOOLS["statistical_mechanics"] = Tool(
     "to the USER: the tool asks on its card, never choose them. Also quantum systems given by an explicit "
     "Hermitian matrix (operators are never assumed to commute), the grand canonical ensemble for Bose, "
     "Fermi or classical-counting particles (chemical potential, particle-number fluctuations) and "
-    "microcanonical counting of microstates. Not supported: asymptotic expansions, lattice models.",
+    "microcanonical counting of microstates. Also approximations that report assumptions, order, validity and a measured error: high- and "
+    "low-temperature expansions, Stirling's ln N!, and a one-dimensional chain by the transfer matrix with "
+    "its thermodynamic limit. Not supported: saddle-point and Laplace methods, mean field, Legendre "
+    "transforms, interacting classical systems.",
     StatMechArgs,
     run_statistical_mechanics,
 )

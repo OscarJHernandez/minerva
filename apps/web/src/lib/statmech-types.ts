@@ -3,8 +3,17 @@ import type { Status } from "./types";
 /** Mirrors `minerva_engine.statmech.models`: the request is the whole problem, results are checked. */
 
 export type StatKind =
-  "levels" | "level_family" | "density_of_states" | "classical" | "quantum" | "occupation";
-export type StatAction = "analyze" | "partition" | "derive" | "expectation" | "evaluate";
+  | "levels"
+  | "level_family"
+  | "density_of_states"
+  | "classical"
+  | "quantum"
+  | "occupation"
+  | "chain";
+export type StatAction =
+  "analyze" | "partition" | "derive" | "expectation" | "evaluate" | "approximate";
+export type StatMethodName =
+  "high_temperature" | "low_temperature" | "stirling" | "thermodynamic_limit";
 export type StatQuantityName =
   "Z" | "lnZ" | "F" | "U" | "S" | "Var_E" | "Xi" | "lnXi" | "Omega" | "N" | "Var_N";
 export type StatStatistic =
@@ -33,6 +42,15 @@ export type StatSystem =
       density: string;
       lower: string;
       upper: string;
+    }
+  | {
+      kind: "chain";
+      /** Two or three values of a site; the bond must be symmetric in (s, t). */
+      states: string[];
+      bond: string;
+      site?: string;
+      /** A symbol (integer, positive) or a number of at most 14. */
+      length: string;
     }
   | {
       kind: "occupation";
@@ -78,6 +96,7 @@ export interface StatMechRequest {
   ensemble?: "canonical" | "grand_canonical" | "microcanonical";
   /** Microcanonical only: the fixed total energy (a rational number). */
   total_energy?: string | null;
+  method?: StatMethodName | null;
   system: StatSystem;
   copies?: { count: string; identical: boolean | null } | null;
   format?: "text" | "latex";
@@ -161,6 +180,21 @@ export interface StatMechResult {
     note: string;
   };
   notes: string[];
+  /** For action `approximate`: what it assumes, expands in and costs, measured, never a bound. */
+  approximation?: {
+    method: StatMethodName;
+    assumptions: string[];
+    parameter: string;
+    order: string;
+    validity: string;
+    error_table: {
+      label: string;
+      exact: string;
+      approximate: string;
+      error: string;
+      note: string;
+    }[];
+  } | null;
   message: string;
   duration_ms: number;
   calculation_id?: string | null;

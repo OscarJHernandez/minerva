@@ -307,6 +307,67 @@ export function StatMechPanel({
         </div>
       )}
 
+      {ok && result.approximation && (
+        <section
+          aria-label="Approximation"
+          className="mt-4 rounded border border-warn p-3"
+          data-testid="statmech-approximation"
+        >
+          <h4 className="text-sm font-medium">
+            An approximation, not an identity ({result.approximation.method.replace(/_/g, " ")})
+          </h4>
+          <dl className="mt-2 space-y-1 text-sm">
+            <div>
+              <dt className="inline text-muted">Expansion parameter: </dt>
+              <dd className="inline">{result.approximation.parameter}</dd>
+            </div>
+            <div>
+              <dt className="inline text-muted">Expected accuracy: </dt>
+              <dd className="inline">{result.approximation.order}</dd>
+            </div>
+            <div>
+              <dt className="inline text-muted">Valid: </dt>
+              <dd className="inline">{result.approximation.validity}</dd>
+            </div>
+          </dl>
+          <p className="mt-2 text-xs text-muted">Assumptions</p>
+          <ul className="list-disc pl-5 text-sm">
+            {result.approximation.assumptions.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+          {result.approximation.error_table.length > 0 && (
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <caption className="mb-1 text-left text-muted">
+                  Measured against the independent evaluation (a measurement, not a bound)
+                </caption>
+                <thead>
+                  <tr>
+                    {["", "exact", "approximate", "error", ""].map((h, i) => (
+                      <th key={i} className="pr-3 font-medium">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.approximation.error_table.map((row) => (
+                    <tr key={row.label}>
+                      <td className="pr-3">{row.label}</td>
+                      <td className="pr-3 font-mono">{row.exact}</td>
+                      <td className="pr-3 font-mono">{row.approximate}</td>
+                      <td className="pr-3 font-mono">{row.error}</td>
+                      <td className="text-muted">{row.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
       {result.methods.length > 0 && (
         <ul className="mt-3 space-y-2 text-sm" aria-label="Methods">
           {result.methods.map((m) => (

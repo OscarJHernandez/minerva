@@ -16,7 +16,8 @@ from ..distributions.models import Condition
 from ..models import Status
 
 Ensemble = Literal["canonical", "grand_canonical", "microcanonical"]
-Action = Literal["analyze", "partition", "derive", "expectation", "evaluate"]
+Action = Literal["analyze", "partition", "derive", "expectation", "evaluate", "approximate"]
+Method = Literal["high_temperature", "low_temperature", "stirling", "thermodynamic_limit"]
 TemperatureVariable = Literal["beta", "T"]
 BaseQuantity = Literal["Z", "lnZ", "F", "U", "S", "Var_E", "Xi", "lnXi", "Omega", "N", "Var_N"]
 Statistic = Literal["mean", "moment", "central_moment", "cumulant", "variance", "covariance"]
@@ -39,6 +40,9 @@ Reason = Literal[
     "not_hermitian",
     "operators_do_not_commute",
     "energy_not_attainable",
+    "singular_expansion_point",
+    "ordering_not_decided",
+    "nothing_to_approximate",
 ]
 Stage = Literal["parse", "build", "symbolic", "verify", "expectation", "analyze"]
 
@@ -132,8 +136,28 @@ class OccupationSystem(BaseModel):
     mu: str = Field(default="mu", max_length=16)
 
 
+class ChainSystem(BaseModel):
+    """A periodic one-dimensional chain of N sites with nearest-neighbour coupling (transfer matrix).
+
+    The energy of a configuration is the sum over bonds of ``bond(s, t)`` (s and t are the values of the two
+    neighbouring sites, the bond must be symmetric) plus the sum over sites of ``site(s)``.
+    """
+
+    kind: Literal["chain"] = "chain"
+    states: list[str] = Field(min_length=2, max_length=3)
+    bond: str = Field(max_length=200)
+    site: str = Field(default="0", max_length=200)
+    length: str = Field(max_length=16)
+
+
 System = Annotated[
-    LevelsSystem | FamilySystem | DosSystem | ClassicalSystem | QuantumSystem | OccupationSystem,
+    LevelsSystem
+    | FamilySystem
+    | DosSystem
+    | ClassicalSystem
+    | QuantumSystem
+    | OccupationSystem
+    | ChainSystem,
     Field(discriminator="kind"),
 ]
 
@@ -212,6 +236,8 @@ class StatMechInput(BaseModel):
     sweep: Sweep | None = None
     # microcanonical: the fixed total energy of N distinguishable or counted copies of the levels
     total_energy: str | None = Field(default=None, max_length=32)
+    # approximate: which approximation to apply (the order of an expansion is `order`)
+    method: Method | None = None
 
 
 class StatStep(BaseModel):
@@ -270,6 +296,28 @@ class StatMechDiagnostics(BaseModel):
     events: list[StatMechEvent] = Field(default_factory=list)
 
 
+class ErrorRow(BaseModel):
+    """One measured comparison of an approximation with the independent exact value."""
+
+    label: str
+    exact: str
+    approximate: str
+    error: str
+    note: str = ""
+
+
+class Approximation(BaseModel):
+    """What an approximation assumes, what it expands in, how accurate it is expected to be and where
+    it holds, with measured errors. The table is a measurement, never a bound."""
+
+    method: Method
+    assumptions: list[str]
+    parameter: str
+    order: str
+    validity: str
+    error_table: list[ErrorRow] = Field(default_factory=list)
+
+
 class StatMechVerification(BaseModel):
     method: str = (
         "mpmath enumeration of the microstates with log-sum-exp, and numerical differentiation of that "
@@ -303,6 +351,7 @@ class StatMechResult(BaseModel):
     not_supported: list[str] = Field(default_factory=list)
     questions: list[str] = Field(default_factory=list)
     table: StatTable | None = None
+    approximation: Approximation | None = None
     verification: StatMechVerification = Field(default_factory=StatMechVerification)
     diagnostics: StatMechDiagnostics = Field(default_factory=StatMechDiagnostics)
     notes: list[str] = Field(default_factory=list)

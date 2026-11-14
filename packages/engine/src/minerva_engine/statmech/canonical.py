@@ -64,6 +64,10 @@ def make_oracle(problem: Problem) -> BaseOracle:
         from .grand import GrandOracle
 
         return GrandOracle(problem)
+    if problem.kind == "chain":
+        from .lattice import ChainOracle
+
+        return ChainOracle(problem)
     from .systems import ClassicalOracle, DosOracle, FamilyOracle
 
     if problem.kind == "level_family":
@@ -297,14 +301,23 @@ def numeric_checks_base(
 
 
 def _nonnegative(expr: sp.Expr, oracle: BaseOracle, points: list[Point]) -> StatCheck:
+    valid = 0
+    nonnegative = True
     with mp.workdps(DPS):
-        ok = all(oracle.eval_expr(expr, pt) >= -(mp.mpf(10) ** -30) for pt in points)
+        for pt in points:
+            try:
+                value = oracle.eval_expr(expr, pt)
+            except (ValueError, ZeroDivisionError, OverflowError):
+                continue  # a point where the formula is undefined is skipped, never counted as passing
+            valid += 1
+            if mp.re(value) < -(mp.mpf(10) ** -30):
+                nonnegative = False
     return StatCheck(
         name="nonnegative_variance",
         subject="Var_E",
-        passed=ok and len(points) >= MIN_POINTS,
-        points=len(points),
-        agreed=len(points) if ok else 0,
+        passed=nonnegative and valid >= MIN_POINTS,
+        points=valid,
+        agreed=valid if nonnegative else 0,
         detail="a variance cannot be negative",
     )
 
