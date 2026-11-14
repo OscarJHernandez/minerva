@@ -37,6 +37,12 @@ digits against a noise floor of 1e-20). Each is a row in `packages/engine/tests/
 `test_counterexample.py` run against the one probe family meant to catch it. Numerical agreement stays "evidence,
 not proof" in every case.
 
+### Open defects (agent layer, found by reading the result store while writing the multi-step tests)
+
+| Id | Defect | Status |
+| --- | --- | --- |
+| V-015 | `ResultStore` (`agent/refs.py`) keeps only the printed LaTeX of a verified result. Restrictions that an earlier step reported (`simplify` cancelled `(x-2)`, so `x \neq 2`) are dropped when the result is reused as `@r1`: the next tool's card and `for_model` text say nothing about `x = 2`, which the original expression excluded. | open: to be fixed with the stage-5 evaluation cases (carry restrictions with the id, name them in the downstream result) |
+
 ### Open limitations (no fix possible by sampling)
 
 | Id | Class | Minimal input | Status |
