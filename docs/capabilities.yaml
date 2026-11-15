@@ -43,6 +43,10 @@
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
 #   invariants   input, coordinates, angles, degree, power_bound, harmonics
+#   variation    input, functions, given_functions [{name, args}], lower, upper, lower_term, upper_term, conditions
+#                [{function, order, end, kind, value}], assumptions, action (analyze | first | second | evaluate | solve),
+#                values {parameter: number}, definitions {given function: expression}, paths [{analytic: {fn: expression}}],
+#                with_second (an example may be run with numbers: those are the user's, never the model's)
 #   discovery    input, coordinates, system (lagrangian | hamiltonian), momenta, angles, budget
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
@@ -1589,6 +1593,102 @@ capabilities:
         format: text
         input: "m*x_dot^2/2 - k*x^2*t/2"
         coordinates: [x]
+
+  - id: variation
+    title: Variational calculus
+    status: available
+    group: physics
+    where: [workbench, chat, api]
+    summary: >-
+      Give an action functional of one or several functions, with derivatives of any order up to four and
+      fixed bounds, and Minerva derives its first variation with every integration by parts listed, the
+      Euler–Lagrange equations (the sum over k of (−1)^k d^k/dt^k of ∂L/∂x^(k)), the complete boundary form,
+      which boundary terms the conditions you declared remove, and the natural boundary conditions. Fixing a
+      value never fixes its derivative, and a condition you did not declare is not assumed. The result is shown
+      only if finite differences of the action itself agree with it. With numbers you supply, it evaluates the
+      action on a trial path or family, verifies the variation along your own path, finds a stationary path by
+      two independent methods, and computes the second variation with honest local diagnostics.
+    limits:
+      - Numerical agreement with finite differences is evidence, not a proof, and the result says so.
+      - Bounds are fixed (no moving endpoints), and the integrand must be smooth (no absolute value, sign or
+        piecewise definitions). Field functionals and partial differential equations are not covered.
+      - A stationary path may be a minimum, a maximum or a saddle, and none is claimed to be unique. A negative
+        direction proves the path is not a minimum; the absence of one among the directions tried proves
+        nothing, and the sufficient conditions (no conjugate points) are not checked.
+      - Stationary paths are found for derivatives up to order two with at most four orders in total, and
+        no unknown may appear without a derivative.
+    examples:
+      - id: variation-higher-derivative
+        title: A higher-derivative Lagrangian, with its boundary form
+        op: variation
+        input: '\frac{m}{2}\dot{x}^2+\frac{\alpha}{2}\ddot{x}^2-V(x)'
+        functions: [x]
+        given_functions:
+          - { name: V, args: [x] }
+        lower: a
+        upper: b
+      - id: variation-cantilever
+        title: A cantilever beam, with its natural boundary conditions
+        op: variation
+        input: '\frac12\ddot{x}^2-qx'
+        functions: [x]
+        lower: "0"
+        upper: "1"
+        conditions:
+          - { function: x, order: 0, end: lower, kind: fixed, value: "0" }
+          - { function: x, order: 1, end: lower, kind: fixed, value: "0" }
+          - { function: x, order: 0, end: upper, kind: free }
+          - { function: x, order: 1, end: upper, kind: free }
+      - id: variation-total-derivative
+        title: A total derivative has no interior equation
+        op: variation
+        input: 'x\dot{x}'
+        functions: [x]
+        lower: "0"
+        upper: "1"
+      - id: variation-stationary-path
+        title: A stationary path of the harmonic action, found by two methods
+        op: variation
+        action: solve
+        input: '\frac12\dot{x}^2-\frac12 x^2'
+        functions: [x]
+        lower: "0"
+        upper: "1"
+        conditions:
+          - { function: x, order: 0, end: lower, kind: fixed, value: "0" }
+          - { function: x, order: 0, end: upper, kind: fixed, value: "1" }
+      - id: variation-not-a-minimum
+        title: On a longer interval the same stationary path is not a minimum
+        op: variation
+        action: solve
+        input: '\frac12\dot{x}^2-\frac12 x^2'
+        functions: [x]
+        lower: "0"
+        upper: "4"
+        with_second: true
+        conditions:
+          - { function: x, order: 0, end: lower, kind: fixed, value: "0" }
+          - { function: x, order: 0, end: upper, kind: fixed, value: "1" }
+      - id: variation-undeclared-function
+        title: V(x) must be declared, never read as a product
+        op: variation
+        input: '\frac12\dot{x}^2-V(x)'
+        functions: [x]
+      - id: variation-not-smooth
+        title: A non-smooth integrand is refused
+        op: variation
+        input: '|\dot{x}|'
+        functions: [x]
+      - id: variation-needs-values
+        title: Numbers are asked for, never chosen
+        op: variation
+        action: evaluate
+        input: '\frac{m}{2}\dot{x}^2'
+        functions: [x]
+        lower: "0"
+        upper: "1"
+        paths:
+          - { analytic: { x: t } }
 
   - id: discovery
     title: Find the conserved quantities of a system

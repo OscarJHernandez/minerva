@@ -42,6 +42,8 @@ import { StatisticsWorkbench } from "./statistics-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
 import { VectorWorkbench } from "./vector-workbench";
 import { restoreVectorForm, type VectorForm } from "@/lib/vector-form";
+import { VariationalWorkbench, type VariationRestore } from "./variational-workbench";
+import type { VariationRequest } from "@/lib/variation-types";
 import { StatMechWorkbench } from "./statmech-workbench";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
@@ -118,7 +120,7 @@ export function Workbench() {
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
   const [mode, setMode] = useState<
-    "expression" | "geometry" | "matrix" | "vector" | "statistics" | "statmech"
+    "expression" | "geometry" | "matrix" | "vector" | "statistics" | "statmech" | "variational"
   >("expression");
   const [vectorRestore, setVectorRestore] = useState<{ form: VectorForm; nonce: number } | null>(
     null,
@@ -131,6 +133,7 @@ export function Workbench() {
     form: MatrixForm;
     nonce: number;
   } | null>(null);
+  const [variationRestore, setVariationRestore] = useState<VariationRestore | null>(null);
   const [statRestore, setStatRestore] = useState<{ form: StatForm; nonce: number } | null>(null);
   const [geometryRestore, setGeometryRestore] = useState<{
     request: GeometryRequest;
@@ -388,12 +391,21 @@ export function Workbench() {
     setFormat("latex");
     setLatex("");
     setText("");
+    // the variational form starts over too (a new derivation, or another problem was opened)
+    setVariationRestore({ nonce: Date.now(), derivationId: null, steps: [] });
   }
 
   async function openDerivation(id: string) {
     try {
       const derivation = await api.derivation(id);
       reset();
+      if (derivation.steps[0]?.operation === "variation") {
+        // a variational derivation lives in its own mode, which keeps its steps and form
+        setMode("variational");
+        setVariationRestore({ nonce: Date.now(), derivationId: id, steps: derivation.steps });
+        return;
+      }
+      setMode("expression");
       setDerivationId(id);
       setSteps(derivation.steps);
       const last = [...derivation.steps].reverse().find((s) => continuation(s) !== null);
@@ -453,6 +465,15 @@ export function Workbench() {
           form: restoreVectorForm(request, item.input, item.format, item.assumptions),
           nonce: Date.now(),
         });
+        return;
+      }
+    }
+    if (item.operation === "variation") {
+      // the whole functional was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: Partial<VariationRequest> }).request;
+      if (request) {
+        setMode("variational");
+        setVariationRestore({ nonce: Date.now(), derivationId: null, steps: [], request });
         return;
       }
     }
@@ -518,33 +539,43 @@ export function Workbench() {
           </Link>
         </p>
         <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
-          {(["expression", "matrix", "statistics", "statmech", "geometry", "vector"] as const).map(
-            (m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={mode === m}
-                onClick={() => setMode(m)}
-                className={`rounded border px-3 py-1.5 text-sm ${
-                  mode === m
-                    ? "border-accent bg-accent text-accent-ink"
-                    : "border-rule bg-raised text-ink hover:bg-sunk"
-                }`}
-              >
-                {m === "expression"
-                  ? "Expression"
-                  : m === "matrix"
-                    ? "Matrices"
-                    : m === "statistics"
-                      ? "Statistics"
-                      : m === "statmech"
-                        ? "Statistical mechanics"
-                        : m === "geometry"
-                          ? "Geometry"
-                          : "Vectors"}
-              </button>
-            ),
-          )}
+          {(
+            [
+              "expression",
+              "matrix",
+              "statistics",
+              "statmech",
+              "geometry",
+              "vector",
+              "variational",
+            ] as const
+          ).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+              className={`rounded border px-3 py-1.5 text-sm ${
+                mode === m
+                  ? "border-accent bg-accent text-accent-ink"
+                  : "border-rule bg-raised text-ink hover:bg-sunk"
+              }`}
+            >
+              {m === "expression"
+                ? "Expression"
+                : m === "matrix"
+                  ? "Matrices"
+                  : m === "statistics"
+                    ? "Statistics"
+                    : m === "statmech"
+                      ? "Statistical mechanics"
+                      : m === "geometry"
+                        ? "Geometry"
+                        : m === "vector"
+                          ? "Vectors"
+                          : "Variational calculus"}
+            </button>
+          ))}
         </div>
         {mode === "expression" && (
           <>
@@ -669,6 +700,12 @@ export function Workbench() {
         ) : mode === "matrix" ? (
           <MatrixWorkbench
             restore={matrixRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+          />
+        ) : mode === "variational" ? (
+          <VariationalWorkbench
+            restore={variationRestore}
             onUnauthorized={() => router.push("/login")}
             onSaved={() => void refreshSaved()}
           />

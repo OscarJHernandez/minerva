@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 import sympy as sp
 
-from .build import FUNCTIONS, Builder, NotationLog
+from .build import FUNCTIONS, Builder, JetBinding, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
 
@@ -240,8 +240,32 @@ class _Parser:
             return -inner if neg else inner
         return self.power()
 
+    def _derivative_order(self) -> int | None:
+        """`^{(k)}` after a dependent function: the order k (consumed), else None (nothing consumed)."""
+        t, i = self.t, self.i
+        shape = ("^", "{", "(", None, ")", "}")
+        if i + len(shape) > len(t):
+            return None
+        for offset, want in enumerate(shape):
+            tok = t[i + offset]
+            if want is None:
+                if tok.kind != "num" or not tok.text.isdigit():
+                    return None
+            elif tok.kind != "op" or tok.text != want:
+                return None
+        order = int(t[i + 3].text)
+        self.i = i + len(shape)
+        return order
+
     def power(self) -> sp.Expr:
         base = self.atom()
+        jets = self.b.jets
+        if jets is not None and isinstance(base, sp.Symbol) and base.name in jets.dependent:
+            order = self._derivative_order()
+            if order is not None:
+                if self.cur.kind == "op" and self.cur.text == "(":
+                    self._variable_call(base.name)  # x^{(k)}(t): the derivative at t
+                return jets.derivative(base.name, order)
         if self.accept_op("^"):
             exponent = self.script()
             if self.cur.kind == "op" and self.cur.text == "^":
@@ -316,6 +340,15 @@ class _Parser:
             name = f"{name}_{self._subscript_text()}"
         if name in self.b.functions:
             return self._declared_call(name)
+        jets = self.b.jets
+        if (
+            jets is not None
+            and name in jets.dependent
+            and self.cur.kind == "op"
+            and self.cur.text == "("
+        ):
+            self._variable_call(name)  # x(t) is the function x itself
+            return jets.symbols[name]
         if self.cur.kind == "op" and self.cur.text == "(":
             reading = self.b.distribution_reading(name)
             if reading in ("dirac_delta", "heaviside"):
@@ -329,6 +362,19 @@ class _Parser:
                 f"or write {name}\\cdot(…) for a product"
             )
         return self.b.symbol(name)
+
+    def _variable_call(self, name: str) -> None:
+        """Consume `(t)` after a dependent function: it must be exactly the independent variable."""
+        jets = self.b.jets
+        if jets is None:
+            raise ParseError("unexpected '('")
+        self.expect_op("(")
+        argument = self.expr()
+        self.expect_op(")")
+        if argument != jets.symbols[jets.variable]:
+            raise ParseError(
+                f"{name} is a function of {jets.variable}: write {name}({jets.variable})"
+            )
 
     def _declared_call(self, name: str) -> sp.Expr:
         if not self.accept_op("("):
@@ -386,7 +432,7 @@ class _Parser:
             return sp.I
         if name in {"mathrm", "operatorname"}:
             return self._mathrm(name)
-        if name in {"dot", "ddot"}:
+        if name in {"dot", "ddot"} or (name in {"dddot", "ddddot"} and self.b.jets is not None):
             return self._time_derivative(name)
         if name in _GREEK:
             return self._symbol_with_subscript_name(_GREEK_NAME.get(name, name))
@@ -471,6 +517,11 @@ class _Parser:
         base = inner.name
         if self.accept_op("_"):  # \\dot{\\theta}_1 is the velocity of theta_1
             base = f"{base}_{self._subscript_text()}"
+        jets = self.b.jets
+        if jets is not None:
+            if base not in jets.dependent:
+                raise ParseError(f"\\{name} applies to a declared dependent function, not {base!r}")
+            return jets.derivative(base, {"dot": 1, "ddot": 2, "dddot": 3, "ddddot": 4}[name])
         return self.b.symbol(f"{base}_{'dot' if name == 'dot' else 'ddot'}")
 
     def _symbol_with_subscript_name(self, name: str) -> sp.Expr:
@@ -544,6 +595,7 @@ def parse_latex(
     notation: NotationLog | None = None,
     *,
     allow_noncommutative: bool = False,
+    jets: JetBinding | None = None,
     allow_sums: bool = False,
     random_variables: Iterable[str] = (),
 ) -> sp.Expr:
@@ -558,6 +610,7 @@ def parse_latex(
         strict_calls,
         notation,
         allow_noncommutative=allow_noncommutative,
+        jets=jets,
         allow_sums=allow_sums,
         random_variables=random_variables,
     )

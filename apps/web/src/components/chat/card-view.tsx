@@ -20,6 +20,7 @@ import { MotionCard } from "./motion-card";
 import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
 import { UnitsCard } from "./units-card";
+import { VariationCard } from "./variation-card";
 import { ResultPanel, StatusPill } from "../result-panel";
 import { IsolatePanel, StepResultPanel } from "../step-result-panel";
 import type { Status } from "@/lib/types";
@@ -69,6 +70,8 @@ export function CardView({ card }: { card: Card }) {
           request={card.data.request}
         />
       );
+    case "variation":
+      return <VariationCard report={card.data.report} request={card.data.request} />;
     case "statmech":
       return (
         <StatMechCard result={card.data.result} args={card.data.args} answers={card.data.answers} />

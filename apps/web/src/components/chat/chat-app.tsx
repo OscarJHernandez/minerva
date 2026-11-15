@@ -10,6 +10,7 @@ import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
 import type { StatAnswers, StatToolArgs } from "@/lib/statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
+import type { VariationRequest } from "@/lib/variation-types";
 import type {
   AssistantContent,
   Card,
@@ -319,6 +320,22 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** The variation card's form: the user's own numbers, run without the model. */
+  const runVariation = useCallback(
+    async (request: VariationRequest) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.variationDirectly(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   const busy = pending !== null;
   const title = conversations.find((c) => c.id === activeId)?.title ?? "";
 
@@ -352,6 +369,7 @@ export function ChatApp() {
         perturb: runPerturbation,
         geometry: runGeometry,
         distribution: runDistribution,
+        variation: runVariation,
         statmech: runStatMech,
       }}
     >

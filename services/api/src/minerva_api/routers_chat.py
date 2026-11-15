@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
-from minerva_engine import MotionRequest, trace_scope
+from minerva_engine import MotionRequest, VariationInput, trace_scope
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.statmech.models import Sweep
 from pydantic import BaseModel, Field, field_validator
@@ -30,7 +30,14 @@ from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
 from .agent.statmech_tools import StatMechArgs
-from .agent.tools import DistributionArgs, GeometryArgs, PerturbationArgs, ToolContext, execute
+from .agent.tools import (
+    DistributionArgs,
+    GeometryArgs,
+    PerturbationArgs,
+    ToolContext,
+    VariationArgs,
+    execute,
+)
 from .agent.tracing import (
     AgentCompleted,
     Sink,
@@ -360,6 +367,7 @@ def _run_tool_directly(
     limiter: Any,
     settings: Any,
     notation: dict[str, str] | None = None,
+    numeric: dict[str, Any] | None = None,
     answers: dict[str, Any] | None = None,
 ) -> MessageOut:
     """Run one tool with the user's own numbers (from a card's form), store it as an assistant message.
@@ -384,6 +392,7 @@ def _run_tool_directly(
                     engine=engine,
                     kb=kb,
                     notation=dict(notation or {}),
+                    numeric=dict(numeric or {}),
                     statmech_answers=dict(answers or {}),
                 ),
             )
@@ -426,6 +435,7 @@ def _run_tool_directly(
                 arguments={
                     **arguments,
                     **({"notation": notation} if notation else {}),
+                    **({"numeric": numeric} if numeric else {}),
                     **({"answers": answers} if answers else {}),
                 },
                 for_model=output.for_model,
@@ -595,6 +605,54 @@ def distribution_directly(
         limiter,
         settings,
         notation={k: v for k, v in body.notation.items()},
+    )
+
+
+class VariationAnswer(VariationInput):
+    """A variation card's call with the numbers the USER entered in its form."""
+
+
+NUMERIC_FIELDS = (
+    "action",
+    "values",
+    "definitions",
+    "paths",
+    "sweep",
+    "perturbations",
+    "automatic_perturbations",
+    "with_second",
+)
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/variation",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def variation_directly(
+    conversation_id: uuid.UUID,
+    body: VariationAnswer,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Run a variation card with the user's numbers (the model is not involved and cannot do this)."""
+    arguments = body.model_dump(mode="json", include=set(VariationArgs.model_fields) - {"action"})
+    numeric = body.model_dump(mode="json", include=set(NUMERIC_FIELDS))
+    return _run_tool_directly(
+        "variation",
+        arguments,
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+        numeric=numeric,
     )
 
 

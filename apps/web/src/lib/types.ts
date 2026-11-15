@@ -631,6 +631,7 @@ export type Operation =
   | "matrix_calculus"
   | "geometry"
   | "vector"
+  | "variation"
   | "distribution"
   | "statmech"
   | "rewrite"

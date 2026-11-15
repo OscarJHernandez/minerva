@@ -32,6 +32,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
     "vector_calculus": "numeric",
     "electromagnetism": "numeric",  # steps checked by comparing whole expressions; models are evidence only  # independent Cartesian finite differences; never a proof
+    "variation": "numeric",  # finite differences of the action agree with the claimed variation
     "statistical_mechanics": "numeric",  # independent enumeration / quadrature; a symbolic zero is reported as such
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
     "substitute": "numeric",  # the replaced form reproduces the original (a congruence check, sampled)
@@ -81,7 +82,9 @@ def _first_int(source: dict[str, Any], *names: str) -> int | None:
 def evidence_for(tool: str, status: str, card_data: dict[str, Any]) -> Evidence:
     """The evidence record of one tool result; `status` is the tool's own status."""
     data = _inner(card_data)
-    verification = _dict(data.get("verification"))
+    verification = _dict(data.get("verification")) or _dict(
+        _dict(data.get("first")).get("verification")
+    )
     quadrature = _dict(data.get("quadrature"))
     lookup = tool in _LOOKUPS
 

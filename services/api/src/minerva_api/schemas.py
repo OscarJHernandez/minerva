@@ -14,6 +14,7 @@ from minerva_engine import (
     Pins,
     StatMechInput,
     StatModelInput,
+    VariationInput,
     VectorInput,
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
@@ -163,6 +164,10 @@ class VectorRequest(VectorInput, Links):
     from the request."""
 
     premise_ids: list[str] = Field(default_factory=list, max_length=8)
+
+
+class VariationRequest(VariationInput, Links):
+    """A functional and one action: analyze, first, evaluate, verify, solve or second."""
 
 
 class StatMechRequest(StatMechInput, Links):
