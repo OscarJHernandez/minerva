@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { Segment } from "@/lib/chat-types";
+import { FormulaActionsProvider } from "./formula-actions";
 import { RichText } from "./rich-text";
 
 const seg = (type: Segment["type"], value: string, status: Segment["status"] = null): Segment => ({
@@ -131,5 +132,31 @@ describe("RichText", () => {
     expect(inline?.getAttribute("title")).toContain("your input as read by Minerva");
     expect(inline?.getAttribute("title")).toContain("It is not marked as checked");
     expect(container.querySelectorAll('[data-status="from_tool"]')).toHaveLength(1);
+  });
+});
+
+describe("copying a formula from a reply", () => {
+  it("copies the exact LaTeX of a display formula and can send it to the message box", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const editInChat = vi.fn();
+    const latex = "L = \\frac{1}{2} m \\dot{r}^2";
+    render(
+      <FormulaActionsProvider value={{ editInChat }}>
+        <RichText segments={[seg("display_math", latex, "unchecked")]} />
+      </FormulaActionsProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Copy LaTeX" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(latex));
+    fireEvent.click(screen.getByRole("button", { name: "Edit in chat" }));
+    expect(editInChat).toHaveBeenCalledWith(latex);
+  });
+
+  it("offers copying on inline equations but not on a lone symbol, and no edit outside a chat", () => {
+    render(
+      <RichText segments={[seg("math", "a = b", "unchecked"), seg("math", "r", "unchecked")]} />,
+    );
+    expect(screen.getAllByRole("button", { name: "Copy LaTeX" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Edit in chat" })).toBeNull();
   });
 });

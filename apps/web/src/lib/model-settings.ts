@@ -13,6 +13,8 @@ import type { ProviderChoice } from "./chat-types";
 export interface ModelSettings {
   provider: "ollama" | "openrouter";
   model: string;
+  /** The model chosen on the server's own host; empty means the server's default model. */
+  localModel: string;
   apiKey: string;
   consent: boolean;
   /** False until the user picks a provider: then the server's default applies. */
@@ -20,6 +22,15 @@ export interface ModelSettings {
 }
 
 const MODEL_KEY = "minerva.openrouter.model";
+const LOCAL_KEY = "minerva.ollama.model";
+
+function savedLocalModel(): string {
+  try {
+    return window.localStorage.getItem(LOCAL_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 function savedModel(): string {
   try {
@@ -32,6 +43,7 @@ function savedModel(): string {
 const initial: ModelSettings = {
   provider: "ollama",
   model: "",
+  localModel: "",
   apiKey: "",
   consent: false,
   touched: false,
@@ -58,7 +70,15 @@ export const modelSettings = {
       /* not remembered */
     }
   },
-  useLocal: () => set({ provider: "ollama", touched: true }),
+  /** Use the server's own model; with a name, that installed model instead of the default. */
+  useLocal(model = "") {
+    set({ provider: "ollama", localModel: model, touched: true });
+    try {
+      if (model) window.localStorage.setItem(LOCAL_KEY, model);
+    } catch {
+      /* not remembered */
+    }
+  },
   setModel(model: string) {
     set({ model });
     try {
@@ -70,6 +90,7 @@ export const modelSettings = {
   setApiKey: (apiKey: string) => set({ apiKey }),
   setConsent: (consent: boolean) => set({ consent }),
   savedModel,
+  savedLocalModel,
   /** Forget the key and consent (sign-out). Back to the local model. */
   clear() {
     state = initial;
@@ -84,7 +105,9 @@ export function useModelSettings(): ModelSettings {
 /** The provider choice to send with a message, or undefined to use the server's default. */
 export function providerChoice(s: ModelSettings): ProviderChoice | undefined {
   if (!s.touched) return undefined;
-  if (s.provider === "ollama") return { kind: "ollama" };
+  if (s.provider === "ollama") {
+    return s.localModel ? { kind: "ollama", model: s.localModel } : { kind: "ollama" };
+  }
   return {
     kind: "openrouter",
     model: s.model || undefined,

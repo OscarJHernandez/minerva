@@ -30,6 +30,7 @@ import { CopyButton } from "./debug-panel";
 import { conversationPath } from "@/lib/next-path";
 import { retryLabel, untilLastUser, withUserDetails } from "@/lib/retry";
 import { InsertReferenceProvider } from "./equation-number";
+import { FormulaActionsProvider } from "./formula-actions";
 import { ParamsPanel } from "./params-panel";
 import type { Overrides } from "@/lib/model-params";
 import { ConversationList } from "./conversation-list";
@@ -67,7 +68,15 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const [listOpen, setListOpen] = useState(false);
   const [debugOn, setDebugOn] = useDebugMode();
   const [paramOverrides, setParamOverrides] = useState<Overrides>({});
-  const [insertRequest, setInsertRequest] = useState<{ id: number; text: string } | null>(null);
+  const [referenceRequest, setReferenceRequest] = useState<{ id: number; text: string } | null>(
+    null,
+  );
+  // "Edit in chat" on a formula in a reply puts it in the message box (a formula, not a reference).
+  const [insertRequest, setInsertRequest] = useState<{ id: number; latex: string } | null>(null);
+  const formulaActions = useMemo(
+    () => ({ editInChat: (latex: string) => setInsertRequest({ id: Date.now(), latex }) }),
+    [],
+  );
   const [replaceRequest, setReplaceRequest] = useState<{ id: number; text: string } | null>(null);
   const [editing, setEditing] = useState(false); // the box holds the last message, being changed
   const [lastError, setLastError] = useState<LastError | null>(null);
@@ -508,7 +517,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
 
   return (
     <InsertReferenceProvider
-      value={(n) => setInsertRequest({ id: ++requestCounter.current, text: `(${n})` })}
+      value={(n) => setReferenceRequest({ id: ++requestCounter.current, text: `(${n})` })}
     >
       <MotionRunnerProvider
         value={{
@@ -521,197 +530,200 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
           statmech: runStatMech,
         }}
       >
-        <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
-          <aside className="hidden w-60 shrink-0 py-4 md:block">
-            <ConversationList
-              items={conversations}
-              activeId={activeId}
-              onOpen={open}
-              onNew={startNew}
-              onDelete={remove}
-            />
-          </aside>
+        <FormulaActionsProvider value={formulaActions}>
+          <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
+            <aside className="hidden w-60 shrink-0 py-4 md:block">
+              <ConversationList
+                items={conversations}
+                activeId={activeId}
+                onOpen={open}
+                onNew={startNew}
+                onDelete={remove}
+              />
+            </aside>
 
-          <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
-            <div className="flex items-center justify-between py-2 md:hidden">
-              <button
-                type="button"
-                onClick={() => setListOpen((o) => !o)}
-                aria-expanded={listOpen}
-                className="rounded border border-rule px-2.5 py-1 text-sm"
-              >
-                Conversations
-              </button>
-              <button type="button" onClick={startNew} className="text-sm text-accent">
-                New
-              </button>
-            </div>
-            {listOpen && (
-              <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
-                <ConversationList
-                  items={conversations}
-                  activeId={activeId}
-                  onOpen={open}
-                  onNew={startNew}
-                  onDelete={remove}
-                />
+            <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
+              <div className="flex items-center justify-between py-2 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => setListOpen((o) => !o)}
+                  aria-expanded={listOpen}
+                  className="rounded border border-rule px-2.5 py-1 text-sm"
+                >
+                  Conversations
+                </button>
+                <button type="button" onClick={startNew} className="text-sm text-accent">
+                  New
+                </button>
               </div>
-            )}
+              {listOpen && (
+                <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
+                  <ConversationList
+                    items={conversations}
+                    activeId={activeId}
+                    onOpen={open}
+                    onNew={startNew}
+                    onDelete={remove}
+                  />
+                </div>
+              )}
 
-            {status?.context_ok === false && (
-              <p
-                role="alert"
-                className="mb-2 rounded bg-warn-soft px-3 py-2 text-sm text-warn"
-                data-testid="context-warning"
+              {status?.context_ok === false && (
+                <p
+                  role="alert"
+                  className="mb-2 rounded bg-warn-soft px-3 py-2 text-sm text-warn"
+                  data-testid="context-warning"
+                >
+                  The model&apos;s context window is smaller than Minerva&apos;s instructions, so it
+                  will lose the conversation and most of its tools. The operator can raise it
+                  (MINERVA_LLM_NUM_CTX) or send fewer tools (MINERVA_LLM_TOOLSET=core).
+                </p>
+              )}
+              <div
+                ref={logRef}
+                onScroll={onLogScroll}
+                className="relative flex-1 overflow-y-auto py-4 pr-1"
+                role="log"
+                aria-live="off"
               >
-                The model&apos;s context window is smaller than Minerva&apos;s instructions, so it
-                will lose the conversation and most of its tools. The operator can raise it
-                (MINERVA_LLM_NUM_CTX) or send fewer tools (MINERVA_LLM_TOOLSET=core).
-              </p>
-            )}
-            <div
-              ref={logRef}
-              onScroll={onLogScroll}
-              className="relative flex-1 overflow-y-auto py-4 pr-1"
-              role="log"
-              aria-live="off"
-            >
-              {messages.length === 0 && !pending ? (
-                <EmptyState onPick={(t) => void send(t)} disabled={busy || !status} />
-              ) : (
-                <div className="mx-auto max-w-3xl space-y-6">
-                  {messages.map((m, i) => (
-                    <MessageView
-                      key={m.id}
-                      message={m}
-                      onRetry={
-                        !busy &&
-                        ((m.role === "assistant" && i === messages.length - 1) ||
-                          (m.role === "user" && i === messages.length - 1))
-                          ? () => void retryLast()
-                          : undefined
-                      }
-                      retryLabel={retryLabel(m.content.stop_reason)}
-                      onEdit={
-                        !busy && m.role === "user" && i === lastUserIndex
-                          ? () => startEdit(m.content.text)
-                          : undefined
-                      }
-                      getReport={
-                        debugOn && m.role === "assistant"
-                          ? () => buildTurnReport({ title, status }, messages, i)
-                          : undefined
-                      }
+                {messages.length === 0 && !pending ? (
+                  <EmptyState onPick={(t) => void send(t)} disabled={busy || !status} />
+                ) : (
+                  <div className="mx-auto max-w-3xl space-y-6">
+                    {messages.map((m, i) => (
+                      <MessageView
+                        key={m.id}
+                        message={m}
+                        onRetry={
+                          !busy &&
+                          ((m.role === "assistant" && i === messages.length - 1) ||
+                            (m.role === "user" && i === messages.length - 1))
+                            ? () => void retryLast()
+                            : undefined
+                        }
+                        retryLabel={retryLabel(m.content.stop_reason)}
+                        onEdit={
+                          !busy && m.role === "user" && i === lastUserIndex
+                            ? () => startEdit(m.content.text)
+                            : undefined
+                        }
+                        getReport={
+                          debugOn && m.role === "assistant"
+                            ? () => buildTurnReport({ title, status }, messages, i)
+                            : undefined
+                        }
+                      />
+                    ))}
+                    {pending && <PendingView pending={pending} />}
+                    {error && (
+                      <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <div ref={bottomRef} />
+                {!atEnd && messages.length > 0 && (
+                  <div className="pointer-events-none sticky bottom-2 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={jumpToEnd}
+                      className="pointer-events-auto rounded-full border border-rule bg-raised px-3 py-1 text-xs shadow"
+                    >
+                      Jump to latest
+                    </button>
+                  </div>
+                )}
+                <p className="sr-only" role="status">
+                  {pending
+                    ? "Minerva is replying."
+                    : messages.at(-1)?.role === "assistant"
+                      ? "Reply ready."
+                      : ""}
+                </p>
+              </div>
+
+              <div className="mx-auto w-full max-w-3xl">
+                {error && messages.length === 0 && (
+                  <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                    {error}
+                  </p>
+                )}
+                {editing && (
+                  <p className="mb-1 flex items-center gap-3 text-xs text-muted" role="status">
+                    Editing your last message: sending replaces it and its reply.
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="text-accent hover:underline"
+                    >
+                      Cancel
+                    </button>
+                  </p>
+                )}
+                <Composer
+                  disabled={!status}
+                  imagesEnabled={status?.images === true}
+                  beforeSend={confirmCloud}
+                  toolbar={
+                    status?.providers ? (
+                      <ModelPicker
+                        status={status}
+                        open={modelOpen}
+                        onToggle={() => setModelOpen((o) => !o)}
+                      />
+                    ) : null
+                  }
+                  panel={
+                    modelOpen && status ? (
+                      <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
+                    ) : null
+                  }
+                  busy={busy}
+                  insertRequest={insertRequest}
+                  referenceRequest={referenceRequest}
+                  replaceRequest={replaceRequest}
+                  onSend={submit}
+                  onStop={() => abortRef.current?.abort()}
+                />
+                <div className="flex items-center gap-4 py-1 text-xs text-muted">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={debugOn}
+                      onChange={(e) => setDebugOn(e.target.checked)}
                     />
-                  ))}
-                  {pending && <PendingView pending={pending} />}
-                  {error && (
-                    <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                      {error}
-                    </p>
+                    Debug mode
+                  </label>
+                  {debugOn && (
+                    <CopyButton
+                      label="Copy debug report"
+                      getText={() => buildDebugReport({ title, messages, status, lastError })}
+                    />
                   )}
                 </div>
-              )}
-              <div ref={bottomRef} />
-              {!atEnd && messages.length > 0 && (
-                <div className="pointer-events-none sticky bottom-2 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={jumpToEnd}
-                    className="pointer-events-auto rounded-full border border-rule bg-raised px-3 py-1 text-xs shadow"
-                  >
-                    Jump to latest
-                  </button>
-                </div>
-              )}
-              <p className="sr-only" role="status">
-                {pending
-                  ? "Minerva is replying."
-                  : messages.at(-1)?.role === "assistant"
-                    ? "Reply ready."
-                    : ""}
-              </p>
-            </div>
-
-            <div className="mx-auto w-full max-w-3xl">
-              {error && messages.length === 0 && (
-                <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                  {error}
-                </p>
-              )}
-              {editing && (
-                <p className="mb-1 flex items-center gap-3 text-xs text-muted" role="status">
-                  Editing your last message: sending replaces it and its reply.
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    className="text-accent hover:underline"
-                  >
-                    Cancel
-                  </button>
-                </p>
-              )}
-              <Composer
-                disabled={!status}
-                imagesEnabled={status?.images === true}
-                beforeSend={confirmCloud}
-                toolbar={
-                  status?.providers ? (
-                    <ModelPicker
-                      status={status}
-                      open={modelOpen}
-                      onToggle={() => setModelOpen((o) => !o)}
-                    />
-                  ) : null
-                }
-                panel={
-                  modelOpen && status ? (
-                    <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
-                  ) : null
-                }
-                busy={busy}
-                insertRequest={insertRequest}
-                replaceRequest={replaceRequest}
-                onSend={submit}
-                onStop={() => abortRef.current?.abort()}
-              />
-              <div className="flex items-center gap-4 py-1 text-xs text-muted">
-                <label className="flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={debugOn}
-                    onChange={(e) => setDebugOn(e.target.checked)}
-                  />
-                  Debug mode
-                </label>
-                {debugOn && (
-                  <CopyButton
-                    label="Copy debug report"
-                    getText={() => buildDebugReport({ title, messages, status, lastError })}
-                  />
+                {debugOn && status?.params && status.params.editable.length > 0 && (
+                  // Folded by default: on a phone the panel would otherwise fill the screen.
+                  <details className="mt-1" data-testid="params-details">
+                    <summary className="cursor-pointer text-xs text-muted">
+                      Model parameters for the next turn
+                      {Object.keys(paramOverrides).length > 0
+                        ? ` (${Object.keys(paramOverrides).length} changed)`
+                        : ""}
+                    </summary>
+                    <div className="mt-1">
+                      <ParamsPanel
+                        info={status.params}
+                        value={paramOverrides}
+                        onChange={setParamOverrides}
+                      />
+                    </div>
+                  </details>
                 )}
               </div>
-              {debugOn && status?.params && status.params.editable.length > 0 && (
-                // Folded by default: on a phone the panel would otherwise fill the screen.
-                <details className="mt-1" data-testid="params-details">
-                  <summary className="cursor-pointer text-xs text-muted">
-                    Model parameters for the next turn
-                    {Object.keys(paramOverrides).length > 0
-                      ? ` (${Object.keys(paramOverrides).length} changed)`
-                      : ""}
-                  </summary>
-                  <div className="mt-1">
-                    <ParamsPanel
-                      info={status.params}
-                      value={paramOverrides}
-                      onChange={setParamOverrides}
-                    />
-                  </div>
-                </details>
-              )}
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        </FormulaActionsProvider>
       </MotionRunnerProvider>
     </InsertReferenceProvider>
   );

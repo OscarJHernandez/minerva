@@ -23,6 +23,17 @@ not imported anywhere. The decision must be revisited **before** any of these ha
 - Apache-2.0 is **not** compatible with GPL-2.0-only. SageMath is GPL-2.0-or-later overall (verify the
   current statement and per-component licences at integration time), which permits use under GPL-3.0.
 
+## SageMath `ore_algebra` (GPL) and creative telescoping
+
+`ore_algebra` implements holonomic algorithms (Ore algebras, creative telescoping for general holonomic
+integrands, recurrences, hypergeometric summation) and is the natural backend to investigate for the parts of
+[creative-telescoping.md](creative-telescoping.md) that Minerva does not implement. It runs inside SageMath and is
+GPL-licensed, so the rules above apply: it is **not** a dependency, is not imported, vendored or bundled, and the
+default Apache-2.0 distribution and its images must not contain it. The extension point is the `Telescoper`
+protocol in `creative_telescoping/search.py`; whatever a backend proposes still passes `certificate.verify`, so it
+need not be trusted. If it is ever used it must be an optional backend in a separate process over a narrow text
+protocol, with the maintainer's licence decision recorded here first.
+
 ## Cadabra 2 (GPL-3.0)
 
 What we know from upstream: Cadabra 2 is licensed GPL-3.0 and exposes a Python module (`cadabra2`) and a

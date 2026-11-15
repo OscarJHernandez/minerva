@@ -1,6 +1,6 @@
 "use client";
 
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import { instanceWording } from "@/lib/derivation";
 import type {
   ExpectationResult,

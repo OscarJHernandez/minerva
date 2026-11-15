@@ -1,6 +1,7 @@
 """Minerva symbolic computation engine."""
 
 from .claims import ClaimCheck, check_claim, check_claims, split_equation
+from .creative_telescoping import TelescopingInput, TelescopingResult
 from .differentiate import (
     DerivativeStep,
     DerivativeVerification,
@@ -181,6 +182,8 @@ __all__ = [
     "SumsInput",
     "SumsResult",
     "Sweep",
+    "TelescopingInput",
+    "TelescopingResult",
     "TensorInput",
     "TensorResult",
     "TensorSpec",

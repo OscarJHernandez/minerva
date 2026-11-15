@@ -62,6 +62,7 @@ class Card(BaseModel):
         "ode_solution",
         "ode_numeric",
         "variation",
+        "telescoping",
         "dimensional",
         "units",
         "step",

@@ -62,6 +62,8 @@ uv run python -m minerva_engine.reference_benchmark [--check]      # problems wh
 uv run python -m minerva_engine.vector.benchmark [--check]  # vector calculus corpus (textbook references, refusals); writes docs/benchmarks/vector.json + docs/vector-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python -m minerva_engine.variational.benchmark [--check]  # 21 closed-form cases; docs/variational-benchmark.md + docs/benchmarks/variational.json
+uv run python -m minerva_engine.creative_telescoping.benchmark [--check]  # 29 problems vs. independent references; docs/creative-telescoping-benchmark.md + docs/benchmarks/creative_telescoping.json (`make bench-telescoping`)
+uv run python -m minerva_engine.integration_strategy.benchmark [--check]  # techniques vs. quadrature, default call vs. requested strategy; docs/integration-strategies-benchmark.md + docs/benchmarks/integration_strategies.json
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
 uv run python scripts/verification_report.py [--check|--compare docs/benchmarks/verification-summary-baseline.json]   # false accepts/rejects, counterexamples, evidence kinds by domain; CI runs --check (docs/verification-testing.md)
 uv run python -m minerva_engine.reference_benchmark [--check] [--tier pr|extended]   # (extended rewrites the report) expected answers are hand-written in minerva_engine/reference/, never regenerated
@@ -166,6 +168,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   the phase-space cell, the indistinguishability of copies, the numbers of a numerical evaluation and a sweep: the
   model must ask, never pick them. The card's buttons and form post them to
   `POST /v1/chat/conversations/{id}/tools/statistical_mechanics`; a test checks the tool schema has no such field.
+- `creative_telescoping` (parameterised definite integrals) takes the integrand, variable, parameter, bounds and declared
+  assumptions only: its arguments have no field for an operator, certificate, equation or constant, and the search bounds
+  are the engine's. The card says whether a certificate, an equation or a value was established; a partial result is never
+  worded as the value of the integral. `integrate` takes an optional `strategy` (`auto` or a technique name) and reports
+  the technique, steps and verification; the model may only pick a technique the result suggested.
 - `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
   never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
@@ -251,6 +258,32 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   by the fundamental theorem (it would "verify" `\int_{-1}^{1} x^{-2}\,dx = -2`); a quadrature with a large
   error estimate counts as no agreement, and convergence conditions the declared assumptions do not imply
   give `conditions_not_satisfied`. Do not add a symbolic-only path.
+- Creative telescoping (`creative_telescoping/`, operation and endpoint `telescoping`, tool `creative_telescoping`,
+  `docs/creative-telescoping.md`) searches for `L f = dG/dx` for **hyperexponential** integrands (rational `f_x/f`, `f_a/f`)
+  by an exact nullspace computation over a fixed ladder of families (operator order, certificate degree), and shows a
+  relation only if `(L f - dG/dx)/f` simplifies to zero (`certificate.verify`; two numerical legs may only veto, a zero
+  operator is rejected). Convergence, differentiation under the integral sign and boundary terms (`boundary.py`) are
+  decided **from the declared assumptions only** (coefficient certificates for signs, local exponents at each end); an
+  undecided sign is `conditions_not_satisfied`, never assumed, and divergence is claimed only where the phase does not
+  oscillate. The ODE must have a provably nonzero leading coefficient on the parameter domain, its `dsolve` solution is
+  substituted back exactly (SymPy sometimes returns only the homogeneous part), the constants come from independently
+  verified initial values (`integrate.definite_value`), and a value is shown only if the equation, the initial values and
+  quadrature of the original integrand all agree; it is worded "checked numerically", never "proved". A verified
+  certificate alone is a partial result (`outcome` certificate or equation, with `unresolved`). "No relation found" is
+  about the searched families only. Do not widen the class silently, drop the exact check, let a numerical leg accept,
+  or import SageMath's GPL `ore_algebra` (see `docs/licensing.md`). `creative_telescoping/benchmark.py` has the corpus
+  (`make bench-telescoping`; `--check` in tests).
+- Integration strategies (`integration_strategy/`, `integrate(strategy=...)`, `docs/integration-strategies.md`) are
+  deterministic and never call a model. `detect.py` is a pure function of the tree; every technique in `transforms.py` only
+  *proposes*: `explore.py` verifies the candidate against the **original** integrand (`check_antiderivative`,
+  `check_definite`), discards and counts failures, reports a technique whose conditions are not established as `blocked`
+  (never applied: Frullani needs scales declared positive and finite limits, parity needs a convergent half-range and
+  never gives 0 for a divergent one, Schwinger needs a provably positive base and a nonnegative remaining factor),
+  and keeps the simplest verified form. SymPy's route runs first and unchanged (within a share of the time budget so a
+  hanging integral cannot starve the strategies). A definite value is never called proved. A numerical estimate (two
+  independent rules agreeing, tail negligible) is not a formula: unrequested it rides along with the unchanged
+  `unsupported` status, and it is `ok` only for `strategy=numerical` or `auto`. Do not turn a blocked technique into a
+  result, route a candidate around the verification, or add a fallback that returns plausible output.
 - The search for hidden constants of motion (`invariants.py`, tool `search_invariants`) shows a constant only if it
   is new (known constants and their products in the ansatz are factored out) and its time derivative on the
   equations of motion is zero symbolically and at random points (`lagrangian.verify_constant`, the same check as for

@@ -1,6 +1,6 @@
 "use client";
 
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import Link from "next/link";
 import type { Diagnostics, IsolateResult, StepRecord, StepResult } from "@/lib/types";
 import { Evidence, Restrictions, StatusPill } from "./result-panel";

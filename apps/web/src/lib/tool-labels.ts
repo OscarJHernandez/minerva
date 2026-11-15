@@ -32,6 +32,8 @@ export const TOOL_LABEL: Record<string, string> = {
   integrate_motion: "Integrating the equations of motion and verifying the run",
   expand_motion: "Expanding the equations of motion about the equilibrium",
   perturbation_solve: "Solving by perturbation theory and checking the residual",
+  creative_telescoping:
+    "Searching for a telescoping relation, proving it and checking the boundary terms",
   ode_analyze: "Reading the differential equation and classifying it",
   ode_solve_symbolic: "Looking for a closed form and substituting it back",
   ode_solve_numerical: "Integrating and checking against an independent method",

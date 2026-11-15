@@ -1,4 +1,4 @@
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import type { DimensionalReport } from "@/lib/chat-types";
 import type { EntrySummary } from "@/lib/types";
 import { EntryCard } from "../entry-card";

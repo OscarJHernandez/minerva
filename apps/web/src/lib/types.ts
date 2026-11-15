@@ -150,6 +150,32 @@ export interface SeriesResult {
   duration_ms: number;
   calculation_id?: string | null;
 }
+export type IntegrationTechnique =
+  | "direct"
+  | "substitution"
+  | "parts"
+  | "trigonometric"
+  | "partial_fractions"
+  | "parity"
+  | "reflection"
+  | "frullani"
+  | "schwinger"
+  | "parameter_differentiation"
+  | "numerical";
+
+/** How an integral was reached: the technique, its steps, what else was suggested and tried. */
+export interface StrategyReport {
+  technique: IntegrationTechnique | null;
+  why: string | null;
+  steps: { what: string; latex: string }[];
+  suggestions: { technique: IntegrationTechnique; why: string }[];
+  attempts: { technique: IntegrationTechnique; outcome: string; detail: string }[];
+  verification: "proved" | "numerically_checked" | "numeric_estimate" | "none";
+  candidates_rejected: number;
+  conditions_latex: string[];
+  note: string;
+}
+
 export interface IntegrateResult {
   status: Status;
   input_latex: string | null;
@@ -183,6 +209,9 @@ export interface IntegrateResult {
   notes: string[];
   message: string;
   duration_ms: number;
+  result_kind?: "closed_form" | "numeric";
+  numeric_error?: string | null;
+  strategy?: StrategyReport | null;
   calculation_id?: string | null;
 }
 

@@ -36,6 +36,7 @@ CORE_TOOLS: tuple[str, ...] = (
     "differentiate",
     "series",
     "integrate",
+    "creative_telescoping",  # what to try when `integrate` cannot do a parameterised integral
     "substitute",
     "rewrite_part",
 )

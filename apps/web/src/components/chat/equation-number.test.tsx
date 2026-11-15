@@ -104,13 +104,13 @@ describe("Composer: inserting a reference", () => {
     const area = screen.getByLabelText("Message") as HTMLTextAreaElement;
     fireEvent.change(area, { target: { value: "Integrate" } });
     area.setSelectionRange(9, 9);
-    rerender(<Composer {...props} insertRequest={{ id: 1, text: "(3)" }} />);
+    rerender(<Composer {...props} referenceRequest={{ id: 1, text: "(3)" }} />);
     expect(area.value).toBe("Integrate (3)");
     // the same request does not insert twice; a new id does
-    rerender(<Composer {...props} insertRequest={{ id: 1, text: "(3)" }} />);
+    rerender(<Composer {...props} referenceRequest={{ id: 1, text: "(3)" }} />);
     expect(area.value).toBe("Integrate (3)");
     area.setSelectionRange(area.value.length, area.value.length);
-    rerender(<Composer {...props} insertRequest={{ id: 2, text: "(4)" }} />);
+    rerender(<Composer {...props} referenceRequest={{ id: 2, text: "(4)" }} />);
     expect(area.value).toBe("Integrate (3) (4)");
   });
 });

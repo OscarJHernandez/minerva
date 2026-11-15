@@ -18,7 +18,7 @@ export function ModelPicker({
   const cloud = s.touched ? s.provider === "openrouter" : defaultCloud;
   const label = cloud
     ? `OpenRouter · ${s.touched && s.model ? s.model : (status?.providers?.openrouter.default_model ?? "")}`
-    : `Local · ${status?.providers?.ollama.model || status?.model || "model"}`;
+    : `Local · ${(s.touched && s.localModel) || status?.providers?.ollama.model || status?.model || "model"}`;
   const bad = !cloud && status?.providers?.ollama.reachable === false;
   return (
     <button

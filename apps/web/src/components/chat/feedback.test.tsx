@@ -41,7 +41,7 @@ describe("marks are readable without a mouse", () => {
     render(<RichText segments={[seg("display_math", "x^2 + 1", "from_tool")]} />);
     fireEvent.click(screen.getByRole("button", { name: "Copy LaTeX" }));
     expect(writeText).toHaveBeenCalledWith("x^2 + 1");
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
+    expect(await screen.findByText("Copied")).toBeInTheDocument(); // the label shows it; the name stays
   });
 
   it("the legend explains every mark in the words of the marks themselves", () => {

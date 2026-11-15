@@ -28,6 +28,7 @@ from minerva_engine import (
     StatMechInput,
     StatModelInput,
     SumsInput,
+    TelescopingInput,
     VariationInput,
     VectorInput,
 )
@@ -1597,6 +1598,97 @@ def run_statistics(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+def run_telescoping(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.creative_telescoping(
+        TelescopingInput(
+            input=spec["input"],
+            format=_syntax(spec),  # type: ignore[arg-type]
+            assumptions=spec.get("assumptions") or {},
+            variable=spec["variable"],
+            parameter=spec["parameter"],
+            lower=spec.get("lower"),
+            upper=spec.get("upper"),
+        )
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.operator:
+        outputs.append({"label": f"Operator (order {r.operator.order})", "latex": r.operator.latex})
+    if r.certificate:
+        outputs.append({"label": "Certificate G", "latex": r.certificate.latex})
+    if r.certificate_check:
+        c = r.certificate_check
+        checks.append(
+            f"{'proved exactly' if c.symbolic_zero else 'not proved'}: {c.note}; numerical legs "
+            f"{c.numeric_points_agreed}/{c.numeric_points_checked} and "
+            f"{c.derivative_points_agreed}/{c.derivative_points_checked}"
+        )
+    for cond in r.conditions:
+        checks.append(f"{'established' if cond.established else 'NOT established'}: {cond.how}")
+    if r.boundary:
+        outputs.append({"label": "Boundary contribution", "latex": r.boundary.contribution_latex})
+    if r.equation:
+        outputs.append({"label": "Differential equation", "latex": r.equation.latex})
+    if r.result_latex:
+        outputs.append({"label": "Value", "latex": f"I = {r.result_latex}"})
+    if r.value_verification:
+        checks.append(r.value_verification.note)
+    notes.extend(r.unresolved)
+    notes.append(f"{r.outcome}: {r.message}")
+    inputs = [_source_line(spec, "Integrand", engine)]
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_integrate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.integrate(
+        _expr(spec),
+        spec.get("variable", "x"),
+        spec.get("lower"),
+        spec.get("upper"),
+        spec.get("strategy"),
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.result_latex:
+        outputs.append(
+            {"label": "Value" if r.definite else "Antiderivative", "latex": r.result_latex}
+        )
+    if r.result_kind == "numeric" and r.numeric:
+        notes.append(
+            f"Numerical estimate {r.numeric} (estimated error {r.numeric_error}); not a formula."
+        )
+    s = r.strategy
+    if s is not None:
+        if s.technique and s.technique != "direct":
+            notes.append(
+                f"Technique: {s.technique.replace('_', ' ')} ({s.why}); verification: {s.verification}."
+            )
+            outputs += [
+                {"label": step.what.capitalize(), "latex": step.latex} for step in s.steps[:-1]
+            ]
+        for a in s.attempts:
+            if a.outcome in ("blocked", "failed_verification"):
+                notes.append(
+                    f"{a.technique.replace('_', ' ')}: {a.outcome}"
+                    + (f" ({a.detail})" if a.detail else "")
+                )
+    if r.quadrature and r.quadrature.passed:
+        checks.append(
+            f"quadrature at {r.quadrature.points_agreed}/{r.quadrature.points_checked} parameter points"
+        )
+    if r.verification and r.verification.passed:
+        checks.append(
+            f"numerical derivative at {r.verification.points_agreed}/{r.verification.points_checked} points"
+            + ("; symbolic derivative equals the integrand" if r.verification.symbolic_zero else "")
+        )
+    notes.append(r.message)
+    return _example(
+        spec, r.status.value, [_source_line(spec, "Integrand", engine)], outputs, checks, notes
+    )
+
+
 RUNNERS = {
     "ode_analyze": run_ode_analyze,
     "ode_solve": run_ode_solve,
@@ -1620,6 +1712,8 @@ RUNNERS = {
     "variation": run_variation,
     "invariants": run_invariants,
     "discovery": run_discovery,
+    "telescoping": run_telescoping,
+    "integrate": run_integrate,
     "entry": run_entry,
     "read_formulas": run_read_formulas,
     "substitute": run_substitute,

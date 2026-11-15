@@ -1,7 +1,7 @@
 # Shortcuts for humans and agents. CI calls the underlying commands directly (see .github/workflows/ci.yml);
 # `make check` runs the same set. Run `make help` for the list.
 .DEFAULT_GOAL := help
-.PHONY: help setup check check-py check-web test handbook matrix-benchmark stat-benchmark statmech-benchmark bench fmt dev bench-geometry bench-variational eval-check eval-reliability reference reference-extended test-extended verification-report verification-compare eval
+.PHONY: help setup check check-py check-web test handbook matrix-benchmark stat-benchmark statmech-benchmark bench fmt dev bench-geometry bench-variational eval-check eval-reliability reference reference-extended test-extended verification-report verification-compare eval bench-telescoping
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -54,6 +54,9 @@ check-py: ## Ruff, mypy, handbook verification, agent files, pytest
 
 bench-geometry: ## Re-run the geometry benchmark and rewrite docs/benchmarks/geometry.json and the report
 	uv run python -m minerva_engine.geometry.benchmark
+
+bench-telescoping: ## creative telescoping against independent references (writes docs/creative-telescoping-benchmark.md)
+	uv run python -m minerva_engine.creative_telescoping.benchmark
 
 bench-variational: ## Re-run the variational calculus corpus and rewrite docs/benchmarks/variational.json and the report
 	uv run python -m minerva_engine.variational.benchmark

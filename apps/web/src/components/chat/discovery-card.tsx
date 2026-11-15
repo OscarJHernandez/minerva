@@ -1,4 +1,4 @@
-import { Math as Formula } from "@minerva/ui/math";
+import { CopyMath as Formula } from "@/components/copyable-math";
 import type { DiscoveredConstant, DiscoveryReport } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
 

@@ -2,6 +2,7 @@ import { EquationNumber } from "./equation-number";
 import { Math } from "@minerva/ui/math";
 import { type ReactNode, useState } from "react";
 import type { FormulaStatus, Segment } from "@/lib/chat-types";
+import { FormulaButtons } from "./formula-actions";
 
 export const MARKS: Record<
   FormulaStatus,
@@ -132,25 +133,32 @@ function Formula({ seg }: { seg: Segment }) {
   // A lone symbol names something; it asserts nothing, so there is nothing to verify or flag.
   const plain = status === "unchecked" && !isClaim(seg.value);
   return (
-    <span
-      title={plain ? undefined : explain(seg)}
-      data-status={plain ? "symbol" : status}
-      className={plain ? undefined : mark.underline || undefined}
-    >
-      <Math latex={seg.value} />
-      {!plain && mark.label && (
-        // A button, so that a keyboard or a finger can read what the mark means (a hover tooltip cannot).
-        <sup className="ml-0.5">
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            aria-label={`${status === "unchecked" ? "unchecked" : mark.label}: what this mark means`}
-            className={`text-[10px] font-medium ${mark.tone}`}
-          >
-            {status === "unchecked" ? "?" : mark.label}
-          </button>
-        </sup>
+    <span className="group/formula">
+      <span
+        title={plain ? undefined : explain(seg)}
+        data-status={plain ? "symbol" : status}
+        className={plain ? undefined : mark.underline || undefined}
+      >
+        <Math latex={seg.value} />
+        {!plain && mark.label && (
+          // A button, so that a keyboard or a finger can read what the mark means (a hover tooltip cannot).
+          <sup className="ml-0.5">
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              aria-label={`${status === "unchecked" ? "unchecked" : mark.label}: what this mark means`}
+              className={`text-[10px] font-medium ${mark.tone}`}
+            >
+              {status === "unchecked" ? "?" : mark.label}
+            </button>
+          </sup>
+        )}
+      </span>
+      {isClaim(seg.value) && (
+        <span className="ml-1.5 align-middle">
+          <FormulaButtons latex={seg.value} subtle />
+        </span>
       )}
       {open && (
         <span role="note" className="mx-1 text-xs text-muted" data-testid="mark-explanation">
@@ -158,27 +166,6 @@ function Formula({ seg }: { seg: Segment }) {
         </span>
       )}
     </span>
-  );
-}
-
-function CopyLatex({ latex }: { latex: string }) {
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
-  return (
-    <button
-      type="button"
-      className="text-xs text-muted hover:text-accent"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(latex);
-          setState("copied");
-        } catch {
-          setState("failed");
-        }
-        setTimeout(() => setState("idle"), 1500);
-      }}
-    >
-      {state === "copied" ? "Copied" : state === "failed" ? "Copy failed" : "Copy LaTeX"}
-    </button>
   );
 }
 
@@ -208,7 +195,7 @@ function DisplayFormula({ seg }: { seg: Segment }) {
         ) : (
           <span />
         )}
-        <CopyLatex latex={seg.value} />
+        <FormulaButtons latex={seg.value} />
       </div>
     </div>
   );

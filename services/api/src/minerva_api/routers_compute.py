@@ -38,6 +38,8 @@ from minerva_engine import (
     StepResult,
     SumsInput,
     SumsResult,
+    TelescopingInput,
+    TelescopingResult,
     TensorInput,
     TensorResult,
     VariationInput,
@@ -95,6 +97,7 @@ from .schemas import (
     VectorRequest,
 )
 from .search_log import log_search_events
+from .telescoping_log import log_telescoping
 from .variation_log import log_variation
 from .vector_log import log_vector
 
@@ -341,7 +344,7 @@ def integrate(
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
     expression = _expr(body)
-    result = engine.integrate(expression, body.variable, body.lower, body.upper)
+    result = engine.integrate(expression, body.variable, body.lower, body.upper, body.strategy)
     log.info(
         "compute",
         operation="integrate",
@@ -451,6 +454,30 @@ def conserved_quantities(
         user_id=str(user.id),
     )
     return report
+
+
+@router.post("/telescoping", response_model=TelescopingResult)
+def telescoping(
+    body: TelescopingInput,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> TelescopingResult:
+    """Creative telescoping of a parameterised integral: a proved relation L f = dG/dx, the ODE it
+    gives for the integral, and the value only if every condition and independent check agree.
+    Not saved as a workbench step: the result is returned."""
+    _guard(user, limiter, settings, len(body.input))
+    result = engine.creative_telescoping(body)
+    log.info(
+        "compute",
+        operation="creative_telescoping",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    log_telescoping(result)
+    return result
 
 
 def _geometry_length(body: GeometryRequest) -> int:

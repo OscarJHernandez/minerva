@@ -20,8 +20,10 @@ interface Props {
   beforeSend?: () => boolean;
   /** A panel shown above the message box (the model settings). */
   panel?: ReactNode;
+  /** A formula to put in the message box (from "Edit in chat"). Each new `id` inserts once. */
+  insertRequest?: { id: number; latex: string } | null;
   /** Text to put in the message at the cursor (a reference to an equation); a new `id` inserts again. */
-  insertRequest?: { id: number; text: string } | null;
+  referenceRequest?: { id: number; text: string } | null;
   /** Replaces what is in the box (editing the last message); a new `id` replaces again. */
   replaceRequest?: { id: number; text: string } | null;
 }
@@ -60,6 +62,7 @@ export function Composer({
   panel,
   beforeSend,
   insertRequest,
+  referenceRequest,
   replaceRequest,
 }: Props) {
   const [text, setText] = useState("");
@@ -96,6 +99,14 @@ export function Composer({
   );
   const insert = useCallback((latex: string) => insertMany([latex]), [insertMany]);
 
+  // A formula sent from a reply ("Edit in chat") goes in as `$...$` at the cursor.
+  const handled = useRef<number | null>(null);
+  useEffect(() => {
+    if (!insertRequest || handled.current === insertRequest.id) return;
+    handled.current = insertRequest.id;
+    insertMany([insertRequest.latex]);
+  }, [insertRequest, insertMany]);
+
   const replacedId = useRef(0);
   useEffect(() => {
     if (!replaceRequest || replaceRequest.id === replacedId.current) return;
@@ -105,20 +116,20 @@ export function Composer({
   }, [replaceRequest]);
 
   // A reference clicked in the conversation ("(3)") goes in at the cursor, set apart from the word before it.
-  const insertedId = useRef(0);
+  const referencedId = useRef(0);
   useEffect(() => {
-    if (!insertRequest || insertRequest.id === insertedId.current) return;
-    insertedId.current = insertRequest.id;
+    if (!referenceRequest || referenceRequest.id === referencedId.current) return;
+    referencedId.current = referenceRequest.id;
     const el = areaRef.current;
     const start = el?.selectionStart ?? 0;
     const end = el?.selectionEnd ?? start;
     setText((t) => {
       const before = t.slice(0, start);
       const gap = before !== "" && !/\s$/.test(before) ? " " : "";
-      return before + gap + insertRequest.text + t.slice(end);
+      return before + gap + referenceRequest.text + t.slice(end);
     });
     requestAnimationFrame(() => el?.focus());
-  }, [insertRequest]);
+  }, [referenceRequest]);
   const close = useCallback(() => setFormula(false), []);
   const closeImage = useCallback(() => setImage(null), []);
 

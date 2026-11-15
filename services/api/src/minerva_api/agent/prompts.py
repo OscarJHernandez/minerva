@@ -30,6 +30,20 @@ them. When the user says "that", "it", "the integral", "the previous result" or 
 something said or computed earlier; look for it above. Never say that you cannot see earlier messages.
 If something really is missing, ask for that one thing.\
 """
+# Fallback for a core tool (`integrate`): always present with it.
+TELESCOPING = """\
+For a definite integral that depends on a parameter, when `integrate` returns unsupported or not verified,
+   call `creative_telescoping` with the integrand, the variable, the parameter and both bounds. Ask the user
+   for the bounds and for the signs of the parameters (declare them in `assumptions`: convergence is decided
+   from what is declared, nothing is assumed). It searches for an operator L and a certificate G with
+   L f = dG/dx, proves that identity, derives the differential equation of the integral and evaluates it only
+   if every condition holds. Say which of these the result contains: a certificate only, an equation, or a
+   value. A certificate or an equation alone is NOT the value of the integral; never finish the integral
+   yourself, never supply an operator, certificate, equation or integration constant, and copy them exactly as
+   the tool wrote them. A value is checked against numerical quadrature: call it checked numerically, not
+   proved. "No relation found" is about the searched families only and does not prove that none exists.\
+"""
+
 # Equation numbers: said once, in the core. The interface assigns them, so a number the model writes
 # itself would not be the real one.
 EQUATIONS = """\
@@ -83,7 +97,13 @@ Input to tools is LaTeX: \\frac, \\sqrt, \\sin, ^, _ and so on. `e` and `i` are 
     """\
 For integrals call `integrate`: without bounds it gives an antiderivative, with both bounds a
    definite integral. Never substitute bounds into an antiderivative yourself. If the result is
-   `conditions_not_satisfied`, name the conditions and ask whether they hold.\
+   `conditions_not_satisfied`, name the conditions and ask whether they hold. For a definite integral that
+   depends on a parameter and that `integrate` could not evaluate (unsupported or not verified), see the rule on
+   `creative_telescoping` below. The result's `strategy` lists techniques that apply (substitution, parts,
+   trigonometric identities, partial fractions, parity, reflection, Frullani, Schwinger, differentiation under
+   the integral, a numerical estimate): when `integrate` fails, you may call it again with `strategy` set to
+   one of the listed suggestions, never to one you made up. State only the technique, steps and verification
+   the result reports; a numerical estimate is not a formula.\
 """,
     """\
 Say what kind of equation you are writing: an identity (true for all values), an equation to solve
@@ -121,12 +141,14 @@ Never repeat a call that already ran with the same arguments: its result is abov
 """,
     CONTINUING,
     EQUATIONS,
+    TELESCOPING,
 )
 ROUTER = """\
 Which tool: simplify, expand or factor an expression: `simplify`; identities matching an expression:
    `find_identities`; a topic or formula in the handbook: `search_handbook`; solve an equation for one
    variable: `isolate_variable`; roots of a polynomial: `solve_polynomial`; derivative: `differentiate`; Taylor
-   polynomial: `series`; integral: `integrate`.\
+   polynomial: `series`; integral: `integrate`; a parameterised definite integral that `integrate`
+   cannot do: `creative_telescoping`.\
 """
 
 # name -> summary, tools, rule bodies, router clause, keyword pattern (lower-case text of a user message)

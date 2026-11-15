@@ -56,7 +56,9 @@ def test_the_smallest_request_stays_far_below_a_small_window() -> None:
     """Core prompt + core tools. The full set was ~22k tokens and overflowed a 16k window."""
     prompt = toolsets.prompt_for([], "auto")
     tools = _schemas_for(toolsets.tool_names([], "auto"))
-    assert estimate_tokens(request_chars(prompt, tools, [])) < 8000
+    assert (
+        estimate_tokens(request_chars(prompt, tools, [])) < 9000
+    )  # was 8000 before creative_telescoping joined the core
     full = estimate_tokens(
         request_chars(SYSTEM_PROMPT, _schemas_for(toolsets.tool_names([], "all")), [])
     )
