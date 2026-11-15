@@ -6,6 +6,11 @@ const config: NextConfig = {
   // Monorepo: trace dependencies from the repository root so the standalone build is complete.
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   poweredByHeader: false,
+  // The chat reply is a server-sent stream proxied from the API. Next compresses proxied responses, which
+  // holds the stream back and delivers the whole reply in one piece at the end (no live text, and Stop
+  // keeps nothing). Compression is left to what sits in front (Cloudflare, nginx), which passes event
+  // streams through as they come.
+  compress: false,
   reactStrictMode: true,
   transpilePackages: ["@minerva/ui"],
   async headers() {

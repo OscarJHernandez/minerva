@@ -115,8 +115,30 @@ Check that the API accepted the settings. This endpoint needs no login and does 
 
 ```bash
 curl -s http://127.0.0.1:8100/v1/chat/status
-# {"enabled":true,"mode":"ollama","model":"minerva","images":false,"providers":{...}}
+# {"enabled":true,"mode":"ollama","model":"minerva","images":false,"context_ok":true,"providers":{...}}
 ```
+
+`"context_ok":false` means the smallest request Minerva sends (its instructions and the core tools, about 5 000
+tokens) does not fit the context window you configured; the chat then shows a warning. `"images":false` means
+"Add image" is off: set `MINERVA_LLM_VISION_MODEL` (below).
+
+**The context window matters.** Minerva sends `MINERVA_LLM_NUM_CTX` (default 32768 tokens) with every request. A
+model host that is handed more than its window silently drops the start of the prompt, so the model answers as if
+the conversation had never happened. Check the window in `ollama ps` (the CONTEXT column). Some Ollama
+setups divide the window between parallel requests (`OLLAMA_NUM_PARALLEL`); if a turn is cut, give the host a larger
+window or one parallel slot. `docs/model-evaluation.md` has the measurements.
+
+**Model settings.** `.env.example` lists them: reply length (`MINERVA_LLM_NUM_PREDICT`), sampling
+(`MINERVA_LLM_TEMPERATURE`, `_TOP_P`, `_TOP_K`), how much history is replayed (`_HISTORY_MESSAGES`,
+`_HISTORY_TOKENS`) and which tools are sent (`MINERVA_LLM_TOOLSET`: `auto`, `core` or `all`). To try values
+without redeploying, set `MINERVA_LLM_TUNING=true`: signed-in users then get a "Model parameters" panel under the
+chat's debug checkbox. The context size can only be changed by the accounts in `MINERVA_LLM_TUNING_EMAILS`, up to
+`MINERVA_LLM_NUM_CTX_MAX`. Nothing mathematical is configurable. The same values are flags of
+`scripts/eval_models.py`, so a setting is judged by a measured comparison, not by a few chats.
+
+**Reading formulas from a picture.** Set `MINERVA_LLM_VISION_MODEL` to a model on the same host that accepts images
+(it can be the chat model: the `minerva` model built from a Gemma base does). The "Image" button then appears in the
+composer, and a screenshot can be pasted or dropped onto it.
 
 Open <http://localhost:3000> and ask something such as "simplify sin(x)/(1+cos(x)) + (1+cos(x))/sin(x)".
 You should see a result card produced by the engine, with its verification, next to the model's

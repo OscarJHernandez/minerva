@@ -98,6 +98,47 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   error text. A cloud turn needs `cloud_consent`; BYOK is off unless `MINERVA_OPENROUTER_BYOK`; the operator key is for
   listed emails only, with a daily cap. Never fall back from one provider to another. The key lives in a separate
   Kubernetes Secret, never in Helm values (the chart refuses `apiKey`). Guide: `docs/openrouter-setup.md`.
+- What the model is sent is bounded by its context window (`agent/toolsets.py`, `budget.py`, `params.py`). A host handed more
+  than its window silently cuts the start of the prompt: the model then loses its instructions, its tools and the
+  conversation (the chat answered "I don't have the preceding conversation" with no tool calls). So: tools go in groups (a
+  core set always, a group once the conversation needs it: a tool of it was used, a keyword of it was typed, the model called
+  `load_tools`, or it called a tool of the group directly); the prompt is assembled from a core plus the rule blocks of the
+  groups in use (`prompts.assemble`; rules are numbered at assembly, never by hand); a conversation's tools and rules only ever
+  grow, in the order added, so the start of the prompt stays identical and a host can reuse it; `num_ctx` is sent with every
+  request; history is replayed newest turns first within a token budget, tool results of older exchanges shortened, and what
+  was left out is reported (`context_trimmed`, shown to the user). Result ids (`@rN`), restrictions and verified formulas are read
+  from the WHOLE conversation, not the replayed window. A new tool must be in `CORE_TOOLS` or exactly one group
+  (`test_every_tool_is_core_or_in_exactly_one_group`), a new rule goes in the block of its group, and
+  `test_the_smallest_request_stays_far_below_a_small_window` fails when the core grows too large. Do not send every tool
+  again "to be safe" and do not remove the estimate before a model call.
+- Turn lifecycle in the chat: `SendMessage.mode` is `new`, `retry` (answer the last user message again) or `edit` (replace its text
+  and answer again); the reply after it is deleted and the user message is kept, never stored twice (equation numbers are not
+  reused: the counter is a high-water mark, and a reference to a number whose message was replaced is told "no longer exists"). A
+  client that leaves mid-reply (Stop, a closed tab) gets what had arrived stored as a `stop_reason: "stopped"` message
+  (`_store_stopped`; nothing arrived: nothing stored), a `phase` event tells the client when the formulas are being checked, and text
+  that starts like JSON or a code fence is held back until the model call ends so a tool call written as prose is never shown. A
+  message sent after a reply that was never stored is merged with the unreplied one (the model never sees two user messages in a row).
+  The composer gives the text back when a send failed before anything was sent; the address `/c/<id>` names the open conversation.
+- The reply is a server-sent stream and must reach the browser as it is written. Through the web app's proxy Next.js gzips it
+  and delivers the whole reply in one piece at the end (no live text; Stop keeps nothing), which is why `apps/web/next.config.ts`
+  sets `compress: false` (the CDN or nginx in front compresses). Do not turn it back on; if a deployment puts another buffering
+  proxy in front, the stream must be exempt (`X-Accel-Buffering: no`, `Cache-Control: no-transform` are sent). Check with a
+  fetch from the browser: many chunks over seconds, not two at the end.
+- Equation numbers (`agent/equations.py`): every displayed formula (reply or the user's message) and every tool result with a
+  primary `result_latex` gets a number, one counter per conversation (`Conversation.equation_counter`, a high-water mark that is
+  never lowered), assigned by the server after the turn in reading order; a formula already numbered keeps its number. A number
+  is a name, never a verification: do not let it change a mark, and never trust a number the model writes (the prompt says not
+  to). "Equation 3", "eq. (3)" or a lone "(3)" in the user's message is resolved from storage and shown under their message; an
+  unknown explicit number is said to be unknown. `@eN` in a tool argument is the equation's LaTeX (a verified result goes through
+  `@rK`, with its restrictions). **An equation the model wrote and Minerva never verified may be used, but the result then carries
+  `unverified_inputs`: its formulas are quoted, never `known_latex`, and the fact travels with the result id into later `@rK`
+  reuse** (`ResultStore.unverified`, rebuilt from cards by `equations.unverified_inputs`). Do not widen `known_latex` through a
+  reference. The shared fixture `packages/ui/fixtures/math-delimiters.json` is run by both `segments.py` and `inline-math.ts`:
+  change a delimiter rule in both places and in the fixture.
+- Model parameters (`MINERVA_LLM_*`, `agent/params.py`) are operator defaults, per-turn overrides in the chat's debug panel
+  (`SendMessage.params`; off unless `MINERVA_LLM_TUNING`, the context size only for `MINERVA_LLM_TUNING_EMAILS`, capped) and
+  flags of `scripts/eval_models.py`; what a turn used is stored in `AssistantMessage.debug.params`. **Nothing mathematical is a
+  parameter**: a test pins the field list. Do not add a verification tolerance, a limit or the claim check to it.
 - After each turn, formulas in the model's prose are compared with formulas present in this conversation's tool results;
   anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.

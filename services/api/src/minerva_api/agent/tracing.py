@@ -141,6 +141,10 @@ class LLMRequest(TraceEvent):
     event: Literal["llm.request"] = "llm.request"
     message_count: int = 0
     tool_count: int = 0
+    prompt_estimate_tokens: int = 0
+    window: int = 0
+    dropped_messages: int = 0
+    groups_loaded: int = 0
 
 
 class LLMResponse(TraceEvent):

@@ -7,9 +7,11 @@ FROM __BASE__
 # Low temperature: tool arguments and short explanations, not creative writing.
 PARAMETER temperature 0.2
 PARAMETER top_p 0.9
-# Enough room for the system prompt and the tool schemas (together about 54k characters, 6k to 8k
-# tokens per call at the time of writing: measure with scripts/eval_models.py before shrinking it),
-# history and tool results.
-PARAMETER num_ctx 16384
+# Room for the system prompt, the tool schemas, the history and the reply. The full set of tools is about
+# 22k tokens (measured with the deployed model); the app sends a core set of about 6k and adds the groups
+# a conversation needs, and it sends `num_ctx` with every request (MINERVA_LLM_NUM_CTX), which overrides
+# this line. Keep the two equal. A window smaller than the prompt makes the host drop the start of it,
+# including the conversation and most of the tool definitions.
+PARAMETER num_ctx 32768
 # Cap the length of one model call. Answers should be short; the interface shows results as cards.
 PARAMETER num_predict 1200

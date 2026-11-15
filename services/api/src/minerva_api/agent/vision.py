@@ -72,10 +72,14 @@ class OllamaFormulaReader:
         model: str,
         timeout_seconds: float = 120.0,
         transport: httpx.AsyncBaseTransport | None = None,
+        num_ctx: int | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.name = model
+        # The chat model's window, when this is the same model: a different `num_ctx` makes the host
+        # reload the model between a chat turn and an image read.
+        self._num_ctx = num_ctx
         self._transport = transport
         self._timeout = httpx.Timeout(timeout_seconds, connect=10.0)
 
@@ -92,7 +96,7 @@ class OllamaFormulaReader:
             "stream": False,
             "think": False,
             "format": _SCHEMA,
-            "options": {"temperature": 0},
+            "options": {"temperature": 0, **({"num_ctx": self._num_ctx} if self._num_ctx else {})},
         }
         try:
             async with httpx.AsyncClient(

@@ -47,8 +47,9 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "check_units": "dimensional",
     "search_handbook": "lookup",
     "get_entry": "lookup",
+    "load_tools": "lookup",  # not a result: a request for more tools
 }
-_LOOKUPS = {"search_handbook", "get_entry"}
+_LOOKUPS = {"search_handbook", "get_entry", "load_tools"}
 _NESTED = ("report", "result")  # cards that wrap the engine result
 _REASONS: dict[str, EvidenceReason] = {
     "unchanged": "unchanged",

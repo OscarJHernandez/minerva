@@ -1,4 +1,5 @@
 import { Math } from "@minerva/ui/math";
+import { EquationNumber } from "./equation-number";
 import type { Card } from "@/lib/chat-types";
 import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
@@ -29,6 +30,18 @@ import type { Status } from "@/lib/types";
 
 /** Renders a tool result. The content comes from Minerva's own computation, never from the model. */
 export function CardView({ card }: { card: Card }) {
+  if (card.number == null) return <CardContent card={card} />;
+  return (
+    <div>
+      <div className="flex justify-end">
+        <EquationNumber n={card.number} />
+      </div>
+      <CardContent card={card} />
+    </div>
+  );
+}
+
+function CardContent({ card }: { card: Card }) {
   switch (card.type) {
     case "simplify":
       return <ResultPanel result={card.data} />;
@@ -150,6 +163,8 @@ export function CardView({ card }: { card: Card }) {
           <p className="text-sm text-muted">{card.data.message}</p>
         </section>
       );
+    case "note":
+      return <p className="text-xs text-muted">{card.data.message}</p>;
     case "error":
       return (
         <p role="alert" className="rounded bg-warn-soft px-3 py-2 text-sm text-warn">

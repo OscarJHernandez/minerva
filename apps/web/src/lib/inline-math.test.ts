@@ -60,3 +60,17 @@ describe("splitMath", () => {
     ]);
   });
 });
+
+import fixture from "../../../../packages/ui/fixtures/math-delimiters.json";
+
+describe("splitMath against the shared fixture", () => {
+  // The server's splitter (agent/segments.py) is tested against the same file: keep them identical.
+  for (const c of fixture.cases) {
+    it(c.name, () => {
+      const found = splitMath(c.text)
+        .filter((s) => s.type !== "text")
+        .map((s) => [s.type, s.value]);
+      expect(found).toEqual(c.formulas);
+    });
+  }
+});

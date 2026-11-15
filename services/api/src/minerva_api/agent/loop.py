@@ -21,7 +21,9 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
+from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .declarations import declared_matrices, declared_vectors
+from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
     AssistantMessage,
     Block,
@@ -32,9 +34,10 @@ from .events import (
     TurnDebug,
 )
 from .llm import LLMClient, LLMError, ToolCall, Usage
+from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
-from .refs import ResultStore, inherited_note
-from .segments import split_segments
+from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
+from .segments import normalize, split_segments
 from .tools import (
     TOOLS,
     ToolContext,
@@ -45,6 +48,15 @@ from .tools import (
     known_formulas,
     quoted_formulas,
     schemas,
+)
+from .toolsets import (
+    LOAD_TOOLS,
+    conversation_groups,
+    group_of,
+    grow,
+    prompt_for,
+    requested_groups,
+    tool_names,
 )
 from .tracing import (
     AgentCompleted,
@@ -137,6 +149,24 @@ def prompt_sha() -> str:
     return hashlib.sha256(blob.encode()).hexdigest()[:12]
 
 
+_SCHEMA_BY_NAME: dict[str, dict[str, Any]] = {s["function"]["name"]: s for s in schemas()}
+
+
+def _schemas_for(names: Sequence[str]) -> list[dict[str, Any]]:
+    return [_SCHEMA_BY_NAME[n] for n in names if n in _SCHEMA_BY_NAME]
+
+
+def _events(history: Sequence[dict[str, Any]]) -> list[tuple[str, Any]]:
+    """The (user text / tool call) events of a neutral history, for `conversation_groups`."""
+    out: list[tuple[str, Any]] = []
+    for m in history:
+        if m.get("role") == "user":
+            out.append(("user", str(m.get("content") or "")))
+        for call in m.get("tool_calls") or []:
+            out.append(("tool", (str(call.get("name", "")), call.get("arguments", {}))))
+    return out
+
+
 def _ms(since: float) -> int:
     return int((time.monotonic() - since) * 1000)
 
@@ -211,6 +241,10 @@ async def _model_step(
     step = _Step()
     parts: list[str] = []
     started = time.monotonic()
+    # Text that starts like JSON or a code fence may be a tool call written as prose: it is held back until
+    # the call ends, and shown only if it turns out to be prose. (The stored reply never contained it; the
+    # live view used to show it and then lose it.) Once the text starts like anything else it streams as usual.
+    holding = True
     try:
         # The model host's own timeout is per read: a stream that keeps trickling is cut here.
         async with asyncio.timeout(seconds):
@@ -219,7 +253,13 @@ async def _model_step(
                     if step.first_token_ms is None:
                         step.first_token_ms = _ms(started)
                     parts.append(chunk.text)
-                    yield {"event": "text", "data": {"delta": chunk.text}}
+                    if holding:
+                        so_far = "".join(parts).lstrip()
+                        if so_far and not so_far.startswith(("{", "`")):
+                            holding = False
+                            yield {"event": "text", "data": {"delta": "".join(parts)}}
+                    else:
+                        yield {"event": "text", "data": {"delta": chunk.text}}
                 step.calls.extend(chunk.tool_calls)
                 if chunk.usage is not None:
                     step.usage = chunk.usage
@@ -228,6 +268,8 @@ async def _model_step(
     except LLMError as exc:
         step.error = exc
     step.text = "".join(parts)
+    if holding and step.text.strip() and not looks_like_tool_call(step.text):
+        yield {"event": "text", "data": {"delta": step.text}}
     step.latency_ms = _ms(started)
     yield {"event": "_step", "data": step}
 
@@ -262,6 +304,10 @@ async def run_agent(
     prior_matrices: Sequence[str] = (),
     prior_results: Mapping[str, str] | None = None,
     prior_restrictions: Mapping[str, Sequence[str]] | None = None,
+    prior_groups: Sequence[str] = (),
+    params: EffectiveParams | None = None,
+    equations: EquationTable | None = None,
+    prior_unverified: Mapping[str, Sequence[str]] | None = None,
     info: TurnInfo | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
@@ -289,6 +335,10 @@ async def run_agent(
                 prior_results,
                 prior_matrices,
                 prior_restrictions,
+                prior_groups,
+                params,
+                equations,
+                prior_unverified,
             ):
                 yield event
     finally:
@@ -309,10 +359,27 @@ async def _run_turn(
     prior_results: Mapping[str, str] | None,
     prior_matrices: Sequence[str] = (),
     prior_restrictions: Mapping[str, Sequence[str]] | None = None,
+    prior_groups: Sequence[str] = (),
+    params: EffectiveParams | None = None,
+    equations: EquationTable | None = None,
+    prior_unverified: Mapping[str, Sequence[str]] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
-    messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
-    store = ResultStore.from_prior(prior_results, prior_restrictions)
+    # Without parameters (tests, scripts that predate them) everything is sent and nothing is trimmed.
+    toolset = params.toolset if params is not None else "all"
+    active: list[str] = grow(prior_groups, conversation_groups(_events(history)))
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": prompt_for(active, toolset)},
+        *history,
+    ]
+    kept_history = len(history)
+    store = ResultStore.from_prior(
+        prior_results,
+        prior_restrictions,
+        equations.items if equations is not None else None,
+        prior_unverified,
+    )
+    result_ids: dict[str, str] = {}  # card id -> the id of the verified result it is
     outputs: list[ToolOutput] = []
     order: list[str | Card] = []  # prose and cards in the order they happened
     trace: list[TraceStep] = []
@@ -328,6 +395,8 @@ async def _run_turn(
         max_seconds=limits.max_seconds,
         max_tool_calls=limits.max_tool_calls,
         trace_id=tracer.trace_id,
+        params=params.model_dump(mode="json") if params is not None else {},
+        context_window=params.num_ctx if params is not None else 0,
     )
     declared: dict[str, list[str]] = dict(prior_assumptions or {})
     seen: dict[str, str] = {}
@@ -360,9 +429,42 @@ async def _run_turn(
                 stop = StopReason.TIME_LIMIT
                 break
             step += 1
-            tracer.emit(LLMRequest, step, message_count=len(messages), tool_count=len(TOOLS))
+            tools_now = _schemas_for(tool_names(active, toolset))
+            system_now = prompt_for(active, toolset)
+            trimmed = 0
+            if params is not None:
+                reserve = min(params.num_predict or 4096, params.num_ctx // 4)
+                current = messages[1 + kept_history :]
+                fixed = (
+                    len(system_now)
+                    + len(json.dumps(tools_now))
+                    + sum(message_chars(m) for m in current)
+                )
+                limit = params.num_ctx - reserve
+                kept, _ = fit_history(history, fixed_chars=fixed, limit_tokens=limit)
+                if params.history_tokens:
+                    kept, _ = fit_history(kept, fixed_chars=0, limit_tokens=params.history_tokens)
+                trimmed = len(history) - len(kept)
+                messages = [{"role": "system", "content": system_now}, *kept, *current]
+                kept_history = len(kept)
+                debug.history_dropped = max(debug.history_dropped, trimmed)
+            else:
+                messages[0] = {"role": "system", "content": system_now}
+            estimate = estimate_tokens(request_chars(system_now, tools_now, messages[1:]))
+            debug.prompt_estimate_tokens = max(debug.prompt_estimate_tokens, estimate)
+            debug.groups = list(active)
+            tracer.emit(
+                LLMRequest,
+                step,
+                message_count=len(messages),
+                tool_count=len(tools_now),
+                prompt_estimate_tokens=estimate,
+                window=params.num_ctx if params is not None else 0,
+                dropped_messages=trimmed,
+                groups_loaded=len(active),
+            )
             result = _Step()
-            async for ev in _model_step(llm, messages, schemas(), remaining()):
+            async for ev in _model_step(llm, messages, tools_now, remaining()):
                 if ev["event"] == "_step":
                     result = ev["data"]
                 else:
@@ -494,9 +596,12 @@ async def _run_turn(
                     continue
                 tool_calls_made += 1
                 call_id = uuid.uuid4().hex[:8]
+                if toolset == "auto" and (needed := group_of(call.name)) is not None:
+                    active = grow(active, [needed])  # calling a tool of a group loads the group
                 arguments, references, refusal = call.arguments, 0, None
                 inherited: list[str] = []
                 inherited_from: list[str] = []
+                unverified_inputs: list[str] = []
                 if call.malformed or not call.name:
                     defect = MALFORMED_TEXT.get(call.malformed or "missing_name", "it was unusable")
                     refusal = _error(
@@ -518,6 +623,7 @@ async def _run_turn(
                     else:
                         arguments, references = resolution.arguments, resolution.count
                         inherited, inherited_from = resolution.inherited, resolution.inherited_from
+                        unverified_inputs = resolution.unverified
                 key = _call_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
@@ -602,6 +708,13 @@ async def _run_turn(
                             call.name, "it failed unexpectedly", ErrorCategory.TOOL_FAILURE
                         )
                     seen[key] = call_id
+                if (
+                    call.name == LOAD_TOOLS
+                    and refusal is None
+                    and output.status == "ok"
+                    and toolset == "auto"
+                ):
+                    active = grow(active, requested_groups(arguments))
                 duration = _ms(tool_started)
                 sandbox = tracer.sandbox_since(mark)
                 engine_ms = sum(c.ms for c in sandbox) if sandbox else None
@@ -617,11 +730,28 @@ async def _run_turn(
                         # The new result is valid only where the one it was computed from was.
                         output.card.data["inherited_restrictions_latex"] = new
                         output.for_model += "\n" + inherited_note(new, inherited_from)
+                if refusal is None and unverified_inputs and output.status == "ok":
+                    # A verified computation on an input nobody verified: say so, and never let the
+                    # result's formulas count as verified (they are quoted, with the reason).
+                    output.card.data["unverified_inputs"] = list(unverified_inputs)
+                    output.for_model += "\n" + unverified_note(unverified_inputs)
+                    output.quoted_latex = [
+                        *output.quoted_latex,
+                        *((normalize(f), UNVERIFIED_INPUT) for f in output.known_latex if f),
+                    ]
+                    output.known_latex = []
                 result_id = (
-                    store.register(call.name, output, inherited if output.status == "ok" else ())
+                    store.register(
+                        call.name,
+                        output,
+                        inherited if output.status == "ok" else (),
+                        unverified_inputs if output.status == "ok" else (),
+                    )
                     if refusal is None
                     else None
                 )
+                if result_id:
+                    result_ids[call_id] = result_id
 
                 output.card.id = call_id
                 outputs.append(output)
@@ -765,7 +895,8 @@ async def _run_turn(
         failure_category = ErrorCategory.TOOL_FAILURE
 
     # ---- the end of the turn: one place builds the message, whatever way the turn ended ----------
-    raw = "\n\n".join(full_text).strip()
+    raw = strip_equation_tags("\n\n".join(full_text).strip())
+    order = [strip_equation_tags(i) if isinstance(i, str) else i for i in order]
     if stop is not StopReason.COMPLETED:
         sentence = STOP_SENTENCES[stop]
         raw = (raw + "\n\n" if raw else "") + sentence
@@ -778,11 +909,15 @@ async def _run_turn(
         else Block(kind="text", segments=split_segments(item, known, quoted))
         for item in order
     ]
+    if _pending_claims(blocks):  # formulas the model wrote are about to be tested: tell the user
+        yield {"event": "phase", "data": {"phase": "checking"}}
     claims_started = time.monotonic()
     debug.claims, debug.claim_check = await _check_claims_in_budget(
         blocks, ctx, trace, remaining(), prior_relations, prior_assumptions, prior_matrices
     )
     claims_ms = _ms(claims_started)
+    if equations is not None:  # numbers are assigned here, in reading order, never by the model
+        number_blocks(blocks, equations, result_ids)
     formulas = [s for b in blocks if b.kind == "text" for s in b.segments if s.type != "text"]
     backed = sum(1 for s in formulas if s.status in ("from_tool", "checked", "conditional"))
     debug.formulas, debug.formulas_with_evidence = len(formulas), backed
@@ -847,6 +982,7 @@ async def _run_turn(
         truncated=stop is not StopReason.COMPLETED,
         debug=debug,
         stop_reason=stop.value,
+        context_trimmed=debug.history_dropped,
     )
     if failure is not None:
         yield {

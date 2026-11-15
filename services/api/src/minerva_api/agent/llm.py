@@ -10,6 +10,8 @@ from typing import Any, Protocol
 
 import httpx
 
+from .params import EffectiveParams
+
 
 def new_call_id() -> str:
     return "call_" + uuid.uuid4().hex[:16]
@@ -117,8 +119,11 @@ class OllamaClient:
         transport: httpx.AsyncBaseTransport | None = None,
         temperature: float = 0.2,
         seed: int | None = None,
+        options: dict[str, Any] | None = None,
     ) -> None:
         self.strip_thinking = strip_thinking
+        # Further `options` of the request (num_ctx, num_predict, top_p, top_k): only what is given is sent.
+        self.extra_options = dict(options or {})
         # Sampling settings are part of what a benchmark records; the defaults are what chat uses.
         self.temperature = temperature
         self.seed = seed
@@ -130,11 +135,27 @@ class OllamaClient:
         # chooses tools, answers are faster without it; set think=True to measure whether it helps.
         self.think = think
         self._timeout = httpx.Timeout(timeout_seconds, connect=10.0)
+        self._timeout_seconds = timeout_seconds
+
+    def with_params(self, params: EffectiveParams) -> OllamaClient:
+        """A client for the same host with these parameters (a turn's own, never shared)."""
+        options = params.ollama_options()
+        return OllamaClient(
+            self.base_url,
+            self.model,
+            self._timeout_seconds,
+            think=params.think,
+            strip_thinking=self.strip_thinking,
+            transport=self._transport,
+            temperature=float(options.pop("temperature")),
+            seed=self.seed,
+            options=options,
+        )
 
     async def chat(
         self, messages: Sequence[dict[str, Any]], tools: Sequence[dict[str, Any]]
     ) -> AsyncIterator[Chunk]:
-        options: dict[str, Any] = {"temperature": self.temperature}
+        options: dict[str, Any] = {"temperature": self.temperature, **self.extra_options}
         if self.seed is not None:
             options["seed"] = self.seed
         payload = {

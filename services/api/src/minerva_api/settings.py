@@ -52,6 +52,22 @@ class Settings(BaseSettings):
     llm_strip_thinking: bool = (
         False  # drop reasoning a model leaks into its reply (delays streaming)
     )
+    # Model parameters (operator defaults; `agent/params.py` holds the ranges and the per-turn overrides).
+    # The context window is sent explicitly: a host that is not told uses its own default (often 2-4k
+    # tokens) and silently cuts the start of a longer prompt. 0 means "do not send, use the model's own".
+    llm_num_ctx: int = Field(default=32768, ge=2048, le=262144)
+    llm_num_ctx_max: int = Field(default=65536, ge=2048, le=262144)  # cap for a per-turn override
+    llm_num_predict: int = Field(default=0, ge=0, le=65536)  # longest reply (0: the model's own)
+    llm_temperature: float = Field(default=0.2, ge=0, le=2)
+    llm_top_p: float = Field(default=0.0, ge=0, le=1)  # 0: not sent
+    llm_top_k: int = Field(default=0, ge=0, le=1000)  # 0: not sent
+    llm_history_messages: int = Field(default=20, ge=2, le=200)  # stored messages replayed
+    llm_history_tokens: int = Field(default=0, ge=0, le=262144)  # 0: only the window limits it
+    llm_toolset: Literal["auto", "core", "all"] = "auto"  # which tools are sent (toolsets.py)
+    # Per-turn overrides from the chat's debug panel. Off unless enabled; the context size can only be
+    # changed by the accounts listed here ("*" = every signed-in user), never above llm_num_ctx_max.
+    llm_tuning: bool = False
+    llm_tuning_emails: str = ""
     # Reading formulas from a picture ("Add image"): a vision-capable model on the same Ollama host
     # (it may be the chat model if that accepts images). Empty: the feature is off.
     llm_vision_model: str = ""
@@ -96,6 +112,10 @@ class Settings(BaseSettings):
     def openrouter_model_list(self) -> list[str]:
         listed = [m.strip() for m in self.openrouter_models.split(",") if m.strip()]
         return listed or list(DEFAULT_OPENROUTER_MODELS)
+
+    @property
+    def llm_tuning_user_set(self) -> set[str]:
+        return {u.strip().lower() for u in self.llm_tuning_emails.split(",") if u.strip()}
 
     @property
     def openrouter_key_user_set(self) -> set[str]:

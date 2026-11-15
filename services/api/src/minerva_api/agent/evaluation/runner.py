@@ -12,11 +12,18 @@ from collections.abc import Callable, Sequence
 from types import SimpleNamespace
 from typing import Any
 
-from ...routers_chat import _claim_context, _history, _prior_matrices
+from ...routers_chat import (
+    _claim_context,
+    _conversation_events,
+    _history,
+    _prior_matrices,
+)
 from ..llm import LLMClient
 from ..loop import AgentLimits, run_agent
+from ..params import EffectiveParams
 from ..segments import split_segments
 from ..tools import ToolContext
+from ..toolsets import conversation_groups
 from .cases import EvalCase
 from .score import CaseResult, FailureClass, Observation, combine, score_case
 
@@ -31,6 +38,7 @@ async def observe(
     limits: AgentLimits,
     grace_seconds: float = 30.0,
     stored: Sequence[Any] = (),
+    params: EffectiveParams | None = None,
 ) -> Observation:
     """Drive one turn and record what happened. Never raises: a crashed turn is an observation too.
 
@@ -43,7 +51,11 @@ async def observe(
     carried: dict[str, Any] = {}
     if stored:
         messages = list(stored)
-        rebuilt, known, quoted, results, restrictions = _history(messages)
+        rebuilt, known, quoted, results, restrictions = _history(
+            messages,
+            max_messages=params.history_messages if params else 20,
+            max_tokens=params.history_tokens if params else None,
+        )
         prior_relations, prior_assumptions = _claim_context(messages, case.prompt)
         history = [*rebuilt, {"role": "user", "content": case.prompt}]
         carried = {
@@ -53,6 +65,7 @@ async def observe(
             "prior_restrictions": restrictions,
             "prior_assumptions": prior_assumptions,
             "prior_matrices": _prior_matrices(messages, case.prompt),
+            "prior_groups": conversation_groups(_conversation_events(messages, case.prompt)),
         }
     else:
         # What the chat route passes the loop from earlier turns: the formulas written so far, which the
@@ -68,7 +81,7 @@ async def observe(
 
     async def drive() -> None:
         async for event in run_agent(
-            llm, history, ctx, limits, prior_relations=prior_relations, **carried
+            llm, history, ctx, limits, prior_relations=prior_relations, params=params, **carried
         ):
             kind, data = event["event"], event["data"]
             if kind == "tool_call":
@@ -103,13 +116,18 @@ def _stored(prompt: str, final: dict[str, Any]) -> list[Any]:
 
 
 async def run_case(
-    llm: LLMClient, ctx: ToolContext, case: EvalCase, limits: AgentLimits, repeat: int = 0
+    llm: LLMClient,
+    ctx: ToolContext,
+    case: EvalCase,
+    limits: AgentLimits,
+    repeat: int = 0,
+    params: EffectiveParams | None = None,
 ) -> CaseResult:
     """One case: its first turn, then each follow-up turn answered live on top of the earlier answers.
 
     A conversation that cannot continue (the earlier turn produced no answer) ends there and fails.
     """
-    obs = await observe(llm, case, ctx, limits)
+    obs = await observe(llm, case, ctx, limits, params=params)
     results = [score_case(case, obs, repeat)]
     stored: list[Any] = []
     previous_prompt, previous = case.prompt, obs
@@ -120,7 +138,7 @@ async def run_case(
             break
         stored += _stored(previous_prompt, previous.final)
         turn_case = turn.as_case(case, number)
-        previous = await observe(llm, turn_case, ctx, limits, stored=stored)
+        previous = await observe(llm, turn_case, ctx, limits, stored=stored, params=params)
         previous_prompt = turn_case.prompt
         results.append(score_case(turn_case, previous, repeat))
     return combine(results)
@@ -136,13 +154,14 @@ async def run_suite(
     first_repeat: int = 0,
     parallel: int = 1,
     on_result: ProgressFn | None = None,
+    params: EffectiveParams | None = None,
 ) -> list[CaseResult]:
     """Every case `repeats` times; results come back in case order, then repeat order."""
     gate = asyncio.Semaphore(max(1, parallel))
 
     async def one(case: EvalCase, repeat: int) -> CaseResult:
         async with gate:
-            result = await run_case(llm, ctx, case, limits, repeat)
+            result = await run_case(llm, ctx, case, limits, repeat, params)
         if on_result is not None:
             on_result(result)
         return result

@@ -81,6 +81,24 @@ describe("ImageFormulasPanel", () => {
     expect(onInsert).toHaveBeenCalledWith(["x^2-1"]);
   });
 
+  it("offers an integral written in full for insertion and says why Minerva does not read it as an expression", async () => {
+    const integral: ExtractedFormula = {
+      latex: "T = \\int_a^b \\frac{dy}{\\sqrt{v_0^2 + 2g(y_0 - y)}}",
+      status: "parse_error",
+      read_as: null,
+      message: "\\int is not supported in this operation",
+    };
+    const { onInsert } = setup([integral]);
+    await screen.findByText("Is this what the image says?");
+    expect(screen.getByLabelText("Use formula 1")).toBeChecked(); // well-formed: not a reading mistake
+    expect(
+      screen.getByText(/integral, sum, limit or derivative written out in full/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Minerva cannot read this formula/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Use selected (1)" }));
+    expect(onInsert).toHaveBeenCalledWith([integral.latex]);
+  });
+
   it("lets the user choose the unreadable formula anyway", async () => {
     const { onInsert } = setup([GOOD, BAD]);
     await screen.findByText("Is this what the image says?");

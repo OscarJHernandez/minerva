@@ -69,6 +69,18 @@ spec:
             - { name: MINERVA_LLM_TIMEOUT_SECONDS, value: {{ $llm.timeoutSeconds | quote }} }
             - { name: MINERVA_LLM_THINK, value: {{ $llm.think | quote }} }
             - { name: MINERVA_LLM_STRIP_THINKING, value: {{ $llm.stripThinking | quote }} }
+            - { name: MINERVA_LLM_VISION_MODEL, value: {{ $llm.visionModel | default "" | quote }} }
+            - { name: MINERVA_LLM_NUM_CTX, value: {{ $llm.numCtx | default 32768 | quote }} }
+            - { name: MINERVA_LLM_NUM_CTX_MAX, value: {{ $llm.numCtxMax | default 65536 | quote }} }
+            - { name: MINERVA_LLM_NUM_PREDICT, value: {{ $llm.numPredict | default 0 | quote }} }
+            - { name: MINERVA_LLM_TEMPERATURE, value: {{ $llm.temperature | default 0.2 | quote }} }
+            - { name: MINERVA_LLM_TOP_P, value: {{ $llm.topP | default 0 | quote }} }
+            - { name: MINERVA_LLM_TOP_K, value: {{ $llm.topK | default 0 | quote }} }
+            - { name: MINERVA_LLM_HISTORY_MESSAGES, value: {{ $llm.historyMessages | default 20 | quote }} }
+            - { name: MINERVA_LLM_HISTORY_TOKENS, value: {{ $llm.historyTokens | default 0 | quote }} }
+            - { name: MINERVA_LLM_TOOLSET, value: {{ $llm.toolset | default "auto" | quote }} }
+            - { name: MINERVA_LLM_TUNING, value: {{ $llm.tuning | default false | quote }} }
+            - { name: MINERVA_LLM_TUNING_EMAILS, value: {{ $llm.tuningEmails | default "" | quote }} }
             - { name: MINERVA_OPENROUTER_BYOK, value: {{ $or.byok | default false | quote }} }
             - { name: MINERVA_OPENROUTER_MODEL, value: {{ $or.model | default "" | quote }} }
             {{- with $or.models }}

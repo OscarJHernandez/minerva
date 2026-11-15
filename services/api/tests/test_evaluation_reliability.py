@@ -92,6 +92,45 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             ],
         },
     },
+    "followup-resolves-it-from-earlier-turns": {
+        "ideal": [
+            call("simplify", {"latex": r"\frac{x^2-9}{x-3}"}),
+            say(r"The result is $x + 3$, valid for $x \neq 3$."),
+            call(
+                "integrate",
+                {"latex": "@r1", "variable": "x", "lower": "0", "upper": "1"},
+            ),
+            say("Over 0 to 1 it is 7/2, using the simplified form from before."),
+            say("We started from the expression (x^2 - 9)/(x - 3)."),
+        ],
+        "adversarial": {
+            # the earlier result is retyped instead of reused as @r1
+            FailureClass.RESULT_REUSE: [
+                call("simplify", {"latex": r"\frac{x^2-9}{x-3}"}),
+                say(r"The result is $x + 3$, valid for $x \neq 3$."),
+                call("integrate", {"latex": "x + 3", "variable": "x", "lower": "0", "upper": "1"}),
+                say("Over 0 to 1 it is 7/2."),
+                say("We started from the expression (x^2 - 9)/(x - 3)."),
+            ],
+            # no tool at all, as when the model's view of its tools was cut away
+            FailureClass.TOOL_SELECTION: [
+                say("That simplifies to x + 3."),
+                say("The integral is 7/2."),
+                say("We started from (x^2 - 9)/(x - 3)."),
+            ],
+            # the conversation is there, but the model says it cannot see it
+            FailureClass.MODEL_HONESTY: [
+                call("simplify", {"latex": r"\frac{x^2-9}{x-3}"}),
+                say(r"The result is $x + 3$, valid for $x \neq 3$."),
+                call(
+                    "integrate",
+                    {"latex": "@r1", "variable": "x", "lower": "0", "upper": "1"},
+                ),
+                say("Over 0 to 1 it is 7/2."),
+                say("I don't have access to the earlier conversation, so I cannot say."),
+            ],
+        },
+    },
     "reciprocal-integral-invents-no-assumption": {
         "ideal": [
             call("integrate", {"latex": r"\frac{1}{x}", "variable": "x"}),

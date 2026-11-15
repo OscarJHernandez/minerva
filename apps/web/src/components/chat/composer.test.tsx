@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Composer } from "./composer";
 
@@ -46,13 +46,88 @@ describe("Composer: add image", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("reading shot.png");
   });
 
-  it("ignores pasted pictures when images are off", () => {
+  it("says so when a picture is pasted but images are not set up", () => {
     render(<Composer {...props} />);
     const image = new File(["x"], "shot.png", { type: "image/png" });
     fireEvent.paste(screen.getByLabelText("Message"), {
       clipboardData: { files: [image], getData: () => "" },
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("not set up on this server");
+  });
+
+  it("finds a screenshot that is only in the clipboard items (some browsers leave files empty)", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const image = new File(["x"], "clip.png", { type: "image/png" });
+    fireEvent.paste(screen.getByLabelText("Message"), {
+      clipboardData: {
+        files: [],
+        items: [{ kind: "file", type: "image/png", getAsFile: () => image }],
+        getData: () => "",
+      },
+    });
+    expect(screen.getByRole("dialog")).toHaveTextContent("reading clip.png");
+  });
+
+  it("keeps the text when a paste has both text and a picture", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const image = new File(["x"], "page.png", { type: "image/png" });
+    const notPrevented = fireEvent.paste(screen.getByLabelText("Message"), {
+      clipboardData: { files: [image], getData: () => "x^2 + 1" },
+    });
+    expect(notPrevented).toBe(true); // the browser pastes the text as usual
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Composer: drag and drop", () => {
+  const dropOf = (file: File) => ({
+    dataTransfer: { types: ["Files"], files: [file], items: [] },
+  });
+
+  it("shows a drop state while a file is dragged over, and reads the dropped picture", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const box = screen.getByTestId("composer-box");
+    fireEvent.dragEnter(box, dropOf(new File(["x"], "eq.png", { type: "image/png" })));
+    expect(box).toHaveAttribute("data-dragging");
+    expect(screen.getByText("Drop a picture of a formula to read it")).toBeInTheDocument();
+    fireEvent.drop(box, dropOf(new File(["x"], "eq.png", { type: "image/png" })));
+    expect(box).not.toHaveAttribute("data-dragging");
+    expect(screen.getByRole("dialog")).toHaveTextContent("reading eq.png");
+  });
+
+  it("clears the drop state when the drag leaves", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const box = screen.getByTestId("composer-box");
+    const drag = dropOf(new File(["x"], "eq.png", { type: "image/png" }));
+    fireEvent.dragEnter(box, drag);
+    fireEvent.dragLeave(box, drag);
+    expect(box).not.toHaveAttribute("data-dragging");
+  });
+
+  it("refuses a dropped file that is not a picture", () => {
+    render(<Composer {...props} imagesEnabled />);
+    fireEvent.drop(
+      screen.getByTestId("composer-box"),
+      dropOf(new File(["a"], "notes.txt", { type: "text/plain" })),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("PNG, JPEG or WebP");
+  });
+
+  it("says so when a picture is dropped but images are not set up", () => {
+    render(<Composer {...props} />);
+    fireEvent.drop(
+      screen.getByTestId("composer-box"),
+      dropOf(new File(["x"], "eq.png", { type: "image/png" })),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("not set up on this server");
+  });
+
+  it("ignores a drag that carries no files (selected text)", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const box = screen.getByTestId("composer-box");
+    fireEvent.dragEnter(box, { dataTransfer: { types: ["text/plain"], files: [] } });
+    expect(box).not.toHaveAttribute("data-dragging");
   });
 });
 
@@ -144,5 +219,49 @@ describe("Composer: layout guards", () => {
       expect(screen.getByRole("button", { name })).toHaveClass("h-9");
     }
     expect(screen.getByRole("button", { name: "Insert a formula" })).toHaveClass("-ml-2");
+  });
+});
+
+describe("Composer: a message is not lost", () => {
+  async function typeAndSend(onSend: () => Promise<boolean>) {
+    render(<Composer {...props} onSend={onSend} />);
+    const area = screen.getByLabelText("Message") as HTMLTextAreaElement;
+    fireEvent.change(area, { target: { value: "differentiate x^2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    return area;
+  }
+
+  it("gives the text back when the send failed before anything was sent", async () => {
+    const area = await typeAndSend(() => Promise.resolve(false));
+    await waitFor(() => expect(area.value).toBe("differentiate x^2"));
+  });
+
+  it("clears the box when the message went out", async () => {
+    const area = await typeAndSend(() => Promise.resolve(true));
+    await waitFor(() => expect(area.value).toBe(""));
+  });
+
+  it("does not overwrite what the user has typed since", async () => {
+    let finish: (ok: boolean) => void = () => undefined;
+    const area = await typeAndSend(() => new Promise<boolean>((resolve) => (finish = resolve)));
+    fireEvent.change(area, { target: { value: "something new" } });
+    finish(false);
+    await waitFor(() => expect(area.value).toBe("something new"));
+  });
+
+  it("counts near the limit and refuses a message that is too long", () => {
+    const onSend = vi.fn();
+    render(<Composer {...props} onSend={onSend} />);
+    const area = screen.getByLabelText("Message");
+    fireEvent.change(area, { target: { value: "x".repeat(100) } });
+    expect(screen.queryByTestId("message-counter")).not.toBeInTheDocument();
+    fireEvent.change(area, { target: { value: "x".repeat(3600) } });
+    expect(screen.getByTestId("message-counter")).toHaveTextContent("3600/4000");
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+    fireEvent.change(area, { target: { value: "x".repeat(4001) } });
+    expect(screen.getByRole("alert")).toHaveTextContent("too long to send");
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
+    expect(onSend).not.toHaveBeenCalled();
   });
 });

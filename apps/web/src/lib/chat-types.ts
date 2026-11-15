@@ -430,9 +430,14 @@ export interface Segment {
   status: FormulaStatus | null;
   /** Why the mark: what must hold (conditional), what it disagrees with (contradicted), or why it was not checked. */
   note?: string | null;
+  /** The equation number of a displayed formula, counted over the whole conversation. */
+  number?: number | null;
 }
 
-export type Card =
+/** A tool result card; `number` is its equation number when it has a primary result formula. */
+export type Card = CardBody & { number?: number | null };
+
+type CardBody =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
   | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
@@ -647,6 +652,13 @@ export type Card =
         | { operation: "substitute" | "rewrite"; result: StepResult }
         | { operation: "isolate"; result: IsolateResult };
     }
+  | {
+      id: string;
+      tool: string;
+      type: "note";
+      title: string;
+      data: { message: string; groups?: string[] };
+    }
   | { id: string; tool: string; type: "error"; title: string; data: { message: string } };
 
 /** One item of an assistant turn in the order it happened: prose, or a tool result card. */
@@ -750,6 +762,35 @@ export interface TurnDebug {
   formulas?: number;
   formulas_with_evidence?: number;
   evidence_pct?: number | null;
+  /** The model parameters this turn used, the tool groups it had loaded, and the request against the window. */
+  params?: Partial<ModelParams>;
+  groups?: string[];
+  context_window?: number;
+  prompt_estimate_tokens?: number;
+  /** Messages of earlier turns that were left out so the request fit the window. */
+  history_dropped?: number;
+}
+
+export type Toolset = "auto" | "core" | "all";
+
+/** What a turn may be told about the model (the server's MINERVA_LLM_* settings, agent/params.py). */
+export interface ModelParams {
+  num_ctx: number;
+  num_predict: number | null;
+  temperature: number;
+  top_p: number | null;
+  top_k: number | null;
+  think: boolean;
+  history_messages: number;
+  history_tokens: number | null;
+  toolset: Toolset;
+}
+
+/** What the server tells the chat about parameters: defaults, and which this account may change. */
+export interface ParamsInfo {
+  defaults: ModelParams;
+  editable: (keyof ModelParams)[];
+  num_ctx_max: number;
 }
 
 export interface AssistantContent {
@@ -759,12 +800,33 @@ export interface AssistantContent {
   trace?: TraceStep[];
   debug?: TurnDebug | null;
   stop_reason?: string | null;
+  /** Earlier messages left out of this turn so the request fit the model's window. */
+  context_trimmed?: number;
+}
+
+/** A displayed formula of the user's own message, with the number the conversation gave it. */
+export interface UserEquation {
+  number: number;
+  latex: string;
+}
+
+/** What "equation (3)" in the user's message was taken to mean (resolved by the server, shown to the user). */
+export interface EquationReference {
+  number: number;
+  /** The formula, or null when the conversation has no such equation. */
+  latex: string | null;
+  /** from_tool: a verified result; written_by_model: not verified; yours: the user's own; unknown. */
+  source: "from_tool" | "written_by_model" | "yours" | "unknown";
 }
 
 export interface StoredMessage {
   id: string;
   role: "user" | "assistant";
-  content: { text: string } & Partial<AssistantContent>;
+  content: {
+    text: string;
+    equations?: UserEquation[];
+    references?: EquationReference[];
+  } & Partial<AssistantContent>;
   created_at: string;
 }
 
@@ -781,6 +843,10 @@ export interface ChatStatus {
   /** Formulas can be read from a picture ("Add image"). */
   images?: boolean;
   providers?: ProviderStatus;
+  /** Parameter defaults and what this account may change; absent when not signed in. */
+  params?: ParamsInfo | null;
+  /** False when even the smallest request (system prompt and core tools) does not fit the window. */
+  context_ok?: boolean;
 }
 
 export interface ProviderStatus {
@@ -846,6 +912,8 @@ export type StreamEvent =
   | { event: "text"; data: { delta: string } }
   | { event: "tool_call"; data: ToolRun }
   | { event: "card"; data: Card }
+  | { event: "phase"; data: { phase: "checking" } }
+  | { event: "user"; data: { equations?: UserEquation[]; references?: EquationReference[] } }
   | { event: "message"; data: AssistantContent }
   | {
       event: "error";

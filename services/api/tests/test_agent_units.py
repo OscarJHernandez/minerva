@@ -233,6 +233,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
     assert set(TOOLS) == {
         "search_handbook",
         "get_entry",
+        "load_tools",  # asks for more tools; computes nothing
         "simplify",
         "differentiate",
         "series",

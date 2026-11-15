@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 
 from .llm import Chunk, LLMError, ToolCall, Usage, new_call_id
+from .params import EffectiveParams
 
 BASE_URL = "https://openrouter.ai/api/v1"
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/:@+-]{0,99}$")
@@ -124,7 +125,11 @@ class OpenRouterClient:
         data_collection: str = "deny",
         zdr: bool = False,
         transport: httpx.AsyncBaseTransport | None = None,
+        temperature: float = 0.2,
+        top_p: float | None = None,
     ) -> None:
+        self._temperature = temperature
+        self._top_p = top_p
         if not MODEL_ID.match(model):
             raise LLMError(_MESSAGES["bad_model"], "bad_model")
         self._key = api_key
@@ -138,6 +143,24 @@ class OpenRouterClient:
 
     def __repr__(self) -> str:  # never show the key, even in a traceback
         return f"OpenRouterClient(model={self.model!r})"
+
+    def with_params(self, params: EffectiveParams) -> OpenRouterClient:
+        """The same client with the parameters OpenRouter takes (temperature, top_p, reply length).
+
+        The context window, top_k, thinking and the history settings are the model host's or ours, not
+        sent here; the debug report says which were applied."""
+        clone = OpenRouterClient(
+            self._key,
+            self.model,
+            self._timeout.read or 120.0,
+            max_tokens=params.num_predict or self._max_tokens,
+            data_collection=self._data_collection,
+            zdr=self._zdr,
+            transport=self._transport,
+            temperature=params.temperature,
+            top_p=params.top_p,
+        )
+        return clone
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -157,11 +180,13 @@ class OpenRouterClient:
             "messages": openrouter_messages(messages),
             "tools": list(tools),
             "stream": True,
-            "temperature": 0.2,
+            "temperature": self._temperature,
             "max_tokens": self._max_tokens,
             "usage": {"include": True},
             "provider": provider_prefs,
         }
+        if self._top_p is not None:
+            payload["top_p"] = self._top_p
         partial: dict[int, _Partial] = {}
         finished = False
         try:

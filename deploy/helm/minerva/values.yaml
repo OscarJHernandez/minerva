@@ -30,6 +30,23 @@ api:
     timeoutSeconds: 120
     think: false
     stripThinking: false
+    # "Add image" in chat: a vision-capable model on the same Ollama host (it may be the chat model if that
+    # accepts images). Empty: the button is hidden.
+    visionModel: ""
+    # Model parameters (operator defaults). The context window is sent with every request: a host that is
+    # not told uses its own default and silently cuts the start of a longer prompt. numPredict, topP and topK
+    # of 0 are not sent (the model's own values apply).
+    numCtx: 32768
+    numCtxMax: 65536        # the most a per-turn override (debug panel) may ask for
+    numPredict: 0
+    temperature: 0.2
+    topP: 0
+    topK: 0
+    historyMessages: 20     # stored messages replayed to the model
+    historyTokens: 0        # 0: only the window limits the replayed history
+    toolset: auto           # auto (core + the groups a conversation needs) | core | all
+    tuning: false           # let signed-in users override the parameters above per turn (chat debug panel)
+    tuningEmails: ""        # comma-separated emails that may also change the context size; "*" = all
     # OpenRouter (cloud). API key VALUES never go in values: set existingSecret to the NAME of a Kubernetes
     # Secret (separate from minerva-secrets) holding the operator key; the chart refuses an `apiKey` field.
     openrouter:

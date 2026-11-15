@@ -1,9 +1,10 @@
+import { EquationNumber } from "./equation-number";
 import { Math } from "@minerva/ui/math";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { FormulaStatus, Segment } from "@/lib/chat-types";
 import { FormulaButtons } from "./formula-actions";
 
-const MARKS: Record<
+export const MARKS: Record<
   FormulaStatus,
   { label: string | null; title: string; underline: string; box: string; tone: string }
 > = {
@@ -124,6 +125,7 @@ function renderNodes(nodes: Node[], prefix: string): ReactNode[] {
 const BULLET = /^\s*[*-]\s+/;
 
 function Formula({ seg }: { seg: Segment }) {
+  const [open, setOpen] = useState(false);
   // `null`: written by the user or still streaming. Minerva has made no claim about it.
   if (seg.status === null) return <Math latex={seg.value} />;
   const status = seg.status ?? "unchecked";
@@ -139,14 +141,28 @@ function Formula({ seg }: { seg: Segment }) {
       >
         <Math latex={seg.value} />
         {!plain && mark.label && (
-          <sup className={`ml-0.5 text-[10px] font-medium ${mark.tone}`}>
-            {status === "unchecked" ? "?" : mark.label}
+          // A button, so that a keyboard or a finger can read what the mark means (a hover tooltip cannot).
+          <sup className="ml-0.5">
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              aria-label={`${status === "unchecked" ? "unchecked" : mark.label}: what this mark means`}
+              className={`text-[10px] font-medium ${mark.tone}`}
+            >
+              {status === "unchecked" ? "?" : mark.label}
+            </button>
           </sup>
         )}
       </span>
       {isClaim(seg.value) && (
         <span className="ml-1.5 align-middle">
           <FormulaButtons latex={seg.value} subtle />
+        </span>
+      )}
+      {open && (
+        <span role="note" className="mx-1 text-xs text-muted" data-testid="mark-explanation">
+          ({explain(seg)})
         </span>
       )}
     </span>
@@ -157,23 +173,30 @@ function DisplayFormula({ seg }: { seg: Segment }) {
   const mark = MARKS[seg.status ?? "from_tool"];
   return (
     <div data-status={seg.status} className={`my-2 rounded-md border px-3 py-1 ${mark.box}`}>
-      <Math latex={seg.value} display />
-      <div className="flex justify-end pb-1">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <Math latex={seg.value} display />
+        </div>
+        {seg.number != null && <EquationNumber n={seg.number} />}
+      </div>
+      <div className="flex items-start justify-between gap-3 pb-1">
+        {mark.label ? (
+          <div className={`text-xs ${mark.tone}`} title={mark.title}>
+            {seg.status === "quoted"
+              ? `Quoted from a tool result, not a verified result${seg.note ? `: ${seg.note}` : ""}`
+              : seg.status === "checked"
+                ? "Written by the model; checked numerically by Minerva"
+                : seg.status === "conditional"
+                  ? `Written by the model; ${seg.note ?? "true only under extra assumptions"}`
+                  : seg.status === "contradicted"
+                    ? `Written by the model; ${seg.note ?? "Minerva's check says this does not hold"}`
+                    : `Not verified by Minerva (written by the model)${seg.note ? `: ${seg.note}` : ""}`}
+          </div>
+        ) : (
+          <span />
+        )}
         <FormulaButtons latex={seg.value} />
       </div>
-      {mark.label && (
-        <div className={`pb-1 text-xs ${mark.tone}`} title={mark.title}>
-          {seg.status === "quoted"
-            ? `Quoted from a tool result, not a verified result${seg.note ? `: ${seg.note}` : ""}`
-            : seg.status === "checked"
-              ? "Written by the model; checked numerically by Minerva"
-              : seg.status === "conditional"
-                ? `Written by the model; ${seg.note ?? "true only under extra assumptions"}`
-                : seg.status === "contradicted"
-                  ? `Written by the model; ${seg.note ?? "Minerva's check says this does not hold"}`
-                  : `Not verified by Minerva (written by the model)${seg.note ? `: ${seg.note}` : ""}`}
-        </div>
-      )}
     </div>
   );
 }
