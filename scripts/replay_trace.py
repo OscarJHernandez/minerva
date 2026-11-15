@@ -56,6 +56,9 @@ def _context_for(step: dict[str, Any], ctx: ToolContext) -> ToolContext:
     notation = step["arguments"].get("notation") if step["name"] == "distribution" else None
     if isinstance(notation, dict):
         return ToolContext(engine=ctx.engine, kb=ctx.kb, notation=dict(notation))
+    numeric = step["arguments"].get("numeric") if step["name"] == "variation" else None
+    if isinstance(numeric, dict):
+        return ToolContext(engine=ctx.engine, kb=ctx.kb, numeric=dict(numeric))
     return ctx
 
 

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { okDistributionIntegral, step } from "@/test/fixtures";
+import { cantilever } from "@/test/variation-fixtures";
 import { StepCard } from "./step-card";
 
 const asked = step(
@@ -46,5 +47,19 @@ describe("StepCard", () => {
     render(<StepCard item={done} {...props} />);
     expect(screen.getByText("Full verification")).toBeInTheDocument();
     expect(screen.queryByText("Answer to continue")).not.toBeInTheDocument();
+  });
+
+  it("labels a variational step and shows its full panel without a continuation", () => {
+    const item = step(
+      "v1",
+      "variation",
+      "\\frac12\\ddot{x}^2-qx",
+      { ...cantilever },
+      { format: "latex" },
+    );
+    render(<StepCard item={item} {...props} />);
+    expect(screen.getByRole("listitem", { name: "Step 1: First variation" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /^Variational calculus ·/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue from here" })).not.toBeInTheDocument();
   });
 });

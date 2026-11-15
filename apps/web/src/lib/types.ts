@@ -630,6 +630,7 @@ export type Operation =
   | "apply_identity"
   | "matrix_calculus"
   | "geometry"
+  | "variation"
   | "distribution"
   | "statmech"
   | "rewrite"

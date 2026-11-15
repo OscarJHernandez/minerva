@@ -9,6 +9,50 @@
   statement_latex: '\frac{d}{dt}\frac{\partial L}{\partial \dot q_i}-\frac{\partial L}{\partial q_i}=0'
   notes: "Minerva evaluates this symbolically with the total time derivative acting on q, q̇ and t."
   keywords: [euler lagrange, equations of motion, lagrangian, variational, action]
+- id: method.mech.euler_lagrange_higher_order
+  title: Euler–Lagrange equations for higher derivatives
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["variation"]
+  validity: "Functional S[x] = ∫ L(t, x, x', …, x^(n)) dt over a fixed interval, L smooth, x of class C^(2n)."
+  statement_latex: '\sum_{k=0}^{n}(-1)^{k}\frac{d^{k}}{dt^{k}}\left(\frac{\partial L}{\partial x^{(k)}}\right)=0'
+  notes: "The same equation holds for every dependent function. d/dt is the total derivative (it acts on t and on every derivative of every function); ∂L/∂x^(k) is a partial derivative."
+  keywords: [higher derivative, euler lagrange, variational, boundary terms, ostrogradsky, beam]
+- id: method.mech.first_variation_boundary_form
+  title: First variation and its boundary form
+  kind: method
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["variation"]
+  validity: "Fixed integration bounds; integrating by parts n times; the perturbation η is of class C^n."
+  statement_latex: '\delta S=\int_{a}^{b}\mathrm{EL}\,\eta\,dt+\left[\sum_{j=0}^{n-1}\Pi_{j}\,\eta^{(j)}\right]_{a}^{b},\quad \Pi_{j}=\sum_{k>j}(-1)^{k-j-1}\frac{d^{k-j-1}}{dt^{k-j-1}}\frac{\partial L}{\partial x^{(k)}}'
+  notes: "The boundary terms are not discarded: each η^(j) at an end is independent of the others, so fixing x there does not fix x'. A term is removed only by a fixed condition on that very derivative at that end."
+  keywords: [first variation, boundary term, integration by parts, natural boundary condition, fixed, free end]
+- id: method.mech.natural_boundary_conditions
+  title: Natural boundary conditions
+  kind: theorem
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["variation"]
+  validity: "A derivative η^(j) of the perturbation that is unrestricted at an end; fixed bounds."
+  statement_latex: '\Pi_{j}(t_{\mathrm{end}})+\frac{\partial G}{\partial x^{(j)}}\Big|_{\mathrm{end}}=0\quad\text{for each derivative left free at that end}'
+  notes: "With an end term G in the action, its derivative joins the boundary coefficient (with a minus sign at the lower end)."
+  keywords: [natural boundary condition, free end, transversality, cantilever, endpoint term]
+- id: method.mech.second_variation
+  title: Second variation and the Legendre condition
+  kind: theorem
+  chapter: physics.mechanics
+  section: variational
+  verification: stated
+  applies_to: ["variation:second"]
+  validity: "A stationary path; admissible perturbations satisfy the fixed conditions; L smooth."
+  statement_latex: '\delta^{2}S=\int_{a}^{b}\sum_{p,q}\frac{\partial^{2}L}{\partial x_{p}\,\partial x_{q}}\,\eta_{p}\,\eta_{q}\,dt,\qquad \frac{\partial^{2}L}{\partial x^{(n)}\partial x^{(n)}}\succeq 0\ \text{is necessary for a minimum}'
+  notes: "A negative value of the second variation for one admissible perturbation shows the path is not a minimum. Positivity along a few perturbations shows nothing; sufficiency needs the strengthened Legendre condition and no conjugate points."
+  keywords: [second variation, legendre condition, jacobi, conjugate points, stability, minimum]
 - id: method.mech.cyclic_coordinate
   title: Cyclic coordinate and conserved momentum
   kind: theorem

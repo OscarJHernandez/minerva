@@ -109,6 +109,19 @@
         "counterexamples": 0
       },
       {
+        "source": "reference",
+        "domain": "variational",
+        "problems": 3,
+        "correct": 2,
+        "refused_as_expected": 1,
+        "false_accepts": 0,
+        "incorrect_accepted": 0,
+        "false_rejects": 0,
+        "pending": 0,
+        "known_open": 0,
+        "counterexamples": 0
+      },
+      {
         "source": "adversarial",
         "domain": "algebra",
         "problems": 7,
@@ -227,9 +240,9 @@
       }
     ],
     "totals": {
-      "problems": 177,
-      "correct": 93,
-      "refused_as_expected": 82,
+      "problems": 180,
+      "correct": 95,
+      "refused_as_expected": 83,
       "false_accepts": 0,
       "incorrect_accepted": 0,
       "false_rejects": 0,
@@ -239,10 +252,10 @@
     },
     "evidence_of_accepted_reference_results": {
       "symbolic_proof": 5,
-      "numeric_agreement": 24,
+      "numeric_agreement": 26,
       "structural": 4,
       "conditional": 1,
-      "refusal": 16,
+      "refusal": 17,
       "unrecorded": 0
     },
     "counterexamples_by_probe": {
@@ -252,7 +265,7 @@
       "special": 5
     },
     "agent_suite": {
-      "core_cases": 107,
+      "core_cases": 111,
       "reliability_cases": 8,
       "reliability_turns": 12,
       "failure_classes": [
@@ -275,10 +288,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.12,
-    "adversarial_median_ms": 9.4,
-    "adversarial_max_ms": 118.1,
-    "report_wall_s": 2.59,
-    "peak_rss_mb": 125.4
+    "adversarial_total_s": 1.33,
+    "adversarial_median_ms": 10.8,
+    "adversarial_max_ms": 130.9,
+    "report_wall_s": 3.09,
+    "peak_rss_mb": 125.9
   }
 }

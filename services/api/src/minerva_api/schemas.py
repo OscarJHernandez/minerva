@@ -14,6 +14,7 @@ from minerva_engine import (
     Pins,
     StatMechInput,
     StatModelInput,
+    VariationInput,
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.indexed.models import SumAction
@@ -152,6 +153,10 @@ class MatrixCalculusRequest(Linked):
 
 class GeometryRequest(GeometryInput, Links):
     """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
+
+
+class VariationRequest(VariationInput, Links):
+    """A functional and one action: analyze, first, evaluate, verify, solve or second."""
 
 
 class StatMechRequest(StatMechInput, Links):

@@ -66,6 +66,7 @@ def test_the_corpus_covers_the_requested_domains_with_both_kinds_of_problem() ->
         "series",
         "algebra",
         "statmech",
+        "variational",
     }
     assert all(p.source for p in PROBLEMS) and len({p.id for p in PROBLEMS}) == len(PROBLEMS)
     for category in categories:
@@ -118,6 +119,20 @@ def _corrupt(result: Any) -> Any:
         updates["quantities"] = [
             q.model_copy(update={"text": f"({q.text})*1.001"}) for q in quantities
         ]
+    solution = getattr(result, "solution", None)
+    if solution is not None and getattr(solution, "paths", None):  # variational: stationary actions
+        paths = [
+            path.model_copy(update={"action": str(mp.mpmathify(path.action) * mp.mpf("1.001"))})
+            for path in solution.paths
+        ]
+        updates["solution"] = solution.model_copy(update={"paths": paths})
+    verification = getattr(result, "verification", None)
+    if verification is not None and getattr(verification, "perturbations", None):
+        perturbed = [
+            r.model_copy(update={"analytic": str(mp.mpmathify(r.analytic) * mp.mpf("1.001"))})
+            for r in verification.perturbations
+        ]
+        updates["verification"] = verification.model_copy(update={"perturbations": perturbed})
     if getattr(result, "frequency_latex", None):
         updates["frequency_latex"] = "\\omega = 2"
     if getattr(result, "restrictions_latex", None):

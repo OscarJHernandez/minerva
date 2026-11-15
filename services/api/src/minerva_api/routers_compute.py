@@ -33,6 +33,8 @@ from minerva_engine import (
     SumsResult,
     TensorInput,
     TensorResult,
+    VariationInput,
+    VariationReport,
     Verification,
 )
 from minerva_knowledge.identities import (
@@ -71,8 +73,10 @@ from .schemas import (
     SubstituteRequest,
     SubtermsRequest,
     SumsRequest,
+    VariationRequest,
 )
 from .search_log import log_search_events
+from .variation_log import log_variation
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -99,6 +103,10 @@ class MatrixCalculusResponse(MatrixCalculusResult):
 
 
 class GeometryResponse(GeometryResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class VariationResponse(VariationReport):
     calculation_id: uuid.UUID | None = None
 
 
@@ -449,6 +457,58 @@ def geometry(
         label = f"metric in ({', '.join(request.coordinates)})"
         out.calculation_id = _save_row(
             db, user, "geometry", label, request.format, request.assumptions, body,
+            result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+def _variation_length(body: VariationRequest) -> int:
+    texts = [
+        body.integrand,
+        body.lower_term or "",
+        body.upper_term or "",
+        *body.definitions.values(),
+    ]
+    for path in body.paths:
+        texts += path.analytic.values()
+    for spec in body.perturbations:
+        texts += spec.expressions.values()
+    return max((len(t) for t in texts), default=0)
+
+
+@router.post("/variation", response_model=VariationResponse)
+def variation(
+    body: VariationRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> VariationResponse:
+    """First and second variations, Euler-Lagrange equations with boundary terms, action values,
+    finite-difference verification and stationary paths of a functional of several functions.
+
+    The whole functional is part of the request, so repeating it with another action reuses the same
+    problem. A result is returned only if its independent numerical checks passed."""
+    _guard(user, limiter, settings, _variation_length(body))
+    _check_links(db, user, body)
+    request = VariationInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result = engine.variation(request)
+    log.info(
+        "compute",
+        operation="variation",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    log_variation(result)
+    out = VariationResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole functional is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json")
+        out.calculation_id = _save_row(
+            db, user, "variation", request.integrand, request.format, request.assumptions, body,
             result.status.value, saved,
         )  # fmt: skip
     return out

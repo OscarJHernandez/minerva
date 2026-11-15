@@ -23,7 +23,7 @@ REFERENCE = re.compile(r"@r(\d+)\b")
 # Tools whose card holds one result expression in `result_latex`.
 REFERENCEABLE_TOOLS = frozenset({"simplify", "differentiate", "integrate", "series"})
 # Arguments that may contain references (the ones that hold a mathematical expression).
-EXPRESSION_ARGUMENTS = ("latex", "expression", "equation", "lagrangian")
+EXPRESSION_ARGUMENTS = ("latex", "expression", "equation", "lagrangian", "integrand")
 
 
 @dataclass
