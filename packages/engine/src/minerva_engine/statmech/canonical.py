@@ -29,7 +29,7 @@ from .models import (
 from .oracle import DPS, MIN_POINTS, BaseOracle, Oracle, Point, close, sample_points
 from .setup import Problem, Refusal
 
-TIDY_MAX_OPS = 160
+TIDY_MAX_OPS = 100
 SYMBOLIC_LEVELS = 6  # the symbolic-zero leg is attempted only for small spectra
 
 TITLES = {
