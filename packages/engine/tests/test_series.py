@@ -200,3 +200,13 @@ def test_complex_variable_is_probed_along_the_imaginary_axis_too(engine: Engine)
 def test_hostile_inputs_are_rejected_without_crashing(engine: Engine, source) -> None:
     result = s(engine, source, 3)
     assert result.status in {Status.PARSE_ERROR, Status.RESOURCE_LIMIT, Status.UNSUPPORTED}
+
+
+def test_series_about_an_algebraic_point_keeps_a_zero_coefficient_exactly_zero(engine) -> None:  # type: ignore[no-untyped-def]
+    """The linear term of a potential at its equilibrium is exactly zero: checking it must not be
+    spoiled by representing the point 2**(1/6) with 53 bits."""
+    result = engine.series(
+        ExpressionInput(input="4*(r**-12 - r**-6)", format="text"), "r", "2**(1/6)", 3
+    )
+    assert result.status is Status.OK
+    assert [t.power for t in result.terms] == [0, 2, 3]  # no linear term

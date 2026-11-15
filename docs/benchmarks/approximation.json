@@ -1,0 +1,628 @@
+{
+  "deterministic": {
+    "cases": [
+      {
+        "checks": [
+          {
+            "expected": "1",
+            "got": "1",
+            "name": "coefficient of x^1",
+            "ok": true
+          },
+          {
+            "expected": "-1/6",
+            "got": "-1/6",
+            "name": "coefficient of x^3",
+            "ok": true
+          },
+          {
+            "expected": "1/120",
+            "got": "1/120",
+            "name": "coefficient of x^5",
+            "ok": true
+          }
+        ],
+        "id": "taylor",
+        "ok": true,
+        "title": "Taylor series of sin x"
+      },
+      {
+        "checks": [
+          {
+            "expected": "[0, 2, 4]",
+            "got": "[0, 2, 4]",
+            "name": "terms of order 0, 2, 4",
+            "ok": true
+          },
+          {
+            "expected": "\\frac{m v^{2}}{2}",
+            "got": "\\frac{m v^{2}}{2}",
+            "name": "order 2",
+            "ok": true
+          },
+          {
+            "expected": "\\frac{3 m v^{4}}{8 c^{2}}",
+            "got": "\\frac{3 m v^{4}}{8 c^{2}}",
+            "name": "order 4",
+            "ok": true
+          }
+        ],
+        "id": "relativistic",
+        "ok": true,
+        "title": "Non-relativistic expansion in v/c"
+      },
+      {
+        "checks": [
+          {
+            "expected": "1",
+            "got": "1",
+            "name": "pole order",
+            "ok": true
+          },
+          {
+            "expected": "0.333333",
+            "got": "0.333333",
+            "name": "residue",
+            "ok": true
+          },
+          {
+            "expected": "\\frac{1}{3}",
+            "got": "\\frac{1}{3}",
+            "name": "residue shown",
+            "ok": true
+          }
+        ],
+        "id": "laurent",
+        "ok": true,
+        "title": "Laurent series: pole order and residue"
+      },
+      {
+        "checks": [
+          {
+            "expected": "< 1e-24",
+            "got": "-2.73437e-26",
+            "name": "four-term expansion minus direct evaluation at x = 1e6",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "True",
+            "got": "True",
+            "name": "labelled asymptotic",
+            "ok": true
+          }
+        ],
+        "id": "asymptotic",
+        "ok": true,
+        "title": "Asymptotic expansion of sqrt(x^2 + x)"
+      },
+      {
+        "checks": [
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "polynomial",
+            "ok": true
+          }
+        ],
+        "id": "multivariable",
+        "ok": true,
+        "title": "Two-variable Taylor polynomial"
+      },
+      {
+        "checks": [
+          {
+            "expected": "1",
+            "got": "1",
+            "name": "sin x / x at 0",
+            "ok": true
+          },
+          {
+            "expected": "\\frac{1}{2}",
+            "got": "\\frac{1}{2}",
+            "name": "sqrt(x^2+x) - x at infinity",
+            "ok": true
+          },
+          {
+            "expected": "True",
+            "got": "True",
+            "name": "one-sided limits differ",
+            "ok": true
+          }
+        ],
+        "id": "limits",
+        "ok": true,
+        "title": "Limits, removable and one-sided"
+      },
+      {
+        "checks": [
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "[2/2] against the classical table",
+            "ok": true
+          },
+          {
+            "expected": "True",
+            "got": "True",
+            "name": "[1/1] has a pole the function does not",
+            "ok": true
+          },
+          {
+            "expected": "\\frac{1 + \\frac{x}{2}}{1 - \\frac{x}{2}}",
+            "got": "\\frac{1 + \\frac{x}{2}}{1 - \\frac{x}{2}}",
+            "name": "[1/1] shown as",
+            "ok": true
+          }
+        ],
+        "id": "pade",
+        "ok": true,
+        "title": "Pad\u00e9 approximants of exp"
+      },
+      {
+        "checks": [
+          {
+            "expected": "1.26607",
+            "got": "1.26607",
+            "name": "coefficient 0 against 2 I_k(1)",
+            "ok": true
+          },
+          {
+            "expected": "1.13032",
+            "got": "1.13032",
+            "name": "coefficient 1 against 2 I_k(1)",
+            "ok": true
+          },
+          {
+            "expected": "0.271495",
+            "got": "0.271495",
+            "name": "coefficient 2 against 2 I_k(1)",
+            "ok": true
+          },
+          {
+            "expected": "0.0443368",
+            "got": "0.0443368",
+            "name": "coefficient 3 against 2 I_k(1)",
+            "ok": true
+          },
+          {
+            "expected": "< 8.42721e-6",
+            "got": "3.62e-6",
+            "name": "sampled error below the interpolation bound",
+            "ok": true
+          }
+        ],
+        "id": "chebyshev",
+        "ok": true,
+        "title": "Chebyshev coefficients of exp"
+      },
+      {
+        "checks": [
+          {
+            "expected": "degree 8",
+            "got": "degree 8",
+            "name": "degree chosen",
+            "ok": true
+          },
+          {
+            "expected": "< 1e-06",
+            "got": "8.59566e-8",
+            "name": "numpy agrees degree 8 meets 1e-6",
+            "ok": true
+          },
+          {
+            "expected": ">= 1e-06",
+            "got": "1.26828e-5",
+            "name": "numpy agrees degree 6 does not",
+            "ok": true
+          },
+          {
+            "expected": "True",
+            "got": "True",
+            "name": "tolerance reported as met",
+            "ok": true
+          }
+        ],
+        "id": "chebyshev-tolerance",
+        "ok": true,
+        "title": "Lowest Chebyshev degree for a tolerance"
+      },
+      {
+        "checks": [
+          {
+            "expected": "2.0",
+            "got": "2.0",
+            "name": "b_1",
+            "ok": true
+          },
+          {
+            "expected": "-1.0",
+            "got": "-1.0",
+            "name": "b_2",
+            "ok": true
+          },
+          {
+            "expected": "0.666667",
+            "got": "0.666667",
+            "name": "b_3",
+            "ok": true
+          },
+          {
+            "expected": "-0.5",
+            "got": "-0.5",
+            "name": "b_4",
+            "ok": true
+          },
+          {
+            "expected": "0.4",
+            "got": "0.4",
+            "name": "b_5",
+            "ok": true
+          },
+          {
+            "expected": "-0.333333",
+            "got": "-0.333333",
+            "name": "b_6",
+            "ok": true
+          },
+          {
+            "expected": "True",
+            "got": "True",
+            "name": "Gibbs warned at the jump",
+            "ok": true
+          }
+        ],
+        "id": "fourier",
+        "ok": true,
+        "title": "Fourier series of a sawtooth"
+      },
+      {
+        "checks": [
+          {
+            "expected": "1.0",
+            "got": "1.0",
+            "name": "a_0",
+            "ok": true
+          },
+          {
+            "expected": "0.5",
+            "got": "0.5",
+            "name": "a_1",
+            "ok": true
+          },
+          {
+            "expected": "0.25",
+            "got": "0.25",
+            "name": "a_2",
+            "ok": true
+          },
+          {
+            "expected": "0.125",
+            "got": "0.125",
+            "name": "a_3",
+            "ok": true
+          },
+          {
+            "expected": "0.0625",
+            "got": "0.0625",
+            "name": "a_4",
+            "ok": true
+          },
+          {
+            "expected": "0.03125",
+            "got": "0.03125",
+            "name": "a_5",
+            "ok": true
+          },
+          {
+            "expected": "0.015625",
+            "got": "0.015625",
+            "name": "a_6",
+            "ok": true
+          }
+        ],
+        "id": "legendre",
+        "ok": true,
+        "title": "Legendre generating function"
+      },
+      {
+        "checks": [
+          {
+            "expected": "< 1e-12",
+            "got": "5.507e-17",
+            "name": "kink on a knot is exact",
+            "ok": true
+          },
+          {
+            "expected": "> 0.05",
+            "got": "0.3333",
+            "name": "kink inside a segment is not",
+            "ok": true
+          }
+        ],
+        "id": "piecewise",
+        "ok": true,
+        "title": "Piecewise linear and a kink"
+      },
+      {
+        "checks": [
+          {
+            "expected": "[3, 7, 15, 1, 292, 1, 1, 1, 2, 1, 3, 1, 14]",
+            "got": "[3, 7, 15, 1, 292, 1, 1, 1, 2, 1, 3, 1, 14]",
+            "name": "quotients of pi (OEIS A001203)",
+            "ok": true
+          },
+          {
+            "expected": "[2, 1, 2, 1, 1, 4, 1, 1, 6, 1, 1, 8]",
+            "got": "[2, 1, 2, 1, 1, 4, 1, 1, 6, 1, 1, 8]",
+            "name": "quotients of e (OEIS A003417)",
+            "ok": true
+          },
+          {
+            "expected": "355/113",
+            "got": "355/113",
+            "name": "355/113 is the fourth convergent",
+            "ok": true
+          }
+        ],
+        "id": "continued-fractions",
+        "ok": true,
+        "title": "Continued fractions of pi and e"
+      },
+      {
+        "checks": [
+          {
+            "expected": "0.104167",
+            "got": "0.104167",
+            "name": "against Hurwitz zeta",
+            "ok": true
+          },
+          {
+            "expected": "True",
+            "got": "True",
+            "name": "each Bernoulli correction helps",
+            "ok": true
+          }
+        ],
+        "id": "euler-maclaurin",
+        "ok": true,
+        "title": "Euler-Maclaurin against Hurwitz zeta"
+      },
+      {
+        "checks": [
+          {
+            "expected": "1.64493",
+            "got": "1.64493",
+            "name": "zeta(2)",
+            "ok": true
+          },
+          {
+            "expected": "-0.693147",
+            "got": "-0.693147",
+            "name": "alternating harmonic series is -ln 2",
+            "ok": true
+          }
+        ],
+        "id": "acceleration",
+        "ok": true,
+        "title": "Accelerated series"
+      },
+      {
+        "checks": [
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "coefficients 1, 1/6, -1/40, 1/112",
+            "ok": true
+          }
+        ],
+        "id": "integral-expansion",
+        "ok": true,
+        "title": "An integral expanded in a parameter"
+      },
+      {
+        "checks": [
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "root of x^2 - 1 - eps x",
+            "ok": true
+          },
+          {
+            "expected": "0",
+            "got": "0",
+            "name": "arcsin as the inverse of sin",
+            "ok": true
+          }
+        ],
+        "id": "root-and-inverse",
+        "ok": true,
+        "title": "Root expansion and function reversion"
+      },
+      {
+        "checks": [
+          {
+            "expected": "[1, 1/12, 1/288]",
+            "got": "[1, 1/12, 1/288]",
+            "name": "coefficients 1, 1/12, 1/288",
+            "ok": true
+          },
+          {
+            "expected": "< 1e-9",
+            "got": "4.19046e-11",
+            "name": "Stirling series minus Gamma(M+1) ratio at M = 400",
+            "ok": true
+          }
+        ],
+        "id": "laplace",
+        "ok": true,
+        "title": "Laplace's method gives Stirling's series"
+      },
+      {
+        "checks": [
+          {
+            "expected": "taylor",
+            "got": "taylor",
+            "name": "sin(x) ['order', 'point']",
+            "ok": true
+          },
+          {
+            "expected": "asymptotic",
+            "got": "asymptotic",
+            "name": "1/(x+1) ['order', 'point']",
+            "ok": true
+          },
+          {
+            "expected": "perturbation",
+            "got": "perturbation",
+            "name": "1/sqrt(1-eps**2) ['order', 'small']",
+            "ok": true
+          },
+          {
+            "expected": "fourier",
+            "got": "fourier",
+            "name": "x ['lower', 'modes', 'period', 'upper']",
+            "ok": true
+          },
+          {
+            "expected": "continued_fraction",
+            "got": "continued_fraction",
+            "name": "pi ['order']",
+            "ok": true
+          },
+          {
+            "expected": "compare",
+            "got": "compare",
+            "name": "log(1+x) ['degree', 'lower', 'upper']",
+            "ok": true
+          },
+          {
+            "expected": "laurent",
+            "got": "laurent",
+            "name": "a pole moves Taylor to Laurent",
+            "ok": true
+          }
+        ],
+        "id": "strategy",
+        "ok": true,
+        "title": "The strategy picks the expected method"
+      },
+      {
+        "checks": [
+          {
+            "expected": "not_laurent",
+            "got": "not_laurent",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "domain_invalid",
+            "got": "domain_invalid",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "domain_unspecified",
+            "got": "domain_unspecified",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "degenerate_system",
+            "got": "degenerate_system",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "degenerate_system",
+            "got": "degenerate_system",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "essential_singularity",
+            "got": "essential_singularity",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "not_verified",
+            "got": "not_verified",
+            "name": "oscillating sum is not shown",
+            "ok": true
+          }
+        ],
+        "id": "refusals",
+        "ok": true,
+        "title": "What must be refused, with the stated reason"
+      }
+    ],
+    "passed": 20,
+    "total": 20
+  },
+  "measurements": {
+    "seconds": {
+      "acceleration": 0.34,
+      "asymptotic": 0.11,
+      "chebyshev": 0.09,
+      "chebyshev-tolerance": 0.23,
+      "continued-fractions": 0.04,
+      "euler-maclaurin": 0.05,
+      "fourier": 0.28,
+      "integral-expansion": 0.15,
+      "laplace": 0.14,
+      "laurent": 0.05,
+      "legendre": 0.1,
+      "limits": 0.03,
+      "multivariable": 0.06,
+      "pade": 0.03,
+      "piecewise": 0.05,
+      "refusals": 0.37,
+      "relativistic": 0.13,
+      "root-and-inverse": 0.14,
+      "strategy": 0.41,
+      "taylor": 0.03
+    }
+  }
+}

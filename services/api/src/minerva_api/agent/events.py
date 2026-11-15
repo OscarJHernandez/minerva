@@ -63,6 +63,7 @@ class Card(BaseModel):
         "ode_numeric",
         "variation",
         "telescoping",
+        "approximation",
         "dimensional",
         "units",
         "step",

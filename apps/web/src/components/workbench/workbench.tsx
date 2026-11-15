@@ -572,6 +572,10 @@ export function Workbench() {
           <Link href="/workbench/telescoping" className="text-accent hover:underline">
             Creative telescoping
           </Link>
+          {" · "}Need a simpler expression?{" "}
+          <Link href="/workbench/approximation" className="text-accent hover:underline">
+            Approximations
+          </Link>
         </p>
         <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
           {(

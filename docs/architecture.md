@@ -113,6 +113,16 @@ one most likely to be wrong.
   (substitution, parts, trigonometric rewrites, partial fractions, parity, reflection, Frullani, Schwinger, parameter
   differentiation), `explore.py` (bounded exploration, every candidate verified against the original integrand),
   `numeric.py` (a labelled estimate) and `benchmark.py`. See `docs/integration-strategies.md`.
+- `approx/` approximates an expression by a simpler one in the regime the user names. `operation.py` dispatches on a
+  `method`; `strategy.py` is the deterministic `auto` (rules over the shape of the request, at most three methods tried,
+  every rule reported). Symbolic: `expand.py` (Taylor, Laurent, asymptotic, perturbation), `leading.py` (leading terms,
+  limits), `multivar.py`, `composed.py` (integral, root and inverse-function expansions), `laplace.py`. Numerical on an
+  interval: `interval.py` (the reference function on two disjoint grids, domain scan, error measurement), `pade.py`,
+  `chebyshev.py`, `legendre.py`, `fourier.py`, `piecewise.py`, `compare.py` (candidates and the simplest that meets a
+  tolerance). Numbers and sums: `cfrac.py`, `sums.py` (Euler-Maclaurin, acceleration). Each result is decided by a check
+  that does not use the route that built it. Endpoint `POST /v1/compute/approximation`; chat tool `approximation`
+  (the card's form posts the user's numbers through the direct route); workbench page `/workbench/approximation`.
+  See `docs/approximation.md`.
 - `variational/` is the general variational calculus: `jets.py` (the jet space and its total derivative), `setup.py`
   (strict reading of a functional), `firstvar.py` (integration by parts, Euler-Lagrange expressions, boundary
   coefficients), `boundary.py`, `verify.py` (finite-difference checks of the original action), `action.py` and

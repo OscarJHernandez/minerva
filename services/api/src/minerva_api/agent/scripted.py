@@ -75,6 +75,53 @@ def _scripted_vector(latex: str, lower: str) -> dict[str, Any]:
     return {"expression": latex, "coordinates": system, "fields": fields}
 
 
+_APPROXIMATION = re.compile(
+    r"pad[eé]|chebyshev|fourier|legendre|laurent|spline|continued fraction|euler.?maclaurin|asymptotic|approximat"
+)
+_NUMBER = r"(-?[\w\\./]+)"
+
+
+def _approximation_args(lower: str, latex: str) -> dict[str, Any]:
+    """The arguments of an `approximation` call, taken only from what the user wrote (nothing is defaulted)."""
+    args: dict[str, Any] = {"latex": latex}
+    methods = (
+        ("continued fraction", "continued_fraction"),
+        ("maclaurin", "euler_maclaurin"),
+        ("pad", "pade"),
+        ("chebyshev", "chebyshev"),
+        ("fourier", "fourier"),
+        ("legendre", "legendre"),
+        ("laurent", "laurent"),
+        ("spline", "piecewise"),
+        ("asymptotic", "asymptotic"),
+    )
+    args["method"] = next((m for key, m in methods if key in lower), "auto")
+    if found := re.search(r"\[(\d+)\s*/\s*(\d+)\]", lower):
+        args["degree"], args["denominator_degree"] = int(found.group(1)), int(found.group(2))
+    if found := re.search(r"degree (\d+)", lower):
+        args["degree"] = int(found.group(1))
+    if found := re.search(r"order (\d+)", lower):
+        args["order"] = int(found.group(1))
+    if found := re.search(r"(\d+) (?:fourier )?modes?", lower):
+        args["modes"] = int(found.group(1))
+    if found := re.search(rf"about {_NUMBER}", lower):
+        args["point"] = found.group(1)
+    elif "infinity" in lower or "large x" in lower:
+        args["point"] = "oo"
+    if found := re.search(rf"from {_NUMBER} to {_NUMBER}", lower):
+        args["lower"], args["upper"] = found.group(1), found.group(2)
+    if found := re.search(rf"period {_NUMBER}", lower):
+        args["period"] = found.group(1)
+    if found := re.search(
+        r"(?:below|within|tolerance of|error of)\s+(\d*\.?\d+(?:e-?\d+)?)", lower
+    ):
+        args["tolerance"] = found.group(1)
+        for kind in ("absolute", "relative"):
+            if kind in lower:
+                args["tolerance_kind"] = kind
+    return args
+
+
 class ScriptedLLM:
     name = "scripted"
     provider = "scripted"
@@ -477,6 +524,11 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif latex and _APPROXIMATION.search(lower):
+            args = _approximation_args(lower, latex)
+            async for c in self._say("I will find the approximation and check it independently. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("approximation", args)])
         elif ("series" in lower or "taylor" in lower or "expand" in lower) and latex:
             order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 4
             about = m.group(1) if (m := re.search(r"about (-?\d+(?:/\d+)?)", lower)) else "0"
@@ -732,6 +784,19 @@ class ScriptedLLM:
                 text = (
                     f"I could not expand that ({status}). The card says why; the point must be an "
                     "equilibrium, and L must not depend explicitly on time."
+                )
+        elif tool == "approximation":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card shows the approximation. It was checked by a method that does not use the one "
+                    "that produced it; any error shown is measured on sampled points, not a bound."
+                )
+            else:
+                text = (
+                    f"I could not give a verified approximation ({status}). The card gives the reason or "
+                    "the question I need you to answer."
                 )
         elif tool == "series":
             found = re.search(r"status=(\w+)", content)

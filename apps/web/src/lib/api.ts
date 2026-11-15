@@ -1,3 +1,4 @@
+import type { ApproximationReport, ApproximationRequest } from "./approximation-types";
 import type { DiscoveryReport } from "./chat-types";
 import type { StatMechRequest, StatMechResult } from "./statmech-types";
 import type { TelescopingRequest, TelescopingResult } from "./telescoping-types";
@@ -182,6 +183,11 @@ export const api = {
     request<DiscoveryReport>("/v1/compute/conserved", {
       method: "POST",
       body: JSON.stringify(c),
+    }),
+  approximation: (req: ApproximationRequest) =>
+    request<ApproximationReport>("/v1/compute/approximation", {
+      method: "POST",
+      body: JSON.stringify(req),
     }),
   telescoping: (req: TelescopingRequest) =>
     request<TelescopingResult>("/v1/compute/telescoping", {

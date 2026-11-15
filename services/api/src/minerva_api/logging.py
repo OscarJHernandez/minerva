@@ -169,6 +169,11 @@ ALLOWED_FIELDS = frozenset(
         # statistical mechanics: counts and enumerated kinds only, never energies or expressions
         "levels",
         "system_kind",
+        # approximation: the method name from a fixed set and counters only
+        "approx_method",
+        "checks",
+        "checks_passed",
+        "warnings",
     }
 )
 

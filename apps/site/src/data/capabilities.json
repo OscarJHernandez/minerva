@@ -767,6 +767,688 @@
       ]
     },
     {
+      "id": "approximation",
+      "title": "Approximations",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Finds a simpler expression that represents a function in the regime you name: Laurent series with pole order and residue, asymptotic expansions at plus or minus infinity, perturbation expansions in a small parameter or a combination such as v/c, Taylor series of several variables with the Hessian, leading behaviour and limits, Padé approximants, Chebyshev and Legendre approximations on an interval, Fourier series of a periodic function, piecewise polynomials, continued fractions of a number, Euler-Maclaurin for a large sum, sequence acceleration, the expansion of an integral, a root or an inverse function in a small parameter, and Laplace's method. `auto` chooses from what you said; `compare` puts Taylor, Padé, Chebyshev and piecewise side by side and picks the simplest that meets an accuracy target. SymPy only proposes: each result is shown only if a check that does not use the route that built it agrees (Cauchy estimates, residual decay at high precision, a second implementation, direct summation, quadrature).",
+      "limits": [
+        "Errors are measured on sampled points and are never bounds; \"the tolerance is met\" means on the sampled points. A rigorous bound is established only for continued-fraction convergents of a rational.",
+        "The interval, point, period, tolerance, degrees and number of modes are yours; none has a default, and a missing one is a question. Taylor and Padé on an interval are expanded about the midpoint only when that is stated.",
+        "An asymptotic expansion is not a convergent series, and no term is added \"because it should help\".",
+        "Padé approximants can have poles the function does not have; they are reported. A Padé approximant is not assumed to be more accurate than the Taylor polynomial, and both are measured when an interval is given.",
+        "At a jump the Fourier series converges to the midpoint and overshoots by about 9% of the jump (Gibbs); uniform convergence is not claimed. Lanczos sigma factors are optional.",
+        "A function with a pole, an undefined point or non-real values on the interval is refused for interval methods. Essential singularities and branch points are not Laurent series and are refused.",
+        "Puiseux series, exponentially small or large asymptotics, endpoint and degenerate Laplace maxima, perturbative solutions of differential equations, spherical harmonics and multiscale methods are not covered.",
+        "Euler-Maclaurin sums need a smooth summand; an oscillating one is refused when the corrections do not beat the plain integral. A symbolic upper limit is checked for several values, not proved for every N."
+      ],
+      "examples": [
+        {
+          "id": "approx-relativistic",
+          "title": "Non-relativistic expansion of the energy",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "m*c**2/sqrt(1-v**2/c**2)",
+              "syntax": "text",
+              "latex": "\\frac{c^{2} m}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}"
+            }
+          ],
+          "assumptions": "m positive; c positive; v real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "c^{2} m + \\frac{m v^{2}}{2} + \\frac{3 m v^{4}}{8 c^{2}} + O\\left(\\left(\\frac{v}{c}\\right)^{5}\\right)"
+            }
+          ],
+          "checks": [
+            "coefficients: passed",
+            "remainder: passed"
+          ],
+          "notes": [
+            "Expanded in the small parameter; the coefficients and the remainder order were checked numerically (the other symbols sampled), and the result is written in the original symbols.",
+            "Warning: local only."
+          ]
+        },
+        {
+          "id": "approx-laurent",
+          "title": "Pole order, principal part and residue",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "1/(x*(x-3))",
+              "syntax": "text",
+              "latex": "\\frac{1}{x \\left(x - 3\\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\frac{1}{3 \\left(x - 3\\right)} - \\frac{1}{9} + \\frac{\\left(x - 3\\right)}{27} - \\frac{\\left(x - 3\\right)^{2}}{81} + O\\left(\\left(x - 3\\right)^{3}\\right)"
+            },
+            {
+              "label": "Pole order",
+              "latex": "1"
+            },
+            {
+              "label": "Principal part",
+              "latex": "\\frac{1}{3 \\left(x - 3\\right)}"
+            },
+            {
+              "label": "Residue",
+              "latex": "\\frac{1}{3}"
+            }
+          ],
+          "checks": [
+            "coefficients (after multiplying by the pole factor): passed",
+            "remainder (after multiplying by the pole factor): passed"
+          ],
+          "notes": [
+            "Expanded with SymPy; the coefficients (all the negative powers included) and the remainder order were checked by estimates that do not use sympy.series.",
+            "Warning: local only."
+          ]
+        },
+        {
+          "id": "approx-asymptotic",
+          "title": "A square root at large x",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "sqrt(x**2+x)",
+              "syntax": "text",
+              "latex": "\\sqrt{x^{2} + x}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "x + \\frac{1}{2} - \\frac{1}{8 x} + \\frac{1}{16 x^{2}} - \\frac{5}{128 x^{3}} + O\\left(x^{-4}\\right)"
+            }
+          ],
+          "checks": [
+            "residual: passed"
+          ],
+          "notes": [
+            "An asymptotic expansion, not a convergent power series: it describes the function as the variable grows, and adding terms need not improve the approximation at a fixed x.",
+            "Warning: asymptotic not convergent."
+          ]
+        },
+        {
+          "id": "approx-multivariable",
+          "title": "Two variables, total degree two, with the Hessian",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "exp(x+y)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{x + y}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "1 + x + y + \\frac{x^{2}}{2} + x y + \\frac{y^{2}}{2} + O\\left(\\left\\|\\left(x, y\\right)\\right\\|^{3}\\right)"
+            },
+            {
+              "label": "Gradient at the point",
+              "latex": "\\left[\\begin{matrix}1\\\\1\\end{matrix}\\right]"
+            },
+            {
+              "label": "Hessian at the point",
+              "latex": "\\left[\\begin{matrix}1 & 1\\\\1 & 1\\end{matrix}\\right]"
+            }
+          ],
+          "checks": [
+            "restriction to lines through the point: passed"
+          ],
+          "notes": [
+            "A Taylor polynomial of total degree 2; it was checked along 6 lines through the point by estimates that do not use sympy.series.",
+            "Warning: local only."
+          ]
+        },
+        {
+          "id": "approx-limit",
+          "title": "One-sided limits that differ",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "1/x",
+              "syntax": "text",
+              "latex": "\\frac{1}{x}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Statement",
+              "latex": "\\lim_{x \\to 0^{+}} f = \\infty,\\quad \\lim_{x \\to 0^{-}} f = -\\infty"
+            }
+          ],
+          "checks": [
+            "values approach the limit (0^{+}): passed",
+            "values approach the limit (0^{-}): passed"
+          ],
+          "notes": [
+            "The limit was found with SymPy and checked by evaluating the original expression at high precision along a geometric approach (a numerical check, not a proof).",
+            "Warning: one sided limits differ."
+          ]
+        },
+        {
+          "id": "approx-pade",
+          "title": "A Padé approximant with a pole the exponential does not have",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "exp(x)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{x}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\frac{1 + \\frac{x}{2}}{1 - \\frac{x}{2}} + O\\left(\\left(x\\right)^{3}\\right)"
+            },
+            {
+              "label": "pole of the approximant: the original function has no singularity there (inside the requested interval)",
+              "latex": "x = 2.0"
+            }
+          ],
+          "checks": [
+            "f - P/Q falls like h^(m+n+1): passed",
+            "coefficients against mpmath.pade: passed"
+          ],
+          "notes": [
+            "The [1/1] Padé approximant about the point; it matches the Taylor coefficients through degree 2 (checked on the function itself).",
+            "Largest error on 2001 sampled points: unbounded (the approximant is undefined or has a pole in the interval) (a measurement, not a bound).",
+            "Warning: spurious pole.",
+            "Warning: pole in interval."
+          ]
+        },
+        {
+          "id": "approx-chebyshev",
+          "title": "The lowest Chebyshev degree meeting a tolerance",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "sin(x)",
+              "syntax": "text",
+              "latex": "\\sin{\\left(x \\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "0.510545536562\\,T_{0}(t) + 0.0789337345556\\,T_{1}(t) - 0.463012578833\\,T_{2}(t) - 0.00862483861266\\,T_{3}(t) + 0.0234773061824\\,T_{4}(t) + 0.000254572120368\\,T_{5}(t) - 0.000454883167408\\,T_{6}(t) - 3.49141655944e-6\\,T_{7}(t) + 4.68185955851e-6\\,T_{8}(t)"
+            },
+            {
+              "label": "Statement",
+              "latex": "t = \\frac{2x - (0.0 + 3.0)}{3.0 - (0.0)}"
+            }
+          ],
+          "checks": [
+            "coefficients against numpy.polynomial.Chebyshev.interpolate: passed",
+            "error measured on two disjoint grids: passed"
+          ],
+          "notes": [
+            "Chebyshev interpolation of degree 8 on the interval, kept in the Chebyshev basis. The largest error on 2001 sampled points is 8.596e-8; this is a sampled estimate, not a bound. It is the lowest degree tried that meets the tolerance on the sampled points.",
+            "Largest error on 2001 sampled points: 8.596e-8 (a measurement, not a bound).",
+            "The tolerance is met on the sampled points."
+          ]
+        },
+        {
+          "id": "approx-compare",
+          "title": "Taylor, Padé and Chebyshev compared on an interval",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "log(1+x)",
+              "syntax": "text",
+              "latex": "\\log{\\left(x + 1 \\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\frac{\\log{\\left(2 \\right)} + \\left(x - 1\\right) \\left(\\frac{3 \\log{\\left(2 \\right)}}{5} + \\frac{1}{2}\\right) + \\left(x - 1\\right)^{2} \\left(\\frac{3 \\log{\\left(2 \\right)}}{40} + \\frac{7}{40}\\right) + \\frac{\\left(x - 1\\right)^{3}}{240}}{1 + \\frac{3 x}{5} - \\frac{3}{5} + \\frac{3 \\left(x - 1\\right)^{2}}{40}}"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Compared on the interval at a budget of degree 5. Padé [3/2] has the smallest sampled error (0.0001647); the table shows what each costs. Errors are measured on sampled points, not bounds.",
+            "Largest error on 2001 sampled points: 0.0001647 (a measurement, not a bound).",
+            "Warning: spurious pole."
+          ]
+        },
+        {
+          "id": "approx-fourier",
+          "title": "A sawtooth, with its closed-form coefficients and the Gibbs warning",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "x",
+              "syntax": "text",
+              "latex": "x"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "2.0\\,\\sin{\\left(x \\right)} -1.0\\,\\sin{\\left(2 x \\right)} + 0.666666666667\\,\\sin{\\left(3 x \\right)} -0.5\\,\\sin{\\left(4 x \\right)} + 0.4\\,\\sin{\\left(5 x \\right)}"
+            },
+            {
+              "label": "a_n (valid for n = 1, 2, ...)",
+              "latex": "0"
+            },
+            {
+              "label": "b_n (valid for n = 1, 2, ...)",
+              "latex": "- \\frac{2 \\left(-1\\right)^{n}}{n}"
+            }
+          ],
+          "checks": [
+            "coefficients: two quadrature rules agree: passed",
+            "Bessel inequality (energy of the series <= energy of the function): passed",
+            "reconstruction measured on two disjoint grids: passed"
+          ],
+          "notes": [
+            "Fourier series with 5 modes of the periodic extension. The largest error on 2001 sampled points is 3.142 (a sampled estimate, not a bound).",
+            "Largest error on 2001 sampled points: 3.142 (a measurement, not a bound).",
+            "Warning: jump discontinuity.",
+            "Warning: gibbs."
+          ]
+        },
+        {
+          "id": "approx-legendre",
+          "title": "The Legendre generating function",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "1/sqrt(5/4 - x)",
+              "syntax": "text",
+              "latex": "\\frac{1}{\\sqrt{\\frac{5}{4} - x}}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "1.0\\,P_{0}(t) + 0.5\\,P_{1}(t) + 0.25\\,P_{2}(t) + 0.125\\,P_{3}(t) + 0.0625\\,P_{4}(t) + 0.03125\\,P_{5}(t)"
+            },
+            {
+              "label": "Statement",
+              "latex": "t = \\frac{2x - (-1.0 + 1.0)}{1.0 - (-1.0)}"
+            }
+          ],
+          "checks": [
+            "coefficients: two quadrature rules agree: passed",
+            "coefficients against numpy leggauss (independent nodes, double precision): passed",
+            "truncation error measured on two disjoint grids: passed"
+          ],
+          "notes": [
+            "Legendre expansion of degree 5: the least-squares polynomial on the interval. The largest error on 2001 sampled points is 0.03125 (a sampled estimate, not a bound).",
+            "Largest error on 2001 sampled points: 0.03125 (a measurement, not a bound)."
+          ]
+        },
+        {
+          "id": "approx-piecewise",
+          "title": "A spline that refines where the function varies quickly",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "exp(-200*x**2)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{- 200 x^{2}}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Statement",
+              "latex": "\\text{pchip through 35 knots on }\\left[-1.0,\\, 1.0\\right]"
+            }
+          ],
+          "checks": [
+            "reproduces the function at the knots: passed",
+            "error measured on two disjoint grids (none is a knot): passed"
+          ],
+          "notes": [
+            "Pchip approximation with 34 segments. The largest error on 2001 sampled points is 0.0008931 (a sampled estimate, not a bound).",
+            "Largest error on 2001 sampled points: 0.0008931 (a measurement, not a bound).",
+            "The tolerance is met on the sampled points.",
+            "Warning: no extrapolation."
+          ]
+        },
+        {
+          "id": "approx-continued-fraction",
+          "title": "Rational approximations of pi",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "pi",
+              "syntax": "text",
+              "latex": "\\pi"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\frac{104348}{33215}"
+            },
+            {
+              "label": "Statement",
+              "latex": "\\pi = [3; 7, 15, 1, 292, 1, \\ldots]"
+            }
+          ],
+          "checks": [
+            "partial quotients agree at two working precisions: passed",
+            "partial quotients against sympy.continued_fraction_iterator: passed",
+            "each convergent satisfies |x - p/q| <= 1/(q q'): passed"
+          ],
+          "notes": [
+            "The convergent 104348/33215 (term 5) has error 3.316e-10.",
+            "Largest error on 1 sampled points: 3.316e-10 (a measurement, not a bound)."
+          ]
+        },
+        {
+          "id": "approx-euler-maclaurin",
+          "title": "A large sum with its error against direct summation",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "1/k**2",
+              "syntax": "text",
+              "latex": "\\frac{1}{k^{2}}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "0.10416683554761908095"
+            },
+            {
+              "label": "Statement",
+              "latex": "\\int_a^b f(x)\\,dx + \\frac{f(a)+f(b)}{2} + \\frac{1}{12}\\left(f'(b)-f'(a)\\right) - \\frac{1}{720}\\left(f'''(b)-f'''(a)\\right) + \\frac{1}{30240}\\left(f^{(5)}(b)-f^{(5)}(a)\\right)"
+            },
+            {
+              "label": "First neglected term (an estimate of the error)",
+              "latex": "-3.333e-11"
+            }
+          ],
+          "checks": [
+            "exact for polynomials up to degree 2p + 1: passed",
+            "the corrections improve on the integral plus half the end terms: passed",
+            "error against direct summation is consistent with the first neglected term: passed"
+          ],
+          "notes": [
+            "Euler-Maclaurin with 3 Bernoulli correction terms. At b = 1000 the error against direct summation is 3.26e-11; the first neglected term is 3.333e-11.",
+            "Largest error on 1 sampled points: 3.26e-11 (a measurement, not a bound)."
+          ]
+        },
+        {
+          "id": "approx-integral",
+          "title": "An integral expanded in a small parameter",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "sqrt(1+eps*x**2)",
+              "syntax": "text",
+              "latex": "\\sqrt{eps x^{2} + 1}"
+            }
+          ],
+          "assumptions": "eps positive; x positive",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "1 + \\frac{eps}{6} - \\frac{eps^{2}}{40} + \\frac{eps^{3}}{112} + O\\left(eps^{4}\\right)"
+            }
+          ],
+          "checks": [
+            "against quadrature of the original integral: passed",
+            "coefficients: passed",
+            "remainder: passed"
+          ],
+          "notes": [
+            "The integrand was expanded in the small parameter, each coefficient integrated with the verified integrator, and the sum compared with quadrature of the original integral.",
+            "Warning: local only."
+          ]
+        },
+        {
+          "id": "approx-reversion",
+          "title": "The inverse of sin near 0",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "sin(x)",
+              "syntax": "text",
+              "latex": "\\sin{\\left(x \\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "y + \\frac{y^{3}}{6} + \\frac{3 y^{5}}{40} + O\\left(y^{6}\\right)"
+            },
+            {
+              "label": "Value of y at the point",
+              "latex": "0"
+            }
+          ],
+          "checks": [
+            "residual of the equation falls like eps^(n+1): passed",
+            "against a separately computed root: passed"
+          ],
+          "notes": [
+            "The inverse of y = f(x) near x = 0, where y = 0, as a series in y; checked by substituting it back and against a separately computed inverse.",
+            "Warning: local only."
+          ]
+        },
+        {
+          "id": "approx-laplace",
+          "title": "Stirling's series by Laplace's method",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "exp(M*(log(x)-x))",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{M \\left(- x + \\log{\\left(x \\right)}\\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sqrt{2} \\sqrt{\\pi} \\left(1 + \\frac{1}{12 M} + \\frac{1}{288 M^{2}}\\right) \\sqrt{\\frac{1}{M}} \\mathrm{e}^{- M} + \\text{relative error } O\\left(M^{-3}\\right)"
+            },
+            {
+              "label": "Location of the maximum",
+              "latex": "1"
+            },
+            {
+              "label": "Leading term",
+              "latex": "\\sqrt{2} \\sqrt{\\pi} \\sqrt{\\frac{1}{M}} \\mathrm{e}^{- M}"
+            }
+          ],
+          "checks": [
+            "ratio to quadrature of the original integral: passed"
+          ],
+          "notes": [
+            "Laplace's method about the interior maximum: the leading term and 2 corrections, compared with quadrature of the original integral.",
+            "Warning: asymptotic not convergent."
+          ]
+        },
+        {
+          "id": "approx-auto",
+          "title": "The method is chosen from the request",
+          "op": "approximation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "1/(x*(1-x))",
+              "syntax": "text",
+              "latex": "\\frac{1}{x \\left(1 - x\\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\frac{1}{x} + 1 + x + x^{2} + x^{3} + O\\left(x^{4}\\right)"
+            },
+            {
+              "label": "Pole order",
+              "latex": "1"
+            },
+            {
+              "label": "Principal part",
+              "latex": "\\frac{1}{x}"
+            },
+            {
+              "label": "Residue",
+              "latex": "1"
+            }
+          ],
+          "checks": [
+            "coefficients (after multiplying by the pole factor): passed",
+            "remainder (after multiplying by the pole factor): passed"
+          ],
+          "notes": [
+            "Expanded with SymPy; the coefficients (all the negative powers included) and the remainder order were checked by estimates that do not use sympy.series.",
+            "Warning: local only."
+          ]
+        },
+        {
+          "id": "approx-no-interval",
+          "title": "Without an interval, a question rather than a guess",
+          "op": "approximation",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Input",
+              "source": "sin(x)",
+              "syntax": "text",
+              "latex": "\\sin{\\left(x \\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The interval is yours to choose.",
+            "Question: On which interval should the approximation hold?"
+          ]
+        },
+        {
+          "id": "approx-essential",
+          "title": "An essential singularity is not a Laurent series",
+          "op": "approximation",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Input",
+              "source": "exp(1/x)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{\\frac{1}{x}}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The expansion has logarithms or fractional powers here (a branch point or an essential singularity), so it is not a Laurent series."
+          ]
+        },
+        {
+          "id": "approx-pole-in-interval",
+          "title": "A pole in the interval cannot be approximated globally",
+          "op": "approximation",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Input",
+              "source": "1/(x-1)",
+              "syntax": "text",
+              "latex": "\\frac{1}{x - 1}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The function is undefined or not real-valued at x = 1.0 in the interval, so it cannot be approximated there."
+          ]
+        },
+        {
+          "id": "approx-oscillating-sum",
+          "title": "A sum whose corrections do not help is refused",
+          "op": "approximation",
+          "status": "not_verified",
+          "input": [
+            {
+              "label": "Input",
+              "source": "cos(1000*k)",
+              "syntax": "text",
+              "latex": "\\cos{\\left(1000 k \\right)}"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The Euler-Maclaurin approximation did not improve on, or agree with, direct summation (the summand may oscillate, have large derivatives at the ends, or too many corrections were asked for); try fewer corrections or a larger lower limit. It is not shown."
+          ]
+        }
+      ]
+    },
+    {
       "id": "matrix-calculus",
       "title": "Noncommutative matrix calculus",
       "status": "available",
