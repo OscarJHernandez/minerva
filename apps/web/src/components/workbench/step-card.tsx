@@ -31,6 +31,8 @@ import { DistributionPanel } from "../distribution-panel";
 import { IntegralPanel } from "../integral-panel";
 import { ResultPanel, StatusPill } from "../result-panel";
 import { SeriesPanel } from "../series-panel";
+import { VariationPanel } from "../variation-panel";
+import type { VariationReport } from "@/lib/variation-types";
 import { StatisticsPanel } from "../statistics-panel";
 import { DiagnosticsView, IsolatePanel, Premises, StepResultPanel } from "../step-result-panel";
 
@@ -104,6 +106,8 @@ function FullResult({
           onAnswer={onAnswerNotation ? (notation) => onAnswerNotation(item, notation) : undefined}
         />
       );
+    case "variation":
+      return <VariationPanel report={item.result as unknown as VariationReport} />;
     case "apply_identity": {
       const r = item.result as unknown as ApplyIdentityResult;
       return (

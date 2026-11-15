@@ -225,6 +225,13 @@ def op_geometry(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 # --- integrate -------------------------------------------------------------------------
+def op_variation(payload: dict[str, Any]) -> dict[str, Any]:
+    from .variational import VariationInput, variation
+
+    result = variation(VariationInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
     from .matrix import MatrixCalculusInput, matrix_calculus
 
@@ -825,6 +832,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
     "geometry": op_geometry,
+    "variation": op_variation,
     "lagrangian": op_lagrangian,
     "expand_motion": op_expand_motion,
     "perturbation_solve": op_perturbation_solve,

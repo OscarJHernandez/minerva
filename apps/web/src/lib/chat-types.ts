@@ -18,6 +18,7 @@ import type {
   StepResult,
   SumsResult,
 } from "./types";
+import type { FunctionalRequest, VariationReport } from "./variation-types";
 import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
 
 export interface ExpansionReport {
@@ -445,6 +446,18 @@ export type Card =
       type: "geometry";
       title: string;
       data: { result: GeometryResult; request: GeometryRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "variation";
+      title: string;
+      data: {
+        report: VariationReport;
+        /** The functional as the model sent it: the card's form adds the user's numbers to it. */
+        request: FunctionalRequest;
+        functional_latex?: string;
+      };
     }
   | {
       id: string;

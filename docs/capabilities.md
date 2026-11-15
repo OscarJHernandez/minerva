@@ -1328,6 +1328,95 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - energy function: not conserved (L depends explicitly on time)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
 
+### Variational calculus
+
+*Available in:* workbench, chat, HTTP API.
+
+Give an action functional of one or several functions, with derivatives of any order up to four and fixed bounds, and Minerva derives its first variation with every integration by parts listed, the Euler–Lagrange equations (the sum over k of (−1)^k d^k/dt^k of ∂L/∂x^(k)), the complete boundary form, which boundary terms the conditions you declared remove, and the natural boundary conditions. Fixing a value never fixes its derivative, and a condition you did not declare is not assumed. The result is shown only if finite differences of the action itself agree with it. With numbers you supply, it evaluates the action on a trial path or family, verifies the variation along your own path, finds a stationary path by two independent methods, and computes the second variation with honest local diagnostics.
+
+**Limits**
+
+- Numerical agreement with finite differences is evidence, not a proof, and the result says so.
+- Bounds are fixed (no moving endpoints), and the integrand must be smooth (no absolute value, sign or piecewise definitions). Field functionals and partial differential equations are not covered.
+- A stationary path may be a minimum, a maximum or a saddle, and none is claimed to be unique. A negative direction proves the path is not a minimum; the absence of one among the directions tried proves nothing, and the sufficient conditions (no conjugate points) are not checked.
+- Stationary paths are found for derivatives up to order two with at most four orders in total, and no unknown may appear without a derivative.
+
+#### A higher-derivative Lagrangian, with its boundary form
+
+- **Integrand:** `\frac{m}{2}\dot{x}^2+\frac{\alpha}{2}\ddot{x}^2-V(x)` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `ok`
+- **First variation:** $\delta S = \int_{a}^{b} \left(\left(\alpha x^{(4)} - m \ddot{x} - V'\left(x\right)\right)\,\eta_{x}\right)\mathrm{d}t + \left[\left(- \alpha x^{(3)} + m \dot{x}\right)\,\eta_{x} + \alpha \ddot{x}\,\dot{\eta}_{x}\right]_{a}^{b}$
+- **Euler-Lagrange (x):** $\alpha x^{(4)} - m \ddot{x} - V'\left(x\right) = 0$
+- **Boundary form:** $\left[\left(- \alpha x^{(3)} + m \dot{x}\right)\,\eta_{x} + \alpha \ddot{x}\,\dot{\eta}_{x}\right]_{a}^{b}$
+- **Check:** Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof.
+- 4 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it.
+
+#### A cantilever beam, with its natural boundary conditions
+
+- **Integrand:** `\frac12\ddot{x}^2-qx` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `ok`
+- **First variation:** $\delta S = \int_{0}^{1} \left(\left(- q + x^{(4)}\right)\,\eta_{x}\right)\mathrm{d}t + \left[- x^{(3)}\,\eta_{x} + \ddot{x}\,\dot{\eta}_{x}\right]_{0}^{1}$
+- **Euler-Lagrange (x):** $- q + x^{(4)} = 0$
+- **Boundary form:** $\left[- x^{(3)}\,\eta_{x} + \ddot{x}\,\dot{\eta}_{x}\right]_{0}^{1}$
+- **Natural condition (upper end, x, order 0):** $- x^{(3)} = 0$
+- **Natural condition (upper end, x, order 1):** $\ddot{x} = 0$
+- **Check:** Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof.
+
+#### A total derivative has no interior equation
+
+- **Integrand:** `x\dot{x}` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `ok`
+- **First variation:** $\delta S = \int_{0}^{1} \left(0\right)\mathrm{d}t + \left[x\,\eta_{x}\right]_{0}^{1}$
+- **Euler-Lagrange (x):** $0 = 0$
+- **Boundary form:** $\left[x\,\eta_{x}\right]_{0}^{1}$
+- **Check:** Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof.
+- The Euler-Lagrange expressions vanish identically: the integrand is a total derivative and the first variation consists of boundary terms only.
+- 2 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it.
+
+#### A stationary path of the harmonic action, found by two methods
+
+- **Integrand:** `\frac12\dot{x}^2-\frac12 x^2` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `ok`
+- **Stationary path action (chebyshev_euler_lagrange):** 0.321046307967165
+- A stationary path found from this starting guess. A stationary path may be a minimum, a maximum or a saddle; it is not claimed to be unique, nor to minimise the action.
+
+#### On a longer interval the same stationary path is not a minimum
+
+- **Integrand:** `\frac12\dot{x}^2-\frac12 x^2` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `ok`
+- **Stationary path action (chebyshev_euler_lagrange):** 0.431845577225308
+- **Facts:** not_a_weak_minimum, not_a_weak_maximum, legendre_violated_for_maximum
+- positivity of the second variation on all admissible perturbations
+- the strengthened Legendre condition on the whole interval
+- absence of conjugate points (Jacobi condition)
+- A stationary path found from this starting guess. A stationary path may be a minimum, a maximum or a saddle; it is not claimed to be unique, nor to minimise the action.
+
+#### V(x) must be declared, never read as a product
+
+- **Integrand:** `\frac12\dot{x}^2-V(x)` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `parse_error`
+- V(…) is ambiguous: declare V as a function, or write V\cdot(…) for a product
+
+#### A non-smooth integrand is refused
+
+- **Integrand:** `|\dot{x}|` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `unsupported`
+- the integrand must be smooth: absolute values, sign, piecewise definitions, conjugates and real/imaginary parts are not supported
+
+#### Numbers are asked for, never chosen
+
+- **Integrand:** `\frac{m}{2}\dot{x}^2` (LaTeX)
+- **Unknown functions:** x
+- **Status:** `conditions_not_satisfied`
+- Numerical values are needed for: m
+
 ### Find the conserved quantities of a system
 
 *Available in:* workbench, chat, HTTP API.
