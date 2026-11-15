@@ -284,3 +284,73 @@ def test_settings_validation_and_backward_compatibility() -> None:
     old: Settings = make_settings(llm_mode="ollama", llm_base_url="http://h:1", llm_model="m")
     old.validate_for_runtime()
     assert old.ollama_configured and not old.openrouter_available
+
+
+def _ollama_client(models: list[str] | None) -> TestClient:
+    """An app whose Ollama host (a mock) lists `models`, or is down when `models` is None."""
+
+    def tags(request: httpx.Request) -> httpx.Response:
+        if models is None:
+            raise httpx.ConnectError("down", request=request)
+        return httpx.Response(200, json={"models": [{"name": m} for m in models]})
+
+    app = build_app(llm_mode="ollama", llm_base_url="http://ollama.test:1", llm_model="mine:1b")
+    app.state.ollama_probe_transport = httpx.MockTransport(tags)
+    client = TestClient(app)
+    client.__enter__()
+    register(client)
+    return client
+
+
+def test_status_lists_installed_local_models_with_recommended_ones_first() -> None:
+    c = _ollama_client(["zzz:1b", "qwen3:8b", "mine:1b", "library/llama3.1:8b"])
+    ollama = c.get("/v1/chat/status").json()["providers"]["ollama"]
+    names = [m["name"] for m in ollama["models"]]
+    assert names == ["library/llama3.1:8b", "qwen3:8b", "mine:1b", "zzz:1b"]
+    assert [m["recommended"] for m in ollama["models"]] == [True, True, False, False]
+    assert ollama["reachable"] is True
+    # Families that are not installed are guidance only; installed ones are not repeated.
+    suggested = [s["family"] for s in ollama["suggested"]]
+    assert "qwen3" not in suggested and "llama3.1" not in suggested and "mistral-nemo" in suggested
+    assert "ollama.test" not in json.dumps(ollama)  # the host address never leaves the server
+
+
+def test_status_when_the_local_host_is_down_lists_no_models() -> None:
+    ollama = _ollama_client(None).get("/v1/chat/status").json()["providers"]["ollama"]
+    assert ollama["reachable"] is False and ollama["models"] == []
+
+
+def test_a_turn_can_pick_another_installed_model_and_nothing_else(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from minerva_api import providers
+
+    made: list[str] = []
+
+    class Spy(OllamaClient):
+        def __init__(self, base_url: str, model: str, *args: Any, **kw: Any) -> None:
+            made.append(model)
+            super().__init__(
+                base_url, model, *args, transport=httpx.MockTransport(_ollama_chat), **kw
+            )
+
+    monkeypatch.setattr(providers, "OllamaClient", Spy)
+    c = _ollama_client(["mine:1b", "qwen3:8b"])
+    c.get("/v1/chat/status")  # fills the installed-model cache, as the settings panel does
+    ok, _, _ = turn(c, new_conv(c), "hi", {"kind": "ollama", "model": "qwen3:8b"})
+    assert ok == 200 and made == ["qwen3:8b"]
+    missing, _, _ = turn(c, new_conv(c), "hi", {"kind": "ollama", "model": "nope:7b"})
+    assert missing == 422
+    bad, _, _ = turn(c, new_conv(c), "hi", {"kind": "ollama", "model": "x; rm -rf /"})
+    assert bad == 422 and made == ["qwen3:8b"]
+
+
+def _ollama_chat(request: httpx.Request) -> httpx.Response:
+    line = {"message": {"role": "assistant", "content": "Hello."}, "done": True}
+    return httpx.Response(200, content=(json.dumps(line) + "\n").encode())
+
+
+def test_scripted_mode_refuses_a_model_choice() -> None:
+    c = make_client(FakeOpenRouter())
+    code, _, _ = turn(c, new_conv(c), "hi", {"kind": "ollama", "model": "qwen3:8b"})
+    assert code == 422

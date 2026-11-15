@@ -746,7 +746,15 @@ export interface ChatStatus {
 
 export interface ProviderStatus {
   default: "ollama" | "openrouter";
-  ollama: { available: boolean; model: string; reachable?: boolean };
+  ollama: {
+    available: boolean;
+    model: string;
+    reachable?: boolean;
+    /** Models installed on the server's own host, recommended ones first. */
+    models?: LocalModel[];
+    /** Recommended families that are not installed: guidance only, not selectable. */
+    suggested?: { family: string; note: string }[];
+  };
   openrouter: {
     available: boolean;
     byok: boolean;
@@ -756,6 +764,12 @@ export interface ProviderStatus {
     zdr: boolean;
     data_collection: string;
   };
+}
+
+export interface LocalModel {
+  name: string;
+  recommended: boolean;
+  note: string;
 }
 
 /** What the browser sends to pick the provider for one turn. */

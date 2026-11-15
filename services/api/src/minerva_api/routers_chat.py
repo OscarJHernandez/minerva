@@ -54,7 +54,8 @@ from .logging import get_logger
 from .providers import (
     OpenRouterTest,
     ProviderChoice,
-    ollama_reachable,
+    local_model_choices,
+    ollama_models,
     provider_status,
     resolve_llm,
     server_key_allowed,
@@ -171,9 +172,15 @@ async def chat_status(request: Request, db: DbDep, settings: SettingsDep) -> Sta
     except HTTPException:
         user = None
     providers = provider_status(settings, user)
-    providers["ollama"]["reachable"] = (
-        await ollama_reachable(request, settings) if settings.llm_mode != "scripted" else True
-    )
+    if settings.llm_mode == "scripted":
+        providers["ollama"]["reachable"] = True
+        providers["ollama"].update(local_model_choices([], settings.llm_model))
+    else:
+        installed = await ollama_models(request, settings)
+        providers["ollama"]["reachable"] = installed is not None
+        providers["ollama"].update(
+            local_model_choices(installed or [], settings.llm_model if installed else "")
+        )
     default_model = (
         settings.openrouter_model
         if settings.llm_mode == "openrouter"
