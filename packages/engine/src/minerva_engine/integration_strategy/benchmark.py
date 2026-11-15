@@ -166,7 +166,7 @@ def _fn(text: str, assumptions: dict[str, list[str]], names: list[str]) -> Any:
 
 
 def _bound(text: str) -> Any:
-    return {"oo": mp.inf, "-oo": -mp.inf}.get(text) or mp.mpf(str(sp.N(sp.sympify(text), 25)))
+    return {"oo": mp.inf, "-oo": -mp.inf}.get(text) or mp.mpf(str(sp.N(parse_text(text), 25)))
 
 
 def judge(case: Case, result: Any) -> tuple[str, str]:

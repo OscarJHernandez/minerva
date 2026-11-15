@@ -31,7 +31,7 @@ class Initial:
 
 def candidate_points(domain: tuple[sp.Expr, sp.Expr]) -> list[sp.Expr]:
     lo, hi = domain
-    points = [sp.sympify(p) for p in POINTS]
+    points = [sp.Rational(p) for p in POINTS]
     if hi == 0:
         points = [-p for p in points]
     return [p for p in points if lo < p < hi]

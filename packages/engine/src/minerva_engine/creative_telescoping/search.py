@@ -144,17 +144,14 @@ class AlmkvistZeilberger:
             columns.append(sp.expand(-sp.cancel(R[k] * D * D * B)))
         polys = [sp.Poly(c, x) for c in columns]
         top = max(p.degree() for p in polys)
-        rows = [
-            [field.from_sympy(sp.sympify(p.coeff_monomial(x**r))) for p in polys]
-            for r in range(top + 1)
-        ]
+        rows = [[field.from_sympy(p.coeff_monomial(x**r)) for p in polys] for r in range(top + 1)]
         matrix = DomainMatrix(rows, (len(rows), len(columns)), field)
         basis = matrix.nullspace().to_Matrix()
         for vector in (basis.row(i) for i in range(basis.rows)):
-            cs = [sp.sympify(v) for v in vector[degree + 1 :]]
+            cs = list(vector[degree + 1 :])
             if all(c == 0 for c in cs):
                 continue  # y f is constant: a degenerate solution that says nothing about I(a)
-            ys = [sp.sympify(v) for v in vector[: degree + 1]]
+            ys = list(vector[: degree + 1])
             Y = sum(c * x**i for i, c in enumerate(ys))
             return cs, sp.cancel(Y / D)
         return None

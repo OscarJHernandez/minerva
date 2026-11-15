@@ -59,7 +59,7 @@ def quad(src: str, lo: Any, hi: Any, **values: float) -> Any:
     args = [mp.mpf(values[k]) for k in sorted(values)]
 
     def bound(text: str) -> Any:
-        return {"oo": mp.inf, "-oo": -mp.inf}.get(text) or mp.mpf(str(sp.N(sp.sympify(text), 25)))
+        return {"oo": mp.inf, "-oo": -mp.inf}.get(text) or mp.mpf(str(sp.N(parse_text(text), 25)))
 
     lo_, hi_ = bound(lo), bound(hi)
     return mp.quad(lambda t: fn(t, *args), [lo_, 0, hi_] if lo_ < 0 < hi_ else [lo_, hi_])
