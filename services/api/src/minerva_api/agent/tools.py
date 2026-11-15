@@ -23,6 +23,7 @@ from minerva_engine import (
     Engine,
     ExpressionInput,
     GeometryInput,
+    IntegrateResult,
     MatrixCalculusInput,
     MatrixDecl,
     MotionRequest,
@@ -43,6 +44,7 @@ from minerva_engine import (
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
+from minerva_engine.integration_strategy.models import StrategyName
 from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -655,6 +657,14 @@ class IntegrateArgs(SimplifyArgs):
         max_length=200,
         description="Upper bound of a definite integral: a real number, or oo for infinity.",
     )
+    strategy: StrategyName | None = Field(
+        default=None,
+        description="Optional. Leave it out first. After a failed or unexplained result, the "
+        "`strategy` block of the card lists the techniques that apply (suggestions): call again "
+        "with one of them (substitution, parts, trigonometric, partial_fractions, parity, "
+        "reflection, frullani, schwinger, parameter_differentiation, numerical), or `auto` to get "
+        "a result explained by the technique that finds it. Never invent a technique.",
+    )
 
 
 class IdentitiesArgs(SimplifyArgs):
@@ -1064,7 +1074,7 @@ def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
 
 
 def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
-    result = ctx.engine.integrate(_expr(args), args.variable, args.lower, args.upper)
+    result = ctx.engine.integrate(_expr(args), args.variable, args.lower, args.upper, args.strategy)
     card = Card(
         id=uuid.uuid4().hex[:8],
         tool="integrate",
@@ -1095,11 +1105,51 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
         + "".join(f"condition: ${c}$; " for c in result.conditions_latex)
         + result.message
         + "".join(f" note: {n}" for n in result.notes)
+        + _strategy_text(result)
     )
     known = [
         x for x in (result.input_latex, result.notation_latex, result.result_latex) if x
     ] + result.conditions_latex
+    strategy = result.strategy
+    if strategy is not None and result.status.value == "ok" and strategy.technique != "direct":
+        known += [step.latex for step in strategy.steps]  # intermediate forms the engine printed
     return ToolOutput(card, text, known, result.status.value)
+
+
+def _strategy_text(result: IntegrateResult) -> str:
+    """What the model may say about the technique: only what the engine reported."""
+    s = result.strategy
+    if s is None:
+        return ""
+    lines: list[str] = []
+    if result.result_kind == "numeric" and result.numeric:
+        lines.append(
+            f" NUMERICAL ESTIMATE ONLY: {result.numeric} (estimated error {result.numeric_error}). "
+            "It is not a formula; say so, and never present it as a closed form."
+        )
+    if s.technique and s.technique != "direct":
+        lines.append(
+            f" technique={s.technique} (why: {s.why}); verification={s.verification}"
+            " (the result was verified independently of the technique)."
+        )
+        for step in s.steps:
+            lines.append(f" step [{step.what}]: ${step.latex}$")
+    for c in s.conditions_latex:
+        lines.append(f" established: {c}")
+    if s.suggestions and result.status.value != "ok":
+        names = ", ".join(x.technique for x in s.suggestions)
+        lines.append(
+            f" suggestions: {names}. You may call integrate again with `strategy` set to one of them."
+        )
+    for a in s.attempts:
+        if a.outcome in ("blocked", "failed_verification"):
+            lines.append(
+                f" tried {a.technique}: {a.outcome}{' (' + a.detail + ')' if a.detail else ''}; "
+                "nothing from it is shown."
+            )
+    if s.verification == "numerically_checked":
+        lines.append(" Say 'checked numerically' for a definite value, never 'proved'.")
+    return "".join(lines)
 
 
 def geometry_request(args: GeometryArgs) -> GeometryInput:
@@ -3406,6 +3456,17 @@ def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None
             "hint: write each index as a call, e.g. S(a,b)*A(-a,-b), with - for a lower index; "
             "LaTeX subscripts such as S_{ab} are not read."
         )
+    if (
+        name == "integrate"
+        and output.status in ("unsupported", "conditions_not_satisfied", "not_verified")
+        and arguments.get("lower") is not None
+        and arguments.get("upper") is not None
+    ):
+        hints.append(
+            "hint: if this integrand depends on a parameter (besides the integration variable) and "
+            "is a product of rational functions, powers and exponentials, `creative_telescoping` "
+            "may derive a verified differential equation for the integral."
+        )
     if hints:
         output.for_model += "\n" + "\n".join(hints)
 
@@ -3426,6 +3487,7 @@ SCALAR_TOOLS = frozenset(
         "ode_solve_symbolic",
         "ode_solve_numerical",
         "variation",
+        "creative_telescoping",
     }
 )
 _EXPRESSION_FIELDS = ("latex", "equation", "expression", "integrand")
@@ -3663,4 +3725,25 @@ TOOLS["statistical_mechanics"] = Tool(
     "transforms, interacting classical systems.",
     StatMechArgs,
     run_statistical_mechanics,
+)
+
+
+from .telescoping_tools import TelescopingArgs, run_creative_telescoping  # noqa: E402
+
+TOOLS["creative_telescoping"] = Tool(
+    "creative_telescoping",
+    "A definite integral that depends on a parameter, I(a) = integral of f(x, a) dx, when `integrate` "
+    "cannot give a verified value. SEARCHES (it does not look anything up) for a differential operator "
+    "L in the parameter and a certificate G with L f = dG/dx, proves that identity exactly, checks "
+    "convergence, differentiation under the integral sign and the boundary terms from the DECLARED "
+    "assumptions only (declare the parameter real and positive when the problem says so), derives the "
+    "differential equation of I(a) and solves it with independently verified initial values. "
+    "Supported integrands: products of rational functions, powers (exponents free of x) and "
+    "exponentials of rational functions, in the variable and the parameter. Reports a PARTIAL result "
+    "(certificate or equation only) when the value cannot be established, and refuses sums of such "
+    "terms, trigonometric functions, x**a, divergent integrals and poles inside the interval. A value "
+    "is confirmed by numerical quadrature: call it 'checked numerically', never proved. Never invent "
+    "an operator, certificate, equation or constant.",
+    TelescopingArgs,
+    run_creative_telescoping,
 )

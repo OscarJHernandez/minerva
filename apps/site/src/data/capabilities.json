@@ -6475,6 +6475,551 @@
       ]
     },
     {
+      "id": "creative-telescoping",
+      "title": "Creative telescoping for integrals with a parameter",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "For an integral that depends on a parameter, Minerva searches for a differential operator L in the parameter and a certificate G with L f = dG/dx, proves that identity exactly, checks convergence, differentiation under the integral sign and the boundary terms from the assumptions you declare, derives the differential equation of the integral and solves it with independently verified initial values. The relation is discovered, not looked up. A value is shown only if it satisfies the equation exactly, reproduces the initial values and agrees with numerical quadrature of the original integrand; otherwise the proved certificate or the verified equation is returned as a labelled partial result that says what remains unresolved.",
+      "limits": [
+        "The integrand must be a product of rational functions, powers (exponents free of the variable) and exponentials of rational functions, in the variable and the parameter. Sums of such terms, trigonometric functions, logarithms and x**a are refused.",
+        "The search is bounded (operator order up to 5, certificate degree up to 12). Finding nothing is reported as \"within the searched families\" and proves nothing outside them.",
+        "Convergence and boundary terms are decided from the declared signs only. A parameter whose sign is not declared gives a certificate and no value; oscillating ends are accepted only through absolute convergence.",
+        "The value is checked against quadrature, which is numerical evidence, never called a proof. Full holonomic closure, Ore algebras and hypergeometric summation are not implemented."
+      ],
+      "examples": [
+        {
+          "id": "telescoping-gaussian",
+          "title": "A Gaussian with a parameter, found and evaluated",
+          "op": "telescoping",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "exp(-a*x**2)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{- a x^{2}}"
+            }
+          ],
+          "assumptions": "a positive; x real",
+          "outputs": [
+            {
+              "label": "Operator (order 1)",
+              "latex": "L = 1 + 2 a\\,\\partial_{a}"
+            },
+            {
+              "label": "Certificate G",
+              "latex": "x \\mathrm{e}^{- a x^{2}}"
+            },
+            {
+              "label": "Boundary contribution",
+              "latex": "0"
+            },
+            {
+              "label": "Differential equation",
+              "latex": "I(a) + 2 a\\,I'(a) = 0"
+            },
+            {
+              "label": "Value",
+              "latex": "I = \\frac{\\sqrt{\\pi}}{\\sqrt{a}}"
+            }
+          ],
+          "checks": [
+            "proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12",
+            "established: the real part of the exponent tends to minus infinity at the lower end; the same bound holds uniformly for every parameter derivative",
+            "established: the real part of the exponent tends to minus infinity at the upper end; the same bound holds uniformly for every parameter derivative",
+            "established: the leading coefficient has a constant sign on the parameter domain",
+            "satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)"
+          ],
+          "notes": [
+            "evaluated: The integral was evaluated from the derived differential equation and checked."
+          ]
+        },
+        {
+          "id": "telescoping-inverse-gaussian",
+          "title": "A second-order relation",
+          "op": "telescoping",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "exp(-x**2 - a**2/x**2)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{- \\frac{a^{2}}{x^{2}} - x^{2}}"
+            }
+          ],
+          "assumptions": "a positive; x real",
+          "outputs": [
+            {
+              "label": "Operator (order 2)",
+              "latex": "L = -4 + \\partial_{a}^{2}"
+            },
+            {
+              "label": "Certificate G",
+              "latex": "\\frac{2 \\mathrm{e}^{- \\frac{a^{2} + x^{4}}{x^{2}}}}{x}"
+            },
+            {
+              "label": "Boundary contribution",
+              "latex": "0"
+            },
+            {
+              "label": "Differential equation",
+              "latex": "-4\\,I(a) + I''(a) = 0"
+            },
+            {
+              "label": "Value",
+              "latex": "I = \\frac{\\sqrt{\\pi} \\mathrm{e}^{- 2 a}}{2}"
+            }
+          ],
+          "checks": [
+            "proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12",
+            "established: constant sign shown by a coefficient certificate",
+            "established: the real part of the exponent tends to minus infinity at the lower end; the same bound holds uniformly for every parameter derivative",
+            "established: the real part of the exponent tends to minus infinity at the upper end; the same bound holds uniformly for every parameter derivative",
+            "established: the leading coefficient has a constant sign on the parameter domain",
+            "satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)"
+          ],
+          "notes": [
+            "evaluated: The integral was evaluated from the derived differential equation and checked."
+          ]
+        },
+        {
+          "id": "telescoping-bessel",
+          "title": "A Bessel-type integral, the equation without a value",
+          "op": "telescoping",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "exp(I*a*x)/sqrt(1 - x**2)",
+              "syntax": "text",
+              "latex": "\\frac{\\mathrm{e}^{\\mathrm{i} a x}}{\\sqrt{1 - x^{2}}}"
+            }
+          ],
+          "assumptions": "a positive; x real",
+          "outputs": [
+            {
+              "label": "Operator (order 2)",
+              "latex": "L = a + \\partial_{a} + a\\,\\partial_{a}^{2}"
+            },
+            {
+              "label": "Certificate G",
+              "latex": "- \\mathrm{i} \\sqrt{1 - x^{2}} \\mathrm{e}^{\\mathrm{i} a x}"
+            },
+            {
+              "label": "Boundary contribution",
+              "latex": "0"
+            },
+            {
+              "label": "Differential equation",
+              "latex": "a\\,I(a) + I'(a) + a\\,I''(a) = 0"
+            }
+          ],
+          "checks": [
+            "proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12",
+            "established: constant sign shown by a coefficient certificate",
+            "established: constant sign shown by a coefficient certificate",
+            "established: the base is provably positive, so the power has one real branch",
+            "established: absolute convergence from the exact local exponent",
+            "established: absolute convergence from the exact local exponent",
+            "established: absolute convergence from the exact local exponent",
+            "established: absolute convergence from the exact local exponent",
+            "established: absolute convergence from the exact local exponent",
+            "established: absolute convergence from the exact local exponent",
+            "established: the leading coefficient has a constant sign on the parameter domain"
+          ],
+          "notes": [
+            "The integral and its parameter derivatives could not be evaluated independently at any trial parameter value, so the integration constants stay undetermined.",
+            "equation: The equation was derived but no independently verified initial values exist."
+          ]
+        },
+        {
+          "id": "telescoping-sign-not-declared",
+          "title": "An undeclared sign is never assumed",
+          "op": "telescoping",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "exp(-a*x)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{- a x}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [
+            {
+              "label": "Operator (order 0)",
+              "latex": "L = 1"
+            },
+            {
+              "label": "Certificate G",
+              "latex": "- \\frac{\\mathrm{e}^{- a x}}{a}"
+            }
+          ],
+          "checks": [
+            "proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12",
+            "established: absolute convergence from the exact local exponent",
+            "NOT established: the sign of the leading exponent coefficient is not provable; declare the symbols' signs"
+          ],
+          "notes": [
+            "The sign of the leading coefficient of the exponent at an end of the interval is not provable from the declared assumptions.",
+            "certificate: The sign of the leading coefficient of the exponent at an end of the interval is not provable from the declared assumptions. The certificate above is still valid."
+          ]
+        },
+        {
+          "id": "telescoping-divergent",
+          "title": "A divergent integral is reported, not evaluated",
+          "op": "telescoping",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "1/(a*x)",
+              "syntax": "text",
+              "latex": "\\frac{1}{a x}"
+            }
+          ],
+          "assumptions": "a positive; x real",
+          "outputs": [],
+          "checks": [
+            "established: constant sign shown by a coefficient certificate",
+            "NOT established: the local exponent does not clear the threshold or is undecided"
+          ],
+          "notes": [
+            "none: The integral diverges: the integrand is not integrable at an end of the interval (shown from its local behaviour, which has no oscillation there)."
+          ]
+        },
+        {
+          "id": "telescoping-outside-class",
+          "title": "A trigonometric integrand is outside the class",
+          "op": "telescoping",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "sin(a*x)",
+              "syntax": "text",
+              "latex": "\\sin{\\left(a x \\right)}"
+            }
+          ],
+          "assumptions": "a positive; x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "none: Only products of rational functions, powers and exponentials of rational functions are supported (no sums of such terms, no trigonometric functions)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "integration-strategies",
+      "title": "Integration techniques",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Where SymPy's route does not find a verified integral, a deterministic strategy engine reads the structure of the integrand and tries a few promising techniques: substitution, integration by parts, trigonometric identities, partial fractions, symmetry (parity and King's reflection), Frullani integrals, Schwinger parametrization, differentiation under the integral sign and a numerical estimate. Each candidate is verified against the original integrand by the independent checkers before it is shown, and the answer says which technique produced it, why it applies, its steps and what was checked. No language model takes part in finding or checking a result.",
+      "limits": [
+        "A technique whose conditions are not established is reported as blocked and never applied. Symmetry never gives 0 for an integral whose half-range diverges, and Frullani needs the scales declared positive and finite limits of the function at 0 and infinity.",
+        "A definite value is checked by quadrature and is never called proved; an antiderivative is proved only when its derivative simplifies to the integrand.",
+        "A numerical estimate is not a formula. Found without being asked it rides along with the unchanged \"unsupported\" status; it becomes the result only when requested.",
+        "Gröbner bases, Lie symmetries, contour integration, principal values and Feynman parameters for several denominators are not covered."
+      ],
+      "examples": [
+        {
+          "id": "strategy-substitution",
+          "title": "A substitution, with its transformation",
+          "op": "integrate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "x/(1+x**2)**2",
+              "syntax": "text",
+              "latex": "\\frac{x}{\\left(x^{2} + 1\\right)^{2}}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [
+            {
+              "label": "Antiderivative",
+              "latex": "- \\frac{1}{2 \\left(x^{2} + 1\\right)}"
+            },
+            {
+              "label": "Substitution",
+              "latex": "u = x^{2} + 1"
+            },
+            {
+              "label": "Differential",
+              "latex": "\\mathrm{d}u = \\left(2 x\\right)\\,\\mathrm{d}x"
+            },
+            {
+              "label": "Transformed integral",
+              "latex": "\\int \\frac{1}{2 u^{2}}\\,\\mathrm{d}u"
+            },
+            {
+              "label": "Antiderivative in u",
+              "latex": "- \\frac{1}{2 u}"
+            }
+          ],
+          "checks": [
+            "numerical derivative at 12/12 points; symbolic derivative equals the integrand"
+          ],
+          "notes": [
+            "Technique: substitution (composite_with_inner_derivative); verification: proved.",
+            "Integrated by substitution; the result was verified independently of the technique."
+          ]
+        },
+        {
+          "id": "strategy-parts",
+          "title": "Integration by parts",
+          "op": "integrate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "x**2*sin(x)",
+              "syntax": "text",
+              "latex": "x^{2} \\sin{\\left(x \\right)}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [
+            {
+              "label": "Antiderivative",
+              "latex": "- x^{2} \\cos{\\left(x \\right)} + 2 x \\sin{\\left(x \\right)} + 2 \\cos{\\left(x \\right)}"
+            },
+            {
+              "label": "Choice of u",
+              "latex": "x^{2}"
+            },
+            {
+              "label": "Choice of dv",
+              "latex": "\\sin{\\left(x \\right)}"
+            },
+            {
+              "label": "V = integral of dv",
+              "latex": "- \\cos{\\left(x \\right)}"
+            },
+            {
+              "label": "Remaining integral",
+              "latex": "\\int \\left(- 2 x \\cos{\\left(x \\right)}\\right)\\, dx"
+            }
+          ],
+          "checks": [
+            "numerical derivative at 12/12 points; symbolic derivative equals the integrand"
+          ],
+          "notes": [
+            "Technique: parts (polynomial_times_transcendental); verification: proved.",
+            "Integrated by parts; the result was verified independently of the technique."
+          ]
+        },
+        {
+          "id": "strategy-king",
+          "title": "King's rule for a family SymPy does not finish",
+          "op": "integrate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "sin(x)**n/(sin(x)**n + cos(x)**n)",
+              "syntax": "text",
+              "latex": "\\frac{\\sin^{n}{\\left(x \\right)}}{\\sin^{n}{\\left(x \\right)} + \\cos^{n}{\\left(x \\right)}}"
+            }
+          ],
+          "assumptions": "x real; n positive",
+          "outputs": [
+            {
+              "label": "Value",
+              "latex": "\\frac{\\pi}{4}"
+            },
+            {
+              "label": "Reflection",
+              "latex": "x \\mapsto \\frac{\\pi}{2} - x"
+            },
+            {
+              "label": "Average of the two forms",
+              "latex": "\\frac{1}{2}"
+            },
+            {
+              "label": "Integral of the average",
+              "latex": "\\int\\limits_{0}^{\\frac{\\pi}{2}} \\frac{1}{2}\\, dx"
+            }
+          ],
+          "checks": [
+            "quadrature at 8/8 parameter points"
+          ],
+          "notes": [
+            "Technique: reflection (reflection_simplifies); verification: numerically_checked.",
+            "Integrated by reflection; the result was verified independently of the technique."
+          ]
+        },
+        {
+          "id": "strategy-frullani",
+          "title": "A Frullani integral whose halves diverge on their own",
+          "op": "integrate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "(atan(a*x) - atan(b*x))/x",
+              "syntax": "text",
+              "latex": "\\frac{\\arctan{\\left(a x \\right)} - \\arctan{\\left(b x \\right)}}{x}"
+            }
+          ],
+          "assumptions": "x real; a positive; b positive",
+          "outputs": [
+            {
+              "label": "Value",
+              "latex": "\\frac{\\pi \\left(\\log{\\left(a \\right)} - \\log{\\left(b \\right)}\\right)}{2}"
+            },
+            {
+              "label": "Two scalings of one function",
+              "latex": "g(x) = - \\arctan{\\left(x \\right)}, \\quad a = b, \\; b = a"
+            },
+            {
+              "label": "Limits of g (both finite)",
+              "latex": "g(0^+) = 0, \\; g(\\infty) = - \\frac{\\pi}{2}"
+            },
+            {
+              "label": "Frullani",
+              "latex": "I = \\frac{\\pi \\left(\\log{\\left(a \\right)} - \\log{\\left(b \\right)}\\right)}{2}"
+            }
+          ],
+          "checks": [
+            "quadrature at 8/8 parameter points"
+          ],
+          "notes": [
+            "Technique: frullani (difference_at_two_scalings_over_x); verification: numerically_checked.",
+            "Integrated by frullani; the result was verified independently of the technique."
+          ]
+        },
+        {
+          "id": "strategy-schwinger",
+          "title": "Schwinger parametrization of a denominator",
+          "op": "integrate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "1/(x**2 + a**2)**2",
+              "syntax": "text",
+              "latex": "\\frac{1}{\\left(a^{2} + x^{2}\\right)^{2}}"
+            }
+          ],
+          "assumptions": "x real; a positive",
+          "outputs": [
+            {
+              "label": "Value",
+              "latex": "\\frac{\\pi}{4 a^{3}}"
+            },
+            {
+              "label": "Schwinger identity",
+              "latex": "A^{-n} = \\frac{1}{\\Gamma(n)}\\int_0^\\infty t^{n-1} \\mathrm{e}^{-tA}\\,\\mathrm{d}t, \\quad A = a^{2} + x^{2}, \\; n = 2"
+            },
+            {
+              "label": "Inner integral over x",
+              "latex": "J(t) = \\frac{\\sqrt{\\pi} \\mathrm{e}^{- a^{2} t}}{2 \\sqrt{t}}"
+            },
+            {
+              "label": "Outer integral over t",
+              "latex": "\\int\\limits_{0}^{\\infty} \\frac{\\sqrt{\\pi} \\sqrt{t} \\mathrm{e}^{- a^{2} t}}{2}\\, dt"
+            },
+            {
+              "label": "Value",
+              "latex": "\\frac{\\pi}{4 a^{3}}"
+            }
+          ],
+          "checks": [
+            "quadrature at 8/8 parameter points"
+          ],
+          "notes": [
+            "Technique: schwinger (negative_power_of_a_positive_base); verification: numerically_checked.",
+            "Integrated by schwinger; the result was verified independently of the technique."
+          ]
+        },
+        {
+          "id": "strategy-numerical",
+          "title": "A numerical estimate when there is no closed form",
+          "op": "integrate",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "exp(x**x)",
+              "syntax": "text",
+              "latex": "\\mathrm{e}^{x^{x}}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [
+            {
+              "label": "Numerical value",
+              "latex": "2.19754443801362"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Numerical estimate 2.19754443801362 (estimated error 4.98e-10); not a formula.",
+            "Technique: numerical (no_closed_form_for_a_number); verification: numeric_estimate.",
+            "No closed form was found. This is a numerical estimate only: two independent quadrature rules agreed to the stated error."
+          ]
+        },
+        {
+          "id": "strategy-frullani-undeclared",
+          "title": "Frullani is not applied unless the scales are declared positive",
+          "op": "integrate",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "(exp(-a*x) - exp(-b*x))/x",
+              "syntax": "text",
+              "latex": "\\frac{- \\mathrm{e}^{- b x} + \\mathrm{e}^{- a x}}{x}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "frullani: blocked (scales_not_provably_positive)",
+            "No closed form was found. This does not prove that none exists."
+          ]
+        },
+        {
+          "id": "strategy-odd-divergent",
+          "title": "An odd integrand with a divergent half-range is not 0",
+          "op": "integrate",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "1/x",
+              "syntax": "text",
+              "latex": "\\frac{1}{x}"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "parity: blocked (convergence_not_established)",
+            "SymPy reports that the integral diverges or is undefined. Minerva does not verify divergence, so it shows no value."
+          ]
+        }
+      ]
+    },
+    {
       "id": "discovery",
       "title": "Find the conserved quantities of a system",
       "status": "available",
@@ -7995,7 +8540,7 @@
       "group": "math",
       "where": [],
       "needs_model": false,
-      "summary": "In the workbench, with the same verification discipline as derivatives. Taylor series are available.",
+      "summary": "Limits, and more of the integration workbench, with the same verification discipline as derivatives. Taylor series, integration techniques and creative telescoping are available.",
       "limits": [],
       "examples": []
     },

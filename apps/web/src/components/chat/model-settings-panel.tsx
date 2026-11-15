@@ -21,6 +21,16 @@ export function ModelSettingsPanel({
   const or = providers?.openrouter;
   const local = providers?.ollama;
   const models = or?.models ?? [];
+  const installed = local?.models ?? [];
+  const activeLocal =
+    (settings.touched && settings.provider === "ollama" && settings.localModel) ||
+    local?.model ||
+    "";
+  const [localChoice, setLocalChoice] = useState(
+    installed.some((m) => m.name === (settings.localModel || modelSettings.savedLocalModel()))
+      ? settings.localModel || modelSettings.savedLocalModel()
+      : activeLocal,
+  );
   const initialModel = settings.model || modelSettings.savedModel() || or?.default_model || "";
   const [choice, setChoice] = useState(
     models.includes(initialModel) || !initialModel ? initialModel || (models[0] ?? "") : CUSTOM,
@@ -68,7 +78,7 @@ export function ModelSettingsPanel({
           <div>
             <div className="font-medium">Local (Ollama)</div>
             <div className="text-xs text-muted">
-              {local?.model || "Server model"} ·{" "}
+              {activeLocal || "Server model"} ·{" "}
               {local?.reachable === false ? (
                 <span className="text-bad">not reachable</span>
               ) : (
@@ -79,7 +89,9 @@ export function ModelSettingsPanel({
           {cloudActive ? (
             <button
               type="button"
-              onClick={() => modelSettings.useLocal()}
+              onClick={() =>
+                modelSettings.useLocal(localChoice === local?.model ? "" : localChoice)
+              }
               disabled={!local?.available}
               className="shrink-0 rounded border border-rule px-3 py-1.5 hover:bg-sunk disabled:opacity-40"
             >
@@ -89,6 +101,47 @@ export function ModelSettingsPanel({
             <span className="text-xs text-ok">In use</span>
           )}
         </div>
+        {installed.length > 1 && (
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <label className="min-w-0 flex-1">
+              <span className="text-xs text-muted">Installed models</span>
+              <select
+                value={localChoice}
+                onChange={(e) => setLocalChoice(e.target.value)}
+                className="mt-0.5 block w-full rounded border border-rule bg-paper px-2 py-1.5"
+              >
+                {installed.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name}
+                    {m.recommended ? " · recommended" : ""}
+                    {m.name === local?.model ? " · server default" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() =>
+                modelSettings.useLocal(localChoice === local?.model ? "" : localChoice)
+              }
+              disabled={!local?.available || (!cloudActive && localChoice === activeLocal)}
+              className="shrink-0 rounded border border-rule px-3 py-1.5 hover:bg-sunk disabled:opacity-40"
+            >
+              Switch model
+            </button>
+          </div>
+        )}
+        {installed.find((m) => m.name === localChoice)?.note && (
+          <p className="mt-1 text-xs text-muted">
+            {installed.find((m) => m.name === localChoice)?.note}
+          </p>
+        )}
+        {(local?.suggested?.length ?? 0) > 0 && (
+          <p className="mt-1 text-xs text-muted">
+            Recommended, not installed here (tool calling is required):{" "}
+            {local?.suggested?.map((s) => s.family).join(", ")}. Ask the server owner to pull one.
+          </p>
+        )}
         <p className="mt-1 text-xs text-muted">
           Runs on the server owner&apos;s own machine. Nothing leaves it.
         </p>
@@ -126,6 +179,7 @@ export function ModelSettingsPanel({
               {models.map((m) => (
                 <option key={m} value={m}>
                   {m}
+                  {m === or.default_model ? " · recommended default" : " · recommended"}
                 </option>
               ))}
               <option value={CUSTOM}>Custom model id…</option>

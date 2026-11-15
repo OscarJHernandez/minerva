@@ -12,6 +12,7 @@ import { VectorPanel } from "../vector-panel";
 import { StatisticsPanel } from "../statistics-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { DiscoveryCard } from "./discovery-card";
+import { TelescopingCard } from "./telescoping-card";
 import { GeometryCard } from "./geometry-card";
 import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
@@ -127,6 +128,8 @@ export function CardView({ card }: { card: Card }) {
       return <InvariantsCard report={card.data.report} />;
     case "discovery":
       return <DiscoveryCard report={card.data.report} />;
+    case "telescoping":
+      return <TelescopingCard result={card.data} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":

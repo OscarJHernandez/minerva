@@ -1619,3 +1619,55 @@
   reply_forbids: 'is the minimum|is a minimum|minimi[sz]es the action'
   informational: true
   source: "engine test_variational_second.py (on a long interval the path has a negative second variation)"
+
+- id: telescoping-gaussian-parameter
+  category: calculus
+  prompt: 'For a > 0, use creative telescoping to find a differential equation for $I(a)=\int_{-\infty}^{\infty} e^{-a x^2}\,dx$ and evaluate it.'
+  expected_tool: creative_telescoping
+  args: {present: [parameter, lower, upper]}
+  max_unchecked: 0
+  expect_card: {status: ok, result_text: "sqrt(pi)/sqrt(a)"}
+  reference:
+    tool: creative_telescoping
+    arguments:
+      latex: '\exp(-a x^2)'
+      variable: x
+      parameter: a
+      lower: '-oo'
+      upper: oo
+      assumptions: {a: [positive], x: [real]}
+  source: "engine creative_telescoping benchmark (gaussian: independent closed form sqrt(pi/a))"
+
+- id: telescoping-refuses-trigonometric-integrand
+  category: unsupported
+  prompt: 'Use creative telescoping on $\int_0^1 \sin(a x)\,dx$ with parameter a.'
+  expected_tool: creative_telescoping
+  also_ok: [integrate, ask]
+  expect_card: {status: unsupported}
+  reference:
+    tool: creative_telescoping
+    arguments:
+      latex: '\sin(a x)'
+      variable: x
+      parameter: a
+      lower: '0'
+      upper: '1'
+      assumptions: {a: [positive], x: [real]}
+  source: "engine creative_telescoping benchmark (outside the hyperexponential class: refused, never guessed)"
+
+- id: telescoping-undeclared-sign-is-not-assumed
+  category: ambiguous
+  prompt: 'Use creative telescoping on $\int_0^\infty e^{-a x}\,dx$ with parameter a, with no assumption about the sign of a.'
+  expected_tool: creative_telescoping
+  also_ok: [ask]
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: creative_telescoping
+    arguments:
+      latex: '\exp(-a x)'
+      variable: x
+      parameter: a
+      lower: '0'
+      upper: oo
+      assumptions: {x: [real]}
+  source: "AGENTS.md (convergence is decided from declared assumptions only)"

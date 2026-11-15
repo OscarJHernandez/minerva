@@ -117,6 +117,19 @@ function cardSummary(card: Card | null | undefined): string[] {
           `fallbacks [${d.fallbacks.join(", ")}]; failure ${d.failure_reason ?? "-"}; ${stages}`,
       );
     }
+  } else if (card.type === "telescoping") {
+    const r = card.data;
+    out.push(`- status: ${r.status}${r.reason ? ` (${r.reason})` : ""}`, `- outcome: ${r.outcome}`);
+    out.push(`- input as read: ${r.input_latex ?? "-"}`, `- operator: ${r.operator?.latex ?? "-"}`);
+    out.push(
+      `- certificate: ${r.certificate?.latex ?? "-"} (exact ${r.certificate_check?.symbolic_zero ?? "not run"})`,
+      `- equation: ${r.equation?.latex ?? "-"}`,
+      `- value: ${r.result_latex ?? "-"}`,
+    );
+    out.push(
+      `- conditions: ${r.conditions.map((c) => `${c.established ? "ok" : "NOT"} ${c.latex}`).join("; ") || "-"}`,
+    );
+    out.push(`- unresolved: ${r.unresolved.join("; ") || "-"}`, `- engine message: ${r.message}`);
   } else if (card.type === "sums" || card.type === "expectation") {
     const r = card.data.result;
     out.push(`- status: ${r.status}${r.reason ? ` (${r.reason})` : ""}`, `- action: ${r.action}`);

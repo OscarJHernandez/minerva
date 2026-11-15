@@ -1,5 +1,6 @@
 import type { DiscoveryReport } from "./chat-types";
 import type { StatMechRequest, StatMechResult } from "./statmech-types";
+import type { TelescopingRequest, TelescopingResult } from "./telescoping-types";
 import type {
   OdeAnalysis,
   OdeAnalyzeInput,
@@ -153,10 +154,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, variable, point, order }),
     }),
-  integrate: (c: ComputeInput, variable: string, bounds?: { lower: string; upper: string }) =>
+  integrate: (
+    c: ComputeInput,
+    variable: string,
+    bounds?: { lower: string; upper: string },
+    strategy?: string,
+  ) =>
     request<IntegrateResult>("/v1/compute/integrate", {
       method: "POST",
-      body: JSON.stringify({ format: "latex", ...c, variable, ...bounds }),
+      body: JSON.stringify({ format: "latex", ...c, variable, ...bounds, strategy }),
     }),
   odeAnalyze: (req: OdeInput | OdeAnalyzeInput) =>
     request<OdeAnalysis>("/v1/compute/ode/analyze", { method: "POST", body: JSON.stringify(req) }),
@@ -176,6 +182,11 @@ export const api = {
     request<DiscoveryReport>("/v1/compute/conserved", {
       method: "POST",
       body: JSON.stringify(c),
+    }),
+  telescoping: (req: TelescopingRequest) =>
+    request<TelescopingResult>("/v1/compute/telescoping", {
+      method: "POST",
+      body: JSON.stringify(req),
     }),
   geometry: (req: GeometryRequest, link?: { derivation_id?: string; save?: boolean }) =>
     request<GeometryResult>("/v1/compute/geometry", {

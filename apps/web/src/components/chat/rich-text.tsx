@@ -1,6 +1,7 @@
 import { Math } from "@minerva/ui/math";
 import type { ReactNode } from "react";
 import type { FormulaStatus, Segment } from "@/lib/chat-types";
+import { FormulaButtons } from "./formula-actions";
 
 const MARKS: Record<
   FormulaStatus,
@@ -130,16 +131,23 @@ function Formula({ seg }: { seg: Segment }) {
   // A lone symbol names something; it asserts nothing, so there is nothing to verify or flag.
   const plain = status === "unchecked" && !isClaim(seg.value);
   return (
-    <span
-      title={plain ? undefined : explain(seg)}
-      data-status={plain ? "symbol" : status}
-      className={plain ? undefined : mark.underline || undefined}
-    >
-      <Math latex={seg.value} />
-      {!plain && mark.label && (
-        <sup className={`ml-0.5 text-[10px] font-medium ${mark.tone}`}>
-          {status === "unchecked" ? "?" : mark.label}
-        </sup>
+    <span className="group/formula">
+      <span
+        title={plain ? undefined : explain(seg)}
+        data-status={plain ? "symbol" : status}
+        className={plain ? undefined : mark.underline || undefined}
+      >
+        <Math latex={seg.value} />
+        {!plain && mark.label && (
+          <sup className={`ml-0.5 text-[10px] font-medium ${mark.tone}`}>
+            {status === "unchecked" ? "?" : mark.label}
+          </sup>
+        )}
+      </span>
+      {isClaim(seg.value) && (
+        <span className="ml-1.5 align-middle">
+          <FormulaButtons latex={seg.value} subtle />
+        </span>
       )}
     </span>
   );
@@ -150,6 +158,9 @@ function DisplayFormula({ seg }: { seg: Segment }) {
   return (
     <div data-status={seg.status} className={`my-2 rounded-md border px-3 py-1 ${mark.box}`}>
       <Math latex={seg.value} display />
+      <div className="flex justify-end pb-1">
+        <FormulaButtons latex={seg.value} />
+      </div>
       {mark.label && (
         <div className={`pb-1 text-xs ${mark.tone}`} title={mark.title}>
           {seg.status === "quoted"

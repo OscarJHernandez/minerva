@@ -106,3 +106,36 @@ describe("model settings", () => {
     expect(screen.getByRole("button")).toHaveTextContent("Local · minerva");
   });
 });
+
+describe("choosing a local model", () => {
+  const withModels = () =>
+    status({
+      ollama: {
+        available: true,
+        model: "minerva",
+        reachable: true,
+        models: [
+          { name: "qwen3:8b", recommended: true, note: "Tool calling; good general maths" },
+          { name: "minerva", recommended: false, note: "" },
+        ],
+        suggested: [{ family: "llama3.1", note: "Tool calling" }],
+      },
+    });
+
+  it("lists installed models with the recommended ones marked, and sends the choice", () => {
+    render(<ModelSettingsPanel status={withModels()} onClose={() => undefined} />);
+    expect(screen.getByRole("option", { name: /qwen3:8b · recommended/ })).toBeInTheDocument();
+    expect(screen.getByText(/Recommended, not installed here.*llama3\.1/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Installed models"), { target: { value: "qwen3:8b" } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    expect(providerChoice(modelSettings.get())).toEqual({ kind: "ollama", model: "qwen3:8b" });
+  });
+
+  it("choosing the server's own model sends no model name", () => {
+    modelSettings.useLocal("qwen3:8b");
+    render(<ModelSettingsPanel status={withModels()} onClose={() => undefined} />);
+    fireEvent.change(screen.getByLabelText("Installed models"), { target: { value: "minerva" } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    expect(providerChoice(modelSettings.get())).toEqual({ kind: "ollama" });
+  });
+});

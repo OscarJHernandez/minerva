@@ -1,4 +1,4 @@
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import type { PerturbationReport, PerturbationRequest } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
 import { LinePlot } from "./line-plot";

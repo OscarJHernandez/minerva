@@ -497,12 +497,12 @@ def test_diagnostics_hold_only_counts_and_words() -> None:
         fmt="text",
         independent="s",
         conditions=[f"{secret}(31337) = 2"],
-        parameters={"kappa_4242": 0.7},
+        parameters={"kappa_4242": 0.73917},  # not a value a timing such as "0.7" ms could match
         t_end=31340,
     )
     assert r.status is Status.OK, r.message
     dump = r.diagnostics.model_dump_json()
-    for fragment in (secret, "4242", "31337", "kappa", "0.7"):
+    for fragment in (secret, "4242", "31337", "kappa", "0.73917"):
         assert fragment not in dump
 
 

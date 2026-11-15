@@ -8,6 +8,7 @@ import time
 from typing import Any, Literal
 
 from .claims import ClaimCheck, clean_assumptions
+from .creative_telescoping.models import TelescopingInput, TelescopingResult
 from .differentiate import DifferentiateResult, DiffVariable
 from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
@@ -235,14 +236,18 @@ class Engine:
         variable: str,
         lower: str | None = None,
         upper: str | None = None,
+        strategy: str | None = None,
     ) -> IntegrateResult:
         """An antiderivative (verified by a numerical derivative) or, with both bounds, a definite
-        integral (verified by independent quadrature)."""
+        integral (verified by independent quadrature). Where SymPy's route fails, or `strategy` asks
+        for one (`auto` or a technique name), deterministic strategies are tried and the result says
+        which one produced it."""
         payload = {
             "expression": expression.model_dump(),
             "variable": variable,
             "lower": lower,
             "upper": upper,
+            "strategy": strategy,
         }
         outcome, ms = self._run("integrate", payload)
         if outcome.outcome is not Outcome.OK or outcome.value is None:
@@ -284,6 +289,24 @@ class Engine:
                 duration_ms=ms,
             )
         result = StatMechResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def creative_telescoping(self, request: TelescopingInput) -> TelescopingResult:
+        """Find and prove a telescoping relation for a parameterised integral, derive the ODE of
+        the integral, and evaluate it only if every condition and an independent check agree."""
+        outcome, ms = self._run("creative_telescoping", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return TelescopingResult(
+                status=status,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                variable=request.variable,
+                parameter=request.parameter,
+                duration_ms=ms,
+            )
+        result = TelescopingResult(**outcome.value)
         result.duration_ms = ms
         return result
 

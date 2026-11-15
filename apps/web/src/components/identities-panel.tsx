@@ -1,6 +1,6 @@
 "use client";
 
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import type { IdentitiesResult, IdentityMatch } from "@/lib/types";
 import { EntryCard } from "./entry-card";
 import { Restrictions, StatusPill } from "./result-panel";
