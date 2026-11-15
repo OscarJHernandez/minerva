@@ -21,6 +21,13 @@ from minerva_engine import (
     IsolateResult,
     MatrixCalculusInput,
     MatrixCalculusResult,
+    OdeAnalysis,
+    OdeAnalyzeInput,
+    OdeInput,
+    OdeNumericInput,
+    OdeNumericReport,
+    OdeSolution,
+    OdeSolveInput,
     RuleCondition,
     SeriesResult,
     StatMechInput,
@@ -37,15 +44,21 @@ from minerva_engine import (
     TensorResult,
     VariationInput,
     VariationReport,
+    VectorInput,
+    VectorResult,
     Verification,
+    trace_scope,
 )
+from minerva_engine.vector import Premise
 from minerva_knowledge.identities import (
     EntrySummary,
     FindIdentitiesResponse,
     TransformResponse,
     find_identities,
+    resolve_premise_ids,
     simplify_expression,
     summarize,
+    vector_identity_rules,
 )
 from pydantic import BaseModel, Field
 
@@ -54,6 +67,7 @@ from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .diagnostics import log_distribution, log_statmech
 from .geometry_log import log_geometry
 from .logging import get_logger
+from .ode_log import log_ode
 from .schemas import (
     ApplyIdentityRequest,
     ConservedRequest,
@@ -67,6 +81,10 @@ from .schemas import (
     Linked,
     Links,
     MatrixCalculusRequest,
+    OdeAnalyzeRequest,
+    OdeNumericRequest,
+    OdeRequest,
+    OdeSolveRequest,
     RewriteRequest,
     SeriesRequest,
     SimplifyRequest,
@@ -76,10 +94,12 @@ from .schemas import (
     SubtermsRequest,
     SumsRequest,
     VariationRequest,
+    VectorRequest,
 )
 from .search_log import log_search_events
 from .telescoping_log import log_telescoping
 from .variation_log import log_variation
+from .vector_log import log_vector
 
 router = APIRouter(prefix="/v1/compute", tags=["compute"])
 log = get_logger()
@@ -109,11 +129,27 @@ class GeometryResponse(GeometryResult):
     calculation_id: uuid.UUID | None = None
 
 
+class VectorResponse(VectorResult):
+    calculation_id: uuid.UUID | None = None
+
+
 class VariationResponse(VariationReport):
     calculation_id: uuid.UUID | None = None
 
 
 class DistributionResponse(DistributionResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class OdeAnalysisResponse(OdeAnalysis):
+    calculation_id: uuid.UUID | None = None
+
+
+class OdeSolutionResponse(OdeSolution):
+    calculation_id: uuid.UUID | None = None
+
+
+class OdeNumericResponse(OdeNumericReport):
     calculation_id: uuid.UUID | None = None
 
 
@@ -485,6 +521,56 @@ def geometry(
         out.calculation_id = _save_row(
             db, user, "geometry", label, request.format, request.assumptions, body,
             result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+@router.post("/vector", response_model=VectorResponse)
+def vector(
+    body: VectorRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> VectorResponse:
+    """Gradient, divergence, curl, Laplacian and products of declared fields; Jacobians and
+    conversions between Cartesian, cylindrical and spherical coordinates.
+
+    The declarations are part of the request, so repeating it with another expression reuses the same
+    problem. A result is returned only if the independent numerical check passed."""
+    _guard(user, limiter, settings, len(body.expression))
+    _check_links(db, user, body)
+    # The identities come from the handbook, never from the request: a client cannot cite its own rule.
+    request = VectorInput(**body.model_dump(exclude={*Links.model_fields, "rules", "premise_ids"}))
+    if body.premise_ids:
+        try:
+            chosen = resolve_premise_ids(kb, body.premise_ids)
+        except KeyError as exc:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "That is not an adoptable field equation."
+            ) from exc
+        request = request.model_copy(
+            update={
+                "premises": [
+                    *request.premises,
+                    *[Premise(equation=o.equation, label=o.title) for o in chosen],
+                ]
+            }
+        )
+    if request.action in ("identities", "apply_identity", "derive", "em_derive"):
+        request = request.model_copy(update={"rules": vector_identity_rules(kb)})
+    result = engine.vector_calculus(request)
+    log_vector(result)
+    out = VectorResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json", exclude={"rules"})
+        out.calculation_id = _save_row(
+            db, user, "vector", request.expression or request.action, request.format,
+            request.assumptions, body, result.status.value, saved,
         )  # fmt: skip
     return out
 
@@ -1024,3 +1110,110 @@ def tensor_canonicalize(
         user_id=str(user.id),
     )
     return result
+
+
+def _ode_length(body: OdeInput) -> int:
+    texts = [*body.equations, *(c for c in body.conditions if isinstance(c, str))]
+    return sum(len(t) for t in texts)
+
+
+def _ode_label(request: OdeInput) -> str:
+    return "; ".join(request.equations)
+
+
+def _ode_run(
+    operation: str,
+    body: OdeRequest | OdeAnalyzeRequest | OdeSolveRequest | OdeNumericRequest,
+    engine_request: OdeInput,
+    call: Any,
+    user: UserDep,
+    db: DbDep,
+    request: Request,
+) -> tuple[Any, uuid.UUID | None]:
+    trace_id = str(getattr(request.state, "request_id", "")) or None
+    with trace_scope(trace_id):
+        result = call(engine_request)
+    log.info(
+        "compute",
+        operation=operation,
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    log_ode(operation, result.status.value, result.diagnostics, result.duration_ms)
+    saved_id = None
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = engine_request.model_dump(mode="json")
+        saved_id = _save_row(
+            db, user, operation, _ode_label(engine_request), engine_request.format,
+            engine_request.assumptions, body, result.status.value, saved,
+        )  # fmt: skip
+    return result, saved_id
+
+
+@router.post("/ode/analyze", response_model=OdeAnalysisResponse)
+def ode_analyze(
+    body: OdeAnalyzeRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+    request: Request,
+) -> OdeAnalysisResponse:
+    """How the equation was read, its structure and the approaches that can be tried. Nothing is solved."""
+    _guard(user, limiter, settings, _ode_length(body))
+    _check_links(db, user, body)
+    engine_request = OdeAnalyzeInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result, saved_id = _ode_run(
+        "ode_analyze", body, engine_request, engine.ode_analyze, user, db, request
+    )
+    out = OdeAnalysisResponse(**result.model_dump())
+    out.calculation_id = saved_id
+    return out
+
+
+@router.post("/ode/solve", response_model=OdeSolutionResponse)
+def ode_solve(
+    body: OdeSolveRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+    request: Request,
+) -> OdeSolutionResponse:
+    """Closed-form, series or perturbation solutions, each shown only after it was checked."""
+    _guard(user, limiter, settings, _ode_length(body))
+    _check_links(db, user, body)
+    engine_request = OdeSolveInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result, saved_id = _ode_run(
+        "ode_solve_symbolic", body, engine_request, engine.ode_solve_symbolic, user, db, request
+    )
+    out = OdeSolutionResponse(**result.model_dump())
+    out.calculation_id = saved_id
+    return out
+
+
+@router.post("/ode/numeric", response_model=OdeNumericResponse)
+def ode_numeric(
+    body: OdeNumericRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+    request: Request,
+) -> OdeNumericResponse:
+    """A numerical initial-value solution, shown only if its independent checks pass."""
+    _guard(user, limiter, settings, _ode_length(body))
+    _check_links(db, user, body)
+    engine_request = OdeNumericInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result, saved_id = _ode_run(
+        "ode_solve_numerical", body, engine_request, engine.ode_solve_numerical, user, db, request
+    )
+    out = OdeNumericResponse(**result.model_dump())
+    out.calculation_id = saved_id
+    return out

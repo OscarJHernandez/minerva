@@ -21,9 +21,9 @@ correctness" below, say so and propose an alternative instead of complying silen
 
 ```
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
-apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
+apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad plus matrix, geometry and vector modes, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`)
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, vector calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`)
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
@@ -59,11 +59,16 @@ uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_engine.statmech.benchmark [--check]       # statistical mechanics against closed forms, with refusals that must carry a named reason; docs/statmech-benchmark.md + docs/benchmarks/statmech.json (CI fails on a wrong answer or a lost refusal; `make statmech-benchmark`)
 uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
+uv run python -m minerva_engine.vector.benchmark [--check]  # vector calculus corpus (textbook references, refusals); writes docs/benchmarks/vector.json + docs/vector-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python -m minerva_engine.variational.benchmark [--check]  # 21 closed-form cases; docs/variational-benchmark.md + docs/benchmarks/variational.json
 uv run python -m minerva_engine.creative_telescoping.benchmark [--check]  # 29 problems vs. independent references; docs/creative-telescoping-benchmark.md + docs/benchmarks/creative_telescoping.json (`make bench-telescoping`)
 uv run python -m minerva_engine.integration_strategy.benchmark [--check]  # techniques vs. quadrature, default call vs. requested strategy; docs/integration-strategies-benchmark.md + docs/benchmarks/integration_strategies.json
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
+uv run python scripts/verification_report.py [--check|--compare docs/benchmarks/verification-summary-baseline.json]   # false accepts/rejects, counterexamples, evidence kinds by domain; CI runs --check (docs/verification-testing.md)
+uv run python -m minerva_engine.reference_benchmark [--check] [--tier pr|extended]   # (extended rewrites the report) expected answers are hand-written in minerva_engine/reference/, never regenerated
+MINERVA_TEST_TIER=extended MINERVA_HYPOTHESIS_PROFILE=extended uv run pytest packages/engine --hypothesis-seed=N   # extended tier: `make test-extended` (nightly workflow runs it)
+uv run python scripts/eval_models.py --suite reliability --check-cases   # live multi-turn reliability cases (also `make eval-reliability`; --suite core|reliability|all)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --repeat 3 --seed 7 --label NAME \
@@ -108,6 +113,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   enforce this (`test_tracing.py`). The detailed trace (arguments and results) lives only in the stored assistant message,
   under the conversation's own access, deletion and export rules: do not give it a table, file or endpoint of its own.
   Logging and tracing failures must never reach the mathematics (`Tracer.emit` and the engine observer swallow them).
+- Restrictions travel with a verified result (`ResultStore.restrictions`): when a later call reuses `@rN`, its card gets
+  `inherited_restrictions_latex` and its tool message names them ("Inherited from @r1"); they are rebuilt from stored cards
+  for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `routers_chat._history` (V-015).
 - A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
   `malformed_output`, `internal_error`). An identical call in a turn is not run twice; a model call that failed before any
   output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
@@ -153,6 +161,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Handbook entries declare `verification`: symbolic / numeric / structural / dimensional / stated.
   `stated` entries are literature records, never applied, and must not carry a rule or check.
   Do not label an entry `symbolic` unless the checker finds a symbolic zero.
+- `verify_equal` probes after its random points agree (`counterexample.py`, `TARGETED`): boundaries and zeros of the
+  arguments of `Abs`/`Max`/`Piecewise`/`floor`/`log`/fractional powers, the negative real axis and large imaginary parts
+  for complex symbols, integers beyond ±6 and simple special values, extreme scales, at *exact rational points*, and a
+  disagreement counts only if it is stable at 60 and 120 digits (`NOISE_FLOOR`): cancellation is counted, never reported.
+  Probes can only add a disagreement, never count as agreement. A point defined on one side only is not a counterexample
+  (removable singularities). Do not widen `REL_TOL` or shrink the wide tranche to compensate, do not catch exceptions
+  around the search, and keep `Counterexample` (it holds expressions) out of every log field and trace event. A pass
+  still means "no disagreement found"; `docs/verification-testing.md` lists what sampling cannot find (V-014).
 - Numeric agreement is evidence, not proof. `verify_equal` samples two tranches (ordinary region and a wide one,
   |x| up to 50, |Im| up to 10, high precision) and counts a point where only one side is a pole as a disagreement;
   `Verification.symbolic_zero` is the only symbolic evidence. UI and tool text say "proved equal" only with a symbolic
@@ -375,6 +391,126 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `geometry/benchmark.py` holds the corpus with its closed-form references and the `sympy.diffgeom` comparison:
   add a case there for every new metric family or quantity. Not covered: abstract manifolds, tetrads, spin
   connections, differential forms, connections other than Levi-Civita, SageManifolds (GPL, see `docs/licensing.md`).
+- Electromagnetic field tensors (`geometry/field.py`, quantities `exterior_derivative`, `antisymmetric_divergence`,
+  `field_invariant`, `hodge_dual` of the existing `geometry` tool) act on a tensor the USER gives with all indices
+  down, on a metric the user gives; signature, `c` and units are never assumed. A tensor that is not antisymmetric is
+  `parse_error` (never silently antisymmetrised), `hodge_dual` is four-dimensional only with `eps_{0123} = +sqrt|det g|`
+  in the order of the coordinates (returned as a convention) and needs the sign of `det g` decided by the declared
+  assumptions (`unsupported` otherwise). Each is compared with a numerical recomputation sharing no code with the
+  symbolic one, plus identity legs that are separate: `d(dA) = 0` by finite differences of the candidate F, the
+  divergence as `|g|^{-1/2} d_m(|g|^{1/2} F^{mn})` against the Christoffel form, and `** = sign(det g)`. A 1e-6
+  perturbed candidate is `not_verified` (test). Forms of other degrees, other connections and the Maxwell equations as
+  covariant premises are not covered: say so.
+- Vector calculus (`vector/`, tool and endpoint `vector_calculus` / `POST /v1/compute/vector`) works on a typed expression
+  that is an ordinary SymPy tree: vector fields are noncommutative symbols and the operators are inert heads
+  (`Grad`, `Div`, `Curl`, `Lap`, `Dot`, `Cross`, `Pd`, `Adv`, `Pos`, `Unit` in `expressions.py`); `kind_of` types every node
+  and a product of two vectors, a scalar plus a vector or a cross product of scalars is a `parse_error`, never a guess
+  (`\nabla` acts on the one factor after it). Every symbol must be a coordinate, `t`, a declared field or a declared
+  constant: an undeclared symbol is refused, never read as a constant (a silent zero gradient is a plausible-looking
+  wrong answer). The result is built exactly (`lower.py`, scale factors, physical components, vector Laplacian as
+  the scalar Laplacian of each Cartesian component, which needs no commuting of mixed partials, unlike grad div -
+  curl curl) and shown only if `numeric.py` agrees: it evaluates the *input* directly at Cartesian points by
+  nested central differences on random smooth fields, finds the frame by differencing the map `x(q)`, and shares no
+  scale factor with the exact route (the tests include a dropped `sin(theta)`, a componentwise cylindrical vector
+  Laplacian, a flipped curl component and a 1e-6 error). The evaluated result carries no symbolic proof
+  (`symbolic_zero` is None) and is worded "numerically checked". **Nothing is assumed smooth**: derivatives of an
+  abstract field are jets (plain symbols per ordered word, so SymPy cannot identify `d/dx d/dy f` with
+  `d/dy d/dx f`); they are merged only for a field the USER declared `c2` (words up to length 2) or `smooth`, and a
+  result that contains a mixed partial in two orders is `conditions_not_satisfied` with `blocked`
+  (`curl grad f`, `div curl A`, swapping `d/dt` and curl). The model never declares smoothness, `components` or time
+  dependence itself. The origin and axes are `restrictions_latex` (where the coordinates break down), not statements
+  about the field; a delta at the origin is not represented. Explicit `components` are always text syntax. Conversion
+  between systems (`convert`) is checked through Cartesian coordinates by an independent route and refuses abstract
+  fields. `E`, `I` are allowed field names here (the electric field and a current). Diagnostics hold enums and
+  counters only (`VectorDiagnostics`; the log allow-list has `coordinate_system`, `vector_action`, `operator_depth`).
+  Scalar tools refuse an expression that mentions a declared vector field (`SCALAR_TOOLS`), and claims with `\nabla`,
+  bold or arrowed letters, `\partial` or `\times` between non-numerals are `unverified` and never sampled
+  (`claims.uses_vector_notation`); a name declared as a vector in words ("let a and b be vectors") is never sampled.
+- Vector identities and controlled derivations (`vector/rules.py`, `context.py`, `steps.py`; actions `identities`,
+  `apply_identity`, `substitute`, `apply`, `derive` of the same tool and endpoint). Identities are handbook entries
+  (`math.vector_calculus`, check kind `vector_identity`, level `symbolic`): the checker evaluates `lhs - rhs` for
+  abstract fields in Cartesian, cylindrical and spherical coordinates and requires an exactly zero component residual
+  (`algebra.exact_zero`: the numerator reduced modulo `s^2 + c^2 = 1`) *and* the independent Cartesian reading to agree.
+  `requires: [c2]` is a fact about the identity, not an assumption. The engine never reads the handbook: the knowledge
+  layer hands over `VectorRule`s (`identities.vector_identity_rules`) and the API route and tool fill them in, a
+  client cannot supply its own. The matcher only *proposes* (`rules.rewrites`); `Context.residual` decides, by
+  evaluating the difference of the two *whole* expressions with both legs, so a mis-matched or wrong rule is
+  `not_verified` and never shown; a rule that needs `c2` is `blocked` unless the user declared every field in the part
+  that smooth, and a rule that lies about needing nothing is caught because the comparison itself needs the merge.
+  Several matches are never resolved for the user (`path`); a rewrite is shown only at a path the user or tool named.
+  A **premise** is a field equation the USER supplied (`Premise`): substituting it is `evidence="conditional"`,
+  names it in `given`, is never called an identity or a proof, and Minerva never checks that it is true; several
+  premises are never applied in an order Minerva picked (`premise` names one). `apply` (an operator on both sides)
+  is an implication from the given equation, verified by the linearity residual. `canonical` pulls constants out of
+  linear operators and drops operators of zero (each tidy is itself residual-checked). `derive` is a bounded search
+  (depth 4, width 8, 400 states) over verified identity steps and premise substitutions: "not found" means nothing
+  within the bounds. Results that use a premise go to `quoted_latex`, never `known_latex`. Benchmark cases cover
+  identities, derivations, blocked, wrong-rule and ambiguous steps (`docs/vector-benchmark.md`).
+- Electromagnetic derivations (`vector/em.py`, `vector/dimensions.py`; tool `electromagnetism`, action `em_derive`).
+  Maxwell's equations and the other field equations are handbook entries with check kind `vector_equation`
+  (level `dimensional`: units only, the operators contribute 1/length and 1/time) and `premise: true`: **premises the
+  user adopts, never verified laws** (`identities.premise_options`, `premise_ids`). The model never adopts one for the
+  user. A derivation is a `Template`: the premises it needs (matched *exactly*, else `conditions_not_satisfied` with
+  `needs_premises`), routes (start, target) found by the general `find_chain` search over handbook identities and
+  the supplied premises with every identity step residual-checked, and an algebraic combination
+  `lhs - rhs = sum c_i (start_i - target_i)` checked by expansion. The final equation is then evaluated on **exact
+  solutions of its premises** (plane waves in vacuum; fields built from random potentials with the sources they
+  imply; harmonic potentials; Cartesian only): `ModelCheck` is "consistent with N exact solutions", never a
+  verification, and a failure withholds the result. A result that used a premise is `evidence="conditional"`, lists
+  it in `given`, goes to `quoted_latex` (never `known_latex`), and is never called an identity, a proof or a
+  consequence of Maxwell's equations beyond the premises used; only `gauge_invariance` needs none and is an identity.
+  The templates are tasks, not stored answers; do not add a template whose chain the search cannot find, and do not
+  add a hardcoded result. Planned and not claimed anywhere: wave equations for the potentials, interface conditions
+  (a pillbox needs the integral theorems), matter with a general constitutive relation. A failed `derive` search
+  that skipped identities blocked on smoothness reports them (`blocked`, `needs_smoothness`). `ε0` and `μ0` are
+  CODATA 2022 `stated` constants (measured, not exact); a test checks `mu0 epsilon0 c^2 = 1` within the uncertainties.
+- Integrals (`vector/integrals.py`, action `integrate`): line, scalar line, flux, volume, and the gradient, divergence
+  and Stokes theorems of **explicit** fields (an abstract field is `unsupported`; so is a field that depends on `t`)
+  over a domain the USER gives, never invented: a curve and a surface are the three coordinates of the system as
+  functions of parameters (the direction of increasing parameter; the normal `d_u r x d_v r`, so the order of `u` and
+  `v` *is* the orientation, and swapping them changes the sign), a volume is a coordinate box whose six outward faces
+  the engine generates, and Stokes' boundary is the rectangle's edges counter-clockwise in `(u, v)`. Each value is the
+  agreement of two routes that share no scale factor: an exact pull-back integrated by SymPy (time-limited by an alarm)
+  and a quadrature of the *input expression* read at Cartesian points by the `numeric.py` finite-difference evaluator
+  (tangents, normals and the volume element are differenced from the Cartesian map; the quadrature runs at its own
+  precision with a higher-precision integrand so finite differences add no noise). A disagreement is `not_verified`.
+  No closed form: the value is a quadrature cross-checked by a second rule and **labelled a numerical approximation**.
+  A theorem is two separately computed sides; "holds" means the sides agree. Hypotheses are `established` (by
+  construction), `checked` (a finite scan of the domain: interior grid plus two probes near each end, because the ends
+  are often coordinate singularities where the Cartesian reading is undefined for a smooth field) or
+  `not_established`, **never proved**. A field with a pole on the domain (`1/r^2` over a ball containing the origin) is
+  `unsupported` / `singular_in_domain` for the integral and the theorem alike; the flux through a surface that avoids
+  the pole is computed. Faces of zero extent (`r = 0`, the poles of the sphere) integrate to exactly zero. Not covered,
+  and not claimed: piecewise or discontinuous fields, surface charges, non-box volumes, differentiation under the integral.
+- Electrostatics with the user's numbers (`vector/em_numeric.py`, tool `electromagnetism` actions `field`, `multipole`,
+  `boundary_value`, `check_solution`; `VectorInput.action="em_compute"`, `em` = one of four typed problems). Charges,
+  positions, densities, box sizes and boundary data come only from the USER; units k_e = 1/(4 pi epsilon_0); Cartesian
+  only. Every result is two methods that must agree or nothing is shown: a point-charge field is the Coulomb sum, the
+  negative gradient of the symbolic potential and a central difference of the potential as a number; a density field
+  is the Coulomb integral for E against the difference quotient of the potential integral, and a field point in or at
+  the edge of the source is `unsupported` / `field_point_in_source`; a multipole result states exact moments and
+  *measures* the decay of the truncated expansion's error (never a bound); a rectangle boundary-value problem is a
+  separated series against a finite-difference relaxation on two grids with a Richardson error, shown only if they
+  agree (`solver_disagreement` otherwise) and always labelled a numerical approximation (Poisson only with zero edges);
+  `check_solution` compares the exact residual with an independent five-point finite-difference Laplacian and reports
+  which requirement fails, and is a check of that candidate, not a uniqueness proof. Do not loosen the agreement
+  tolerances (the tests include a 5% perturbed relaxation). Fourier and Laplace transform methods, retarded Green's
+  functions, FEM, FDTD and general PDE solving are planned and not implemented: say so, never improvise them.
+- Ordinary differential equations (`ode/`, tools and endpoints `ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`;
+  overview `docs/ode.md`). Derivative notation is read only in `ode/reading.py`. A closed form is shown only if it,
+  put into the original equation with derivatives taken numerically, leaves a residual at round-off scale (and the
+  symbolic leg is reported separately); "no closed form found" never claims none exists, and fewer constants than the
+  order is "a family". A numerical run is shown only if initial values, an independent integrator, tolerance
+  refinement, the integral-form defect and any verified first integral all pass, and is always an approximation on
+  the given interval. A boundary-value result is "a solution", never unique. Series and perturbation results need the
+  residual to fall at the claimed order (`_check_residual`-style: do not loosen it; tests include a 0.1% wrong top
+  coefficient). Equilibria and stability are local, from the linearisation; non-hyperbolic means "the linearisation
+  does not decide"; nothing says globally stable. Never invent initial conditions, parameters, intervals or the small
+  parameter: the model asks. Multiple scales, Frobenius series, delay, partial and differential-algebraic equations
+  are not implemented and must be refused, not approximated. The reference problems (`ode/benchmark.py`, run by
+  `python -m minerva_engine.reference_benchmark`) take their answers from outside the solvers; add one for every new
+  method. Diagnostics and `ode`/`ode_stage` events carry counters and fixed vocabulary only.
+
 - Variational calculus (`variational/`, tool and endpoint `variation`, `docs/variational-calculus.md`) works on a jet space
   (`jets.py`: unknown functions and their derivatives are registered jets with a total derivative `D`, never symbols
   recognised by a name suffix). The first variation keeps every integration by parts and the whole boundary form;
@@ -515,6 +651,12 @@ user-visible capability also gets an example in `docs/capabilities.yaml`, then r
 - Logging: structlog JSON with an allow-list of fields (`logging.py`). Never log expressions, emails,
   passwords, tokens, cookies or request bodies. A test enforces this.
 - Small, reviewable commits. Tests with every behaviour change. No placeholder implementations.
+- Verification tests: add a false identity (and its true twin) to `packages/engine/tests/adversarial/corpus.py`, a
+  problem with a hand-written oracle and source locator to `minerva_engine/reference/`, a generator to
+  `packages/engine/tests/strategies/`. A known unfixed defect is a strict `xfail`/`pending` row with an id in
+  `docs/verification-defects.md`; never delete or loosen a row, and never regenerate an expected answer from the code under
+  test. Tiers: pull-request tests stay fast (`pr` Hypothesis profile, 8 derandomized examples); slow or random-seed
+  searches are marked `extended`.
 
 ## Security and open-source rules
 

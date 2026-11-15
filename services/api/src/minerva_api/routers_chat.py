@@ -22,10 +22,10 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .agent.declarations import declared_matrices
+from .agent.declarations import declared_matrices, declared_vectors
 from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent
+from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent, vector_names
 from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
@@ -33,6 +33,9 @@ from .agent.statmech_tools import StatMechArgs
 from .agent.tools import (
     DistributionArgs,
     GeometryArgs,
+    OdeAnalyzeArgs,
+    OdeNumericArgs,
+    OdeSymbolicArgs,
     PerturbationArgs,
     ToolContext,
     VariationArgs,
@@ -513,6 +516,94 @@ def integrate_motion_directly(
 
 
 @router.post(
+    "/conversations/{conversation_id}/tools/ode_solve_numerical",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def ode_solve_numerical_directly(
+    conversation_id: uuid.UUID,
+    body: OdeNumericArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Integrate with the initial values, parameters and interval the user typed into a card's form."""
+    return _run_tool_directly(
+        "ode_solve_numerical",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/ode_analyze",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def ode_analyze_directly(
+    conversation_id: uuid.UUID,
+    body: OdeAnalyzeArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Analyse equilibria and local stability with the parameter values and window the user typed."""
+    return _run_tool_directly(
+        "ode_analyze",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/ode_solve_symbolic",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def ode_solve_symbolic_directly(
+    conversation_id: uuid.UUID,
+    body: OdeSymbolicArgs,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Find a closed form when the user presses the button on an analysis card (with any conditions
+    they typed there)."""
+    return _run_tool_directly(
+        "ode_solve_symbolic",
+        body.model_dump(mode="json"),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+    )
+
+
+@router.post(
     "/conversations/{conversation_id}/tools/perturbation_solve",
     response_model=MessageOut,
     status_code=status.HTTP_201_CREATED,
@@ -714,18 +805,20 @@ LEGACY_QUOTED = "from an earlier tool result; how it was verified was not record
 
 def _history(
     messages: list[ChatMessage],
-) -> tuple[list[dict[str, Any]], set[str], dict[str, str], dict[str, str]]:
+) -> tuple[list[dict[str, Any]], set[str], dict[str, str], dict[str, str], dict[str, list[str]]]:
     """Rebuild the model's view of earlier turns.
 
     Also returns what earlier turns established, so formulas are marked the same way across turns:
     the formulas verified results produced, the formulas that were only quoted (with why), and the
-    verified results that a later call may refer to (`@r1`). Messages stored before verification was
+    verified results that a later call may refer to (`@r1`) with the restrictions each is valid under.
+    Messages stored before verification was
     recorded per step have only text: their formulas count as quoted, never as verified.
     """
     out: list[dict[str, Any]] = []
     known: set[str] = set()
     quoted: dict[str, str] = {}
     results: dict[str, str] = {}
+    restrictions: dict[str, list[str]] = {}
     for m in messages[-HISTORY_MESSAGES:]:
         if m.role == "user":
             out.append({"role": "user", "content": str(m.content.get("text", ""))})
@@ -753,6 +846,15 @@ def _history(
                 latex = cards.get(step["id"], {}).get("data", {}).get("result_latex")
                 if isinstance(latex, str) and latex:
                     results[result_id] = latex
+                data = cards.get(step["id"], {}).get("data", {})
+                carried = [
+                    r
+                    for key in ("restrictions_latex", "inherited_restrictions_latex")
+                    for r in (data.get(key) or [])
+                    if isinstance(r, str)
+                ]
+                if carried:
+                    restrictions[result_id] = list(dict.fromkeys(carried))
             out.append(
                 {
                     "role": "tool",
@@ -768,7 +870,7 @@ def _history(
                 for found in _MATH.finditer(step["for_model"]):
                     quoted.setdefault(normalize(found.group(1) or found.group(2)), LEGACY_QUOTED)
         out.append({"role": "assistant", "content": str(m.content.get("text", ""))})
-    return out, known, {k: v for k, v in quoted.items() if k not in known}, results
+    return out, known, {k: v for k, v in quoted.items() if k not in known}, results, restrictions
 
 
 MAX_RELATIONS = 60
@@ -812,7 +914,13 @@ def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]
         texts.append(str(m.content.get("text", "")))
         if m.role != "user":
             steps.extend(s for s in m.content.get("trace", []) if isinstance(s, dict))
-    return sorted(matrix_names(steps) | declared_matrices(texts))
+    # Vectors named in words are folded in: either kind is never sampled as numbers.
+    return sorted(
+        matrix_names(steps)
+        | vector_names(steps)
+        | declared_matrices(texts)
+        | declared_vectors(texts)
+    )
 
 
 def _title(text: str) -> str:
@@ -852,7 +960,7 @@ async def send_message(
             .order_by(ChatMessage.created_at, ChatMessage.id)
         )
     )
-    history, prior_known, prior_quoted, prior_results = _history(previous)
+    history, prior_known, prior_quoted, prior_results, prior_restrictions = _history(previous)
     prior_relations, prior_assumptions = _claim_context(previous, body.content)
     prior_matrices = _prior_matrices(previous, body.content)
     history.append({"role": "user", "content": body.content})
@@ -907,6 +1015,7 @@ async def send_message(
                 prior_assumptions=prior_assumptions,
                 prior_matrices=prior_matrices,
                 prior_results=prior_results,
+                prior_restrictions=prior_restrictions,
                 info=info,
             ):
                 if event["event"] == "message":

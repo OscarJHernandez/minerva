@@ -145,6 +145,37 @@ class DistributionCheck(BaseModel):
     endpoint: Literal["half", "include", "exclude"] | None = None
 
 
+class VectorIdentityCheck(BaseModel):
+    """An identity between vector expressions, checked by the engine's vector calculus: the difference
+    of the two sides is evaluated for abstract fields in Cartesian, cylindrical and spherical
+    coordinates (exact components and an independent Cartesian finite-difference reading) and must be
+    zero. `requires: [c2]` means the identity needs equal mixed partial derivatives: it is checked for
+    fields declared twice continuously differentiable and applied only to such fields."""
+
+    kind: Literal["vector_identity"] = "vector_identity"
+    lhs: str  # text syntax over the typed variables of `fields`
+    rhs: str
+    fields: dict[str, Literal["scalar", "vector"]]
+    requires: list[Literal["c2"]] = Field(default_factory=list)
+
+
+class VectorEquationCheck(BaseModel):
+    """A field equation with vector operators, checked for dimensional consistency only (units): the
+    gradient, divergence and curl divide by a length, the Laplacian by a length squared, a time
+    derivative by a time. `premise: true` means a user may adopt it as a premise of a derivation: it is
+    then a field equation they supply, never a verified identity."""
+
+    kind: Literal["vector_equation"] = "vector_equation"
+    lhs: str  # text syntax, e.g. "curl(E)"
+    rhs: str
+    fields: dict[str, Literal["scalar", "vector"]]
+    units: dict[str, str]  # SI base-unit expression of every symbol
+    constants: list[str] = Field(
+        default_factory=list
+    )  # symbols that do not depend on position or time
+    premise: bool = False
+
+
 Check = Annotated[
     DerivativeCheck
     | AntiderivativeCheck
@@ -153,7 +184,9 @@ Check = Annotated[
     | RootFormulaCheck
     | TensorCheck
     | EquationCheck
-    | DistributionCheck,
+    | DistributionCheck
+    | VectorIdentityCheck
+    | VectorEquationCheck,
     Field(discriminator="kind"),
 ]
 
@@ -208,7 +241,7 @@ class Entry(BaseModel):
         if self.rule is None and not self.statement_latex:
             raise ValueError("entries without a rule need statement_latex")
         expected = {
-            "symbolic": ("rule", "derivative", "antiderivative"),
+            "symbolic": ("rule", "derivative", "antiderivative", "vector_identity"),
             "numeric": (
                 "rule",
                 "derivative",
@@ -218,7 +251,7 @@ class Entry(BaseModel):
                 "root_formula",
             ),
             "structural": ("tensor",),
-            "dimensional": ("equation",),
+            "dimensional": ("equation", "vector_equation"),
             "distributional": ("distribution",),
         }[v]
         source = "rule" if self.rule is not None else (self.check.kind if self.check else "")
@@ -260,5 +293,7 @@ __all__ = [
     "SeriesCheck",
     "SymbolDoc",
     "TensorCheck",
+    "VectorEquationCheck",
+    "VectorIdentityCheck",
     "Verification",
 ]

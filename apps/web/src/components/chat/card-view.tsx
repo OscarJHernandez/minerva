@@ -8,6 +8,7 @@ import { IntegralPanel } from "../integral-panel";
 import { DistributionCard } from "./distribution-card";
 import { StatMechCard } from "./statmech-card";
 import { MatrixPanel } from "../matrix-panel";
+import { VectorPanel } from "../vector-panel";
 import { StatisticsPanel } from "../statistics-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { DiscoveryCard } from "./discovery-card";
@@ -17,6 +18,7 @@ import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
+import { OdeAnalysisCard, OdeNumericCard, OdeSolutionCard } from "./ode-card";
 import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
 import { UnitsCard } from "./units-card";
@@ -60,6 +62,8 @@ export function CardView({ card }: { card: Card }) {
       );
     case "geometry":
       return <GeometryCard result={card.data.result} request={card.data.request} />;
+    case "vector":
+      return <VectorPanel result={card.data.result} request={card.data.request} />;
     case "distribution":
       return (
         <DistributionCard
@@ -100,6 +104,12 @@ export function CardView({ card }: { card: Card }) {
       );
     case "entry":
       return <EntryCard entry={card.data} />;
+    case "ode_analysis":
+      return <OdeAnalysisCard report={card.data.report} request={card.data.request} />;
+    case "ode_solution":
+      return <OdeSolutionCard report={card.data.report} request={card.data.request} />;
+    case "ode_numeric":
+      return <OdeNumericCard report={card.data.report} request={card.data.request} />;
     case "solve":
       return <SolveCard report={card.data.report} methods={card.data.methods} />;
     case "lagrangian":

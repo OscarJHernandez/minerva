@@ -42,6 +42,11 @@ ALLOWED_FIELDS = frozenset(
         "ops",
         "failure",
         "quantities",
+        # vector calculus (vector_log.py): enums and counters only
+        "coordinate_system",
+        "vector_action",
+        "operator_depth",
+        "points",
         "logger",
         # Transformation diagnostics: durations, counts and enum-like codes only, never expressions.
         "parse_ms",
@@ -64,7 +69,6 @@ ALLOWED_FIELDS = frozenset(
         "rank",
         "nullity",
         "degree",
-        "points",
         "passed",
         "numeric_passed",
         "symbolic_zero",
@@ -85,6 +89,16 @@ ALLOWED_FIELDS = frozenset(
         "budget",
         "time_dependent",
         "parameters",
+        # differential equations (ode_log.py): counters, durations and fixed vocabulary only
+        "ode_method",
+        "methods_tried",
+        "order",
+        "classes",
+        "verified",
+        "dropped",
+        "solution_kind",
+        "evaluations",
+        "max_residual",
         # Agent trace events (agent/tracing.py): identifiers, counts, durations and fixed-vocabulary
         # values only. A test requires this list to cover every event field and nothing that could hold
         # content; adding a field here is a reviewed decision.

@@ -2,6 +2,15 @@ import type { DiscoveryReport } from "./chat-types";
 import type { StatMechRequest, StatMechResult } from "./statmech-types";
 import type { TelescopingRequest, TelescopingResult } from "./telescoping-types";
 import type {
+  OdeAnalysis,
+  OdeAnalyzeInput,
+  OdeInput,
+  OdeNumericInput,
+  OdeNumericReport,
+  OdeSolution,
+  OdeSolveInput,
+} from "./ode-types";
+import type {
   ApplyIdentityResult,
   Assumptions,
   Derivation,
@@ -19,6 +28,8 @@ import type {
   MatrixCalculusResult,
   GeometryRequest,
   GeometryResult,
+  VectorRequest,
+  VectorResult,
   MatrixRequest,
   SeriesResult,
   SimplifyGoal,
@@ -153,6 +164,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, variable, ...bounds, strategy }),
     }),
+  odeAnalyze: (req: OdeInput | OdeAnalyzeInput) =>
+    request<OdeAnalysis>("/v1/compute/ode/analyze", { method: "POST", body: JSON.stringify(req) }),
+  odeSolve: (req: OdeInput | OdeSolveInput) =>
+    request<OdeSolution>("/v1/compute/ode/solve", { method: "POST", body: JSON.stringify(req) }),
+  odeNumeric: (req: OdeNumericInput) =>
+    request<OdeNumericReport>("/v1/compute/ode/numeric", {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
   matrix: (c: ComputeInput, req: MatrixRequest) =>
     request<MatrixCalculusResult>("/v1/compute/matrix", {
       method: "POST",
@@ -172,6 +192,14 @@ export const api = {
     request<GeometryResult>("/v1/compute/geometry", {
       method: "POST",
       body: JSON.stringify({ ...req, format: "latex", ...link }),
+    }),
+  vector: (
+    req: VectorRequest,
+    link?: { derivation_id?: string; parent_id?: string; save?: boolean },
+  ) =>
+    request<VectorResult>("/v1/compute/vector", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...req, ...link }),
     }),
   /** One step of a variational derivation: the whole functional is sent every time (nothing is remembered). */
   variation: (req: VariationRequest, link?: { derivation_id?: string; parent_id?: string }) =>

@@ -323,3 +323,47 @@ def test_a_geometry_call_whose_result_changed_is_reported(ctx: ToolContext) -> N
     recorded["for_model"] = recorded["for_model"].replace("2}{a^{2}}", "3}{a^{2}}")
     items = MODULE.replay(MODULE.extract_data(report([recorded])), ctx)
     assert not items[0].same and "DIFFERENT" in MODULE.render(items)
+
+
+ODE_CALLS = [
+    ("ode_analyze", {"equations": [r"y'' + 0.2 y' + y + y^3 = 0"], "independent": "t"}),
+    (
+        "ode_solve_symbolic",
+        {
+            "equations": ["y'' + 3y' + 2y = 0"],
+            "independent": "t",
+            "conditions": ["y(0) = 1", "y'(0) = 0"],
+        },
+    ),
+    (
+        "ode_solve_numerical",
+        {
+            "equations": [r"y'' + c y' + y = 0"],
+            "independent": "t",
+            "conditions": ["y(0) = 1", "y'(0) = 0"],
+            "parameters": {"c": 0.5},
+            "t_end": 10,
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize(("name", "arguments"), ODE_CALLS, ids=[c[0] for c in ODE_CALLS])
+def test_a_differential_equation_call_replays_exactly_from_its_arguments(
+    ctx: ToolContext, name: str, arguments: dict[str, Any]
+) -> None:
+    # Every number travels in the arguments and the text the model read has no timings in it, so a
+    # recorded call reproduces byte for byte (sampling is seeded, the integrators are deterministic).
+    recorded = step(ctx, name, arguments)
+    assert "status=ok" in recorded["for_model"]
+    items = MODULE.replay(MODULE.extract_data(report([recorded])), ctx)
+    assert len(items) == 1 and items[0].name == name and items[0].same
+
+
+def test_a_differential_equation_call_whose_result_changed_is_reported(ctx: ToolContext) -> None:
+    recorded = step(ctx, *ODE_CALLS[2])
+    recorded["for_model"] = recorded["for_model"].replace(
+        "independent method: passed", "independent method: failed"
+    )
+    items = MODULE.replay(MODULE.extract_data(report([recorded])), ctx)
+    assert not items[0].same and "DIFFERENT" in MODULE.render(items)

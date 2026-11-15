@@ -21,7 +21,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
-from .declarations import declared_matrices
+from .declarations import declared_matrices, declared_vectors
 from .events import (
     AssistantMessage,
     Block,
@@ -33,7 +33,7 @@ from .events import (
 )
 from .llm import LLMClient, LLMError, ToolCall, Usage
 from .prompts import SYSTEM_PROMPT
-from .refs import ResultStore
+from .refs import ResultStore, inherited_note
 from .segments import split_segments
 from .tools import (
     TOOLS,
@@ -261,6 +261,7 @@ async def run_agent(
     prior_assumptions: dict[str, list[str]] | None = None,
     prior_matrices: Sequence[str] = (),
     prior_results: Mapping[str, str] | None = None,
+    prior_restrictions: Mapping[str, Sequence[str]] | None = None,
     info: TurnInfo | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
@@ -287,6 +288,7 @@ async def run_agent(
                 prior_assumptions,
                 prior_results,
                 prior_matrices,
+                prior_restrictions,
             ):
                 yield event
     finally:
@@ -306,10 +308,11 @@ async def _run_turn(
     prior_assumptions: dict[str, list[str]] | None,
     prior_results: Mapping[str, str] | None,
     prior_matrices: Sequence[str] = (),
+    prior_restrictions: Mapping[str, Sequence[str]] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
-    store = ResultStore.from_prior(prior_results)
+    store = ResultStore.from_prior(prior_results, prior_restrictions)
     outputs: list[ToolOutput] = []
     order: list[str | Card] = []  # prose and cards in the order they happened
     trace: list[TraceStep] = []
@@ -492,6 +495,8 @@ async def _run_turn(
                 tool_calls_made += 1
                 call_id = uuid.uuid4().hex[:8]
                 arguments, references, refusal = call.arguments, 0, None
+                inherited: list[str] = []
+                inherited_from: list[str] = []
                 if call.malformed or not call.name:
                     defect = MALFORMED_TEXT.get(call.malformed or "missing_name", "it was unusable")
                     refusal = _error(
@@ -512,6 +517,7 @@ async def _run_turn(
                         )
                     else:
                         arguments, references = resolution.arguments, resolution.count
+                        inherited, inherited_from = resolution.inherited, resolution.inherited_from
                 key = _call_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
@@ -573,7 +579,11 @@ async def _run_turn(
                 if refusal is not None:
                     output = refusal
                 else:
-                    ctx.matrices = frozenset(matrix_names(trace)) | frozenset(prior_matrices)
+                    ctx.matrices = (
+                        frozenset(matrix_names(trace))
+                        | frozenset(vector_names(trace))
+                        | frozenset(prior_matrices)
+                    )
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -600,7 +610,18 @@ async def _run_turn(
                 if timed_out:
                     category = ErrorCategory.TIMEOUT
                 error_category = category.value if category else output.error_category
-                result_id = store.register(call.name, output) if refusal is None else None
+                if refusal is None and inherited and output.status == "ok":
+                    own = output.card.data.get("restrictions_latex") or []
+                    new = [r for r in inherited if r not in own]
+                    if new:
+                        # The new result is valid only where the one it was computed from was.
+                        output.card.data["inherited_restrictions_latex"] = new
+                        output.for_model += "\n" + inherited_note(new, inherited_from)
+                result_id = (
+                    store.register(call.name, output, inherited if output.status == "ok" else ())
+                    if refusal is None
+                    else None
+                )
 
                 output.card.id = call_id
                 outputs.append(output)
@@ -863,6 +884,25 @@ def matrix_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
     return names
 
 
+def vector_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:
+    """Names this conversation declared as vector fields in `vector_calculus` calls (a refused or
+    failed call counts: the cautious reading)."""
+    names: set[str] = set()
+    for step in trace:
+        name = step.name if isinstance(step, TraceStep) else step.get("name")
+        arguments = step.arguments if isinstance(step, TraceStep) else step.get("arguments", {})
+        if name != "vector_calculus" or not isinstance(arguments, dict):
+            continue
+        for decl in arguments.get("fields", []) or []:
+            if (
+                isinstance(decl, dict)
+                and decl.get("kind") == "vector"
+                and isinstance(decl.get("name"), str)
+            ):
+                names.add(decl["name"])
+    return names
+
+
 def _prose_of(blocks: list[Block]) -> list[str]:
     """The model's own text of this turn, formulas put back in `$...$`, to read declarations from."""
     texts: list[str] = []
@@ -944,13 +984,15 @@ async def check_model_claims(
             for name, items in declared.items():
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
-    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(_prose_of(blocks))
+    prose = _prose_of(blocks)
+    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(prose)
     results = await run_in_threadpool(
         ctx.engine.check_claims,
         [s.value for s in pending],
         assumptions,
         list(prior_relations),
         sorted(matrices),
+        sorted(declared_vectors(prose) | vector_names(trace)),
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):

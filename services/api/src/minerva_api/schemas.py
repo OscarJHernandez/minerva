@@ -11,10 +11,15 @@ from minerva_engine import (
     ExpressionInput,
     GeometryInput,
     MatrixDecl,
+    OdeAnalyzeInput,
+    OdeInput,
+    OdeNumericInput,
+    OdeSolveInput,
     Pins,
     StatMechInput,
     StatModelInput,
     VariationInput,
+    VectorInput,
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.indexed.models import SumAction
@@ -155,6 +160,32 @@ class MatrixCalculusRequest(Linked):
 
 class GeometryRequest(GeometryInput, Links):
     """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
+
+
+class VectorRequest(VectorInput, Links):
+    """An expression over declared scalar and vector fields, in one coordinate system.
+
+    `premise_ids` are handbook field equations (`em.maxwell.faraday`, ...) the user chose to adopt as
+    premises; the server turns them into `premises`. The handbook identities (`rules`) are never taken
+    from the request."""
+
+    premise_ids: list[str] = Field(default_factory=list, max_length=8)
+
+
+class OdeRequest(OdeInput, Links):
+    """A differential equation or system."""
+
+
+class OdeAnalyzeRequest(OdeAnalyzeInput, Links):
+    """A differential equation to describe (structure, or equilibria and local stability)."""
+
+
+class OdeSolveRequest(OdeSolveInput, Links):
+    """A differential equation and the analytical approach to try."""
+
+
+class OdeNumericRequest(OdeNumericInput, Links):
+    """An initial-value problem with every number supplied by the user."""
 
 
 class VariationRequest(VariationInput, Links):

@@ -97,6 +97,12 @@ one most likely to be wrong.
     and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
     server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
+  - `ode` (`ode/`, `Engine.ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`, `POST /v1/compute/ode/*`, chat tools of the
+    same names): reading of derivative notation (`reading.py`, the only place it is interpreted), exact classification and
+    ranked methods (`analyze.py`), closed forms (`symbolic.py`), SciPy initial- and boundary-value solvers
+    (`numerical.py`, `boundary.py`), Taylor and perturbation solutions (`approximation.py`), equilibria and phase plane
+    (`qualitative.py`) and cross-method comparison (`compare.py`). `verification.py` holds the checks and imports nothing
+    from the solvers it judges. Overview and limits: `docs/ode.md`; reference problems: `ode/benchmark.py`.
 - `creative_telescoping/` finds and proves telescoping relations for parameterised integrals: `integrand.py`
   (eligibility from rational logarithmic derivatives), `search.py` (the ansatz ladder behind a `Telescoper`
   protocol), `certificate.py` (exact proof plus vetoing numerical legs), `boundary.py` (convergence and boundary terms from
@@ -214,6 +220,37 @@ one most likely to be wrong.
     `diagnostics` because the sandbox child cannot log; the API turns them into allow-listed log lines (trace id,
     operation, stage, status, duration, enumerated reason) and never logs expressions. Benchmark:
     `docs/distribution-benchmark.md`.
+  - `vector/` (`vector_calculus`: gradient, divergence, curl, scalar and vector Laplacian, dot, cross and triple
+    products, directional and partial derivatives, Jacobians and conversion of explicit fields, in Cartesian,
+    cylindrical and spherical coordinates). A vector expression is an ordinary SymPy tree (`expressions.py`):
+    vector fields are noncommutative symbols, the operators are inert heads (`Grad`, `Div`, `Curl`, `Lap`, `Dot`,
+    `Cross`, `Pd`, `Adv`, `Pos`, `Unit`) that never evaluate, and `kind_of` types every node, so the product of two
+    vectors or a gradient of a vector is a `parse_error` (`parse.py` extends the strict scalar parser; `\nabla`
+    acts on the one factor after it). Fields are declared (`FieldDecl`: arbitrary functions of the coordinates, and
+    of `t` if the user says so, or explicit components in text syntax); every symbol must be a coordinate, `t`, a
+    declared field or a declared constant. Two routes, kept apart: the exact result (`lower.py`) uses scale factors
+    and the orthonormal frame; the independent check (`numeric.py`) evaluates the *input* at Cartesian points by
+    nested central differences in mpmath on random smooth fields, finding the frame by differencing the map
+    `x(q)`, so a dropped scale factor cannot agree with it. The result is shown only if that check passes and is
+    worded "numerically checked": the evaluated result carries no symbolic proof. Smoothness is never assumed:
+    derivatives of an abstract field are *jets* (one plain symbol per ordered word of derivatives), merged only for
+    fields the user declared `c2`/`smooth`; a result that would need `d/dx d/dy f = d/dy d/dx f` is
+    `conditions_not_satisfied` with `blocked`. The axis and origin are reported as restrictions. Benchmark:
+    `docs/vector-benchmark.md`; outside oracles in `docs/reference-benchmark.md`.
+    Controlled steps (`steps.py`) extend the same operation: the handbook's vector identities (`math.vector_calculus`)
+    are proposed to a typed matcher (`rules.py`), applied at a chosen part and accepted only if the exact component
+    residual of the *whole* expressions before and after is zero and the Cartesian reading agrees (`context.py`); a
+    field equation supplied by the user is a premise and makes the result conditional; `derive` is a bounded search.
+    Electromagnetism (`em.py`) builds on that: Maxwell's equations are handbook field equations (dimensional level, units
+    only) that a user adopts as premises; a named derivation (wave equations in vacuum, charge conservation, Poynting's
+    theorem, gauge invariance, Poisson and Laplace) is a set of routes found by the same search, each identity step
+    verified, combined algebraically, then evaluated on exact solutions of the premises (plane waves, fields from random
+    potentials with their sources). A result that used a premise is conditional on it and is never called an identity.
+    Integrals (`integrals.py`) take a domain the user gives (a parametrised curve or surface, a coordinate box) and an
+    explicit field: each value is an exact pull-back integrated by SymPy against an independent quadrature of the input
+    read in Cartesian coordinates; the gradient, divergence and Stokes theorems are reported as two separately computed
+    sides with their hypotheses marked established, checked (a finite scan) or not established, and a pole on the domain
+    refuses the theorem.
   - `indexed/` and `stats/` (operations `sums`, `expectation`, `statistical_model`; benchmark
     `docs/statistics-benchmark.md`). Finite sums, products, indexed data (`x[i]`) and `E`/`Var`/`Cov` are read only when
     an operation opts in (`Builder(allow_sums=..., random_variables=...)`); every pointwise checker refuses them
@@ -275,7 +312,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `statistical_mechanics`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that

@@ -9,16 +9,19 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable, Sequence
+from types import SimpleNamespace
 from typing import Any
 
+from ...routers_chat import _claim_context, _history, _prior_matrices
 from ..llm import LLMClient
 from ..loop import AgentLimits, run_agent
 from ..segments import split_segments
 from ..tools import ToolContext
 from .cases import EvalCase
-from .score import CaseResult, Observation, score_case
+from .score import CaseResult, FailureClass, Observation, combine, score_case
 
 ProgressFn = Callable[[CaseResult], None]
+_CONVERSATION_ENDERS = frozenset({FailureClass.MODEL_HOST, FailureClass.NO_REPLY})
 
 
 async def observe(
@@ -27,22 +30,46 @@ async def observe(
     ctx: ToolContext,
     limits: AgentLimits,
     grace_seconds: float = 30.0,
+    stored: Sequence[Any] = (),
 ) -> Observation:
-    """Drive one turn and record what happened. Never raises: a crashed turn is an observation too."""
+    """Drive one turn and record what happened. Never raises: a crashed turn is an observation too.
+
+    `stored` are the earlier messages of a live conversation (as the chat route stores them: the user's
+    text, and the agent's answer with its trace and cards). The loop then gets exactly what the route would
+    hand it for the next turn: the rebuilt history, verified results (`@r1`) and their restrictions,
+    declared matrices and assumptions. Without it the case's own plain-text `history` is used.
+    """
     history = [*case.history, {"role": "user", "content": case.prompt}]
-    # What the chat route passes the loop from earlier turns: the formulas written so far, which the
-    # claim checker uses as definitions. (Case histories are plain text: no earlier tool calls.)
-    prior_relations = [
-        seg.value
-        for message in history
-        for seg in split_segments(str(message.get("content", "")), set())
-        if seg.type != "text" and len(seg.value) <= 500
-    ][-60:]
+    carried: dict[str, Any] = {}
+    if stored:
+        messages = list(stored)
+        rebuilt, known, quoted, results, restrictions = _history(messages)
+        prior_relations, prior_assumptions = _claim_context(messages, case.prompt)
+        history = [*rebuilt, {"role": "user", "content": case.prompt}]
+        carried = {
+            "prior_known": known,
+            "prior_quoted": quoted,
+            "prior_results": results,
+            "prior_restrictions": restrictions,
+            "prior_assumptions": prior_assumptions,
+            "prior_matrices": _prior_matrices(messages, case.prompt),
+        }
+    else:
+        # What the chat route passes the loop from earlier turns: the formulas written so far, which the
+        # claim checker uses as definitions. (Case histories are plain text: no earlier tool calls.)
+        prior_relations = [
+            seg.value
+            for message in history
+            for seg in split_segments(str(message.get("content", "")), set())
+            if seg.type != "text" and len(seg.value) <= 500
+        ][-60:]
     obs = Observation()
     started = time.monotonic()
 
     async def drive() -> None:
-        async for event in run_agent(llm, history, ctx, limits, prior_relations=prior_relations):
+        async for event in run_agent(
+            llm, history, ctx, limits, prior_relations=prior_relations, **carried
+        ):
             kind, data = event["event"], event["data"]
             if kind == "tool_call":
                 obs.calls.append((data["name"], data["arguments"]))
@@ -67,10 +94,36 @@ async def observe(
     return obs
 
 
+def _stored(prompt: str, final: dict[str, Any]) -> list[Any]:
+    """A user message and the agent's answer, shaped like the chat route's stored messages."""
+    return [
+        SimpleNamespace(role="user", content={"text": prompt}),
+        SimpleNamespace(role="assistant", content=final),
+    ]
+
+
 async def run_case(
     llm: LLMClient, ctx: ToolContext, case: EvalCase, limits: AgentLimits, repeat: int = 0
 ) -> CaseResult:
-    return score_case(case, await observe(llm, case, ctx, limits), repeat)
+    """One case: its first turn, then each follow-up turn answered live on top of the earlier answers.
+
+    A conversation that cannot continue (the earlier turn produced no answer) ends there and fails.
+    """
+    obs = await observe(llm, case, ctx, limits)
+    results = [score_case(case, obs, repeat)]
+    stored: list[Any] = []
+    previous_prompt, previous = case.prompt, obs
+    for number, turn in enumerate(case.followups, start=2):
+        # A turn the model host or the loop could not answer leaves nothing to build the next turn on: the
+        # conversation ends there, and the case has already failed (its first turn is scored as such).
+        if previous.final is None or results[-1].failure_class in _CONVERSATION_ENDERS:
+            break
+        stored += _stored(previous_prompt, previous.final)
+        turn_case = turn.as_case(case, number)
+        previous = await observe(llm, turn_case, ctx, limits, stored=stored)
+        previous_prompt = turn_case.prompt
+        results.append(score_case(turn_case, previous, repeat))
+    return combine(results)
 
 
 async def run_suite(

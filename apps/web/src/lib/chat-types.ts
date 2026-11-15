@@ -16,8 +16,11 @@ import type {
   StatModelResult,
   Status,
   StepResult,
+  VectorRequest,
+  VectorResult,
   SumsResult,
 } from "./types";
+import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "./ode-types";
 import type { FunctionalRequest, VariationReport } from "./variation-types";
 import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
 import type { TelescopingResult } from "./telescoping-types";
@@ -451,6 +454,13 @@ export type Card =
   | {
       id: string;
       tool: string;
+      type: "vector";
+      title: string;
+      data: { result: VectorResult; request: VectorRequest };
+    }
+  | {
+      id: string;
+      tool: string;
       type: "variation";
       title: string;
       data: {
@@ -592,6 +602,27 @@ export type Card =
       type: "motion";
       title: string;
       data: { report: MotionReport; request: MotionRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "ode_analysis";
+      title: string;
+      data: { report: OdeAnalysis; request: OdeInput };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "ode_solution";
+      title: string;
+      data: { report: OdeSolution; request: OdeInput };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "ode_numeric";
+      title: string;
+      data: { report: OdeNumericReport; request: OdeInput };
     }
   | {
       id: string;

@@ -35,6 +35,16 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest
 from .observe import Observer, SandboxCall, current_trace_id
+from .ode import (
+    OdeAnalysis,
+    OdeAnalyzeInput,
+    OdeDiagnostics,
+    OdeInput,
+    OdeSolution,
+    OdeSolveInput,
+    OdeStage,
+)
+from .ode.models import OdeNumericInput, OdeNumericReport
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
@@ -48,6 +58,7 @@ from .solve import SolveReport
 from .statmech.models import StatMechInput, StatMechResult
 from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
 from .variational import VariationInput, VariationReport
+from .vector import VectorDiagnostics, VectorInput, VectorResult
 
 # Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
 NONCOMMUTATIVE_OPERATIONS = frozenset({"substitute", "rewrite_at", "subterms"})
@@ -381,6 +392,82 @@ class Engine:
         result.duration_ms = ms
         return result
 
+    def ode_analyze(self, request: OdeInput | OdeAnalyzeInput) -> OdeAnalysis:
+        """Read a differential equation or system, describe its structure and rank the approaches that
+        can be tried on it. Nothing is solved; the active trace id becomes the diagnostics' trace id."""
+        active = current_trace_id()
+        trace_id = active if active and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active) else None
+        outcome, ms = self._run(
+            "ode_analyze", {"input": request.model_dump(), "trace_id": trace_id}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return OdeAnalysis(
+                status=status,
+                message=message,
+                duration_ms=ms,
+                diagnostics=OdeDiagnostics(
+                    trace_id=trace_id,
+                    stages=[OdeStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
+            )
+        result = OdeAnalysis(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def ode_solve_symbolic(self, request: OdeInput | OdeSolveInput) -> OdeSolution:
+        """Closed-form solutions through SymPy, each shown only after the equation as written holds
+        for it at sampled points (derivatives taken numerically). Conditions are applied afterwards and
+        checked separately. SymPy failing is `unsupported`, never "no solution exists"."""
+        active = current_trace_id()
+        trace_id = active if active and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active) else None
+        outcome, ms = self._run(
+            "ode_solve_symbolic", {"input": request.model_dump(), "trace_id": trace_id}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return OdeSolution(
+                status=status,
+                message=message,
+                duration_ms=ms,
+                diagnostics=OdeDiagnostics(
+                    trace_id=trace_id,
+                    stages=[OdeStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
+            )
+        result = OdeSolution(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def ode_solve_numerical(self, request: OdeNumericInput) -> OdeNumericReport:
+        """Integrate an initial-value problem whose every number the user supplied. A trajectory is shown
+        only if an independent integrator agrees, refining the tolerance converges, the integral form
+        of the equation holds over the steps and any verified first integral is conserved; it is an
+        approximation on the interval given, never exact. The sandbox limit applies to the whole run."""
+        active = current_trace_id()
+        trace_id = active if active and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active) else None
+        outcome, ms = self._run(
+            "ode_solve_numerical", {"input": request.model_dump(), "trace_id": trace_id}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return OdeNumericReport(
+                status=status,
+                message=message,
+                method_requested=request.method,
+                duration_ms=ms,
+                diagnostics=OdeDiagnostics(
+                    trace_id=trace_id,
+                    stages=[OdeStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
+            )
+        result = OdeNumericReport(**outcome.value)
+        result.duration_ms = ms
+        return result
+
     def geometry(
         self, request: GeometryInput, *, max_dimension: int = MAX_DIMENSION
     ) -> GeometryResult:
@@ -395,6 +482,42 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return GeometryResult(status=status, message=message, duration_ms=ms)
         result = GeometryResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def vector_calculus(self, request: VectorInput) -> VectorResult:
+        """Gradient, divergence, curl, Laplacian and products of declared scalar and vector fields in
+        Cartesian, cylindrical or spherical coordinates; Jacobians and conversions between systems.
+
+        A result is shown only if the independent Cartesian finite-difference reading agrees; one
+        that needs mixed partial derivatives to commute is withheld unless the field was declared
+        smooth. The active trace id is the diagnostics' trace id unless the request carries one."""
+        active = current_trace_id()
+        if (
+            request.trace_id is None
+            and active is not None
+            and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active)
+        ):
+            request = request.model_copy(update={"trace_id": active})
+        outcome, ms = self._run("vector_calculus", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return VectorResult(
+                status=status,
+                action=request.action,
+                coordinates=request.coordinates,
+                message=message,
+                duration_ms=ms,
+                diagnostics=VectorDiagnostics(
+                    action=request.action,
+                    coordinates=request.coordinates,
+                    trace_id=request.trace_id,
+                    reason="resource_limit"
+                    if outcome.outcome is Outcome.TIMEOUT
+                    else "sandbox_failure",
+                ),
+            )
+        result = VectorResult(**outcome.value)
         result.duration_ms = ms
         return result
 
@@ -510,12 +633,14 @@ class Engine:
         assumptions: dict[str, list[str]] | None = None,
         relations: list[str] | None = None,
         matrices: list[str] | None = None,
+        vectors: list[str] | None = None,
     ) -> list[ClaimCheck]:
         """Numerically test equations written by the model. Failures leave claims unchecked.
 
         `relations` are formulas stated earlier in the conversation; definitions among them are used
         by substitution (see `claims.py`). `matrices` are names declared as matrices in the
-        conversation: equations that mention them are never tested by sampling numbers."""
+        conversation: equations that mention them are never tested by sampling numbers. `vectors`
+        are names declared as vector fields; vector notation is never sampled either way."""
         if not formulas:
             return []
         # A `noncommutative` declaration means "matrix" here; it must not reach the engine as an
@@ -528,6 +653,7 @@ class Engine:
                 "assumptions": clean,
                 "relations": relations or [],
                 "matrices": sorted({*(matrices or []), *noncommutative}),
+                "vectors": sorted(vectors or []),
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:

@@ -689,6 +689,57 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - Assumes: r: positive.
 - 1 of 1 requested quantities computed and numerically verified.
 
+#### The invariant F_{mu nu}F^{mu nu} of a field strength in Minkowski space (signature -+++, c = 1)
+
+- **Coordinates:** `t, x, y, z` (plain text)
+- **Metric row 1:** `-1,  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1,  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  1,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  1` (plain text)
+- **Assumptions:** a real; b real
+- **Status:** `ok`
+- **Invariant F_(mu nu) F^(mu nu):** $2 \left(- a t + b x\right) \left(a t + b x\right)$
+- **Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu):** $J^{x} = a$
+- **Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu):** $J^{y} = b$
+- **Check:** field_invariant: 1 independent numeric checks passed; symbolic proof proved
+- **Check:** antisymmetric_divergence: 2 independent numeric checks passed; symbolic proof not attempted
+- Signature (-, +, +, +), decided from the declared assumptions.
+- Assumes: coordinates are real: t, x, y, z.
+- Assumes: a: real.
+- Assumes: b: real.
+- 2 of 2 requested quantities computed and numerically verified.
+
+#### F = dA from a potential 1-form, with dF = 0 checked
+
+- **Coordinates:** `t, x, y, z` (plain text)
+- **Metric row 1:** `-1,  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1,  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  1,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  1` (plain text)
+- **Status:** `ok`
+- **Exterior derivative:** $F_{t x} = - y + z$
+- **Exterior derivative:** $F_{t y} = 1 - x$
+- **Exterior derivative:** $F_{x y} = 2 x$
+- **Exterior derivative:** $F_{x z} = - t$
+- **Exterior derivative:** $F_{y z} = z$
+- **Check:** exterior_derivative: 2 independent numeric checks passed; symbolic proof proved
+- Signature (-, +, +, +), decided from the declared assumptions.
+- Assumes: coordinates are real: t, x, y, z.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### A symmetric tensor is not a field strength and is declined
+
+- **Coordinates:** `t, x, y, z` (plain text)
+- **Metric row 1:** `-1,  0,  0,  0` (plain text)
+- **Metric row 2:** `0,  1,  0,  0` (plain text)
+- **Metric row 3:** `0,  0,  1,  0` (plain text)
+- **Metric row 4:** `0,  0,  0,  1` (plain text)
+- **Status:** `parse_error`
+- field_invariant: parse_error. The tensor is not antisymmetric (F_{ij} + F_{ji} is not zero), so it is not a field strength; nothing is computed.
+- Signature (-, +, +, +), decided from the declared assumptions.
+- Assumes: coordinates are real: t, x, y, z.
+- 0 of 1 quantities computed; not shown: field_invariant (parse_error).
+
 #### A degenerate metric is declined
 
 - **Coordinates:** `x, y` (plain text)
@@ -712,6 +763,287 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - **Metric row 2:** `0,  1` (plain text)
 - **Status:** `parse_error`
 - The metric must be symmetric: g_(x,y) and g_(y,x) differ (or could not be shown equal).
+
+### Vector calculus in three coordinate systems
+
+*Available in:* chat, HTTP API.
+
+Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and triple products, directional derivatives and partial derivatives of scalar and vector fields in Cartesian, cylindrical and spherical coordinates, with fields that are arbitrary functions of position (and time) or given explicitly. Nested operators are supported (up to four). A result is shown only if an independent reading agrees: the input is evaluated directly in Cartesian coordinates by nested finite differences on random smooth fields, sharing no scale factor with the symbolic result. Nothing is assumed smooth: an identity such as curl grad f = 0 needs equal mixed partial derivatives and is withheld until the field is declared twice continuously differentiable. The Jacobian of each system and the conversion of explicit fields between systems are included.
+
+**Limits**
+
+- Three orthogonal coordinate systems, physical (orthonormal) components, right-handed frames. No general curvilinear coordinates and no tensor fields (see differential geometry).
+- Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
+- Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
+- The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
+- Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and "not found" is not "does not exist". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.
+- A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true.
+- Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap).
+
+#### Curl of an arbitrary field in spherical coordinates
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla\times\mathbf{A}` (LaTeX)
+- **Field A:** `vector field`
+- **Status:** `ok`
+- **Component along \hat{r}:** $\frac{\frac{A_{\phi}}{\tan{\left(\theta \right)}} + \frac{\partial}{\partial \theta} A_{\phi} - \frac{\frac{\partial}{\partial \phi} A_{\theta}}{\sin{\left(\theta \right)}}}{r}$
+- **Component along \hat{\theta}:** $\frac{- r \frac{\partial}{\partial r} A_{\phi} - A_{\phi} + \frac{\frac{\partial}{\partial \phi} A_{r}}{\sin{\left(\theta \right)}}}{r}$
+- **Component along \hat{\phi}:** $\frac{r \frac{\partial}{\partial r} A_{\theta} + A_{\theta} - \frac{\partial}{\partial \theta} A_{r}}{r}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The vector Laplacian in cylindrical coordinates is not componentwise
+
+- **Coordinates:** `cylindrical`
+- **Expression:** `\nabla^2\mathbf{A}` (LaTeX)
+- **Field A:** `vector field`
+- **Status:** `ok`
+- **Component along \hat{\rho}:** $\frac{\rho^{2} \frac{\partial^{2}}{\partial \rho^{2}} A_{\rho} + \rho^{2} \frac{\partial^{2}}{\partial z^{2}} A_{\rho} + \rho \frac{\partial}{\partial \rho} A_{\rho} - A_{\rho} - 2 \frac{\partial}{\partial \phi} A_{\phi} + \frac{\partial^{2}}{\partial \phi^{2}} A_{\rho}}{\rho^{2}}$
+- **Component along \hat{\phi}:** $\frac{\rho^{2} \frac{\partial^{2}}{\partial \rho^{2}} A_{\phi} + \rho^{2} \frac{\partial^{2}}{\partial z^{2}} A_{\phi} + \rho \frac{\partial}{\partial \rho} A_{\phi} - A_{\phi} + \frac{\partial^{2}}{\partial \phi^{2}} A_{\phi} + 2 \frac{\partial}{\partial \phi} A_{\rho}}{\rho^{2}}$
+- **Component along \hat{z}:** $\frac{\partial^{2}}{\partial \rho^{2}} A_{z} + \frac{\partial^{2}}{\partial z^{2}} A_{z} + \frac{\frac{\partial}{\partial \rho} A_{z}}{\rho} + \frac{\frac{\partial^{2}}{\partial \phi^{2}} A_{z}}{\rho^{2}}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $\rho \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The field of a point charge has no divergence away from the origin
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)` (LaTeX)
+- **Status:** `ok`
+- **Result:** $0$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### Curl of a gradient vanishes for a twice differentiable field
+
+- **Coordinates:** `cylindrical`
+- **Expression:** `\nabla\times(\nabla f)` (LaTeX)
+- **Field f:** `scalar field, c2`
+- **Status:** `ok`
+- **Component along \hat{\rho}:** $0$
+- **Component along \hat{\phi}:** $0$
+- **Component along \hat{z}:** $0$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $\rho \neq 0$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The same statement is withheld when no smoothness is declared
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\nabla\times(\nabla f)` (LaTeX)
+- **Field f:** `scalar field`
+- **Status:** `conditions_not_satisfied`
+- Not shown: needs c2 smoothness of f. the result contains mixed partial derivatives in both orders; they are equal only if the field is twice continuously differentiable.
+- not shown: the result needs mixed partial derivatives of f to commute, and the smoothness of that field was not declared (use smoothness c2, or smooth for higher orders)
+
+#### Curl of a scalar times a vector
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\nabla\times(f\mathbf{A})` (LaTeX)
+- **Field f:** `scalar field, c2`
+- **Field A:** `vector field, c2`
+- **Status:** `ok`
+- **Component along \hat{x}:** $- A_{y} \frac{\partial}{\partial z} f + A_{z} \frac{\partial}{\partial y} f - f \frac{\partial}{\partial z} A_{y} + f \frac{\partial}{\partial y} A_{z}$
+- **Component along \hat{y}:** $A_{x} \frac{\partial}{\partial z} f - A_{z} \frac{\partial}{\partial x} f + f \frac{\partial}{\partial z} A_{x} - f \frac{\partial}{\partial x} A_{z}$
+- **Component along \hat{z}:** $- A_{x} \frac{\partial}{\partial y} f + A_{y} \frac{\partial}{\partial x} f - f \frac{\partial}{\partial y} A_{x} + f \frac{\partial}{\partial x} A_{y}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+
+#### The Jacobian of spherical coordinates
+
+- **Coordinates:** `spherical`
+- **Status:** `ok`
+- **Jacobian:** $\left[\begin{matrix}\sin{\left(\theta \right)} \cos{\left(\phi \right)} & r \cos{\left(\phi \right)} \cos{\left(\theta \right)} & - r \sin{\left(\phi \right)} \sin{\left(\theta \right)}\\\sin{\left(\phi \right)} \sin{\left(\theta \right)} & r \sin{\left(\phi \right)} \cos{\left(\theta \right)} & r \sin{\left(\theta \right)} \cos{\left(\phi \right)}\\\cos{\left(\theta \right)} & - r \sin{\left(\theta \right)} & 0\end{matrix}\right]$
+- **Determinant:** $r^{2} \sin{\left(\theta \right)}$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Valid only where $r \neq 0$, $\sin\theta \neq 0$ (the coordinates break down there).
+- Jacobian of the map to Cartesian coordinates, checked against central differences of the map; this is evidence, not a proof
+
+#### A rotation field in cylindrical components, converted to Cartesian
+
+- **Coordinates:** `cylindrical`
+- **Expression:** `\mathbf{F}` (LaTeX)
+- **Field F:** `vector field, components 0, rho, 0`
+- **Status:** `ok`
+- **Component along \hat{x}:** $- y$
+- **Component along \hat{y}:** $x$
+- **Component along \hat{z}:** $0$
+- **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- converted from cylindrical to cartesian and checked numerically by an independent route (through Cartesian coordinates); this is evidence, not a proof
+
+#### Rewrite curl curl A with the divergence and the Laplacian
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(A))` (plain text)
+- **Field A:** `vector field, c2`
+- **Status:** `ok`
+- **Result:** $\nabla \left(\nabla \cdot \mathbf{A}\right) - \nabla^{2} \mathbf{A}$
+- **Step 1 (identity): vector.curl_curl:** $\nabla \left(\nabla \cdot \mathbf{A}\right) - \nabla^{2} \mathbf{A}$
+- **Check:** each identity step: the whole expressions before and after differ by an exactly zero component residual, and an independent Cartesian evaluation agrees
+- vector.curl_curl applied; the two expressions were compared by the exact components (difference identically zero) and by an independent Cartesian evaluation. It holds for fields of the smoothness you declared.
+
+#### The same rewrite is blocked until the field is declared twice differentiable
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(A))` (plain text)
+- **Field A:** `vector field`
+- **Status:** `conditions_not_satisfied`
+- Not shown: needs c2 smoothness of A. vector.curl_curl holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
+- vector.curl_curl needs twice continuously differentiable A; that was not declared, so the step was not applied
+
+#### Which identities match a part of the expression
+
+- **Coordinates:** `cartesian`
+- **Expression:** `div(cross(A, B))` (plain text)
+- **Field A:** `vector field`
+- **Field B:** `vector field`
+- **Status:** `ok`
+- **Match: vector.cross_anticommutes:** $\mathbf{A} \times \mathbf{B} \to \nabla \cdot \left(- \mathbf{B} \times \mathbf{A}\right)$
+- **Match: vector.div_cross:** $\nabla \cdot \left(\mathbf{A} \times \mathbf{B}\right) \to - \mathbf{A} \cdot \left(\nabla \times \mathbf{B}\right) + \mathbf{B} \cdot \left(\nabla \times \mathbf{A}\right)$
+- 2 way(s) to apply an identity; none was applied or verified. Choose one with `rule_id` and `path` (an identity that needs c2 is blocked unless the fields are declared)
+
+#### curl curl E from Faraday's and Ampere-Maxwell's laws, as supplied by the user
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(E))` (plain text)
+- **Premise 0 (given by the user):** `curl(E) = -dt(B)` (plain text)
+- **Premise 1 (given by the user):** `curl(B) = mu0*epsilon0*dt(E)` (plain text)
+- **Target:** `-mu0*epsilon0*dt(dt(E))` (plain text)
+- **Field E:** `vector field, smooth`
+- **Field B:** `vector field, smooth`
+- **Status:** `ok`
+- **Result:** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Step 1 (conditional on curl(E) = -dt(B)): Substitute premise 1:** $- \nabla \times \frac{\partial \mathbf{B}}{\partial t}$
+- **Step 2 (identity): vector.time_curl (right to left):** $- \frac{\partial \left(\nabla \times \mathbf{B}\right)}{\partial t}$
+- **Step 3 (conditional on curl(B) = mu0*epsilon0*dt(E)): Substitute premise 2:** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- Holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E). Supplied by the user and not checked: not an identity.
+- a chain of 3 step(s); each identity step was checked by comparing the whole expressions before and after; the result holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E) (supplied by you, not checked)
+
+#### Without the Gauss premise the target is not reached
+
+- **Coordinates:** `cartesian`
+- **Expression:** `curl(curl(E))` (plain text)
+- **Target:** `-lap(E)` (plain text)
+- **Field E:** `vector field, smooth`
+- **Status:** `unchanged`
+- no chain of identities reached the target within the bounds (depth 6, width 12, 500 states); this does not say that none exists
+
+#### The flux of r-hat over r squared through a sphere is 4 pi
+
+- **Coordinates:** `spherical`
+- **Integral:** `flux`
+- **Surface:** `coordinates (R, u, v), u from 0 to pi, v from 0 to 2*pi`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1/r**2, 0, 0`
+- **Assumptions:** R positive
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \left(\mathbf{F}\right) \cdot d\mathbf{S} = 4 \pi$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: normal d_u r x d_v r (the order of the parameters is the orientation).
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-36); numerical agreement is evidence, not a proof
+
+#### Swapping the parameters reverses the orientation, and the sign
+
+- **Coordinates:** `spherical`
+- **Integral:** `flux`
+- **Surface:** `coordinates (R, v, u), u from 0 to 2*pi, v from 0 to pi`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1/r**2, 0, 0`
+- **Assumptions:** R positive
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \left(\mathbf{F}\right) \cdot d\mathbf{S} = - 4 \pi$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: normal d_u r x d_v r (the order of the parameters is the orientation).
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-20); numerical agreement is evidence, not a proof
+
+#### Circulation of the azimuthal field around the equator of a sphere
+
+- **Coordinates:** `spherical`
+- **Integral:** `line`
+- **Curve:** `coordinates (2, pi/2, s), s from 0 to 2*pi`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 0, 0, 1`
+- **Status:** `ok`
+- **Integral (exact):** $\int_{C} \left(\mathbf{F}\right) \cdot d\mathbf{l} = 4 \pi$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: increasing parameter.
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-20); numerical agreement is evidence, not a proof
+
+#### The divergence theorem on a box, both sides computed separately
+
+- **Coordinates:** `cartesian`
+- **Integral:** `divergence theorem`
+- **Region:** `bounds [0, 1]; [0, 2]; [0, 1]`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components x**2, y*z, z**3`
+- **Status:** `ok`
+- **Integral (exact):** $\iiint_V \nabla \cdot \left(\mathbf{F}\right) dV = 5$
+- **Integral (exact):** $\oint_{\partial V} \left(\mathbf{F}\right) \cdot d\mathbf{S} = 5$
+- **Check:** the divergence theorem: both sides computed separately, each an exact value checked against an independent quadrature of the input read in Cartesian coordinates
+- Orientation: outward normals on the six faces of the box.
+- Hypothesis (established): the region is a coordinate box with a piecewise smooth boundary. the six faces and their outward normals were generated from the bounds.
+- Hypothesis (checked): F is continuously differentiable on the closed region. F and the integrand are finite at every point of a grid on the region and its boundary; smoothness is not proved.
+- both sides of the divergence theorem were computed separately and agree; the hypotheses are listed with what is known of each. This is consistent with the theorem for this field and domain, not a proof of its hypotheses
+
+#### Stokes' theorem on a parametrised surface
+
+- **Coordinates:** `cartesian`
+- **Integral:** `stokes theorem`
+- **Surface:** `coordinates (u, v, u*v), u from 0 to 1, v from 0 to 1`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components -y*z, x*z, x*y`
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \nabla \times \left(\mathbf{F}\right) \cdot d\mathbf{S} = 1$
+- **Integral (exact):** $\oint_{\partial S} \left(\mathbf{F}\right) \cdot d\mathbf{l} = 1$
+- **Check:** Stokes' theorem: both sides computed separately, each an exact value checked against an independent quadrature of the input read in Cartesian coordinates
+- Orientation: normal d_u r x d_v r; boundary counter-clockwise in (u, v).
+- Hypothesis (established): S is a piecewise smooth oriented surface whose boundary is the image of the rectangle's edges. the boundary is traversed counter-clockwise in (u, v): the right-hand rule for the normal d_u r x d_v r.
+- Hypothesis (checked): F is continuously differentiable on a neighbourhood of S. F, its curl and the edge integrands are finite at every point of a grid on S and its boundary; smoothness is not proved.
+- both sides of Stokes' theorem were computed separately and agree; the hypotheses are listed with what is known of each. This is consistent with the theorem for this field and domain, not a proof of its hypotheses
+
+#### Gauss's law in integral form for a uniformly charged ball
+
+- **Coordinates:** `spherical`
+- **Integral:** `flux`
+- **Surface:** `coordinates (R, u, v), u from 0 to pi, v from 0 to 2*pi`
+- **Expression:** `E` (plain text)
+- **Field E:** `vector field, components rho0*r/(3*epsilon0), 0, 0`
+- **Assumptions:** R positive; rho0 positive; epsilon0 positive
+- **Status:** `ok`
+- **Integral (exact):** $\iint_S \left(\mathbf{E}\right) \cdot d\mathbf{S} = \frac{4 \pi R^{3} \rho_{0}}{3 \epsilon_{0}}$
+- **Check:** exact value checked against an independent quadrature
+- Orientation: normal d_u r x d_v r (the order of the parameters is the orientation).
+- closed form by SymPy, checked against an independent quadrature of the input read in Cartesian coordinates (error estimate 1.0e-18); numerical agreement is evidence, not a proof
+
+#### The divergence theorem over a ball is refused when the field has a pole at the centre
+
+- **Coordinates:** `spherical`
+- **Integral:** `divergence theorem`
+- **Region:** `bounds [0, 2]; [0, pi]; [0, 2*pi]`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1/r**2, 0, 0`
+- **Status:** `unsupported`
+- the field is not defined and finite everywhere on the domain of lower face of r (a pole, or a point where it cannot be evaluated): the integral is not computed
+
+#### A flux without a surface is not computed (the domain is never invented)
+
+- **Coordinates:** `cartesian`
+- **Integral:** `flux`
+- **Expression:** `F` (plain text)
+- **Field F:** `vector field, components 1, 0, 0`
+- **Status:** `parse_error`
+- a flux needs `surface`: the domain is never invented
+
+#### Two vectors side by side are refused, not guessed
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\mathbf{A}\mathbf{B}` (LaTeX)
+- **Field A:** `vector field`
+- **Field B:** `vector field`
+- **Status:** `parse_error`
+- the product of two vectors is ambiguous: write a dot product (\cdot) or a cross product (\times)
 
 ### Substituting relations
 
@@ -998,6 +1330,278 @@ Isolates a variable in an equation and lists every solution with the conditions 
 - **Unknown:** `x`
 - **Status:** `unsupported`
 - no closed form is produced for a factor of this degree with these coefficients: a general polynomial of degree 5 or more has none (Abel-Ruffini), and cubics and quartics are solved here only with rational coefficients
+
+### Ordinary differential equations
+
+*Available in:* workbench, chat, HTTP API.
+
+Write an equation or a system as you would on paper (y'' + 0.2 y' + y + y^3 = 0, or \frac{d^2 y}{dt^2}). Minerva shows how it read it, describes its structure (order, linearity, autonomy, whether it can be solved for its highest derivative, the equation class) and ranks the approaches that can be tried, with what each needs. You then choose one: a closed form, accepted only after it is substituted back into your equation with derivatives taken numerically; a Taylor series about the point of your initial values; an expansion in a small parameter you name (a regular expansion, or Poincaré–Lindstedt for periodic motion); a numerical solution of an initial-value problem (the integrator, explicit or stiff, is chosen from measured behaviour) or of a boundary-value problem; and, for an autonomous system, its equilibria with their local stability and a phase plane. A numerical result is shown only if an independent integrator agrees, refining the tolerance converges, the integral form of the equation holds and any verified conserved quantity is conserved. A closed form and a numerical run can be compared. Every number (conditions, parameters, the interval, the window, the small parameter) is yours: none is chosen for you.
+
+**Limits**
+
+- Ordinary equations and systems only, up to order 10 and 12 first-order states. Partial and delay equations, algebraic constraints, and equations that cannot be solved for their highest derivative (several branches) are refused, never reinterpreted.
+- A closed form comes from SymPy. Not finding one says nothing about whether one exists, singular solutions are not searched for, and an implicit result or one with an unevaluated integral is labelled as such.
+- A numerical trajectory is an approximation on the interval you gave, never exact and never valid beyond it. The checks are measurements, not an error bound; stiffness is judged from measured behaviour, not predicted.
+- A boundary-value solution is one of possibly several (the starting guess that found it is named), and a series is local (its radius of convergence is not determined). Perturbation expansions hold for small values of the parameter and, where a term grows with the variable, only on a bounded interval; multiple scales is not implemented.
+- Stability is local and from the linearisation. An eigenvalue with zero real part, or parameters without values, leave it undecided; nothing is called globally stable. Equilibria are listed as "found" unless the field is polynomial.
+
+#### How Minerva reads and classifies a nonlinear damped oscillator
+
+- **Equation:** `y'' + 0.2*y' + y + y^3 = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **As Minerva read it:** $y^{3} + y + \frac{y'}{5} + y'' = 0$
+- **Solved for the highest derivative:** $y'' = - y^{3} - y - \frac{y'}{5}$
+- Equation of order 2, nonlinear, autonomous; 2 first-order states.
+- 1. Numerical integration (initial-value problem): the highest derivatives can be solved for, so it becomes a first-order system.
+- 2. Local power series about a regular point: the highest derivatives can be solved for, so a Taylor series can be built from the initial values.
+- 3. Equilibria and local linear stability: autonomous with few states: equilibria, the Jacobian and its eigenvalues.
+- 4. Phase plane (direction field and trajectories): autonomous with two states.
+- Not applicable: Closed-form solution (SymPy), verified by substitution: no solvable class was recognised, so Minerva does not attempt a closed form.
+- Not applicable: Poincaré-Lindstedt (periodic motion, one degree of freedom): the acceleration depends on the velocity (damping or a gyroscopic term).
+- Not applicable: Regular perturbation expansion: no symbolic parameter to expand in.
+- Not applicable: Numerical boundary-value solution: needs conditions at two distinct points.
+- Not applicable: Multiple scales: not implemented in Minerva.
+
+#### A first-order equation with a closed form
+
+- **Equation:** `y' = x*y` (plain text)
+- **Condition:** `y(0) = 2` (plain text)
+- **Independent variable:** `x` (plain text)
+- **Status:** `ok`
+- **Solution:** $y\left(x\right) = 2 \mathrm{e}^{\frac{x^{2}}{2}}$
+- **Check:** substituted into the equation as written, derivatives taken numerically: 10 of 10 points agree; also proved by a symbolic zero test
+- **Check:** condition holds: y\left(0\right) = 2
+- A particular solution: every constant is fixed by the conditions.
+
+#### A second-order linear equation with initial values
+
+- **Equation:** `y'' + 3*y' + 2*y = 0` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Condition:** `y'(0) = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Solution:** $y\left(t\right) = \left(2 - \mathrm{e}^{- t}\right) \mathrm{e}^{- t}$
+- **Check:** substituted into the equation as written, derivatives taken numerically: 10 of 10 points agree; also proved by a symbolic zero test
+- **Check:** condition holds: y\left(0\right) = 1
+- **Check:** condition holds: y'\left(0\right) = 0
+- A particular solution: every constant is fixed by the conditions.
+
+#### Leibniz notation in LaTeX
+
+- **Equation:** `\frac{d^2 y}{d t^2} + 4 y = 0` (LaTeX)
+- **Condition:** `y(0) = 0` (LaTeX)
+- **Condition:** `y'(0) = 2` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Solution:** $y\left(t\right) = \sin{\left(2 t \right)}$
+- **Check:** substituted into the equation as written, derivatives taken numerically: 10 of 10 points agree; also proved by a symbolic zero test
+- **Check:** condition holds: y\left(0\right) = 0
+- **Check:** condition holds: y'\left(0\right) = 2
+- A particular solution: every constant is fixed by the conditions.
+
+#### A nonlinear initial-value problem, solved numerically
+
+- **Equation:** `y'' + 0.2*y' + y + y^3 = 0` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Condition:** `y'(0) = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **End of the interval:** `20` (plain text)
+- **Status:** `ok`
+- **y at the end of the interval:** y(20) = -0.146794
+- **y' at the end of the interval:** y'(20) = -0.0274952
+- **Check:** initial conditions: passed (0.0e+00 against 1e-12)
+- **Check:** independent method: passed (5.5e-09 against 1e-05)
+- **Check:** tolerance refinement: passed (5.4e-09 against 1e-07)
+- **Check:** defect: passed (2.8e-02 against 1e+03)
+- **Check:** first integral: skipped
+- DOP853: DOP853 completed and showed no sign of stiffness; 58 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+
+#### A stiff system (Robertson's chemical kinetics)
+
+- **Equation:** `\dot{a} = -0.04 a + 10^4 b c` (LaTeX)
+- **Equation:** `\dot{b} = 0.04 a - 10^4 b c - 3 \cdot 10^7 b^2` (LaTeX)
+- **Equation:** `\dot{c} = 3 \cdot 10^7 b^2` (LaTeX)
+- **Condition:** `a(0) = 1` (LaTeX)
+- **Condition:** `b(0) = 0` (LaTeX)
+- **Condition:** `c(0) = 0` (LaTeX)
+- **End of the interval:** `40` (plain text)
+- **Status:** `ok`
+- **a at the end of the interval:** a(40) = 0.715827
+- **b at the end of the interval:** b(40) = 9.18553e-06
+- **c at the end of the interval:** c(40) = 0.284164
+- **Check:** initial conditions: passed (0.0e+00 against 1e-12)
+- **Check:** independent method: passed (1.1e-08 against 1e-05)
+- **Check:** tolerance refinement: passed (2.2e-09 against 1e-07)
+- **Check:** defect: passed (1.7e-01 against 1e+03)
+- **Check:** first integral: skipped
+- Radau: DOP853 showed signs of stiffness (a step size limited by stability, or too many evaluations), so Radau was used; this is judged from measured behaviour, not predicted; 165 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+- Warning: stiffness indicated.
+
+#### A coupled system with parameters (predator and prey)
+
+- **Equation:** `\dot{x} = a x - b x y` (LaTeX)
+- **Equation:** `\dot{y} = -c y + d x y` (LaTeX)
+- **Condition:** `x(0) = 2` (LaTeX)
+- **Condition:** `y(0) = 1` (LaTeX)
+- **Parameter:** `a = 1` (plain text)
+- **Parameter:** `b = 0.5` (plain text)
+- **Parameter:** `c = 0.75` (plain text)
+- **Parameter:** `d = 0.25` (plain text)
+- **End of the interval:** `30` (plain text)
+- **Status:** `ok`
+- **x at the end of the interval:** x(30) = 1.63373
+- **y at the end of the interval:** y(30) = 1.13766
+- **Check:** initial conditions: passed (0.0e+00 against 1e-12)
+- **Check:** independent method: passed (2.0e-08 against 1e-05)
+- **Check:** tolerance refinement: passed (2.0e-08 against 1e-07)
+- **Check:** defect: passed (3.1e-01 against 1e+03)
+- **Check:** first integral: skipped
+- DOP853: DOP853 completed and showed no sign of stiffness; 69 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+
+#### A boundary-value problem
+
+- **Equation:** `y'' = -y` (plain text)
+- **Condition:** `y(0) = 0` (plain text)
+- **Condition:** `y(1) = 1` (plain text)
+- **Independent variable:** `x` (plain text)
+- **Status:** `ok`
+- **y at the end of the interval:** y(1) = 1
+- **y' at the end of the interval:** y'(1) = 0.642093
+- **Check:** boundary conditions: passed (0.0e+00 against 1e-06)
+- **Check:** residual: passed (1.1e-08 against 1e-06)
+- **Check:** mesh refinement: passed (3.1e-11 against 1e-05)
+- **Check:** shooting: passed (1.6e-11 against 1e-05)
+- solve_bvp: a solution found from the starting guess 'zero'; other solutions may exist; 97 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+
+#### A local series about the initial point
+
+- **Equation:** `y'' + 0.2*y' + y + y^3 = 0` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Condition:** `y'(0) = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Series:** $y\left(t\right) = - \frac{199 t^{5}}{7500} + \frac{33 t^{4}}{100} + \frac{t^{3}}{15} - t^{2} + 1 + O\left(\left(t\right)^{6}\right)$
+- **Check:** the truncated result put into the equation as written: its residual falls at the claimed order (4 of 4 confirmations)
+- **Check:** condition holds: y\left(0\right) = 1
+- **Check:** condition holds: y'\left(0\right) = 0
+- A local approximation about the expansion point: its radius of convergence is not determined, and it says nothing about the solution far from that point.
+
+#### The frequency of an anharmonic oscillator (Poincaré–Lindstedt)
+
+- **Equation:** `y'' + y + \epsilon y^3 = 0` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Expansion:** $u(t) = A \cos{\left(\omega t \right)} + \epsilon \left(- \frac{A^{3} \cos{\left(\omega t \right)}}{32} + \frac{A^{3} \cos{\left(3 \omega t \right)}}{32}\right) + \epsilon^{2} \left(\frac{23 A^{5} \cos{\left(\omega t \right)}}{1024} - \frac{3 A^{5} \cos{\left(3 \omega t \right)}}{128} + \frac{A^{5} \cos{\left(5 \omega t \right)}}{1024}\right) + O\left(\epsilon^{3}\right),\quad \omega t = \tau$
+- **Expansion:** $\omega = 1 + \frac{3 \epsilon A^{2}}{8} - \frac{21 \epsilon^{2} A^{4}}{256}$
+- **Check:** the truncated result put into the equation as written: its residual falls at the claimed order (4 of 4 confirmations)
+- Periodic motion near the equilibrium, for small values of the parameter; the frequency is corrected order by order and the series is asymptotic.
+
+#### A regular expansion and the terms that grow with time
+
+- **Equation:** `y'' + y + \epsilon y^3 = 0` (LaTeX)
+- **Condition:** `y(0) = 1` (LaTeX)
+- **Condition:** `y'(0) = 0` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Expansion:** $y\left(t\right) = \epsilon \left(\left(- \frac{3 t}{8} - \frac{\sin{\left(2 t \right)}}{4} - \frac{\sin{\left(4 t \right)}}{32}\right) \sin{\left(t \right)} - \frac{\cos^{5}{\left(t \right)}}{4} + \frac{\cos{\left(t \right)}}{4}\right) + \cos{\left(t \right)} + O\left(\epsilon^{2}\right)$
+- **Check:** the truncated result put into the equation as written: its residual falls at the claimed order (4 of 4 confirmations)
+- **Check:** condition holds: y\left(0\right) = 1
+- **Check:** condition holds: y'\left(0\right) = 0
+- An expansion in the small parameter: valid for small values of it and, where a term grows with the variable, only on a bounded interval. It says nothing about large values of the parameter.
+- Terms that grow with the variable appear at order 1: valid only on a bounded interval.
+
+#### Equilibria and local stability, with the parameters left symbolic
+
+- **Equation:** `\dot{x} = a x - b x y` (LaTeX)
+- **Equation:** `\dot{y} = -c y + d x y` (LaTeX)
+- **Assumptions:** a positive; b positive; c positive; d positive
+- **Status:** `ok`
+- **As Minerva read it:** $x' = a x - b x y$
+- **As Minerva read it:** $y' = - c y + d x y$
+- **Solved for the highest derivative:** $x' = x \left(a - b y\right)$
+- **Solved for the highest derivative:** $y' = y \left(- c + d x\right)$
+- **Equilibrium: saddle:** $x = 0, y = 0$
+- **Eigenvalues:** $a, - c$
+- **Equilibrium: centre:** $x = \frac{c}{d}, y = \frac{a}{b}$
+- **Eigenvalues:** $- \mathrm{i} \sqrt{a} \sqrt{c}, \mathrm{i} \sqrt{a} \sqrt{c}$
+- **Check:** Jacobian agrees with numerical differences of the field
+- **Check:** every equilibrium substituted back into the field; the list is complete (polynomial field)
+- System of order 1, nonlinear, autonomous; 2 first-order states.
+- 1. Numerical integration (initial-value problem): the highest derivatives can be solved for, so it becomes a first-order system.
+- 2. Local power series about a regular point: the highest derivatives can be solved for, so a Taylor series can be built from the initial values.
+- 3. Equilibria and local linear stability: autonomous with few states: equilibria, the Jacobian and its eigenvalues.
+- 4. Phase plane (direction field and trajectories): autonomous with two states.
+- 5. Regular perturbation expansion: has symbolic parameters, one of which may be small.
+- Not applicable: Closed-form solution (SymPy), verified by substitution: no solvable class was recognised, so Minerva does not attempt a closed form.
+- Not applicable: Poincaré-Lindstedt (periodic motion, one degree of freedom): needs a single second-order equation.
+- Not applicable: Numerical boundary-value solution: needs conditions at two distinct points.
+- Not applicable: Multiple scales: not implemented in Minerva.
+- Local and from the linearisation only: it describes orbits that start close to the point and says nothing about global behaviour or about orbits that start elsewhere.
+- Parameters have no values: eigenvalues are exact, and the stability may be undecided.
+
+#### The pendulum: a centre of the linearisation is not called stable
+
+- **Equation:** `\theta'' + \sin\theta = 0` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **As Minerva read it:** $\theta'' + \sin{\left(\theta \right)} = 0$
+- **Solved for the highest derivative:** $\theta'' = - \sin{\left(\theta \right)}$
+- **Equilibrium: centre:** $\theta = 0, \theta' = 0$
+- **Eigenvalues:** $- \mathrm{i}, \mathrm{i}$
+- **Equilibrium: saddle:** $\theta = \pi, \theta' = 0$
+- **Eigenvalues:** $-1, 1$
+- **Check:** Jacobian agrees with numerical differences of the field
+- **Check:** every equilibrium substituted back into the field; the list may be incomplete
+- Equation of order 2, nonlinear, autonomous; 2 first-order states.
+- 1. Numerical integration (initial-value problem): the highest derivatives can be solved for, so it becomes a first-order system.
+- 2. Local power series about a regular point: the highest derivatives can be solved for, so a Taylor series can be built from the initial values.
+- 3. Equilibria and local linear stability: autonomous with few states: equilibria, the Jacobian and its eigenvalues.
+- 4. Phase plane (direction field and trajectories): autonomous with two states.
+- Not applicable: Closed-form solution (SymPy), verified by substitution: no solvable class was recognised, so Minerva does not attempt a closed form.
+- Not applicable: Poincaré-Lindstedt (periodic motion, one degree of freedom): no symbolic parameter to expand in.
+- Not applicable: Regular perturbation expansion: no symbolic parameter to expand in.
+- Not applicable: Numerical boundary-value solution: needs conditions at two distinct points.
+- Not applicable: Multiple scales: not implemented in Minerva.
+- Local and from the linearisation only: it describes orbits that start close to the point and says nothing about global behaviour or about orbits that start elsewhere.
+- The field is not polynomial: these are the equilibria found; there may be others.
+
+#### A solution that blows up inside the interval is not shown
+
+- **Equation:** `y' = y^2` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Independent variable:** `t` (plain text)
+- **End of the interval:** `2` (plain text)
+- **Status:** `not_verified`
+- The integration did not complete (the step size collapsed: a singularity or a very stiff region); no trajectory is shown. This may be a singularity, a stiff problem or a solution that blows up.
+- The exact solution 1/(1 - t) is infinite at t = 1, so no trajectory reaches t = 2.
+
+#### No closed form found (a Riccati equation)
+
+- **Equation:** `y' = y^2 + x` (plain text)
+- **Independent variable:** `x` (plain text)
+- **Status:** `unsupported`
+- SymPy found no closed form for this equation. That does not show that none exists; a numerical or series method can still be tried.
+
+#### Numbers that were not given are not invented
+
+- **Equation:** `y' = a*y` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Independent variable:** `t` (plain text)
+- **End of the interval:** `1` (plain text)
+- **Status:** `parse_error`
+- Values are required for every parameter; missing: a.
+
+#### A delay equation is not an ordinary differential equation
+
+- **Equation:** `y'(t) = y(t - 1)` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `unsupported`
+- y(t - 1): only the unknown itself is supported (y(t)); delayed or composed arguments are not. If you meant a product, write y\cdot(t - 1)
 
 ### Polynomial equations
 
@@ -1486,6 +2090,190 @@ Builds the partition function of a list of levels, a level family E(n) (finite o
 - Refused (ensemble_mismatch).
 - a derivative with respect to V in the canonical ensemble holds exactly beta fixed; derivatives at fixed energy, entropy or other quantities need a change of variables, which is not supported
 - In the canonical ensemble a derivative with respect to V holds the temperature fixed; a derivative at fixed energy or entropy needs a change of variables, which is not supported.
+
+### Derivations in electromagnetism
+
+*Available in:* chat, HTTP API.
+
+Derivations from the field equations a user adopts as premises (Maxwell's equations in SI units, potentials, statics): the wave equations for the electric and magnetic fields in vacuum, charge conservation, Poynting's theorem, gauge invariance of the fields, Poisson's and Laplace's equations. Each derivation is not a stored answer: its routes are found by the general vector-calculus steps (the handbook's vector identities and the supplied premises) and every identity step is checked by comparing the whole expressions before and after. The result is then evaluated on exact solutions of its premises (plane waves, fields built from random potentials with the sources they imply) and is shown as consistent with them, never as verified by them. A result that used a premise is conditional on it, names it, and is never called an identity or a proof; Minerva does not check that a premise is true. Only the gauge invariance of E and B needs no premise.
+
+**Limits**
+
+- Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems.
+- Electrostatics with numbers the user gives (field, multipole, boundary_value, check_solution): point charges and a density over a box, Dirichlet problems on a rectangle, Cartesian coordinates. Fourier and Laplace transform methods, retarded Green's functions, finite elements, FDTD and general PDE solving are planned and not implemented.
+- Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell's equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them.
+- A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for.
+- Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable.
+- The handbook entries for Maxwell's equations are checked for units only (the operators contribute a length or a time); they are premises, not verified laws.
+
+#### The wave equation for E in vacuum, from Maxwell's equations as premises
+
+- **Derivation:** `Wave equation for the electric field in vacuum`
+- **Premise (adopted by the user): Gauss's law in vacuum (no charge):** `div(E) = 0` (plain text)
+- **Premise (adopted by the user): Faraday's law (differential form, SI):** `curl(E) = -dt(B)` (plain text)
+- **Premise (adopted by the user): Ampere-Maxwell law in vacuum (no current):** `curl(B) = mu0*epsilon0*dt(E)` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla^{2} \mathbf{E} = \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Step 1 (conditional on curl(E) = -dt(B)): [route 1] Substitute Faraday's law (differential form, SI):** $- \nabla \times \frac{\partial \mathbf{B}}{\partial t}$
+- **Step 2 (identity): [route 1] vector.time_curl (right to left):** $- \frac{\partial \left(\nabla \times \mathbf{B}\right)}{\partial t}$
+- **Step 3 (conditional on curl(B) = mu0*epsilon0*dt(E)): [route 1] Substitute Ampere-Maxwell law in vacuum (no current):** $- \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Step 4 (identity): [route 2] vector.curl_curl:** $\nabla \left(\nabla \cdot \mathbf{E}\right) - \nabla^{2} \mathbf{E}$
+- **Step 5 (conditional on div(E) = 0): [route 2] Substitute Gauss's law in vacuum (no charge):** $- \nabla^{2} \mathbf{E}$
+- **Derived equation:** $\nabla^{2} \mathbf{E} = \epsilon_{0} \mu_{0} \frac{\partial^{2} \mathbf{E}}{\partial t^{2}}$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E); div(E) = 0. Supplied by the user and not checked: not an identity.
+- Wave equation for the electric field in vacuum: conditional on curl(E) = -dt(B); curl(B) = mu0*epsilon0*dt(E); div(E) = 0 (supplied by you, not checked by Minerva), 5 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Charge conservation from Gauss's law and the Ampere-Maxwell law
+
+- **Derivation:** `Charge conservation from Gauss's law and the Ampere-Maxwell law`
+- **Premise (adopted by the user): Ampere-Maxwell law (differential form, SI):** `curl(B) = mu0*J + mu0*epsilon0*dt(E)` (plain text)
+- **Premise (adopted by the user): Gauss's law (differential form, SI):** `div(E) = rho/epsilon0` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla \cdot \mathbf{J} + \frac{\partial \rho}{\partial t} = 0$
+- **Step 1 (identity): [route 1] vector.div_curl:** $0$
+- **Step 2 (conditional on curl(B) = mu0*J + mu0*epsilon0*dt(E)): [route 2] Substitute Ampere-Maxwell law (differential form, SI):** $\nabla \cdot \left(\epsilon_{0} \mu_{0} \frac{\partial \mathbf{E}}{\partial t} + \mu_{0} \mathbf{J}\right)$
+- **Step 3 (identity): [route 2] vector.div_sum:** $\epsilon_{0} \mu_{0} \nabla \cdot \frac{\partial \mathbf{E}}{\partial t} + \mu_{0} \nabla \cdot \mathbf{J}$
+- **Step 4 (identity): [route 2] vector.time_div (right to left):** $\epsilon_{0} \mu_{0} \frac{\partial \left(\nabla \cdot \mathbf{E}\right)}{\partial t} + \mu_{0} \nabla \cdot \mathbf{J}$
+- **Step 5 (conditional on div(E) = rho/epsilon0): [route 2] Substitute Gauss's law (differential form, SI):** $\mu_{0} \nabla \cdot \mathbf{J} + \mu_{0} \frac{\partial \rho}{\partial t}$
+- **Derived equation:** $\nabla \cdot \mathbf{J} + \frac{\partial \rho}{\partial t} = 0$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: curl(B) = mu0*J + mu0*epsilon0*dt(E); div(E) = rho/epsilon0. Supplied by the user and not checked: not an identity.
+- Charge conservation from Gauss's law and the Ampere-Maxwell law: conditional on curl(B) = mu0*J + mu0*epsilon0*dt(E); div(E) = rho/epsilon0 (supplied by you, not checked by Minerva), 5 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Poynting's theorem
+
+- **Derivation:** `Poynting's theorem from Faraday's and the Ampere-Maxwell law`
+- **Premise (adopted by the user): Faraday's law (differential form, SI):** `curl(E) = -dt(B)` (plain text)
+- **Premise (adopted by the user): Ampere-Maxwell law (differential form, SI):** `curl(B) = mu0*J + mu0*epsilon0*dt(E)` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\mathbf{J} \cdot \mathbf{E} + \frac{\partial \left(\frac{\epsilon_{0} \left(\mathbf{E} \cdot \mathbf{E}\right)}{2} + \frac{\mathbf{B} \cdot \mathbf{B}}{2 \mu_{0}}\right)}{\partial t} + \frac{\nabla \cdot \left(\mathbf{E} \times \mathbf{B}\right)}{\mu_{0}} = 0$
+- **Step 1 (identity): [route 1] vector.div_cross:** $\frac{\mathbf{B} \cdot \left(\nabla \times \mathbf{E}\right) - \mathbf{E} \cdot \left(\nabla \times \mathbf{B}\right)}{\mu_{0}}$
+- **Step 2 (conditional on curl(E) = -dt(B)): [route 1] Substitute Faraday's law (differential form, SI):** $\frac{- \mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t} - \mathbf{E} \cdot \left(\nabla \times \mathbf{B}\right)}{\mu_{0}}$
+- **Step 3 (conditional on curl(B) = mu0*J + mu0*epsilon0*dt(E)): [route 1] Substitute Ampere-Maxwell law (differential form, SI):** $\frac{- \mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t} - \mathbf{E} \cdot \left(\epsilon_{0} \mu_{0} \frac{\partial \mathbf{E}}{\partial t} + \mu_{0} \mathbf{J}\right)}{\mu_{0}}$
+- **Step 4 (identity): [route 1] vector.dot_sum:** $\frac{- \epsilon_{0} \mu_{0} \left(\mathbf{E} \cdot \frac{\partial \mathbf{E}}{\partial t}\right) - \mu_{0} \left(\mathbf{E} \cdot \mathbf{J}\right) - \mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t}}{\mu_{0}}$
+- **Step 5 (identity): [route 2] vector.time_sum_scalar:** $\frac{\epsilon_{0} \frac{\partial \left(\mathbf{E} \cdot \mathbf{E}\right)}{\partial t}}{2} + \frac{\frac{\partial \left(\mathbf{B} \cdot \mathbf{B}\right)}{\partial t}}{2 \mu_{0}}$
+- **Step 6 (identity): [route 2] vector.time_dot:** $\frac{\epsilon_{0} \left(\mathbf{E} \cdot \frac{\partial \mathbf{E}}{\partial t} + \frac{\partial \mathbf{E}}{\partial t} \cdot \mathbf{E}\right)}{2} + \frac{\frac{\partial \left(\mathbf{B} \cdot \mathbf{B}\right)}{\partial t}}{2 \mu_{0}}$
+- **Step 7 (identity): [route 2] vector.time_dot:** $\frac{\epsilon_{0} \left(\mathbf{E} \cdot \frac{\partial \mathbf{E}}{\partial t} + \frac{\partial \mathbf{E}}{\partial t} \cdot \mathbf{E}\right)}{2} + \frac{\mathbf{B} \cdot \frac{\partial \mathbf{B}}{\partial t} + \frac{\partial \mathbf{B}}{\partial t} \cdot \mathbf{B}}{2 \mu_{0}}$
+- **Derived equation:** $\mathbf{J} \cdot \mathbf{E} + \frac{\partial \left(\frac{\epsilon_{0} \left(\mathbf{E} \cdot \mathbf{E}\right)}{2} + \frac{\mathbf{B} \cdot \mathbf{B}}{2 \mu_{0}}\right)}{\partial t} + \frac{\nabla \cdot \left(\mathbf{E} \times \mathbf{B}\right)}{\mu_{0}} = 0$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: curl(E) = -dt(B); curl(B) = mu0*J + mu0*epsilon0*dt(E). Supplied by the user and not checked: not an identity.
+- Poynting's theorem from Faraday's and the Ampere-Maxwell law: conditional on curl(E) = -dt(B); curl(B) = mu0*J + mu0*epsilon0*dt(E) (supplied by you, not checked by Minerva), 7 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Gauge invariance of E and B is an identity (no premise)
+
+- **Derivation:** `Gauge invariance of E and B`
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla \times \left(\mathbf{A} + \nabla \chi\right) = \nabla \times \mathbf{A} \quad - \nabla \left(\phi - \frac{\partial \chi}{\partial t}\right) - \frac{\partial \left(\mathbf{A} + \nabla \chi\right)}{\partial t} = - \nabla \phi - \frac{\partial \mathbf{A}}{\partial t}$
+- **Step 1 (identity): [route 1] vector.curl_sum:** $\nabla \times \mathbf{A} + \nabla \times \left(\nabla \chi\right)$
+- **Step 2 (identity): [route 1] vector.curl_grad:** $\nabla \times \mathbf{A}$
+- **Step 3 (identity): [route 2] vector.grad_sum:** $- (\nabla \phi - \nabla \frac{\partial \chi}{\partial t}) - \frac{\partial \left(\mathbf{A} + \nabla \chi\right)}{\partial t}$
+- **Step 4 (identity): [route 2] vector.time_sum_vector:** $- (\nabla \phi - \nabla \frac{\partial \chi}{\partial t}) - \left(\frac{\partial \mathbf{A}}{\partial t} + \frac{\partial \left(\nabla \chi\right)}{\partial t}\right)$
+- **Step 5 (identity): [route 2] vector.time_grad:** $- (\nabla \phi - \nabla \frac{\partial \chi}{\partial t}) - \left(\nabla \frac{\partial \chi}{\partial t} + \frac{\partial \mathbf{A}}{\partial t}\right)$
+- **Derived equation:** $\nabla \times \left(\mathbf{A} + \nabla \chi\right) = \nabla \times \mathbf{A}$
+- **Derived equation:** $- \nabla \left(\phi - \frac{\partial \chi}{\partial t}\right) - \frac{\partial \left(\mathbf{A} + \nabla \chi\right)}{\partial t} = - \nabla \phi - \frac{\partial \mathbf{A}}{\partial t}$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- **Check:** each identity step: the whole expressions before and after differ by an exactly zero component residual, and an independent Cartesian evaluation agrees
+- Gauge invariance of E and B: an identity (no premise was needed), 5 verified step(s) over 2 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Poisson's equation from Gauss's law and the electrostatic potential
+
+- **Derivation:** `Poisson's equation from Gauss's law and the electrostatic potential`
+- **Premise (adopted by the user): Gauss's law (differential form, SI):** `div(E) = rho/epsilon0` (plain text)
+- **Premise (adopted by the user): Electrostatic potential:** `grad(phi) = -E` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `ok`
+- **Result:** $\nabla^{2} \phi = - \frac{\rho}{\epsilon_{0}}$
+- **Step 1 (identity): [route 1] vector.laplacian_scalar:** $\nabla \cdot \left(\nabla \phi\right)$
+- **Step 2 (conditional on grad(phi) = -E): [route 1] Substitute Electrostatic potential:** $- \nabla \cdot \mathbf{E}$
+- **Step 3 (conditional on div(E) = rho/epsilon0): [route 1] Substitute Gauss's law (differential form, SI):** $- \frac{\rho}{\epsilon_{0}}$
+- **Derived equation:** $\nabla^{2} \phi = - \frac{\rho}{\epsilon_{0}}$
+- **Check:** consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+- Holds only given: grad(phi) = -E; div(E) = rho/epsilon0. Supplied by the user and not checked: not an identity.
+- Poisson's equation from Gauss's law and the electrostatic potential: conditional on grad(phi) = -E; div(E) = rho/epsilon0 (supplied by you, not checked by Minerva), 3 verified step(s) over 1 route(s). consistent with 2 exact solutions of the premises at 8 points; this is not a verification
+
+#### Without the Ampere-Maxwell law the wave equation is not derived, and Minerva asks for it
+
+- **Derivation:** `Wave equation for the electric field in vacuum`
+- **Premise (adopted by the user): Gauss's law in vacuum (no charge):** `div(E) = 0` (plain text)
+- **Premise (adopted by the user): Faraday's law (differential form, SI):** `curl(E) = -dt(B)` (plain text)
+- **Smoothness (declared by the user):** `c2`
+- **Status:** `conditions_not_satisfied`
+- Needs these premises (the user adopts them): curl(B) = mu0*epsilon0*dt(E)
+- Wave equation for the electric field in vacuum needs these field equations as premises, and they were not supplied exactly as written: curl(B) = mu0*epsilon0*dt(E). They are yours to adopt: Minerva does not assume them.
+
+#### Without declared smoothness the identities are blocked
+
+- **Derivation:** `Charge conservation from Gauss's law and the Ampere-Maxwell law`
+- **Premise (adopted by the user): Ampere-Maxwell law (differential form, SI):** `curl(B) = mu0*J + mu0*epsilon0*dt(E)` (plain text)
+- **Premise (adopted by the user): Gauss's law (differential form, SI):** `div(E) = rho/epsilon0` (plain text)
+- **Status:** `conditions_not_satisfied`
+- Not shown: needs c2 smoothness of B. vector.div_curl holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
+- Not shown: needs c2 smoothness of E. vector.time_div holds for twice continuously differentiable fields; the smoothness of these fields was not declared.
+- route 1 (div(curl(B)) to 0) failed: no chain was found with the identities the declared smoothness allows: identities that need twice continuously differentiable fields were blocked (B, E). Declare the smoothness if it holds; this does not say that a chain then exists
+
+#### Potential and field of a dipole at a point (Coulomb sum, gradient and central difference agree)
+
+- **Problem:** `{"kind": "field", "charges": [{"q": "q", "position": ["0", "0", "0"]}, {"q": "-q", "position": ["0", "0", "d"]}], "point": ["1", "2", "3"]}` (plain text)
+- **Status:** `ok`
+- **Potential at the point:** $\frac{k_{e} q \left(\sqrt{14 \left(d - 3\right)^{2} + 70} - 14\right)}{14 \sqrt{\left(d - 3\right)^{2} + 5}}$
+- **Electric field at the point:** $\mathbf{E} = \left(\frac{\sqrt{14} k_{e} q}{196} - \frac{k_{e} q}{\left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}}}, \frac{\sqrt{14} k_{e} q}{98} - \frac{2 k_{e} q}{\left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}}}, \frac{k_{e} q \left(196 d + 3 \sqrt{14} \left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}} - 588\right)}{196 \left(\left(d - 3\right)^{2} + 5\right)^{\frac{3}{2}}}\right)$
+- **Check:** the Coulomb vector sum equals the negative gradient of the symbolic potential, and a central difference of the potential as a number agrees (relative 1.4e-11)
+- closed form; the Coulomb vector sum equals the negative gradient of the symbolic potential, and a central difference of the potential as a number agrees (relative 1.4e-11)
+
+#### Moments of three point charges, with the measured decay of the truncated expansion
+
+- **Problem:** `{"kind": "multipole", "charges": [{"q": "1", "position": ["0", "0", "1"]}, {"q": "-1", "position": ["0", "0", "-1"]}, {"q": "1", "position": ["1", "0", "0"]}]}` (plain text)
+- **Status:** `ok`
+- **Monopole moment Q:** $1$
+- **Dipole moment p:** $\mathbf{p} = \left(1, 0, 2\right)$
+- **Quadrupole moments Q_ij (traceless: 3 x_i x_j - r^2 delta_ij):** $Q_{ij} = \left[\begin{matrix}2 & 0 & 0\\0 & -1 & 0\\0 & 0 & -1\end{matrix}\right]$
+- **Error of the order-2 expansion at distance 4:** $8.681e-03$
+- **Error of the order-2 expansion at distance 8:** $5.073e-04$
+- **Error of the order-2 expansion at distance 16:** $3.099e-05$
+- **Error of the order-2 expansion at distance 32:** $1.920e-06$
+- **Check:** the error of the truncated expansion along the ray falls with measured exponents 4.10, 4.03, 4.01; the next multipole predicts 4. A measurement at these distances, never a bound
+- Error of the order-2 expansion at distance 4: exact potential 0.37586895837.
+- Error of the order-2 expansion at distance 8: exact potential 0.155780766335.
+- Error of the order-2 expansion at distance 16: exact potential 0.0702214234101.
+- Error of the order-2 expansion at distance 32: exact potential 0.0331897865908.
+- exact moments; the error of the truncated expansion along the ray falls with measured exponents 4.10, 4.03, 4.01; the next multipole predicts 4. A measurement at these distances, never a bound
+
+#### Laplace's equation on the unit square with a sine on one edge (series against a finite-difference solve)
+
+- **Problem:** `{"kind": "boundary_value", "a": "1", "b": "1", "top": "sin(pi*x)"}` (plain text)
+- **Status:** `ok`
+- **Sine coefficient of the top edge:** $A_n = \begin{cases} 0 & \text{for}\: n > 1 \\1 & \text{otherwise} \end{cases}$
+- **phi(0.5, 0.5):** $0.199268407669$
+- **phi(0.3, 0.5):** $0.161211528246$
+- **phi(0.5, 0.7):** $0.385588723456$
+- **phi(0.7, 0.3):** $0.0762405308614$
+- **Check:** the series (truncated at 40 terms) agrees with a finite-difference relaxation on two grids at 4 interior points (largest relative gap 8.3e-04; grid error by Richardson)
+- phi(0.5, 0.5): finite differences 0.19937085339, grid error about 1.0e-04, series tail 0.0e+00.
+- phi(0.3, 0.5): finite differences 0.161211241948, grid error about 3.5e-05, series tail 0.0e+00.
+- phi(0.5, 0.7): finite differences 0.385909744632, grid error about 2.3e-04, series tail 0.0e+00.
+- phi(0.7, 0.3): finite differences 0.0762915717689, grid error about 5.1e-05, series tail 0.0e+00.
+- A numerical approximation agreeing with an independent method.
+- numerical approximation; the series (truncated at 40 terms) agrees with a finite-difference relaxation on two grids at 4 interior points (largest relative gap 8.3e-04; grid error by Richardson)
+
+#### A field point inside the charge distribution is refused
+
+- **Problem:** `{"kind": "field", "density": "1", "box": {"bounds": [["0", "1"], ["0", "1"], ["0", "1"]]}, "point": ["0.5", "0.5", "0.5"]}` (plain text)
+- **Status:** `unsupported`
+- the field point is inside the charge distribution (or at its edge): the Coulomb integrand is singular there, so nothing is computed
+
+#### x^2 is not a solution of Laplace's equation, and Minerva says which requirement fails
+
+- **Problem:** `{"kind": "check_solution", "potential": "x**2", "box": {"bounds": [["0", "1"], ["0", "1"], ["0", "1"]]}}` (plain text)
+- **Status:** `ok`
+- **Residual of laplacian(phi) + source:** $2$
+- **Check:** the exact residual and the boundary differences were also read by Cartesian finite differences
+- Residual of laplacian(phi) + source: not zero: the candidate does not satisfy the equation.
+- the candidate does NOT satisfy every requirement: see which; a check of this candidate, not a proof that it is the only solution (uniqueness needs the boundary conditions to determine it)
 
 ### Lagrangian mechanics
 

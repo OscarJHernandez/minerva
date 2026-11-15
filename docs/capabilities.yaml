@@ -29,6 +29,16 @@
 #   identities   input, assumptions, show [rule ids to display]
 #   geometry     coordinates, metric [[expression]], assumptions, functions [{name, args}], quantities, tensor {variance,
 #                components}, tensor_index
+#   vector       input (LaTeX or format: text), coordinates (cartesian | cylindrical | spherical), fields [{name, kind,
+#                components, depends_on, smoothness}], constants, assumptions, action (evaluate | jacobian | convert |
+#                identities | apply_identity | substitute | apply | derive | integrate), to, rule_id, path, reverse,
+#                premises [text `lhs = rhs`, given by the user], premise, operator (grad | div | curl | lap | dt), target,
+#                integral (line | line_scalar | flux | volume | gradient_theorem | divergence_theorem | stokes_theorem), curve
+#                {q, parameter {name, lower, upper}}, surface {q, u, v}, region {bounds [[lower, upper] x 3]}
+#   electromagnetism derivation (wave_equation_e | wave_equation_b | continuity | poynting | gauge_invariance |
+#                poisson | laplace), premise_ids [handbook field equations the user adopts], premises [text], smoothness
+#                (c2 | smooth, declared by the user)
+#                electrostatics: problem {kind: field | multipole | boundary_value | check_solution, ...}, constants
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
@@ -45,6 +55,12 @@
 #   substitute   input, relations [LaTeX `left = right`], order (given | simultaneous), assumptions
 #   rewrite      input, action (simplify | expand | factor | cancel | collect | rule), part, occurrence, rule, by, assumptions
 #   isolate      input (an equation), variable, assumptions
+#   ode_analyze  equations [`left = right`], independent, conditions [`y(0) = 1`], assumptions, detail (structure |
+#                qualitative), parameters {name: number}, window [x_min, x_max, y_min, y_max]
+#   ode_solve    equations, independent, conditions, assumptions, method (closed_form | series | perturbation), order,
+#                small_parameter, equilibrium
+#   ode_numeric  equations, independent, conditions, assumptions, parameters {name: number}, t_end, kind (ivp | bvp),
+#                method, rtol, atol   (every number is the user's: an example that leaves one out shows the refusal)
 # Syntax: every example may set `format: text` (plain typing: sin(x)/(1+cos(x)), explicit `*`, `^` for powers) or
 # leave it out for LaTeX. Prefer plain text: it is how people type, and the page shows the formula the engine
 # read from it. Keep LaTeX only where LaTeX is the point (refusing an ambiguous `\sin 2x`, photo transcription,
@@ -836,6 +852,66 @@ capabilities:
         assumptions: { r: [positive] }
         quantities: [covariant_derivative]
         tensor: { variance: [up], components: ["1", "0"] }
+      - id: geometry-field-invariant
+        title: The invariant F_{mu nu}F^{mu nu} of a field strength in Minkowski space (signature -+++, c = 1)
+        op: geometry
+        format: text
+        coordinates: [t, x, y, z]
+        metric:
+          - ["-1", "0", "0", "0"]
+          - ["0", "1", "0", "0"]
+          - ["0", "0", "1", "0"]
+          - ["0", "0", "0", "1"]
+        assumptions: { a: [real], b: [real] }
+        quantities: [field_invariant, antisymmetric_divergence]
+        tensor:
+          variance: [down, down]
+          components:
+            [
+              "0",
+              "-a*t",
+              "0",
+              "0",
+              "a*t",
+              "0",
+              "b*x",
+              "0",
+              "0",
+              "-b*x",
+              "0",
+              "0",
+              "0",
+              "0",
+              "0",
+              "0",
+            ]
+      - id: geometry-exterior-derivative
+        title: F = dA from a potential 1-form, with dF = 0 checked
+        op: geometry
+        format: text
+        coordinates: [t, x, y, z]
+        metric:
+          - ["-1", "0", "0", "0"]
+          - ["0", "1", "0", "0"]
+          - ["0", "0", "1", "0"]
+          - ["0", "0", "0", "1"]
+        quantities: [exterior_derivative]
+        tensor: { variance: [down], components: ["x*y", "t*z", "x^2+t", "y*z"] }
+      - id: geometry-not-antisymmetric
+        title: A symmetric tensor is not a field strength and is declined
+        op: geometry
+        format: text
+        coordinates: [t, x, y, z]
+        metric:
+          - ["-1", "0", "0", "0"]
+          - ["0", "1", "0", "0"]
+          - ["0", "0", "1", "0"]
+          - ["0", "0", "0", "1"]
+        quantities: [field_invariant]
+        tensor:
+          variance: [down, down]
+          components:
+            ["0", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
       - id: geometry-degenerate
         title: A degenerate metric is declined
         op: geometry
@@ -862,6 +938,358 @@ capabilities:
           - ["1", "x"]
           - ["0", "1"]
         quantities: [christoffel]
+
+  - id: vector-calculus
+    title: Vector calculus in three coordinate systems
+    status: available
+    group: math
+    where: [chat, api]
+    summary: >-
+      Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and triple products,
+      directional derivatives and partial derivatives of scalar and vector fields in Cartesian, cylindrical
+      and spherical coordinates, with fields that are arbitrary functions of position (and time) or given
+      explicitly. Nested operators are supported (up to four). A result is shown only if an independent
+      reading agrees: the input is evaluated directly in Cartesian coordinates by nested finite differences
+      on random smooth fields, sharing no scale factor with the symbolic result. Nothing is assumed smooth:
+      an identity such as curl grad f = 0 needs equal mixed partial derivatives and is withheld until the
+      field is declared twice continuously differentiable. The Jacobian of each system and the conversion of
+      explicit fields between systems are included.
+    limits:
+      - Three orthogonal coordinate systems, physical (orthonormal) components, right-handed frames. No general curvilinear coordinates and no tensor fields (see differential geometry).
+      - Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
+      - Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
+      - The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
+      - 'Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and "not found" is not "does not exist". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.'
+      - "A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true."
+      - "Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap)."
+    examples:
+      - id: vector-curl-spherical
+        title: Curl of an arbitrary field in spherical coordinates
+        op: vector
+        input: '\nabla\times\mathbf{A}'
+        coordinates: spherical
+        fields:
+          - { name: A, kind: vector }
+      - id: vector-laplacian-cylindrical
+        title: The vector Laplacian in cylindrical coordinates is not componentwise
+        op: vector
+        input: '\nabla^2\mathbf{A}'
+        coordinates: cylindrical
+        fields:
+          - { name: A, kind: vector }
+      - id: vector-point-charge
+        title: The field of a point charge has no divergence away from the origin
+        op: vector
+        input: '\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)'
+        coordinates: spherical
+      - id: vector-curl-grad-declared
+        title: Curl of a gradient vanishes for a twice differentiable field
+        op: vector
+        input: '\nabla\times(\nabla f)'
+        coordinates: cylindrical
+        fields:
+          - { name: f, kind: scalar, smoothness: c2 }
+      - id: vector-curl-grad-refused
+        title: The same statement is withheld when no smoothness is declared
+        op: vector
+        input: '\nabla\times(\nabla f)'
+        coordinates: cartesian
+        fields:
+          - { name: f, kind: scalar }
+      - id: vector-product-rule
+        title: Curl of a scalar times a vector
+        op: vector
+        input: '\nabla\times(f\mathbf{A})'
+        coordinates: cartesian
+        fields:
+          - { name: f, kind: scalar, smoothness: c2 }
+          - { name: A, kind: vector, smoothness: c2 }
+      - id: vector-jacobian
+        title: The Jacobian of spherical coordinates
+        op: vector
+        action: jacobian
+        coordinates: spherical
+      - id: vector-convert
+        title: A rotation field in cylindrical components, converted to Cartesian
+        op: vector
+        action: convert
+        input: '\mathbf{F}'
+        coordinates: cylindrical
+        to: cartesian
+        fields:
+          - { name: F, kind: vector, components: ["0", "rho", "0"] }
+      - id: vector-apply-curl-curl
+        title: Rewrite curl curl A with the divergence and the Laplacian
+        op: vector
+        action: apply_identity
+        format: text
+        input: "curl(curl(A))"
+        rule_id: vector.curl_curl
+        path: []
+        fields:
+          - { name: A, kind: vector, smoothness: c2 }
+      - id: vector-apply-curl-curl-refused
+        title: The same rewrite is blocked until the field is declared twice differentiable
+        op: vector
+        action: apply_identity
+        format: text
+        input: "curl(curl(A))"
+        rule_id: vector.curl_curl
+        path: []
+        fields:
+          - { name: A, kind: vector }
+      - id: vector-list-identities
+        title: Which identities match a part of the expression
+        op: vector
+        action: identities
+        format: text
+        input: "div(cross(A, B))"
+        fields:
+          - { name: A, kind: vector }
+          - { name: B, kind: vector }
+      - id: vector-derive-wave-equation
+        title: curl curl E from Faraday's and Ampere-Maxwell's laws, as supplied by the user
+        op: vector
+        action: derive
+        format: text
+        input: "curl(curl(E))"
+        target: "-mu0*epsilon0*dt(dt(E))"
+        constants: [mu0, epsilon0]
+        premises:
+          - "curl(E) = -dt(B)"
+          - "curl(B) = mu0*epsilon0*dt(E)"
+        fields:
+          - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
+          - { name: B, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
+      - id: vector-derive-without-premise
+        title: Without the Gauss premise the target is not reached
+        op: vector
+        action: derive
+        format: text
+        input: "curl(curl(E))"
+        target: "-lap(E)"
+        fields:
+          - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
+      - id: integral-flux-point-charge
+        title: The flux of r-hat over r squared through a sphere is 4 pi
+        op: vector
+        action: integrate
+        integral: flux
+        input: "F"
+        format: text
+        coordinates: spherical
+        constants: [R]
+        assumptions: { R: [positive] }
+        fields:
+          - { name: F, kind: vector, components: ["1/r**2", "0", "0"] }
+        surface:
+          q: ["R", "u", "v"]
+          u: { name: u, lower: "0", upper: "pi" }
+          v: { name: v, lower: "0", upper: "2*pi" }
+      - id: integral-flux-reversed
+        title: Swapping the parameters reverses the orientation, and the sign
+        op: vector
+        action: integrate
+        integral: flux
+        input: "F"
+        format: text
+        coordinates: spherical
+        constants: [R]
+        assumptions: { R: [positive] }
+        fields:
+          - { name: F, kind: vector, components: ["1/r**2", "0", "0"] }
+        surface:
+          q: ["R", "v", "u"]
+          u: { name: u, lower: "0", upper: "2*pi" }
+          v: { name: v, lower: "0", upper: "pi" }
+      - id: integral-line-circulation
+        title: Circulation of the azimuthal field around the equator of a sphere
+        op: vector
+        action: integrate
+        integral: line
+        input: "F"
+        format: text
+        coordinates: spherical
+        fields:
+          - { name: F, kind: vector, components: ["0", "0", "1"] }
+        curve:
+          q: ["2", "pi/2", "s"]
+          parameter: { name: s, lower: "0", upper: "2*pi" }
+      - id: integral-divergence-theorem
+        title: The divergence theorem on a box, both sides computed separately
+        op: vector
+        action: integrate
+        integral: divergence_theorem
+        input: "F"
+        format: text
+        fields:
+          - { name: F, kind: vector, components: ["x**2", "y*z", "z**3"] }
+        region:
+          bounds: [["0", "1"], ["0", "2"], ["0", "1"]]
+      - id: integral-stokes-theorem
+        title: Stokes' theorem on a parametrised surface
+        op: vector
+        action: integrate
+        integral: stokes_theorem
+        input: "F"
+        format: text
+        fields:
+          - { name: F, kind: vector, components: ["-y*z", "x*z", "x*y"] }
+        surface:
+          q: ["u", "v", "u*v"]
+          u: { name: u, lower: "0", upper: "1" }
+          v: { name: v, lower: "0", upper: "1" }
+      - id: integral-gauss-law
+        title: Gauss's law in integral form for a uniformly charged ball
+        op: vector
+        action: integrate
+        integral: flux
+        input: "E"
+        format: text
+        coordinates: spherical
+        constants: [R, rho0, epsilon0]
+        assumptions: { R: [positive], rho0: [positive], epsilon0: [positive] }
+        fields:
+          - { name: E, kind: vector, components: ["rho0*r/(3*epsilon0)", "0", "0"] }
+        surface:
+          q: ["R", "u", "v"]
+          u: { name: u, lower: "0", upper: "pi" }
+          v: { name: v, lower: "0", upper: "2*pi" }
+      - id: integral-pole-refused
+        title: The divergence theorem over a ball is refused when the field has a pole at the centre
+        op: vector
+        action: integrate
+        integral: divergence_theorem
+        input: "F"
+        format: text
+        coordinates: spherical
+        fields:
+          - { name: F, kind: vector, components: ["1/r**2", "0", "0"] }
+        region:
+          bounds: [["0", "2"], ["0", "pi"], ["0", "2*pi"]]
+      - id: integral-domain-not-invented
+        title: A flux without a surface is not computed (the domain is never invented)
+        op: vector
+        action: integrate
+        integral: flux
+        input: "F"
+        format: text
+        fields:
+          - { name: F, kind: vector, components: ["1", "0", "0"] }
+      - id: vector-ambiguous-product
+        title: Two vectors side by side are refused, not guessed
+        op: vector
+        input: '\mathbf{A}\mathbf{B}'
+        fields:
+          - { name: A, kind: vector }
+          - { name: B, kind: vector }
+
+  - id: electromagnetism
+    title: Derivations in electromagnetism
+    status: available
+    group: physics
+    where: [chat, api]
+    summary: >-
+      Derivations from the field equations a user adopts as premises (Maxwell's equations in SI units,
+      potentials, statics): the wave equations for the electric and magnetic fields in vacuum, charge
+      conservation, Poynting's theorem, gauge invariance of the fields, Poisson's and Laplace's equations.
+      Each derivation is not a stored answer: its routes are found by the general vector-calculus steps (the
+      handbook's vector identities and the supplied premises) and every identity step is checked by comparing the
+      whole expressions before and after. The result is then evaluated on exact solutions of its premises
+      (plane waves, fields built from random potentials with the sources they imply) and is shown as consistent
+      with them, never as verified by them. A result that used a premise is conditional on it, names it, and is
+      never called an identity or a proof; Minerva does not check that a premise is true. Only the gauge
+      invariance of E and B needs no premise.
+    limits:
+      - "Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems."
+      - "Electrostatics with numbers the user gives (field, multipole, boundary_value, check_solution): point charges and a density over a box, Dirichlet problems on a rectangle, Cartesian coordinates. Fourier and Laplace transform methods, retarded Green's functions, finite elements, FDTD and general PDE solving are planned and not implemented."
+      - "Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell's equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them."
+      - "A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for."
+      - "Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable."
+      - "The handbook entries for Maxwell's equations are checked for units only (the operators contribute a length or a time); they are premises, not verified laws."
+    examples:
+      - id: em-wave-equation-e
+        title: The wave equation for E in vacuum, from Maxwell's equations as premises
+        op: electromagnetism
+        derivation: wave_equation_e
+        premise_ids: [em.maxwell.gauss_vacuum, em.maxwell.faraday, em.maxwell.ampere_vacuum]
+        smoothness: c2
+      - id: em-continuity
+        title: Charge conservation from Gauss's law and the Ampere-Maxwell law
+        op: electromagnetism
+        derivation: continuity
+        premise_ids: [em.maxwell.ampere, em.maxwell.gauss]
+        smoothness: c2
+      - id: em-poynting
+        title: Poynting's theorem
+        op: electromagnetism
+        derivation: poynting
+        premise_ids: [em.maxwell.faraday, em.maxwell.ampere]
+        smoothness: c2
+      - id: em-gauge-invariance
+        title: Gauge invariance of E and B is an identity (no premise)
+        op: electromagnetism
+        derivation: gauge_invariance
+        smoothness: c2
+      - id: em-poisson
+        title: Poisson's equation from Gauss's law and the electrostatic potential
+        op: electromagnetism
+        derivation: poisson
+        premise_ids: [em.maxwell.gauss, em.static.potential]
+        smoothness: c2
+      - id: em-missing-premise
+        title: Without the Ampere-Maxwell law the wave equation is not derived, and Minerva asks for it
+        op: electromagnetism
+        derivation: wave_equation_e
+        premise_ids: [em.maxwell.gauss_vacuum, em.maxwell.faraday]
+        smoothness: c2
+      - id: em-no-smoothness
+        title: Without declared smoothness the identities are blocked
+        op: electromagnetism
+        derivation: continuity
+        premise_ids: [em.maxwell.ampere, em.maxwell.gauss]
+      - id: es-dipole-field
+        title: Potential and field of a dipole at a point (Coulomb sum, gradient and central difference agree)
+        op: electromagnetism
+        constants: [q, d]
+        problem:
+          kind: field
+          charges:
+            - { q: q, position: ["0", "0", "0"] }
+            - { q: -q, position: ["0", "0", d] }
+          point: ["1", "2", "3"]
+      - id: es-multipole
+        title: Moments of three point charges, with the measured decay of the truncated expansion
+        op: electromagnetism
+        problem:
+          kind: multipole
+          charges:
+            - { q: "1", position: ["0", "0", "1"] }
+            - { q: "-1", position: ["0", "0", "-1"] }
+            - { q: "1", position: ["1", "0", "0"] }
+      - id: es-laplace-rectangle
+        title: Laplace's equation on the unit square with a sine on one edge (series against a finite-difference solve)
+        op: electromagnetism
+        problem:
+          kind: boundary_value
+          a: "1"
+          b: "1"
+          top: sin(pi*x)
+      - id: es-field-in-source
+        title: A field point inside the charge distribution is refused
+        op: electromagnetism
+        problem:
+          kind: field
+          density: "1"
+          box: { bounds: [["0", "1"], ["0", "1"], ["0", "1"]] }
+          point: ["0.5", "0.5", "0.5"]
+      - id: es-wrong-candidate
+        title: x^2 is not a solution of Laplace's equation, and Minerva says which requirement fails
+        op: electromagnetism
+        problem:
+          kind: check_solution
+          potential: x**2
+          box: { bounds: [["0", "1"], ["0", "1"], ["0", "1"]] }
 
   - id: identities
     title: Identity search with applicability checks
@@ -1137,6 +1565,168 @@ capabilities:
         op: isolate
         input: "x^5 + a x + 1 = 0"
         variable: x
+
+  - id: ordinary-differential-equations
+    title: Ordinary differential equations
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Write an equation or a system as you would on paper (y'' + 0.2 y' + y + y^3 = 0, or \frac{d^2 y}{dt^2}).
+      Minerva shows how it read it, describes its structure (order, linearity, autonomy, whether it can be solved for
+      its highest derivative, the equation class) and ranks the approaches that can be tried, with what each needs.
+      You then choose one: a closed form, accepted only after it is substituted back into your equation with
+      derivatives taken numerically; a Taylor series about the point of your initial values; an expansion in a small
+      parameter you name (a regular expansion, or Poincaré–Lindstedt for periodic motion); a numerical solution of an
+      initial-value problem (the integrator, explicit or stiff, is chosen from measured behaviour) or of a
+      boundary-value problem; and, for an autonomous system, its equilibria with their local stability and a phase
+      plane. A numerical result is shown only if an independent integrator agrees, refining the tolerance converges,
+      the integral form of the equation holds and any verified conserved quantity is conserved. A closed form and a
+      numerical run can be compared. Every number (conditions, parameters, the interval, the window, the small
+      parameter) is yours: none is chosen for you.
+    limits:
+      - Ordinary equations and systems only, up to order 10 and 12 first-order states. Partial and delay equations,
+        algebraic constraints, and equations that cannot be solved for their highest derivative (several branches) are
+        refused, never reinterpreted.
+      - A closed form comes from SymPy. Not finding one says nothing about whether one exists, singular solutions are
+        not searched for, and an implicit result or one with an unevaluated integral is labelled as such.
+      - A numerical trajectory is an approximation on the interval you gave, never exact and never valid beyond it. The
+        checks are measurements, not an error bound; stiffness is judged from measured behaviour, not predicted.
+      - A boundary-value solution is one of possibly several (the starting guess that found it is named), and a series
+        is local (its radius of convergence is not determined). Perturbation expansions hold for small values of the
+        parameter and, where a term grows with the variable, only on a bounded interval; multiple scales is not
+        implemented.
+      - Stability is local and from the linearisation. An eigenvalue with zero real part, or parameters without values,
+        leave it undecided; nothing is called globally stable. Equilibria are listed as "found" unless the field is
+        polynomial.
+    examples:
+      - id: ode-analysis-duffing
+        title: How Minerva reads and classifies a nonlinear damped oscillator
+        op: ode_analyze
+        equations: ["y'' + 0.2*y' + y + y^3 = 0"]
+        format: text
+        independent: t
+      - id: ode-first-order-analytic
+        title: A first-order equation with a closed form
+        op: ode_solve
+        equations: ["y' = x*y"]
+        format: text
+        independent: x
+        conditions: ["y(0) = 2"]
+      - id: ode-second-order-linear
+        title: A second-order linear equation with initial values
+        op: ode_solve
+        equations: ["y'' + 3*y' + 2*y = 0"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+      - id: ode-latex-notation
+        title: Leibniz notation in LaTeX
+        op: ode_solve
+        equations: ['\frac{d^2 y}{d t^2} + 4 y = 0']
+        independent: t
+        conditions: ["y(0) = 0", "y'(0) = 2"]
+      - id: ode-numerical-nonlinear
+        title: A nonlinear initial-value problem, solved numerically
+        op: ode_numeric
+        equations: ["y'' + 0.2*y' + y + y^3 = 0"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+        t_end: 20
+      - id: ode-stiff-system
+        title: A stiff system (Robertson's chemical kinetics)
+        op: ode_numeric
+        equations:
+          - '\dot{a} = -0.04 a + 10^4 b c'
+          - '\dot{b} = 0.04 a - 10^4 b c - 3 \cdot 10^7 b^2'
+          - '\dot{c} = 3 \cdot 10^7 b^2'
+        conditions: ["a(0) = 1", "b(0) = 0", "c(0) = 0"]
+        t_end: 40
+      - id: ode-coupled-system
+        title: A coupled system with parameters (predator and prey)
+        op: ode_numeric
+        equations: ['\dot{x} = a x - b x y', '\dot{y} = -c y + d x y']
+        conditions: ["x(0) = 2", "y(0) = 1"]
+        parameters: { a: 1, b: 0.5, c: 0.75, d: 0.25 }
+        t_end: 30
+      - id: ode-boundary-value
+        title: A boundary-value problem
+        op: ode_numeric
+        equations: ["y'' = -y"]
+        format: text
+        independent: x
+        kind: bvp
+        conditions: ["y(0) = 0", "y(1) = 1"]
+      - id: ode-series
+        title: A local series about the initial point
+        op: ode_solve
+        equations: ["y'' + 0.2*y' + y + y^3 = 0"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+        method: series
+        order: 5
+      - id: ode-perturbation-frequency
+        title: "The frequency of an anharmonic oscillator (Poincaré–Lindstedt)"
+        op: ode_solve
+        equations: ["y'' + y + \\epsilon y^3 = 0"]
+        independent: t
+        method: perturbation
+        small_parameter: epsilon
+        equilibrium: "0"
+        order: 2
+      - id: ode-perturbation-secular
+        title: A regular expansion and the terms that grow with time
+        op: ode_solve
+        equations: ["y'' + y + \\epsilon y^3 = 0"]
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+        method: perturbation
+        small_parameter: epsilon
+        order: 1
+      - id: ode-equilibria-lotka-volterra
+        title: Equilibria and local stability, with the parameters left symbolic
+        op: ode_analyze
+        equations: ['\dot{x} = a x - b x y', '\dot{y} = -c y + d x y']
+        detail: qualitative
+        assumptions: { a: [positive], b: [positive], c: [positive], d: [positive] }
+      - id: ode-equilibria-pendulum
+        title: "The pendulum: a centre of the linearisation is not called stable"
+        op: ode_analyze
+        equations: ["\\theta'' + \\sin\\theta = 0"]
+        independent: t
+        detail: qualitative
+      - id: ode-refusal-blow-up
+        title: A solution that blows up inside the interval is not shown
+        op: ode_numeric
+        equations: ["y' = y^2"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1"]
+        t_end: 2
+        note: >-
+          The exact solution 1/(1 - t) is infinite at t = 1, so no trajectory reaches t = 2.
+      - id: ode-refusal-no-closed-form
+        title: No closed form found (a Riccati equation)
+        op: ode_solve
+        equations: ["y' = y^2 + x"]
+        format: text
+        independent: x
+      - id: ode-refusal-missing-numbers
+        title: Numbers that were not given are not invented
+        op: ode_numeric
+        equations: ["y' = a*y"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1"]
+        t_end: 1
+      - id: ode-refusal-delay
+        title: A delay equation is not an ordinary differential equation
+        op: ode_solve
+        equations: ["y'(t) = y(t - 1)"]
+        format: text
+        independent: t
 
   - id: polynomial-solving
     title: Polynomial equations

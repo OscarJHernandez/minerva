@@ -1235,6 +1235,334 @@
   reply_matches: 'given|premise|relation'
   source: "arithmetic: x^2 + 3x, derivative 2x + 3; the relation is the user's premise (AGENTS.md, controlled steps)"
 
+# ----------------------------------------------------------------------------- vector calculus
+# The tool must be chosen, the fields declared, and nothing assumed smooth that the user did not say is.
+- id: vector-divergence-spherical
+  category: calculus
+  prompt: 'In spherical coordinates, what is the divergence of a vector field $\mathbf{A}(r,\theta,\phi)$?'
+  expected_tool: vector_calculus
+  args: {equals: {coordinates: spherical}, present: [fields]}
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\cdot\mathbf{A}'
+      coordinates: spherical
+      fields: [{name: A, kind: vector}]
+  wrong_formulas: ['\nabla\cdot\mathbf{A} = \frac{\partial A_r}{\partial r} + \frac{\partial A_\theta}{\partial \theta} + \frac{\partial A_\phi}{\partial \phi}']
+  source: "textbook: Griffiths, Introduction to Electrodynamics, inside front cover (divergence in spherical coordinates)"
+
+- id: vector-curl-grad-needs-smoothness
+  category: ambiguous
+  prompt: 'Compute the curl of the gradient of a scalar field $f(x,y,z)$ in Cartesian coordinates.'
+  expected_tool: vector_calculus
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla f)'
+      fields: [{name: f, kind: scalar}]
+  reply_matches: 'smooth|differentiab|C\^?2|continuous|mixed'
+  source: "Marsden and Tromba, Vector Calculus (curl grad f = 0 needs C^2): the user stated no smoothness, so the tool withholds the result and the answer asks"
+
+- id: vector-curl-grad-with-smoothness
+  category: calculus
+  prompt: 'The scalar field $f(x,y,z)$ is twice continuously differentiable. Compute the curl of its gradient.'
+  expected_tool: vector_calculus
+  expect_card: {status: ok, result_text: "(0, 0, 0)"}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla f)'
+      fields: [{name: f, kind: scalar, smoothness: c2}]
+  source: "Marsden and Tromba, Vector Calculus (curl grad f = 0 for C^2 fields); the smoothness was stated by the user"
+
+- id: vector-two-vectors-side-by-side
+  category: unsupported
+  prompt: 'Simplify $\mathbf{A}\mathbf{B}$ for two vector fields.'
+  expected_tool: none
+  informational: true
+  source: "the product of two vectors is ambiguous (dot or cross); the tool refuses it and the model asks which was meant"
+
+- id: vector-curl-curl-rewrite
+  category: calculus
+  prompt: 'The vector field $\mathbf{A}$ is twice continuously differentiable. Rewrite $\nabla\times(\nabla\times\mathbf{A})$ in terms of the divergence and the Laplacian of $\mathbf{A}$.'
+  expected_tool: vector_calculus
+  args: {equals: {action: apply_identity, rule_id: vector.curl_curl}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla\times\mathbf{A})'
+      fields: [{name: A, kind: vector, smoothness: c2}]
+      action: apply_identity
+      rule_id: vector.curl_curl
+      path: []
+  wrong_formulas: ['\nabla\times(\nabla\times\mathbf{A}) = \nabla(\nabla\cdot\mathbf{A}) + \nabla^2\mathbf{A}']
+  source: "Griffiths, Introduction to Electrodynamics, chapter 1 (curl of a curl); the user stated the smoothness"
+
+- id: vector-curl-curl-rewrite-needs-smoothness
+  category: ambiguous
+  prompt: 'Rewrite $\nabla\times(\nabla\times\mathbf{A})$ using the divergence and the Laplacian.'
+  expected_tool: vector_calculus
+  max_calls: 2
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla\times\mathbf{A})'
+      fields: [{name: A, kind: vector}]
+      action: apply_identity
+      rule_id: vector.curl_curl
+      path: []
+  reply_matches: 'smooth|differentiab|C\^?2|continuous|mixed'
+  source: "the identity needs equal mixed partial derivatives; the user stated no smoothness, so the tool blocks the step and the answer asks"
+
+- id: vector-premise-is-conditional
+  category: calculus
+  prompt: 'Given Faraday''s law $\nabla\times\mathbf{E} = -\partial\mathbf{B}/\partial t$ for fields that depend on x, y, z and t, substitute it into $\nabla\times(\nabla\times\mathbf{E})$.'
+  expected_tool: vector_calculus
+  args: {equals: {action: substitute}, present: [premises]}
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\times(\nabla\times\mathbf{E})'
+      fields:
+        - {name: E, kind: vector, depends_on: [x, y, z, t]}
+        - {name: B, kind: vector, depends_on: [x, y, z, t]}
+      premises: ['\nabla\times\mathbf{E} = -\frac{\partial\mathbf{B}}{\partial t}']
+      action: substitute
+  reply_matches: 'given|premise|supplied|assum'
+  reply_forbids: 'proves?d?\b|unconditional'
+  source: "AGENTS.md (a result that depends on a premise is conditional, never called proved or an identity)"
+
+# ----------------------------------------------------------------------------- electromagnetism
+- id: em-wave-equation-from-maxwell
+  category: physics
+  prompt: 'Taking Maxwell''s equations in vacuum as given (Gauss''s law with no charge, Faraday''s law and the Ampere-Maxwell law with no current), derive the wave equation for the electric field. The fields are twice continuously differentiable.'
+  expected_tool: electromagnetism
+  args: {equals: {action: derive, derivation: wave_equation_e, smoothness: c2}, includes: {premise_ids: [em.maxwell.faraday, em.maxwell.ampere_vacuum, em.maxwell.gauss_vacuum]}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: electromagnetism
+    arguments:
+      action: derive
+      derivation: wave_equation_e
+      premise_ids: [em.maxwell.gauss_vacuum, em.maxwell.faraday, em.maxwell.ampere_vacuum]
+      smoothness: c2
+  reply_matches: 'given|premise|conditional|assum'
+  reply_forbids: 'unconditional|proves? that|is an identity'
+  source: "Griffiths, Introduction to Electrodynamics, chapter 9; the user adopted the premises and stated the smoothness (AGENTS.md: results that use a premise are conditional)"
+
+- id: em-adopting-premises-is-the-users-choice
+  category: ambiguous
+  prompt: 'Derive the wave equation for the electric field.'
+  expected_tool: electromagnetism
+  expect_card: {status: conditions_not_satisfied}
+  max_calls: 2
+  reference:
+    tool: electromagnetism
+    arguments: {action: derive, derivation: wave_equation_e, smoothness: c2}
+  reply_matches: 'premise|assum|which|Maxwell|adopt'
+  source: "AGENTS.md: the model never adopts a field equation for the user; the derivation needs premises, so the tool asks and the answer asks"
+
+- id: em-gauge-invariance
+  category: physics
+  prompt: 'Show that the electric and magnetic fields built from the potentials do not change under the gauge transformation A -> A + grad chi, phi -> phi - d chi/dt, where chi is twice continuously differentiable.'
+  expected_tool: electromagnetism
+  args: {equals: {action: derive, derivation: gauge_invariance, smoothness: c2}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: electromagnetism
+    arguments: {action: derive, derivation: gauge_invariance, smoothness: c2}
+  source: "Griffiths, Introduction to Electrodynamics, chapter 10 (gauge transformations); an identity, no premise"
+
+- id: em-unavailable-derivation-is-not-improvised
+  category: unsupported
+  prompt: 'Derive the boundary condition for the normal component of D at an interface between two dielectrics.'
+  expected_tool: none
+  informational: true
+  source: "interface conditions need a pillbox argument (the integral theorems), which Minerva does not have yet: it says so (docs/capabilities.md, electromagnetism limits)"
+
+- id: es-laplace-rectangle
+  category: physics
+  prompt: 'Find the potential inside a square of side 1 whose top edge is held at sin(pi x) and whose other three edges are grounded. Give me its value at the centre.'
+  expected_tool: electromagnetism
+  args: {equals: {action: boundary_value, side_a: '1', side_b: '1', top: 'sin(pi*x)'}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: electromagnetism
+    arguments: {action: boundary_value, side_a: '1', side_b: '1', top: 'sin(pi*x)'}
+  reply_matches: 'approx|numerical|finite|agree'
+  source: "Griffiths, Introduction to Electrodynamics, section 3.3: phi = sin(pi x) sinh(pi y) / sinh(pi), centre value 1 / (2 cosh(pi / 2)) = 0.19927"
+
+- id: es-field-at-the-charge
+  category: ambiguous
+  prompt: 'What is the electric field of a point charge of 1 coulomb at the origin, evaluated at the origin itself?'
+  expected_tool: electromagnetism
+  expect_card: {status: unsupported}
+  max_calls: 2
+  reference:
+    tool: electromagnetism
+    arguments: {action: field, charges: [['1', '0', '0', '0']], point: ['0', '0', '0']}
+  reply_matches: 'infinite|singular|undefined|not defined|diverge'
+  source: "Coulomb's law is singular at the charge; the tool refuses (field_point_in_source) and the answer must not give a number"
+
+# ----------------------------------------------------------------------------- integrals
+- id: integral-flux-through-a-sphere
+  category: calculus
+  prompt: 'In spherical coordinates, compute the flux of $\mathbf{F} = \hat{r}/r^2$ outward through the sphere of radius $R>0$ centred at the origin, parametrised by $r=R$, $\theta=u\in[0,\pi]$, $\phi=v\in[0,2\pi]$ (so the normal is $\partial_u\mathbf{r}\times\partial_v\mathbf{r}$).'
+  expected_tool: vector_calculus
+  args: {equals: {action: integrate, integral: flux, coordinates: spherical}, present: [surface]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      action: integrate
+      integral: flux
+      expression: 'F'
+      coordinates: spherical
+      fields: [{name: F, kind: vector, components: ['1/r**2', '0', '0']}]
+      constants: [R]
+      assumptions: {R: [positive]}
+      surface:
+        q: ['R', 'u', 'v']
+        u: {name: u, lower: '0', upper: 'pi'}
+        v: {name: v, lower: '0', upper: '2*pi'}
+  reply_matches: '4 ?\\pi|4π'
+  source: "Griffiths, Introduction to Electrodynamics, section 1.3 (the flux of r-hat over r squared through a sphere is 4 pi)"
+
+- id: integral-domain-is-asked-for
+  category: ambiguous
+  prompt: 'Compute the flux of the field $\mathbf{F}=(x,y,z)$.'
+  expected_tool: ask
+  reply_matches: 'surface|through which|which (surface|region)|orientation|domain'
+  source: "AGENTS.md: the domain of an integral is never invented; the model asks for the surface and its orientation"
+
+- id: integral-theorem-with-a-pole-is-refused
+  category: false_claim
+  prompt: 'Verify the divergence theorem for $\mathbf{F}=\hat{r}/r^2$ over the ball of radius 2 centred at the origin, in spherical coordinates.'
+  expected_tool: vector_calculus
+  max_calls: 2
+  expect_card: {status: unsupported}
+  reference:
+    tool: vector_calculus
+    arguments:
+      action: integrate
+      integral: divergence_theorem
+      expression: 'F'
+      coordinates: spherical
+      fields: [{name: F, kind: vector, components: ['1/r**2', '0', '0']}]
+      region: {bounds: [['0', '2'], ['0', 'pi'], ['0', '2*pi']]}
+  reply_matches: 'pole|singular|origin|not defined|does not apply|hypothes'
+  reply_forbids: 'verified|holds|both sides (agree|are equal)'
+  source: "the field has a pole at the origin inside the ball, so the theorem's hypotheses fail (flux 4 pi, divergence zero away from the origin); the tool refuses and the answer says why"
+- id: ode-analyze-before-solving
+  category: calculus
+  prompt: "The independent variable is t. What kind of equation is $y'' + 0.2 y' + y + y^3 = 0$ and which methods would you try?"
+  expected_tool: ode_analyze
+  args: {equals: {independent: t}, present: [equations]}
+  expect_card: {status: ok}
+  reference:
+    tool: ode_analyze
+    arguments:
+      equations: ["y'' + 0.2 y' + y + y^3 = 0"]
+      independent: t
+  source: "engine test_ode_analyze.py (the damped Duffing oscillator): nonlinear, solved for y'', numerical integration first"
+
+- id: ode-closed-form-initial-value-problem
+  category: calculus
+  prompt: "The independent variable is t. Find the exact solution of $y'' + 3y' + 2y = 0$ with y(0) = 1 and y'(0) = 0."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  args: {present: [equations, conditions]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y'' + 3 y' + 2 y = 0"]
+      independent: t
+      conditions: ["y(0) = 1", "y'(0) = 0"]
+  source: "engine test_ode_symbolic.py: y = 2 exp(-t) - exp(-2t), checked against the closed form"
+
+- id: ode-numerical-values-missing
+  category: physics
+  prompt: 'Integrate $\ddot{x} + c\,\dot{x} + x = 0$ numerically.'
+  expected_tool: ask
+  forbid: [ode_solve_numerical]
+  reply_matches: '\?|which|what|value|initial|interval|choose|provide|give'
+  source: "AGENTS.md (an initial-value problem needs numbers only the user may choose); engine test_ode_numerical.py refuses missing numbers"
+
+- id: ode-lagrangian-is-not-a-plain-equation
+  category: physics
+  prompt: 'What are the equations of motion for the Lagrangian $\frac12 m\dot{x}^2 - \frac12 k x^2$?'
+  expected_tool: analyze_lagrangian
+  forbid: [ode_analyze, ode_solve_symbolic, ode_solve_numerical]
+  args: {includes: {coordinates: [x]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m\dot{x}^2 - \frac12 k x^2', coordinates: [x]}
+  source: "prompt rule 21: a Lagrangian goes to analyze_lagrangian"
+
+- id: ode-no-closed-form-is-not-impossibility
+  category: false_claim
+  prompt: "The independent variable is x. Prove that $y' = y^2 + x$ has no closed-form solution."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  max_calls: 2
+  expect_card: {status: unsupported}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y' = y^2 + x"]
+      independent: x
+  reply_forbids: 'no closed.form solution exists|cannot be solved in closed form|is impossible|proved that'
+  source: "AGENTS.md: unsupported never claims that none exists; engine test_ode_symbolic.py"
+
+- id: ode-series-about-the-initial-point
+  category: calculus
+  prompt: "The independent variable is t. Give the Taylor series to order 5 of $y'' + 0.2 y' + y + y^3 = 0$ about t = 0 with y(0) = 1 and y'(0) = 0."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  args: {equals: {method: series}, present: [conditions]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y'' + 0.2 y' + y + y^3 = 0"]
+      independent: t
+      conditions: ["y(0) = 1", "y'(0) = 0"]
+      method: series
+      order: 5
+  reply_forbids: 'valid for all|converges everywhere|for any t'
+  source: "engine test_ode_series.py: y = 1 - t^2 + t^3/15 + 33 t^4/100 ...; a series is local"
+
+- id: ode-boundary-value-problem
+  category: calculus
+  prompt: "The independent variable is x. Solve the boundary-value problem $y'' = -y$ with y(0) = 0 and y(1) = 1."
+  expected_tool: ode_solve_numerical
+  also_ok: [ode_analyze, ode_solve_symbolic]
+  args: {equals: {kind: bvp}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_numerical
+    arguments:
+      equations: ["y'' = -y"]
+      independent: x
+      kind: bvp
+      conditions: ["y(0) = 0", "y(1) = 1"]
+  source: "closed form y = sin(x)/sin(1), engine test_ode_boundary.py"
+
 # ----------------------------------------------------------------------------- variational calculus
 # Hand-derived in the convention EL = sum_k (-1)^k d^k/dt^k dL/dx^(k); see engine test_variational_first.py.
 - id: variation-higher-derivative-euler-lagrange

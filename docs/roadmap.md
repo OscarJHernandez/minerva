@@ -106,6 +106,30 @@ analysis without a model; unit conversion and prefixes; searching three or more 
   where possible (explicit index ranges), otherwise labelled unverified.
 - Multi-term identities (Bianchi, Schouten) and gamma-matrix algebra via Cadabra.
 
+## Vector calculus and electromagnetism
+
+Done: vector calculus in Cartesian, cylindrical and spherical coordinates (`vector_calculus`; chat and
+API): gradient, divergence, curl, Laplacians, products, directional and partial derivatives, Jacobians and
+conversion, with an independent Cartesian finite-difference check and smoothness never assumed
+(`docs/vector-benchmark.md`). Next, in order:
+
+- Done: vector identities as handbook data and controlled derivations (apply an identity, substitute a premise,
+  apply an operator to both sides, derive toward a target).
+- Done: Maxwell's equations in SI as premises the user adopts, potentials and gauges, the wave equations,
+  continuity, Poynting, gauge invariance, Poisson and Laplace, labelled conditional on the premises they use.
+  Next there: wave equations for the potentials (Lorenz gauge), Maxwell's equations in matter, interface
+  conditions (needs the integral theorems).
+- Done: line, surface and volume integrals and the gradient, divergence and Stokes theorems with explicit domains
+  (coordinate boxes and parametrised curves and surfaces). Next there: piecewise fields and surface charges, volumes
+  that are not boxes, and interface conditions by a pillbox argument.
+- Done: analytical and numerical electrostatics with the user's numbers (point charges, densities over a box,
+  multipoles, Dirichlet problems on a rectangle, a check of a candidate solution), each as two methods that must
+  agree. Fourier and Laplace methods, Green's functions beyond the free-space kernel, FEM and FDTD stay out of scope.
+- Done: the electromagnetic field tensor in the geometry module (dA, divergence, invariant, Hodge dual). 
+- Done: a vector mode in the workbench (declared fields, one step at a time, premises the user ticks, results saved and
+  reopened). Not built: a part picker for paths and a saved chain of vector steps; a result can only be offered as the
+  expression of the next step.
+
 ## Differential geometry
 
 Done: coordinate-based geometry with SymPy (`geometry`: metric, Christoffel symbols, curvature, invariants,

@@ -1,0 +1,1125 @@
+{
+  "deterministic": {
+    "cases": {
+      "ambiguous-operator-scope": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "ambiguous-part": {
+        "correct": true,
+        "expected": "unchanged",
+        "group": "invalid",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unchanged"
+      },
+      "apply-curl-cross-cylindrical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "apply-curl-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "apply-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "apply-curl-to-faraday": {
+        "correct": true,
+        "expected": "ok",
+        "group": "derivations",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "apply-div-cross-spherical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "apply-reverse": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "apply-to-a-part": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-cross": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-directional": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-div-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cartesian-triple": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "convert-abstract": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "unsupported",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "convert-radial": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "convert-scalar": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cross-of-scalars": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "curl-curl-identity": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "curl-grad-no-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "cylindrical-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-div-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "cylindrical-vector-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "derive-one-identity": {
+        "correct": true,
+        "expected": "ok",
+        "group": "derivations",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "derive-respects-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "derive-wave-equation-lhs": {
+        "correct": true,
+        "expected": "ok",
+        "group": "derivations",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "derive-wave-equation-rhs": {
+        "correct": true,
+        "expected": "ok",
+        "group": "derivations",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "derive-without-premise": {
+        "correct": true,
+        "expected": "unchanged",
+        "group": "derivations",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unchanged"
+      },
+      "div-cross-identity": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "div-curl-no-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "div-of-scalar": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "em-continuity": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "em-continuity-needs-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "em-gauge-invariance": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "em-gauge-needs-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "em-laplace": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "em-missing-premise": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "em-poisson": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "em-poynting": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "em-premise-with-a-flipped-sign": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "em-wave-equation-b": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "em-wave-equation-e": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electromagnetism",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "es-check-harmonic": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "es-check-wrong-candidate": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "es-field-at-charge": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "es-field-dipole": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "es-field-inside-density": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "es-laplace-sine-edge": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "es-multipole-three-charges": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "es-poisson-nonzero-edge": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "es-poisson-unit-square": {
+        "correct": true,
+        "expected": "ok",
+        "group": "electrostatics",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "grad-of-vector": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "identity-without-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "int-abstract-field-refused": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "unsupported",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "int-divergence-theorem-ball": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-divergence-theorem-cartesian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-divergence-theorem-cylindrical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-flux-orientation": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-flux-point-charge": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-gauss-law-ball": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-gradient-theorem": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-line-circulation-spherical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-line-helix-length": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-line-work": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-missing-domain": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "int-point-charge-ball-refused": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "singular",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "int-pole-on-the-curve-refused": {
+        "correct": true,
+        "expected": "unsupported",
+        "group": "singular",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unsupported"
+      },
+      "int-stokes-surface": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-volume-ball": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-volume-cylinder": {
+        "correct": true,
+        "expected": "ok",
+        "group": "integrals",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "int-wrong-kind": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "jacobian-cylindrical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "jacobian-spherical": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 0,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "line-charge-field": {
+        "correct": true,
+        "expected": "ok",
+        "group": "singular",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "list-identities": {
+        "correct": true,
+        "expected": "ok",
+        "group": "identities",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "operator-depth": {
+        "correct": true,
+        "expected": "resource_limit",
+        "group": "unsupported",
+        "operator_depth": 5,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "resource_limit"
+      },
+      "operator-of-the-wrong-kind": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "partial-vector-phi": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "point-charge-field": {
+        "correct": true,
+        "expected": "ok",
+        "group": "singular",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "polar-axis-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "singular",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "position-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "position-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "premise-does-not-occur": {
+        "correct": true,
+        "expected": "unchanged",
+        "group": "invalid",
+        "operator_depth": 1,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "unchanged"
+      },
+      "scalar-plus-vector": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "several-premises-no-order": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 1,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "spherical-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-curl-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-curl-grad": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-div-curl": {
+        "correct": true,
+        "expected": "ok",
+        "group": "consistency",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-divergence": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-gradient": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 1,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "spherical-laplacian": {
+        "correct": true,
+        "expected": "ok",
+        "group": "valid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "ok"
+      },
+      "substitute-faraday": {
+        "correct": true,
+        "expected": "ok",
+        "group": "derivations",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "ok"
+      },
+      "time-swap-no-smoothness": {
+        "correct": true,
+        "expected": "conditions_not_satisfied",
+        "group": "conditional",
+        "operator_depth": 2,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "conditions_not_satisfied"
+      },
+      "two-vectors-side-by-side": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "undeclared-symbol": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "undeclared-vector": {
+        "correct": true,
+        "expected": "parse_error",
+        "group": "invalid",
+        "operator_depth": 0,
+        "points_agreed": 0,
+        "points_checked": 0,
+        "status": "parse_error"
+      },
+      "wrong-identity": {
+        "correct": true,
+        "expected": "not_verified",
+        "group": "invalid",
+        "operator_depth": 2,
+        "points_agreed": 6,
+        "points_checked": 6,
+        "status": "not_verified"
+      }
+    },
+    "coverage": {
+      "corpus": 106,
+      "correct": 106,
+      "refused_as_expected": 33,
+      "shown_results": 73
+    },
+    "groups": {
+      "conditional": {
+        "cases": 5,
+        "correct": 5
+      },
+      "consistency": {
+        "cases": 8,
+        "correct": 8
+      },
+      "derivations": {
+        "cases": 6,
+        "correct": 6
+      },
+      "electromagnetism": {
+        "cases": 11,
+        "correct": 11
+      },
+      "electrostatics": {
+        "cases": 9,
+        "correct": 9
+      },
+      "identities": {
+        "cases": 7,
+        "correct": 7
+      },
+      "integrals": {
+        "cases": 13,
+        "correct": 13
+      },
+      "invalid": {
+        "cases": 15,
+        "correct": 15
+      },
+      "singular": {
+        "cases": 5,
+        "correct": 5
+      },
+      "unsupported": {
+        "cases": 3,
+        "correct": 3
+      },
+      "valid": {
+        "cases": 24,
+        "correct": 24
+      }
+    }
+  },
+  "measurements": {
+    "median_ms": {
+      "ambiguous-operator-scope": 0.0,
+      "ambiguous-part": 1.4,
+      "apply-curl-cross-cylindrical": 356.2,
+      "apply-curl-curl": 153.4,
+      "apply-curl-grad": 23.1,
+      "apply-curl-to-faraday": 306.8,
+      "apply-div-cross-spherical": 143.7,
+      "apply-reverse": 150.3,
+      "apply-to-a-part": 173.6,
+      "cartesian-cross": 5.2,
+      "cartesian-curl": 8.0,
+      "cartesian-curl-grad": 20.8,
+      "cartesian-directional": 3.1,
+      "cartesian-div-curl": 75.5,
+      "cartesian-divergence": 8.0,
+      "cartesian-gradient": 3.8,
+      "cartesian-laplacian": 2.8,
+      "cartesian-triple": 6.7,
+      "convert-abstract": 0.0,
+      "convert-radial": 22.2,
+      "convert-scalar": 2.3,
+      "cross-of-scalars": 0.0,
+      "curl-curl-identity": 365.6,
+      "curl-grad-no-smoothness": 4.3,
+      "cylindrical-curl": 15.9,
+      "cylindrical-curl-grad": 23.4,
+      "cylindrical-div-curl": 90.7,
+      "cylindrical-divergence": 16.6,
+      "cylindrical-gradient": 14.9,
+      "cylindrical-laplacian": 16.5,
+      "cylindrical-vector-laplacian": 72.6,
+      "derive-one-identity": 149.7,
+      "derive-respects-smoothness": 1.4,
+      "derive-wave-equation-lhs": 256.8,
+      "derive-wave-equation-rhs": 249.1,
+      "derive-without-premise": 1.8,
+      "div-cross-identity": 105.8,
+      "div-curl-no-smoothness": 38.0,
+      "div-of-scalar": 0.0,
+      "em-continuity": 725.1,
+      "em-continuity-needs-smoothness": 2.8,
+      "em-gauge-invariance": 522.2,
+      "em-gauge-needs-smoothness": 1.8,
+      "em-laplace": 122.8,
+      "em-missing-premise": 0.2,
+      "em-poisson": 187.9,
+      "em-poynting": 903.8,
+      "em-premise-with-a-flipped-sign": 0.2,
+      "em-wave-equation-b": 558.0,
+      "em-wave-equation-e": 550.2,
+      "es-check-harmonic": 1.1,
+      "es-check-wrong-candidate": 0.5,
+      "es-field-at-charge": 0.1,
+      "es-field-dipole": 91.2,
+      "es-field-inside-density": 0.1,
+      "es-laplace-sine-edge": 113.1,
+      "es-multipole-three-charges": 0.4,
+      "es-poisson-nonzero-edge": 0.1,
+      "es-poisson-unit-square": 316.4,
+      "grad-of-vector": 0.0,
+      "identity-without-smoothness": 1.2,
+      "int-abstract-field-refused": 0.0,
+      "int-divergence-theorem-ball": 5898.8,
+      "int-divergence-theorem-cartesian": 785.8,
+      "int-divergence-theorem-cylindrical": 1649.2,
+      "int-flux-orientation": 105.1,
+      "int-flux-point-charge": 178.7,
+      "int-gauss-law-ball": 108.5,
+      "int-gradient-theorem": 13.2,
+      "int-line-circulation-spherical": 10.3,
+      "int-line-helix-length": 19.4,
+      "int-line-work": 4.3,
+      "int-missing-domain": 0.4,
+      "int-point-charge-ball-refused": 170.0,
+      "int-pole-on-the-curve-refused": 1.8,
+      "int-stokes-surface": 87.4,
+      "int-volume-ball": 751.0,
+      "int-volume-cylinder": 247.2,
+      "int-wrong-kind": 0.0,
+      "jacobian-cylindrical": 6.4,
+      "jacobian-spherical": 25.0,
+      "line-charge-field": 6.4,
+      "list-identities": 1.4,
+      "operator-depth": 0.1,
+      "operator-of-the-wrong-kind": 0.0,
+      "partial-vector-phi": 11.6,
+      "point-charge-field": 2.8,
+      "polar-axis-gradient": 25.7,
+      "position-curl": 1.8,
+      "position-divergence": 1.2,
+      "premise-does-not-occur": 0.1,
+      "scalar-plus-vector": 0.0,
+      "several-premises-no-order": 0.2,
+      "spherical-curl": 32.6,
+      "spherical-curl-curl": 148.3,
+      "spherical-curl-grad": 27.5,
+      "spherical-div-curl": 111.8,
+      "spherical-divergence": 40.6,
+      "spherical-gradient": 25.1,
+      "spherical-laplacian": 21.4,
+      "substitute-faraday": 93.1,
+      "time-swap-no-smoothness": 6.9,
+      "two-vectors-side-by-side": 0.0,
+      "undeclared-symbol": 0.0,
+      "undeclared-vector": 0.0,
+      "wrong-identity": 162.1
+    },
+    "python": "3.13.16",
+    "repeats": 3,
+    "slowest_ms": 5898.8
+  }
+}

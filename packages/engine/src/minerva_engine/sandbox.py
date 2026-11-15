@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import multiprocessing
+import os
 import resource
 import threading
 from dataclasses import dataclass
@@ -26,6 +27,16 @@ from typing import Any
 from .models import Limits
 
 _PRELOAD = ["sympy", "minerva_engine.ops"]
+
+# NumPy's BLAS starts one worker thread per core and allocates a buffer for each. Under RLIMIT_AS that
+# allocation can fail ("OpenBLAS error: Memory allocation still failed") on machines with many cores, and
+# every ODE run then dies as `resource_limit`. The operations here are small: one thread is enough.
+_SINGLE_THREAD = (
+    "OPENBLAS_NUM_THREADS",
+    "OMP_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+)
 _ctx_lock = threading.Lock()
 _ctx: Any = None
 
@@ -34,6 +45,8 @@ def _context() -> Any:
     global _ctx
     with _ctx_lock:
         if _ctx is None:
+            for name in _SINGLE_THREAD:  # inherited by the forkserver and its children
+                os.environ.setdefault(name, "1")
             ctx = multiprocessing.get_context("forkserver")
             ctx.set_forkserver_preload(_PRELOAD)
             _ctx = ctx

@@ -21,7 +21,7 @@ Status: **●** has entries, **○** planned.
 | ● | Special functions | Gamma now; Beta, Bessel, Legendre, hypergeometric, elliptic, zeta |
 | ○ | Integral transforms | Fourier, Laplace, Mellin tables with convergence conditions |
 | ○ | Linear algebra | Determinant, trace, eigenvalue identities, decompositions |
-| ○ | Vector calculus | Div/grad/curl identities, integral theorems |
+| ● | Vector calculus | Product rules, second derivatives, time and space derivatives and the algebra of the products: 21 identities checked by the vector engine in three coordinate systems (each says if it needs C2 fields); Levi-Civita contractions (stated); later: integral theorems |
 | ○ | Differential equations | Standard forms and solution families |
 | ○ | Probability and statistics | Distributions, moments, generating functions |
 | ○ | Group theory | Lie algebra relations, representation tables |
@@ -33,7 +33,7 @@ Status: **●** has entries, **○** planned.
 | | Chapter | Planned content |
 | --- | --- | --- |
 | ● | Classical mechanics | Dynamics, oscillations; later: Lagrangian/Hamiltonian formalism, rigid bodies |
-| ● | Electromagnetism | Force laws; later: Maxwell's equations (SI and Gaussian), potentials, radiation |
+| ● | Electromagnetism | Force laws; Maxwell's equations in SI (field equations to adopt as premises, units-checked), potentials, gauges, continuity, energy and the Poynting vector, constitutive relations, statics, boundary conditions (stated); later: Gaussian units, radiation |
 | ● | Thermodynamics and statistical mechanics | Gas laws, entropy, radiation; canonical-ensemble definitions and relations, occupation numbers, Stirling; later: grand canonical relations, Maxwell relations, transfer matrices |
 | ● | Quantum mechanics | Fundamental relations; later: angular momentum algebra, perturbation theory, hydrogen atom |
 | ● | Special and general relativity | Kinematics, energy-momentum; field equations (stated); later: metrics, geodesics |

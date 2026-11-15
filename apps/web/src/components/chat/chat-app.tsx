@@ -8,6 +8,7 @@ import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
+import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import type { StatAnswers, StatToolArgs } from "@/lib/statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 import type { VariationRequest } from "@/lib/variation-types";
@@ -73,6 +74,9 @@ const TOOL_LABEL: Record<string, string> = {
   perturbation_solve: "Solving by perturbation theory and checking the residual",
   creative_telescoping:
     "Searching for a telescoping relation, proving it and checking the boundary terms",
+  ode_analyze: "Reading the differential equation and classifying it",
+  ode_solve_symbolic: "Looking for a closed form and substituting it back",
+  ode_solve_numerical: "Integrating and checking against an independent method",
 };
 
 type PendingItem = { kind: "text"; text: string } | { kind: "card"; card: Card };
@@ -328,6 +332,46 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** An analysis card's forms: a closed form or a numerical solution with the user's own numbers. */
+  const runOde = useMemo(
+    () => ({
+      symbolic: async (request: OdeInput | OdeSolveInput) => {
+        if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        try {
+          const message = await chatApi.odeSolveSymbolic(activeId, request);
+          setMessages((m) => [...m, message]);
+          await refreshList();
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) router.push("/login");
+          throw e;
+        }
+      },
+      qualitative: async (request: OdeAnalyzeInput) => {
+        if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        try {
+          const message = await chatApi.odeQualitative(activeId, request);
+          setMessages((m) => [...m, message]);
+          await refreshList();
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) router.push("/login");
+          throw e;
+        }
+      },
+      numeric: async (request: OdeNumericInput) => {
+        if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        try {
+          const message = await chatApi.odeSolveNumerical(activeId, request);
+          setMessages((m) => [...m, message]);
+          await refreshList();
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) router.push("/login");
+          throw e;
+        }
+      },
+    }),
+    [activeId, refreshList, router],
+  );
+
   /** The variation card's form: the user's own numbers, run without the model. */
   const runVariation = useCallback(
     async (request: VariationRequest) => {
@@ -377,6 +421,7 @@ export function ChatApp() {
         perturb: runPerturbation,
         geometry: runGeometry,
         distribution: runDistribution,
+        ode: runOde,
         variation: runVariation,
         statmech: runStatMech,
       }}

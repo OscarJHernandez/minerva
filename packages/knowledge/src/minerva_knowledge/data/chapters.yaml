@@ -77,7 +77,17 @@
     - {id: riemann, title: Riemann tensor symmetries}
 - {id: math.transforms, book: mathematics, title: Integral transforms, planned: true}
 - {id: math.linear_algebra, book: mathematics, title: Linear algebra, planned: true}
-- {id: math.vector_calculus, book: mathematics, title: Vector calculus, planned: true}
+- id: math.vector_calculus
+  book: mathematics
+  title: Vector calculus
+  summary: Identities of grad, div, curl and the Laplacian, checked by the vector engine in three coordinate systems.
+  sections:
+    - {id: second_order, title: Second derivatives}
+    - {id: products, title: Product rules}
+    - {id: linearity, title: Linearity}
+    - {id: time_derivatives, title: Time and space derivatives}
+    - {id: algebra, title: Algebra of the products}
+    - {id: index_notation, title: Levi-Civita and Kronecker delta}
 - {id: math.differential_equations, book: mathematics, title: Differential equations, planned: true}
 - {id: math.probability, book: mathematics, title: Probability and statistics, planned: true}
 - {id: math.group_theory, book: mathematics, title: Group theory, planned: true}
@@ -106,6 +116,14 @@
   title: Electromagnetism
   sections:
     - {id: forces, title: Forces}
+    - {id: maxwell, title: Maxwell's equations}
+    - {id: conservation, title: Charge, energy and the Poynting vector}
+    - {id: potentials, title: Potentials}
+    - {id: gauges, title: Gauges}
+    - {id: waves, title: Electromagnetic waves}
+    - {id: constitutive, title: Constitutive relations}
+    - {id: statics, title: Electrostatics}
+    - {id: boundary, title: Boundary conditions}
 - id: physics.thermodynamics
   book: physics
   title: Thermodynamics and statistical mechanics

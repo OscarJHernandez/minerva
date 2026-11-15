@@ -1,0 +1,670 @@
+# Vector identities. Each is checked by the engine's vector calculus: the difference of the two sides is
+# evaluated (exact components and an independent Cartesian finite-difference reading) in Cartesian,
+# cylindrical and spherical coordinates for abstract fields, which must come out identically zero.
+# `requires: [c2]` is a fact about the identity (equal mixed partial derivatives), not an assumption:
+# Minerva applies such an identity only to fields the user declared twice continuously differentiable.
+# Left sides are written so that they can be matched on an expression (text syntax, typed variables:
+# f and g are scalar fields, A, B and C are vector fields).
+
+# ---------------------------------------------------------------------------- second derivatives
+- id: vector.curl_grad
+  title: Curl of a gradient
+  kind: identity
+  chapter: math.vector_calculus
+  section: second_order
+  verification: symbolic
+  statement_latex: '\nabla\times(\nabla f) = \mathbf{0}'
+  validity: "f twice continuously differentiable (equal mixed partial derivatives)."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "curl(grad(f))",
+      rhs: "0",
+      fields: { f: scalar },
+      requires: [c2],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, second derivatives",
+    }
+  applies_to: ["vector:curl", "vector:grad"]
+  keywords: [curl, gradient, irrotational, second derivative]
+
+- id: vector.div_curl
+  title: Divergence of a curl
+  kind: identity
+  chapter: math.vector_calculus
+  section: second_order
+  verification: symbolic
+  statement_latex: '\nabla\cdot(\nabla\times\mathbf{A}) = 0'
+  validity: "A twice continuously differentiable (equal mixed partial derivatives)."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "div(curl(A))",
+      rhs: "0",
+      fields: { A: vector },
+      requires: [c2],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, second derivatives",
+    }
+  applies_to: ["vector:div", "vector:curl"]
+  keywords: [divergence, curl, solenoidal, second derivative]
+
+- id: vector.curl_curl
+  title: Curl of a curl
+  kind: identity
+  chapter: math.vector_calculus
+  section: second_order
+  verification: symbolic
+  statement_latex: '\nabla\times(\nabla\times\mathbf{A}) = \nabla(\nabla\cdot\mathbf{A}) - \nabla^{2}\mathbf{A}'
+  validity: "A twice continuously differentiable; the vector Laplacian is taken on the Cartesian components."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "curl(curl(A))",
+      rhs: "grad(div(A)) - lap(A)",
+      fields: { A: vector },
+      requires: [c2],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, second derivatives",
+    }
+  applies_to: ["vector:curl", "vector:grad", "vector:div", "vector:lap"]
+  keywords: [curl, curl of a curl, laplacian, wave equation, vector laplacian]
+
+- id: vector.laplacian_scalar
+  title: Laplacian of a scalar field
+  kind: identity
+  chapter: math.vector_calculus
+  section: second_order
+  verification: symbolic
+  statement_latex: '\nabla^{2} f = \nabla\cdot(\nabla f)'
+  validity: "f twice differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "lap(f)",
+      rhs: "div(grad(f))",
+      fields: { f: scalar },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, second derivatives",
+    }
+  applies_to: ["vector:lap", "vector:div", "vector:grad"]
+  keywords: [laplacian, divergence, gradient]
+
+# ---------------------------------------------------------------------------- product rules
+- id: vector.grad_product
+  title: Gradient of a product
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla(fg) = f\,\nabla g + g\,\nabla f'
+  validity: "f and g differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "grad(f*g)",
+      rhs: "f*grad(g) + g*grad(f)",
+      fields: { f: scalar, g: scalar },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to: ["vector:grad"]
+  keywords: [gradient, product rule]
+
+- id: vector.div_scalar_vector
+  title: Divergence of a scalar times a vector
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla\cdot(f\mathbf{A}) = \nabla f\cdot\mathbf{A} + f\,\nabla\cdot\mathbf{A}'
+  validity: "f and A differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "div(f*A)",
+      rhs: "dot(grad(f), A) + f*div(A)",
+      fields: { f: scalar, A: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to: ["vector:div", "vector:grad"]
+  keywords: [divergence, product rule]
+
+- id: vector.curl_scalar_vector
+  title: Curl of a scalar times a vector
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla\times(f\mathbf{A}) = \nabla f\times\mathbf{A} + f\,\nabla\times\mathbf{A}'
+  validity: "f and A differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "curl(f*A)",
+      rhs: "cross(grad(f), A) + f*curl(A)",
+      fields: { f: scalar, A: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to: ["vector:curl", "vector:grad", "vector:cross"]
+  keywords: [curl, product rule]
+
+- id: vector.div_cross
+  title: Divergence of a cross product
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla\cdot(\mathbf{A}\times\mathbf{B}) = \mathbf{B}\cdot(\nabla\times\mathbf{A}) - \mathbf{A}\cdot(\nabla\times\mathbf{B})'
+  validity: "A and B differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "div(cross(A, B))",
+      rhs: "dot(B, curl(A)) - dot(A, curl(B))",
+      fields: { A: vector, B: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to: ["vector:div", "vector:cross", "vector:curl"]
+  keywords: [divergence, cross product, poynting]
+
+- id: vector.curl_cross
+  title: Curl of a cross product
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla\times(\mathbf{A}\times\mathbf{B}) = \mathbf{A}(\nabla\cdot\mathbf{B}) - \mathbf{B}(\nabla\cdot\mathbf{A}) + (\mathbf{B}\cdot\nabla)\mathbf{A} - (\mathbf{A}\cdot\nabla)\mathbf{B}'
+  validity: "A and B differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "curl(cross(A, B))",
+      rhs: "A*div(B) - B*div(A) + adv(B, A) - adv(A, B)",
+      fields: { A: vector, B: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to: ["vector:curl", "vector:cross", "vector:div", "vector:adv"]
+  keywords: [curl, cross product, advective derivative]
+
+- id: vector.grad_dot
+  title: Gradient of a dot product
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla(\mathbf{A}\cdot\mathbf{B}) = (\mathbf{A}\cdot\nabla)\mathbf{B} + (\mathbf{B}\cdot\nabla)\mathbf{A} + \mathbf{A}\times(\nabla\times\mathbf{B}) + \mathbf{B}\times(\nabla\times\mathbf{A})'
+  validity: "A and B differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "grad(dot(A, B))",
+      rhs: "adv(A, B) + adv(B, A) + cross(A, curl(B)) + cross(B, curl(A))",
+      fields: { A: vector, B: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to:
+    ["vector:grad", "vector:dot", "vector:adv", "vector:cross", "vector:curl"]
+  keywords: [gradient, dot product, advective derivative]
+
+- id: vector.grad_square
+  title: Gradient of the square of a vector
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla(\mathbf{A}\cdot\mathbf{A}) = 2(\mathbf{A}\cdot\nabla)\mathbf{A} + 2\,\mathbf{A}\times(\nabla\times\mathbf{A})'
+  validity: "A differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "grad(dot(A, A))",
+      rhs: "2*adv(A, A) + 2*cross(A, curl(A))",
+      fields: { A: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to:
+    ["vector:grad", "vector:dot", "vector:adv", "vector:cross", "vector:curl"]
+  keywords: [gradient, advective derivative, fluid]
+
+- id: vector.laplacian_product
+  title: Laplacian of a product
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '\nabla^{2}(fg) = f\,\nabla^{2}g + g\,\nabla^{2}f + 2\,\nabla f\cdot\nabla g'
+  validity: "f and g twice differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "lap(f*g)",
+      rhs: "f*lap(g) + g*lap(f) + 2*dot(grad(f), grad(g))",
+      fields: { f: scalar, g: scalar },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, product rules",
+    }
+  applies_to: ["vector:lap", "vector:grad", "vector:dot"]
+  keywords: [laplacian, product rule]
+
+- id: vector.adv_scalar
+  title: Directional derivative of a scalar field
+  kind: identity
+  chapter: math.vector_calculus
+  section: products
+  verification: symbolic
+  statement_latex: '(\mathbf{A}\cdot\nabla) f = \mathbf{A}\cdot\nabla f'
+  validity: "f differentiable."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "adv(A, f)",
+      rhs: "dot(A, grad(f))",
+      fields: { A: vector, f: scalar },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, gradient",
+    }
+  applies_to: ["vector:adv", "vector:grad", "vector:dot"]
+  keywords: [directional derivative, advective derivative, gradient]
+
+# ---------------------------------------------------------------------------- linearity
+- id: vector.grad_sum
+  title: Gradient of a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: linearity
+  verification: symbolic
+  statement_latex: '\nabla(f+g) = \nabla f + \nabla g'
+  check:
+    {
+      kind: vector_identity,
+      lhs: "grad(f + g)",
+      rhs: "grad(f) + grad(g)",
+      fields: { f: scalar, g: scalar },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, gradient",
+    }
+  applies_to: ["vector:grad"]
+  keywords: [gradient, linearity, sum]
+
+- id: vector.div_sum
+  title: Divergence of a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: linearity
+  verification: symbolic
+  statement_latex: '\nabla\cdot(\mathbf{A}+\mathbf{B}) = \nabla\cdot\mathbf{A} + \nabla\cdot\mathbf{B}'
+  check:
+    {
+      kind: vector_identity,
+      lhs: "div(A + B)",
+      rhs: "div(A) + div(B)",
+      fields: { A: vector, B: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, divergence",
+    }
+  applies_to: ["vector:div"]
+  keywords: [divergence, linearity, sum]
+
+- id: vector.curl_sum
+  title: Curl of a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: linearity
+  verification: symbolic
+  statement_latex: '\nabla\times(\mathbf{A}+\mathbf{B}) = \nabla\times\mathbf{A} + \nabla\times\mathbf{B}'
+  check:
+    {
+      kind: vector_identity,
+      lhs: "curl(A + B)",
+      rhs: "curl(A) + curl(B)",
+      fields: { A: vector, B: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, curl",
+    }
+  applies_to: ["vector:curl"]
+  keywords: [curl, linearity, sum]
+
+# ---------------------------------------------------------------------------- time and space derivatives
+- id: vector.time_curl
+  title: Time derivative commutes with the curl
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\nabla\times\mathbf{A}) = \nabla\times\frac{\partial\mathbf{A}}{\partial t}'
+  validity: "A twice continuously differentiable in space and time."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "dt(curl(A))",
+      rhs: "curl(dt(A))",
+      fields: { A: vector },
+      requires: [c2],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 7, Maxwell's equations (derivation of the wave equation)",
+    }
+  applies_to: ["vector:curl", "vector:pd"]
+  keywords: [time derivative, curl, mixed partial derivatives]
+
+- id: vector.time_div
+  title: Time derivative commutes with the divergence
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\nabla\cdot\mathbf{A}) = \nabla\cdot\frac{\partial\mathbf{A}}{\partial t}'
+  validity: "A twice continuously differentiable in space and time."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "dt(div(A))",
+      rhs: "div(dt(A))",
+      fields: { A: vector },
+      requires: [c2],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 7, continuity equation",
+    }
+  applies_to: ["vector:div", "vector:pd"]
+  keywords: [time derivative, divergence, mixed partial derivatives]
+
+- id: vector.time_grad
+  title: Time derivative commutes with the gradient
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\nabla f) = \nabla\frac{\partial f}{\partial t}'
+  validity: "f twice continuously differentiable in space and time."
+  check:
+    {
+      kind: vector_identity,
+      lhs: "dt(grad(f))",
+      rhs: "grad(dt(f))",
+      fields: { f: scalar },
+      requires: [c2],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 10, potentials",
+    }
+  applies_to: ["vector:grad", "vector:pd"]
+  keywords: [time derivative, gradient, mixed partial derivatives]
+
+# ---------------------------------------------------------------------------- algebra of the products
+- id: vector.triple_product_expansion
+  title: Vector triple product (BAC-CAB)
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\times(\mathbf{B}\times\mathbf{C}) = \mathbf{B}(\mathbf{A}\cdot\mathbf{C}) - \mathbf{C}(\mathbf{A}\cdot\mathbf{B})'
+  check:
+    {
+      kind: vector_identity,
+      lhs: "cross(A, cross(B, C))",
+      rhs: "B*dot(A, C) - C*dot(A, B)",
+      fields: { A: vector, B: vector, C: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, vector algebra",
+    }
+  applies_to: ["vector:cross"]
+  keywords: [triple product, cross product, bac-cab]
+
+- id: vector.scalar_triple_cyclic
+  title: Scalar triple product is cyclic
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\cdot(\mathbf{B}\times\mathbf{C}) = \mathbf{B}\cdot(\mathbf{C}\times\mathbf{A})'
+  check:
+    {
+      kind: vector_identity,
+      lhs: "dot(A, cross(B, C))",
+      rhs: "dot(B, cross(C, A))",
+      fields: { A: vector, B: vector, C: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, vector algebra",
+    }
+  applies_to: ["vector:dot", "vector:cross"]
+  keywords: [triple product, cyclic, volume]
+
+- id: vector.cross_anticommutes
+  title: The cross product is antisymmetric
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\times\mathbf{B} = -\,\mathbf{B}\times\mathbf{A}'
+  check:
+    {
+      kind: vector_identity,
+      lhs: "cross(A, B)",
+      rhs: "-cross(B, A)",
+      fields: { A: vector, B: vector },
+      requires: [],
+    }
+  reference:
+    {
+      source: "Griffiths, Introduction to Electrodynamics",
+      locator: "chapter 1, vector algebra",
+    }
+  applies_to: ["vector:cross"]
+  keywords: [cross product, antisymmetry]
+
+# ---------------------------------------------------------------------------- Levi-Civita and Kronecker delta (stated)
+- id: vector.epsilon_delta
+  title: Contraction of two Levi-Civita symbols on one index
+  kind: identity
+  chapter: math.vector_calculus
+  section: index_notation
+  verification: stated
+  statement_latex: '\varepsilon_{ijk}\varepsilon_{ilm} = \delta_{jl}\delta_{km} - \delta_{jm}\delta_{kl}'
+  validity: "Three dimensions; summation over the repeated index i."
+  reference:
+    {
+      source: "Arfken and Weber, Mathematical Methods for Physicists",
+      locator: "chapter 3, Levi-Civita symbol",
+    }
+  keywords: [levi-civita, kronecker delta, contraction, epsilon-delta]
+  notes: "Recorded as stated: the expression is index notation, which the vector engine does not read. The test suite checks it by enumerating the components."
+
+- id: vector.epsilon_two_contraction
+  title: Contraction of two Levi-Civita symbols on two indices
+  kind: identity
+  chapter: math.vector_calculus
+  section: index_notation
+  verification: stated
+  statement_latex: '\varepsilon_{ijk}\varepsilon_{ijl} = 2\,\delta_{kl}'
+  validity: "Three dimensions; summation over the repeated indices i and j."
+  reference:
+    {
+      source: "Arfken and Weber, Mathematical Methods for Physicists",
+      locator: "chapter 3, Levi-Civita symbol",
+    }
+  keywords: [levi-civita, kronecker delta, contraction]
+  notes: "Recorded as stated; checked by enumerating the components in the test suite."
+
+- id: vector.epsilon_full_contraction
+  title: Full contraction of two Levi-Civita symbols
+  kind: identity
+  chapter: math.vector_calculus
+  section: index_notation
+  verification: stated
+  statement_latex: '\varepsilon_{ijk}\varepsilon_{ijk} = 6'
+  validity: "Three dimensions; summation over all indices."
+  reference:
+    {
+      source: "Arfken and Weber, Mathematical Methods for Physicists",
+      locator: "chapter 3, Levi-Civita symbol",
+    }
+  keywords: [levi-civita, contraction, trace]
+  notes: "Recorded as stated; checked by enumerating the components in the test suite."
+
+# ---------------------------------------------------------------------------- used by the electromagnetic derivations
+- id: vector.time_sum_vector
+  title: Time derivative of a sum of vectors
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\mathbf{A}+\mathbf{B}) = \frac{\partial\mathbf{A}}{\partial t} + \frac{\partial\mathbf{B}}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(A + B)", rhs: "dt(A) + dt(B)", fields: {A: vector, B: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  applies_to: ["vector:pd"]
+  keywords: [time derivative, linearity, sum]
+
+- id: vector.time_sum_scalar
+  title: Time derivative of a sum of scalars
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(f+g) = \frac{\partial f}{\partial t} + \frac{\partial g}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(f + g)", rhs: "dt(f) + dt(g)", fields: {f: scalar, g: scalar}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  applies_to: ["vector:pd"]
+  keywords: [time derivative, linearity, sum]
+
+- id: vector.time_dot
+  title: Time derivative of a dot product
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(\mathbf{A}\cdot\mathbf{B}) = \frac{\partial\mathbf{A}}{\partial t}\cdot\mathbf{B} + \mathbf{A}\cdot\frac{\partial\mathbf{B}}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(dot(A, B))", rhs: "dot(dt(A), B) + dot(A, dt(B))", fields: {A: vector, B: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 8, Poynting's theorem"}
+  applies_to: ["vector:pd", "vector:dot"]
+  keywords: [time derivative, product rule, dot product, energy]
+
+- id: vector.time_scalar_vector
+  title: Time derivative of a scalar times a vector
+  kind: identity
+  chapter: math.vector_calculus
+  section: time_derivatives
+  verification: symbolic
+  statement_latex: '\frac{\partial}{\partial t}(f\mathbf{A}) = \frac{\partial f}{\partial t}\mathbf{A} + f\,\frac{\partial\mathbf{A}}{\partial t}'
+  check: {kind: vector_identity, lhs: "dt(f*A)", rhs: "dt(f)*A + f*dt(A)", fields: {f: scalar, A: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, Maxwell's equations"}
+  applies_to: ["vector:pd"]
+  keywords: [time derivative, product rule]
+
+- id: vector.dot_sum
+  title: The dot product distributes over a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\cdot(\mathbf{B}+\mathbf{C}) = \mathbf{A}\cdot\mathbf{B} + \mathbf{A}\cdot\mathbf{C}'
+  check: {kind: vector_identity, lhs: "dot(A, B + C)", rhs: "dot(A, B) + dot(A, C)", fields: {A: vector, B: vector, C: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, vector algebra"}
+  applies_to: ["vector:dot"]
+  keywords: [dot product, distributive, bilinear]
+
+- id: vector.cross_sum
+  title: The cross product distributes over a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: algebra
+  verification: symbolic
+  statement_latex: '\mathbf{A}\times(\mathbf{B}+\mathbf{C}) = \mathbf{A}\times\mathbf{B} + \mathbf{A}\times\mathbf{C}'
+  check: {kind: vector_identity, lhs: "cross(A, B + C)", rhs: "cross(A, B) + cross(A, C)", fields: {A: vector, B: vector, C: vector}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, vector algebra"}
+  applies_to: ["vector:cross"]
+  keywords: [cross product, distributive, bilinear]
+
+- id: vector.lap_sum_scalar
+  title: Laplacian of a sum
+  kind: identity
+  chapter: math.vector_calculus
+  section: linearity
+  verification: symbolic
+  statement_latex: '\nabla^{2}(f+g) = \nabla^{2}f + \nabla^{2}g'
+  check: {kind: vector_identity, lhs: "lap(f + g)", rhs: "lap(f) + lap(g)", fields: {f: scalar, g: scalar}, requires: []}
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, second derivatives"}
+  applies_to: ["vector:lap"]
+  keywords: [laplacian, linearity, sum]

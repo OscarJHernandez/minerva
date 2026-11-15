@@ -82,6 +82,7 @@ Unlicense, PSF-2.0, plus:
 | `psycopg`, `psycopg-binary` | LGPL-3.0-only | Used unmodified as a library. Compatible with an Apache-2.0 project; anyone distributing a build must permit replacing the library (satisfied by shipping it as an ordinary installed package). `psycopg-binary` bundles `libpq` (PostgreSQL licence). Alternative if this becomes a concern: `asyncpg` (Apache-2.0) with an async API |
 | `certifi`, `pathspec`, `hypothesis` | MPL-2.0 | File-level copyleft; used unmodified. `hypothesis` (property-based tests) is a development dependency only; it is not installed in the production images |
 | `sympy`, `mpmath` | BSD-3-Clause | Core computation |
+| `scipy`, `numpy` | BSD-3-Clause (numpy also lists 0BSD, MIT, Zlib, CC0-1.0 for parts) | Numerical ODE and boundary-value solvers (`minerva_engine.ode`). The scipy wheel bundles `libgfortran` and `libgcc` under GPL-3.0-or-later WITH the GCC Runtime Library Exception, which allows combining them with software under any licence; they are shared libraries inside the wheel, unmodified. Imported lazily, only inside the sandboxed ODE operations. Not used to check its own results: the independent checks are the hand-written integrator and mpmath |
 | `fastapi`, `pydantic`, `sqlalchemy`, `alembic`, `argon2-cffi`, `pyyaml`, `lark`, `uvicorn`, `structlog` | MIT / BSD / Apache-2.0 | |
 
 **JavaScript (production):** MIT (majority), Apache-2.0, ISC, BSD-3-Clause, 0BSD, plus:

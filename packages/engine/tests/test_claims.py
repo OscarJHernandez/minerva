@@ -343,3 +343,26 @@ def test_unsupported_matrix_notation_is_not_checked() -> None:
 def test_scalar_names_that_only_look_like_matrices_are_still_checked() -> None:
     [result] = check_claims([r"(a+b)^2 = a^2 + 2ab + b^2"], {}, [], L, matrices=["A", "B"])
     assert result.status == "holds"
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        r"\frac{dy}{dt} = \frac{y}{t}",  # the general parser cancels the d's: it would call this an identity
+        r"\frac{d^2 y}{dt^2} + y = 0",
+        r"\frac{d}{dx}\sin x = \cos x",
+        r"\frac{\mathrm{d}y}{\mathrm{d}x} = \frac{y}{x}",
+        r"\dfrac{dy}{dx} = y",
+        r"\frac{\partial f}{\partial x} = 1",
+    ],
+)
+def test_derivative_notation_is_a_relation_never_an_identity(formula: str) -> None:
+    [result] = check_claims([formula], {}, [], L)
+    assert result.status == "unverified" and result.kind == "relation"
+    assert "derivative" in result.detail
+
+
+def test_ordinary_fractions_with_a_d_are_still_checked() -> None:
+    for formula in (r"\frac{d}{2} = \frac{d}{2}", r"\frac{x+1}{d} = \frac{1+x}{d}"):
+        [result] = check_claims([formula], {}, [], L)
+        assert result.status == "holds"
