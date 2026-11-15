@@ -57,6 +57,7 @@ from .solve import SolveReport
 from .statmech.models import StatMechInput, StatMechResult
 from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
 from .variational import VariationInput, VariationReport
+from .vector import VectorDiagnostics, VectorInput, VectorResult
 
 # Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
 NONCOMMUTATIVE_OPERATIONS = frozenset({"substitute", "rewrite_at", "subterms"})
@@ -461,6 +462,42 @@ class Engine:
         result.duration_ms = ms
         return result
 
+    def vector_calculus(self, request: VectorInput) -> VectorResult:
+        """Gradient, divergence, curl, Laplacian and products of declared scalar and vector fields in
+        Cartesian, cylindrical or spherical coordinates; Jacobians and conversions between systems.
+
+        A result is shown only if the independent Cartesian finite-difference reading agrees; one
+        that needs mixed partial derivatives to commute is withheld unless the field was declared
+        smooth. The active trace id is the diagnostics' trace id unless the request carries one."""
+        active = current_trace_id()
+        if (
+            request.trace_id is None
+            and active is not None
+            and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active)
+        ):
+            request = request.model_copy(update={"trace_id": active})
+        outcome, ms = self._run("vector_calculus", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return VectorResult(
+                status=status,
+                action=request.action,
+                coordinates=request.coordinates,
+                message=message,
+                duration_ms=ms,
+                diagnostics=VectorDiagnostics(
+                    action=request.action,
+                    coordinates=request.coordinates,
+                    trace_id=request.trace_id,
+                    reason="resource_limit"
+                    if outcome.outcome is Outcome.TIMEOUT
+                    else "sandbox_failure",
+                ),
+            )
+        result = VectorResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
     def variation(self, request: VariationInput) -> VariationReport:
         """Functionals S[x] = ∫ L(t, x, x', ..., x^(n)) dt: variations, Euler-Lagrange equations,
         boundary terms, numerical action, stationary paths and second variations.
@@ -573,12 +610,14 @@ class Engine:
         assumptions: dict[str, list[str]] | None = None,
         relations: list[str] | None = None,
         matrices: list[str] | None = None,
+        vectors: list[str] | None = None,
     ) -> list[ClaimCheck]:
         """Numerically test equations written by the model. Failures leave claims unchecked.
 
         `relations` are formulas stated earlier in the conversation; definitions among them are used
         by substitution (see `claims.py`). `matrices` are names declared as matrices in the
-        conversation: equations that mention them are never tested by sampling numbers."""
+        conversation: equations that mention them are never tested by sampling numbers. `vectors`
+        are names declared as vector fields; vector notation is never sampled either way."""
         if not formulas:
             return []
         # A `noncommutative` declaration means "matrix" here; it must not reach the engine as an
@@ -591,6 +630,7 @@ class Engine:
                 "assumptions": clean,
                 "relations": relations or [],
                 "matrices": sorted({*(matrices or []), *noncommutative}),
+                "vectors": sorted(vectors or []),
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:

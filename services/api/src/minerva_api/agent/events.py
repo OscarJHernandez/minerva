@@ -42,6 +42,7 @@ class Card(BaseModel):
         "expectation",
         "statistics",
         "geometry",
+        "vector",
         "distribution",
         "statmech",
         "identities",

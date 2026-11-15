@@ -68,3 +68,25 @@
   constant: {value: "6.67430e-11", uncertainty: "1.5e-15", unit: "m^3/(kg s^2)"}
   reference: {source: "CODATA recommended values", locator: "Newtonian constant of gravitation"}
   keywords: [gravitation, newton, G]
+- id: const.epsilon_0
+  title: Vacuum electric permittivity
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: '\varepsilon_0 = 8.854\,187\,8188(14)\times10^{-12}\ \mathrm{F\,m^{-1}}'
+  constant: {value: "8.8541878188e-12", uncertainty: "1.4e-21", unit: "A^2 s^4/(kg m^3)"}
+  reference: {source: "CODATA recommended values (2022)", locator: "vacuum electric permittivity"}
+  keywords: [permittivity, vacuum, electric constant, epsilon0]
+  notes: "Measured, not exact, since the 2019 redefinition of the SI. mu0 epsilon0 c^2 = 1 holds within the uncertainties."
+- id: const.mu_0
+  title: Vacuum magnetic permeability
+  kind: constant
+  chapter: physics.constants
+  section: si
+  verification: stated
+  statement_latex: '\mu_0 = 1.256\,637\,061\,27(20)\times10^{-6}\ \mathrm{N\,A^{-2}}'
+  constant: {value: "1.25663706127e-6", uncertainty: "2.0e-16", unit: "kg m/(A^2 s^2)"}
+  reference: {source: "CODATA recommended values (2022)", locator: "vacuum magnetic permeability"}
+  keywords: [permeability, vacuum, magnetic constant, mu0]
+  notes: "Measured, not exact, since the 2019 redefinition of the SI. mu0 epsilon0 c^2 = 1 holds within the uncertainties."

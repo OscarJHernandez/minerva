@@ -8,6 +8,7 @@ import { IntegralPanel } from "../integral-panel";
 import { DistributionCard } from "./distribution-card";
 import { StatMechCard } from "./statmech-card";
 import { MatrixPanel } from "../matrix-panel";
+import { VectorPanel } from "../vector-panel";
 import { StatisticsPanel } from "../statistics-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { DiscoveryCard } from "./discovery-card";
@@ -60,6 +61,8 @@ export function CardView({ card }: { card: Card }) {
       );
     case "geometry":
       return <GeometryCard result={card.data.result} request={card.data.request} />;
+    case "vector":
+      return <VectorPanel result={card.data.result} request={card.data.request} />;
     case "distribution":
       return (
         <DistributionCard

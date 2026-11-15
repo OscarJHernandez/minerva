@@ -116,10 +116,56 @@ def _corrupt(result: Any) -> Any:
         first[0][0] = f"({first[0][0]}) + 1/1000"
         updates["result_entries"] = first
     quantities = getattr(result, "quantities", None)
-    if quantities:  # statistical mechanics: every returned formula is scaled by 1.001
+    if quantities and hasattr(quantities[0], "scalar_text"):
+        # geometry: the invariant of a field tensor
+        updates["quantities"] = [
+            q.model_copy(update={"scalar_text": f"({q.scalar_text})*1.001"}) if q.scalar_text else q
+            for q in quantities
+        ]
+    elif quantities:  # statistical mechanics: every returned formula is scaled by 1.001
         updates["quantities"] = [
             q.model_copy(update={"text": f"({q.text})*1.001"}) for q in quantities
         ]
+    # vector calculus: component formulas, derived equations, integral values and field samples are shifted
+    components = getattr(result, "components_text", None)
+    if components:
+        updates["components_text"] = [f"({c}) + 1/1000" for c in components]
+    equations = getattr(result, "equations_latex", None)
+    if equations:
+        updates["equations_latex"] = [f"{e} + \\frac{{1}}{{1000}}" for e in equations]
+    integral = getattr(result, "integral", None)
+    if integral is not None and integral.values:
+        updates["integral"] = integral.model_copy(
+            update={
+                "values": [
+                    v.model_copy(
+                        update={
+                            "text": f"({v.text})*1.001",
+                            "numeric": str(mp.mpmathify(v.numeric) * mp.mpf("1.001"))
+                            if v.numeric
+                            else v.numeric,
+                        }
+                    )
+                    for v in integral.values
+                ]
+            }
+        )
+    em = getattr(result, "em", None)
+    if em is not None and em.items:
+        updates["em"] = em.model_copy(
+            update={
+                "items": [
+                    i.model_copy(
+                        update={
+                            "numeric": str(mp.mpmathify(i.numeric) * mp.mpf("1.001"))
+                            if i.numeric
+                            else i.numeric
+                        }
+                    )
+                    for i in em.items
+                ]
+            }
+        )
     solution = getattr(result, "solution", None)
     if solution is not None and getattr(solution, "paths", None):  # variational: stationary actions
         paths = [
@@ -200,6 +246,11 @@ def _force_ok(result: Any) -> Any:
     updates: dict[str, Any] = {"status": Status.OK}
     if hasattr(result, "result_text"):
         updates["result_text"] = "0"
+    quantities = getattr(result, "quantities", None)
+    if quantities and hasattr(
+        quantities[0], "scalar_text"
+    ):  # geometry: each quantity carries a status
+        updates["quantities"] = [q.model_copy(update={"status": Status.OK}) for q in quantities]
     if hasattr(result, "conserved"):
         from minerva_engine.lagrangian import ConservedQuantity
 

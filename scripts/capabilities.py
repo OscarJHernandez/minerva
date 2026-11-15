@@ -29,13 +29,18 @@ from minerva_engine import (
     StatModelInput,
     SumsInput,
     VariationInput,
+    VectorInput,
 )
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
 from minerva_engine.ode import OdeAnalyzeInput, OdeNumericInput, OdeSolveInput
 from minerva_knowledge import KnowledgeBase
-from minerva_knowledge.identities import find_identities, simplify_expression
+from minerva_knowledge.identities import (
+    find_identities,
+    simplify_expression,
+    vector_identity_rules,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs" / "capabilities.yaml"
@@ -727,6 +732,230 @@ def run_geometry(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+def run_vector(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    action = spec.get("action", "evaluate")
+    rules = (
+        vector_identity_rules(kb) if action in ("identities", "apply_identity", "derive") else []
+    )
+    r = engine.vector_calculus(
+        VectorInput(
+            expression=spec.get("input", ""),
+            format=spec.get("format", "latex"),
+            coordinates=spec.get("coordinates", "cartesian"),
+            fields=spec.get("fields") or [],
+            constants=spec.get("constants") or [],
+            assumptions=spec.get("assumptions") or {},
+            action=action,
+            to=spec.get("to"),
+            rules=rules,
+            rule_id=spec.get("rule_id"),
+            path=spec.get("path"),
+            reverse=spec.get("reverse", False),
+            premises=[{"equation": p} for p in spec.get("premises") or []],
+            premise=spec.get("premise"),
+            operator=spec.get("operator"),
+            target=spec.get("target"),
+            integral=spec.get("integral"),
+            curve=spec.get("curve"),
+            surface=spec.get("surface"),
+            region=spec.get("region"),
+        )
+    )
+    inputs = [{"label": "Coordinates", "source": spec.get("coordinates", "cartesian")}]
+    if spec.get("integral"):
+        inputs.append({"label": "Integral", "source": spec["integral"].replace("_", " ")})
+    for key in ("curve", "surface", "region"):
+        if spec.get(key):
+            inputs.append({"label": key.capitalize(), "source": _geometry_text(spec[key])})
+    if spec.get("input"):
+        inputs.append({"label": "Expression", "source": spec["input"], "syntax": _syntax(spec)})
+    for i, p in enumerate(spec.get("premises") or []):
+        inputs.append(
+            {"label": f"Premise {i} (given by the user)", "source": p, "syntax": _syntax(spec)}
+        )
+    if spec.get("target"):
+        inputs.append({"label": "Target", "source": spec["target"], "syntax": _syntax(spec)})
+    for f in spec.get("fields") or []:
+        what = f["kind"] + (
+            " field, components " + ", ".join(f["components"])
+            if f.get("components")
+            else " field" + (f", {f['smoothness']}" if f.get("smoothness") else "")
+        )
+        inputs.append({"label": f"Field {f['name']}", "source": what})
+    return _vector_example(spec, r, inputs)
+
+
+def _geometry_text(geometry: dict[str, Any]) -> str:
+    parts = []
+    if "q" in geometry:
+        parts.append("coordinates (" + ", ".join(geometry["q"]) + ")")
+    for key in ("parameter", "u", "v"):
+        if key in geometry:
+            p = geometry[key]
+            parts.append(f"{p['name']} from {p['lower']} to {p['upper']}")
+    if "bounds" in geometry:
+        parts.append("bounds " + "; ".join(f"[{lo}, {hi}]" for lo, hi in geometry["bounds"]))
+    return ", ".join(parts)
+
+
+def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) -> dict[str, Any]:
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        if r.result_kind == "vector" and r.basis_latex and r.components_latex:
+            outputs += [
+                {"label": f"Component along {b}", "latex": c}
+                for b, c in zip(r.basis_latex, r.components_latex, strict=True)
+            ]
+        elif r.result_kind in ("scalar", "vector") and r.result_latex and r.integral is None:
+            outputs.append({"label": "Result", "latex": r.result_latex})
+        elif r.result_kind == "matrix" and r.result_latex and r.determinant_latex:
+            outputs.append({"label": "Jacobian", "latex": r.result_latex})
+            outputs.append({"label": "Determinant", "latex": r.determinant_latex})
+        for i, step in enumerate(r.steps, start=1):
+            kind = (
+                "conditional on " + "; ".join(step.given)
+                if step.evidence == "conditional"
+                else "identity"
+            )
+            outputs.append({"label": f"Step {i} ({kind}): {step.title}", "latex": step.after_latex})
+        if r.integral is not None:
+            for iv in r.integral.values:
+                shown = iv.latex if iv.latex is not None else (iv.numeric or "")
+                kind = "exact" if iv.exact else "numerical approximation"
+                outputs.append({"label": f"Integral ({kind})", "latex": f"{iv.label} = {shown}"})
+            notes.append("Orientation: " + r.integral.orientation + ".")
+            for h in r.integral.hypotheses:
+                notes.append(f"Hypothesis ({h.status}): {h.text}. {h.note}.")
+            if r.integral.theorem:
+                checks.append(
+                    f"{r.integral.theorem}: both sides computed separately, each an exact value checked "
+                    "against an independent quadrature of the input read in Cartesian coordinates"
+                    if r.integral.method == "symbolic"
+                    else f"{r.integral.theorem}: both sides computed separately and agree numerically"
+                )
+            else:
+                checks.append(
+                    "exact value checked against an independent quadrature"
+                    if r.integral.method == "symbolic"
+                    else "two quadrature rules agree; a numerical approximation, not an exact value"
+                )
+        if r.em is not None:
+            for item in r.em.items:
+                shown = item.latex if item.latex is not None else (item.numeric or "")
+                outputs.append({"label": item.label, "latex": shown})
+                if item.note:
+                    notes.append(f"{item.label}: {item.note}.")
+            checks.extend(r.em.checks)
+            if r.em.approximate:
+                notes.append("A numerical approximation agreeing with an independent method.")
+        for eq in r.equations_latex:
+            outputs.append({"label": "Derived equation", "latex": eq})
+        if r.model_check is not None and r.model_check.status == "passed":
+            checks.append(r.model_check.note)
+        for a in r.applicable[:6]:
+            outputs.append(
+                {
+                    "label": f"Match: {a.rule_id}" + (" (blocked)" if a.blocked else ""),
+                    "latex": rf"{a.part_latex} \to {a.result_latex}",
+                }
+            )
+        v = r.verification
+        if v is not None and not r.steps:
+            checks.append(
+                f"{v.points_agreed} of {v.points_checked} sample points agree with an independent "
+                "Cartesian finite-difference evaluation; no symbolic proof is claimed"
+            )
+        if r.evidence == "identity":
+            checks.append(
+                "each identity step: the whole expressions before and after differ by an exactly zero "
+                "component residual, and an independent Cartesian evaluation agrees"
+            )
+        if r.evidence == "conditional":
+            notes.append(
+                "Holds only given: "
+                + "; ".join(r.given)
+                + ". Supplied by the user and not checked: "
+                "not an identity."
+            )
+        if r.restrictions_latex:
+            notes.append(
+                "Valid only where "
+                + ", ".join(f"${x}$" for x in r.restrictions_latex)
+                + " (the coordinates break down there)."
+            )
+    for b in r.blocked:
+        notes.append(f"Not shown: needs {b.needs} smoothness of {', '.join(b.fields)}. {b.note}.")
+    if r.needs_premises:
+        notes.append("Needs these premises (the user adopts them): " + "; ".join(r.needs_premises))
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
+def run_electromagnetism(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    from minerva_engine.vector import FieldDecl, Premise
+    from minerva_engine.vector.em import TEMPLATES
+    from minerva_knowledge.identities import resolve_premise_ids
+
+    if "problem" in spec:
+        from minerva_engine.vector.models import EMProblem
+        from pydantic import TypeAdapter
+
+        problem = TypeAdapter(EMProblem).validate_python(spec["problem"])
+        r = engine.vector_calculus(
+            VectorInput(
+                expression="",
+                format="text",
+                action="em_compute",
+                em=problem,
+                constants=spec.get("constants") or [],
+            )
+        )
+        return _vector_example(
+            spec,
+            r,
+            [{"label": "Problem", "source": json.dumps(spec["problem"]), "syntax": "text"}],
+        )
+    template = TEMPLATES[spec["derivation"]]
+    chosen = resolve_premise_ids(kb, spec.get("premise_ids") or [])
+    premises = [Premise(equation=o.equation, label=o.title) for o in chosen]
+    premises += [Premise(equation=p) for p in spec.get("premises") or []]
+    smoothness = spec.get("smoothness")
+    r = engine.vector_calculus(
+        VectorInput(
+            expression="",
+            format="text",
+            fields=[
+                FieldDecl(
+                    name=n,
+                    kind=k,
+                    depends_on=["x", "y", "z", "t"],
+                    smoothness=smoothness if n in template.smooth else None,
+                )
+                for n, k in template.fields
+            ],
+            constants=list(template.constants),
+            premises=premises,
+            action="em_derive",
+            template=template.id,
+            rules=vector_identity_rules(kb),
+        )
+    )
+    inputs = [{"label": "Derivation", "source": template.title}]
+    inputs += [
+        {
+            "label": f"Premise (adopted by the user): {o.title}",
+            "source": o.equation,
+            "syntax": "text",
+        }
+        for o in chosen
+    ]
+    if smoothness:
+        inputs.append({"label": "Smoothness (declared by the user)", "source": smoothness})
+    return _vector_example(spec, r, inputs)
+
+
 _READING_WORDS = {
     "dirac_delta": "a Dirac delta",
     "heaviside": "a step function",
@@ -1380,6 +1609,8 @@ RUNNERS = {
     "expectation": run_expectation,
     "statistics": run_statistics,
     "geometry": run_geometry,
+    "vector": run_vector,
+    "electromagnetism": run_electromagnetism,
     "distribution": run_distribution,
     "statmech": run_statmech,
     "identities": run_identities,

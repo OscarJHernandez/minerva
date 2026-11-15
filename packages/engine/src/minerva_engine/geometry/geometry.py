@@ -8,6 +8,7 @@ problem sends the same data and gets the same conventions.
 
 from __future__ import annotations
 
+import itertools
 import resource
 import sys
 import time
@@ -19,8 +20,10 @@ import sympy as sp
 from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..latexprint import to_latex
 from ..models import Limits, Status
+from . import field
 from .compute import CONVENTIONS, Workspace
 from .domain import restrictions, signature
+from .field import FIELD_CONVENTIONS, FIELD_QUANTITIES, FieldVerifier
 from .models import (
     MAX_DIMENSION,
     TENSOR_QUANTITIES,
@@ -52,6 +55,10 @@ TITLES = {
     "covariant_derivative": "Covariant derivative of the tensor (derivative index first)",
     "raise_index": "Tensor with the chosen index raised",
     "lower_index": "Tensor with the chosen index lowered",
+    "exterior_derivative": "Exterior derivative (dA for a 1-form, dF for a 2-form)",
+    "antisymmetric_divergence": "Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu)",
+    "field_invariant": "Invariant F_(mu nu) F^(mu nu)",
+    "hodge_dual": "Hodge dual of a 2-form in four dimensions",
 }
 
 
@@ -108,6 +115,8 @@ def geometry(
         seen.add(kind)
         result.quantities.append(_quantity(kind, data, ws, verifier))
 
+    if FIELD_QUANTITIES & seen:
+        result.conventions = [*result.conventions, *FIELD_CONVENTIONS]
     result.diagnostics = ws.diagnostics
     result.status = _overall(result.quantities)
     result.message = _summary(result)
@@ -180,6 +189,10 @@ def _compute(kind: str, data: GeometryInput, ws: Workspace) -> Any:
         "covariant_derivative": ws.covariant_derivative,
         "raise_index": lambda: ws.index_operation("raise_index", data.tensor_index),
         "lower_index": lambda: ws.index_operation("lower_index", data.tensor_index),
+        "exterior_derivative": lambda: field.exterior_derivative(ws),
+        "antisymmetric_divergence": lambda: field.antisymmetric_divergence(ws),
+        "field_invariant": lambda: field.field_invariant(ws),
+        "hodge_dual": lambda: field.hodge_dual(ws),
     }
     return table[kind]()
 
@@ -201,6 +214,10 @@ def _verify(
         "covariant_derivative": verifier.covariant_derivative,
         "raise_index": lambda: verifier.index_operation("raise_index", data.tensor_index),
         "lower_index": lambda: verifier.index_operation("lower_index", data.tensor_index),
+        "exterior_derivative": FieldVerifier(verifier).exterior_derivative,
+        "antisymmetric_divergence": FieldVerifier(verifier).antisymmetric_divergence,
+        "field_invariant": FieldVerifier(verifier).field_invariant,
+        "hodge_dual": FieldVerifier(verifier).hodge_dual,
     }
     start = time.perf_counter()
     try:
@@ -252,7 +269,7 @@ def _present(
     def latex(e: sp.Expr) -> str:
         return str(to_latex(e, symbol_names=names))
 
-    if kind in {"determinant", "ricci_scalar", "kretschmann", "ricci_squared"}:
+    if kind in {"determinant", "ricci_scalar", "kretschmann", "ricci_squared", "field_invariant"}:
         out.scalar_latex = latex(value)
         out.scalar_text = str(value)
         out.all_zero = value == 0
@@ -292,6 +309,9 @@ def _present(
             "covariant_derivative": r"\nabla T",
             "raise_index": "T",
             "lower_index": "T",
+            "exterior_derivative": "F" if (geo.tensor and geo.tensor.rank == 1) else r"\mathrm{d}F",
+            "antisymmetric_divergence": "J",
+            "hodge_dual": r"{\star}F",
         }[kind]
     out.variance = list(tensor.variance)
     shown = _shown(kind, tensor)
@@ -318,6 +338,8 @@ def _shown(kind: str, tensor: Tensor) -> list[tuple[tuple[int, ...], Any]]:
         return [(i, e) for i, e in items if i[lo] <= i[lo + 1]]
     if kind == "riemann":
         return [(i, e) for i, e in items if i[2] < i[3]]
+    if kind in {"exterior_derivative", "hodge_dual"}:
+        return [(i, e) for i, e in items if all(a < b for a, b in itertools.pairwise(i))]
     return items
 
 
@@ -328,6 +350,8 @@ def _symmetry_note(kind: str) -> str:
         "ricci": "Symmetric; components not listed are zero or follow by symmetry.",
         "einstein": "Symmetric; components not listed are zero or follow by symmetry.",
         "inverse_metric": "Symmetric; components not listed are zero or follow by symmetry.",
+        "exterior_derivative": "Totally antisymmetric; components with increasing indices shown, the others follow by antisymmetry.",
+        "hodge_dual": "Antisymmetric; components with mu < nu shown, the others follow by antisymmetry.",
     }.get(kind, "Components not listed are zero.")
 
 

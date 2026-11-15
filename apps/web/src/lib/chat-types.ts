@@ -16,6 +16,8 @@ import type {
   StatModelResult,
   Status,
   StepResult,
+  VectorRequest,
+  VectorResult,
   SumsResult,
 } from "./types";
 import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "./ode-types";
@@ -447,6 +449,13 @@ export type Card =
       type: "geometry";
       title: string;
       data: { result: GeometryResult; request: GeometryRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "vector";
+      title: string;
+      data: { result: VectorResult; request: VectorRequest };
     }
   | {
       id: string;

@@ -239,6 +239,13 @@ def op_matrix_calculus(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_vector_calculus(payload: dict[str, Any]) -> dict[str, Any]:
+    from .vector import VectorInput, vector_calculus
+
+    result = vector_calculus(VectorInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_distribution(payload: dict[str, Any]) -> dict[str, Any]:
     from .distributions.models import DistributionInput
     from .distributions.operation import distribution
@@ -458,7 +465,8 @@ def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     relations: list[str] = [str(r) for r in payload.get("relations", [])]
     formulas = [str(f) for f in payload["formulas"]]
     matrices = [str(m) for m in payload.get("matrices", [])]
-    results = check_claims(formulas, assumptions, relations, limits, matrices)
+    vectors = [str(v) for v in payload.get("vectors", [])]
+    results = check_claims(formulas, assumptions, relations, limits, matrices, vectors)
     return {"results": [r.model_dump() for r in results]}
 
 
@@ -854,6 +862,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "transform": op_transform,
     "features": op_features,
     "check_claims": op_check_claims,
+    "vector_calculus": op_vector_calculus,
     "read_formulas": op_read_formulas,
     "solve": op_solve,
     "differentiate": op_differentiate,

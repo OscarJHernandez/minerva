@@ -8,13 +8,14 @@ claim a verification level it does not meet.
 from __future__ import annotations
 
 import itertools
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 import mpmath
 import sympy as sp
 from minerva_engine import ParseError, parse_text, verify_rule
-from minerva_engine.dimensions import DimensionError, check_equation_dimensions
+from minerva_engine.dimensions import DimensionError, check_equation_dimensions, dim_text
 from minerva_engine.models import TensorInput
 from minerva_engine.tensor import canonicalize
 from minerva_engine.verify import verify_equal
@@ -30,6 +31,8 @@ from .models import (
     RootFormulaCheck,
     SeriesCheck,
     TensorCheck,
+    VectorEquationCheck,
+    VectorIdentityCheck,
 )
 
 REL_TOL = 1e-8
@@ -220,6 +223,84 @@ def _check_distribution(entry: Entry, c: DistributionCheck) -> CheckReport:
     )
 
 
+VECTOR_SYSTEMS = ("cartesian", "cylindrical", "spherical")
+_TIME_NAME = re.compile(r"\bdt\(|\bt\b")  # `dt(...)` or the symbol t: the fields depend on time
+
+
+def _check_vector_identity(entry: Entry, c: VectorIdentityCheck) -> CheckReport:
+    """The difference of the two sides, for abstract fields of the declared smoothness, is evaluated
+    in each of the three coordinate systems by the engine's vector calculus: its exact components must
+    be identically zero and its independent Cartesian finite-difference reading must agree."""
+    from minerva_engine import FieldDecl, Limits, VectorInput
+    from minerva_engine.vector import vector_calculus
+
+    smoothness = "c2" if "c2" in c.requires else None
+    timed = bool(_TIME_NAME.search(c.lhs) or _TIME_NAME.search(c.rhs))
+    problems: list[str] = []
+    points = 0
+    for system in VECTOR_SYSTEMS:
+        names = {
+            "cartesian": ["x", "y", "z"],
+            "cylindrical": ["rho", "phi", "z"],
+            "spherical": ["r", "theta", "phi"],
+        }[system]
+        fields = [
+            FieldDecl(
+                name=name,
+                kind=kind,
+                smoothness=smoothness,
+                depends_on=[*names, "t"] if timed else None,
+            )
+            for name, kind in c.fields.items()
+        ]
+        result = vector_calculus(
+            VectorInput(
+                expression=f"({c.lhs}) - ({c.rhs})",
+                format="text",
+                coordinates=system,
+                fields=fields,
+            ),
+            Limits(timeout_seconds=60),
+        )
+        if result.status.value != "ok":
+            problems.append(f"{system}: {result.status.value}: {result.message}")
+            continue
+        texts = result.components_text or ([result.result_text] if result.result_text else [])
+        if not texts or any(t.strip() != "0" for t in texts):
+            problems.append(f"{system}: the difference is not zero ({result.result_text})")
+            continue
+        if result.verification is None or not result.verification.numeric_passed:
+            problems.append(f"{system}: the independent numerical check did not pass")
+            continue
+        points += result.verification.points_agreed
+    if problems:
+        return CheckReport(entry.id, "symbolic", False, "; ".join(problems))
+    return CheckReport(
+        entry.id,
+        "symbolic",
+        True,
+        f"lhs - rhs is identically zero in Cartesian, cylindrical and spherical coordinates "
+        f"({points} independent sample points agree)"
+        + ("; fields declared C2" if smoothness else ""),
+        symbolic_proof=True,
+    )
+
+
+def _check_vector_equation(entry: Entry, c: VectorEquationCheck) -> CheckReport:
+    """Dimensional consistency of an equation with vector operators (units only)."""
+    from minerva_engine.vector.dimensions import check_vector_equation
+
+    try:
+        dim = check_vector_equation(c.lhs, c.rhs, dict(c.fields), dict(c.units))
+    except (DimensionError, ParseError) as exc:
+        return CheckReport(entry.id, "dimensional", False, str(exc))
+    except Exception as exc:  # an unsupported construct is a failed check, never a pass
+        return CheckReport(entry.id, "dimensional", False, f"could not be checked: {exc}")
+    return CheckReport(
+        entry.id, "dimensional", True, f"dimensionally consistent ({dim_text(dim)}); units only"
+    )
+
+
 def run_check(entry: Entry) -> CheckReport:
     """Run the checker matching the entry's content; `stated` entries report as such."""
     if entry.verification == "stated":
@@ -247,4 +328,8 @@ def run_check(entry: Entry) -> CheckReport:
         return _check_equation(entry, c)
     if isinstance(c, DistributionCheck):
         return _check_distribution(entry, c)
+    if isinstance(c, VectorIdentityCheck):
+        return _check_vector_identity(entry, c)
+    if isinstance(c, VectorEquationCheck):
+        return _check_vector_equation(entry, c)
     return CheckReport(entry.id, "none", False, "entry has nothing to verify")

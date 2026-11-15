@@ -32,9 +32,23 @@ QuantityName = Literal[
     "covariant_derivative",
     "raise_index",
     "lower_index",
+    "exterior_derivative",
+    "antisymmetric_divergence",
+    "field_invariant",
+    "hodge_dual",
 ]
 QUANTITIES: tuple[str, ...] = QuantityName.__args__  # type: ignore[attr-defined]
-TENSOR_QUANTITIES = frozenset({"covariant_derivative", "raise_index", "lower_index"})
+TENSOR_QUANTITIES = frozenset(
+    {
+        "covariant_derivative",
+        "raise_index",
+        "lower_index",
+        "exterior_derivative",
+        "antisymmetric_divergence",
+        "field_invariant",
+        "hodge_dual",
+    }
+)
 
 
 class FunctionDecl(BaseModel):

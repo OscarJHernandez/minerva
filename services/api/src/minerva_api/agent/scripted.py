@@ -58,6 +58,23 @@ def _scripted_geometry(lower: str) -> dict[str, Any]:
     return {**_GEOMETRIES[name], "quantities": quantities}
 
 
+def _scripted_vector(latex: str, lower: str) -> dict[str, Any]:
+    """Development stand-in: bold letters are vector fields, other single letters scalar fields."""
+    vectors = sorted(set(re.findall(r"\\mathbf\{([A-Za-z])\}", latex)))
+    bare = re.sub(r"\\[A-Za-z]+|\{[^}]*\}", " ", latex)
+    scalars = sorted(set(re.findall(r"(?<![A-Za-z])([a-z])(?![A-Za-z])", bare)) - set(vectors))
+    if "spherical" in lower:
+        system, coordinates = "spherical", "r"
+    elif "cylindrical" in lower:
+        system, coordinates = "cylindrical", "z"
+    else:
+        system, coordinates = "cartesian", "xyz"
+    scalars = [n for n in scalars if n not in coordinates and n != "t"]
+    fields = [{"name": n, "kind": "vector"} for n in vectors]
+    fields += [{"name": n, "kind": "scalar"} for n in scalars]
+    return {"expression": latex, "coordinates": system, "fields": fields}
+
+
 class ScriptedLLM:
     name = "scripted"
     provider = "scripted"
@@ -144,6 +161,11 @@ class ScriptedLLM:
             ):
                 yield c
             yield Chunk(tool_calls=[ToolCall("rewrite_part", args_rw)])
+        elif latex and "\\nabla" in latex:
+            vector_args = _scripted_vector(latex, lower)
+            async for c in self._say("I will compute that and check it independently. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("vector_calculus", vector_args)])
         elif "maximum likelihood" in lower or "mle" in lower.split() or "estimator" in lower:
             # Development stand-in: independence must be stated by the user, as a real model must ask.
             independent = any(w in lower for w in ("independent", "i.i.d", "iid"))
@@ -786,6 +808,23 @@ class ScriptedLLM:
                     "The card lists each quantity with the conventions used, where the coordinates break "
                     "down, and the checks it passed. Numerical agreement is evidence; a quantity is only "
                     "marked as proved when a symbolic test also succeeded."
+                )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "vector_calculus":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            result = re.search(r"result=\$([^$]*)\$", content)
+            if status == "ok" and result:
+                text = (
+                    f"**Result:** $${result.group(1)}$$\n\n"
+                    "It is numerically checked against an independent Cartesian evaluation (evidence, "
+                    "not a proof); the card lists the conventions and where the coordinates break down."
+                )
+            elif status == "conditions_not_satisfied":
+                text = (
+                    "The result needs mixed partial derivatives to commute, and no smoothness was "
+                    "declared, so nothing is shown. Is the field twice continuously differentiable?"
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."

@@ -33,6 +33,8 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "ode_solve_numerical": "numeric",  # independent integrator, refinement, defect, first integral
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
+    "vector_calculus": "numeric",
+    "electromagnetism": "numeric",  # steps checked by comparing whole expressions; models are evidence only  # independent Cartesian finite differences; never a proof
     "variation": "numeric",  # finite differences of the action agree with the claimed variation
     "statistical_mechanics": "numeric",  # independent enumeration / quadrature; a symbolic zero is reported as such
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such

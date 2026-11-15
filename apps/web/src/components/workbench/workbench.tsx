@@ -23,6 +23,7 @@ import type {
   DistributionResult,
   GeometryRequest,
   MatrixRequest,
+  VectorRequest,
   HistoryItem,
   IdentitiesResult,
   IdentityMatch,
@@ -39,6 +40,8 @@ import { GeometryWorkbench } from "./geometry-workbench";
 import { restoreStatForm, type StatForm } from "@/lib/statistics-form";
 import { StatisticsWorkbench } from "./statistics-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
+import { VectorWorkbench } from "./vector-workbench";
+import { restoreVectorForm, type VectorForm } from "@/lib/vector-form";
 import { OdeWorkbench } from "./ode-workbench";
 import type { OdeInput } from "@/lib/ode-types";
 import { VariationalWorkbench, type VariationRestore } from "./variational-workbench";
@@ -119,8 +122,18 @@ export function Workbench() {
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
   const [mode, setMode] = useState<
-    "expression" | "geometry" | "matrix" | "statistics" | "statmech" | "ode" | "variational"
+    | "expression"
+    | "geometry"
+    | "matrix"
+    | "vector"
+    | "statistics"
+    | "statmech"
+    | "ode"
+    | "variational"
   >("expression");
+  const [vectorRestore, setVectorRestore] = useState<{ form: VectorForm; nonce: number } | null>(
+    null,
+  );
   const [statmechRestore, setStatmechRestore] = useState<{
     request: StatMechRequest;
     nonce: number;
@@ -474,6 +487,18 @@ export function Workbench() {
       }
       return;
     }
+    if (item.operation === "vector") {
+      // the whole problem was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: VectorRequest }).request;
+      if (request) {
+        setMode("vector");
+        setVectorRestore({
+          form: restoreVectorForm(request, item.input, item.format, item.assumptions),
+          nonce: Date.now(),
+        });
+        return;
+      }
+    }
     if (item.operation === "variation") {
       // the whole functional was stored with the result, so the form can be restored and changed
       const request = (item.result as { request?: Partial<VariationRequest> }).request;
@@ -552,6 +577,7 @@ export function Workbench() {
               "statistics",
               "statmech",
               "geometry",
+              "vector",
               "ode",
               "variational",
             ] as const
@@ -577,9 +603,11 @@ export function Workbench() {
                       ? "Statistical mechanics"
                       : m === "geometry"
                         ? "Geometry"
-                        : m === "ode"
-                          ? "Differential equations"
-                          : "Variational calculus"}
+                        : m === "vector"
+                          ? "Vectors"
+                          : m === "ode"
+                            ? "Differential equations"
+                            : "Variational calculus"}
             </button>
           ))}
         </div>
@@ -691,7 +719,13 @@ export function Workbench() {
       </aside>
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-        {mode === "ode" ? (
+        {mode === "vector" ? (
+          <VectorWorkbench
+            restore={vectorRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+          />
+        ) : mode === "ode" ? (
           <OdeWorkbench
             restore={odeRestore}
             onUnauthorized={() => router.push("/login")}

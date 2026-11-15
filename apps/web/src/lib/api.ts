@@ -27,6 +27,8 @@ import type {
   MatrixCalculusResult,
   GeometryRequest,
   GeometryResult,
+  VectorRequest,
+  VectorResult,
   MatrixRequest,
   SeriesResult,
   SimplifyGoal,
@@ -179,6 +181,14 @@ export const api = {
     request<GeometryResult>("/v1/compute/geometry", {
       method: "POST",
       body: JSON.stringify({ ...req, format: "latex", ...link }),
+    }),
+  vector: (
+    req: VectorRequest,
+    link?: { derivation_id?: string; parent_id?: string; save?: boolean },
+  ) =>
+    request<VectorResult>("/v1/compute/vector", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...req, ...link }),
     }),
   /** One step of a variational derivation: the whole functional is sent every time (nothing is remembered). */
   variation: (req: VariationRequest, link?: { derivation_id?: string; parent_id?: string }) =>

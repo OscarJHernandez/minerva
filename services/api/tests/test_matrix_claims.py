@@ -152,3 +152,15 @@ def test_scalar_tools_refuse_an_expression_with_a_declared_matrix(ctx: ToolConte
         ).status
         != "error"
     )
+
+
+def test_vectors_declared_in_words() -> None:
+    from minerva_api.agent.declarations import declared_vectors
+
+    assert declared_vectors([r"Let $\mathbf{E}$ and $\mathbf{B}$ be vector fields."]) == {"E", "B"}
+    assert declared_vectors([r"Here $a$ and $b_1$ are vectors. Also $s$ is a scalar."]) == {
+        "a",
+        "b_1",
+    }
+    assert declared_vectors(["Vectors are useful."]) == set()
+    assert declared_vectors([r"No keyword here: $x \times y$."]) == set()

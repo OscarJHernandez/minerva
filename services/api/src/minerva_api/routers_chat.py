@@ -22,10 +22,10 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .agent.declarations import declared_matrices
+from .agent.declarations import declared_matrices, declared_vectors
 from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent
+from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent, vector_names
 from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
@@ -907,7 +907,13 @@ def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]
         texts.append(str(m.content.get("text", "")))
         if m.role != "user":
             steps.extend(s for s in m.content.get("trace", []) if isinstance(s, dict))
-    return sorted(matrix_names(steps) | declared_matrices(texts))
+    # Vectors named in words are folded in: either kind is never sampled as numbers.
+    return sorted(
+        matrix_names(steps)
+        | vector_names(steps)
+        | declared_matrices(texts)
+        | declared_vectors(texts)
+    )
 
 
 def _title(text: str) -> str:

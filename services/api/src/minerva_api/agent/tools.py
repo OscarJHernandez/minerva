@@ -38,16 +38,22 @@ from minerva_engine import (
     TensorInput,
     TensorSpec,
     VariationInput,
+    VectorInput,
+    VectorResult,
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
+from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
     TransformResponse,
     constant_candidates,
     find_identities,
+    premise_options,
+    resolve_premise_ids,
     simplify_expression,
     summarize,
+    vector_identity_rules,
 )
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
@@ -56,6 +62,7 @@ from ..geometry_log import log_geometry
 from ..ode_log import log_ode
 from ..search_log import log_search_events
 from ..variation_log import log_variation
+from ..vector_log import log_vector
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .segments import normalize
@@ -261,18 +268,261 @@ class GeometryArgs(BaseModel):
         max_length=len(QUANTITIES),
         description="What to compute: inverse_metric, determinant, christoffel, riemann, ricci, ricci_scalar, "
         "einstein, kretschmann, ricci_squared, geodesics (symbolic geodesic equations), "
-        "covariant_derivative, raise_index, lower_index. The last three need `tensor`.",
+        "covariant_derivative, raise_index, lower_index, and for electromagnetic fields on a metric you give: "
+        "exterior_derivative (F = dA from a 1-form, or dF of a 2-form), antisymmetric_divergence "
+        "(J^nu = nabla_mu F^(mu nu)), field_invariant (F_(mu nu) F^(mu nu)), hodge_dual (four dimensions). "
+        "Everything from covariant_derivative on needs `tensor` (covariant components for the "
+        "electromagnetic ones). The metric, signature and units are the user's; never assume them.",
     )
     tensor: TensorField | None = Field(
         default=None,
         description="A tensor field given by variance (up/down per index) and its n**rank components, "
-        "row-major, as LaTeX strings. Only for covariant_derivative, raise_index and lower_index.",
+        "row-major, as LaTeX strings. Only for the tensor quantities.",
     )
     tensor_index: int = Field(
         default=0,
         ge=0,
         le=2,
         description="Which index (0-based) raise_index or lower_index acts on",
+    )
+
+
+class VectorCalculusArgs(BaseModel):
+    """Arguments of `vector_calculus`. The declarations are sent every time: nothing is remembered."""
+
+    expression: str = Field(
+        default="",
+        max_length=MAX_INPUT,
+        description="A scalar or vector expression in LaTeX, e.g. \\nabla\\times(f\\mathbf{A}), "
+        "\\nabla\\cdot(\\mathbf{A}\\times\\mathbf{B}), \\nabla^2\\mathbf{A}, "
+        "(\\mathbf{A}\\cdot\\nabla)\\mathbf{B}, \\frac{\\partial\\mathbf{E}}{\\partial t}, "
+        "\\mathbf{r}/r^3 (position vector). \\nabla acts on the ONE factor after it: write \\nabla(fg), "
+        "never \\nabla f g. \\cdot between two vectors is the dot product, \\times between two "
+        "vectors the cross product; the product of two vectors written side by side is refused. "
+        "Not needed for action=jacobian.",
+    )
+    coordinates: Literal["cartesian", "cylindrical", "spherical"] = Field(
+        default="cartesian",
+        description="cartesian (x, y, z), cylindrical (rho, phi, z) or spherical (r, theta, phi, theta "
+        "the polar angle). Vector components are physical components along the unit vectors. "
+        "Use the coordinate the user's problem is written in; do not change it.",
+    )
+    fields: list[FieldDecl] = Field(
+        default_factory=list,
+        max_length=8,
+        description='Every scalar or vector field in the expression, e.g. [{"name": "A", "kind": '
+        '"vector"}, {"name": "f", "kind": "scalar"}]. Without `components` the field is an arbitrary '
+        'function of the coordinates (add depends_on: [..., "t"] only if the user says it depends on '
+        "time). `components` gives it explicitly in TEXT syntax (rho*cos(phi), r**2*sin(theta); 1 "
+        "expression for a scalar, 3 for a vector). `smoothness` (c1, c2, smooth) is only what the USER "
+        "states: without it a result that needs mixed partial derivatives to commute (curl of a "
+        "gradient, divergence of a curl) is withheld; ask the user, never declare it yourself.",
+    )
+    constants: list[str] = Field(
+        default_factory=list,
+        max_length=16,
+        description="Names of constants (k, mu_0, c) that do not depend on position or time. Every symbol "
+        "that is not a coordinate, t or a declared field must be listed here.",
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of constants (e.g. {"k": ["positive"]}). Do not add what the user did '
+        "not state.",
+    )
+    action: Literal[
+        "evaluate",
+        "jacobian",
+        "convert",
+        "identities",
+        "apply_identity",
+        "substitute",
+        "apply",
+        "derive",
+        "integrate",
+    ] = Field(
+        default="evaluate",
+        description="evaluate: compute the expression in the components of the system. jacobian: the "
+        "Jacobian, determinant and scale factors of the map to Cartesian coordinates. convert: re-express "
+        "an expression of EXPLICIT fields in the system `to`. identities: list the handbook identities "
+        "that match a part of the expression (applies none). apply_identity: apply `rule_id` at `path` "
+        "(or right to left with reverse=true), checked by comparing the whole expressions before and "
+        "after. substitute: replace one side of a premise the USER gave by the other. apply: apply "
+        "`operator` to both sides of an equation (`expression` is `lhs = rhs`). derive: search a chain "
+        "of identity (and premise) steps to `target`, or to a smaller form without one. integrate: a line, "
+        "flux, volume integral or one of the three theorems, over a domain the USER gives (see `integral`).",
+    )
+    to: Literal["cartesian", "cylindrical", "spherical"] | None = Field(
+        default=None, description="Target system for convert."
+    )
+    rule_id: str | None = Field(
+        default=None,
+        description="apply_identity: the handbook id of the identity, e.g. vector.curl_curl (from a "
+        "previous `identities` call).",
+    )
+    path: list[int] | None = Field(
+        default=None,
+        max_length=24,
+        description="apply_identity or substitute: the part to act on, as the path the `identities` "
+        "call listed ([] is the whole expression). Never guess it: list first when several places match.",
+    )
+    integral: (
+        Literal[
+            "line",
+            "line_scalar",
+            "flux",
+            "volume",
+            "gradient_theorem",
+            "divergence_theorem",
+            "stokes_theorem",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description="integrate: line (the work of a vector field along `curve`), line_scalar, flux "
+        "(through `surface`), volume (of a scalar over `region`), gradient_theorem (scalar f along "
+        "`curve`), divergence_theorem (vector F over `region`: the volume integral of div F and the flux "
+        "through the box's outward faces, computed separately), stokes_theorem (vector F over `surface`: "
+        "the flux of curl F and the circulation around the boundary). `expression` is the integrand; "
+        "its fields need explicit `components`. The domain is NEVER invented: ask the user for the curve, "
+        "surface or region and their orientation.",
+    )
+    curve: Curve | None = Field(
+        default=None,
+        description="A curve: the three coordinates of `coordinates` as text functions of one parameter "
+        "with a range, traversed in the direction of increasing parameter.",
+    )
+    surface: Surface | None = Field(
+        default=None,
+        description="A surface: the three coordinates as text functions of two parameters over a "
+        "rectangle. The orientation is the normal d_u r x d_v r: the ORDER of u and v is the orientation, "
+        "so state it and never choose it for the user.",
+    )
+    region: Region | None = Field(
+        default=None,
+        description="A coordinate box: (lower, upper) for each coordinate of the system, in order. "
+        "Nothing else is accepted as a volume.",
+    )
+    reverse: bool = Field(default=False, description="Read the identity or premise right to left.")
+    premises: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="Field equations the USER stated, each `lhs = rhs` in the same syntax as the "
+        "expression, e.g. \\nabla\\times\\mathbf{E} = -\\frac{\\partial\\mathbf{B}}{\\partial t}. "
+        "Never invent or complete one: a result that uses a premise holds only given it, and Minerva does "
+        "not check that the premise is true.",
+    )
+    premise_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="Handbook field equations (em.maxwell.faraday, em.maxwell.ampere_vacuum, ...) the USER "
+        "chose to adopt as premises, listed by `electromagnetism` with action setup. Adopt one only when "
+        "the user said to use that law; the equation then holds in the result only as a premise.",
+    )
+    premise: int | None = Field(
+        default=None, ge=0, le=7, description="substitute: which premise (0-based) to use."
+    )
+    operator: Literal["grad", "div", "curl", "lap", "dt"] | None = Field(
+        default=None, description="apply: the operator to apply to both sides."
+    )
+    target: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description="derive: the expression to reach (same syntax as `expression`).",
+    )
+
+
+class ElectromagnetismArgs(BaseModel):
+    """Arguments of `electromagnetism`."""
+
+    action: Literal["setup", "derive", "field", "multipole", "boundary_value", "check_solution"] = (
+        Field(
+            description="setup: list the derivations Minerva can carry out, the field equations (premises) each "
+            "needs, and the field equations of the handbook the user may adopt. derive: carry one out. "
+            "field: potential and electric field of point charges and/or a charge density at a point. "
+            "multipole: monopole, dipole and quadrupole moments of point charges with a measured far-field "
+            "check. boundary_value: Laplace or Poisson on a rectangle with Dirichlet data (a numerical "
+            "approximation, shown only if two methods agree). check_solution: does a candidate potential "
+            "satisfy Poisson's equation and the stated face values. All positions, charges, sizes and "
+            "values come from the USER; never choose them. Units: k_e = 1/(4 pi epsilon_0). Cartesian only."
+        )
+    )
+    derivation: str | None = Field(
+        default=None,
+        max_length=40,
+        description="derive: wave_equation_e, wave_equation_b, continuity, poynting, gauge_invariance, "
+        "poisson or laplace.",
+    )
+    premise_ids: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="derive: the handbook field equations the USER chose to adopt as premises (from setup). "
+        "Never adopt one the user did not choose; the result holds only given them.",
+    )
+    premises: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="derive: further field equations the USER stated, `lhs = rhs` in text syntax "
+        "(curl(E) = -dt(B)).",
+    )
+    smoothness: Literal["c2", "smooth"] | None = Field(
+        default=None,
+        description="derive: the smoothness the USER stated for the fields (twice continuously "
+        "differentiable, or smooth). Without it identities that need equal mixed partial derivatives are "
+        "blocked; never add it yourself.",
+    )
+    charges: list[tuple[str, str, str, str]] = Field(
+        default_factory=list,
+        max_length=12,
+        description="field/multipole: point charges as (q, x, y, z) text, e.g. ('q', '0', '0', 'd').",
+    )
+    point: tuple[str, str, str] | None = Field(
+        default=None, description="field: where to evaluate (x, y, z), given by the user."
+    )
+    density: str | None = Field(
+        default=None,
+        max_length=200,
+        description="field: charge density rho(x, y, z) as text syntax over `box`.",
+    )
+    box: list[tuple[str, str]] | None = Field(
+        default=None,
+        max_length=3,
+        description="field (density) / check_solution: [(x_lo, x_hi), (y_lo, y_hi), (z_lo, z_hi)].",
+    )
+    direction: tuple[str, str, str] = Field(
+        default=("0", "0", "1"), description="multipole: ray along which the far field is compared."
+    )
+    order: Literal[0, 1, 2] = Field(default=2, description="multipole: highest multipole kept.")
+    side_a: str | None = Field(
+        default=None, max_length=60, description="boundary_value: width (x)."
+    )
+    side_b: str | None = Field(
+        default=None, max_length=60, description="boundary_value: height (y)."
+    )
+    bottom: str = Field(default="0", max_length=200, description="boundary_value: phi(x, 0), in x.")
+    top: str = Field(default="0", max_length=200, description="boundary_value: phi(x, b), in x.")
+    left: str = Field(default="0", max_length=200, description="boundary_value: phi(0, y), in y.")
+    right: str = Field(default="0", max_length=200, description="boundary_value: phi(a, y), in y.")
+    source: str | None = Field(
+        default=None,
+        max_length=200,
+        description="boundary_value: Poisson source rho/eps0 in x, y (zero edges only); "
+        "check_solution: the source in laplacian(phi) = -source.",
+    )
+    sample_points: list[tuple[str, str]] = Field(
+        default_factory=list, max_length=8, description="boundary_value: interior points to report."
+    )
+    potential: str | None = Field(
+        default=None, max_length=300, description="check_solution: candidate phi(x, y, z)."
+    )
+    faces: list[tuple[str, str]] = Field(
+        default_factory=list,
+        max_length=6,
+        description="check_solution: (face, value) with face in x=lo, x=hi, y=lo, y=hi, z=lo, z=hi.",
+    )
+    constants: list[str] = Field(
+        default_factory=list,
+        max_length=8,
+        description="field/multipole/...: declared constant names.",
     )
 
 
@@ -939,6 +1189,344 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
         "assumptions and functions."
     )
     return ToolOutput(card, "\n".join(lines), known, result.status.value)
+
+
+def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutput:
+    fields = args.model_dump(exclude={"premises", "premise_ids"})
+    premises = [Premise(equation=p) for p in args.premises]
+    try:
+        premises += [
+            Premise(equation=o.equation, label=o.title)
+            for o in resolve_premise_ids(ctx.kb, args.premise_ids)
+        ]
+    except KeyError as exc:
+        return _error(
+            "vector_calculus",
+            f"{exc.args[0]} is not an adoptable handbook field equation (see electromagnetism setup)",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    request = VectorInput(**fields, premises=premises, format="latex")
+    if args.action in ("identities", "apply_identity", "derive"):
+        # The handbook proposes; the engine matches the identities and checks every rewrite.
+        request = request.model_copy(update={"rules": vector_identity_rules(ctx.kb)})
+    return _vector_output(ctx.engine.vector_calculus(request), request)
+
+
+def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
+    log_vector(result)  # status, reason, counters: never a field name or an expression
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="vector_calculus",
+        type="vector",
+        title="Vector calculus",
+        data={
+            "result": result.model_dump(mode="json"),
+            # the whole problem (without the handbook rules), so a follow-up can resend it
+            "request": request.model_dump(mode="json", exclude={"rules"}),
+        },
+    )
+    ok = result.status.value == "ok"
+    head = f"status={result.status.value}; coordinates={result.coordinates}; "
+    known: list[str] = []
+    lines: list[str] = []
+    if ok:
+        if result.result_kind in ("scalar", "vector") and result.result_latex:
+            head += f"result=${result.result_latex}$; "
+            known.append(result.result_latex)
+            for label, comp in zip(result.basis_latex, result.components_latex, strict=False):
+                lines.append(f"- component along ${label}$: ${comp}$")
+                known.append(comp)
+        elif result.result_kind == "matrix":
+            head += f"jacobian=${result.result_latex}$; determinant=${result.determinant_latex}$; "
+            known.extend(x for x in (result.result_latex, result.determinant_latex) if x)
+            known.extend(result.scale_factors_latex)
+        for i, step in enumerate(result.steps, start=1):
+            kind = (
+                "CONDITIONAL on " + "; ".join(step.given)
+                if step.evidence == "conditional"
+                else "identity"
+            )
+            lines.append(
+                f"- step {i} ({kind}): {step.title}: ${step.before_latex}$ -> ${step.after_latex}$"
+            )
+            if step.evidence == "identity" and step.needs:
+                lines.append(
+                    f"  (holds for fields that are {', '.join(step.needs)}; the USER declared that)"
+                )
+        if result.evidence == "conditional":
+            lines.append(
+                "- CONDITIONAL: this holds only given "
+                + "; ".join(f"${g}$" for g in result.given)
+                + ". The user supplied it and Minerva does not check it: never call the result an "
+                "identity, a proof, or a consequence of Maxwell's equations unless that is what the "
+                "premises were, and say which premises it used."
+            )
+        elif result.evidence == "identity":
+            lines.append(
+                "- every identity step was checked by comparing the whole expressions before and after "
+                "(exact component difference zero, and an independent Cartesian evaluation agreeing)"
+            )
+        if result.integral is not None:
+            integral = result.integral
+            for iv in integral.values:
+                what = "exact" if iv.exact else "NUMERICAL APPROXIMATION (no closed form found)"
+                shown = iv.latex if iv.latex is not None else (iv.numeric or "?")
+                lines.append(f"- {what}: ${iv.label} = {shown}$")
+                if iv.latex is not None:
+                    known.append(iv.latex)
+                if iv.numeric is not None:
+                    lines.append(f"  numerical value {iv.numeric}")
+            lines.append(f"- orientation: {integral.orientation}")
+            if integral.theorem is not None:
+                lines.append(
+                    f"- {integral.theorem}: the two sides were computed separately and "
+                    f"{'agree' if integral.holds else 'DISAGREE'}. Hypotheses:"
+                )
+                for h in integral.hypotheses:
+                    lines.append(f"  - {h.text}: {h.status} ({h.note})")
+                lines.append(
+                    "  'checked' is a finite scan, never a proof of smoothness: do not say the "
+                    "hypotheses were proved"
+                )
+            if integral.method == "numerical":
+                lines.append(
+                    "- this is a numerical approximation, not an exact value: say so, and give the "
+                    "digits only as approximate"
+                )
+        for eq in result.equations_latex:
+            lines.append(f"- derived equation: ${eq}$")
+            known.append(eq)
+        if result.model_check is not None:
+            mc = result.model_check
+            lines.append(
+                f"- check on exact solutions of the premises: {mc.status}"
+                + (f" ({mc.note})" if mc.note else "")
+                + ". This is consistency evidence, not a verification: say so."
+            )
+        if result.em is not None:
+            em = result.em
+            for item in em.items:
+                shown = item.latex if item.latex is not None else (item.numeric or "?")
+                lines.append(
+                    f"- {item.label}: ${shown}$" + (f" ({item.note})" if item.note else "")
+                )
+                if item.latex is not None:
+                    known.append(item.latex)
+            lines.extend(f"- check: {c}" for c in em.checks)
+            lines.append(f"- method: {em.method}" + (f"; units: {em.units}" if em.units else ""))
+            if em.approximate:
+                lines.append(
+                    "- this is a NUMERICAL APPROXIMATION agreeing with an independent method, not an "
+                    "exact value or a proof: say so"
+                )
+            if em.holds is False:
+                lines.append("- the candidate does NOT satisfy every requirement: say which")
+        for a in result.applicable:
+            suffix = f" BLOCKED: {a.note}" if a.blocked else ""
+            lines.append(
+                f"- match: {a.rule_id}{' (right to left)' if a.reverse else ''} at path {a.path}: "
+                f"${a.part_latex}$ -> ${a.result_latex}$ (needs {', '.join(a.needs) or 'nothing'}){suffix}"
+            )
+        v = result.verification
+        if v is not None and not result.steps and result.integral is None:
+            lines.append(
+                f"- numerically checked at {v.points_agreed} sample points against an independent "
+                "evaluation; NO symbolic proof: say 'numerically checked', never 'proved'"
+            )
+        lines.extend(f"- convention: {c}" for c in result.conventions)
+        lines.extend(f"- assumption: {a}" for a in result.assumptions_used)
+        if result.restrictions_latex:
+            lines.append(
+                "- valid only where "
+                + ", ".join(f"${r}$" for r in result.restrictions_latex)
+                + ("" if result.restrictions_complete else " (and possibly elsewhere)")
+                + ". These are where the coordinates break down, not statements about the field."
+            )
+            known.extend(result.restrictions_latex)
+    else:
+        for b in result.blocked:
+            lines.append(
+                f"- blocked: needs {b.needs} smoothness of {', '.join(b.fields)}: {b.note}. Ask the "
+                "user whether the field is that smooth; do not declare it yourself."
+            )
+        if result.needs_premises:
+            lines.append(
+                "- needs these field equations as premises (the user adopts them; do not assume them): "
+                + "; ".join(f"`{n}`" for n in result.needs_premises)
+            )
+        if result.undeclared:
+            lines.append(
+                "- undeclared: "
+                + ", ".join(result.undeclared)
+                + " (declare as a field or constant)"
+            )
+        for a in result.applicable:
+            lines.append(
+                f"- candidate: {a.rule_id} at path {a.path}: ${a.part_latex}$ (choose one with `path`)"
+            )
+    if result.input_latex:
+        known.append(result.input_latex)
+    lines.append(
+        "to compute more about THESE fields call vector_calculus again with the same coordinates, "
+        "fields, constants and premises."
+    )
+    quoted: list[tuple[str, str]] = []
+    if result.evidence == "conditional":
+        # a result that holds only given the user's premises is shown, never marked as verified
+        quoted = [(x, "holds only given the premises you supplied") for x in known]
+        known = []
+    return ToolOutput(
+        card, "\n".join([head + result.message, *lines]), known, result.status.value, quoted
+    )
+
+
+def run_electromagnetism(args: ElectromagnetismArgs, ctx: ToolContext) -> ToolOutput:
+    from minerva_engine.vector.em import PLANNED, TEMPLATES, describe
+
+    if args.action == "setup":
+        options = premise_options(ctx.kb)
+        entries = [ctx.kb.get(o.id) for o in options]
+        card = Card(
+            id=uuid.uuid4().hex[:8],
+            tool="electromagnetism",
+            type="entries",
+            title="Electromagnetism setup",
+            data={
+                "query": "field equations you may adopt as premises",
+                "entries": [summarize(ctx.kb, e).model_dump(mode="json") for e in entries if e],
+            },
+        )
+        lines = [
+            "status=ok; these are the electromagnetic derivations Minerva can carry out. Each needs field "
+            "equations as PREMISES: ask the user which laws to adopt; never adopt one for them."
+        ]
+        for t in TEMPLATES.values():
+            d = describe(t)
+            needs = ", ".join(f"`{n}`" for n in d["needs"]) or "none (an identity)"
+            lines.append(
+                f"- {d['id']}: {d['title']}. Needs premises: {needs}. Fields: "
+                + ", ".join(f"{f['name']} ({f['kind']})" for f in d["fields"])
+                + "; constants: "
+                + (", ".join(d["constants"]) or "none")
+            )
+        lines.append(
+            "adoptable field equations (premise_ids): "
+            + "; ".join(f"{o.id} = {o.equation}" for o in options)
+        )
+        lines.append("not available yet: " + "; ".join(PLANNED))
+        return ToolOutput(card, "\n".join(lines), [], "ok")
+    if args.action != "derive":
+        return _em_compute(args, ctx)
+    template = TEMPLATES.get(args.derivation or "")
+    if template is None:
+        return _error(
+            "electromagnetism",
+            "derive needs `derivation`: " + ", ".join(sorted(TEMPLATES)),
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    try:
+        premises = [
+            Premise(equation=o.equation, label=o.title)
+            for o in resolve_premise_ids(ctx.kb, args.premise_ids)
+        ]
+    except KeyError as exc:
+        return _error(
+            "electromagnetism",
+            f"{exc.args[0]} is not an adoptable field equation (see setup)",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    premises += [Premise(equation=p) for p in args.premises]
+    fields = [
+        FieldDecl(
+            name=name,
+            kind=kind,
+            depends_on=["x", "y", "z", "t"],
+            smoothness=args.smoothness if name in template.smooth else None,
+        )
+        for name, kind in template.fields
+    ]
+    request = VectorInput(
+        expression="",
+        format="text",
+        coordinates="cartesian",
+        fields=fields,
+        constants=list(template.constants),
+        premises=premises,
+        action="em_derive",
+        template=template.id,
+        rules=vector_identity_rules(ctx.kb),
+    )
+    return _vector_output(ctx.engine.vector_calculus(request), request)
+
+
+def _em_compute(args: ElectromagnetismArgs, ctx: ToolContext) -> ToolOutput:
+    from minerva_engine.vector.models import (
+        BoundaryProblem,
+        CheckProblem,
+        FaceCondition,
+        FieldProblem,
+        MultipoleProblem,
+        PointCharge,
+    )
+
+    def invalid(text: str) -> ToolOutput:
+        return _error("electromagnetism", text, "invalid_arguments", arguments_valid=False)
+
+    charges = [PointCharge(q=q, position=(x, y, z)) for q, x, y, z in args.charges]
+    region = Region(bounds=args.box) if args.box is not None and len(args.box) == 3 else None
+    problem: FieldProblem | MultipoleProblem | BoundaryProblem | CheckProblem
+    if args.action == "field":
+        if args.point is None:
+            return invalid("field needs `point`")
+        problem = FieldProblem(
+            kind="field", charges=charges, density=args.density, box=region, point=args.point
+        )
+    elif args.action == "multipole":
+        if not charges:
+            return invalid("multipole needs `charges`")
+        problem = MultipoleProblem(
+            kind="multipole", charges=charges, direction=args.direction, order=args.order
+        )
+    elif args.action == "boundary_value":
+        if args.side_a is None or args.side_b is None:
+            return invalid("boundary_value needs `side_a` and `side_b`")
+        problem = BoundaryProblem(
+            kind="boundary_value",
+            a=args.side_a,
+            b=args.side_b,
+            bottom=args.bottom,
+            top=args.top,
+            left=args.left,
+            right=args.right,
+            source=args.source,
+            points=args.sample_points,
+        )
+    else:
+        if args.potential is None or region is None:
+            return invalid("check_solution needs `potential` and `box`")
+        try:
+            conditions = [FaceCondition(face=f, value=v) for f, v in args.faces]
+        except ValidationError:
+            return invalid("faces must be (face, value) with face one of x=lo, x=hi, y=lo, ...")
+        problem = CheckProblem(
+            kind="check_solution",
+            potential=args.potential,
+            source=args.source or "0",
+            box=region,
+            conditions=conditions,
+        )
+    request = VectorInput(
+        expression="",
+        format="text",
+        coordinates="cartesian",
+        constants=args.constants,
+        action="em_compute",
+        em=problem,
+    )
+    return _vector_output(ctx.engine.vector_calculus(request), request)
 
 
 def _variation_known(report: Any) -> list[str]:
@@ -2537,6 +3125,41 @@ TOOLS: dict[str, Tool] = {
             run_geometry,
         ),
         Tool(
+            "vector_calculus",
+            "Vector calculus in Cartesian, cylindrical or spherical coordinates: gradient, divergence, curl, "
+            "Laplacian (scalar and vector), dot, cross and triple products, directional derivatives, partial "
+            "derivatives with respect to a coordinate or time, the Jacobian of a coordinate system, and "
+            "conversion of explicit fields between systems, and line, flux and volume integrals with the "
+            "gradient, divergence and Stokes theorems over a domain the USER gives (action integrate). "
+            "Declare each field (scalar or vector, arbitrary "
+            "or explicit) and each constant. A result is shown only if an independent Cartesian "
+            "finite-difference evaluation agrees (numerically checked, not a proof). Nothing is assumed "
+            "smooth: a result that needs mixed partial derivatives to commute is withheld until the USER "
+            "states the smoothness. The origin and axes are reported as restrictions, never analysed. "
+            "The declarations are not remembered: resend them with every call.",
+            VectorCalculusArgs,
+            run_vector_calculus,
+        ),
+        Tool(
+            "electromagnetism",
+            "Derivations in electromagnetism from field equations the USER adopts as premises (Maxwell's "
+            "equations in SI, potentials, statics): the wave equations for E and B in vacuum, charge "
+            "conservation, Poynting's theorem, gauge invariance of the fields, Poisson's and Laplace's "
+            "equations. `setup` lists them with the premises each needs. Each derivation is a set of routes "
+            "found by general vector-calculus steps and checked step by step; the result is evaluated on "
+            "exact solutions of its premises. A result that used a premise is CONDITIONAL on it and is never "
+            "called an identity, a proof or unconditional; only gauge invariance needs no premise. "
+            "Minerva never checks that a premise is true. Cartesian coordinates, fields depend on x, y, z, t. "
+            "Also electrostatics with numbers the USER gives: `field` (potential and E of point charges or a "
+            "density, two methods must agree), `multipole` (moments and a measured far-field error), "
+            "`boundary_value` (Laplace/Poisson on a rectangle by a series, a numerical approximation shown "
+            "only if a finite-difference solve agrees) and `check_solution` (does a candidate potential "
+            "satisfy the equation and the face values). Not available: Fourier/Laplace transforms, "
+            "retarded Green's functions, FEM or FDTD, general PDE solving.",
+            ElectromagnetismArgs,
+            run_electromagnetism,
+        ),
+        Tool(
             "variation",
             "Variational calculus for a functional S = integral of L(t, x, x', x'', ...) dt of one or "
             "several functions, with derivatives of any order up to four and fixed bounds. action=first "
@@ -2828,10 +3451,10 @@ def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> T
         return None
     return _error(
         name,
-        f"{', '.join(hit)} was declared as a matrix or operator in this conversation; `{name}` treats "
-        "symbols as commuting numbers and would give a wrong answer for it. Use `matrix_calculus` "
-        "(it needs each matrix's size or entries), or say that this is not supported. Do not "
-        "compute it yourself.",
+        f"{', '.join(hit)} was declared as a matrix, operator or vector field in this conversation; "
+        f"`{name}` treats symbols as commuting numbers and would give a wrong answer for it. Use "
+        "`matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a vector "
+        "field, or say that this is not supported. Do not compute it yourself.",
         "unsupported",
     )
 

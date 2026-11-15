@@ -90,6 +90,7 @@ from .stats.models import (
 )
 from .textparse import parse_text
 from .variational import EndpointCondition, VariationInput, VariationReport
+from .vector import FieldDecl, VectorInput, VectorResult
 
 __all__ = [
     "Applicability",
@@ -119,6 +120,7 @@ __all__ = [
     "ExpectationInput",
     "ExpectationResult",
     "ExpressionInput",
+    "FieldDecl",
     "FormulaReading",
     "GeometryInput",
     "GeometryResult",
@@ -189,6 +191,8 @@ __all__ = [
     "UnsupportedInput",
     "VariationInput",
     "VariationReport",
+    "VectorInput",
+    "VectorResult",
     "Verification",
     "apply_rule",
     "check_claim",

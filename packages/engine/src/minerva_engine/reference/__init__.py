@@ -17,6 +17,7 @@ from . import (
     statmech,
     substitution,
     variational,
+    vector,
 )
 from .core import Problem
 
@@ -31,6 +32,7 @@ PROBLEMS: list[Problem] = [
     *statmech.PROBLEMS,
     *variational.PROBLEMS,
     *ode.PROBLEMS,
+    *vector.PROBLEMS,
 ]
 
 __all__ = ["PROBLEMS", "Problem"]

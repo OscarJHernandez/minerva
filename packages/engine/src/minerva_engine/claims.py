@@ -91,14 +91,17 @@ def check_claims(
     relations: list[str],
     limits: Limits,
     matrices: Sequence[str] = (),
+    vectors: Sequence[str] = (),
 ) -> list[ClaimCheck]:
     """Check equations in order. `relations` are formulas stated earlier in the conversation: the
     ones that are definitions (`\\theta = \\phi + \\omega t`) are used by substitution. Each checked
     formula that is itself a definition is remembered for the ones after it. `matrices` are names the
     conversation declared as matrices: an equation that mentions one is never tested by sampling
-    numbers (that would treat them as commuting scalars)."""
+    numbers (that would treat them as commuting scalars). `vectors` are names the conversation
+    declared as vector fields: the same rule applies, and so does the notation (`\\nabla`, bold or
+    arrowed letters, `\\times` between non-numerals), which is never sampled whatever the names."""
     clean, noncommutative = clean_assumptions(assumptions)
-    checker = ClaimChecker(clean, limits, frozenset(matrices) | noncommutative)
+    checker = ClaimChecker(clean, limits, frozenset(matrices) | noncommutative, frozenset(vectors))
     for relation in relations:
         checker.learn(relation)
     results: list[ClaimCheck] = []
@@ -150,6 +153,35 @@ _MATRIX_DETAIL = (
     "matrix equations by sampling numbers (that would treat the matrices as "
     "commuting scalars), so it is not checked unless a matrix calculation produced it"
 )
+
+
+# Vector notation. The strict parser reads `\times` and `\cdot` as scalar products and does not
+# know `\nabla`, so a vector statement must be recognised from its text before any sampling:
+# `a \times b = b \times a` is true of commuting scalars and false of vectors.
+_VECTOR_COMMAND = re.compile(
+    r"\\(?:nabla|mathbf|boldsymbol|bm|vec|hat|overrightarrow|curl|grad|div)\b|\\partial\b"
+)
+_TIMES = re.compile(r"\\times\b")
+_NUMERAL_BEFORE = re.compile(r"(?:\d|\d\s*\^\s*\{?\s*[-+]?\d+\s*\}?)\s*$")
+_NUMERAL_AFTER = re.compile(r"^\s*\d")
+_VECTOR_DETAIL = (
+    "this uses vector notation (\u2207, bold or arrowed vectors, a cross product); Minerva does not "
+    "test vector equations by sampling numbers (that would treat vectors as commuting scalars), so "
+    "it is not checked unless a vector calculation produced it"
+)
+
+
+def uses_vector_notation(latex: str) -> bool:
+    """True if `latex` is written with vector operators or a cross product. `\\times` between two
+    numerals (`3 \\times 10^{8}`) or with a numeral on one side (`2 \\times x`) is ordinary
+    multiplication; between anything else it may be a cross product."""
+    if _VECTOR_COMMAND.search(latex):
+        return True
+    for match in _TIMES.finditer(latex):
+        before, after = latex[: match.start()], latex[match.end() :]
+        if not (_NUMERAL_BEFORE.search(before) or _NUMERAL_AFTER.search(after)):
+            return True
+    return False
 
 
 def _norm(name: str) -> str:
@@ -222,10 +254,12 @@ class ClaimChecker:
         assumptions: dict[str, list[str]],
         limits: Limits,
         matrices: frozenset[str] = frozenset(),
+        vectors: frozenset[str] = frozenset(),
     ) -> None:
         self.assumptions = assumptions
         self.limits = limits
         self.matrices = matrices
+        self.vectors = vectors
         # symbol -> (right side with earlier definitions substituted, its text, texts it was built on)
         self.definitions: dict[sp.Symbol, tuple[sp.Expr, str, list[str]]] = {}
 
@@ -241,6 +275,8 @@ class ClaimChecker:
     def learn(self, latex: str) -> None:
         """Remember `latex` if it is a definition. A later definition of a symbol replaces the earlier
         one; one that would define a symbol in terms of itself is ignored."""
+        if self._is_vector(latex):
+            return  # a vector statement is never a scalar definition
         if mentions_name(_text(latex), self.matrices) or _TRANSPOSE.search(latex):
             self._learn_alias(latex)
             return  # a definition of or by a matrix is not a scalar substitution
@@ -259,6 +295,10 @@ class ClaimChecker:
         if symbol not in self.definitions and len(self.definitions) >= MAX_DEFINITIONS:
             return
         self.definitions[symbol] = (rhs, _text(latex), self._given(used))
+
+    def _is_vector(self, latex: str) -> bool:
+        text = _text(latex)
+        return uses_vector_notation(text) or mentions_name(text, self.vectors)
 
     def _learn_alias(self, latex: str) -> None:
         """`C = AB` with A, B matrices: C is a matrix too, so `CD = DC` is never sampled either."""
@@ -298,6 +338,11 @@ class ClaimChecker:
         sides = split_equation(latex)
         if sides is None:
             return ClaimCheck(status="not_an_equation")
+        if self._is_vector(latex):
+            if _LEIBNIZ.search(latex) and not self._is_vector(re.sub(r"\\partial\b", "", latex)):
+                # a plain derivative (`\partial` is also a vector-calculus command): say which it is
+                return ClaimCheck(status="unverified", kind="relation", detail=_LEIBNIZ_DETAIL)
+            return ClaimCheck(status="unverified", kind="relation", detail=_VECTOR_DETAIL)
         if mentions_name(_text(latex), self.matrices):
             return ClaimCheck(status="unverified", kind="relation", detail=_MATRIX_DETAIL)
         if _TRANSPOSE.search(latex):
