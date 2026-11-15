@@ -23,6 +23,7 @@ import type {
 import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "./ode-types";
 import type { FunctionalRequest, VariationReport } from "./variation-types";
 import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
+import type { ApproximationReport, ApproximationToolArgs } from "./approximation-types";
 import type { TelescopingResult } from "./telescoping-types";
 
 export interface ExpansionReport {
@@ -593,6 +594,14 @@ type CardBody =
       type: "telescoping";
       title: string;
       data: TelescopingResult & { request: Record<string, unknown> };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "approximation";
+      title: string;
+      /** The report, and the call as the model made it: the card's form adds the user's numbers to it. */
+      data: { report: ApproximationReport; request: ApproximationToolArgs };
     }
   | {
       id: string;

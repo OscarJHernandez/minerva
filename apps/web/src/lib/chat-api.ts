@@ -1,4 +1,5 @@
 import { ApiError, extractDetail } from "./api";
+import type { ApproximationToolArgs } from "./approximation-types";
 import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
 import type { StatAnswers, StatToolArgs } from "./statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
@@ -50,6 +51,12 @@ export const chatApi = {
   /** Runs a variation card with the numbers the user typed (the model cannot run these steps). */
   variationDirectly: (id: string, request: VariationRequest) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/variation`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Runs an approximation card again with the user's own numbers (no model involved). */
+  approximationDirectly: (id: string, request: ApproximationToolArgs) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/approximation`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

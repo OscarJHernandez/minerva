@@ -36,6 +36,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "creative_telescoping": "symbolic_zero",  # the certificate is an exact identity; a value adds quadrature
     "vector_calculus": "numeric",
     "electromagnetism": "numeric",  # steps checked by comparing whole expressions; models are evidence only  # independent Cartesian finite differences; never a proof
+    "approximation": "numeric",  # series coefficients, residual decay, quadrature or a second implementation; errors are sampled
     "variation": "numeric",  # finite differences of the action agree with the claimed variation
     "statistical_mechanics": "numeric",  # independent enumeration / quadrature; a symbolic zero is reported as such
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
@@ -127,7 +128,8 @@ def evidence_for(tool: str, status: str, card_data: dict[str, Any]) -> Evidence:
         source, "points_agreed", "numeric_points_agreed", "instances_agreed", "models_agreed"
     )
     checks = [c for c in data.get("checks", []) if isinstance(c, dict)]
-    if checks and checked is None:  # a statistical model: several independent checks
+    if checks and checked is None and any("points_checked" in c for c in checks):
+        # a statistical model: several independent checks
         checked = sum(c.get("points_checked", 0) for c in checks)
         agreed = sum(c.get("points_agreed", 0) for c in checks)
 

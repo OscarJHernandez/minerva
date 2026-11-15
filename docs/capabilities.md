@@ -265,6 +265,247 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - **Status:** `unsupported`
 - The expansion has negative or fractional powers or logarithms at this point (a pole or branch point). Laurent, Puiseux and asymptotic series are not supported.
 
+### Approximations
+
+*Available in:* workbench, chat, HTTP API.
+
+Finds a simpler expression that represents a function in the regime you name: Laurent series with pole order and residue, asymptotic expansions at plus or minus infinity, perturbation expansions in a small parameter or a combination such as v/c, Taylor series of several variables with the Hessian, leading behaviour and limits, Padé approximants, Chebyshev and Legendre approximations on an interval, Fourier series of a periodic function, piecewise polynomials, continued fractions of a number, Euler-Maclaurin for a large sum, sequence acceleration, the expansion of an integral, a root or an inverse function in a small parameter, and Laplace's method. `auto` chooses from what you said; `compare` puts Taylor, Padé, Chebyshev and piecewise side by side and picks the simplest that meets an accuracy target. SymPy only proposes: each result is shown only if a check that does not use the route that built it agrees (Cauchy estimates, residual decay at high precision, a second implementation, direct summation, quadrature).
+
+**Limits**
+
+- Errors are measured on sampled points and are never bounds; "the tolerance is met" means on the sampled points. A rigorous bound is established only for continued-fraction convergents of a rational.
+- The interval, point, period, tolerance, degrees and number of modes are yours; none has a default, and a missing one is a question. Taylor and Padé on an interval are expanded about the midpoint only when that is stated.
+- An asymptotic expansion is not a convergent series, and no term is added "because it should help".
+- Padé approximants can have poles the function does not have; they are reported. A Padé approximant is not assumed to be more accurate than the Taylor polynomial, and both are measured when an interval is given.
+- At a jump the Fourier series converges to the midpoint and overshoots by about 9% of the jump (Gibbs); uniform convergence is not claimed. Lanczos sigma factors are optional.
+- A function with a pole, an undefined point or non-real values on the interval is refused for interval methods. Essential singularities and branch points are not Laurent series and are refused.
+- Puiseux series, exponentially small or large asymptotics, endpoint and degenerate Laplace maxima, perturbative solutions of differential equations, spherical harmonics and multiscale methods are not covered.
+- Euler-Maclaurin sums need a smooth summand; an oscillating one is refused when the corrections do not beat the plain integral. A symbolic upper limit is checked for several values, not proved for every N.
+
+#### Non-relativistic expansion of the energy
+
+- **Input:** `m*c**2/sqrt(1-v**2/c**2)` (plain text), read as $\frac{c^{2} m}{\sqrt{1 - \frac{v^{2}}{c^{2}}}}$
+- **Assumptions:** m positive; c positive; v real
+- **Status:** `ok`
+- **Result:** $c^{2} m + \frac{m v^{2}}{2} + \frac{3 m v^{4}}{8 c^{2}} + O\left(\left(\frac{v}{c}\right)^{5}\right)$
+- **Check:** coefficients: passed
+- **Check:** remainder: passed
+- Expanded in the small parameter; the coefficients and the remainder order were checked numerically (the other symbols sampled), and the result is written in the original symbols.
+- Warning: local only.
+
+#### Pole order, principal part and residue
+
+- **Input:** `1/(x*(x-3))` (plain text), read as $\frac{1}{x \left(x - 3\right)}$
+- **Status:** `ok`
+- **Result:** $\frac{1}{3 \left(x - 3\right)} - \frac{1}{9} + \frac{\left(x - 3\right)}{27} - \frac{\left(x - 3\right)^{2}}{81} + O\left(\left(x - 3\right)^{3}\right)$
+- **Pole order:** $1$
+- **Principal part:** $\frac{1}{3 \left(x - 3\right)}$
+- **Residue:** $\frac{1}{3}$
+- **Check:** coefficients (after multiplying by the pole factor): passed
+- **Check:** remainder (after multiplying by the pole factor): passed
+- Expanded with SymPy; the coefficients (all the negative powers included) and the remainder order were checked by estimates that do not use sympy.series.
+- Warning: local only.
+
+#### A square root at large x
+
+- **Input:** `sqrt(x**2+x)` (plain text), read as $\sqrt{x^{2} + x}$
+- **Status:** `ok`
+- **Result:** $x + \frac{1}{2} - \frac{1}{8 x} + \frac{1}{16 x^{2}} - \frac{5}{128 x^{3}} + O\left(x^{-4}\right)$
+- **Check:** residual: passed
+- An asymptotic expansion, not a convergent power series: it describes the function as the variable grows, and adding terms need not improve the approximation at a fixed x.
+- Warning: asymptotic not convergent.
+
+#### Two variables, total degree two, with the Hessian
+
+- **Input:** `exp(x+y)` (plain text), read as $\mathrm{e}^{x + y}$
+- **Status:** `ok`
+- **Result:** $1 + x + y + \frac{x^{2}}{2} + x y + \frac{y^{2}}{2} + O\left(\left\|\left(x, y\right)\right\|^{3}\right)$
+- **Gradient at the point:** $\left[\begin{matrix}1\\1\end{matrix}\right]$
+- **Hessian at the point:** $\left[\begin{matrix}1 & 1\\1 & 1\end{matrix}\right]$
+- **Check:** restriction to lines through the point: passed
+- A Taylor polynomial of total degree 2; it was checked along 6 lines through the point by estimates that do not use sympy.series.
+- Warning: local only.
+
+#### One-sided limits that differ
+
+- **Input:** `1/x` (plain text), read as $\frac{1}{x}$
+- **Status:** `ok`
+- **Statement:** $\lim_{x \to 0^{+}} f = \infty,\quad \lim_{x \to 0^{-}} f = -\infty$
+- **Check:** values approach the limit (0^{+}): passed
+- **Check:** values approach the limit (0^{-}): passed
+- The limit was found with SymPy and checked by evaluating the original expression at high precision along a geometric approach (a numerical check, not a proof).
+- Warning: one sided limits differ.
+
+#### A Padé approximant with a pole the exponential does not have
+
+- **Input:** `exp(x)` (plain text), read as $\mathrm{e}^{x}$
+- **Status:** `ok`
+- **Result:** $\frac{1 + \frac{x}{2}}{1 - \frac{x}{2}} + O\left(\left(x\right)^{3}\right)$
+- **pole of the approximant: the original function has no singularity there (inside the requested interval):** $x = 2.0$
+- **Check:** f - P/Q falls like h^(m+n+1): passed
+- **Check:** coefficients against mpmath.pade: passed
+- The [1/1] Padé approximant about the point; it matches the Taylor coefficients through degree 2 (checked on the function itself).
+- Largest error on 2001 sampled points: unbounded (the approximant is undefined or has a pole in the interval) (a measurement, not a bound).
+- Warning: spurious pole.
+- Warning: pole in interval.
+
+#### The lowest Chebyshev degree meeting a tolerance
+
+- **Input:** `sin(x)` (plain text), read as $\sin{\left(x \right)}$
+- **Status:** `ok`
+- **Result:** $0.510545536562\,T_{0}(t) + 0.0789337345556\,T_{1}(t) - 0.463012578833\,T_{2}(t) - 0.00862483861266\,T_{3}(t) + 0.0234773061824\,T_{4}(t) + 0.000254572120368\,T_{5}(t) - 0.000454883167408\,T_{6}(t) - 3.49141655944e-6\,T_{7}(t) + 4.68185955851e-6\,T_{8}(t)$
+- **Statement:** $t = \frac{2x - (0.0 + 3.0)}{3.0 - (0.0)}$
+- **Check:** coefficients against numpy.polynomial.Chebyshev.interpolate: passed
+- **Check:** error measured on two disjoint grids: passed
+- Chebyshev interpolation of degree 8 on the interval, kept in the Chebyshev basis. The largest error on 2001 sampled points is 8.596e-8; this is a sampled estimate, not a bound. It is the lowest degree tried that meets the tolerance on the sampled points.
+- Largest error on 2001 sampled points: 8.596e-8 (a measurement, not a bound).
+- The tolerance is met on the sampled points.
+
+#### Taylor, Padé and Chebyshev compared on an interval
+
+- **Input:** `log(1+x)` (plain text), read as $\log{\left(x + 1 \right)}$
+- **Status:** `ok`
+- **Result:** $\frac{\log{\left(2 \right)} + \left(x - 1\right) \left(\frac{3 \log{\left(2 \right)}}{5} + \frac{1}{2}\right) + \left(x - 1\right)^{2} \left(\frac{3 \log{\left(2 \right)}}{40} + \frac{7}{40}\right) + \frac{\left(x - 1\right)^{3}}{240}}{1 + \frac{3 x}{5} - \frac{3}{5} + \frac{3 \left(x - 1\right)^{2}}{40}}$
+- Compared on the interval at a budget of degree 5. Padé [3/2] has the smallest sampled error (0.0001647); the table shows what each costs. Errors are measured on sampled points, not bounds.
+- Largest error on 2001 sampled points: 0.0001647 (a measurement, not a bound).
+- Warning: spurious pole.
+
+#### A sawtooth, with its closed-form coefficients and the Gibbs warning
+
+- **Input:** `x` (plain text), read as $x$
+- **Status:** `ok`
+- **Result:** $2.0\,\sin{\left(x \right)} -1.0\,\sin{\left(2 x \right)} + 0.666666666667\,\sin{\left(3 x \right)} -0.5\,\sin{\left(4 x \right)} + 0.4\,\sin{\left(5 x \right)}$
+- **a_n (valid for n = 1, 2, ...):** $0$
+- **b_n (valid for n = 1, 2, ...):** $- \frac{2 \left(-1\right)^{n}}{n}$
+- **Check:** coefficients: two quadrature rules agree: passed
+- **Check:** Bessel inequality (energy of the series <= energy of the function): passed
+- **Check:** reconstruction measured on two disjoint grids: passed
+- Fourier series with 5 modes of the periodic extension. The largest error on 2001 sampled points is 3.142 (a sampled estimate, not a bound).
+- Largest error on 2001 sampled points: 3.142 (a measurement, not a bound).
+- Warning: jump discontinuity.
+- Warning: gibbs.
+
+#### The Legendre generating function
+
+- **Input:** `1/sqrt(5/4 - x)` (plain text), read as $\frac{1}{\sqrt{\frac{5}{4} - x}}$
+- **Status:** `ok`
+- **Result:** $1.0\,P_{0}(t) + 0.5\,P_{1}(t) + 0.25\,P_{2}(t) + 0.125\,P_{3}(t) + 0.0625\,P_{4}(t) + 0.03125\,P_{5}(t)$
+- **Statement:** $t = \frac{2x - (-1.0 + 1.0)}{1.0 - (-1.0)}$
+- **Check:** coefficients: two quadrature rules agree: passed
+- **Check:** coefficients against numpy leggauss (independent nodes, double precision): passed
+- **Check:** truncation error measured on two disjoint grids: passed
+- Legendre expansion of degree 5: the least-squares polynomial on the interval. The largest error on 2001 sampled points is 0.03125 (a sampled estimate, not a bound).
+- Largest error on 2001 sampled points: 0.03125 (a measurement, not a bound).
+
+#### A spline that refines where the function varies quickly
+
+- **Input:** `exp(-200*x**2)` (plain text), read as $\mathrm{e}^{- 200 x^{2}}$
+- **Status:** `ok`
+- **Statement:** $\text{pchip through 35 knots on }\left[-1.0,\, 1.0\right]$
+- **Check:** reproduces the function at the knots: passed
+- **Check:** error measured on two disjoint grids (none is a knot): passed
+- Pchip approximation with 34 segments. The largest error on 2001 sampled points is 0.0008931 (a sampled estimate, not a bound).
+- Largest error on 2001 sampled points: 0.0008931 (a measurement, not a bound).
+- The tolerance is met on the sampled points.
+- Warning: no extrapolation.
+
+#### Rational approximations of pi
+
+- **Input:** `pi` (plain text), read as $\pi$
+- **Status:** `ok`
+- **Result:** $\frac{104348}{33215}$
+- **Statement:** $\pi = [3; 7, 15, 1, 292, 1, \ldots]$
+- **Check:** partial quotients agree at two working precisions: passed
+- **Check:** partial quotients against sympy.continued_fraction_iterator: passed
+- **Check:** each convergent satisfies |x - p/q| <= 1/(q q'): passed
+- The convergent 104348/33215 (term 5) has error 3.316e-10.
+- Largest error on 1 sampled points: 3.316e-10 (a measurement, not a bound).
+
+#### A large sum with its error against direct summation
+
+- **Input:** `1/k**2` (plain text), read as $\frac{1}{k^{2}}$
+- **Status:** `ok`
+- **Result:** $0.10416683554761908095$
+- **Statement:** $\int_a^b f(x)\,dx + \frac{f(a)+f(b)}{2} + \frac{1}{12}\left(f'(b)-f'(a)\right) - \frac{1}{720}\left(f'''(b)-f'''(a)\right) + \frac{1}{30240}\left(f^{(5)}(b)-f^{(5)}(a)\right)$
+- **First neglected term (an estimate of the error):** $-3.333e-11$
+- **Check:** exact for polynomials up to degree 2p + 1: passed
+- **Check:** the corrections improve on the integral plus half the end terms: passed
+- **Check:** error against direct summation is consistent with the first neglected term: passed
+- Euler-Maclaurin with 3 Bernoulli correction terms. At b = 1000 the error against direct summation is 3.26e-11; the first neglected term is 3.333e-11.
+- Largest error on 1 sampled points: 3.26e-11 (a measurement, not a bound).
+
+#### An integral expanded in a small parameter
+
+- **Input:** `sqrt(1+eps*x**2)` (plain text), read as $\sqrt{eps x^{2} + 1}$
+- **Assumptions:** eps positive; x positive
+- **Status:** `ok`
+- **Result:** $1 + \frac{eps}{6} - \frac{eps^{2}}{40} + \frac{eps^{3}}{112} + O\left(eps^{4}\right)$
+- **Check:** against quadrature of the original integral: passed
+- **Check:** coefficients: passed
+- **Check:** remainder: passed
+- The integrand was expanded in the small parameter, each coefficient integrated with the verified integrator, and the sum compared with quadrature of the original integral.
+- Warning: local only.
+
+#### The inverse of sin near 0
+
+- **Input:** `sin(x)` (plain text), read as $\sin{\left(x \right)}$
+- **Status:** `ok`
+- **Result:** $y + \frac{y^{3}}{6} + \frac{3 y^{5}}{40} + O\left(y^{6}\right)$
+- **Value of y at the point:** $0$
+- **Check:** residual of the equation falls like eps^(n+1): passed
+- **Check:** against a separately computed root: passed
+- The inverse of y = f(x) near x = 0, where y = 0, as a series in y; checked by substituting it back and against a separately computed inverse.
+- Warning: local only.
+
+#### Stirling's series by Laplace's method
+
+- **Input:** `exp(M*(log(x)-x))` (plain text), read as $\mathrm{e}^{M \left(- x + \log{\left(x \right)}\right)}$
+- **Status:** `ok`
+- **Result:** $\sqrt{2} \sqrt{\pi} \left(1 + \frac{1}{12 M} + \frac{1}{288 M^{2}}\right) \sqrt{\frac{1}{M}} \mathrm{e}^{- M} + \text{relative error } O\left(M^{-3}\right)$
+- **Location of the maximum:** $1$
+- **Leading term:** $\sqrt{2} \sqrt{\pi} \sqrt{\frac{1}{M}} \mathrm{e}^{- M}$
+- **Check:** ratio to quadrature of the original integral: passed
+- Laplace's method about the interior maximum: the leading term and 2 corrections, compared with quadrature of the original integral.
+- Warning: asymptotic not convergent.
+
+#### The method is chosen from the request
+
+- **Input:** `1/(x*(1-x))` (plain text), read as $\frac{1}{x \left(1 - x\right)}$
+- **Status:** `ok`
+- **Result:** $\frac{1}{x} + 1 + x + x^{2} + x^{3} + O\left(x^{4}\right)$
+- **Pole order:** $1$
+- **Principal part:** $\frac{1}{x}$
+- **Residue:** $1$
+- **Check:** coefficients (after multiplying by the pole factor): passed
+- **Check:** remainder (after multiplying by the pole factor): passed
+- Expanded with SymPy; the coefficients (all the negative powers included) and the remainder order were checked by estimates that do not use sympy.series.
+- Warning: local only.
+
+#### Without an interval, a question rather than a guess
+
+- **Input:** `sin(x)` (plain text), read as $\sin{\left(x \right)}$
+- **Status:** `conditions_not_satisfied`
+- The interval is yours to choose.
+- Question: On which interval should the approximation hold?
+
+#### An essential singularity is not a Laurent series
+
+- **Input:** `exp(1/x)` (plain text), read as $\mathrm{e}^{\frac{1}{x}}$
+- **Status:** `unsupported`
+- The expansion has logarithms or fractional powers here (a branch point or an essential singularity), so it is not a Laurent series.
+
+#### A pole in the interval cannot be approximated globally
+
+- **Input:** `1/(x-1)` (plain text), read as $\frac{1}{x - 1}$
+- **Status:** `unsupported`
+- The function is undefined or not real-valued at x = 1.0 in the interval, so it cannot be approximated there.
+
+#### A sum whose corrections do not help is refused
+
+- **Input:** `cos(1000*k)` (plain text), read as $\cos{\left(1000 k \right)}$
+- **Status:** `not_verified`
+- The Euler-Maclaurin approximation did not improve on, or agree with, direct summation (the summand may oscillate, have large derivatives at the ends, or too many corrections were asked for); try fewer corrections or a larger lower limit. It is not shown.
+
 ### Noncommutative matrix calculus
 
 *Available in:* chat, HTTP API, workbench.

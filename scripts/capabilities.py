@@ -20,6 +20,7 @@ from typing import Any
 
 import yaml
 from minerva_engine import (
+    ApproximationInput,
     DistributionInput,
     Engine,
     ExpectationInput,
@@ -224,6 +225,51 @@ def run_series(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[
         outputs,
         checks,
         [r.message] if r.message else [],
+    )
+
+
+def run_approximation(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    fields = set(ApproximationInput.model_fields) - {"input", "format", "assumptions"}
+    r = engine.approximation(
+        ApproximationInput(
+            input=spec["input"],
+            format=_syntax(spec),  # type: ignore[arg-type]
+            assumptions=spec.get("assumptions") or {},
+            **{k: v for k, v in spec.items() if k in fields},
+        )
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value in ("ok", "unchanged"):
+        if r.result_latex:
+            shown = (
+                f"{r.result_latex} + {r.remainder_latex}" if r.remainder_latex else r.result_latex
+            )
+            outputs.append({"label": "Result", "latex": shown})
+        if r.statement_latex:
+            outputs.append({"label": "Statement", "latex": r.statement_latex})
+        outputs.extend({"label": e.label, "latex": e.latex} for e in r.extras)
+        for c in r.checks:
+            word = "passed" if c.passed else "FAILED" if c.passed is False else "undecided"
+            checks.append(f"{c.name}: {word}")
+        if r.error and r.error.max_abs:
+            notes.append(
+                f"Largest error on {r.error.samples} sampled points: {r.error.max_abs} "
+                "(a measurement, not a bound)."
+            )
+        if r.tolerance_met is not None:
+            notes.append(
+                "The tolerance is "
+                + ("met" if r.tolerance_met else "NOT met")
+                + " on the sampled points."
+            )
+        notes.extend(f"Warning: {w.replace('_', ' ')}." for w in r.warnings)
+    notes.extend(f"Question: {q}" for q in r.questions)
+    if r.message:
+        notes.insert(0, r.message)
+    return _example(
+        spec, r.status.value, [_source_line(spec, "Input", engine)], outputs, checks, notes
     )
 
 
@@ -1696,6 +1742,7 @@ RUNNERS = {
     "simplify": run_simplify,
     "differentiate": run_differentiate,
     "series": run_series,
+    "approximation": run_approximation,
     "matrix": run_matrix,
     "sums": run_sums,
     "expectation": run_expectation,

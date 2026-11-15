@@ -661,6 +661,7 @@ export type Operation =
   | "geometry"
   | "vector"
   | "variation"
+  | "approximation"
   | "distribution"
   | "ode_analyze"
   | "ode_solve_symbolic"

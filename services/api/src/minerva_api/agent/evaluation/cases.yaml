@@ -1671,3 +1671,102 @@
       upper: oo
       assumptions: {x: [real]}
   source: "AGENTS.md (convergence is decided from declared assumptions only)"
+
+- id: approximation-relativistic-energy
+  category: physics
+  prompt: 'Expand the relativistic energy $E=\frac{m c^2}{\sqrt{1-v^2/c^2}}$ for $v/c \ll 1$ up to fourth order in $v/c$. Take m and c positive and v real.'
+  expected_tool: approximation
+  args:
+    present: [small, order]
+  expect_card: {status: ok}
+  reference:
+    tool: approximation
+    arguments:
+      latex: '\frac{m c^2}{\sqrt{1-v^2/c^2}}'
+      method: perturbation
+      small: 'v/c'
+      order: 4
+      assumptions: {m: [positive], c: [positive], v: [real]}
+  source: "engine approx benchmark (hand expansion: mc^2 + m v^2/2 + 3 m v^4/(8 c^2))"
+
+- id: approximation-laurent-residue
+  category: calculus
+  prompt: 'Give the Laurent series of $\frac{1}{x(x-3)}$ about $x=3$ up to order 2, and the residue there.'
+  expected_tool: approximation
+  args:
+    present: [point, order]
+  expect_card: {status: ok}
+  reference:
+    tool: approximation
+    arguments:
+      latex: '\frac{1}{x(x-3)}'
+      method: laurent
+      point: '3'
+      order: 2
+  source: "engine approx benchmark (residue 1/3, checked by a contour integral)"
+
+- id: approximation-pade-exponential
+  category: calculus
+  prompt: 'Find the [1/1] Pade approximant of $\exp(x)$ about 0.'
+  expected_tool: approximation
+  args:
+    present: [degree, denominator_degree]
+  expect_card: {status: ok}
+  reference:
+    tool: approximation
+    arguments:
+      latex: '\exp(x)'
+      method: pade
+      point: '0'
+      degree: 1
+      denominator_degree: 1
+  source: "engine approx benchmark (classical table: (1 + x/2)/(1 - x/2), with a pole at x = 2)"
+
+- id: approximation-large-x
+  category: calculus
+  prompt: 'How does $\sqrt{x^2+x}$ behave for large positive x? Give the terms up to order $1/x^2$.'
+  expected_tool: approximation
+  args:
+    present: [point]
+  expect_card: {status: ok}
+  reference:
+    tool: approximation
+    arguments:
+      latex: '\sqrt{x^2+x}'
+      method: asymptotic
+      point: oo
+      order: 2
+  source: "engine approx benchmark (x + 1/2 - 1/(8x), checked against direct evaluation)"
+
+- id: approximation-lowest-degree-for-a-tolerance
+  category: calculus
+  prompt: 'Approximate $\log(1+x)$ on the interval from 0 to 2 with an absolute error below 0.001, using as few coefficients as possible.'
+  expected_tool: approximation
+  args:
+    present: [lower, upper, tolerance, tolerance_kind]
+  expect_card: {status: ok}
+  reference:
+    tool: approximation
+    arguments:
+      latex: '\log(1+x)'
+      method: compare
+      lower: '0'
+      upper: '2'
+      tolerance: '1e-3'
+      tolerance_kind: absolute
+  source: "engine approx tests (the simplest candidate meeting the tolerance on the sampled points)"
+
+- id: approximation-interval-is-not-invented
+  category: ambiguous
+  prompt: 'Give me a Chebyshev approximation of $\sin x$.'
+  expected_tool: approximation
+  also_ok: [ask]
+  args:
+    absent: [lower, upper, degree, tolerance]
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: approximation
+    arguments:
+      latex: '\sin x'
+      method: chebyshev
+  source: "AGENTS.md (the interval and the degree or tolerance are the user's: the tool asks, never defaults)"

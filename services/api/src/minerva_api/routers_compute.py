@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request, status
 from minerva_engine import (
     Applicability,
+    ApproximationInput,
+    ApproximationReport,
     DifferentiateResult,
     DiscoveryReport,
     DistributionInput,
@@ -62,6 +64,7 @@ from minerva_knowledge.identities import (
 )
 from pydantic import BaseModel, Field
 
+from .approximation_log import log_approximation
 from .db import Calculation, Derivation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .diagnostics import log_distribution, log_statmech
@@ -70,6 +73,7 @@ from .logging import get_logger
 from .ode_log import log_ode
 from .schemas import (
     ApplyIdentityRequest,
+    ApproximationRequest,
     ConservedRequest,
     DifferentiateRequest,
     DistributionRequest,
@@ -622,6 +626,48 @@ def variation(
         saved["request"] = request.model_dump(mode="json")
         out.calculation_id = _save_row(
             db, user, "variation", request.integrand, request.format, request.assumptions, body,
+            result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+class ApproximationResponse(ApproximationReport):
+    calculation_id: uuid.UUID | None = None
+
+
+@router.post("/approximation", response_model=ApproximationResponse)
+def approximation(
+    body: ApproximationRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> ApproximationResponse:
+    """Approximate an expression or number by the chosen method (or `auto`): Taylor, Laurent, asymptotic,
+    perturbation, Pade, Chebyshev, Legendre, Fourier, piecewise, continued fractions, Euler-Maclaurin, ...
+
+    A result is returned only if a check that does not use the route that built it agreed. Errors are
+    measured on sampled points and are not bounds. The whole request is saved so that the workbench can
+    restore it."""
+    _guard(user, limiter, settings, _longest_text(body.model_dump(exclude=set(Links.model_fields))))
+    _check_links(db, user, body)
+    request = ApproximationInput(**body.model_dump(exclude=set(Links.model_fields)))
+    result = engine.approximation(request)
+    log.info(
+        "compute",
+        operation="approximation",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        user_id=str(user.id),
+    )
+    log_approximation(result)
+    out = ApproximationResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        saved["request"] = request.model_dump(mode="json")
+        out.calculation_id = _save_row(
+            db, user, "approximation", request.input, request.format, request.assumptions, body,
             result.status.value, saved,
         )  # fmt: skip
     return out

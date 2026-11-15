@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
+import type { ApproximationToolArgs } from "@/lib/approximation-types";
 import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
 import { useDebugMode } from "@/lib/debug-mode";
@@ -465,6 +466,22 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     [activeId, refreshList, router],
   );
 
+  /** The approximation card's form: the user's own numbers, run without the model. */
+  const runApproximation = useCallback(
+    async (request: ApproximationToolArgs) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.approximationDirectly(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   const busy = pending !== null;
   const lastUserIndex = messages.map((m) => m.role).lastIndexOf("user");
 
@@ -527,6 +544,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
           distribution: runDistribution,
           ode: runOde,
           variation: runVariation,
+          approximation: runApproximation,
           statmech: runStatMech,
         }}
       >

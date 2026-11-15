@@ -3534,6 +3534,7 @@ SCALAR_TOOLS = frozenset(
         "ode_solve_numerical",
         "variation",
         "creative_telescoping",
+        "approximation",
     }
 )
 _EXPRESSION_FIELDS = ("latex", "equation", "expression", "integrand")
@@ -3774,6 +3775,8 @@ TOOLS["statistical_mechanics"] = Tool(
 )
 
 
+from .approx_tools import ApproximationArgs as ApproximationArgs  # noqa: E402
+from .approx_tools import run_approximation  # noqa: E402
 from .telescoping_tools import TelescopingArgs, run_creative_telescoping  # noqa: E402
 
 TOOLS["creative_telescoping"] = Tool(
@@ -3792,4 +3795,19 @@ TOOLS["creative_telescoping"] = Tool(
     "an operator, certificate, equation or constant.",
     TelescopingArgs,
     run_creative_telescoping,
+)
+
+
+TOOLS["approximation"] = Tool(
+    "approximation",
+    "Approximate an expression or number by a simpler one in the regime the USER names: Taylor, Laurent (poles), "
+    "asymptotic (large x), perturbation in a small parameter (also combinations such as v/c), several variables, "
+    "leading behaviour, limits, Pade [m/n], Chebyshev, Legendre, Fourier (periodic), piecewise polynomials, "
+    "continued fractions of a number, Euler-Maclaurin for a large sum, and a comparison of methods on an interval "
+    "with an accuracy target. method `auto` chooses from what the user said. SymPy only proposes: a result is "
+    "shown only if a check that does not use the route that built it agreed. Errors are measured on sampled points "
+    "and are NOT bounds; an asymptotic expansion is not a convergent series. The interval, point, period, "
+    "tolerance and degrees are the user's: pass them only if stated, otherwise the tool asks.",
+    ApproximationArgs,
+    run_approximation,
 )
