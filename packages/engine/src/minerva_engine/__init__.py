@@ -1,5 +1,6 @@
 """Minerva symbolic computation engine."""
 
+from .approx import ApproximationInput, ApproximationReport
 from .claims import ClaimCheck, check_claim, check_claims, split_equation
 from .creative_telescoping import TelescopingInput, TelescopingResult
 from .differentiate import (
@@ -95,6 +96,8 @@ from .vector import FieldDecl, VectorInput, VectorResult
 
 __all__ = [
     "Applicability",
+    "ApproximationInput",
+    "ApproximationReport",
     "Blocked",
     "BlockedMove",
     "ClaimCheck",
