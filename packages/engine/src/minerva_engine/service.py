@@ -34,6 +34,16 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest
 from .observe import Observer, SandboxCall, current_trace_id
+from .ode import (
+    OdeAnalysis,
+    OdeAnalyzeInput,
+    OdeDiagnostics,
+    OdeInput,
+    OdeSolution,
+    OdeSolveInput,
+    OdeStage,
+)
+from .ode.models import OdeNumericInput, OdeNumericReport
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
     ConstantCandidate,
@@ -356,6 +366,82 @@ class Engine:
                 ),
             )
         result = MatrixCalculusResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def ode_analyze(self, request: OdeInput | OdeAnalyzeInput) -> OdeAnalysis:
+        """Read a differential equation or system, describe its structure and rank the approaches that
+        can be tried on it. Nothing is solved; the active trace id becomes the diagnostics' trace id."""
+        active = current_trace_id()
+        trace_id = active if active and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active) else None
+        outcome, ms = self._run(
+            "ode_analyze", {"input": request.model_dump(), "trace_id": trace_id}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return OdeAnalysis(
+                status=status,
+                message=message,
+                duration_ms=ms,
+                diagnostics=OdeDiagnostics(
+                    trace_id=trace_id,
+                    stages=[OdeStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
+            )
+        result = OdeAnalysis(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def ode_solve_symbolic(self, request: OdeInput | OdeSolveInput) -> OdeSolution:
+        """Closed-form solutions through SymPy, each shown only after the equation as written holds
+        for it at sampled points (derivatives taken numerically). Conditions are applied afterwards and
+        checked separately. SymPy failing is `unsupported`, never "no solution exists"."""
+        active = current_trace_id()
+        trace_id = active if active and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active) else None
+        outcome, ms = self._run(
+            "ode_solve_symbolic", {"input": request.model_dump(), "trace_id": trace_id}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return OdeSolution(
+                status=status,
+                message=message,
+                duration_ms=ms,
+                diagnostics=OdeDiagnostics(
+                    trace_id=trace_id,
+                    stages=[OdeStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
+            )
+        result = OdeSolution(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def ode_solve_numerical(self, request: OdeNumericInput) -> OdeNumericReport:
+        """Integrate an initial-value problem whose every number the user supplied. A trajectory is shown
+        only if an independent integrator agrees, refining the tolerance converges, the integral form
+        of the equation holds over the steps and any verified first integral is conserved; it is an
+        approximation on the interval given, never exact. The sandbox limit applies to the whole run."""
+        active = current_trace_id()
+        trace_id = active if active and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", active) else None
+        outcome, ms = self._run(
+            "ode_solve_numerical", {"input": request.model_dump(), "trace_id": trace_id}
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return OdeNumericReport(
+                status=status,
+                message=message,
+                method_requested=request.method,
+                duration_ms=ms,
+                diagnostics=OdeDiagnostics(
+                    trace_id=trace_id,
+                    stages=[OdeStage(name="total", ms=float(ms))],
+                    failure_reason=f"sandbox_{outcome.outcome.value}",
+                ),
+            )
+        result = OdeNumericReport(**outcome.value)
         result.duration_ms = ms
         return result
 

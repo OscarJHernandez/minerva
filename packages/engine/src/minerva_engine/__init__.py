@@ -57,6 +57,17 @@ from .models import (
 )
 from .motion import MotionReport, MotionRequest, Sweep
 from .observe import SandboxCall, current_trace_id, trace_scope
+from .ode import (
+    MethodSuggestion,
+    OdeAnalysis,
+    OdeAnalyzeInput,
+    OdeCondition,
+    OdeInput,
+    OdeNumericInput,
+    OdeNumericReport,
+    OdeSolution,
+    OdeSolveInput,
+)
 from .ops import apply_rule, parse_expression, verify_rule
 from .perturbation import CompareRequest, PerturbationReport
 from .pi_groups import (
@@ -126,9 +137,18 @@ __all__ = [
     "MatrixCalculusInput",
     "MatrixCalculusResult",
     "MatrixDecl",
+    "MethodSuggestion",
     "MinervaMathError",
     "MotionReport",
     "MotionRequest",
+    "OdeAnalysis",
+    "OdeAnalyzeInput",
+    "OdeCondition",
+    "OdeInput",
+    "OdeNumericInput",
+    "OdeNumericReport",
+    "OdeSolution",
+    "OdeSolveInput",
     "ParseError",
     "PerturbationReport",
     "Pins",

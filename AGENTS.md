@@ -448,6 +448,21 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   which requirement fails, and is a check of that candidate, not a uniqueness proof. Do not loosen the agreement
   tolerances (the tests include a 5% perturbed relaxation). Fourier and Laplace transform methods, retarded Green's
   functions, FEM, FDTD and general PDE solving are planned and not implemented: say so, never improvise them.
+- Ordinary differential equations (`ode/`, tools and endpoints `ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`;
+  overview `docs/ode.md`). Derivative notation is read only in `ode/reading.py`. A closed form is shown only if it,
+  put into the original equation with derivatives taken numerically, leaves a residual at round-off scale (and the
+  symbolic leg is reported separately); "no closed form found" never claims none exists, and fewer constants than the
+  order is "a family". A numerical run is shown only if initial values, an independent integrator, tolerance
+  refinement, the integral-form defect and any verified first integral all pass, and is always an approximation on
+  the given interval. A boundary-value result is "a solution", never unique. Series and perturbation results need the
+  residual to fall at the claimed order (`_check_residual`-style: do not loosen it; tests include a 0.1% wrong top
+  coefficient). Equilibria and stability are local, from the linearisation; non-hyperbolic means "the linearisation
+  does not decide"; nothing says globally stable. Never invent initial conditions, parameters, intervals or the small
+  parameter: the model asks. Multiple scales, Frobenius series, delay, partial and differential-algebraic equations
+  are not implemented and must be refused, not approximated. The reference problems (`ode/benchmark.py`, run by
+  `python -m minerva_engine.reference_benchmark`) take their answers from outside the solvers; add one for every new
+  method. Diagnostics and `ode`/`ode_stage` events carry counters and fixed vocabulary only.
+
 - Variational calculus (`variational/`, tool and endpoint `variation`, `docs/variational-calculus.md`) works on a jet space
   (`jets.py`: unknown functions and their derivatives are registered jets with a total derivative `D`, never symbols
   recognised by a name suffix). The first variation keeps every integration by parts and the whole boundary form;

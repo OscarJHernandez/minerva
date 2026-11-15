@@ -1331,6 +1331,278 @@ Isolates a variable in an equation and lists every solution with the conditions 
 - **Status:** `unsupported`
 - no closed form is produced for a factor of this degree with these coefficients: a general polynomial of degree 5 or more has none (Abel-Ruffini), and cubics and quartics are solved here only with rational coefficients
 
+### Ordinary differential equations
+
+*Available in:* workbench, chat, HTTP API.
+
+Write an equation or a system as you would on paper (y'' + 0.2 y' + y + y^3 = 0, or \frac{d^2 y}{dt^2}). Minerva shows how it read it, describes its structure (order, linearity, autonomy, whether it can be solved for its highest derivative, the equation class) and ranks the approaches that can be tried, with what each needs. You then choose one: a closed form, accepted only after it is substituted back into your equation with derivatives taken numerically; a Taylor series about the point of your initial values; an expansion in a small parameter you name (a regular expansion, or Poincaré–Lindstedt for periodic motion); a numerical solution of an initial-value problem (the integrator, explicit or stiff, is chosen from measured behaviour) or of a boundary-value problem; and, for an autonomous system, its equilibria with their local stability and a phase plane. A numerical result is shown only if an independent integrator agrees, refining the tolerance converges, the integral form of the equation holds and any verified conserved quantity is conserved. A closed form and a numerical run can be compared. Every number (conditions, parameters, the interval, the window, the small parameter) is yours: none is chosen for you.
+
+**Limits**
+
+- Ordinary equations and systems only, up to order 10 and 12 first-order states. Partial and delay equations, algebraic constraints, and equations that cannot be solved for their highest derivative (several branches) are refused, never reinterpreted.
+- A closed form comes from SymPy. Not finding one says nothing about whether one exists, singular solutions are not searched for, and an implicit result or one with an unevaluated integral is labelled as such.
+- A numerical trajectory is an approximation on the interval you gave, never exact and never valid beyond it. The checks are measurements, not an error bound; stiffness is judged from measured behaviour, not predicted.
+- A boundary-value solution is one of possibly several (the starting guess that found it is named), and a series is local (its radius of convergence is not determined). Perturbation expansions hold for small values of the parameter and, where a term grows with the variable, only on a bounded interval; multiple scales is not implemented.
+- Stability is local and from the linearisation. An eigenvalue with zero real part, or parameters without values, leave it undecided; nothing is called globally stable. Equilibria are listed as "found" unless the field is polynomial.
+
+#### How Minerva reads and classifies a nonlinear damped oscillator
+
+- **Equation:** `y'' + 0.2*y' + y + y^3 = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **As Minerva read it:** $y^{3} + y + \frac{y'}{5} + y'' = 0$
+- **Solved for the highest derivative:** $y'' = - y^{3} - y - \frac{y'}{5}$
+- Equation of order 2, nonlinear, autonomous; 2 first-order states.
+- 1. Numerical integration (initial-value problem): the highest derivatives can be solved for, so it becomes a first-order system.
+- 2. Local power series about a regular point: the highest derivatives can be solved for, so a Taylor series can be built from the initial values.
+- 3. Equilibria and local linear stability: autonomous with few states: equilibria, the Jacobian and its eigenvalues.
+- 4. Phase plane (direction field and trajectories): autonomous with two states.
+- Not applicable: Closed-form solution (SymPy), verified by substitution: no solvable class was recognised, so Minerva does not attempt a closed form.
+- Not applicable: Poincaré-Lindstedt (periodic motion, one degree of freedom): the acceleration depends on the velocity (damping or a gyroscopic term).
+- Not applicable: Regular perturbation expansion: no symbolic parameter to expand in.
+- Not applicable: Numerical boundary-value solution: needs conditions at two distinct points.
+- Not applicable: Multiple scales: not implemented in Minerva.
+
+#### A first-order equation with a closed form
+
+- **Equation:** `y' = x*y` (plain text)
+- **Condition:** `y(0) = 2` (plain text)
+- **Independent variable:** `x` (plain text)
+- **Status:** `ok`
+- **Solution:** $y\left(x\right) = 2 \mathrm{e}^{\frac{x^{2}}{2}}$
+- **Check:** substituted into the equation as written, derivatives taken numerically: 10 of 10 points agree; also proved by a symbolic zero test
+- **Check:** condition holds: y\left(0\right) = 2
+- A particular solution: every constant is fixed by the conditions.
+
+#### A second-order linear equation with initial values
+
+- **Equation:** `y'' + 3*y' + 2*y = 0` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Condition:** `y'(0) = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Solution:** $y\left(t\right) = \left(2 - \mathrm{e}^{- t}\right) \mathrm{e}^{- t}$
+- **Check:** substituted into the equation as written, derivatives taken numerically: 10 of 10 points agree; also proved by a symbolic zero test
+- **Check:** condition holds: y\left(0\right) = 1
+- **Check:** condition holds: y'\left(0\right) = 0
+- A particular solution: every constant is fixed by the conditions.
+
+#### Leibniz notation in LaTeX
+
+- **Equation:** `\frac{d^2 y}{d t^2} + 4 y = 0` (LaTeX)
+- **Condition:** `y(0) = 0` (LaTeX)
+- **Condition:** `y'(0) = 2` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Solution:** $y\left(t\right) = \sin{\left(2 t \right)}$
+- **Check:** substituted into the equation as written, derivatives taken numerically: 10 of 10 points agree; also proved by a symbolic zero test
+- **Check:** condition holds: y\left(0\right) = 0
+- **Check:** condition holds: y'\left(0\right) = 2
+- A particular solution: every constant is fixed by the conditions.
+
+#### A nonlinear initial-value problem, solved numerically
+
+- **Equation:** `y'' + 0.2*y' + y + y^3 = 0` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Condition:** `y'(0) = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **End of the interval:** `20` (plain text)
+- **Status:** `ok`
+- **y at the end of the interval:** y(20) = -0.146794
+- **y' at the end of the interval:** y'(20) = -0.0274952
+- **Check:** initial conditions: passed (0.0e+00 against 1e-12)
+- **Check:** independent method: passed (5.5e-09 against 1e-05)
+- **Check:** tolerance refinement: passed (5.4e-09 against 1e-07)
+- **Check:** defect: passed (2.8e-02 against 1e+03)
+- **Check:** first integral: skipped
+- DOP853: DOP853 completed and showed no sign of stiffness; 58 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+
+#### A stiff system (Robertson's chemical kinetics)
+
+- **Equation:** `\dot{a} = -0.04 a + 10^4 b c` (LaTeX)
+- **Equation:** `\dot{b} = 0.04 a - 10^4 b c - 3 \cdot 10^7 b^2` (LaTeX)
+- **Equation:** `\dot{c} = 3 \cdot 10^7 b^2` (LaTeX)
+- **Condition:** `a(0) = 1` (LaTeX)
+- **Condition:** `b(0) = 0` (LaTeX)
+- **Condition:** `c(0) = 0` (LaTeX)
+- **End of the interval:** `40` (plain text)
+- **Status:** `ok`
+- **a at the end of the interval:** a(40) = 0.715827
+- **b at the end of the interval:** b(40) = 9.18553e-06
+- **c at the end of the interval:** c(40) = 0.284164
+- **Check:** initial conditions: passed (0.0e+00 against 1e-12)
+- **Check:** independent method: passed (1.1e-08 against 1e-05)
+- **Check:** tolerance refinement: passed (2.2e-09 against 1e-07)
+- **Check:** defect: passed (1.7e-01 against 1e+03)
+- **Check:** first integral: skipped
+- Radau: DOP853 showed signs of stiffness (a step size limited by stability, or too many evaluations), so Radau was used; this is judged from measured behaviour, not predicted; 165 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+- Warning: stiffness indicated.
+
+#### A coupled system with parameters (predator and prey)
+
+- **Equation:** `\dot{x} = a x - b x y` (LaTeX)
+- **Equation:** `\dot{y} = -c y + d x y` (LaTeX)
+- **Condition:** `x(0) = 2` (LaTeX)
+- **Condition:** `y(0) = 1` (LaTeX)
+- **Parameter:** `a = 1` (plain text)
+- **Parameter:** `b = 0.5` (plain text)
+- **Parameter:** `c = 0.75` (plain text)
+- **Parameter:** `d = 0.25` (plain text)
+- **End of the interval:** `30` (plain text)
+- **Status:** `ok`
+- **x at the end of the interval:** x(30) = 1.63373
+- **y at the end of the interval:** y(30) = 1.13766
+- **Check:** initial conditions: passed (0.0e+00 against 1e-12)
+- **Check:** independent method: passed (2.0e-08 against 1e-05)
+- **Check:** tolerance refinement: passed (2.0e-08 against 1e-07)
+- **Check:** defect: passed (3.1e-01 against 1e+03)
+- **Check:** first integral: skipped
+- DOP853: DOP853 completed and showed no sign of stiffness; 69 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+
+#### A boundary-value problem
+
+- **Equation:** `y'' = -y` (plain text)
+- **Condition:** `y(0) = 0` (plain text)
+- **Condition:** `y(1) = 1` (plain text)
+- **Independent variable:** `x` (plain text)
+- **Status:** `ok`
+- **y at the end of the interval:** y(1) = 1
+- **y' at the end of the interval:** y'(1) = 0.642093
+- **Check:** boundary conditions: passed (0.0e+00 against 1e-06)
+- **Check:** residual: passed (1.1e-08 against 1e-06)
+- **Check:** mesh refinement: passed (3.1e-11 against 1e-05)
+- **Check:** shooting: passed (1.6e-11 against 1e-05)
+- solve_bvp: a solution found from the starting guess 'zero'; other solutions may exist; 97 steps.
+- A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error.
+
+#### A local series about the initial point
+
+- **Equation:** `y'' + 0.2*y' + y + y^3 = 0` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Condition:** `y'(0) = 0` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Series:** $y\left(t\right) = - \frac{199 t^{5}}{7500} + \frac{33 t^{4}}{100} + \frac{t^{3}}{15} - t^{2} + 1 + O\left(\left(t\right)^{6}\right)$
+- **Check:** the truncated result put into the equation as written: its residual falls at the claimed order (4 of 4 confirmations)
+- **Check:** condition holds: y\left(0\right) = 1
+- **Check:** condition holds: y'\left(0\right) = 0
+- A local approximation about the expansion point: its radius of convergence is not determined, and it says nothing about the solution far from that point.
+
+#### The frequency of an anharmonic oscillator (Poincaré–Lindstedt)
+
+- **Equation:** `y'' + y + \epsilon y^3 = 0` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Expansion:** $u(t) = A \cos{\left(\omega t \right)} + \epsilon \left(- \frac{A^{3} \cos{\left(\omega t \right)}}{32} + \frac{A^{3} \cos{\left(3 \omega t \right)}}{32}\right) + \epsilon^{2} \left(\frac{23 A^{5} \cos{\left(\omega t \right)}}{1024} - \frac{3 A^{5} \cos{\left(3 \omega t \right)}}{128} + \frac{A^{5} \cos{\left(5 \omega t \right)}}{1024}\right) + O\left(\epsilon^{3}\right),\quad \omega t = \tau$
+- **Expansion:** $\omega = 1 + \frac{3 \epsilon A^{2}}{8} - \frac{21 \epsilon^{2} A^{4}}{256}$
+- **Check:** the truncated result put into the equation as written: its residual falls at the claimed order (4 of 4 confirmations)
+- Periodic motion near the equilibrium, for small values of the parameter; the frequency is corrected order by order and the series is asymptotic.
+
+#### A regular expansion and the terms that grow with time
+
+- **Equation:** `y'' + y + \epsilon y^3 = 0` (LaTeX)
+- **Condition:** `y(0) = 1` (LaTeX)
+- **Condition:** `y'(0) = 0` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **Expansion:** $y\left(t\right) = \epsilon \left(\left(- \frac{3 t}{8} - \frac{\sin{\left(2 t \right)}}{4} - \frac{\sin{\left(4 t \right)}}{32}\right) \sin{\left(t \right)} - \frac{\cos^{5}{\left(t \right)}}{4} + \frac{\cos{\left(t \right)}}{4}\right) + \cos{\left(t \right)} + O\left(\epsilon^{2}\right)$
+- **Check:** the truncated result put into the equation as written: its residual falls at the claimed order (4 of 4 confirmations)
+- **Check:** condition holds: y\left(0\right) = 1
+- **Check:** condition holds: y'\left(0\right) = 0
+- An expansion in the small parameter: valid for small values of it and, where a term grows with the variable, only on a bounded interval. It says nothing about large values of the parameter.
+- Terms that grow with the variable appear at order 1: valid only on a bounded interval.
+
+#### Equilibria and local stability, with the parameters left symbolic
+
+- **Equation:** `\dot{x} = a x - b x y` (LaTeX)
+- **Equation:** `\dot{y} = -c y + d x y` (LaTeX)
+- **Assumptions:** a positive; b positive; c positive; d positive
+- **Status:** `ok`
+- **As Minerva read it:** $x' = a x - b x y$
+- **As Minerva read it:** $y' = - c y + d x y$
+- **Solved for the highest derivative:** $x' = x \left(a - b y\right)$
+- **Solved for the highest derivative:** $y' = y \left(- c + d x\right)$
+- **Equilibrium: saddle:** $x = 0, y = 0$
+- **Eigenvalues:** $a, - c$
+- **Equilibrium: centre:** $x = \frac{c}{d}, y = \frac{a}{b}$
+- **Eigenvalues:** $- \mathrm{i} \sqrt{a} \sqrt{c}, \mathrm{i} \sqrt{a} \sqrt{c}$
+- **Check:** Jacobian agrees with numerical differences of the field
+- **Check:** every equilibrium substituted back into the field; the list is complete (polynomial field)
+- System of order 1, nonlinear, autonomous; 2 first-order states.
+- 1. Numerical integration (initial-value problem): the highest derivatives can be solved for, so it becomes a first-order system.
+- 2. Local power series about a regular point: the highest derivatives can be solved for, so a Taylor series can be built from the initial values.
+- 3. Equilibria and local linear stability: autonomous with few states: equilibria, the Jacobian and its eigenvalues.
+- 4. Phase plane (direction field and trajectories): autonomous with two states.
+- 5. Regular perturbation expansion: has symbolic parameters, one of which may be small.
+- Not applicable: Closed-form solution (SymPy), verified by substitution: no solvable class was recognised, so Minerva does not attempt a closed form.
+- Not applicable: Poincaré-Lindstedt (periodic motion, one degree of freedom): needs a single second-order equation.
+- Not applicable: Numerical boundary-value solution: needs conditions at two distinct points.
+- Not applicable: Multiple scales: not implemented in Minerva.
+- Local and from the linearisation only: it describes orbits that start close to the point and says nothing about global behaviour or about orbits that start elsewhere.
+- Parameters have no values: eigenvalues are exact, and the stability may be undecided.
+
+#### The pendulum: a centre of the linearisation is not called stable
+
+- **Equation:** `\theta'' + \sin\theta = 0` (LaTeX)
+- **Independent variable:** `t` (plain text)
+- **Status:** `ok`
+- **As Minerva read it:** $\theta'' + \sin{\left(\theta \right)} = 0$
+- **Solved for the highest derivative:** $\theta'' = - \sin{\left(\theta \right)}$
+- **Equilibrium: centre:** $\theta = 0, \theta' = 0$
+- **Eigenvalues:** $- \mathrm{i}, \mathrm{i}$
+- **Equilibrium: saddle:** $\theta = \pi, \theta' = 0$
+- **Eigenvalues:** $-1, 1$
+- **Check:** Jacobian agrees with numerical differences of the field
+- **Check:** every equilibrium substituted back into the field; the list may be incomplete
+- Equation of order 2, nonlinear, autonomous; 2 first-order states.
+- 1. Numerical integration (initial-value problem): the highest derivatives can be solved for, so it becomes a first-order system.
+- 2. Local power series about a regular point: the highest derivatives can be solved for, so a Taylor series can be built from the initial values.
+- 3. Equilibria and local linear stability: autonomous with few states: equilibria, the Jacobian and its eigenvalues.
+- 4. Phase plane (direction field and trajectories): autonomous with two states.
+- Not applicable: Closed-form solution (SymPy), verified by substitution: no solvable class was recognised, so Minerva does not attempt a closed form.
+- Not applicable: Poincaré-Lindstedt (periodic motion, one degree of freedom): no symbolic parameter to expand in.
+- Not applicable: Regular perturbation expansion: no symbolic parameter to expand in.
+- Not applicable: Numerical boundary-value solution: needs conditions at two distinct points.
+- Not applicable: Multiple scales: not implemented in Minerva.
+- Local and from the linearisation only: it describes orbits that start close to the point and says nothing about global behaviour or about orbits that start elsewhere.
+- The field is not polynomial: these are the equilibria found; there may be others.
+
+#### A solution that blows up inside the interval is not shown
+
+- **Equation:** `y' = y^2` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Independent variable:** `t` (plain text)
+- **End of the interval:** `2` (plain text)
+- **Status:** `not_verified`
+- The integration did not complete (the step size collapsed: a singularity or a very stiff region); no trajectory is shown. This may be a singularity, a stiff problem or a solution that blows up.
+- The exact solution 1/(1 - t) is infinite at t = 1, so no trajectory reaches t = 2.
+
+#### No closed form found (a Riccati equation)
+
+- **Equation:** `y' = y^2 + x` (plain text)
+- **Independent variable:** `x` (plain text)
+- **Status:** `unsupported`
+- SymPy found no closed form for this equation. That does not show that none exists; a numerical or series method can still be tried.
+
+#### Numbers that were not given are not invented
+
+- **Equation:** `y' = a*y` (plain text)
+- **Condition:** `y(0) = 1` (plain text)
+- **Independent variable:** `t` (plain text)
+- **End of the interval:** `1` (plain text)
+- **Status:** `parse_error`
+- Values are required for every parameter; missing: a.
+
+#### A delay equation is not an ordinary differential equation
+
+- **Equation:** `y'(t) = y(t - 1)` (plain text)
+- **Independent variable:** `t` (plain text)
+- **Status:** `unsupported`
+- y(t - 1): only the unknown itself is supported (y(t)); delayed or composed arguments are not. If you meant a product, write y\cdot(t - 1)
+
 ### Polynomial equations
 
 *Available in:* chat.

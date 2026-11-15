@@ -20,6 +20,7 @@ import type {
   VectorResult,
   SumsResult,
 } from "./types";
+import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "./ode-types";
 import type { FunctionalRequest, VariationReport } from "./variation-types";
 import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
 
@@ -593,6 +594,27 @@ export type Card =
       type: "motion";
       title: string;
       data: { report: MotionReport; request: MotionRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "ode_analysis";
+      title: string;
+      data: { report: OdeAnalysis; request: OdeInput };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "ode_solution";
+      title: string;
+      data: { report: OdeSolution; request: OdeInput };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "ode_numeric";
+      title: string;
+      data: { report: OdeNumericReport; request: OdeInput };
     }
   | {
       id: string;

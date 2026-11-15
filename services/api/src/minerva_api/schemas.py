@@ -11,6 +11,10 @@ from minerva_engine import (
     ExpressionInput,
     GeometryInput,
     MatrixDecl,
+    OdeAnalyzeInput,
+    OdeInput,
+    OdeNumericInput,
+    OdeSolveInput,
     Pins,
     StatMechInput,
     StatModelInput,
@@ -164,6 +168,22 @@ class VectorRequest(VectorInput, Links):
     from the request."""
 
     premise_ids: list[str] = Field(default_factory=list, max_length=8)
+
+
+class OdeRequest(OdeInput, Links):
+    """A differential equation or system."""
+
+
+class OdeAnalyzeRequest(OdeAnalyzeInput, Links):
+    """A differential equation to describe (structure, or equilibria and local stability)."""
+
+
+class OdeSolveRequest(OdeSolveInput, Links):
+    """A differential equation and the analytical approach to try."""
+
+
+class OdeNumericRequest(OdeNumericInput, Links):
+    """An initial-value problem with every number supplied by the user."""
 
 
 class VariationRequest(VariationInput, Links):

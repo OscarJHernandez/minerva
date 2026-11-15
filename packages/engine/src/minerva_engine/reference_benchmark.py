@@ -19,7 +19,6 @@ import json
 import sys
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -30,42 +29,16 @@ from .distributions.models import DistributionInput
 from .latexparse import parse_latex
 from .matrix import MatrixCalculusInput, MatrixDecl
 from .models import ExpressionInput, Limits
+from .reference_core import Judge, Problem, _verdict
 from .service import Engine
 from .textparse import parse_text
 from .vector import FieldDecl, VectorInput
 
 mp.mp.dps = 30
 
-Judge = Callable[[Engine], tuple[str, str]]  # -> (outcome, detail)
-
-
-@dataclass(frozen=True)
-class Problem:
-    id: str
-    category: str
-    source: str  # where the expected outcome comes from, by locator only
-    expected: str  # "correct" or "refused"
-    judge: Judge
-
 
 def _expr(latex: str, **assumptions: list[str]) -> ExpressionInput:
     return ExpressionInput(input=latex, assumptions=dict(assumptions))
-
-
-def _verdict(expected: str, ok: bool, agrees: bool | None, detail: str) -> tuple[str, str]:
-    """`ok`: the engine returned a result; `agrees`: that result matches the oracle (None: not tested)."""
-    if expected == "refused":
-        return (
-            ("wrong", f"returned a result where a refusal was due: {detail}")
-            if ok
-            else (
-                "refused_as_expected",
-                detail,
-            )
-        )
-    if not ok:
-        return "unsupported_regression", detail
-    return ("correct", detail) if agrees else ("wrong", detail)
 
 
 def _matrix(entries: list[list[int]]) -> mp.matrix:
@@ -997,6 +970,15 @@ PROBLEMS: list[Problem] = [
         _statmech("indistinguishability-is-the-users-choice"),
     ),
 ]
+
+
+def _ode_problems() -> list[Problem]:
+    from .ode.benchmark import ODE_PROBLEMS  # imported late: it uses Problem and _verdict from here
+
+    return ODE_PROBLEMS
+
+
+PROBLEMS.extend(_ode_problems())
 
 
 def run_problems(engine: Engine | None = None) -> list[dict[str, Any]]:

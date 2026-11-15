@@ -53,6 +53,12 @@
 #   substitute   input, relations [LaTeX `left = right`], order (given | simultaneous), assumptions
 #   rewrite      input, action (simplify | expand | factor | cancel | collect | rule), part, occurrence, rule, by, assumptions
 #   isolate      input (an equation), variable, assumptions
+#   ode_analyze  equations [`left = right`], independent, conditions [`y(0) = 1`], assumptions, detail (structure |
+#                qualitative), parameters {name: number}, window [x_min, x_max, y_min, y_max]
+#   ode_solve    equations, independent, conditions, assumptions, method (closed_form | series | perturbation), order,
+#                small_parameter, equilibrium
+#   ode_numeric  equations, independent, conditions, assumptions, parameters {name: number}, t_end, kind (ivp | bvp),
+#                method, rtol, atol   (every number is the user's: an example that leaves one out shows the refusal)
 # Syntax: every example may set `format: text` (plain typing: sin(x)/(1+cos(x)), explicit `*`, `^` for powers) or
 # leave it out for LaTeX. Prefer plain text: it is how people type, and the page shows the formula the engine
 # read from it. Keep LaTeX only where LaTeX is the point (refusing an ambiguous `\sin 2x`, photo transcription,
@@ -1557,6 +1563,168 @@ capabilities:
         op: isolate
         input: "x^5 + a x + 1 = 0"
         variable: x
+
+  - id: ordinary-differential-equations
+    title: Ordinary differential equations
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Write an equation or a system as you would on paper (y'' + 0.2 y' + y + y^3 = 0, or \frac{d^2 y}{dt^2}).
+      Minerva shows how it read it, describes its structure (order, linearity, autonomy, whether it can be solved for
+      its highest derivative, the equation class) and ranks the approaches that can be tried, with what each needs.
+      You then choose one: a closed form, accepted only after it is substituted back into your equation with
+      derivatives taken numerically; a Taylor series about the point of your initial values; an expansion in a small
+      parameter you name (a regular expansion, or Poincaré–Lindstedt for periodic motion); a numerical solution of an
+      initial-value problem (the integrator, explicit or stiff, is chosen from measured behaviour) or of a
+      boundary-value problem; and, for an autonomous system, its equilibria with their local stability and a phase
+      plane. A numerical result is shown only if an independent integrator agrees, refining the tolerance converges,
+      the integral form of the equation holds and any verified conserved quantity is conserved. A closed form and a
+      numerical run can be compared. Every number (conditions, parameters, the interval, the window, the small
+      parameter) is yours: none is chosen for you.
+    limits:
+      - Ordinary equations and systems only, up to order 10 and 12 first-order states. Partial and delay equations,
+        algebraic constraints, and equations that cannot be solved for their highest derivative (several branches) are
+        refused, never reinterpreted.
+      - A closed form comes from SymPy. Not finding one says nothing about whether one exists, singular solutions are
+        not searched for, and an implicit result or one with an unevaluated integral is labelled as such.
+      - A numerical trajectory is an approximation on the interval you gave, never exact and never valid beyond it. The
+        checks are measurements, not an error bound; stiffness is judged from measured behaviour, not predicted.
+      - A boundary-value solution is one of possibly several (the starting guess that found it is named), and a series
+        is local (its radius of convergence is not determined). Perturbation expansions hold for small values of the
+        parameter and, where a term grows with the variable, only on a bounded interval; multiple scales is not
+        implemented.
+      - Stability is local and from the linearisation. An eigenvalue with zero real part, or parameters without values,
+        leave it undecided; nothing is called globally stable. Equilibria are listed as "found" unless the field is
+        polynomial.
+    examples:
+      - id: ode-analysis-duffing
+        title: How Minerva reads and classifies a nonlinear damped oscillator
+        op: ode_analyze
+        equations: ["y'' + 0.2*y' + y + y^3 = 0"]
+        format: text
+        independent: t
+      - id: ode-first-order-analytic
+        title: A first-order equation with a closed form
+        op: ode_solve
+        equations: ["y' = x*y"]
+        format: text
+        independent: x
+        conditions: ["y(0) = 2"]
+      - id: ode-second-order-linear
+        title: A second-order linear equation with initial values
+        op: ode_solve
+        equations: ["y'' + 3*y' + 2*y = 0"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+      - id: ode-latex-notation
+        title: Leibniz notation in LaTeX
+        op: ode_solve
+        equations: ['\frac{d^2 y}{d t^2} + 4 y = 0']
+        independent: t
+        conditions: ["y(0) = 0", "y'(0) = 2"]
+      - id: ode-numerical-nonlinear
+        title: A nonlinear initial-value problem, solved numerically
+        op: ode_numeric
+        equations: ["y'' + 0.2*y' + y + y^3 = 0"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+        t_end: 20
+      - id: ode-stiff-system
+        title: A stiff system (Robertson's chemical kinetics)
+        op: ode_numeric
+        equations:
+          - '\dot{a} = -0.04 a + 10^4 b c'
+          - '\dot{b} = 0.04 a - 10^4 b c - 3 \cdot 10^7 b^2'
+          - '\dot{c} = 3 \cdot 10^7 b^2'
+        conditions: ["a(0) = 1", "b(0) = 0", "c(0) = 0"]
+        t_end: 40
+      - id: ode-coupled-system
+        title: A coupled system with parameters (predator and prey)
+        op: ode_numeric
+        equations: ['\dot{x} = a x - b x y', '\dot{y} = -c y + d x y']
+        conditions: ["x(0) = 2", "y(0) = 1"]
+        parameters: { a: 1, b: 0.5, c: 0.75, d: 0.25 }
+        t_end: 30
+      - id: ode-boundary-value
+        title: A boundary-value problem
+        op: ode_numeric
+        equations: ["y'' = -y"]
+        format: text
+        independent: x
+        kind: bvp
+        conditions: ["y(0) = 0", "y(1) = 1"]
+      - id: ode-series
+        title: A local series about the initial point
+        op: ode_solve
+        equations: ["y'' + 0.2*y' + y + y^3 = 0"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+        method: series
+        order: 5
+      - id: ode-perturbation-frequency
+        title: "The frequency of an anharmonic oscillator (Poincaré–Lindstedt)"
+        op: ode_solve
+        equations: ["y'' + y + \\epsilon y^3 = 0"]
+        independent: t
+        method: perturbation
+        small_parameter: epsilon
+        equilibrium: "0"
+        order: 2
+      - id: ode-perturbation-secular
+        title: A regular expansion and the terms that grow with time
+        op: ode_solve
+        equations: ["y'' + y + \\epsilon y^3 = 0"]
+        independent: t
+        conditions: ["y(0) = 1", "y'(0) = 0"]
+        method: perturbation
+        small_parameter: epsilon
+        order: 1
+      - id: ode-equilibria-lotka-volterra
+        title: Equilibria and local stability, with the parameters left symbolic
+        op: ode_analyze
+        equations: ['\dot{x} = a x - b x y', '\dot{y} = -c y + d x y']
+        detail: qualitative
+        assumptions: { a: [positive], b: [positive], c: [positive], d: [positive] }
+      - id: ode-equilibria-pendulum
+        title: "The pendulum: a centre of the linearisation is not called stable"
+        op: ode_analyze
+        equations: ["\\theta'' + \\sin\\theta = 0"]
+        independent: t
+        detail: qualitative
+      - id: ode-refusal-blow-up
+        title: A solution that blows up inside the interval is not shown
+        op: ode_numeric
+        equations: ["y' = y^2"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1"]
+        t_end: 2
+        note: >-
+          The exact solution 1/(1 - t) is infinite at t = 1, so no trajectory reaches t = 2.
+      - id: ode-refusal-no-closed-form
+        title: No closed form found (a Riccati equation)
+        op: ode_solve
+        equations: ["y' = y^2 + x"]
+        format: text
+        independent: x
+      - id: ode-refusal-missing-numbers
+        title: Numbers that were not given are not invented
+        op: ode_numeric
+        equations: ["y' = a*y"]
+        format: text
+        independent: t
+        conditions: ["y(0) = 1"]
+        t_end: 1
+      - id: ode-refusal-delay
+        title: A delay equation is not an ordinary differential equation
+        op: ode_solve
+        equations: ["y'(t) = y(t - 1)"]
+        format: text
+        independent: t
 
   - id: polynomial-solving
     title: Polynomial equations

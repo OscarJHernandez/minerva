@@ -1,6 +1,15 @@
 import type { DiscoveryReport } from "./chat-types";
 import type { StatMechRequest, StatMechResult } from "./statmech-types";
 import type {
+  OdeAnalysis,
+  OdeAnalyzeInput,
+  OdeInput,
+  OdeNumericInput,
+  OdeNumericReport,
+  OdeSolution,
+  OdeSolveInput,
+} from "./ode-types";
+import type {
   ApplyIdentityResult,
   Assumptions,
   Derivation,
@@ -148,6 +157,15 @@ export const api = {
     request<IntegrateResult>("/v1/compute/integrate", {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, variable, ...bounds }),
+    }),
+  odeAnalyze: (req: OdeInput | OdeAnalyzeInput) =>
+    request<OdeAnalysis>("/v1/compute/ode/analyze", { method: "POST", body: JSON.stringify(req) }),
+  odeSolve: (req: OdeInput | OdeSolveInput) =>
+    request<OdeSolution>("/v1/compute/ode/solve", { method: "POST", body: JSON.stringify(req) }),
+  odeNumeric: (req: OdeNumericInput) =>
+    request<OdeNumericReport>("/v1/compute/ode/numeric", {
+      method: "POST",
+      body: JSON.stringify(req),
     }),
   matrix: (c: ComputeInput, req: MatrixRequest) =>
     request<MatrixCalculusResult>("/v1/compute/matrix", {
