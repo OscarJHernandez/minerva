@@ -1,4 +1,5 @@
 import { ApiError, extractDetail } from "./api";
+import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
 import type { StatAnswers, StatToolArgs } from "./statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
 import type { VariationRequest } from "./variation-types";
@@ -54,6 +55,24 @@ export const chatApi = {
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?" (no model involved). */
   distribution: (id: string, request: DistributionAnswer) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/distribution`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Equilibria and local stability, with the parameter values and window the user typed. */
+  odeQualitative: (id: string, request: OdeAnalyzeInput) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_analyze`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Finds a closed form when the user presses the button on an analysis card. */
+  odeSolveSymbolic: (id: string, request: OdeInput | OdeSolveInput) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_solve_symbolic`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Integrates with the initial values, parameters and interval the user typed into the form. */
+  odeSolveNumerical: (id: string, request: OdeNumericInput) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_solve_numerical`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

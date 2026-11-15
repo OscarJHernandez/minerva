@@ -97,6 +97,12 @@ one most likely to be wrong.
     and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
     server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
+  - `ode` (`ode/`, `Engine.ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`, `POST /v1/compute/ode/*`, chat tools of the
+    same names): reading of derivative notation (`reading.py`, the only place it is interpreted), exact classification and
+    ranked methods (`analyze.py`), closed forms (`symbolic.py`), SciPy initial- and boundary-value solvers
+    (`numerical.py`, `boundary.py`), Taylor and perturbation solutions (`approximation.py`), equilibria and phase plane
+    (`qualitative.py`) and cross-method comparison (`compare.py`). `verification.py` holds the checks and imports nothing
+    from the solvers it judges. Overview and limits: `docs/ode.md`; reference problems: `ode/benchmark.py`.
 - `variational/` is the general variational calculus: `jets.py` (the jet space and its total derivative), `setup.py`
   (strict reading of a functional), `firstvar.py` (integration by parts, Euler-Lagrange expressions, boundary
   coefficients), `boundary.py`, `verify.py` (finite-difference checks of the original action), `action.py` and
@@ -265,7 +271,7 @@ and explains; it never computes and never decides correctness.
 - **Loop** (`loop.py`): the conversation and the tool schemas go to the model (`llm.py`: an Ollama client
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
-- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
+- **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
   `check_units`, `solve_polynomial`, `statistical_mechanics`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that

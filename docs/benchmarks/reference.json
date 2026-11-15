@@ -118,6 +118,167 @@
       "source": "N! is a convention only the user chooses",
       "expected": "refused",
       "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ode-separable-closed-form",
+      "category": "ode-analytic",
+      "source": "closed form: y' = -2xy^2 gives y = 1/(1 + x^2)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-bernoulli-closed-form",
+      "category": "ode-analytic",
+      "source": "closed form: Bernoulli y' + y = y^2 with y(0) = 1/2 gives 1/(1 + e^x)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-linear-second-order",
+      "category": "ode-analytic",
+      "source": "closed form: roots -1 and -2, y = 2e^-t - e^-2t",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-euler-cauchy",
+      "category": "ode-analytic",
+      "source": "closed form: x^2 y'' + x y' - y = 0 has solutions x and 1/x",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-harmonic-oscillator",
+      "category": "ode-numeric",
+      "source": "closed form: cos(wt)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-damped-oscillator",
+      "category": "ode-numeric",
+      "source": "closed form of the underdamped oscillator",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-pendulum-nonlinear",
+      "category": "ode-numeric",
+      "source": "mpmath.odefun (Taylor's method) on theta'' = -sin(theta)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-logistic",
+      "category": "ode-numeric",
+      "source": "closed form of the logistic equation",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-robertson-stiff",
+      "category": "ode-stiff",
+      "source": "Robertson (1966) chemical kinetics: standard values at t = 40 (Hairer and Wanner, Solving ODEs II)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-stiff-linear",
+      "category": "ode-stiff",
+      "source": "closed form: y = cos t solves y' = -1000(y - cos t) - sin t",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-coupled-matrix-exponential",
+      "category": "ode-coupled",
+      "source": "mpmath.expm on the constant matrix of x' = Ax",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-lotka-volterra-invariant",
+      "category": "ode-coupled",
+      "source": "Lotka-Volterra: d x - c ln x + b y - a ln y is constant along solutions",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-bvp-linear",
+      "category": "ode-boundary",
+      "source": "closed form: sin(x)/sin(1)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-bvp-airy",
+      "category": "ode-boundary",
+      "source": "Airy functions a Ai + b Bi fitted to the two end values (mpmath.airyai, airybi)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-bvp-no-solution-refused",
+      "category": "ode-boundary",
+      "source": "y'' = -y has only c sin(x): y(0) = 0, y(pi) = 1 has no solution",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ode-series-geometric",
+      "category": "ode-approximation",
+      "source": "Taylor coefficients of 1/(1 - x) (mpmath.taylor)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-series-singular-point-refused",
+      "category": "ode-approximation",
+      "source": "y' = 1/x is not defined at 0: no series about it",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ode-perturbation-duffing-frequency",
+      "category": "ode-approximation",
+      "source": "Landau and Lifshitz, Mechanics, section 28, against the exact period (quarter-period integral)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-lorenz-equilibria",
+      "category": "ode-qualitative",
+      "source": "Lorenz (1963), Strogatz, Nonlinear Dynamics and Chaos, section 9.2: eigenvalues at the standard parameters",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-pendulum-equilibria",
+      "category": "ode-qualitative",
+      "source": "eigenvalues +-i (centre of the linearisation) and +-1 (saddle)",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "ode-blow-up-refused",
+      "category": "ode-refusal",
+      "source": "y' = y^2, y(0) = 1: y = 1/(1 - t) is infinite at t = 1",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ode-delay-refused",
+      "category": "ode-refusal",
+      "source": "a delay equation is not an ordinary differential equation",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ode-numbers-not-given-refused",
+      "category": "ode-refusal",
+      "source": "Minerva does not choose a parameter value for the user",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
     }
   ]
 }

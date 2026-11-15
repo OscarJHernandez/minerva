@@ -247,6 +247,36 @@ def op_distribution(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_ode_analyze(payload: dict[str, Any]) -> dict[str, Any]:
+    from .ode import analyze
+    from .ode.models import OdeAnalyzeInput
+
+    result = analyze(
+        OdeAnalyzeInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
+    )
+    return result.model_dump(mode="json")
+
+
+def op_ode_solve_symbolic(payload: dict[str, Any]) -> dict[str, Any]:
+    from .ode.models import OdeSolveInput
+    from .ode.solve import solve_symbolic
+
+    result = solve_symbolic(
+        OdeSolveInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
+    )
+    return result.model_dump(mode="json")
+
+
+def op_ode_solve_numerical(payload: dict[str, Any]) -> dict[str, Any]:
+    from .ode.models import OdeNumericInput
+    from .ode.numerical import solve_numerical
+
+    result = solve_numerical(
+        OdeNumericInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
+    )
+    return result.model_dump(mode="json")
+
+
 def op_sums(payload: dict[str, Any]) -> dict[str, Any]:
     from .indexed.models import SumsInput
     from .indexed.operation import sums
@@ -831,6 +861,9 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "integrate": op_integrate,
     "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
+    "ode_analyze": op_ode_analyze,
+    "ode_solve_symbolic": op_ode_solve_symbolic,
+    "ode_solve_numerical": op_ode_solve_numerical,
     "geometry": op_geometry,
     "variation": op_variation,
     "lagrangian": op_lagrangian,

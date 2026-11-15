@@ -11,6 +11,10 @@ from minerva_engine import (
     ExpressionInput,
     GeometryInput,
     MatrixDecl,
+    OdeAnalyzeInput,
+    OdeInput,
+    OdeNumericInput,
+    OdeSolveInput,
     Pins,
     StatMechInput,
     StatModelInput,
@@ -153,6 +157,22 @@ class MatrixCalculusRequest(Linked):
 
 class GeometryRequest(GeometryInput, Links):
     """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
+
+
+class OdeRequest(OdeInput, Links):
+    """A differential equation or system."""
+
+
+class OdeAnalyzeRequest(OdeAnalyzeInput, Links):
+    """A differential equation to describe (structure, or equilibria and local stability)."""
+
+
+class OdeSolveRequest(OdeSolveInput, Links):
+    """A differential equation and the analytical approach to try."""
+
+
+class OdeNumericRequest(OdeNumericInput, Links):
+    """An initial-value problem with every number supplied by the user."""
 
 
 class VariationRequest(VariationInput, Links):

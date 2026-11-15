@@ -1235,6 +1235,106 @@
   reply_matches: 'given|premise|relation'
   source: "arithmetic: x^2 + 3x, derivative 2x + 3; the relation is the user's premise (AGENTS.md, controlled steps)"
 
+- id: ode-analyze-before-solving
+  category: calculus
+  prompt: "The independent variable is t. What kind of equation is $y'' + 0.2 y' + y + y^3 = 0$ and which methods would you try?"
+  expected_tool: ode_analyze
+  args: {equals: {independent: t}, present: [equations]}
+  expect_card: {status: ok}
+  reference:
+    tool: ode_analyze
+    arguments:
+      equations: ["y'' + 0.2 y' + y + y^3 = 0"]
+      independent: t
+  source: "engine test_ode_analyze.py (the damped Duffing oscillator): nonlinear, solved for y'', numerical integration first"
+
+- id: ode-closed-form-initial-value-problem
+  category: calculus
+  prompt: "The independent variable is t. Find the exact solution of $y'' + 3y' + 2y = 0$ with y(0) = 1 and y'(0) = 0."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  args: {present: [equations, conditions]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y'' + 3 y' + 2 y = 0"]
+      independent: t
+      conditions: ["y(0) = 1", "y'(0) = 0"]
+  source: "engine test_ode_symbolic.py: y = 2 exp(-t) - exp(-2t), checked against the closed form"
+
+- id: ode-numerical-values-missing
+  category: physics
+  prompt: 'Integrate $\ddot{x} + c\,\dot{x} + x = 0$ numerically.'
+  expected_tool: ask
+  forbid: [ode_solve_numerical]
+  reply_matches: '\?|which|what|value|initial|interval|choose|provide|give'
+  source: "AGENTS.md (an initial-value problem needs numbers only the user may choose); engine test_ode_numerical.py refuses missing numbers"
+
+- id: ode-lagrangian-is-not-a-plain-equation
+  category: physics
+  prompt: 'What are the equations of motion for the Lagrangian $\frac12 m\dot{x}^2 - \frac12 k x^2$?'
+  expected_tool: analyze_lagrangian
+  forbid: [ode_analyze, ode_solve_symbolic, ode_solve_numerical]
+  args: {includes: {coordinates: [x]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m\dot{x}^2 - \frac12 k x^2', coordinates: [x]}
+  source: "prompt rule 21: a Lagrangian goes to analyze_lagrangian"
+
+- id: ode-no-closed-form-is-not-impossibility
+  category: false_claim
+  prompt: "The independent variable is x. Prove that $y' = y^2 + x$ has no closed-form solution."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  max_calls: 2
+  expect_card: {status: unsupported}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y' = y^2 + x"]
+      independent: x
+  reply_forbids: 'no closed.form solution exists|cannot be solved in closed form|is impossible|proved that'
+  source: "AGENTS.md: unsupported never claims that none exists; engine test_ode_symbolic.py"
+
+- id: ode-series-about-the-initial-point
+  category: calculus
+  prompt: "The independent variable is t. Give the Taylor series to order 5 of $y'' + 0.2 y' + y + y^3 = 0$ about t = 0 with y(0) = 1 and y'(0) = 0."
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  args: {equals: {method: series}, present: [conditions]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y'' + 0.2 y' + y + y^3 = 0"]
+      independent: t
+      conditions: ["y(0) = 1", "y'(0) = 0"]
+      method: series
+      order: 5
+  reply_forbids: 'valid for all|converges everywhere|for any t'
+  source: "engine test_ode_series.py: y = 1 - t^2 + t^3/15 + 33 t^4/100 ...; a series is local"
+
+- id: ode-boundary-value-problem
+  category: calculus
+  prompt: "The independent variable is x. Solve the boundary-value problem $y'' = -y$ with y(0) = 0 and y(1) = 1."
+  expected_tool: ode_solve_numerical
+  also_ok: [ode_analyze, ode_solve_symbolic]
+  args: {equals: {kind: bvp}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_numerical
+    arguments:
+      equations: ["y'' = -y"]
+      independent: x
+      kind: bvp
+      conditions: ["y(0) = 0", "y(1) = 1"]
+  source: "closed form y = sin(x)/sin(1), engine test_ode_boundary.py"
+
 # ----------------------------------------------------------------------------- variational calculus
 # Hand-derived in the convention EL = sum_k (-1)^k d^k/dt^k dL/dx^(k); see engine test_variational_first.py.
 - id: variation-higher-derivative-euler-lagrange
