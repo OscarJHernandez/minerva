@@ -1,4 +1,4 @@
-import { Math as Formula } from "@minerva/ui/math";
+import { CopyMath as Formula } from "@/components/copyable-math";
 import type { LagrangianReport, MotionRequest } from "@/lib/chat-types";
 import type { EntrySummary } from "@/lib/types";
 import { EntryCard } from "../entry-card";

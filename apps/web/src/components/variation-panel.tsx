@@ -1,6 +1,6 @@
 "use client";
 
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import { useId } from "react";
 import type { Status } from "@/lib/types";
 import type {

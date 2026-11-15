@@ -25,7 +25,7 @@ export function FormulaButtons({ latex, subtle = false }: { latex: string; subtl
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
   const visibility = subtle
-    ? "opacity-0 group-hover/formula:opacity-100 group-focus-within/formula:opacity-100 focus-within:opacity-100"
+    ? "opacity-0 group-hover/formula:opacity-100 group-focus-within/formula:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
     : "";
   return (
     <span className={`inline-flex items-center gap-2 text-xs ${visibility}`}>

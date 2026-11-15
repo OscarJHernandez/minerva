@@ -1,4 +1,4 @@
-import { Math } from "@minerva/ui/math";
+import { CopyMath as Math } from "@/components/copyable-math";
 import type { ExpansionReport } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
 
