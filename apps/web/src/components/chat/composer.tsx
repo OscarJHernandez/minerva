@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ACCEPTED_IMAGE_TYPES, checkImageFile } from "@/lib/image-prep";
 import { FormulaPopover } from "./formula-popover";
 import { ImageFormulasPanel } from "./image-formulas-panel";
@@ -18,6 +18,8 @@ interface Props {
   beforeSend?: () => boolean;
   /** A panel shown above the message box (the model settings). */
   panel?: ReactNode;
+  /** A formula to put in the message box (from "Edit in chat"). Each new `id` inserts once. */
+  insertRequest?: { id: number; latex: string } | null;
 }
 
 const MAX_HEIGHT_VH = 0.4;
@@ -31,6 +33,7 @@ export function Composer({
   toolbar,
   panel,
   beforeSend,
+  insertRequest,
 }: Props) {
   const [text, setText] = useState("");
   const [formula, setFormula] = useState(false);
@@ -62,6 +65,12 @@ export function Composer({
     [text.length],
   );
   const insert = useCallback((latex: string) => insertMany([latex]), [insertMany]);
+  const handled = useRef<number | null>(null);
+  useEffect(() => {
+    if (!insertRequest || handled.current === insertRequest.id) return;
+    handled.current = insertRequest.id;
+    insertMany([insertRequest.latex]);
+  }, [insertRequest, insertMany]);
   const close = useCallback(() => setFormula(false), []);
   const closeImage = useCallback(() => setImage(null), []);
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
@@ -29,6 +29,7 @@ import { ModelPicker } from "./model-picker";
 import { ModelSettingsPanel } from "./model-settings-panel";
 import { CopyButton } from "./debug-panel";
 import { ConversationList } from "./conversation-list";
+import { FormulaActionsProvider } from "./formula-actions";
 import { MessageView } from "./message-view";
 import { MotionRunnerProvider } from "./motion-runner";
 import { RichText } from "./rich-text";
@@ -92,6 +93,11 @@ export function ChatApp() {
   const [debugOn, setDebugOn] = useDebugMode();
   const [lastError, setLastError] = useState<LastError | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
+  const [insertRequest, setInsertRequest] = useState<{ id: number; latex: string } | null>(null);
+  const formulaActions = useMemo(
+    () => ({ editInChat: (latex: string) => setInsertRequest({ id: Date.now(), latex }) }),
+    [],
+  );
   const cloudConfirmed = useRef<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -373,117 +379,120 @@ export function ChatApp() {
         statmech: runStatMech,
       }}
     >
-      <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
-        <aside className="hidden w-60 shrink-0 py-4 md:block">
-          <ConversationList
-            items={conversations}
-            activeId={activeId}
-            onOpen={open}
-            onNew={startNew}
-            onDelete={remove}
-          />
-        </aside>
+      <FormulaActionsProvider value={formulaActions}>
+        <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
+          <aside className="hidden w-60 shrink-0 py-4 md:block">
+            <ConversationList
+              items={conversations}
+              activeId={activeId}
+              onOpen={open}
+              onNew={startNew}
+              onDelete={remove}
+            />
+          </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
-          <div className="flex items-center justify-between py-2 md:hidden">
-            <button
-              type="button"
-              onClick={() => setListOpen((o) => !o)}
-              aria-expanded={listOpen}
-              className="rounded border border-rule px-2.5 py-1 text-sm"
-            >
-              Conversations
-            </button>
-            <button type="button" onClick={startNew} className="text-sm text-accent">
-              New
-            </button>
-          </div>
-          {listOpen && (
-            <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
-              <ConversationList
-                items={conversations}
-                activeId={activeId}
-                onOpen={open}
-                onNew={startNew}
-                onDelete={remove}
-              />
+          <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
+            <div className="flex items-center justify-between py-2 md:hidden">
+              <button
+                type="button"
+                onClick={() => setListOpen((o) => !o)}
+                aria-expanded={listOpen}
+                className="rounded border border-rule px-2.5 py-1 text-sm"
+              >
+                Conversations
+              </button>
+              <button type="button" onClick={startNew} className="text-sm text-accent">
+                New
+              </button>
             </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto py-4 pr-1" role="log" aria-live="polite">
-            {messages.length === 0 && !pending ? (
-              <EmptyState onPick={send} disabled={busy || !status} />
-            ) : (
-              <div className="mx-auto max-w-3xl space-y-6">
-                {messages.map((m, i) => (
-                  <MessageView
-                    key={m.id}
-                    message={m}
-                    getReport={
-                      debugOn && m.role === "assistant"
-                        ? () => buildTurnReport({ title, status }, messages, i)
-                        : undefined
-                    }
-                  />
-                ))}
-                {pending && <PendingView pending={pending} />}
-                {error && (
-                  <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                    {error}
-                  </p>
-                )}
+            {listOpen && (
+              <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
+                <ConversationList
+                  items={conversations}
+                  activeId={activeId}
+                  onOpen={open}
+                  onNew={startNew}
+                  onDelete={remove}
+                />
               </div>
             )}
-            <div ref={bottomRef} />
-          </div>
 
-          <div className="mx-auto w-full max-w-3xl">
-            {error && messages.length === 0 && (
-              <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                {error}
-              </p>
-            )}
-            <Composer
-              disabled={!status}
-              imagesEnabled={status?.images === true}
-              beforeSend={confirmCloud}
-              toolbar={
-                status?.providers ? (
-                  <ModelPicker
-                    status={status}
-                    open={modelOpen}
-                    onToggle={() => setModelOpen((o) => !o)}
-                  />
-                ) : null
-              }
-              panel={
-                modelOpen && status ? (
-                  <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
-                ) : null
-              }
-              busy={busy}
-              onSend={send}
-              onStop={() => abortRef.current?.abort()}
-            />
-            <div className="flex items-center gap-4 py-1 text-xs text-muted">
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={debugOn}
-                  onChange={(e) => setDebugOn(e.target.checked)}
-                />
-                Debug mode
-              </label>
-              {debugOn && (
-                <CopyButton
-                  label="Copy debug report"
-                  getText={() => buildDebugReport({ title, messages, status, lastError })}
-                />
+            <div className="flex-1 overflow-y-auto py-4 pr-1" role="log" aria-live="polite">
+              {messages.length === 0 && !pending ? (
+                <EmptyState onPick={send} disabled={busy || !status} />
+              ) : (
+                <div className="mx-auto max-w-3xl space-y-6">
+                  {messages.map((m, i) => (
+                    <MessageView
+                      key={m.id}
+                      message={m}
+                      getReport={
+                        debugOn && m.role === "assistant"
+                          ? () => buildTurnReport({ title, status }, messages, i)
+                          : undefined
+                      }
+                    />
+                  ))}
+                  {pending && <PendingView pending={pending} />}
+                  {error && (
+                    <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                      {error}
+                    </p>
+                  )}
+                </div>
               )}
+              <div ref={bottomRef} />
             </div>
-          </div>
-        </section>
-      </div>
+
+            <div className="mx-auto w-full max-w-3xl">
+              {error && messages.length === 0 && (
+                <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                  {error}
+                </p>
+              )}
+              <Composer
+                insertRequest={insertRequest}
+                disabled={!status}
+                imagesEnabled={status?.images === true}
+                beforeSend={confirmCloud}
+                toolbar={
+                  status?.providers ? (
+                    <ModelPicker
+                      status={status}
+                      open={modelOpen}
+                      onToggle={() => setModelOpen((o) => !o)}
+                    />
+                  ) : null
+                }
+                panel={
+                  modelOpen && status ? (
+                    <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
+                  ) : null
+                }
+                busy={busy}
+                onSend={send}
+                onStop={() => abortRef.current?.abort()}
+              />
+              <div className="flex items-center gap-4 py-1 text-xs text-muted">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={debugOn}
+                    onChange={(e) => setDebugOn(e.target.checked)}
+                  />
+                  Debug mode
+                </label>
+                {debugOn && (
+                  <CopyButton
+                    label="Copy debug report"
+                    getText={() => buildDebugReport({ title, messages, status, lastError })}
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      </FormulaActionsProvider>
     </MotionRunnerProvider>
   );
 }
