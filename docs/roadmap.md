@@ -63,6 +63,20 @@ Ordering favours correctness infrastructure before breadth.
 5. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
 
+## Integrals
+
+Done: creative telescoping for hyperexponential integrals with a parameter (`docs/creative-telescoping.md`) and a
+deterministic strategy engine behind `integrate` (`docs/integration-strategies.md`). Next, in order of value:
+
+* Holonomic integrands (sums of hyperexponential terms, special functions such as Bessel and Airy functions in the
+  integrand) and Ore-algebra operators, possibly through an optional out-of-process backend (`ore_algebra` is GPL: see
+  `licensing.md`).
+* Zeilberger's algorithm for hypergeometric sums and recurrences, using the same `Telescoper` protocol with a shift operator.
+* Faster certificate search (Koutschan-style guessing and tighter degree bounds) and conditionally convergent
+  oscillatory integrals in the boundary analysis.
+* More strategies that share the verification discipline: Feynman parameters for products of denominators, contour
+  integrals, principal values.
+
 ## Variational calculus
 
 Done: functionals of several functions with derivatives up to order four on fixed intervals, with the first

@@ -29,9 +29,13 @@ step B-3 and set `byok: true`). Without it, the chat has no OpenRouter option.
 1. Create a key at <https://openrouter.ai/keys>. Give it a **credit limit** you are comfortable with.
 2. In Minerva's chat, click the model chip at the bottom of the message box (it reads, for example,
    "Local · minerva"). **Model settings** opens.
+   Under **Local (Ollama)** the panel lists the models installed on the server's own host, recommended
+   tool-calling families first, and **Switch model** changes the model for this tab without touching the
+   server's configuration (the choice is checked against the host's own list; nothing falls back to the
+   cloud). Families that are recommended but not installed are only named, for the server owner to pull.
 3. Under **OpenRouter**, paste the key. It is kept in this browser tab's memory only: not in localStorage,
    not in a cookie, not in the conversation history. Reloading the page or logging out forgets it.
-4. Pick a model from the list, or choose **Custom model id…** and type any id from
+4. Pick a model from the list (the models the operator configured are marked recommended), or choose **Custom model id…** and type any id from
    <https://openrouter.ai/models> (choose one that supports tool calling).
 5. Click **Test connection**. Expected: "Connected. The key is valid and the model supports tool calling."
    and, if your key has a limit, the credit left. This does not run a paid completion.

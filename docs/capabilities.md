@@ -1028,6 +1028,213 @@ Factors a polynomial equation, says whether a formula in radicals exists (Galois
 - **Check:** roots substituted back (largest residual 8.87e-31); root count equals the degree; Vieta's relations hold
 - Degree 5: 5 roots found and verified by substitution and Vieta's relations.
 
+### Creative telescoping for integrals with a parameter
+
+*Available in:* workbench, chat, HTTP API.
+
+For an integral that depends on a parameter, Minerva searches for a differential operator L in the parameter and a certificate G with L f = dG/dx, proves that identity exactly, checks convergence, differentiation under the integral sign and the boundary terms from the assumptions you declare, derives the differential equation of the integral and solves it with independently verified initial values. The relation is discovered, not looked up. A value is shown only if it satisfies the equation exactly, reproduces the initial values and agrees with numerical quadrature of the original integrand; otherwise the proved certificate or the verified equation is returned as a labelled partial result that says what remains unresolved.
+
+**Limits**
+
+- The integrand must be a product of rational functions, powers (exponents free of the variable) and exponentials of rational functions, in the variable and the parameter. Sums of such terms, trigonometric functions, logarithms and x**a are refused.
+- The search is bounded (operator order up to 5, certificate degree up to 12). Finding nothing is reported as "within the searched families" and proves nothing outside them.
+- Convergence and boundary terms are decided from the declared signs only. A parameter whose sign is not declared gives a certificate and no value; oscillating ends are accepted only through absolute convergence.
+- The value is checked against quadrature, which is numerical evidence, never called a proof. Full holonomic closure, Ore algebras and hypergeometric summation are not implemented.
+
+#### A Gaussian with a parameter, found and evaluated
+
+- **Integrand:** `exp(-a*x**2)` (plain text), read as $\mathrm{e}^{- a x^{2}}$
+- **Assumptions:** a positive; x real
+- **Status:** `ok`
+- **Operator (order 1):** $L = 1 + 2 a\,\partial_{a}$
+- **Certificate G:** $x \mathrm{e}^{- a x^{2}}$
+- **Boundary contribution:** $0$
+- **Differential equation:** $I(a) + 2 a\,I'(a) = 0$
+- **Value:** $I = \frac{\sqrt{\pi}}{\sqrt{a}}$
+- **Check:** proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12
+- **Check:** established: the real part of the exponent tends to -\infty at the lower end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the real part of the exponent tends to -\infty at the upper end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the leading coefficient has a constant sign on the parameter domain
+- **Check:** satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)
+- evaluated: The integral was evaluated from the derived differential equation and checked.
+
+#### A second-order relation
+
+- **Integrand:** `exp(-x**2 - a**2/x**2)` (plain text), read as $\mathrm{e}^{- \frac{a^{2}}{x^{2}} - x^{2}}$
+- **Assumptions:** a positive; x real
+- **Status:** `ok`
+- **Operator (order 2):** $L = -4 + \partial_{a}^{2}$
+- **Certificate G:** $\frac{2 \mathrm{e}^{- \frac{a^{2} + x^{4}}{x^{2}}}}{x}$
+- **Boundary contribution:** $0$
+- **Differential equation:** $-4\,I(a) + I''(a) = 0$
+- **Value:** $I = \frac{\sqrt{\pi} \mathrm{e}^{- 2 a}}{2}$
+- **Check:** proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12
+- **Check:** established: constant sign shown by a coefficient certificate
+- **Check:** established: the real part of the exponent tends to -\infty at the lower end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the real part of the exponent tends to -\infty at the upper end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the leading coefficient has a constant sign on the parameter domain
+- **Check:** satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)
+- evaluated: The integral was evaluated from the derived differential equation and checked.
+
+#### A Bessel-type integral, the equation without a value
+
+- **Integrand:** `exp(I*a*x)/sqrt(1 - x**2)` (plain text), read as $\frac{\mathrm{e}^{\mathrm{i} a x}}{\sqrt{1 - x^{2}}}$
+- **Assumptions:** a positive; x real
+- **Status:** `ok`
+- **Operator (order 2):** $L = a + \partial_{a} + a\,\partial_{a}^{2}$
+- **Certificate G:** $- \mathrm{i} \sqrt{1 - x^{2}} \mathrm{e}^{\mathrm{i} a x}$
+- **Boundary contribution:** $0$
+- **Differential equation:** $a\,I(a) + I'(a) + a\,I''(a) = 0$
+- **Check:** proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12
+- **Check:** established: constant sign shown by a coefficient certificate
+- **Check:** established: constant sign shown by a coefficient certificate
+- **Check:** established: the base is provably positive, so the power has one real branch
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** established: the leading coefficient has a constant sign on the parameter domain
+- The integral and its parameter derivatives could not be evaluated independently at any trial parameter value, so the integration constants stay undetermined.
+- equation: The equation was derived but no independently verified initial values exist.
+
+#### An undeclared sign is never assumed
+
+- **Integrand:** `exp(-a*x)` (plain text), read as $\mathrm{e}^{- a x}$
+- **Assumptions:** x real
+- **Status:** `conditions_not_satisfied`
+- **Operator (order 0):** $L = 1$
+- **Certificate G:** $- \frac{\mathrm{e}^{- a x}}{a}$
+- **Check:** proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12
+- **Check:** established: absolute convergence from the exact local exponent
+- **Check:** NOT established: the sign of the leading exponent coefficient is not provable; declare the symbols' signs
+- The sign of the leading coefficient of the exponent at an end of the interval is not provable from the declared assumptions.
+- certificate: The sign of the leading coefficient of the exponent at an end of the interval is not provable from the declared assumptions. The certificate above is still valid.
+
+#### A divergent integral is reported, not evaluated
+
+- **Integrand:** `1/(a*x)` (plain text), read as $\frac{1}{a x}$
+- **Assumptions:** a positive; x real
+- **Status:** `unsupported`
+- **Check:** established: constant sign shown by a coefficient certificate
+- **Check:** NOT established: the local exponent does not clear the threshold or is undecided
+- none: The integral diverges: the integrand is not integrable at an end of the interval (shown from its local behaviour, which has no oscillation there).
+
+#### A trigonometric integrand is outside the class
+
+- **Integrand:** `sin(a*x)` (plain text), read as $\sin{\left(a x \right)}$
+- **Assumptions:** a positive; x real
+- **Status:** `unsupported`
+- none: Only products of rational functions, powers and exponentials of rational functions are supported (no sums of such terms, no trigonometric functions).
+
+### Integration techniques
+
+*Available in:* workbench, chat, HTTP API.
+
+Where SymPy's route does not find a verified integral, a deterministic strategy engine reads the structure of the integrand and tries a few promising techniques: substitution, integration by parts, trigonometric identities, partial fractions, symmetry (parity and King's reflection), Frullani integrals, Schwinger parametrization, differentiation under the integral sign and a numerical estimate. Each candidate is verified against the original integrand by the independent checkers before it is shown, and the answer says which technique produced it, why it applies, its steps and what was checked. No language model takes part in finding or checking a result.
+
+**Limits**
+
+- A technique whose conditions are not established is reported as blocked and never applied. Symmetry never gives 0 for an integral whose half-range diverges, and Frullani needs the scales declared positive and finite limits of the function at 0 and infinity.
+- A definite value is checked by quadrature and is never called proved; an antiderivative is proved only when its derivative simplifies to the integrand.
+- A numerical estimate is not a formula. Found without being asked it rides along with the unchanged "unsupported" status; it becomes the result only when requested.
+- Gröbner bases, Lie symmetries, contour integration, principal values and Feynman parameters for several denominators are not covered.
+
+#### A substitution, with its transformation
+
+- **Integrand:** `x/(1+x**2)**2` (plain text), read as $\frac{x}{\left(x^{2} + 1\right)^{2}}$
+- **Assumptions:** x real
+- **Status:** `ok`
+- **Antiderivative:** $- \frac{1}{2 \left(x^{2} + 1\right)}$
+- **Substitution:** $u = x^{2} + 1$
+- **Differential:** $\mathrm{d}u = \left(2 x\right)\,\mathrm{d}x$
+- **Transformed integral:** $\int \frac{1}{2 u^{2}}\,\mathrm{d}u$
+- **Antiderivative in u:** $- \frac{1}{2 u}$
+- **Check:** numerical derivative at 12/12 points; symbolic derivative equals the integrand
+- Technique: substitution (composite_with_inner_derivative); verification: proved.
+- Integrated by substitution; the result was verified independently of the technique.
+
+#### Integration by parts
+
+- **Integrand:** `x**2*sin(x)` (plain text), read as $x^{2} \sin{\left(x \right)}$
+- **Assumptions:** x real
+- **Status:** `ok`
+- **Antiderivative:** $- x^{2} \cos{\left(x \right)} + 2 x \sin{\left(x \right)} + 2 \cos{\left(x \right)}$
+- **Choice of u:** $x^{2}$
+- **Choice of dv:** $\sin{\left(x \right)}$
+- **V = integral of dv:** $- \cos{\left(x \right)}$
+- **Remaining integral:** $\int \left(- 2 x \cos{\left(x \right)}\right)\, dx$
+- **Check:** numerical derivative at 12/12 points; symbolic derivative equals the integrand
+- Technique: parts (polynomial_times_transcendental); verification: proved.
+- Integrated by parts; the result was verified independently of the technique.
+
+#### King's rule for a family SymPy does not finish
+
+- **Integrand:** `sin(x)**n/(sin(x)**n + cos(x)**n)` (plain text), read as $\frac{\sin^{n}{\left(x \right)}}{\sin^{n}{\left(x \right)} + \cos^{n}{\left(x \right)}}$
+- **Assumptions:** x real; n positive
+- **Status:** `ok`
+- **Value:** $\frac{\pi}{4}$
+- **Reflection:** $x \mapsto \frac{\pi}{2} - x$
+- **Average of the two forms:** $\frac{1}{2}$
+- **Integral of the average:** $\int\limits_{0}^{\frac{\pi}{2}} \frac{1}{2}\, dx$
+- **Check:** quadrature at 8/8 parameter points
+- Technique: reflection (reflection_simplifies); verification: numerically_checked.
+- Integrated by reflection; the result was verified independently of the technique.
+
+#### A Frullani integral whose halves diverge on their own
+
+- **Integrand:** `(atan(a*x) - atan(b*x))/x` (plain text), read as $\frac{\arctan{\left(a x \right)} - \arctan{\left(b x \right)}}{x}$
+- **Assumptions:** x real; a positive; b positive
+- **Status:** `ok`
+- **Value:** $\frac{\pi \left(\log{\left(a \right)} - \log{\left(b \right)}\right)}{2}$
+- **Two scalings of one function:** $g(x) = - \arctan{\left(x \right)}, \quad a = b, \; b = a$
+- **Limits of g (both finite):** $g(0^+) = 0, \; g(\infty) = - \frac{\pi}{2}$
+- **Frullani:** $I = \frac{\pi \left(\log{\left(a \right)} - \log{\left(b \right)}\right)}{2}$
+- **Check:** quadrature at 8/8 parameter points
+- Technique: frullani (difference_at_two_scalings_over_x); verification: numerically_checked.
+- Integrated by frullani; the result was verified independently of the technique.
+
+#### Schwinger parametrization of a denominator
+
+- **Integrand:** `1/(x**2 + a**2)**2` (plain text), read as $\frac{1}{\left(a^{2} + x^{2}\right)^{2}}$
+- **Assumptions:** x real; a positive
+- **Status:** `ok`
+- **Value:** $\frac{\pi}{4 a^{3}}$
+- **Schwinger identity:** $A^{-n} = \frac{1}{\Gamma(n)}\int_0^\infty t^{n-1} \mathrm{e}^{-tA}\,\mathrm{d}t, \quad A = a^{2} + x^{2}, \; n = 2$
+- **Inner integral over x:** $J(t) = \frac{\sqrt{\pi} \mathrm{e}^{- a^{2} t}}{2 \sqrt{t}}$
+- **Outer integral over t:** $\int\limits_{0}^{\infty} \frac{\sqrt{\pi} \sqrt{t} \mathrm{e}^{- a^{2} t}}{2}\, dt$
+- **Value:** $\frac{\pi}{4 a^{3}}$
+- **Check:** quadrature at 8/8 parameter points
+- Technique: schwinger (negative_power_of_a_positive_base); verification: numerically_checked.
+- Integrated by schwinger; the result was verified independently of the technique.
+
+#### A numerical estimate when there is no closed form
+
+- **Integrand:** `exp(x**x)` (plain text), read as $\mathrm{e}^{x^{x}}$
+- **Assumptions:** x real
+- **Status:** `ok`
+- **Numerical value:** $2.19754443801362$
+- Numerical estimate 2.19754443801362 (estimated error 4.98e-10); not a formula.
+- Technique: numerical (no_closed_form_for_a_number); verification: numeric_estimate.
+- No closed form was found. This is a numerical estimate only: two independent quadrature rules agreed to the stated error.
+
+#### Frullani is not applied unless the scales are declared positive
+
+- **Integrand:** `(exp(-a*x) - exp(-b*x))/x` (plain text), read as $\frac{- \mathrm{e}^{- b x} + \mathrm{e}^{- a x}}{x}$
+- **Assumptions:** x real
+- **Status:** `unsupported`
+- frullani: blocked (scales_not_provably_positive)
+- No closed form was found. This does not prove that none exists.
+
+#### An odd integrand with a divergent half-range is not 0
+
+- **Integrand:** `1/x` (plain text), read as $\frac{1}{x}$
+- **Assumptions:** x real
+- **Status:** `unsupported`
+- parity: blocked (convergence_not_established)
+- SymPy reports that the integral diverges or is undefined. Minerva does not verify divergence, so it shows no value.
+
 ### Tensor canonicalization
 
 *Available in:* HTTP API, chat.
@@ -2017,6 +2224,6 @@ Not implemented. Listed so that nobody mistakes them for features.
 
 - **Cadabra integration** (Mathematics): Advanced tensor algebra and multi-term identities such as Bianchi, as an optional out-of-process backend.
 - **Abstract manifolds (SageManifolds)** (Mathematics): Charts, atlases and abstract manifolds as an optional out-of-process backend; coordinate-based geometry is available today.
-- **Integrals and limits** (Mathematics): In the workbench, with the same verification discipline as derivatives. Taylor series are available.
+- **Integrals and limits** (Mathematics): Limits, and more of the integration workbench, with the same verification discipline as derivatives. Taylor series, integration techniques and creative telescoping are available.
 - **Semantic and structural search** (Handbook and identities): Retrieval beyond keywords, behind the same interface. Retrieval will still only propose; the engine decides.
 - **Tensors in the workbench** (Using Minerva): Declare tensors and symmetries in the interface and see unsupported identities reported explicitly.

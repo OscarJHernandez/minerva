@@ -21,6 +21,10 @@
 | [geometry-benchmark.md](geometry-benchmark.md) | Differential geometry: correctness against closed forms and `sympy.diffgeom`, latency, expression growth and memory (generated; data in [benchmarks/geometry.json](benchmarks/geometry.json)) |
 | [matrix-benchmark.md](matrix-benchmark.md) | Matrix calculus: coverage, method selection, verification and timing on hand-written cases, with a baseline |
 | [statistics-benchmark.md](statistics-benchmark.md) | Statistical derivations (sums, expectations, families, maximum likelihood, Fisher information, Bayesian updates, matrix gradients): hand-derived references, adversarial cases, a baseline and a regression gate |
+| [creative-telescoping.md](creative-telescoping.md) | Integrals with a parameter: discovering and proving L f = dG/dx, convergence and boundary terms from declared assumptions, the equation and its checked solution; supported class, limits, references |
+| [creative-telescoping-benchmark.md](creative-telescoping-benchmark.md) | 29 problems against independent references: discovery, operator order, exact proof, failure classes (generated; data in [benchmarks/creative_telescoping.json](benchmarks/creative_telescoping.json)) |
+| [integration-strategies.md](integration-strategies.md) | Deterministic integration techniques behind `integrate`: detection, verified transformations, what is blocked and never applied |
+| [integration-strategies-benchmark.md](integration-strategies-benchmark.md) | Each technique against quadrature, and the default call against the requested strategy (generated; data in [benchmarks/integration_strategies.json](benchmarks/integration_strategies.json)) |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |
 | [licensing.md](licensing.md) | Licence assessment, including the GPL-licensed integrations |
 | [security-publication.md](security-publication.md) | Security and publication notes |

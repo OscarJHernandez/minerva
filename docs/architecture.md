@@ -97,6 +97,16 @@ one most likely to be wrong.
     and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
     server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
+- `creative_telescoping/` finds and proves telescoping relations for parameterised integrals: `integrand.py`
+  (eligibility from rational logarithmic derivatives), `search.py` (the ansatz ladder behind a `Telescoper`
+  protocol), `certificate.py` (exact proof plus vetoing numerical legs), `boundary.py` (convergence and boundary terms from
+  the declared assumptions), `ode.py` and `evaluate.py` (the equation, its checked solution, constants from verified
+  initial values) and `benchmark.py`. Endpoint `POST /v1/compute/telescoping`; chat tool `creative_telescoping`; workbench
+  page `/workbench/telescoping`. See `docs/creative-telescoping.md`.
+- `integration_strategy/` sits behind `integrate`: `detect.py` (techniques from the expression tree), `transforms.py`
+  (substitution, parts, trigonometric rewrites, partial fractions, parity, reflection, Frullani, Schwinger, parameter
+  differentiation), `explore.py` (bounded exploration, every candidate verified against the original integrand),
+  `numeric.py` (a labelled estimate) and `benchmark.py`. See `docs/integration-strategies.md`.
 - `variational/` is the general variational calculus: `jets.py` (the jet space and its total derivative), `setup.py`
   (strict reading of a functional), `firstvar.py` (integration by parts, Euler-Lagrange expressions, boundary
   coefficients), `boundary.py`, `verify.py` (finite-difference checks of the original action), `action.py` and
