@@ -34,6 +34,16 @@ STEP = "1e-10"
 TOL = 1e-8
 MAX_ATTEMPTS = 30
 WANT_POINTS = 6
+# The request deadline also covers the symbolic work that came first. On a slow machine that work can use
+# all of it, and a check that never got to sample reports "0 usable points" for a correct result. The
+# numeric leg therefore always gets this much time of its own; the sandbox timeout still bounds the request.
+MIN_NUMERIC_SECONDS = 6.0
+
+
+def _own_deadline(deadline: float) -> float:
+    return max(deadline, time.monotonic() + MIN_NUMERIC_SECONDS)
+
+
 ASSIGNMENTS = 2
 
 Value = Any  # mp.mpf or a 3x1 mp.matrix
@@ -339,6 +349,7 @@ def verify_result(
 ) -> VectorVerification:
     """Compare the symbolic components `results` with the independent evaluation of `expression`."""
     system = lowering.system
+    deadline = _own_deadline(deadline)
     rng = random.Random(seed)  # noqa: S311  (sampling points, not security)
     checked = agreed = skipped = 0
     worst = 0.0
@@ -441,6 +452,7 @@ def verify_jacobian(
     deadline: float,
 ) -> VectorVerification:
     """The symbolic Jacobian dx/dq and its determinant against central differences of x(q)."""
+    deadline = _own_deadline(deadline)
     rng = random.Random(seed)  # noqa: S311
     fn = sp.lambdify(list(system.symbols()), [matrix, determinant], modules="mpmath")
     x_of_q = system.x_of_q()
@@ -503,6 +515,7 @@ def verify_conversion(
     components are evaluated there and turned into Cartesian components with a frame found by
     differencing the source map, and those are projected on a frame found by differencing the target map.
     """
+    deadline = _own_deadline(deadline)
     rng = random.Random(seed)  # noqa: S311
     params = {c: _param_value(c, rng) for c in constants}
     t_symbol = symbols[1]

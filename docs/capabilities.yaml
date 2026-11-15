@@ -858,7 +858,25 @@ capabilities:
         quantities: [field_invariant, antisymmetric_divergence]
         tensor:
           variance: [down, down]
-          components: ["0", "-a*t", "0", "0", "a*t", "0", "b*x", "0", "0", "-b*x", "0", "0", "0", "0", "0", "0"]
+          components:
+            [
+              "0",
+              "-a*t",
+              "0",
+              "0",
+              "a*t",
+              "0",
+              "b*x",
+              "0",
+              "0",
+              "-b*x",
+              "0",
+              "0",
+              "0",
+              "0",
+              "0",
+              "0",
+            ]
       - id: geometry-exterior-derivative
         title: F = dA from a potential 1-form, with dF = 0 checked
         op: geometry
@@ -884,7 +902,8 @@ capabilities:
         quantities: [field_invariant]
         tensor:
           variance: [down, down]
-          components: ["0", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
+          components:
+            ["0", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
       - id: geometry-degenerate
         title: A degenerate metric is declined
         op: geometry
@@ -933,8 +952,8 @@ capabilities:
       - Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
       - The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
       - 'Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and "not found" is not "does not exist". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.'
-      - 'A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true.'
-      - 'Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap).'
+      - "A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true."
+      - "Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap)."
     examples:
       - id: vector-curl-spherical
         title: Curl of an arbitrary field in spherical coordinates
@@ -990,13 +1009,13 @@ capabilities:
         coordinates: cylindrical
         to: cartesian
         fields:
-          - { name: F, kind: vector, components: ['0', 'rho', '0'] }
+          - { name: F, kind: vector, components: ["0", "rho", "0"] }
       - id: vector-apply-curl-curl
         title: Rewrite curl curl A with the divergence and the Laplacian
         op: vector
         action: apply_identity
         format: text
-        input: 'curl(curl(A))'
+        input: "curl(curl(A))"
         rule_id: vector.curl_curl
         path: []
         fields:
@@ -1006,7 +1025,7 @@ capabilities:
         op: vector
         action: apply_identity
         format: text
-        input: 'curl(curl(A))'
+        input: "curl(curl(A))"
         rule_id: vector.curl_curl
         path: []
         fields:
@@ -1016,7 +1035,7 @@ capabilities:
         op: vector
         action: identities
         format: text
-        input: 'div(cross(A, B))'
+        input: "div(cross(A, B))"
         fields:
           - { name: A, kind: vector }
           - { name: B, kind: vector }
@@ -1025,12 +1044,12 @@ capabilities:
         op: vector
         action: derive
         format: text
-        input: 'curl(curl(E))'
-        target: '-mu0*epsilon0*dt(dt(E))'
+        input: "curl(curl(E))"
+        target: "-mu0*epsilon0*dt(dt(E))"
         constants: [mu0, epsilon0]
         premises:
-          - 'curl(E) = -dt(B)'
-          - 'curl(B) = mu0*epsilon0*dt(E)'
+          - "curl(E) = -dt(B)"
+          - "curl(B) = mu0*epsilon0*dt(E)"
         fields:
           - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
           - { name: B, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
@@ -1039,8 +1058,8 @@ capabilities:
         op: vector
         action: derive
         format: text
-        input: 'curl(curl(E))'
-        target: '-lap(E)'
+        input: "curl(curl(E))"
+        target: "-lap(E)"
         fields:
           - { name: E, kind: vector, smoothness: smooth, depends_on: [x, y, z, t] }
       - id: integral-flux-point-charge
@@ -1048,107 +1067,107 @@ capabilities:
         op: vector
         action: integrate
         integral: flux
-        input: 'F'
+        input: "F"
         format: text
         coordinates: spherical
         constants: [R]
         assumptions: { R: [positive] }
         fields:
-          - { name: F, kind: vector, components: ['1/r**2', '0', '0'] }
+          - { name: F, kind: vector, components: ["1/r**2", "0", "0"] }
         surface:
-          q: ['R', 'u', 'v']
-          u: { name: u, lower: '0', upper: 'pi' }
-          v: { name: v, lower: '0', upper: '2*pi' }
+          q: ["R", "u", "v"]
+          u: { name: u, lower: "0", upper: "pi" }
+          v: { name: v, lower: "0", upper: "2*pi" }
       - id: integral-flux-reversed
         title: Swapping the parameters reverses the orientation, and the sign
         op: vector
         action: integrate
         integral: flux
-        input: 'F'
+        input: "F"
         format: text
         coordinates: spherical
         constants: [R]
         assumptions: { R: [positive] }
         fields:
-          - { name: F, kind: vector, components: ['1/r**2', '0', '0'] }
+          - { name: F, kind: vector, components: ["1/r**2", "0", "0"] }
         surface:
-          q: ['R', 'v', 'u']
-          u: { name: u, lower: '0', upper: '2*pi' }
-          v: { name: v, lower: '0', upper: 'pi' }
+          q: ["R", "v", "u"]
+          u: { name: u, lower: "0", upper: "2*pi" }
+          v: { name: v, lower: "0", upper: "pi" }
       - id: integral-line-circulation
         title: Circulation of the azimuthal field around the equator of a sphere
         op: vector
         action: integrate
         integral: line
-        input: 'F'
+        input: "F"
         format: text
         coordinates: spherical
         fields:
-          - { name: F, kind: vector, components: ['0', '0', '1'] }
+          - { name: F, kind: vector, components: ["0", "0", "1"] }
         curve:
-          q: ['2', 'pi/2', 's']
-          parameter: { name: s, lower: '0', upper: '2*pi' }
+          q: ["2", "pi/2", "s"]
+          parameter: { name: s, lower: "0", upper: "2*pi" }
       - id: integral-divergence-theorem
         title: The divergence theorem on a box, both sides computed separately
         op: vector
         action: integrate
         integral: divergence_theorem
-        input: 'F'
+        input: "F"
         format: text
         fields:
-          - { name: F, kind: vector, components: ['x**2', 'y*z', 'z**3'] }
+          - { name: F, kind: vector, components: ["x**2", "y*z", "z**3"] }
         region:
-          bounds: [['0', '1'], ['0', '2'], ['0', '1']]
+          bounds: [["0", "1"], ["0", "2"], ["0", "1"]]
       - id: integral-stokes-theorem
         title: Stokes' theorem on a parametrised surface
         op: vector
         action: integrate
         integral: stokes_theorem
-        input: 'F'
+        input: "F"
         format: text
         fields:
-          - { name: F, kind: vector, components: ['-y*z', 'x*z', 'x*y'] }
+          - { name: F, kind: vector, components: ["-y*z", "x*z", "x*y"] }
         surface:
-          q: ['u', 'v', 'u*v']
-          u: { name: u, lower: '0', upper: '1' }
-          v: { name: v, lower: '0', upper: '1' }
+          q: ["u", "v", "u*v"]
+          u: { name: u, lower: "0", upper: "1" }
+          v: { name: v, lower: "0", upper: "1" }
       - id: integral-gauss-law
         title: Gauss's law in integral form for a uniformly charged ball
         op: vector
         action: integrate
         integral: flux
-        input: 'E'
+        input: "E"
         format: text
         coordinates: spherical
         constants: [R, rho0, epsilon0]
         assumptions: { R: [positive], rho0: [positive], epsilon0: [positive] }
         fields:
-          - { name: E, kind: vector, components: ['rho0*r/(3*epsilon0)', '0', '0'] }
+          - { name: E, kind: vector, components: ["rho0*r/(3*epsilon0)", "0", "0"] }
         surface:
-          q: ['R', 'u', 'v']
-          u: { name: u, lower: '0', upper: 'pi' }
-          v: { name: v, lower: '0', upper: '2*pi' }
+          q: ["R", "u", "v"]
+          u: { name: u, lower: "0", upper: "pi" }
+          v: { name: v, lower: "0", upper: "2*pi" }
       - id: integral-pole-refused
         title: The divergence theorem over a ball is refused when the field has a pole at the centre
         op: vector
         action: integrate
         integral: divergence_theorem
-        input: 'F'
+        input: "F"
         format: text
         coordinates: spherical
         fields:
-          - { name: F, kind: vector, components: ['1/r**2', '0', '0'] }
+          - { name: F, kind: vector, components: ["1/r**2", "0", "0"] }
         region:
-          bounds: [['0', '2'], ['0', 'pi'], ['0', '2*pi']]
+          bounds: [["0", "2"], ["0", "pi"], ["0", "2*pi"]]
       - id: integral-domain-not-invented
         title: A flux without a surface is not computed (the domain is never invented)
         op: vector
         action: integrate
         integral: flux
-        input: 'F'
+        input: "F"
         format: text
         fields:
-          - { name: F, kind: vector, components: ['1', '0', '0'] }
+          - { name: F, kind: vector, components: ["1", "0", "0"] }
       - id: vector-ambiguous-product
         title: Two vectors side by side are refused, not guessed
         op: vector
@@ -1174,12 +1193,12 @@ capabilities:
       never called an identity or a proof; Minerva does not check that a premise is true. Only the gauge
       invariance of E and B needs no premise.
     limits:
-      - 'Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems.'
-      - 'Electrostatics with numbers the user gives (field, multipole, boundary_value, check_solution): point charges and a density over a box, Dirichlet problems on a rectangle, Cartesian coordinates. Fourier and Laplace transform methods, retarded Green''s functions, finite elements, FDTD and general PDE solving are planned and not implemented.'
-      - 'Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell''s equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them.'
-      - 'A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for.'
-      - 'Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable.'
-      - 'The handbook entries for Maxwell''s equations are checked for units only (the operators contribute a length or a time); they are premises, not verified laws.'
+      - "Cartesian coordinates, fields depending on x, y, z and t. The checks on exact solutions are not run in other coordinate systems."
+      - "Electrostatics with numbers the user gives (field, multipole, boundary_value, check_solution): point charges and a density over a box, Dirichlet problems on a rectangle, Cartesian coordinates. Fourier and Laplace transform methods, retarded Green's functions, finite elements, FDTD and general PDE solving are planned and not implemented."
+      - "Seven derivations are available; the wave equations for the potentials in the Lorenz gauge, interface conditions by a pillbox argument and Maxwell's equations in matter with a general constitutive relation are planned, and Minerva says so instead of improvising them."
+      - "A premise must match the handbook form exactly; a premise with another sign or form is treated as missing and asked for."
+      - "Identities that need equal mixed partial derivatives are applied only to fields the user declared twice continuously differentiable."
+      - "The handbook entries for Maxwell's equations are checked for units only (the operators contribute a length or a time); they are premises, not verified laws."
     examples:
       - id: em-wave-equation-e
         title: The wave equation for E in vacuum, from Maxwell's equations as premises
@@ -1228,41 +1247,41 @@ capabilities:
         problem:
           kind: field
           charges:
-            - { q: q, position: ['0', '0', '0'] }
-            - { q: -q, position: ['0', '0', d] }
-          point: ['1', '2', '3']
+            - { q: q, position: ["0", "0", "0"] }
+            - { q: -q, position: ["0", "0", d] }
+          point: ["1", "2", "3"]
       - id: es-multipole
         title: Moments of three point charges, with the measured decay of the truncated expansion
         op: electromagnetism
         problem:
           kind: multipole
           charges:
-            - { q: '1', position: ['0', '0', '1'] }
-            - { q: '-1', position: ['0', '0', '-1'] }
-            - { q: '1', position: ['1', '0', '0'] }
+            - { q: "1", position: ["0", "0", "1"] }
+            - { q: "-1", position: ["0", "0", "-1"] }
+            - { q: "1", position: ["1", "0", "0"] }
       - id: es-laplace-rectangle
         title: Laplace's equation on the unit square with a sine on one edge (series against a finite-difference solve)
         op: electromagnetism
         problem:
           kind: boundary_value
-          a: '1'
-          b: '1'
+          a: "1"
+          b: "1"
           top: sin(pi*x)
       - id: es-field-in-source
         title: A field point inside the charge distribution is refused
         op: electromagnetism
         problem:
           kind: field
-          density: '1'
-          box: { bounds: [['0', '1'], ['0', '1'], ['0', '1']] }
-          point: ['0.5', '0.5', '0.5']
+          density: "1"
+          box: { bounds: [["0", "1"], ["0", "1"], ["0", "1"]] }
+          point: ["0.5", "0.5", "0.5"]
       - id: es-wrong-candidate
         title: x^2 is not a solution of Laplace's equation, and Minerva says which requirement fails
         op: electromagnetism
         problem:
           kind: check_solution
           potential: x**2
-          box: { bounds: [['0', '1'], ['0', '1'], ['0', '1']] }
+          box: { bounds: [["0", "1"], ["0", "1"], ["0", "1"]] }
 
   - id: identities
     title: Identity search with applicability checks
