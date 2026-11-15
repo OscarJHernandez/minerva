@@ -58,6 +58,7 @@ class Card(BaseModel):
         "ode_analysis",
         "ode_solution",
         "ode_numeric",
+        "variation",
         "dimensional",
         "units",
         "step",

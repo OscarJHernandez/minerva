@@ -19,6 +19,7 @@ from minerva_engine import (
     CompareRequest,
     DiffVariable,
     DistributionInput,
+    EndpointCondition,
     Engine,
     ExpressionInput,
     GeometryInput,
@@ -36,6 +37,7 @@ from minerva_engine import (
     QuantitySpec,
     TensorInput,
     TensorSpec,
+    VariationInput,
 )
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
@@ -53,6 +55,7 @@ from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
 from ..ode_log import log_ode
 from ..search_log import log_search_events
+from ..variation_log import log_variation
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .segments import normalize
@@ -71,6 +74,10 @@ class ToolContext:
     # What the USER answered on a card (`delta(...)` is a Dirac delta). Only the direct-post route fills
     # it; the agent loop never does, so the model cannot make such an answer.
     notation: dict[str, str] = field(default_factory=dict)
+    # The numbers and the action of a numerical `variation` run (parameter values, trial paths, the
+    # starting guess): only the direct-post route fills it, from a card's form. The model's schema
+    # has no such fields, so it can neither choose them nor run a numerical action.
+    numeric: dict[str, Any] = field(default_factory=dict)
     # What the USER answered or chose for statistical mechanics (phase-space cell, indistinguishable
     # copies, numbers, sweep). Only the direct-post route fills it; the model cannot make these choices.
     statmech_answers: dict[str, Any] = field(default_factory=dict)
@@ -280,6 +287,76 @@ class OdeSymbolicArgs(OdeSolveInput):
 
 class OdeNumericArgs(OdeNumericInput):
     """Arguments of `ode_solve_numerical`. Every number comes from the user."""
+
+
+class VariationArgs(BaseModel):
+    """Arguments of `variation`. The whole functional is sent every time: nothing is remembered."""
+
+    action: Literal["analyze", "first", "second"] = Field(
+        default="first",
+        description="analyze: structure (orders, regularity, boundary slots, next steps); first: the "
+        "first variation with every integration by parts, the Euler-Lagrange equations of any order, the "
+        "complete boundary form and the natural boundary conditions; second: the second variation as a "
+        "quadratic form. Numerical actions (evaluating the action, verifying by finite differences, "
+        "finding stationary paths) are run by the USER from the card: you cannot run them.",
+    )
+    integrand: str = Field(
+        max_length=MAX_INPUT,
+        description="The integrand L of the action S = integral of L dt, as LaTeX, using the unknown "
+        "functions and their derivatives: x, \\dot{x}, \\ddot{x}, \\dddot{x}, x^{(4)}. Example: "
+        "\\frac{m}{2}\\dot{x}^2+\\frac{\\alpha}{2}\\ddot{x}^2-V(x). Ask the user for it; never invent one.",
+    )
+    variable: str = Field(default="t", max_length=32, description="The independent variable")
+    functions: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description='The unknown functions of the variable, e.g. ["x"] or ["x", "y"].',
+    )
+    given_functions: list[FunctionDecl] = Field(
+        default_factory=list,
+        max_length=8,
+        description='Given (not unknown) functions used in the integrand, e.g. [{"name": "V", "args": '
+        '["x"]}] for V(x). A function must be declared before it is written V(x).',
+    )
+    lower: str | None = Field(
+        default=None,
+        max_length=200,
+        description="The lower bound, only if the user gave it (else a)",
+    )
+    upper: str | None = Field(
+        default=None,
+        max_length=200,
+        description="The upper bound, only if the user gave it (else b)",
+    )
+    lower_term: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description="A term of the action evaluated at the lower end, in the unknowns and their "
+        "derivatives there, e.g. \\frac{k}{2}x^2. Only if the user stated it.",
+    )
+    upper_term: str | None = Field(
+        default=None, max_length=MAX_INPUT, description="Same, at the upper end"
+    )
+    conditions: list[EndpointCondition] = Field(
+        default_factory=list,
+        max_length=64,
+        description="Endpoint conditions the USER stated: kind fixed (with its value) or free, for a "
+        "function, a derivative order and an end (lower or upper). Never default, infer or complete "
+        "them: a derivative that is not listed is left undecided and its boundary term is kept.",
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of symbols (e.g. {"alpha": ["positive"]}). Do not add any the user did not state.',
+    )
+
+
+def variation_input(args: VariationArgs, ctx: ToolContext) -> VariationInput:
+    payload: dict[str, Any] = {**args.model_dump(), "format": "latex"}
+    numeric = dict(ctx.numeric)
+    if "action" in numeric:
+        payload["action"] = numeric.pop("action")
+    payload.update(numeric)
+    return VariationInput(**payload)
 
 
 class DistributionArgs(SimplifyArgs):
@@ -862,6 +939,159 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
         "assumptions and functions."
     )
     return ToolOutput(card, "\n".join(lines), known, result.status.value)
+
+
+def _variation_known(report: Any) -> list[str]:
+    """Formulas the engine verified, exactly as printed."""
+    known: list[str] = []
+    first, second = report.first, report.second
+    if first is not None:
+        for eq in first.equations:
+            if not first.null_lagrangian:
+                known += [eq.equation_latex, eq.expression_latex]
+        known += [
+            first.boundary_form_latex,
+            first.first_variation_latex,
+            first.delta_integrand_latex,
+        ]
+        known += [s.integrand_latex for s in first.stages] + [
+            s.boundary_latex for s in first.stages
+        ]
+        for b in first.boundary:
+            known.append(b.coefficient_latex)
+            if b.natural_condition_latex:
+                known.append(b.natural_condition_latex)
+        known += list(first.stationarity_latex)
+    if second is not None:
+        known += [second.quadratic_form_latex, second.legendre_matrix_latex]
+    return [k for k in known if k]
+
+
+def _variation_lines(report: Any) -> list[str]:
+    lines: list[str] = []
+    a = report.analysis
+    if a is not None:
+        lines.append(f"- functional: ${a.functional_latex}$")
+        lines.extend(f"- reading: {r}" for r in a.reading)
+        lines.append(
+            f"- highest derivative order {a.highest_order}; Legendre matrix determinant "
+            f"${a.hessian_det_latex}$ ({a.regularity}); {a.unspecified} boundary condition(s) undeclared"
+        )
+    f = report.first
+    if f is not None:
+        lines.append("- first variation (every integration by parts is on the card):")
+        lines.append(f"  ${f.first_variation_latex}$")
+        for eq in f.equations:
+            lines.append(
+                f"  Euler-Lagrange for {eq.function}: ${eq.equation_latex}$ (order {eq.order})"
+            )
+        if f.null_lagrangian:
+            lines.append("  the integrand is a total derivative: the variation is pure boundary")
+        for b in f.boundary:
+            if b.effect == "vanishes_identically":
+                continue
+            where = "lower" if b.end == "lower" else "upper"
+            what = {
+                "removed_by_fixed": "removed by the fixed condition",
+                "natural_condition": "natural boundary condition",
+                "kept_unspecified": "kept: no condition was declared for it",
+            }[b.effect]
+            lines.append(
+                f"  {where} end, {b.function}^({b.order}): coefficient ${b.coefficient_latex}$ - {what}"
+            )
+        lines.extend(f"  note: {n}" for n in f.notes)
+        lines.append(f"  check: {f.checks.statement}")
+    s = report.second
+    if s is not None:
+        lines.append(
+            f"- second variation: ${s.quadratic_form_latex}$ (convention ${s.convention_latex}$)"
+        )
+        lines.append(f"  check: {s.checks.statement}")
+        if s.numeric is not None:
+            n = s.numeric
+            lines.append(f"  stationary along the tested perturbations: {n.stationary}")
+            lines.extend(f"  fact: {x}" for x in n.facts)
+            lines.extend(f"  not established: {x}" for x in n.not_established)
+    e = report.evaluation
+    if e is not None:
+        for t in e.trials:
+            lines.append(
+                f"- action of {t.label}: {t.action} (quadrature disagreement {t.quadrature_error:.1e})"
+            )
+            lines.extend(
+                f"  condition {c.function}^({c.order}) at {c.end}: need {c.required}, path has {c.found}"
+                for c in t.conditions
+                if not c.met
+            )
+        if e.ordering:
+            lines.append("- order of these paths by action value: " + " < ".join(e.ordering))
+        lines.append(f"- {e.statement}")
+    v = report.verification
+    if v is not None:
+        lines.append(f"- finite-difference verification ({v.route}): {v.verdict}. {v.statement}")
+    sol = report.solution
+    if sol is not None:
+        for m in sol.methods:
+            lines.append(f"- method {m.method}: converged={m.converged} {m.note}")
+        for p in sol.paths:
+            lines.append(
+                f"- stationary path ({p.method}): action {p.action}; stationarity residual "
+                f"{p.stationarity.residual:.1e}"
+            )
+        lines.append(f"- {sol.statement}")
+        lines.extend(f"- note: {n}" for n in sol.notes)
+    return lines
+
+
+def run_variation(args: VariationArgs, ctx: ToolContext) -> ToolOutput:
+    request = variation_input(args, ctx)
+    report = ctx.engine.variation(request)
+    log_variation(report)  # the action, the status and counters only
+    shown = {k: v for k, v in args.model_dump().items()}
+    features = ["variation", *(["variation:second"] if report.second is not None else [])]
+    methods = (
+        ctx.kb.search(SearchQuery(features=features, chapter="physics.mechanics", limit=6))
+        if report.status.value == "ok"
+        else []
+    )
+    method_data = [summarize(ctx.kb, e).model_dump(mode="json") for e in methods]
+    data: dict[str, Any] = {
+        "report": report.model_dump(mode="json"),
+        "request": shown,
+        "methods": method_data,
+    }
+    if report.analysis is not None:
+        data["functional_latex"] = report.analysis.functional_latex
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="variation",
+        type="variation",
+        title="Variational calculus",
+        data=data,
+    )
+    head = f"action={report.action}; status={report.status.value}; "
+    lines = [head + report.message]
+    if report.status.value in ("ok", "unchanged"):
+        lines.extend(_variation_lines(report))
+    if report.analysis is not None:
+        steps = ", ".join(
+            s.id + (f" (needs {', '.join(s.needs)})" if s.needs else "")
+            for s in report.analysis.next_steps
+        )
+        lines.append(f"- suggested next steps: {steps}")
+        lines.append(
+            "numerical steps (evaluate the action, verify by finite differences, find stationary paths) "
+            "need numbers only the USER can choose: the interval, endpoint conditions, parameter values, "
+            "trial paths. Never choose them; ask, or tell the user the card has a form for them."
+        )
+    known = _variation_known(report)
+    if method_data:
+        lines.append(
+            "handbook methods: "
+            + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
+        )
+        known.extend(m["statement_latex"] for m in method_data)
+    return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
 def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutput:
@@ -2307,6 +2537,24 @@ TOOLS: dict[str, Tool] = {
             run_geometry,
         ),
         Tool(
+            "variation",
+            "Variational calculus for a functional S = integral of L(t, x, x', x'', ...) dt of one or "
+            "several functions, with derivatives of any order up to four and fixed bounds. action=first "
+            "derives the first variation with every integration by parts listed, the Euler-Lagrange "
+            "equations (sum of (-1)^k d^k/dt^k of dL/dx^(k)), the complete boundary form, which "
+            "boundary terms the declared conditions remove, and the natural boundary conditions; "
+            "action=second gives the second variation; action=analyze reports the structure and "
+            "suggests next steps. Fixing a value does not fix its derivative: undeclared conditions "
+            "are never assumed and their boundary terms are kept. Every result is shown only if finite "
+            "differences of the action itself agree (numerical evidence, not a proof). Numerical steps "
+            "(action values, finite-difference checks, stationary paths) need numbers that only the USER "
+            "can choose and are run from the card's form, not by you; never choose an interval, an "
+            "endpoint condition, a parameter value or a trial path. The functional is not remembered: "
+            "resend it with every call.",
+            VariationArgs,
+            run_variation,
+        ),
+        Tool(
             "distribution",
             "Calculus with Dirac delta and Heaviside (step) functions: simplify a delta of a polynomial "
             "(scaling, translation, several simple roots, a continuous factor taking its value), integrate "
@@ -2554,9 +2802,10 @@ SCALAR_TOOLS = frozenset(
         "ode_analyze",
         "ode_solve_symbolic",
         "ode_solve_numerical",
+        "variation",
     }
 )
-_EXPRESSION_FIELDS = ("latex", "equation", "expression")
+_EXPRESSION_FIELDS = ("latex", "equation", "expression", "integrand")
 
 
 def _argument_texts(arguments: dict[str, Any]) -> list[str]:
@@ -2629,7 +2878,13 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
 
 # Fields of a result that hold the user's own input as Minerva read it (not something it computed).
 # `equation_latex` is an input for solve and check_units, but a computed result for matrix_calculus.
-_INPUT_FIELDS = ("input_latex", "lagrangian_latex", "notation_latex", "metric_latex")
+_INPUT_FIELDS = (
+    "input_latex",
+    "lagrangian_latex",
+    "notation_latex",
+    "metric_latex",
+    "functional_latex",
+)
 _EQUATION_IS_INPUT = frozenset({"solve_polynomial", "check_units"})
 QUOTED_INPUT = "your input, as read by Minerva"
 QUOTED_STATED = "a handbook entry that is only stated, not machine-checked"

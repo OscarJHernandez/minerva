@@ -56,6 +56,7 @@ from .series import SeriesResult
 from .solve import SolveReport
 from .statmech.models import StatMechInput, StatMechResult
 from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
+from .variational import VariationInput, VariationReport
 
 # Operations that read `noncommutative` declarations (polynomial expressions only; see ncverify.py).
 NONCOMMUTATIVE_OPERATIONS = frozenset({"substitute", "rewrite_at", "subterms"})
@@ -457,6 +458,21 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return GeometryResult(status=status, message=message, duration_ms=ms)
         result = GeometryResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def variation(self, request: VariationInput) -> VariationReport:
+        """Functionals S[x] = ∫ L(t, x, x', ..., x^(n)) dt: variations, Euler-Lagrange equations,
+        boundary terms, numerical action, stationary paths and second variations.
+
+        A quantity is shown only if its independent numerical check passed."""
+        outcome, ms = self._run("variation", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return VariationReport(
+                status=status, message=message, action=request.action, duration_ms=ms
+            )
+        result = VariationReport(**outcome.value)
         result.duration_ms = ms
         return result
 

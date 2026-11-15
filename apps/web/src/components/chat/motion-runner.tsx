@@ -5,6 +5,7 @@ import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
 import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
 import type { StatAnswers, StatToolArgs } from "@/lib/statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
+import type { VariationRequest } from "@/lib/variation-types";
 
 /**
  * Lets a card start a numerical solution in the open conversation. Provided by the chat app; absent
@@ -16,6 +17,8 @@ export interface MotionRunner {
   perturb?: (request: PerturbationRequest) => Promise<void>;
   /** Asks for more quantities of the geometry on a card. */
   geometry?: (request: GeometryRequest) => Promise<void>;
+  /** Runs a variation card with the numbers the user typed in its form. */
+  variation?: (request: VariationRequest) => Promise<void>;
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?". */
   distribution?: (request: DistributionAnswer) => Promise<void>;
   /** Starts a closed-form or numerical solution from an analysis card, with the user's own numbers. */

@@ -18,6 +18,7 @@ const OPERATION_LABEL: Record<string, string> = {
   integrate: "Integrate",
   matrix_calculus: "Matrix calculus",
   geometry: "Geometry",
+  variation: "Variational calculus",
   distribution: "Distributions",
   ode_analyze: "Differential equation",
   ode_solve_symbolic: "ODE: closed form",

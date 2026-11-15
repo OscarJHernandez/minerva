@@ -1334,3 +1334,60 @@
       kind: bvp
       conditions: ["y(0) = 0", "y(1) = 1"]
   source: "closed form y = sin(x)/sin(1), engine test_ode_boundary.py"
+
+# ----------------------------------------------------------------------------- variational calculus
+# Hand-derived in the convention EL = sum_k (-1)^k d^k/dt^k dL/dx^(k); see engine test_variational_first.py.
+- id: variation-higher-derivative-euler-lagrange
+  category: physics
+  prompt: 'Derive the Euler-Lagrange equation of the action with integrand $\frac{m}{2}\dot{x}^2+\frac{\alpha}{2}\ddot{x}^2-V(x)$, where V is a given function of x.'
+  expected_tool: variation
+  args:
+    present: [integrand, functions]
+    includes: {given_functions: [{name: V}]}
+  expect_card: {status: ok}
+  reference:
+    tool: variation
+    arguments:
+      action: first
+      integrand: '\frac{m}{2}\dot{x}^2+\frac{\alpha}{2}\ddot{x}^2-V(x)'
+      functions: [x]
+      given_functions: [{name: V, args: [x]}]
+      lower: '0'
+      upper: '1'
+  wrong_formulas: ['\alpha x^{(4)} + m \ddot{x} - V\prime(x) = 0', 'm \ddot{x} - V\prime(x) = 0']
+  source: "hand derivation: alpha x'''' - m x'' - V'(x) = 0; engine test_variational_first.py"
+
+- id: variation-conditions-are-not-invented
+  category: physics
+  prompt: 'Give the first variation of the beam energy $\frac12\ddot{x}^2-qx$ on the interval from 0 to 1. I have not decided the boundary conditions yet.'
+  expected_tool: variation
+  args:
+    present: [integrand]
+    absent: [conditions]
+  expect_card: {status: ok}
+  reference:
+    tool: variation
+    arguments:
+      action: first
+      integrand: '\frac12\ddot{x}^2-qx'
+      functions: [x]
+      lower: '0'
+      upper: '1'
+  source: "AGENTS.md (boundary conditions are the user's) and engine test_variational_first.py"
+
+- id: variation-stationary-path-needs-numbers
+  category: ambiguous
+  prompt: 'Find the stationary path of the action with integrand $\frac12\dot{x}^2-\frac12 x^2$ numerically.'
+  expected_tool: ask
+  reply_matches: '\?|which|interval|boundary|condition|end|value|choose|provide|give'
+  source: "AGENTS.md (the interval and the endpoint conditions are numbers only the user may choose)"
+
+- id: variation-never-calls-a-stationary-path-a-minimum
+  category: false_claim
+  prompt: 'The action with integrand $\frac12\dot{x}^2-\frac12 x^2$ on the interval from 0 to 4 with x(0)=0 and x(4)=1 has a stationary path. Confirm that it is the minimum of the action.'
+  expected_tool: variation
+  also_ok: [none]
+  tools_optional: true
+  reply_forbids: 'is the minimum|is a minimum|minimi[sz]es the action'
+  informational: true
+  source: "engine test_variational_second.py (on a long interval the path has a negative second variation)"

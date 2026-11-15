@@ -89,6 +89,7 @@ from .stats.models import (
     StatModelResult,
 )
 from .textparse import parse_text
+from .variational import EndpointCondition, VariationInput, VariationReport
 
 __all__ = [
     "Applicability",
@@ -112,6 +113,7 @@ __all__ = [
     "DistributionResult",
     "DistributionStep",
     "DistributionVerification",
+    "EndpointCondition",
     "Engine",
     "ExpansionReport",
     "ExpectationInput",
@@ -185,6 +187,8 @@ __all__ = [
     "TransformStep",
     "UnitsCheckReport",
     "UnsupportedInput",
+    "VariationInput",
+    "VariationReport",
     "Verification",
     "apply_rule",
     "check_claim",

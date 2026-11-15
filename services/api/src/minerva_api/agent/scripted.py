@@ -397,6 +397,22 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif (
+            "variation" in lower or "euler-lagrange" in lower or "action functional" in lower
+        ) and latex:
+            # Development stand-in: x is the unknown function, other letters are parameters.
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?([A-Za-z])", latex))) or ["x"]
+            async for c in self._say(
+                "I will derive the first variation and check it numerically. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "variation", {"action": "first", "integrand": latex, "functions": names[:1]}
+                    )
+                ]
+            )
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -589,6 +605,18 @@ class ScriptedLLM:
                 text = (
                     "Nothing better was found, so the expression is returned unchanged. If some "
                     "symbols are known to be positive or real, tell me and I will try again."
+                )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "variation":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok":
+                text = (
+                    "The card lists every integration by parts, the Euler-Lagrange equation and the "
+                    "boundary terms. Minerva checked them against finite differences of the action "
+                    "(numerical evidence, not a proof). Boundary conditions are yours to declare: "
+                    "which derivatives are fixed at each end, and which are free?"
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."

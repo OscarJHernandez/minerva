@@ -18,6 +18,7 @@ from minerva_engine import (
     Pins,
     StatMechInput,
     StatModelInput,
+    VariationInput,
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.indexed.models import SumAction
@@ -172,6 +173,10 @@ class OdeSolveRequest(OdeSolveInput, Links):
 
 class OdeNumericRequest(OdeNumericInput, Links):
     """An initial-value problem with every number supplied by the user."""
+
+
+class VariationRequest(VariationInput, Links):
+    """A functional and one action: analyze, first, evaluate, verify, solve or second."""
 
 
 class StatMechRequest(StatMechInput, Links):

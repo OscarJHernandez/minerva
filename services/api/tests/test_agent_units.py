@@ -255,6 +255,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "ode_analyze",
         "ode_solve_symbolic",
         "ode_solve_numerical",
+        "variation",
         "dimensional_analysis",
         "check_units",
         "sums",

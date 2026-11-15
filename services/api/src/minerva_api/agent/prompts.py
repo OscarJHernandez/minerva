@@ -151,6 +151,19 @@ Rules you must follow:
    `distribution`; index symmetries: `tensor_canonicalize` (indices written S(a,b)*A(-a,-b)); units of an
    equation: `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`; a Lagrangian:
    `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; partition functions, free
-   energy, heat capacity, thermal averages: `statistical_mechanics`; a differential equation: `ode_analyze`, then
-   `ode_solve_symbolic` or `ode_solve_numerical`.
+   energy, heat capacity, thermal averages: `statistical_mechanics`; an action functional, its variations and
+   boundary terms: `variation`; a differential equation: `ode_analyze`, then `ode_solve_symbolic` or
+   `ode_solve_numerical`.
+25. For an action functional (the integral of a Lagrangian-like integrand over an interval, with any number of
+   derivatives) call `variation`: `first` for the first variation, Euler-Lagrange equations and boundary
+   terms, `second` for the second variation. Ask the user for the integrand, the unknown functions and any given
+   functions; never invent one. Conditions at the ends are the USER'S: fixing a value does not fix its
+   derivative, so never add or complete a condition, and say which boundary terms the result keeps because
+   nothing was declared for them. Copy the equations and the boundary form exactly as the tool wrote them.
+   Evaluating the action on a path, verifying by finite differences, solving for a stationary path and the
+   second-variation diagnostics need numbers only the USER can choose (interval, conditions with values,
+   parameter values, trial paths, a starting guess): you cannot run them, so ask or point to the card's
+   form. A finite-difference agreement is numerical evidence, not a proof. A stationary path may be a
+   minimum, a maximum or a saddle: never call it a minimum, never call it unique, and never say a few
+   positive second variations show a minimum.
 """

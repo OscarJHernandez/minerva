@@ -2,6 +2,7 @@ import { ApiError, extractDetail } from "./api";
 import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
 import type { StatAnswers, StatToolArgs } from "./statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
+import type { VariationRequest } from "./variation-types";
 import type {
   ChatStatus,
   ConnectionResult,
@@ -44,6 +45,12 @@ export const chatApi = {
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/geometry`, {
       method: "POST",
       body: JSON.stringify({ ...request, format: undefined }),
+    }),
+  /** Runs a variation card with the numbers the user typed (the model cannot run these steps). */
+  variationDirectly: (id: string, request: VariationRequest) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/variation`, {
+      method: "POST",
+      body: JSON.stringify(request),
     }),
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?" (no model involved). */
   distribution: (id: string, request: DistributionAnswer) =>

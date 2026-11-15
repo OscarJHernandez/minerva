@@ -103,6 +103,40 @@ class NotationLog:
 _SYMBOL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
+@dataclass(frozen=True)
+class JetBinding:
+    """Dependent functions of one independent variable and their derivatives (variational calculus).
+
+    `symbols` maps every accepted spelling to the jet symbol it denotes: the independent variable,
+    `x` (the function itself), and `x_dot`, `x_ddot`, `x_d3`, ... up to the declared order. A
+    spelling that names a derivative the declaration does not cover is a `ParseError`, never a
+    fresh symbol. Off (None) for every operation except `variation`.
+    """
+
+    variable: str
+    symbols: dict[str, sp.Symbol]
+    dependent: frozenset[str]
+    orders: dict[str, int]
+
+    def derivative(self, name: str, order: int) -> sp.Symbol:
+        if order > self.orders[name]:
+            raise ParseError(
+                f"the derivative of order {order} of {name} is beyond the declared order "
+                f"{self.orders[name]}"
+            )
+        return self.symbols[name if order == 0 else spelling(name, order)]
+
+
+def spelling(name: str, order: int) -> str:
+    """The text spelling of the derivative of a dependent function: `x`, `x_dot`, `x_ddot`, `x_d3`."""
+    if order == 0:
+        return name
+    return f"{name}_{('dot', 'ddot')[order - 1] if order <= 2 else f'd{order}'}"
+
+
+_DERIVATIVE_SUFFIX = re.compile(r"^(.+)_(dot|ddot|d[0-9]+)$")
+
+
 class Builder:
     """Creates symbols (with the user's assumptions) and guarded compound expressions."""
 
@@ -116,10 +150,13 @@ class Builder:
         notation: NotationLog | None = None,
         *,
         allow_noncommutative: bool = False,
+        jets: JetBinding | None = None,
         allow_sums: bool = False,
         random_variables: Iterable[str] = (),
     ) -> None:
         self.limits = limits or Limits()
+        # Declared dependent functions and their derivatives (operation `variation` only).
+        self.jets = jets
         # Finite sums, products and indexed variables exist only in the operations that check them
         # with instances (indexed/); everywhere else they are refused when the parser meets them.
         self.allow_sums = allow_sums
@@ -202,6 +239,19 @@ class Builder:
         return sp.Function(name, real=True)(*expected)
 
     def symbol(self, name: str) -> sp.Symbol:
+        if self.jets is not None:
+            known = self.jets.symbols.get(name)
+            if known is not None:
+                return known
+            match = _DERIVATIVE_SUFFIX.match(name)
+            while match is not None:
+                stem = match.group(1)
+                if stem in self.jets.dependent:
+                    raise ParseError(
+                        f"{name!r} is not a derivative that was declared for {stem!r} "
+                        f"(its order is {self.jets.orders[stem]})"
+                    )
+                match = _DERIVATIVE_SUFFIX.match(stem)
         if name in self._scope:
             return self._scope[name]
         if name in self._bases:
