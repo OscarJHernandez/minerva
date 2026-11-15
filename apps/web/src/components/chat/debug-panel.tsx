@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AssistantContent } from "@/lib/chat-types";
+import { settingsSummary } from "@/lib/model-params";
 import { buildTimeline, stageTimings, STOP_EXPLANATION } from "@/lib/trace-timeline";
 
 const TONE = {
@@ -67,6 +68,11 @@ export function DebugPanel({
               : ""}
           </p>
         )}
+        {settingsSummary(d).map((line) => (
+          <p key={line} className="break-words text-muted" data-testid="turn-settings">
+            {line}
+          </p>
+        ))}
         {stop && stop !== "completed" && (
           <p className="text-warn">Ended early: {STOP_EXPLANATION[stop] ?? stop}.</p>
         )}

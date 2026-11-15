@@ -107,6 +107,7 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
         "timeouts": sum(r.error_kind == "timeout" for r in scored),
         "tokens_in": sum(tokens_in) if tokens_in else None,
         "tokens_out": sum(tokens_out) if tokens_out else None,
+        "context": _context(scored),
         "per_category": per_category,
         "confusion": {k: dict(v) for k, v in sorted(confusion.items())},
         "failure_classes": dict(
@@ -116,6 +117,30 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
         "flaky_cases": flaky,
         "pass_counts_per_repeat": repeat_counts,
         "pass_count_stdev": statistics.pstdev(repeat_counts) if len(repeat_counts) > 1 else 0.0,
+    }
+
+
+def _reached_window(r: CaseResult) -> bool:
+    """The prompt filled the window, or shows the signature of a host cutting it.
+
+    A host handed more than its window keeps about half of it (8 195 tokens of a 16 384 window, measured):
+    a flat count at half the window plus a few tokens is a cut prompt, not a small request.
+    """
+    if not r.context_window or not r.max_prompt_tokens:
+        return False
+    cut_to = r.context_window // 2 + 3
+    return r.max_prompt_tokens >= r.context_window or abs(r.max_prompt_tokens - cut_to) <= 2
+
+
+def _context(scored: list[CaseResult]) -> dict[str, Any]:
+    """How the prompts compared with the window: a run at the window may have had text cut by the host."""
+    peaks = [r.max_prompt_tokens for r in scored if r.max_prompt_tokens is not None]
+    window = max((r.context_window for r in scored), default=0)
+    return {
+        "window": window or None,
+        "max_prompt_tokens": max(peaks) if peaks else None,
+        "runs_at_window": sum(1 for r in scored if _reached_window(r)),
+        "runs_with_history_dropped": sum(1 for r in scored if r.history_dropped),
     }
 
 
@@ -153,6 +178,42 @@ def _meets(metric: str, value: float | None) -> str:
     return "met" if ok else "NOT met"
 
 
+def _context_line(s: dict[str, Any]) -> str:
+    c = s.get("context") or {}
+    if not c.get("window"):
+        return "Context: window not recorded."
+    text = f"Context: window {c['window']} tokens, largest prompt {c['max_prompt_tokens']}"
+    if c.get("runs_at_window"):
+        text += f"; **{c['runs_at_window']} run(s) reached the window, the host may have cut the prompt**"
+    if c.get("runs_with_history_dropped"):
+        text += f"; earlier messages were left out in {c['runs_with_history_dropped']} run(s)"
+    return text + "."
+
+
+def _params_line(meta: dict[str, Any]) -> str:
+    params = meta.get("params")
+    if not params:
+        return "Model parameters: not recorded (a run from before they were configurable)."
+    shown = ", ".join(f"{k} {v}" for k, v in params.items())
+    return f"Model parameters: {shown}."
+
+
+def _params_diff(base: dict[str, Any], new: dict[str, Any]) -> list[str]:
+    a, b = base["meta"].get("params") or {}, new["meta"].get("params") or {}
+    keys = [k for k in dict.fromkeys([*a, *b]) if a.get(k) != b.get(k)]
+    if not keys:
+        return []
+    rows = [f"| {k} | {a.get(k, 'not recorded')} | {b.get(k, 'not recorded')} |" for k in keys]
+    return [
+        "",
+        "**The model parameters differ:**",
+        "",
+        "| Parameter | Baseline | New |",
+        "| --- | --- | --- |",
+        *rows,
+    ]
+
+
 def render_markdown(doc: dict[str, Any]) -> str:
     meta = doc["meta"]
     lines = [
@@ -162,6 +223,8 @@ def render_markdown(doc: dict[str, Any]) -> str:
         f"({meta.get('case_count', '?')} cases, {meta.get('repeats', 1)} repeat(s), seed {meta.get('seed', 'none')}, "
         f"temperature {meta.get('temperature', '?')}). Code `{meta.get('git_sha', '?')}`, "
         f"prompt `{meta.get('prompt_sha', '?')}`. The targets are goals, not results.",
+        "",
+        _params_line(meta),
         "",
         "## Headline",
         "",
@@ -235,6 +298,7 @@ def render_markdown(doc: dict[str, Any]) -> str:
             f"{s['tokens_out'] if s['tokens_out'] is not None else 'not reported by the host'}.",
             "",
             _extras_line(s),
+            _context_line(s),
             "",
             "### Failures by class",
             "",
@@ -311,6 +375,7 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
     ]
     if base["meta"].get("cases_digest") != new["meta"].get("cases_digest"):
         lines += ["", "**The case sets differ: only cases present in both are compared per case.**"]
+    lines += _params_diff(base, new)
     if not pairs:
         return "\n".join([*lines, "", "No model appears in both reports."]) + "\n"
     for old_name, new_name in pairs:

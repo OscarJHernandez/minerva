@@ -46,13 +46,88 @@ describe("Composer: add image", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("reading shot.png");
   });
 
-  it("ignores pasted pictures when images are off", () => {
+  it("says so when a picture is pasted but images are not set up", () => {
     render(<Composer {...props} />);
     const image = new File(["x"], "shot.png", { type: "image/png" });
     fireEvent.paste(screen.getByLabelText("Message"), {
       clipboardData: { files: [image], getData: () => "" },
     });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("not set up on this server");
+  });
+
+  it("finds a screenshot that is only in the clipboard items (some browsers leave files empty)", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const image = new File(["x"], "clip.png", { type: "image/png" });
+    fireEvent.paste(screen.getByLabelText("Message"), {
+      clipboardData: {
+        files: [],
+        items: [{ kind: "file", type: "image/png", getAsFile: () => image }],
+        getData: () => "",
+      },
+    });
+    expect(screen.getByRole("dialog")).toHaveTextContent("reading clip.png");
+  });
+
+  it("keeps the text when a paste has both text and a picture", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const image = new File(["x"], "page.png", { type: "image/png" });
+    const notPrevented = fireEvent.paste(screen.getByLabelText("Message"), {
+      clipboardData: { files: [image], getData: () => "x^2 + 1" },
+    });
+    expect(notPrevented).toBe(true); // the browser pastes the text as usual
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Composer: drag and drop", () => {
+  const dropOf = (file: File) => ({
+    dataTransfer: { types: ["Files"], files: [file], items: [] },
+  });
+
+  it("shows a drop state while a file is dragged over, and reads the dropped picture", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const box = screen.getByTestId("composer-box");
+    fireEvent.dragEnter(box, dropOf(new File(["x"], "eq.png", { type: "image/png" })));
+    expect(box).toHaveAttribute("data-dragging");
+    expect(screen.getByText("Drop a picture of a formula to read it")).toBeInTheDocument();
+    fireEvent.drop(box, dropOf(new File(["x"], "eq.png", { type: "image/png" })));
+    expect(box).not.toHaveAttribute("data-dragging");
+    expect(screen.getByRole("dialog")).toHaveTextContent("reading eq.png");
+  });
+
+  it("clears the drop state when the drag leaves", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const box = screen.getByTestId("composer-box");
+    const drag = dropOf(new File(["x"], "eq.png", { type: "image/png" }));
+    fireEvent.dragEnter(box, drag);
+    fireEvent.dragLeave(box, drag);
+    expect(box).not.toHaveAttribute("data-dragging");
+  });
+
+  it("refuses a dropped file that is not a picture", () => {
+    render(<Composer {...props} imagesEnabled />);
+    fireEvent.drop(
+      screen.getByTestId("composer-box"),
+      dropOf(new File(["a"], "notes.txt", { type: "text/plain" })),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("PNG, JPEG or WebP");
+  });
+
+  it("says so when a picture is dropped but images are not set up", () => {
+    render(<Composer {...props} />);
+    fireEvent.drop(
+      screen.getByTestId("composer-box"),
+      dropOf(new File(["x"], "eq.png", { type: "image/png" })),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("not set up on this server");
+  });
+
+  it("ignores a drag that carries no files (selected text)", () => {
+    render(<Composer {...props} imagesEnabled />);
+    const box = screen.getByTestId("composer-box");
+    fireEvent.dragEnter(box, { dataTransfer: { types: ["text/plain"], files: [] } });
+    expect(box).not.toHaveAttribute("data-dragging");
   });
 });
 

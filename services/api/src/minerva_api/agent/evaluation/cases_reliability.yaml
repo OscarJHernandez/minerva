@@ -135,3 +135,28 @@
       expected_tool: none
       reply_matches: 'given|assum|premise|conditional|provided|only if|if y'
       reply_forbids: 'is proved|has been proved|proven true|is proven'
+
+# Context across turns (the chat once answered "I don't have access to the preceding conversation" because the
+# request overflowed the model's window and the host cut the earlier turns). The follow-ups name nothing from the
+# first turn: "it" and "that" must be resolved from the earlier turns, which the loop hands the model.
+- id: followup-resolves-it-from-earlier-turns
+  category: multistep
+  prompt: 'Simplify $\frac{x^2-9}{x-3}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "x + 3"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^2-9}{x-3}'}}
+  source: "polynomial division: (x - 3)(x + 3) / (x - 3) = x + 3 for x != 3"
+  followups:
+    - prompt: 'Good. Now integrate it from 0 to 1.'
+      expected_tool: integrate
+      args: {present: [latex, variable]}
+      expect_card: {status: ok, result_text: '7/2'}
+      reference: {tool: integrate, arguments: {latex: 'x + 3', variable: x, lower: '0', upper: '1'}}
+      must_reuse: true
+      forbid_assumptions: true
+    - prompt: 'Which expression did we start from?'
+      expected_tool: none
+      reply_matches: 'x\^?\{?2\}?\s*-\s*9|x\^2 - 9'
+      reply_forbids: "(do not|don't|cannot|can't|no) (have )?access|cannot see|no (preceding|previous) (context|conversation)"

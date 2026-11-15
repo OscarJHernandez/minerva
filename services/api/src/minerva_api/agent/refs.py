@@ -17,9 +17,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from .equations import Equation
 from .tools import ToolOutput
 
 REFERENCE = re.compile(r"@r(\d+)\b")
+# `@e3`: the equation numbered (3) in the conversation (see equations.py).
+EQ_REFERENCE = re.compile(r"@e(\d+)\b")
 # Tools whose card holds one result expression in `result_latex`.
 REFERENCEABLE_TOOLS = frozenset({"simplify", "differentiate", "integrate", "series"})
 # Arguments that may contain references (the ones that hold a mathematical expression).
@@ -35,6 +38,10 @@ class Resolution:
     # computed from `@r1` is valid only where `@r1` was, so these travel with it (see `inherited_note`).
     inherited: list[str] = field(default_factory=list)
     inherited_from: list[str] = field(default_factory=list)
+    # Equations the arguments rest on that Minerva never verified ("equation (3)"): they were written by
+    # the model. A result computed from them is a verified computation on an unestablished input, and
+    # says so (see `unverified_note`). Also those carried by the earlier results that were referenced.
+    unverified: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -46,6 +53,10 @@ class ResultStore:
     # computed from). Without this, `simplify` cancelling (x-2) reports x != 2 once and every later step that
     # reuses @r1 is silent about x = 2, which the original expression excluded.
     restrictions: dict[str, list[str]] = field(default_factory=dict)
+    # The numbered equations of the conversation, and for a result id the unverified equations it was
+    # computed from: a later `@r1` reuse inherits them, exactly like the restrictions.
+    equations: dict[int, Equation] = field(default_factory=dict)
+    unverified: dict[str, list[str]] = field(default_factory=dict)
     _next: int = 1
 
     @classmethod
@@ -53,16 +64,26 @@ class ResultStore:
         cls,
         prior: Mapping[str, str] | None,
         restrictions: Mapping[str, Sequence[str]] | None = None,
+        equations: Mapping[int, Equation] | None = None,
+        unverified: Mapping[str, Sequence[str]] | None = None,
     ) -> ResultStore:
         store = cls(
             results=dict(prior or {}),
             restrictions={k: list(v) for k, v in (restrictions or {}).items()},
+            equations=dict(equations or {}),
+            unverified={k: list(v) for k, v in (unverified or {}).items()},
         )
         numbers = [int(k[1:]) for k in store.results if re.fullmatch(r"r\d+", k)]
         store._next = max(numbers, default=0) + 1
         return store
 
-    def register(self, tool: str, output: ToolOutput, inherited: Sequence[str] = ()) -> str | None:
+    def register(
+        self,
+        tool: str,
+        output: ToolOutput,
+        inherited: Sequence[str] = (),
+        unverified: Sequence[str] = (),
+    ) -> str | None:
         """Give an accepted single-expression result an id; None when it cannot be referenced.
 
         `inherited` are the restrictions of the results it was computed from; they are stored with its own.
@@ -82,22 +103,53 @@ class ResultStore:
         merged += [r for r in inherited if r not in merged]
         if merged:
             self.restrictions[result_id] = merged
+        if unverified:
+            self.unverified[result_id] = list(dict.fromkeys(unverified))
         return result_id
 
     def resolve(self, arguments: dict[str, Any]) -> Resolution:
-        """Replace `@rN` in the expression arguments. A reference to nothing is an error, not a guess."""
-        out = dict(arguments)
+        """Replace `@eN` and `@rN` in the expression arguments. A reference to nothing is an error, not a guess."""
+        staged = dict(arguments)
         count = 0
+        unverified: list[str] = []
+        for key in EXPRESSION_ARGUMENTS:
+            value = staged.get(key)
+            if not isinstance(value, str) or "@e" not in value:
+                continue
+            numbers = [int(n) for n in EQ_REFERENCE.findall(value)]
+            missing = [n for n in numbers if n not in self.equations]
+            if missing:
+                known = ", ".join(f"({n})" for n in sorted(self.equations)) or "none yet"
+                return Resolution(
+                    arguments,
+                    error=f"unknown equation reference @e{missing[0]}; equations: {known}",
+                )
+            whole = EQ_REFERENCE.fullmatch(value.strip()) is not None
+
+            def sub(m: re.Match[str], whole: bool = whole) -> str:
+                equation = self.equations[int(m.group(1))]
+                if equation.result_id and equation.result_id in self.results:
+                    return f"@{equation.result_id}"  # a verified result: resolved as one below
+                if equation.source == "written_by_model":
+                    label = f"equation ({equation.number})"
+                    if label not in unverified:
+                        unverified.append(label)
+                return equation.latex if whole else rf"\left({equation.latex}\right)"
+
+            staged[key] = EQ_REFERENCE.sub(sub, value)
+            count += len(numbers)
+        out = dict(staged)
         for key in EXPRESSION_ARGUMENTS:
             value = out.get(key)
             if not isinstance(value, str) or "@r" not in value:
                 continue
             ids = REFERENCE.findall(value)
-            missing = [f"@r{i}" for i in ids if f"r{i}" not in self.results]
-            if missing:
+            missing_ids = [f"@r{i}" for i in ids if f"r{i}" not in self.results]
+            if missing_ids:
                 known = ", ".join(f"@{k}" for k in self.results) or "none yet"
                 return Resolution(
-                    arguments, error=f"unknown result reference {missing[0]}; available: {known}"
+                    arguments,
+                    error=f"unknown result reference {missing_ids[0]}; available: {known}",
                 )
             if REFERENCE.fullmatch(value.strip()):
                 out[key] = self.results[f"r{ids[0]}"]  # the whole argument: exactly the result
@@ -109,13 +161,18 @@ class ResultStore:
         inherited: list[str] = []
         sources: list[str] = []
         for key in EXPRESSION_ARGUMENTS:
-            value = arguments.get(key)
+            value = staged.get(key)
             for found in REFERENCE.findall(value) if isinstance(value, str) else []:
                 carried = self.restrictions.get(f"r{found}", [])
                 if carried and f"@r{found}" not in sources:
                     sources.append(f"@r{found}")
                 inherited += [r for r in carried if r not in inherited]
-        return Resolution(out, count, inherited=inherited, inherited_from=sources)
+                unverified += [
+                    u for u in self.unverified.get(f"r{found}", []) if u not in unverified
+                ]
+        return Resolution(
+            out, count, inherited=inherited, inherited_from=sources, unverified=unverified
+        )
 
     def note_for(self, result_id: str) -> str:
         return reference_note(result_id)
@@ -134,4 +191,16 @@ def reference_note(result_id: str) -> str:
     """The line a tool message carries so the model knows how to reuse a verified result."""
     return (
         f"result_id={result_id} (write @{result_id} in a later call to reuse this result exactly)"
+    )
+
+
+UNVERIFIED_INPUT = "computed from an equation the model wrote and Minerva never verified"
+
+
+def unverified_note(sources: Sequence[str]) -> str:
+    """What a tool message says when its input was an equation Minerva never verified (fixed text)."""
+    return (
+        f"Input not verified: this result was computed from {', '.join(sources)}, which the model wrote and "
+        "Minerva never verified. The computation is checked, but whether that input is right is not established: "
+        "say so with the result, and do not call anything built on it verified."
     )

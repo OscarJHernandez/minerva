@@ -52,7 +52,10 @@ def _make_llm(settings: Settings) -> LLMClient | None:
 def _make_vision(settings: Settings) -> FormulaReader | None:
     if settings.ollama_configured and settings.llm_vision_model:
         return OllamaFormulaReader(
-            settings.llm_base_url, settings.llm_vision_model, settings.llm_timeout_seconds
+            settings.llm_base_url,
+            settings.llm_vision_model,
+            settings.llm_timeout_seconds,
+            num_ctx=settings.llm_num_ctx,
         )
     if settings.llm_mode == "scripted":
         return ScriptedFormulaReader()

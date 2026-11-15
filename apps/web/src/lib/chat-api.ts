@@ -13,6 +13,7 @@ import type {
   PerturbationRequest,
   StoredMessage,
   StreamEvent,
+  ModelParams,
 } from "./chat-types";
 import { SseParser } from "./sse";
 
@@ -117,12 +118,17 @@ export async function sendMessage(
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
   provider?: ProviderChoice,
+  params?: Partial<ModelParams>,
 ): Promise<void> {
   const response = await fetch(`/api/v1/chat/conversations/${conversationId}/messages`, {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(provider ? { content, provider } : { content }),
+    body: JSON.stringify({
+      content,
+      ...(provider ? { provider } : {}),
+      ...(params && Object.keys(params).length > 0 ? { params } : {}),
+    }),
     signal,
   });
   if (!response.ok || !response.body) {

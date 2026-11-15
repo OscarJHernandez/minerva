@@ -25,6 +25,8 @@ class Segment(BaseModel):
         Literal["from_tool", "quoted", "checked", "conditional", "contradicted", "unchecked"] | None
     ) = None
     note: str | None = None  # e.g. "false in general, but holds if x is positive"
+    # The equation number of a displayed formula (see equations.py): a name, never a verification.
+    number: int | None = None
 
 
 class Card(BaseModel):
@@ -63,10 +65,12 @@ class Card(BaseModel):
         "dimensional",
         "units",
         "step",
+        "note",
         "error",
     ]
     title: str
     data: dict[str, Any] = Field(default_factory=dict)
+    number: int | None = None  # the equation number of the primary result, when it has one
 
 
 CheckKind = Literal[
@@ -200,6 +204,14 @@ class TurnDebug(BaseModel):
     formulas: int = 0  # formulas the model wrote in this turn
     formulas_with_evidence: int = 0  # ... that are backed by engine evidence
     evidence_pct: float | None = None
+    # The model parameters this turn used (numbers and fixed words), the tool groups it had loaded,
+    # and how the request compared with the window: what a debug report needs to tell which
+    # settings produced an answer. Absent on messages stored before they existed.
+    params: dict[str, Any] = Field(default_factory=dict)
+    groups: list[str] = Field(default_factory=list)
+    context_window: int = 0
+    prompt_estimate_tokens: int = 0
+    history_dropped: int = 0  # messages of earlier turns left out so the request fit
 
 
 class AssistantMessage(BaseModel):
@@ -211,3 +223,4 @@ class AssistantMessage(BaseModel):
     stop_reason: str | None = (
         None  # tracing.StopReason; absent on messages stored before it existed
     )
+    context_trimmed: int = 0  # earlier messages left out of this turn to fit the model's window

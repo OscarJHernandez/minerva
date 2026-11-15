@@ -1,3 +1,4 @@
+import { EquationNumber } from "./equation-number";
 import { Math } from "@minerva/ui/math";
 import type { ReactNode } from "react";
 import type { FormulaStatus, Segment } from "@/lib/chat-types";
@@ -149,7 +150,12 @@ function DisplayFormula({ seg }: { seg: Segment }) {
   const mark = MARKS[seg.status ?? "from_tool"];
   return (
     <div data-status={seg.status} className={`my-2 rounded-md border px-3 py-1 ${mark.box}`}>
-      <Math latex={seg.value} display />
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <Math latex={seg.value} display />
+        </div>
+        {seg.number != null && <EquationNumber n={seg.number} />}
+      </div>
       {mark.label && (
         <div className={`pb-1 text-xs ${mark.tone}`} title={mark.title}>
           {seg.status === "quoted"

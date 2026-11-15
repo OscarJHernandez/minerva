@@ -91,6 +91,55 @@ git switch --detach <previous commit> && uv run python scripts/eval_models.py --
 git switch - && uv run python scripts/eval_models.py --base-url "$HOST" --models gemma4:26b,qwen3.5:35b --repeat 3 --seed 7 --label after --json-out docs/benchmarks/after.json --out docs/benchmarks/after.md --compare docs/benchmarks/before.json
 ```
 
+## Context window and prompt size (2026-11-15)
+
+**Finding.** A chat reply said it had no access to the earlier turns, with 0 tool calls. The model host's log showed
+`truncating input prompt` on every request. The full request (system prompt plus all 33 tool schemas) is about **22 000
+tokens**, and the tuned model was built with a 16 384-token window. A host that is handed more than its window cuts
+the start of the prompt, so the model saw almost none of its instructions or tools and none of the earlier turns.
+
+Measured on the deployed model (a Gemma-based `minerva` build, `num_ctx` sent per request, tokens as counted by the host):
+
+| Request | Prompt tokens | Cold prompt processing |
+| --- | --- | --- |
+| system prompt alone, no tools | 4 900 | 3 s |
+| all 33 tools (the old request) | 22 077 | 16 s |
+| core tools only (what a new conversation sends now) | 4 677 | 3 s (0.2 s with the prefix cached) |
+| core + the matrix group | 6 175 | 4 s |
+
+At a 16k window the old request was cut to 8 195 tokens; at 32k it fits. How the host cuts: a prompt that fits the window
+is untouched; one that does not is cut to about half the window (8 195 of 16 384, 16 387 of 32 768, 32 771 of 65 536)
+keeping the system message and the newest text, so the earlier turns go first. A request is therefore sent only if it
+fits `num_ctx` minus the room for the reply, and the oldest whole turns of history are left out, visibly, when it does not.
+
+**What changed** (not yet measured with the benchmark, see below): tools are sent in groups (`agent/toolsets.py`), the
+system prompt is assembled from a core and the rule blocks of the groups in use (`agent/prompts.py`), the window is sent
+with every request (`MINERVA_LLM_NUM_CTX`), and history is budgeted. `prompt_sha` now fingerprints the full prompt and all
+schemas as before, but a turn's request is smaller, so a benchmark run before and after this change differs in what the
+model is shown: say so when comparing.
+
+**Before and after on the same model and cases** (reliability suite, 9 cases, seed 7, one run each; reports in
+`docs/benchmarks/context-before-all-16k.{md,json}` and `context-after-auto-32k.{md,json}`). "Before" is the old
+request (`--toolset all --num-ctx 16384`), "after" the new defaults (`--toolset auto --num-ctx 32768`):
+
+| | before | after |
+| --- | --- | --- |
+| passed | 0 of 9 | 4 of 9 |
+| tool selection | 11.1% | 88.9% |
+| median turn | 17.0 s | 6.2 s |
+| largest prompt (host count) | 8 195 (cut) | 6 662 |
+
+Before, the model made **no tool call at all** in eight of nine cases: the host had cut away the tool definitions and
+most of the instructions, which is the "I don't have access to the preceding conversation" answer. The report line
+"largest prompt 8 195" is the signature of the cut (half of a 16 384 window); the check that flags it was added after
+this run, which is why the saved "before" report does not carry the warning. After, what still fails is the model's own
+quality, not its view: it retypes an earlier result instead of writing `@rN`, passes an assumption the user did not
+state, and in one case does not call `matrix_calculus` on a follow-up. These are separate findings for the next change.
+One run per case is a small sample: repeat with `--repeat 3` before drawing conclusions about the remaining failures.
+
+**Not yet measured:** the core suite (`cases.yaml`) before and after, and a second model. The host's `OLLAMA_NUM_PARALLEL` may also divide the window between
+parallel requests on some builds: confirm with `ollama ps` and the host log (`n_ctx_slot`) after changing it.
+
 ## Earlier evaluation (historical)
 
 Generated 2026-11-11 by the earlier `scripts/eval_models.py`. Each prompt runs through the real agent loop (real tools and verification) on the configured Ollama host. A case passes when the right tool is called with valid arguments, the reply says what it should (for example that conditions or assumptions are needed), and the model does not write formulas that no tool produced where that would be wrong. Results vary from run to run; treat differences of one case as noise.

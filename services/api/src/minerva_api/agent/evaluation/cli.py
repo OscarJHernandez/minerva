@@ -30,9 +30,11 @@ import sympy
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 
+from ...settings import Settings
 from ..llm import LLMClient, LLMError, OllamaClient
 from ..loop import AgentLimits, prompt_sha
 from ..openrouter import OpenRouterClient
+from ..params import EffectiveParams, ParamOverrides, defaults
 from ..tools import ToolContext
 from .cases import SUITES, EvalCase, cases_digest, load_suite
 from .reference import check_reference
@@ -73,6 +75,31 @@ def _ollama_version(base_url: str) -> str | None:
         return None
 
 
+def build_params(args: argparse.Namespace) -> EffectiveParams:
+    """The server's defaults with this run's flags applied (validated by the same ranges)."""
+    base = defaults(Settings(_env_file=None))
+
+    def flag(name: str) -> Any:
+        return getattr(args, name, None)  # a caller may build its own Namespace
+
+    wanted = {
+        "num_ctx": flag("num_ctx"),
+        "num_predict": flag("num_predict"),
+        "temperature": flag("temperature"),
+        "top_p": flag("top_p"),
+        "top_k": flag("top_k"),
+        "think": flag("think"),
+        "history_messages": flag("history_messages"),
+        "history_tokens": flag("history_tokens"),
+        "toolset": flag("toolset"),
+    }
+    given = {k: v for k, v in wanted.items() if v is not None}
+    if flag("num_predict") == 0:
+        given["num_predict"] = None  # explicitly the model's own
+    ParamOverrides(**{k: v for k, v in given.items() if v is not None})  # range check
+    return base.model_copy(update=given)
+
+
 def _meta(args: argparse.Namespace, cases: list[EvalCase], limits: AgentLimits) -> dict[str, Any]:
     return {
         "label": args.label,
@@ -86,6 +113,7 @@ def _meta(args: argparse.Namespace, cases: list[EvalCase], limits: AgentLimits) 
         "seed": args.seed,
         "temperature": args.temperature,
         "think": args.think,
+        "params": build_params(args).model_dump(mode="json"),
         "strip_thinking": args.strip_thinking,
         "request_timeout_seconds": args.timeout,
         "limits": describe_limits(limits),
@@ -109,7 +137,13 @@ def make_client(spec: str, args: argparse.Namespace, repeat: int = 0) -> tuple[s
             raise SystemExit(
                 "set OPENROUTER_API_KEY in the environment to evaluate OpenRouter models"
             )
-        return "openrouter", rest, OpenRouterClient(key, rest, timeout_seconds=args.timeout)
+        return (
+            "openrouter",
+            rest,
+            OpenRouterClient(key, rest, timeout_seconds=args.timeout).with_params(
+                build_params(args)
+            ),
+        )
     model = rest if provider == "ollama" else spec
     if not args.base_url:
         raise SystemExit("--base-url is required for Ollama models")
@@ -126,7 +160,7 @@ def make_client(spec: str, args: argparse.Namespace, repeat: int = 0) -> tuple[s
             seed=None
             if args.seed is None
             else args.seed + repeat,  # each repeat samples differently
-        ),
+        ).with_params(build_params(args)),
     )
 
 
@@ -176,6 +210,7 @@ async def _evaluate_model(
             first_repeat=repeat,
             parallel=args.parallel,
             on_result=progress,
+            params=build_params(args),
         )
     return model, results
 
@@ -202,7 +237,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--case-timeout", type=float, default=0.0, help="seconds per turn (default: 2 x --timeout)"
     )
-    parser.add_argument("--think", action="store_true", help="let reasoning models think first")
+    parser.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="let reasoning models think first (--no-think: do not)",
+    )
     parser.add_argument("--strip-thinking", action="store_true", help="drop leaked reasoning")
     parser.add_argument(
         "--suite",
@@ -216,6 +256,21 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--repeat", type=int, default=1, help="runs of every case (default 1)")
     parser.add_argument("--seed", type=int, default=None, help="base seed; repeat i uses seed + i")
     parser.add_argument("--temperature", type=float, default=0.2)
+    # Model parameters: the same fields as the server's MINERVA_LLM_* settings (agent/params.py). Unset
+    # means the server default; everything used is recorded in the report, and --compare shows the changes.
+    parser.add_argument("--num-ctx", type=int, help="context window sent with every request")
+    parser.add_argument("--num-predict", type=int, help="longest reply (0: the model's own limit)")
+    parser.add_argument("--top-p", type=float, help="nucleus sampling (unset: the model's own)")
+    parser.add_argument("--top-k", type=int, help="top-k sampling (unset: the model's own)")
+    parser.add_argument(
+        "--history-messages", type=int, help="stored messages replayed to the model"
+    )
+    parser.add_argument("--history-tokens", type=int, help="token budget for the replayed history")
+    parser.add_argument(
+        "--toolset",
+        choices=("auto", "core", "all"),
+        help="which tools are sent: auto (core + groups a conversation needs), core or all",
+    )
     parser.add_argument("--parallel", type=int, default=1, help="cases run at once per model")
     parser.add_argument("--json-out", help="write the machine-readable report here")
     parser.add_argument("--out", help="write the markdown report here")
@@ -312,4 +367,19 @@ def main(argv: list[str] | None = None) -> int:
     print("\n" + text)
     if args.compare:
         print(compare(_load(args.compare), doc))
+    # A prompt that reached the window means the host may have cut something the model needed: the
+    # measurement is not valid, whatever the pass rate says.
+    cut = {
+        name: entry["summary"]["context"]["runs_at_window"]
+        for name, entry in doc["models"].items()
+        if entry["summary"] and entry["summary"]["context"]["runs_at_window"]
+    }
+    if cut:
+        print(
+            "WARNING: prompts reached the context window in "
+            + ", ".join(f"{n}: {c} run(s)" for n, c in cut.items())
+            + ". Raise --num-ctx or use --toolset auto; these results are not valid.",
+            file=sys.stderr,
+        )
+        return 2
     return 0

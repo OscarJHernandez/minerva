@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, Uuid, create_engine
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -118,6 +118,9 @@ class Conversation(Base):
     title: Mapped[str] = mapped_column(String(120), default="New conversation")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # The highest equation number ever given in this conversation (agent/equations.py). Kept here, not
+    # derived from the messages, so a number is never reused after a message is removed or regenerated.
+    equation_counter: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class ChatMessage(Base):

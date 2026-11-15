@@ -86,6 +86,11 @@ class CaseResult(BaseModel):
     tokens_in: int | None = None
     tokens_out: int | None = None
     first_token_ms: int | None = None  # of the first model call
+    # The largest prompt of any model call, the window it had, and the earlier messages left out to fit:
+    # a prompt that reaches the window means the host may have cut something (see docs/model-evaluation.md).
+    max_prompt_tokens: int | None = None
+    context_window: int = 0
+    history_dropped: int = 0
     cost_usd: float | None = None  # as the provider reported it
     error_kind: str | None = (
         None  # auth | credits | rate_limit | timeout | ... when the model host failed
@@ -248,6 +253,9 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         if c.get("completion_tokens") is not None
     ]
     result.tokens_in = sum(ins) if ins else None
+    result.max_prompt_tokens = max(ins) if ins else None
+    result.context_window = int(debug.get("context_window") or 0)
+    result.history_dropped = int(debug.get("history_dropped") or 0)
     result.tokens_out = sum(outs) if outs else None
     firsts = [
         c["first_token_ms"]
@@ -512,6 +520,10 @@ def combine(results: list[CaseResult]) -> CaseResult:
         ):
             setattr(first, name, getattr(first, name) + getattr(later, name))
         first.seconds = round(first.seconds + later.seconds, 3)
+        peaks = [x for x in (first.max_prompt_tokens, later.max_prompt_tokens) if x is not None]
+        first.max_prompt_tokens = max(peaks) if peaks else None
+        first.history_dropped = max(first.history_dropped, later.history_dropped)
+        first.context_window = first.context_window or later.context_window
         first.tool_selected = first.tool_selected and later.tool_selected
         first.tool_reached = first.tool_reached and later.tool_reached
         first.completed = first.completed and later.completed

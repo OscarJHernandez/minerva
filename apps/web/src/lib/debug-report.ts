@@ -1,3 +1,4 @@
+import { settingsSummary } from "./model-params";
 import type {
   AssistantContent,
   Card,
@@ -206,7 +207,12 @@ function formulas(content: Partial<AssistantContent>) {
     .filter((b) => b.kind === "text")
     .flatMap((b) => b.segments)
     .filter((s) => s.type !== "text")
-    .map((s) => ({ value: s.value, status: s.status, note: s.note ?? null }));
+    .map((s) => ({
+      value: s.value,
+      status: s.status,
+      note: s.note ?? null,
+      number: s.number ?? null,
+    }));
 }
 
 /** The model's prose as it wrote it, one string per text block, with the formula delimiters restored. */
@@ -242,6 +248,7 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
         `stop reason: ${stop}${STOP_EXPLANATION[stop] ? ` (${STOP_EXPLANATION[stop]})` : ""}`,
       );
     if (d.error) lines.push(`error: ${d.error}`);
+    lines.push(...settingsSummary(d));
     const stages = stageTimings(d);
     if (stages.length > 0) {
       lines.push(

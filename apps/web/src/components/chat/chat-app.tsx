@@ -29,6 +29,9 @@ import { Composer } from "./composer";
 import { ModelPicker } from "./model-picker";
 import { ModelSettingsPanel } from "./model-settings-panel";
 import { CopyButton } from "./debug-panel";
+import { InsertReferenceProvider } from "./equation-number";
+import { ParamsPanel } from "./params-panel";
+import type { Overrides } from "@/lib/model-params";
 import { ConversationList } from "./conversation-list";
 import { MessageView } from "./message-view";
 import { MotionRunnerProvider } from "./motion-runner";
@@ -94,6 +97,8 @@ export function ChatApp() {
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [debugOn, setDebugOn] = useDebugMode();
+  const [paramOverrides, setParamOverrides] = useState<Overrides>({});
+  const [insertRequest, setInsertRequest] = useState<{ id: number; text: string } | null>(null);
   const [lastError, setLastError] = useState<LastError | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const cloudConfirmed = useRef<Set<string>>(new Set());
@@ -233,6 +238,7 @@ export function ChatApp() {
         },
         controller.signal,
         providerChoice(modelSettings.get()),
+        debugOn && Object.keys(paramOverrides).length > 0 ? paramOverrides : undefined,
       );
       await refreshList();
     } catch (e) {
@@ -407,129 +413,152 @@ export function ChatApp() {
   }
 
   return (
-    <MotionRunnerProvider
-      value={{
-        run: runMotion,
-        perturb: runPerturbation,
-        geometry: runGeometry,
-        distribution: runDistribution,
-        ode: runOde,
-        variation: runVariation,
-        statmech: runStatMech,
-      }}
+    <InsertReferenceProvider
+      value={(n) => setInsertRequest({ id: Date.now() + n, text: `(${n})` })}
     >
-      <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
-        <aside className="hidden w-60 shrink-0 py-4 md:block">
-          <ConversationList
-            items={conversations}
-            activeId={activeId}
-            onOpen={open}
-            onNew={startNew}
-            onDelete={remove}
-          />
-        </aside>
+      <MotionRunnerProvider
+        value={{
+          run: runMotion,
+          perturb: runPerturbation,
+          geometry: runGeometry,
+          distribution: runDistribution,
+          ode: runOde,
+          variation: runVariation,
+          statmech: runStatMech,
+        }}
+      >
+        <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
+          <aside className="hidden w-60 shrink-0 py-4 md:block">
+            <ConversationList
+              items={conversations}
+              activeId={activeId}
+              onOpen={open}
+              onNew={startNew}
+              onDelete={remove}
+            />
+          </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
-          <div className="flex items-center justify-between py-2 md:hidden">
-            <button
-              type="button"
-              onClick={() => setListOpen((o) => !o)}
-              aria-expanded={listOpen}
-              className="rounded border border-rule px-2.5 py-1 text-sm"
-            >
-              Conversations
-            </button>
-            <button type="button" onClick={startNew} className="text-sm text-accent">
-              New
-            </button>
-          </div>
-          {listOpen && (
-            <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
-              <ConversationList
-                items={conversations}
-                activeId={activeId}
-                onOpen={open}
-                onNew={startNew}
-                onDelete={remove}
-              />
+          <section className="flex min-w-0 flex-1 flex-col" aria-label="Conversation">
+            <div className="flex items-center justify-between py-2 md:hidden">
+              <button
+                type="button"
+                onClick={() => setListOpen((o) => !o)}
+                aria-expanded={listOpen}
+                className="rounded border border-rule px-2.5 py-1 text-sm"
+              >
+                Conversations
+              </button>
+              <button type="button" onClick={startNew} className="text-sm text-accent">
+                New
+              </button>
             </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto py-4 pr-1" role="log" aria-live="polite">
-            {messages.length === 0 && !pending ? (
-              <EmptyState onPick={send} disabled={busy || !status} />
-            ) : (
-              <div className="mx-auto max-w-3xl space-y-6">
-                {messages.map((m, i) => (
-                  <MessageView
-                    key={m.id}
-                    message={m}
-                    getReport={
-                      debugOn && m.role === "assistant"
-                        ? () => buildTurnReport({ title, status }, messages, i)
-                        : undefined
-                    }
-                  />
-                ))}
-                {pending && <PendingView pending={pending} />}
-                {error && (
-                  <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                    {error}
-                  </p>
-                )}
+            {listOpen && (
+              <div className="mb-2 max-h-64 overflow-y-auto rounded-lg border border-rule bg-raised p-3 md:hidden">
+                <ConversationList
+                  items={conversations}
+                  activeId={activeId}
+                  onOpen={open}
+                  onNew={startNew}
+                  onDelete={remove}
+                />
               </div>
             )}
-            <div ref={bottomRef} />
-          </div>
 
-          <div className="mx-auto w-full max-w-3xl">
-            {error && messages.length === 0 && (
-              <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                {error}
+            {status?.context_ok === false && (
+              <p
+                role="alert"
+                className="mb-2 rounded bg-warn-soft px-3 py-2 text-sm text-warn"
+                data-testid="context-warning"
+              >
+                The model&apos;s context window is smaller than Minerva&apos;s instructions, so it
+                will lose the conversation and most of its tools. The operator can raise it
+                (MINERVA_LLM_NUM_CTX) or send fewer tools (MINERVA_LLM_TOOLSET=core).
               </p>
             )}
-            <Composer
-              disabled={!status}
-              imagesEnabled={status?.images === true}
-              beforeSend={confirmCloud}
-              toolbar={
-                status?.providers ? (
-                  <ModelPicker
-                    status={status}
-                    open={modelOpen}
-                    onToggle={() => setModelOpen((o) => !o)}
+            <div className="flex-1 overflow-y-auto py-4 pr-1" role="log" aria-live="polite">
+              {messages.length === 0 && !pending ? (
+                <EmptyState onPick={send} disabled={busy || !status} />
+              ) : (
+                <div className="mx-auto max-w-3xl space-y-6">
+                  {messages.map((m, i) => (
+                    <MessageView
+                      key={m.id}
+                      message={m}
+                      getReport={
+                        debugOn && m.role === "assistant"
+                          ? () => buildTurnReport({ title, status }, messages, i)
+                          : undefined
+                      }
+                    />
+                  ))}
+                  {pending && <PendingView pending={pending} />}
+                  {error && (
+                    <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            <div className="mx-auto w-full max-w-3xl">
+              {error && messages.length === 0 && (
+                <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+                  {error}
+                </p>
+              )}
+              <Composer
+                disabled={!status}
+                imagesEnabled={status?.images === true}
+                beforeSend={confirmCloud}
+                toolbar={
+                  status?.providers ? (
+                    <ModelPicker
+                      status={status}
+                      open={modelOpen}
+                      onToggle={() => setModelOpen((o) => !o)}
+                    />
+                  ) : null
+                }
+                panel={
+                  modelOpen && status ? (
+                    <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
+                  ) : null
+                }
+                busy={busy}
+                insertRequest={insertRequest}
+                onSend={send}
+                onStop={() => abortRef.current?.abort()}
+              />
+              <div className="flex items-center gap-4 py-1 text-xs text-muted">
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={debugOn}
+                    onChange={(e) => setDebugOn(e.target.checked)}
                   />
-                ) : null
-              }
-              panel={
-                modelOpen && status ? (
-                  <ModelSettingsPanel status={status} onClose={() => setModelOpen(false)} />
-                ) : null
-              }
-              busy={busy}
-              onSend={send}
-              onStop={() => abortRef.current?.abort()}
-            />
-            <div className="flex items-center gap-4 py-1 text-xs text-muted">
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={debugOn}
-                  onChange={(e) => setDebugOn(e.target.checked)}
-                />
-                Debug mode
-              </label>
-              {debugOn && (
-                <CopyButton
-                  label="Copy debug report"
-                  getText={() => buildDebugReport({ title, messages, status, lastError })}
+                  Debug mode
+                </label>
+                {debugOn && (
+                  <CopyButton
+                    label="Copy debug report"
+                    getText={() => buildDebugReport({ title, messages, status, lastError })}
+                  />
+                )}
+              </div>
+              {debugOn && status?.params && status.params.editable.length > 0 && (
+                <ParamsPanel
+                  info={status.params}
+                  value={paramOverrides}
+                  onChange={setParamOverrides}
                 />
               )}
             </div>
-          </div>
-        </section>
-      </div>
-    </MotionRunnerProvider>
+          </section>
+        </div>
+      </MotionRunnerProvider>
+    </InsertReferenceProvider>
   );
 }
 

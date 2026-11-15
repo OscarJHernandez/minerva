@@ -1,0 +1,59 @@
+{
+  "comment": "Which pieces of a text are formulas, and of which kind. The server splitter (services/api/.../agent/segments.py) and the client splitter (apps/web/src/lib/inline-math.ts) must both produce exactly these, so a reply is read the same on both sides. Only delimited formulas are listed: the server also finds bare equations, the client does not.",
+  "cases": [
+    {
+      "name": "inline and display",
+      "text": "Take $a$ and $$b$$.",
+      "formulas": [
+        ["math", "a"],
+        ["display_math", "b"]
+      ]
+    },
+    {
+      "name": "parenthesis and bracket forms",
+      "text": "\\(a\\) and \\[b\\]",
+      "formulas": [
+        ["math", "a"],
+        ["display_math", "b"]
+      ]
+    },
+    {
+      "name": "all four in one text",
+      "text": "a $x$ b $$y$$ c \\(z\\) d \\[w\\]",
+      "formulas": [
+        ["math", "x"],
+        ["display_math", "y"],
+        ["math", "z"],
+        ["display_math", "w"]
+      ]
+    },
+    {
+      "name": "two inline formulas with punctuation",
+      "text": "a $x+1$, then $y$.",
+      "formulas": [
+        ["math", "x+1"],
+        ["math", "y"]
+      ]
+    },
+    {
+      "name": "multiline display is trimmed",
+      "text": "$$\na\n$$",
+      "formulas": [["display_math", "a"]]
+    },
+    {
+      "name": "multiline bracket display stays whole",
+      "text": "\\[\n a = b \\\\\n c = d\n\\]",
+      "formulas": [["display_math", "a = b \\\\\n c = d"]]
+    },
+    {
+      "name": "bare environment",
+      "text": "see \\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned} done",
+      "formulas": [["display_math", "\\begin{aligned}\na &= b \\\\\nc &= d\n\\end{aligned}"]]
+    },
+    { "name": "prices are text", "text": "It costs $5 to $10 in total", "formulas": [] },
+    { "name": "escaped dollars are text", "text": "costs \\$5 and \\$6", "formulas": [] },
+    { "name": "an unclosed dollar is text", "text": "open $a never closed", "formulas": [] },
+    { "name": "an unfinished display is text", "text": "so $$x^2 +", "formulas": [] },
+    { "name": "plain text", "text": "No formulas here at all.", "formulas": [] }
+  ]
+}

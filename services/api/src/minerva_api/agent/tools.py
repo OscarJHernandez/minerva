@@ -65,7 +65,9 @@ from ..variation_log import log_variation
 from ..vector_log import log_vector
 from .events import Card, Evidence
 from .evidence import evidence_for
+from .prompts import GROUP_SUMMARY, GROUP_TOOLS
 from .segments import normalize
+from .toolsets import GROUPS, requested_groups
 from .tracing import category_for
 
 MAX_INPUT = 2000
@@ -872,6 +874,15 @@ class SearchArgs(BaseModel):
 
 class EntryArgs(BaseModel):
     id: str = Field(max_length=80, description="Handbook entry id, e.g. trig.pythagorean")
+
+
+class LoadToolsArgs(BaseModel):
+    groups: list[str] = Field(
+        min_length=1,
+        max_length=11,
+        description="Names of the tool groups to load, from the list in the system prompt "
+        '(for example ["matrix"]). Their tools are available from the next step.',
+    )
 
 
 def _expr(args: SimplifyArgs) -> ExpressionInput:
@@ -2770,6 +2781,31 @@ def run_get_entry(args: EntryArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, [data["statement_latex"]])
 
 
+def run_load_tools(args: LoadToolsArgs, ctx: ToolContext) -> ToolOutput:
+    """Ask for the tools of one or more groups. The loop adds them to the next request."""
+    found = requested_groups({"groups": args.groups})
+    unknown = [g for g in args.groups if str(g).strip().lower() not in found]
+    if not found:
+        return _error(
+            "load_tools",
+            f"unknown tool group(s) {', '.join(map(repr, args.groups))}; groups: {', '.join(GROUPS)}",
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+    tools = [t for g in found for t in GROUP_TOOLS[g]]
+    message = f"Loaded {', '.join(found)}: {', '.join(tools)} are available now."
+    if unknown:
+        message += f" Unknown groups ignored: {', '.join(map(str, unknown))}."
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="load_tools",
+        type="note",
+        title="Tools loaded",
+        data={"message": message, "groups": found},
+    )
+    return ToolOutput(card, message, [])
+
+
 # --- controlled steps: substitute, rewrite one part, isolate a variable -----------------------------
 class SubstituteArgs(SimplifyArgs):
     relations: list[str] = Field(
@@ -3340,6 +3376,16 @@ TOOLS: dict[str, Tool] = {
         ),
     ]
 }
+
+
+TOOLS["load_tools"] = Tool(
+    "load_tools",
+    "Load the tools of a group that is not in your tool list yet, when the user's problem needs them. "
+    "Groups: " + "; ".join(f"{n} ({sm})" for n, sm in GROUP_SUMMARY.items()) + ". "
+    "The tools are available from your next step.",
+    LoadToolsArgs,
+    run_load_tools,
+)
 
 
 def schemas() -> list[dict[str, Any]]:
