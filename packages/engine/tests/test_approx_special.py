@@ -239,7 +239,7 @@ def test_euler_maclaurin_with_a_wrong_bernoulli_coefficient_fails_the_polynomial
 def test_acceleration_of_the_basel_series_and_an_alternating_series() -> None:
     r = run(method="accelerate", input="1/k**2", variable="k", lower="1", max_terms=40)
     assert r.status is Status.OK and abs(mpmath.mpf(r.result_latex) - mpmath.pi**2 / 6) < 1e-12
-    plain = [c for c in r.candidates if "partial sum" in c.label][0]
+    plain = next(c for c in r.candidates if "partial sum" in c.label)
     assert (
         abs(mpmath.mpf(plain.result_latex) - mpmath.pi**2 / 6) > 1e-2
     )  # the acceleration is what helped
