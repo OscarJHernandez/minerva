@@ -265,7 +265,7 @@ SCRIPTS: dict[str, dict[str, Any]] = {
     "kepler-conserved-quantities-then-total-time-derivative": {
         "ideal": [
             call(
-                "find_conserved_quantities",
+                "analyze_lagrangian",
                 {
                     "lagrangian": r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}",
                     "coordinates": ["r", "theta"],
@@ -286,7 +286,7 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             # d/dt with `differentiate` holds the velocities fixed (it used to answer 0)
             FailureClass.TOOL_SELECTION: [
                 call(
-                    "find_conserved_quantities",
+                    "analyze_lagrangian",
                     {
                         "lagrangian": r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}",
                         "coordinates": ["r", "theta"],

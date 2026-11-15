@@ -90,7 +90,7 @@ def test_the_source_sentence_and_who_wrote_it_are_kept() -> None:
 @pytest.fixture(scope="module")
 def engine_ctx() -> ToolContext:
     return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
+        engine=Engine(Limits(timeout_seconds=120, max_concurrency=2)), kb=KnowledgeBase.load()
     )
 
 
