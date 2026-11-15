@@ -81,17 +81,22 @@ def test_repeated_roots_are_exact_with_their_multiplicity(
 
 
 def test_repeated_roots_agree_with_mpmath_polyroots_on_the_distinct_values() -> None:
+    """(x-1)^2 (x+3)^3: the distinct roots and their multiplicities, against hand-written values.
+
+    mpmath.polyroots is not run on the repeated-root polynomial itself: Durand-Kerner converges only linearly at a
+    multiple root and raised NoConvergence on a CI runner. It is run on the polynomial with the repeats removed,
+    (x-1)(x+3) = x^2 + 2x - 3, where it is well conditioned. The multiplicities follow from the factored input.
+    """
     import mpmath
 
     r = solve("(x-1)^2(x+3)^3=0")
     reference = sorted(
-        {
-            round(float(mpmath.re(z)), 6)
-            for z in mpmath.polyroots([1, 7, 10, -18, -27, 27], maxsteps=2000, extraprec=300)
-        }
+        {round(float(mpmath.re(z)), 6) for z in mpmath.polyroots([1, 2, -3], maxsteps=2000)}
     )
     assert reference == [-3.0, 1.0]
     assert sorted({float(root.numeric) for root in r.roots}) == reference
+    multiplicity = {round(float(root.numeric)): root.multiplicity for root in r.roots}
+    assert multiplicity == {1: 2, -3: 3}
 
 
 def test_symbolic_coefficients_quadratic_has_a_formula_higher_degrees_do_not() -> None:
