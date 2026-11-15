@@ -1,0 +1,343 @@
+{
+  "problems": [
+    {
+      "id": "gaussian-a",
+      "category": "gaussian",
+      "source": "closed form sqrt(pi/a)",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "gaussian-shifted",
+      "category": "gaussian",
+      "source": "closed form sqrt(pi) exp(a^2/4)",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "gaussian-two-parameters",
+      "category": "gaussian",
+      "source": "closed form sqrt(pi/a) exp(b^2/(4a)); the other symbol is a constant",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "laplace-power",
+      "category": "laplace",
+      "source": "closed form Gamma(n+1)/a^(n+1)",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "laplace-linear",
+      "category": "laplace",
+      "source": "closed form 1/a^2",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "lorentzian",
+      "category": "rational_exponential",
+      "source": "closed form pi/a",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "exponential-integral",
+      "category": "rational_exponential",
+      "source": "closed form exp(a) E1(a) (exponential integral) and the equation I' - I = -1/a",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "reciprocal-gaussian",
+      "category": "higher_order",
+      "source": "closed form sqrt(pi) exp(-2a) / 2 (order two)",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 2,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "bessel-j0",
+      "category": "special_function",
+      "source": "quadrature; the Bessel equation a I'' + I' + a I = 0 is checked against it",
+      "expected": "equation",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 2,
+      "symbolic_zero": true,
+      "failure_class": "initial_value_unavailable"
+    },
+    {
+      "id": "airy-type",
+      "category": "special_function",
+      "source": "quadrature; the inhomogeneous Airy equation I'' + a I = 1 is checked against it",
+      "expected": "equation",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 2,
+      "symbolic_zero": true,
+      "failure_class": "value_not_verified"
+    },
+    {
+      "id": "finite-interval",
+      "category": "nonzero_boundary",
+      "source": "closed form (1 - exp(-a))/a",
+      "expected": "evaluated",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 0,
+      "symbolic_zero": true,
+      "failure_class": null
+    },
+    {
+      "id": "inhomogeneous-boundary",
+      "category": "nonzero_boundary",
+      "source": "quadrature; the equation, with its nonzero boundary term at x = 1, is checked against it",
+      "expected": "equation",
+      "reasons": [],
+      "outcome": "correct",
+      "order": 1,
+      "symbolic_zero": true,
+      "failure_class": "initial_value_unavailable"
+    },
+    {
+      "id": "convergence-needs-sign",
+      "category": "convergence_restriction",
+      "source": "no sign declared for the parameter: nothing may be assumed",
+      "expected": "certificate",
+      "reasons": [
+        "convergence_not_established"
+      ],
+      "outcome": "correct",
+      "order": 0,
+      "symbolic_zero": true,
+      "failure_class": "convergence_not_established"
+    },
+    {
+      "id": "convergence-fails-for-negative-parameter",
+      "category": "convergence_restriction",
+      "source": "exp(-a x) with a < 0 grows: the integral diverges",
+      "expected": "refused",
+      "reasons": [
+        "divergent"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "divergent"
+    },
+    {
+      "id": "divergent-at-zero",
+      "category": "singular_divergent",
+      "source": "int_0^1 dx/(a x) diverges",
+      "expected": "refused",
+      "reasons": [
+        "divergent"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "divergent"
+    },
+    {
+      "id": "divergent-power-at-infinity",
+      "category": "singular_divergent",
+      "source": "x^-2 exp(-a x) is not integrable at 0",
+      "expected": "refused",
+      "reasons": [
+        "divergent"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "divergent"
+    },
+    {
+      "id": "exponential-growth",
+      "category": "singular_divergent",
+      "source": "exp(a x) grows on [0, oo) for a > 0",
+      "expected": "refused",
+      "reasons": [
+        "divergent"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "divergent"
+    },
+    {
+      "id": "pole-inside-interval",
+      "category": "singular_divergent",
+      "source": "1/(x^2-1) has a pole at x = 1, inside (0, oo)",
+      "expected": "certificate",
+      "reasons": [
+        "singularity_not_excluded"
+      ],
+      "outcome": "correct",
+      "order": 2,
+      "symbolic_zero": true,
+      "failure_class": "singularity_not_excluded"
+    },
+    {
+      "id": "trigonometric",
+      "category": "beyond_class",
+      "source": "sin(a x) is not hyperexponential",
+      "expected": "refused",
+      "reasons": [
+        "not_hyperexponential"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "not_hyperexponential"
+    },
+    {
+      "id": "sum-of-exponentials",
+      "category": "beyond_class",
+      "source": "a sum of two exponentials has a non-rational logarithmic derivative",
+      "expected": "refused",
+      "reasons": [
+        "not_hyperexponential"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "not_hyperexponential"
+    },
+    {
+      "id": "parameter-in-exponent",
+      "category": "beyond_class",
+      "source": "x^a: f_a / f = log x is not rational",
+      "expected": "refused",
+      "reasons": [
+        "not_hyperexponential"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "not_hyperexponential"
+    },
+    {
+      "id": "parameter-missing",
+      "category": "beyond_class",
+      "source": "the integrand does not depend on the parameter",
+      "expected": "refused",
+      "reasons": [
+        "parameter_missing"
+      ],
+      "outcome": "refused_as_expected",
+      "order": null,
+      "symbolic_zero": false,
+      "failure_class": "parameter_missing"
+    },
+    {
+      "id": "forged-control",
+      "category": "forged_certificate",
+      "source": "the correct pair (1 + 2a d/da, x f) is accepted",
+      "expected": "accepted",
+      "reasons": [],
+      "outcome": "correct",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    },
+    {
+      "id": "forged-sign",
+      "category": "forged_certificate",
+      "source": "G with the wrong sign",
+      "expected": "rejected",
+      "reasons": [],
+      "outcome": "rejected_as_expected",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    },
+    {
+      "id": "forged-coefficient-1e-6",
+      "category": "forged_certificate",
+      "source": "a coefficient off by one part in a million",
+      "expected": "rejected",
+      "reasons": [],
+      "outcome": "rejected_as_expected",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    },
+    {
+      "id": "forged-certificate-1e-6",
+      "category": "forged_certificate",
+      "source": "G off by one part in a million",
+      "expected": "rejected",
+      "reasons": [],
+      "outcome": "rejected_as_expected",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    },
+    {
+      "id": "forged-dropped-term",
+      "category": "forged_certificate",
+      "source": "the order-zero term of the operator dropped",
+      "expected": "rejected",
+      "reasons": [],
+      "outcome": "rejected_as_expected",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    },
+    {
+      "id": "forged-zero-operator",
+      "category": "forged_certificate",
+      "source": "the zero operator with G = 0 is a trivial relation",
+      "expected": "rejected",
+      "reasons": [],
+      "outcome": "rejected_as_expected",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    },
+    {
+      "id": "forged-wrong-exponent",
+      "category": "forged_certificate",
+      "source": "G built from exp(-2 a x^2)",
+      "expected": "rejected",
+      "reasons": [],
+      "outcome": "rejected_as_expected",
+      "order": null,
+      "symbolic_zero": null,
+      "failure_class": null
+    }
+  ]
+}

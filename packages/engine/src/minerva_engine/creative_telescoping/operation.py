@@ -37,6 +37,7 @@ from .models import (
     BoundaryOut,
     CertificateOut,
     EquationOut,
+    NumericPoint,
     OperatorOut,
     Reason,
     Refusal,
@@ -220,6 +221,7 @@ def creative_telescoping(request: TelescopingInput, limits: Limits) -> Telescopi
         result.operator = OperatorOut(
             order=found.order,
             coefficients_latex=[to_latex(c) for c in op.coefficients],
+            coefficients_text=[to_text(c) for c in op.coefficients],
             latex=f"L = {op.latex()}",
         )
         result.certificate = CertificateOut(latex=to_latex(G), latex_ratio=to_latex(sp.factor(y)))
@@ -284,6 +286,7 @@ def creative_telescoping(request: TelescopingInput, limits: Limits) -> Telescopi
                 latex=_equation_latex(op.coefficients, contribution),
                 homogeneous=contribution == 0,
                 rhs_latex=to_latex(contribution),
+                rhs_text=to_text(contribution),
                 leading_nonzero=nonzero,
             )
         result.conditions.append(
@@ -351,7 +354,12 @@ def creative_telescoping(request: TelescopingInput, limits: Limits) -> Telescopi
             if not check.passed:
                 stage.status = "failed"
         if not check.passed:
-            stage.status = "failed"
+            result.unresolved = [f"A candidate value was rejected and is not shown: {check.note}."]
+            raise Refusal(
+                "value_not_verified",
+                "The equation was derived but the candidate value did not pass every check.",
+            )
+        # A solution that failed its checks is never shown, not even its constants.
         result.solution = SolutionOut(
             general_latex=f"I(a) = {to_latex(general)}",
             initial_point_latex=f"{to_latex(a)} = {to_latex(initial.point)}",
@@ -361,13 +369,15 @@ def creative_telescoping(request: TelescopingInput, limits: Limits) -> Telescopi
             ],
             constants_latex=[to_latex(c) for c in constants],
         )
-        if not check.passed:
-            result.unresolved = [f"A candidate value was rejected and is not shown: {check.note}."]
-            raise Refusal(
-                "value_not_verified",
-                "The equation was derived but the candidate value did not pass every check.",
-            )
-        # A solution that failed its checks is never shown, not even its constants.
+        if not (value.free_symbols - {a}):
+            for p in (sp.Rational(7, 10), sp.Rational(13, 10), sp.Rational(21, 10)):
+                if domain[0] < p < domain[1]:
+                    number = sp.N(value.subs(a, p), 15)
+                    if number.is_number and number.is_real:
+                        check.samples.append(
+                            NumericPoint(parameter=str(float(p)), value=str(number))
+                        )
+        result._value = value
         result.result_latex = to_latex(value)
         result.result_text = to_text(value)
         result.notes.append(
@@ -389,8 +399,10 @@ def creative_telescoping(request: TelescopingInput, limits: Limits) -> Telescopi
         )
         if exc.reason in _PARTIAL and result.equation is None:
             outcome = "certificate"
-        if exc.reason in {"divergent"}:
+        if exc.reason == "divergent":
+            # a proved relation next to "the integral diverges" would only mislead
             outcome = "none"
+            result.operator = result.certificate = result.certificate_check = None
         return refuse(exc, outcome)
     except LimitError as exc:
         return finish(Status.RESOURCE_LIMIT, "none", "resource_limit", str(exc))

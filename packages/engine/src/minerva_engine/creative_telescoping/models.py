@@ -11,7 +11,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+import sympy as sp
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 from ..distributions.models import Condition
 from ..errors import MinervaMathError
@@ -97,6 +98,7 @@ class Family(BaseModel):
 class OperatorOut(BaseModel):
     order: int
     coefficients_latex: list[str]  # p_0 ... p_N, polynomials in the parameter
+    coefficients_text: list[str] = Field(default_factory=list)  # the same, in text syntax
     latex: str  # L = sum p_k d^k/da^k
 
 
@@ -128,6 +130,7 @@ class EquationOut(BaseModel):
     latex: str  # sum p_k I^(k)(a) = boundary
     homogeneous: bool
     rhs_latex: str
+    rhs_text: str = ""  # the right-hand side in text syntax (the benchmark re-reads it)
     leading_nonzero: bool | None  # is p_N provably nonzero on the whole parameter domain?
 
 
@@ -138,6 +141,14 @@ class SolutionOut(BaseModel):
     constants_latex: list[str]
 
 
+class NumericPoint(BaseModel):
+    """The accepted value at one parameter value, as decimal text (for readers that cannot parse
+    special functions: the benchmark compares these with its own quadrature)."""
+
+    parameter: str
+    value: str
+
+
 class ValueVerification(BaseModel):
     ode_symbolic_zero: bool = False  # the solution satisfies the ODE, exactly
     initial_values_hold: bool = False
@@ -145,6 +156,7 @@ class ValueVerification(BaseModel):
     quadrature_points_agreed: int = 0
     passed: bool = False
     note: str = ""
+    samples: list[NumericPoint] = Field(default_factory=list)
 
 
 StageName = Literal["analyse", "search", "verify", "boundary", "equation", "solve", "value"]
@@ -202,6 +214,13 @@ class TelescopingResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     diagnostics: Diagnostics = Field(default_factory=Diagnostics)
     duration_ms: int = 0
+    # The accepted value as an expression, for in-process callers (the integration strategies). Not
+    # part of the model's data: it is dropped by `model_dump`, so it never crosses the sandbox.
+    _value: sp.Expr | None = PrivateAttr(default=None)
+
+    @property
+    def value_expr(self) -> sp.Expr | None:
+        return self._value
 
 
 @contextmanager
