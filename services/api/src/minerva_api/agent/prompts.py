@@ -348,6 +348,23 @@ For Dirac delta and Heaviside functions call `distribution`. Pass `\\delta(...)`
    reports; if it refuses, give its reason and what would be needed.\
 """,
     ),
+    "approximation": (
+        """\
+Approximations. `approximation` finds a simpler expression that represents a function in the regime the USER
+   names; you pick the method (or `auto`) and pass only what they said. The point, the interval, the order or
+   degree, the tolerance and its kind, the period, the number of modes and the small parameter are the USER's:
+   if they are not given, call the tool without them and relay its question; never pick them. Write points and
+   bounds as plain text (oo for infinity). Use it for more than a Taylor polynomial at a regular point:
+   poles (laurent), large x (asymptotic), v/c-type small parameters (perturbation), Pade, Chebyshev, Legendre,
+   Fourier, splines, a number's continued fraction, large sums (euler_maclaurin), limits and leading terms.
+   Say "checked numerically" (or "series coefficients checked") unless the tool reports otherwise, never
+   "proved". The errors are measurements on sampled points, not bounds: repeat that, and repeat the warnings
+   (a pole of the approximant the function does not have, a jump and Gibbs overshoot, slow coefficient decay,
+   no extrapolation). An asymptotic expansion is not a convergent series. Meeting a tolerance is separate from
+   the approximation being valid: say whether it was met on the sampled points. If the tool refuses or the
+   check fails, give its reason and no partial answer.\
+""",
+    ),
     "units": (),
 }
 
@@ -361,6 +378,7 @@ GROUP_ROUTER: dict[str, str] = {
     "statmech": "partition functions, free energy, heat capacity, thermal averages: `statistical_mechanics`.",
     "statistics": "finite sums and products, expectation, variance, likelihood, estimators: `sums`, `expectation`, `statistical_model`.",
     "distributions": "delta or step functions: `distribution`.",
+    "approximation": "approximating an expression (Pade, Chebyshev, Fourier, Laurent, large x, small parameter, large sums, a number by fractions): `approximation`.",
     "units": "units of an equation: `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
 }
 
@@ -375,6 +393,7 @@ GROUP_SUMMARY: dict[str, str] = {
     "statistics": "finite sums and products, expectation/variance/covariance, likelihood, estimators, posteriors",
     "distributions": "Dirac delta and Heaviside functions",
     "units": "units and dimensions: dimensional consistency and dimensionless groups",
+    "approximation": "approximations: Pade, Chebyshev, Fourier, Laurent, asymptotic and perturbation expansions, large sums, accuracy targets",
 }
 
 GROUP_TOOLS: dict[str, tuple[str, ...]] = {
@@ -396,6 +415,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "statistics": ("sums", "expectation", "statistical_model"),
     "distributions": ("distribution",),
     "units": ("check_units", "dimensional_analysis"),
+    "approximation": ("approximation",),
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
@@ -408,6 +428,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "statmech": "partition function|statistical mechanic|canonical ensemble|ensemble|free energy|heat capacity|boltzmann|entropy|\\bising\\b|thermodynamic|fermi[- ]dirac|bose[- ]einstein|microcanonical|density of states",
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
     "distributions": "dirac|\\bdelta\\b|heaviside|step function|\\\\delta|\\\\theta|generali[sz]ed function|distribution",
+    "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
 }
 

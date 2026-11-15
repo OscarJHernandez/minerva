@@ -336,6 +336,13 @@ def op_creative_telescoping(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_approximation(payload: dict[str, Any]) -> dict[str, Any]:
+    from .approx import ApproximationInput, approximation
+
+    result = approximation(ApproximationInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
     from .integrate import integrate
 
@@ -891,6 +898,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "series": op_series,
     "integrate": op_integrate,
     "creative_telescoping": op_creative_telescoping,
+    "approximation": op_approximation,
     "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
     "ode_analyze": op_ode_analyze,

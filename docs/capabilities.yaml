@@ -50,6 +50,11 @@
 #                with_second (an example may be run with numbers: those are the user's, never the model's)
 #   discovery    input, coordinates, system (lagrangian | hamiltonian), momenta, angles, budget
 #   telescoping  input, variable, parameter, lower, upper, assumptions (the signs that are declared are the only ones used)
+#   approximation input, assumptions, method (auto | taylor | perturbation | laurent | asymptotic | multivariable | leading |
+#                limit | pade | chebyshev | legendre | fourier | piecewise | continued_fraction | euler_maclaurin |
+#                integral_expansion | root_expansion | reversion | laplace | accelerate | compare), variable, point,
+#                direction, order, small, variables, points, lower, upper, degree, denominator_degree, period, modes,
+#                segments, kind, tolerance, tolerance_kind, max_terms, methods (every number is the user's: nothing is defaulted)
 #   integrate    input, variable, lower, upper, assumptions, strategy (auto | a technique name; leave out for SymPy's route first)
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
@@ -299,6 +304,225 @@ capabilities:
         variable: x
         point: "0"
         order: 3
+
+  - id: approximation
+    title: Approximations
+    status: available
+    group: math
+    where: [workbench, chat, api]
+    summary: >-
+      Finds a simpler expression that represents a function in the regime you name: Laurent series with pole
+      order and residue, asymptotic expansions at plus or minus infinity, perturbation expansions in a small
+      parameter or a combination such as v/c, Taylor series of several variables with the Hessian, leading
+      behaviour and limits, Padé approximants, Chebyshev and Legendre approximations on an interval, Fourier
+      series of a periodic function, piecewise polynomials, continued fractions of a number, Euler-Maclaurin
+      for a large sum, sequence acceleration, the expansion of an integral, a root or an inverse function in a
+      small parameter, and Laplace's method. `auto` chooses from what you said; `compare` puts Taylor, Padé,
+      Chebyshev and piecewise side by side and picks the simplest that meets an accuracy target. SymPy only
+      proposes: each result is shown only if a check that does not use the route that built it agrees
+      (Cauchy estimates, residual decay at high precision, a second implementation, direct summation, quadrature).
+    limits:
+      - Errors are measured on sampled points and are never bounds; "the tolerance is met" means on the sampled points. A rigorous bound is established only for continued-fraction convergents of a rational.
+      - The interval, point, period, tolerance, degrees and number of modes are yours; none has a default, and a missing one is a question. Taylor and Padé on an interval are expanded about the midpoint only when that is stated.
+      - An asymptotic expansion is not a convergent series, and no term is added "because it should help".
+      - Padé approximants can have poles the function does not have; they are reported. A Padé approximant is not assumed to be more accurate than the Taylor polynomial, and both are measured when an interval is given.
+      - At a jump the Fourier series converges to the midpoint and overshoots by about 9% of the jump (Gibbs); uniform convergence is not claimed. Lanczos sigma factors are optional.
+      - A function with a pole, an undefined point or non-real values on the interval is refused for interval methods. Essential singularities and branch points are not Laurent series and are refused.
+      - Puiseux series, exponentially small or large asymptotics, endpoint and degenerate Laplace maxima, perturbative solutions of differential equations, spherical harmonics and multiscale methods are not covered.
+      - Euler-Maclaurin sums need a smooth summand; an oscillating one is refused when the corrections do not beat the plain integral. A symbolic upper limit is checked for several values, not proved for every N.
+    examples:
+      - id: approx-relativistic
+        title: Non-relativistic expansion of the energy
+        op: approximation
+        format: text
+        input: "m*c**2/sqrt(1-v**2/c**2)"
+        method: perturbation
+        small: "v/c"
+        order: 4
+        assumptions: { m: [positive], c: [positive], v: [real] }
+      - id: approx-laurent
+        title: Pole order, principal part and residue
+        op: approximation
+        format: text
+        input: "1/(x*(x-3))"
+        method: laurent
+        point: "3"
+        order: 2
+      - id: approx-asymptotic
+        title: A square root at large x
+        op: approximation
+        format: text
+        input: "sqrt(x**2+x)"
+        method: asymptotic
+        point: oo
+        order: 3
+      - id: approx-multivariable
+        title: Two variables, total degree two, with the Hessian
+        op: approximation
+        format: text
+        input: "exp(x+y)"
+        method: multivariable
+        variables: [x, y]
+        points: ["0", "0"]
+        order: 2
+      - id: approx-limit
+        title: One-sided limits that differ
+        op: approximation
+        format: text
+        input: "1/x"
+        method: limit
+        point: "0"
+      - id: approx-pade
+        title: A Padé approximant with a pole the exponential does not have
+        op: approximation
+        format: text
+        input: "exp(x)"
+        method: pade
+        point: "0"
+        degree: 1
+        denominator_degree: 1
+        lower: "-1"
+        upper: "3"
+      - id: approx-chebyshev
+        title: The lowest Chebyshev degree meeting a tolerance
+        op: approximation
+        format: text
+        input: "sin(x)"
+        method: chebyshev
+        lower: "0"
+        upper: "3"
+        tolerance: "1e-6"
+        tolerance_kind: absolute
+      - id: approx-compare
+        title: Taylor, Padé and Chebyshev compared on an interval
+        op: approximation
+        format: text
+        input: "log(1+x)"
+        method: compare
+        lower: "0"
+        upper: "2"
+        degree: 5
+      - id: approx-fourier
+        title: A sawtooth, with its closed-form coefficients and the Gibbs warning
+        op: approximation
+        format: text
+        input: "x"
+        method: fourier
+        lower: "-pi"
+        upper: "pi"
+        modes: 5
+      - id: approx-legendre
+        title: The Legendre generating function
+        op: approximation
+        format: text
+        input: "1/sqrt(5/4 - x)"
+        method: legendre
+        lower: "-1"
+        upper: "1"
+        degree: 5
+      - id: approx-piecewise
+        title: A spline that refines where the function varies quickly
+        op: approximation
+        format: text
+        input: "exp(-200*x**2)"
+        method: piecewise
+        lower: "-1"
+        upper: "1"
+        tolerance: "1e-3"
+        tolerance_kind: absolute
+        kind: pchip
+      - id: approx-continued-fraction
+        title: Rational approximations of pi
+        op: approximation
+        format: text
+        input: "pi"
+        method: continued_fraction
+        order: 6
+      - id: approx-euler-maclaurin
+        title: A large sum with its error against direct summation
+        op: approximation
+        format: text
+        input: "1/k**2"
+        method: euler_maclaurin
+        variable: k
+        lower: "10"
+        upper: "1000"
+        order: 3
+      - id: approx-integral
+        title: An integral expanded in a small parameter
+        op: approximation
+        format: text
+        input: "sqrt(1+eps*x**2)"
+        method: integral_expansion
+        variable: x
+        small: eps
+        lower: "0"
+        upper: "1"
+        order: 3
+        assumptions: { eps: [positive], x: [positive] }
+      - id: approx-reversion
+        title: The inverse of sin near 0
+        op: approximation
+        format: text
+        input: "sin(x)"
+        method: reversion
+        variable: x
+        point: "0"
+        small: y
+        order: 5
+      - id: approx-laplace
+        title: Stirling's series by Laplace's method
+        op: approximation
+        format: text
+        input: "exp(M*(log(x)-x))"
+        method: laplace
+        variable: x
+        small: M
+        lower: "1/10"
+        upper: "3"
+        order: 2
+      - id: approx-auto
+        title: The method is chosen from the request
+        op: approximation
+        format: text
+        input: "1/(x*(1-x))"
+        method: auto
+        point: "0"
+        order: 3
+      - id: approx-no-interval
+        title: Without an interval, a question rather than a guess
+        op: approximation
+        format: text
+        input: "sin(x)"
+        method: chebyshev
+        degree: 6
+      - id: approx-essential
+        title: An essential singularity is not a Laurent series
+        op: approximation
+        format: text
+        input: "exp(1/x)"
+        method: laurent
+        point: "0"
+        order: 3
+      - id: approx-pole-in-interval
+        title: A pole in the interval cannot be approximated globally
+        op: approximation
+        format: text
+        input: "1/(x-1)"
+        method: chebyshev
+        lower: "0"
+        upper: "2"
+        degree: 8
+      - id: approx-oscillating-sum
+        title: A sum whose corrections do not help is refused
+        op: approximation
+        format: text
+        input: "cos(1000*k)"
+        method: euler_maclaurin
+        variable: k
+        lower: "1"
+        upper: "200"
+        order: 2
 
   - id: matrix-calculus
     title: Noncommutative matrix calculus

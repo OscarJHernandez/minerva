@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad plus matrix, geometry and vector modes, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, vector calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`)
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, vector calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`), approximations (`approx/`)
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
@@ -62,6 +62,7 @@ uv run python -m minerva_engine.reference_benchmark [--check]      # problems wh
 uv run python -m minerva_engine.vector.benchmark [--check]  # vector calculus corpus (textbook references, refusals); writes docs/benchmarks/vector.json + docs/vector-benchmark.md (--check: deterministic part only)
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python -m minerva_engine.variational.benchmark [--check]  # 21 closed-form cases; docs/variational-benchmark.md + docs/benchmarks/variational.json
+uv run python -m minerva_engine.approx.benchmark [--check]       # 20 cases with answers from outside Minerva (Bessel, Hurwitz zeta, OEIS, Stirling); docs/approximation-benchmark.md + docs/benchmarks/approximation.json (`make bench-approximation`)
 uv run python -m minerva_engine.creative_telescoping.benchmark [--check]  # 29 problems vs. independent references; docs/creative-telescoping-benchmark.md + docs/benchmarks/creative_telescoping.json (`make bench-telescoping`)
 uv run python -m minerva_engine.integration_strategy.benchmark [--check]  # techniques vs. quadrature, default call vs. requested strategy; docs/integration-strategies-benchmark.md + docs/benchmarks/integration_strategies.json
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
@@ -371,7 +372,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   "checked" by sampling numbers. Transpose and adjoint notation (`^T`, `^\top`, `^\dagger`) is `unverified` too (a bare `T`
   would otherwise be read as a positive symbol). `noncommutative` and unknown assumptions are removed from the
   assumptions the checker parses with (`clean_assumptions`): they used to stop the whole check. The scalar tools
-  (`simplify`, `differentiate`, `integrate`, `series`, `isolate_variable`, `solve_polynomial`, `find_identities`,
+  (`simplify`, `differentiate`, `integrate`, `series`, `approximation`, `isolate_variable`, `solve_polynomial`, `find_identities`,
   `distribution`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`), so a scalar result about
   matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
   Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one (every symbol of a
@@ -573,6 +574,26 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `python -m minerva_engine.reference_benchmark`) take their answers from outside the solvers; add one for every new
   method. Diagnostics and `ode`/`ode_stage` events carry counters and fixed vocabulary only.
 
+- Approximations (`approx/`, operation `approximation`, tool `approximation`, endpoint `POST /v1/compute/approximation`,
+  `docs/approximation.md`): SymPy and the formulas of the literature only **propose**. A candidate is shown only if a
+  check that does not use the route that built it agrees (Cauchy estimates, residual decay at high precision, a second
+  implementation such as `mpmath.pade` or `numpy.polynomial.Chebyshev.interpolate`, direct summation, quadrature of the
+  original integral); otherwise it is `not_verified` and nothing is displayed. Errors are **measurements on sampled
+  points**, never bounds, and "tolerance met" means on the sampled points; relative error is formed only away from zeros
+  of the function. Evidence is `series_checked`, `numeric_estimate` or `bound_established` (continued fractions of a
+  rational only); there is no "computed but not verified" result. The interval, point, period, tolerance, degrees and
+  number of modes are the user's: they have no default (the tool schema says "never invent"), a missing one is a
+  question (`domain_unspecified`), and the card form posts them through the direct route. The one convention a request
+  may omit is stated in the result (`compare` expands Taylor and Padé about the interval midpoint, `piecewise` uses
+  pchip). Asymptotic expansions are never called convergent; at a jump a Fourier series is reported with the Gibbs
+  overshoot and no uniform convergence; a Padé approximant is not assumed better than Taylor, and a pole it has that the
+  function does not is reported (`spurious_pole`, `pole_in_interval`). Interval methods refuse poles, undefined points
+  and non-real values. Euler-Maclaurin must beat the plain integral and be consistent with the first neglected term
+  against direct summation, and a symbolic upper limit is "checked for N = ...", never proved. Do not loosen
+  `falls_at_rate` (slack 1.4), the 10^12 evaluation points of the asymptotic and Padé residual checks, `AGREE` in
+  `chebyshev`/`legendre`/`fourier`, or the two-grid stability factor in `interval.py`; their tests include coefficients
+  wrong by 1e-9. `strategy.py` is rules over the shape of the request, never a language model. Events and logs carry the
+  method name and counters only (`approximation_log.py`).
 - Variational calculus (`variational/`, tool and endpoint `variation`, `docs/variational-calculus.md`) works on a jet space
   (`jets.py`: unknown functions and their derivatives are registered jets with a total derivative `D`, never symbols
   recognised by a name suffix). The first variation keeps every integration by parts and the whole boundary form;

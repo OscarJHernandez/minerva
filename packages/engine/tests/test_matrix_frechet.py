@@ -8,7 +8,7 @@ from typing import Any
 import mpmath as mp
 import pytest
 import sympy as sp
-from minerva_engine import Engine, ExpressionInput, Status
+from minerva_engine import Engine, ExpressionInput, Limits, Status
 from minerva_engine.latexparse import parse_latex
 from minerva_engine.matrix import MatrixCalculusInput, MatrixCalculusResult, MatrixDecl
 from minerva_engine.matrix.expressions import Commutation, Exp, Frechet, Term, to_terms
@@ -22,6 +22,13 @@ from minerva_engine.matrix.verify import (
 )
 
 t = sp.Symbol("t")
+
+
+@pytest.fixture(scope="module")
+def engine() -> Engine:
+    """No test here expects a time limit, and the randomized ones took ~15 of the shared fixture's 20 s on a
+    CI pod, so a busy runner pushed them over it: give them room."""
+    return Engine(Limits(timeout_seconds=60, max_concurrency=2))
 
 
 def decl(name: str, rows: int, **kw: Any) -> MatrixDecl:

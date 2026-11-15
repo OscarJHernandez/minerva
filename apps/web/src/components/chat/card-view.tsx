@@ -13,6 +13,7 @@ import { VectorPanel } from "../vector-panel";
 import { StatisticsPanel } from "../statistics-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { DiscoveryCard } from "./discovery-card";
+import { ApproximationCard } from "./approximation-card";
 import { TelescopingCard } from "./telescoping-card";
 import { GeometryCard } from "./geometry-card";
 import { ExpansionCard } from "./expansion-card";
@@ -143,6 +144,8 @@ function CardContent({ card }: { card: Card }) {
       return <DiscoveryCard report={card.data.report} />;
     case "telescoping":
       return <TelescopingCard result={card.data} />;
+    case "approximation":
+      return <ApproximationCard report={card.data.report} request={card.data.request} />;
     case "motion":
       return <MotionCard report={card.data.report} request={card.data.request} />;
     case "dimensional":

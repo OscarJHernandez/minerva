@@ -7,6 +7,7 @@ import re
 import time
 from typing import Any, Literal
 
+from .approx.models import ApproximationInput, ApproximationReport
 from .claims import ClaimCheck, clean_assumptions
 from .creative_telescoping.models import TelescopingInput, TelescopingResult
 from .differentiate import DifferentiateResult, DiffVariable
@@ -291,6 +292,22 @@ class Engine:
         result = StatMechResult(**outcome.value)
         result.duration_ms = ms
         return result
+
+    def approximation(self, request: ApproximationInput) -> ApproximationReport:
+        """Approximate an expression by the chosen method; shown only if an independent check agrees."""
+        outcome, ms = self._run("approximation", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return ApproximationReport(
+                status=status,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                method=request.method,
+                message=message,
+                duration_ms=ms,
+            )
+        report = ApproximationReport(**outcome.value)
+        report.duration_ms = ms
+        return report
 
     def creative_telescoping(self, request: TelescopingInput) -> TelescopingResult:
         """Find and prove a telescoping relation for a parameterised integral, derive the ODE of

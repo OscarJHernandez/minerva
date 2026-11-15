@@ -343,7 +343,7 @@
       "special": 5
     },
     "agent_suite": {
-      "core_cases": 140,
+      "core_cases": 146,
       "reliability_cases": 11,
       "reliability_turns": 19,
       "failure_classes": [
@@ -366,10 +366,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.31,
-    "adversarial_median_ms": 9.8,
-    "adversarial_max_ms": 226.6,
-    "report_wall_s": 3.37,
-    "peak_rss_mb": 130.7
+    "adversarial_total_s": 1.23,
+    "adversarial_median_ms": 10.0,
+    "adversarial_max_ms": 135.7,
+    "report_wall_s": 3.45,
+    "peak_rss_mb": 175.1
   }
 }

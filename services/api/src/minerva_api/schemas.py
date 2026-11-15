@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from minerva_engine import (
+    ApproximationInput,
     DiffVariable,
     ExpressionInput,
     GeometryInput,
@@ -190,6 +191,10 @@ class OdeNumericRequest(OdeNumericInput, Links):
 
 class VariationRequest(VariationInput, Links):
     """A functional and one action: analyze, first, evaluate, verify, solve or second."""
+
+
+class ApproximationRequest(ApproximationInput, Links):
+    """An expression, a method (or `auto`) and the regime the user wants: point, interval, period, tolerance."""
 
 
 class StatMechRequest(StatMechInput, Links):

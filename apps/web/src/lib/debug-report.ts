@@ -120,6 +120,16 @@ function cardSummary(card: Card | null | undefined): string[] {
           `fallbacks [${d.fallbacks.join(", ")}]; failure ${d.failure_reason ?? "-"}; ${stages}`,
       );
     }
+  } else if (card.type === "approximation") {
+    const r = card.data.report;
+    out.push(
+      `- status: ${r.status}${r.reason ? ` (${r.reason})` : ""}; method ${r.method}; evidence ${r.evidence}`,
+      `- input as read: ${r.input_latex ?? "-"}`,
+      `- result: ${r.result_latex ?? r.statement_latex ?? "-"}${r.remainder_latex ? ` + ${r.remainder_latex}` : ""}`,
+      `- error (sampled, not a bound): max ${r.error?.max_abs ?? "-"} on ${r.error?.samples ?? 0} points; tolerance met ${r.tolerance_met ?? "-"}`,
+      `- checks: ${r.checks.map((c) => `${c.name}=${c.passed === null ? "undecided" : c.passed ? "passed" : "FAILED"}`).join("; ") || "-"}`,
+      `- warnings: [${r.warnings.join(", ")}]; questions: ${r.questions.length}; candidates: ${r.candidates.length}`,
+    );
   } else if (card.type === "telescoping") {
     const r = card.data;
     out.push(`- status: ${r.status}${r.reason ? ` (${r.reason})` : ""}`, `- outcome: ${r.outcome}`);
