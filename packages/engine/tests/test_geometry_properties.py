@@ -14,33 +14,12 @@ from minerva_engine.geometry import GeometryInput
 from minerva_engine.geometry.compute import Workspace
 from minerva_engine.geometry.setup import build_geometry
 from minerva_engine.geometry.verify import Verifier
+from strategies.geometry import coefficient, diagonal_metric
 
-PROFILE = settings(
-    max_examples=8,
-    deadline=None,
-    derandomize=True,  # fixed seed: the same examples on every run, so CI is deterministic
-    suppress_health_check=[HealthCheck.too_slow],
-)
+# Example count, seed and database come from the profile loaded in conftest.py (pr: 8 derandomized examples).
+PROFILE = settings(suppress_health_check=[HealthCheck.too_slow])
 LIMITS = Limits(timeout_seconds=120)
 COORDS = ["x", "y", "z"]
-
-small = st.integers(min_value=1, max_value=4)
-coefficient = st.integers(min_value=-2, max_value=2)
-
-
-@st.composite
-def positive_entry(draw: st.DrawFn) -> str:
-    """A quadratic polynomial entry in x, y, z that is positive near the origin."""
-    a, b, c = draw(coefficient), draw(coefficient), draw(coefficient)
-    return f"(3 + {a}*x + {b}*y^2/2 + {c}*z)"
-
-
-@st.composite
-def diagonal_metric(draw: st.DrawFn) -> tuple[list[str], list[list[str]]]:
-    n = draw(st.integers(min_value=2, max_value=3))
-    entries = [draw(positive_entry()) for _ in range(n)]
-    grid = [[entries[i] if i == j else "0" for j in range(n)] for i in range(n)]
-    return COORDS[:n], grid
 
 
 # All entries are polynomials, so every component is a rational function and `cancel` is a complete

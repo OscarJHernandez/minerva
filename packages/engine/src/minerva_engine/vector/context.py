@@ -31,6 +31,14 @@ MAX_OPERATOR_DEPTH = 4
 SIMPLIFY_MAX_OPS = 400
 SEED = 20260514
 TIME_BUDGET_SECONDS = 8.0
+
+
+def time_budget(limits: Limits) -> float:
+    """The request's own budget: 8 s, or 80% of a longer sandbox timeout the caller chose (so that a slow
+    machine given a generous timeout is not cut off by a shorter internal constant)."""
+    return max(TIME_BUDGET_SECONDS, 0.8 * limits.timeout_seconds)
+
+
 RESERVED = frozenset({TIME, "pi", "oo"})
 
 
@@ -238,7 +246,7 @@ def build_context(inp: VectorInput, limits: Limits, started: float) -> Context:
             parts.append(parsed)
         d.explicit = tuple(low._scalar(p) for p in parts)
     return Context(
-        inp, limits, system, low, assumptions, vector_names, started + TIME_BUDGET_SECONDS
+        inp, limits, system, low, assumptions, vector_names, started + time_budget(limits)
     )
 
 

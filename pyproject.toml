@@ -45,7 +45,10 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "services", "scripts"]
-addopts = "-q"
+addopts = "-q --strict-markers"
+markers = [
+    "extended: long-running randomized or benchmark test; runs only with MINERVA_TEST_TIER=extended",
+]
 
 [tool.mypy]
 strict = true

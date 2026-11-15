@@ -1,0 +1,52 @@
+name: Extended checks
+
+# The larger randomized and benchmark suites that are too slow for every pull request: property tests at
+# the `extended` Hypothesis profile (many examples, a fresh seed per run), tests marked `extended`, and the
+# reference problems of the extended tier. Nightly and on demand, on the maintainer's runners, for code on
+# this repository only: a pull request from a fork never starts it (schedule and workflow_dispatch are not
+# pull-request events). A failing example is printed with its seed and reproduction blob; pin it with
+# `@example` so the pull-request tier keeps it (docs/verification-testing.md).
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extended-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  extended:
+    name: Extended property tests and reference problems
+    if: ${{ !github.event.repository.fork }}
+    runs-on: minerva-runners
+    timeout-minutes: 90
+    env:
+      MINERVA_TEST_TIER: extended
+      MINERVA_HYPOTHESIS_PROFILE: extended
+      MINERVA_TEST_DATABASE_URL: postgresql+psycopg://postgres@127.0.0.1:5432/postgres
+      SEED: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - name: Property and engine tests at the extended profile
+        # The seed is the run id: printed, so a failure can be reproduced with --hypothesis-seed.
+        run: |
+          echo "hypothesis seed: $SEED"
+          uv run pytest packages/engine packages/knowledge -n 3 --dist load --durations=15 \
+            --hypothesis-seed="$SEED"
+      - name: Reference problems, every tier
+        run: uv run python -m minerva_engine.reference_benchmark --check --tier extended
+      - name: Verification report
+        run: |
+          uv run python scripts/verification_report.py --check
+          uv run python scripts/verification_report.py --json-out "$RUNNER_TEMP/verification-summary.json" \
+            >> "$GITHUB_STEP_SUMMARY"

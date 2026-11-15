@@ -98,6 +98,9 @@ class Task:
     integrand: sp.Expr  # in the parameters and the constants
     ranges: list[tuple[sp.Symbol, sp.Expr, sp.Expr]]
     numeric: Callable[[list[Any]], Any]  # parameter values in the order of `ranges`
+    symbolic_seconds: float = (
+        4.0  # the exact route's own limit; `evaluate` raises it with the sandbox timeout
+    )
 
 
 class Builder:
@@ -372,7 +375,7 @@ def _symbolic(task: Task) -> sp.Expr | None:
     if task.integrand.count_ops() > SYMBOLIC_MAX_OPS:
         return None
     try:
-        with _alarm(SYMBOLIC_SECONDS):
+        with _alarm(task.symbolic_seconds):
             value = task.integrand
             for symbol, lo, hi in task.ranges:
                 value = sp.integrate(value, (symbol, lo, hi))
@@ -415,6 +418,7 @@ def evaluate(builder: Builder, task: Task, singular_ok: bool = False) -> Evaluat
                 "singular_in_domain",
             )
         numeric, error = _quadrature(task, ranges, "gauss-legendre")
+        task.symbolic_seconds = max(SYMBOLIC_SECONDS, 0.3 * builder.ctx.limits.timeout_seconds)
         exact = _symbolic(task)
         points = 1
         for _ in ranges:

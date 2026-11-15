@@ -16,7 +16,7 @@ import sympy as sp
 from ..errors import LimitError, MinervaMathError, ParseError
 from ..models import Limits, Status
 from .algebra import exact_zero, regularise
-from .context import MAX_OPERATOR_DEPTH, SEED, TIME_BUDGET_SECONDS, Refused, build_context, tidy
+from .context import MAX_OPERATOR_DEPTH, SEED, Refused, build_context, tidy, time_budget
 from .coordinates import SYSTEMS, System, get_system, source_in_target
 from .expressions import depth_of_operators, kind_of
 from .lower import Lowered, Lowering, Undeclared, Vec
@@ -144,7 +144,7 @@ def _run(
     inp: VectorInput, limits: Limits, result: VectorResult, diag: VectorDiagnostics, started: float
 ) -> None:
     system = get_system(inp.coordinates)
-    deadline = started + TIME_BUDGET_SECONDS
+    deadline = started + time_budget(limits)
     if inp.action not in ("jacobian", "em_derive", "em_compute") and not inp.expression.strip():
         raise _Refused(Status.PARSE_ERROR, "an expression is required", "unsupported_expression")
     result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]

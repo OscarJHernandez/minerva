@@ -34,7 +34,7 @@ from ..llm import LLMClient, LLMError, OllamaClient
 from ..loop import AgentLimits, prompt_sha
 from ..openrouter import OpenRouterClient
 from ..tools import ToolContext
-from .cases import EvalCase, cases_digest, load_cases
+from .cases import SUITES, EvalCase, cases_digest, load_suite
 from .reference import check_reference
 from .report import build_document, compare, render_markdown
 from .runner import describe_limits, filter_cases, run_suite
@@ -204,6 +204,13 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--think", action="store_true", help="let reasoning models think first")
     parser.add_argument("--strip-thinking", action="store_true", help="drop leaked reasoning")
+    parser.add_argument(
+        "--suite",
+        choices=SUITES,
+        default="core",
+        help="core (cases.yaml), reliability (cases_reliability.yaml: live multi-turn, assumptions, "
+        "restrictions) or all",
+    )
     parser.add_argument("--cases", help="comma-separated case ids (default: all)")
     parser.add_argument("--categories", help="comma-separated categories (default: all)")
     parser.add_argument("--repeat", type=int, default=1, help="runs of every case (default 1)")
@@ -257,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         cases = filter_cases(
-            load_cases(),
+            load_suite(args.suite),
             ids=[c.strip() for c in (args.cases or "").split(",") if c.strip()],
             categories=[c.strip() for c in (args.categories or "").split(",") if c.strip()],
         )
@@ -272,12 +279,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.check_cases:
         ctx = _context()
         bad = 0
-        for case in cases:
-            for problem in check_reference(case, ctx):
+        turns = [turn for case in cases for turn in case.turns()]
+        for turn in turns:
+            for problem in check_reference(turn, ctx):
                 bad += 1
-                print(f"{case.id}: {problem}")
-        refs = sum(1 for c in cases if c.reference)
-        print(f"{len(cases)} cases, {refs} reference calls, {bad} problem(s)")
+                print(f"{turn.id}: {problem}")
+        refs = sum(1 for t in turns if t.reference)
+        print(f"{len(cases)} cases ({len(turns)} turns), {refs} reference calls, {bad} problem(s)")
         return 1 if bad else 0
 
     specs = [m.strip() for m in args.models.split(",") if m.strip()]
