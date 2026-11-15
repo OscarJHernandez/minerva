@@ -124,11 +124,12 @@ jobs:
         with:
           python-version: "3.13"
       - run: uv sync --frozen
-      # 3 workers: pods have no CPU limit, so this uses idle cores.
+      # 3 workers: pods have no CPU limit, so this uses idle cores. `loadfile`: one worker owns each file, so a
+      # benchmark module's corpus fixture runs once instead of once per worker (root `conftest.py`).
       - name: Tests, shard ${{ matrix.shard }} of 5
         env:
           MINERVA_TEST_SHARD: ${{ matrix.shard }}/5
-        run: uv run pytest -n 3 --dist load --durations=15 --ignore=services/api
+        run: uv run pytest -n 3 --dist loadfile --durations=15 --ignore=services/api
 
   tests-api:
     name: Tests (API) ${{ matrix.shard }}/2

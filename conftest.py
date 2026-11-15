@@ -4,6 +4,14 @@
 spread the suite over several runner pods. A test belongs to the shard `crc32(node id) % n`: no timing file to
 keep fresh, the same answer in every xdist worker, and every test lands in exactly one shard. Unset, everything
 runs. A malformed value is an error, never "run nothing" (a silently empty shard would pass CI).
+
+Benchmark modules are the exception (`is_whole_module`): their tests share one module-scoped fixture that runs a
+whole corpus (one to three minutes). Split by test id, that fixture ran again in every shard, and again in every
+xdist worker of a shard. Such a module is kept together: all its tests go to one shard (the modules are dealt
+round-robin in sorted order, so the heavy ones are spread evenly), and CI runs `--dist loadfile`, so one worker
+owns each file and the corpus runs once per CI run. (`--dist loadgroup` with an `xdist_group` mark would keep the
+other files spread over the workers, but xdist 3.8 sets an attribute that pytest 9 no longer reads, so the mark is
+silently ignored.)
 """
 
 from __future__ import annotations
@@ -43,6 +51,29 @@ def shard_of(nodeid: str, count: int) -> int:
     return zlib.crc32(nodeid.encode()) % count + 1
 
 
+def module_of(nodeid: str) -> str:
+    """`a/b/test_x.py::test_y[z]` -> `a/b/test_x.py`."""
+    return nodeid.split("::", 1)[0]
+
+
+def is_whole_module(nodeid: str) -> bool:
+    """A module whose tests must stay together: benchmark corpora and the capability record."""
+    name = module_of(nodeid).rsplit("/", 1)[-1]
+    return "benchmark" in name or name == "test_capabilities.py"
+
+
+def assign_shards(nodeids: list[str], count: int) -> dict[str, int]:
+    """The 1-based shard of every collected test: whole modules round-robin, the rest by `shard_of`.
+
+    A function of the collected set only, so every shard and every xdist worker computes the same answer.
+    """
+    whole = sorted({module_of(n) for n in nodeids if is_whole_module(n)})
+    module_shard = {module: position % count + 1 for position, module in enumerate(whole)}
+    return {
+        n: module_shard[module_of(n)] if is_whole_module(n) else shard_of(n, count) for n in nodeids
+    }
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     # Tier first, so the shard split is computed over the tests that will actually run.
     try:
@@ -61,8 +92,9 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         index, count = parse_shard(value)
     except ValueError as exc:
         raise pytest.UsageError(str(exc)) from None
-    keep = [item for item in items if shard_of(item.nodeid, count) == index]
-    dropped = [item for item in items if shard_of(item.nodeid, count) != index]
+    shards = assign_shards([item.nodeid for item in items], count)
+    keep = [item for item in items if shards[item.nodeid] == index]
+    dropped = [item for item in items if shards[item.nodeid] != index]
     if dropped:
         config.hook.pytest_deselected(items=dropped)
     items[:] = keep

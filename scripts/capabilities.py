@@ -1900,15 +1900,20 @@ def render_json(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
+def stale_outputs(data: dict[str, Any]) -> list[str]:
+    """The generated files that do not match `data` (repository-relative paths)."""
+    outputs = {MARKDOWN: render_markdown(data), JSON_OUT: render_json(data)}
+    return [
+        str(path.relative_to(ROOT))
+        for path, text in outputs.items()
+        if not path.exists() or path.read_text() != text
+    ]
+
+
 def main(argv: list[str]) -> int:
     data = build()
-    outputs = {MARKDOWN: render_markdown(data), JSON_OUT: render_json(data)}
     if "--check" in argv:
-        stale = [
-            str(path.relative_to(ROOT))
-            for path, text in outputs.items()
-            if not path.exists() or path.read_text() != text
-        ]
+        stale = stale_outputs(data)
         if stale:
             print(
                 "out of date: " + ", ".join(stale) + "\nrun: uv run python scripts/capabilities.py",
@@ -1917,7 +1922,7 @@ def main(argv: list[str]) -> int:
             return 1
         print("capabilities are up to date")
         return 0
-    for path, text in outputs.items():
+    for path, text in {MARKDOWN: render_markdown(data), JSON_OUT: render_json(data)}.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
         print(f"wrote {path.relative_to(ROOT)}")
