@@ -1,0 +1,396 @@
+{
+  "problems": [
+    {
+      "id": "two-level-thermodynamics",
+      "category": "two-level system",
+      "source": "closed form Z = 1 + e^(-beta eps); U, S, Var from direct sums",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "two-level-heat-capacity",
+      "category": "two-level system",
+      "source": "Schottky heat capacity C = k (beta eps)^2 e^x / (1 + e^x)^2",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "spin-half-magnetisation",
+      "category": "spin-1/2 in a field",
+      "source": "mean moment mu tanh(beta mu h)",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "spin-half-fluctuation-response",
+      "category": "fluctuation-response relations",
+      "source": "variance mu^2 sech^2(beta mu h); equals the second derivative of ln Z in the field",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "finite-state-canonical-ensemble",
+      "category": "finite-state canonical ensembles",
+      "source": "direct sums over three levels with degeneracies 1, 3, 2",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "thermodynamic-derivative-identities",
+      "category": "thermodynamic derivative identities",
+      "source": "U = -d ln Z/d beta and Var = d^2 ln Z/d beta^2, differentiated numerically on the reference Z",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "quantum-harmonic-oscillator",
+      "category": "quantum harmonic oscillator",
+      "source": "geometric series: Z = 1/(2 sinh(x/2)), U = (hw/2) coth(x/2), Einstein heat capacity",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "classical-harmonic-oscillator",
+      "category": "classical harmonic oscillator",
+      "source": "Gaussian phase-space integral Z = 2 pi/(h w beta); equipartition U = kT",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "classical-ideal-gas",
+      "category": "classical ideal gas",
+      "source": "Z = (V (2 pi m/beta)^(3/2)/h^3)^N / N!; U = 3NkT/2, pV = NkT, entropy with the exact ln N!",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "pressure-from-volume-scaling",
+      "category": "thermodynamic derivative identities",
+      "source": "levels a_i/V scale so that p V = U exactly",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "density-of-states-3d",
+      "category": "density-of-states integrals",
+      "source": "Gamma integral: Z = Gamma(3/2) beta^(-3/2) for rho = sqrt(E)",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "constant-density-third-cumulant",
+      "category": "fluctuation-response relations",
+      "source": "rho = 1 gives an exponential distribution of E: kappa_3 = 2/beta^3",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "spin-in-a-tilted-field",
+      "category": "quantum systems",
+      "source": "H = -h sz - d sx has eigenvalues +-sqrt(h^2 + d^2): Z = 2 cosh(beta w), von Neumann entropy",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "noncommuting-thermal-average",
+      "category": "quantum systems",
+      "source": "<sz> = (h/w) tanh(beta w) although [sz, H] != 0; d ln Z/dh = beta <sz> by trace cyclicity",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "fermi-dirac-thermodynamics",
+      "category": "Bose and Fermi occupation numbers",
+      "source": "per state n = 1/(e^x + 1), Var n = n(1 - n), entropy -[n ln n + (1 - n) ln(1 - n)]",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "bose-einstein-thermodynamics",
+      "category": "Bose and Fermi occupation numbers",
+      "source": "per state n = 1/(e^x - 1), Var n = n(1 + n), entropy (1 + n) ln(1 + n) - n ln n",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "classical-counting-limit",
+      "category": "Bose and Fermi occupation numbers",
+      "source": "Poisson occupation: n = e^(-x), Var N = N, entropy n(1 - ln n) per state",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "microcanonical-two-level-counting",
+      "category": "microcanonical counting",
+      "source": "Omega = C(N, k) microstates for N distinguishable two-level units with k excited",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "ising-ring-partition-function",
+      "category": "Ising chains",
+      "source": "Z of a ring of 7 spins in a field, summed over all 2^7 configurations",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "ising-zero-field-closed-form",
+      "category": "Ising chains",
+      "source": "Z = (2 cosh beta J)^N + (2 sinh beta J)^N for a ring without a field",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "ising-thermodynamic-limit",
+      "category": "thermodynamic limits",
+      "source": "f = -(1/beta) ln lambda_max with lambda_max = e^(bJ) cosh(bh) + sqrt(e^(2bJ) sinh^2(bh) + e^(-2bJ)); finite-size error from brute force falls exponentially",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "high-temperature-expansion",
+      "category": "high- and low-temperature expansions",
+      "source": "ln(1 + e^-x) = ln 2 - x/2 + x^2/8 - x^4/192 + ...; the error falls at O(beta^5)",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "low-temperature-corrections",
+      "category": "high- and low-temperature expansions",
+      "source": "U = E0 + sum_j (g_j/g_0) eps_j e^(-beta eps_j) to first order, levels 0 (g=2), eps, 3 eps (g=2)",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "stirling-sackur-tetrode",
+      "category": "Stirling approximation",
+      "source": "S = N k [ln(V/N (2 pi m/(beta h^2))^(3/2)) + 5/2] from the exact ln Z and Stirling's ln N!",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "independent-copies",
+      "category": "independent subsystems",
+      "source": "Z_N = Z_1^N and U_N = N U_1 for distinguishable copies",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "numerically-unstable-exponentials",
+      "category": "numerical stability",
+      "source": "levels 0 and 1000: F = -ln(1 + e^(-1000 beta))/beta without overflow",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "oscillator-sweep",
+      "category": "temperature-dependent observables",
+      "source": "U(beta) = (1/2) coth(beta/2) for hbar = omega = 1, over a logarithmic sweep",
+      "expected": "correct",
+      "reason": null,
+      "outcome": "correct"
+    },
+    {
+      "id": "divergent-partition-function",
+      "category": "invalid and divergent partition functions",
+      "source": "E_n = -n: terms grow like e^(beta n)",
+      "expected": "refused",
+      "reason": "divergent",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "inconclusive-convergence",
+      "category": "invalid and divergent partition functions",
+      "source": "E_n = ln(n + 1): terms n^(-beta), convergent only for beta > 1",
+      "expected": "refused",
+      "reason": "convergence_not_provable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "invalid-degeneracy",
+      "category": "invalid and divergent partition functions",
+      "source": "a degeneracy is a positive integer",
+      "expected": "refused",
+      "reason": "invalid_degeneracy",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "non-normalisable-density",
+      "category": "missing temperature or convergence assumptions",
+      "source": "rho = exp(c E) is integrable against e^(-beta E) only for beta > c",
+      "expected": "refused",
+      "reason": "convergence_not_provable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "free-particle-without-a-box",
+      "category": "non-normalisable distributions",
+      "source": "the position integral of a free particle over the whole line diverges",
+      "expected": "refused",
+      "reason": "convergence_not_provable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "coupled-oscillators-do-not-factor",
+      "category": "invalid ensemble substitutions",
+      "source": "a cross term (x - y)^2 couples two variables",
+      "expected": "refused",
+      "reason": "not_separable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "phase-space-cell-is-the-users-choice",
+      "category": "invalid ensemble substitutions",
+      "source": "no default normalisation",
+      "expected": "refused",
+      "reason": "convention_unconfirmed",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "indistinguishability-is-the-users-choice",
+      "category": "invalid ensemble substitutions",
+      "source": "no default N!",
+      "expected": "refused",
+      "reason": "convention_unconfirmed",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "derivative-at-the-wrong-fixed-variables",
+      "category": "invalid ensemble substitutions",
+      "source": "dF/dV in the canonical ensemble holds T fixed, not nothing",
+      "expected": "refused",
+      "reason": "ensemble_mismatch",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "second-derivative-response-needs-commuting-operators",
+      "category": "noncommuting quantum operators",
+      "source": "d^2 ln Z/dh^2 is the Kubo-Duhamel covariance, not beta^2 Var(sz), when [sz, H] != 0",
+      "expected": "refused",
+      "reason": "operators_do_not_commute",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "covariance-of-noncommuting-operators",
+      "category": "noncommuting quantum operators",
+      "source": "the covariance of sz and sx depends on their ordering",
+      "expected": "refused",
+      "reason": "operators_do_not_commute",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "non-hermitian-hamiltonian",
+      "category": "invalid and divergent partition functions",
+      "source": "a thermal state needs H equal to its conjugate transpose",
+      "expected": "refused",
+      "reason": "not_hermitian",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "bose-needs-mu-below-the-levels",
+      "category": "invalid and divergent partition functions",
+      "source": "n = 1/(e^x - 1) diverges for x <= 0: mu must be provably below every level",
+      "expected": "refused",
+      "reason": "convergence_not_provable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "ensemble-is-not-substituted",
+      "category": "invalid ensemble substitutions",
+      "source": "an occupation system with a chemical potential belongs to the grand canonical ensemble",
+      "expected": "refused",
+      "reason": "ensemble_mismatch",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "heat-capacity-must-hold-mu-fixed",
+      "category": "invalid ensemble substitutions",
+      "source": "dU/dT in the grand canonical ensemble holds mu fixed; leaving it free is another derivative",
+      "expected": "refused",
+      "reason": "ensemble_mismatch",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "energy-that-no-microstate-has",
+      "category": "microcanonical counting",
+      "source": "E = 9/2 is not a sum of four integer level energies",
+      "expected": "refused",
+      "reason": "energy_not_attainable",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "expansion-at-a-singular-point",
+      "category": "invalid saddle-point and expansion points",
+      "source": "ln Z of an oscillator is not analytic at beta = 0 (Z ~ 1/beta): no Taylor series",
+      "expected": "refused",
+      "reason": "singular_expansion_point",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "low-temperature-order-is-not-decided",
+      "category": "invalid saddle-point and expansion points",
+      "source": "which of two unrelated levels is the ground level cannot be decided",
+      "expected": "refused",
+      "reason": "ordering_not_decided",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "stirling-needs-a-ln-n-factorial",
+      "category": "Stirling approximation",
+      "source": "without indistinguishable copies there is no ln N! to approximate",
+      "expected": "refused",
+      "reason": "nothing_to_approximate",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "thermodynamic-limit-needs-a-symbolic-length",
+      "category": "thermodynamic limits",
+      "source": "a fixed length has no limit N -> infinity to study",
+      "expected": "refused",
+      "reason": "assumptions_insufficient",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "complex-energy",
+      "category": "invalid and divergent partition functions",
+      "source": "an energy must be provably real",
+      "expected": "refused",
+      "reason": "assumptions_insufficient",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "non-linear-coupling",
+      "category": "invalid interchange of derivatives",
+      "source": "dE/dh = 2h is not -M, so d^2 ln Z/dh^2 is not beta^2 Var(M)",
+      "expected": "refused",
+      "reason": "coupling_not_linear",
+      "outcome": "refused_as_expected"
+    }
+  ]
+}

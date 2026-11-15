@@ -19,6 +19,13 @@
 #   distribution input, assumptions, action (simplify | integrate | differentiate), variable, lower, upper, endpoint,
 #                notation {delta | theta | Theta: dirac_delta | heaviside | symbol} (the user's answer to "is that a
 #                Dirac delta?"; without it the example shows the question)
+#   sums         input, assumptions, action (expand | evaluate_constant | factor | log_of_product | differentiate | check),
+#                variable, candidate {result: text}
+#   expectation  input, random [names], independent [[names]] (only what the user states), action (expand |
+#                to_moments | check), candidate {result: text}
+#   statistics   family, parametrization, parameters {name: text}, observation, sample_size, iid, estimate [names],
+#                action (moments | log_likelihood | score | mle | fisher_information | posterior), prior {family,
+#                parameters}, data [numbers], candidate {key: text}, assumptions
 #   identities   input, assumptions, show [rule ids to display]
 #   geometry     coordinates, metric [[expression]], assumptions, functions [{name, args}], quantities, tensor {variance,
 #                components}, tensor_index
@@ -55,6 +62,9 @@ groups:
   - id: knowledge
     title: Handbook and identities
     summary: A citable, machine-checked collection of identities and equations, and the search over it.
+  - id: statistics
+    title: Statistics
+    summary: Sums, expectations, probability models, estimators, information and Bayesian updates, derived and checked rather than looked up.
   - id: interfaces
     title: Using Minerva
     summary: How to reach the tools, through the chat, photos of equations and the workbench.
@@ -463,6 +473,207 @@ capabilities:
           - { name: B, rows: 2 }
         action: evolve
         variable: t
+
+  - id: statistical-mechanics
+    title: Statistical mechanics of explicit systems
+    status: available
+    group: physics
+    where: [workbench, chat, api]
+    summary: >-
+      Builds the partition function of a list of levels, a level family E(n) (finite or infinite), a density of
+      states, a separable classical Hamiltonian, a Hermitian matrix, particles with Bose, Fermi or classical
+      counting, or a periodic chain (transfer matrix), and derives thermodynamic quantities from it by one generic
+      route: differentiate ln Z (or ln Xi) with the other state variables held fixed. Heat capacity is dU/dT,
+      pressure is -dF/dV at fixed temperature, a particle number is a chemical-potential derivative; none is a
+      stored formula. Thermal averages, variances, cumulants and fluctuation-response relations follow, as do
+      microcanonical counts and approximations that report their assumptions, order, validity and a measured error.
+      A formula is shown only if an independent numerical evaluation agreed (direct enumeration with
+      log-sum-exp, adaptive quadrature, matrix exponentials, occupation numbers, brute force over every chain
+      configuration, numerical derivatives); convergence is proved or the request is refused.
+    limits:
+      - An approximation is never an identity. High- and low-temperature expansions, Stirling's ln N! and the thermodynamic limit of a chain are labelled asymptotic and carry a measured error table (a measurement, not a bound); saddle-point and Laplace methods, Legendre transforms and mean field are not supported.
+      - An infinite sum needs a ratio-test proof for every beta > 0 (otherwise `divergent` or `convergence_not_provable`); an integral goes through the verified definite integrator under your assumptions. No interchange of a limit, sum, integral and derivative is assumed.
+      - A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). A matrix is at most 4x4 with closed-form eigenvalues and is never assumed to commute with anything, so a response relation beyond the first derivative, and a covariance, are refused for operators that do not commute. A chain is periodic, with at most three site values, a symmetric bond and at most 14 sites for the brute-force check.
+      - The ensemble is never substituted. Grand canonical needs particles with a statistic (Bose needs mu provably below every level); microcanonical counting needs numeric levels, a number of copies and a total energy that some microstate has, and its comparison with the canonical ensemble is measured, never assumed.
+      - The phase-space cell and whether copies are indistinguishable are your choices, never defaulted; indistinguishable copies use the classical-limit N! counting, not exact Bose or Fermi statistics. Numbers for a numerical evaluation are yours too.
+      - Numerical agreement is evidence, not a proof; a symbolic zero is reported separately and only where SymPy finds one. A series or integral without a closed form is evaluated numerically only and labelled as such.
+    examples:
+      - id: two-level-heat-capacity
+        title: The heat capacity of a two-level system, derived as dU/dT
+        op: statmech
+        request:
+          system: { kind: levels, levels: [{ energy: "0" }, { energy: epsilon }] }
+          assumptions: { epsilon: [positive] }
+          action: derive
+          quantities: [Z, F, U]
+          partials: [{ of: U, variable: T, held_fixed: [], label: C }]
+      - id: quantum-oscillator
+        title: A quantum oscillator, from an infinite sum with a convergence proof
+        op: statmech
+        request:
+          system: { kind: level_family, energy: "hbar*omega*(n + 1/2)" }
+          assumptions: { hbar: [positive], omega: [positive] }
+          action: derive
+          quantities: [Z, U]
+      - id: classical-ideal-gas
+        title: Pressure of a classical ideal gas, from the free energy
+        op: statmech
+        request:
+          system:
+            kind: classical
+            hamiltonian: "(px**2 + py**2 + pz**2)/(2*m)"
+            variables:
+              - { name: x, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: y, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: z, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: px }
+              - { name: py }
+              - { name: pz }
+            phase_space_cell: "h**3"
+          copies: { count: N, identical: true }
+          parameters: [V]
+          assumptions: { m: [positive], h: [positive], V: [positive], N: [integer, positive] }
+          action: derive
+          quantities: [U]
+          partials: [{ of: F, variable: V, held_fixed: [T], scale: "-1", label: p }]
+        note: >-
+          The cell h^3 and the division by N! were chosen by the user. Without them the result is
+          `convention_unconfirmed`, with the question to answer.
+      - id: three-dimensional-density-of-states
+        title: A density of states, integrated by the verified integrator
+        op: statmech
+        request:
+          system: { kind: density_of_states, density: "sqrt(En)", lower: "0" }
+          action: derive
+          quantities: [Z, U]
+      - id: spin-fluctuation-response
+        title: Magnetic fluctuations from a derivative of ln Z with respect to the field
+        op: statmech
+        request:
+          system:
+            kind: levels
+            levels:
+              - { energy: "-mu*h", observables: { M: mu } }
+              - { energy: "mu*h", observables: { M: "-mu" } }
+          parameters: [h]
+          assumptions: { mu: [positive], h: [real] }
+          coupling: { parameter: h, observable: M }
+          action: expectation
+          observable: M
+          statistic: variance
+      - id: spin-tilted-field
+        title: A spin in a tilted field, with an operator that does not commute with H
+        op: statmech
+        request:
+          system:
+            kind: quantum
+            hamiltonian: [["-h", "-d"], ["-d", "h"]]
+            observables: { sz: [["1", "0"], ["0", "-1"]] }
+          parameters: [h]
+          assumptions: { h: [positive], d: [positive] }
+          coupling: { parameter: h, observable: sz }
+          action: expectation
+          observable: sz
+          statistic: mean
+        note: >-
+          The mean is computed with the operator where it stands, and d ln Z/dh = beta times it holds by trace
+          cyclicity. Asking for the variance through the second derivative is refused (`operators_do_not_commute`):
+          there it would be the Kubo-Duhamel covariance.
+      - id: fermi-gas-levels
+        title: Fermions in three levels, with a chemical potential
+        op: statmech
+        request:
+          ensemble: grand_canonical
+          system:
+            kind: occupation
+            statistics: fermi
+            levels: [{ energy: "0" }, { energy: eps }, { energy: "2*eps", degeneracy: "2" }]
+          assumptions: { eps: [positive] }
+          action: derive
+          quantities: [N, U, Var_N]
+          partials: [{ of: U, variable: T, held_fixed: [mu], label: C_mu }]
+      - id: microcanonical-counting
+        title: Counting the microstates of 40 two-level units at fixed energy
+        op: statmech
+        request:
+          ensemble: microcanonical
+          system: { kind: levels, levels: [{ energy: "0" }, { energy: "1" }] }
+          copies: { count: "40", identical: false }
+          total_energy: "16"
+          action: partition
+        note: >-
+          Omega is an exact count, checked against two other algorithms. The temperature estimate is a finite
+          difference and its comparison with the canonical ensemble is a measurement that improves with N.
+      - id: ising-thermodynamic-limit
+        title: The 1-D Ising ring in a field by the transfer matrix, and its thermodynamic limit
+        op: statmech
+        request:
+          system: { kind: chain, states: ["1", "-1"], bond: "-J*s*t", site: "-h*s", length: N }
+          assumptions: { J: [real], h: [real], N: [integer, positive] }
+          action: approximate
+          method: thermodynamic_limit
+        note: >-
+          The transfer matrix is checked against brute-force enumeration of every configuration; the
+          free energy per site comes from the dominant eigenvalue (Perron-Frobenius), with the finite-size
+          error measured for N = 2 to 12.
+      - id: high-temperature-expansion
+        title: A high-temperature expansion, as an approximation with a measured error
+        op: statmech
+        request:
+          system: { kind: levels, levels: [{ energy: "0" }, { energy: epsilon }] }
+          assumptions: { epsilon: [positive] }
+          action: approximate
+          method: high_temperature
+          order: 4
+      - id: stirling-sackur-tetrode
+        title: Stirling's approximation turns the exact ideal-gas entropy into the Sackur-Tetrode form
+        op: statmech
+        request:
+          system:
+            kind: classical
+            hamiltonian: "(px**2 + py**2 + pz**2)/(2*m)"
+            variables:
+              - { name: x, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: y, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: z, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: px }
+              - { name: py }
+              - { name: pz }
+            phase_space_cell: "h**3"
+          copies: { count: N, identical: true }
+          parameters: [V]
+          assumptions: { m: [positive], h: [positive], V: [positive], N: [integer, positive] }
+          action: approximate
+          method: stirling
+        note: >-
+          The result is asymptotic, never exact: its error table shows N times the error of ln N! approaching 1/12.
+      - id: expansion-at-a-singular-point-declined
+        title: An expansion where ln Z is not analytic is declined
+        op: statmech
+        request:
+          system: { kind: level_family, energy: "hbar*omega*(n + 1/2)" }
+          assumptions: { hbar: [positive], omega: [positive] }
+          action: approximate
+          method: high_temperature
+          order: 2
+      - id: divergent-series-declined
+        title: A partition function that does not exist is declined
+        op: statmech
+        request:
+          system: { kind: level_family, energy: "-n" }
+          action: partition
+      - id: wrong-held-fixed-declined
+        title: A derivative at the wrong fixed variables is declined
+        op: statmech
+        request:
+          system: { kind: levels, levels: [{ energy: "1/V" }, { energy: "2/V" }] }
+          parameters: [V]
+          assumptions: { V: [positive] }
+          action: derive
+          partials: [{ of: F, variable: V, held_fixed: [] }]
+        note: >-
+          In the canonical ensemble a derivative with respect to V holds the temperature fixed; a derivative at
+          fixed energy or entropy needs a change of variables, which is not supported.
 
   - id: distribution-calculus
     title: Dirac delta and Heaviside calculus
@@ -1376,6 +1587,276 @@ capabilities:
         op: read_formulas
         formulas:
           - '\sin 2x'
+
+  - id: finite-sums
+    title: Finite sums and products
+    status: available
+    group: statistics
+    where: [workbench, chat, api]
+    summary: >-
+      Expand, factor and differentiate finite sums and products with symbolic bounds, over indexed data
+      (`Sum(x[i]^2, (i, 1, n))` in text, `\sum_{i=1}^{n} x_i^2` in LaTeX). A rewrite is shown only if it agrees with the
+      original on explicit expansions at several sizes (always including n of at least 2) with a separate unknown for
+      every element; sampling one number per symbol would accept `sum x^2 = (sum x)^2 / n`, which is true for
+      n = 1, so no other operation accepts a sum. Agreement at those sizes is evidence, not a proof for every n.
+    limits:
+      - Bounds must be provably non-empty integers (declare the upper bound an integer and positive); infinite sums are declined.
+      - At most two nested sums; `x_{ij}` and `x_{i,j}` are declined as ambiguous.
+      - The result is worded "checked for n = ...", never "proved for every n".
+      - "`log(prod f) = sum log f` needs every factor provably positive."
+    examples:
+      - id: sum-expand-squares
+        title: Expand a sum of squared deviations
+        op: sums
+        format: text
+        input: "Sum((x[i] - mu)^2, (i, 1, n))"
+        assumptions: { n: [integer, positive], x: [real], mu: [real] }
+        action: expand
+      - id: sum-sample-variance-identity
+        title: The identity behind the sample variance
+        op: sums
+        format: text
+        input: "Sum((x[i] - Sum(x[j], (j, 1, n))/n)^2, (i, 1, n))"
+        assumptions: { n: [integer, positive], x: [real] }
+        action: expand
+      - id: sum-latex
+        title: The same in LaTeX
+        op: sums
+        input: '\sum_{i=1}^{n}(x_i-\mu)^2'
+        assumptions: { n: [integer, positive], x: [real], mu: [real] }
+        action: expand
+      - id: sum-log-of-product
+        title: The log of a product, for positive factors
+        op: sums
+        format: text
+        input: "log(Product(x[i], (i, 1, n)))"
+        assumptions: { n: [integer, positive], x: [positive] }
+        action: log_of_product
+      - id: sum-false-identity
+        title: A false identity that holds for n = 1 is rejected
+        op: sums
+        format: text
+        input: "Sum(x[i]^2, (i, 1, n))"
+        assumptions: { n: [integer, positive], x: [real] }
+        action: check
+        candidate: { result: "Sum(x[i], (i, 1, n))^2/n" }
+      - id: sum-range-not-provable
+        title: A range that cannot be shown non-empty is declined
+        op: sums
+        format: text
+        input: "Sum(x[i], (i, 1, m))"
+        assumptions: { x: [real] }
+        action: expand
+
+  - id: expectations
+    title: Expectation, variance and covariance
+    status: available
+    group: statistics
+    where: [workbench, chat, api]
+    summary: >-
+      Linearity of expectation and bilinearity of covariance for declared random variables, including sums over
+      indexed variables. Independence is never assumed: covariance terms stay unless you state independence, and a
+      result that used it holds given it (Minerva does not check that it is true). A result is shown only if it
+      agrees with the original on explicit finite joint distributions that are dependent unless independence was declared.
+    limits:
+      - Only variables you list are random; an expectation with none of them is declined.
+      - One independence group is supported, and `[["X"]]` for an indexed X means its components are mutually independent.
+      - Moments are assumed to exist (the check uses finite supports).
+      - The check is evidence from explicit distributions, not a proof for every distribution.
+    examples:
+      - id: var-of-sum
+        title: Variance of a sum keeps the covariance
+        op: expectation
+        format: text
+        input: "Var(X + Y)"
+        random: [X, Y]
+      - id: var-of-sum-independent
+        title: With independence stated, the result holds given it
+        op: expectation
+        format: text
+        input: "Var(X + Y)"
+        random: [X, Y]
+        independent: [[X, Y]]
+      - id: covariance-from-moments
+        title: Covariance from raw moments
+        op: expectation
+        format: text
+        input: "Cov(X, Y)"
+        random: [X, Y]
+        action: to_moments
+      - id: product-without-independence
+        title: E[XY] does not factor without independence
+        op: expectation
+        format: text
+        input: "E[X*Y]"
+        random: [X, Y]
+      - id: var-wrong-answer
+        title: Dropping the covariance term is rejected
+        op: expectation
+        format: text
+        input: "Var(X + Y)"
+        random: [X, Y]
+        action: check
+        candidate: { result: "Var(X) + Var(Y)" }
+
+  - id: statistical-derivations
+    title: Maximum likelihood, Fisher information and Bayesian updates
+    status: available
+    group: statistics
+    where: [workbench, chat, api]
+    summary: >-
+      Derive, from a density, the moments of a family (Bernoulli, binomial, Poisson, normal, beta, gamma, Cauchy,
+      uniform), the log-likelihood and score, the maximum-likelihood estimator, the Fisher information and the posterior
+      for a prior. Estimators come from the score equations and are accepted only if the direct log-likelihood has zero
+      slope there, the point lies in the parameter space and the Hessian is negative definite; an optimum is called global
+      only when concavity is proved. Posteriors are found by matching the kernel, never from a table. Independence of
+      observations is never assumed; a likelihood of several observations needs you to state it.
+    limits:
+      - Estimates that lie outside the parameter space for the data (a Bernoulli sample of all zeros, identical normal observations) are declined, not invented.
+      - Families whose support depends on the parameter (uniform on (0, theta)) have no score or information.
+      - The score equations are solved one parameter at a time (triangular systems); moments of the Cauchy family do not exist and are declined.
+      - A prior is your assumption; the posterior holds for it. Only kernels of the supported families are recognised.
+      - Numerical agreement (quadrature, a direct log-likelihood) is evidence, not a proof; the symbolic parts are stated separately.
+    examples:
+      - id: gaussian-mle
+        title: Maximum-likelihood estimators of a normal mean and variance
+        op: statistics
+        family: normal
+        parametrization: variance
+        observation: x
+        sample_size: n
+        iid: true
+        estimate: [mu, v]
+        action: mle
+        assumptions: { n: [integer, positive], x: [real] }
+      - id: bernoulli-mle
+        title: The sample proportion, and where it exists
+        op: statistics
+        family: bernoulli
+        observation: x
+        sample_size: n
+        iid: true
+        estimate: [p]
+        action: mle
+        assumptions: { n: [integer, positive] }
+      - id: bernoulli-all-zeros
+        title: No maximum-likelihood estimate for a sample of all zeros
+        op: statistics
+        family: bernoulli
+        observation: x
+        sample_size: "4"
+        iid: true
+        estimate: [p]
+        action: mle
+        data: ["0", "0", "0", "0"]
+      - id: mle-needs-independence
+        title: Several observations need a statement of independence
+        op: statistics
+        family: normal
+        parametrization: variance
+        parameters: { v: v }
+        observation: x
+        sample_size: n
+        estimate: [mu]
+        action: mle
+        assumptions: { n: [integer, positive], v: [positive], x: [real] }
+      - id: normal-fisher-information
+        title: Fisher information of a normal mean and standard deviation
+        op: statistics
+        family: normal
+        estimate: [mu, sigma]
+        action: fisher_information
+        assumptions: { mu: [real], sigma: [positive] }
+      - id: beta-binomial-posterior
+        title: A Beta prior and a binomial likelihood
+        op: statistics
+        family: binomial
+        parameters: { n: n }
+        observation: k
+        estimate: [p]
+        prior: { family: beta, parameters: { alpha: alpha, beta: beta } }
+        action: posterior
+        assumptions:
+          { n: [integer, positive], k: [integer, nonnegative], alpha: [positive], beta: [positive] }
+      - id: gamma-moments
+        title: Moments derived from a density
+        op: statistics
+        family: gamma
+        parameters: { alpha: alpha, beta: beta }
+        action: moments
+        assumptions: { alpha: [positive], beta: [positive] }
+      - id: cauchy-mean-does-not-exist
+        title: The mean of a Cauchy variable is declined
+        op: statistics
+        family: cauchy
+        action: moments
+      - id: uniform-has-no-information
+        title: A support that depends on the parameter has no Fisher information
+        op: statistics
+        family: uniform_0_theta
+        estimate: [theta]
+        action: fisher_information
+        assumptions: { theta: [positive] }
+
+  - id: matrix-gradients
+    title: Gradients, Jacobians and Hessians of matrix functions
+    status: available
+    group: statistics
+    where: [workbench, chat, api]
+    summary: >-
+      Derivatives of scalar functions of vectors and matrices, such as the Gaussian log-likelihood with respect to
+      the mean or the covariance (`-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)`), built by differentials
+      and accepted only if central differences of the original function agree at random real matrices of the declared
+      sizes. Matrices keep their order; the derivative with respect to a symmetric matrix is the gradient within
+      the symmetric matrices (the unconstrained gradient is never returned for it), with the entrywise form labelled separately.
+    limits:
+      - Plain-text syntax only for these actions (`tr`, `det`, `logdet`, `transpose`, `inv`, `*` for the matrix product); `logdet` means log of the absolute determinant.
+      - Over the real numbers (a transpose, not a conjugate transpose); Hermitian and Wirtinger derivatives are not supported.
+      - "`inv`, `logdet` and the derivative of `det` need the matrix declared invertible (or positive definite) by you."
+      - Matrix-valued functions have no gradient here (the derivative of a matrix by a matrix is a fourth-order tensor).
+      - The symbolic leg is not run; numerical agreement is evidence, not a proof.
+    examples:
+      - id: gaussian-gradient-mean
+        title: The Gaussian log-density with respect to the mean
+        op: matrix
+        format: text
+        input: "-1/2*transpose(x - mu)*inv(S)*(x - mu)"
+        matrices:
+          - { name: x, rows: 3, cols: 1 }
+          - { name: mu, rows: 3, cols: 1 }
+          - { name: S, rows: 3, cols: 3, positive_definite: true }
+        action: gradient
+        variable: mu
+      - id: gaussian-gradient-covariance
+        title: With respect to a positive definite covariance
+        op: matrix
+        format: text
+        input: "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)"
+        matrices:
+          - { name: x, rows: 3, cols: 1 }
+          - { name: mu, rows: 3, cols: 1 }
+          - { name: S, rows: 3, cols: 3, positive_definite: true }
+        action: gradient
+        variable: S
+      - id: quadratic-form-hessian
+        title: The Hessian of a quadratic form
+        op: matrix
+        format: text
+        input: "transpose(x)*A*x"
+        matrices:
+          - { name: A, rows: 3, cols: 3 }
+          - { name: x, rows: 3, cols: 1 }
+        action: hessian
+        variable: x
+      - id: logdet-needs-invertible
+        title: An inverse is never assumed
+        op: matrix
+        format: text
+        input: "logdet(X)"
+        matrices:
+          - { name: X, rows: 3, cols: 3 }
+        action: gradient
+        variable: X
 
   - id: cadabra
     title: Cadabra integration

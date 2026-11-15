@@ -23,7 +23,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens and the KaTeX <Math> component
-packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions
+packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`)
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
@@ -53,9 +53,11 @@ uv run mypy packages/engine/src packages/knowledge/src services/api/src
 uv run python -m minerva_knowledge verify # check every handbook entry at its declared level
 uv run python -m minerva_knowledge benchmark          # identity cases, retrieval rank/recall, multi-step cases (docs/handbook-benchmark.md)
 uv run python -m minerva_knowledge matrix-benchmark   # matrix calculus coverage, methods, verification, time (docs/matrix-benchmark.md)
+uv run python -m minerva_knowledge stat-benchmark [--group G] [--json P] [--compare docs/benchmarks/statistics.json]  # statistical derivations (docs/statistics-benchmark.md)
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
+uv run python -m minerva_engine.statmech.benchmark [--check]       # statistical mechanics against closed forms, with refusals that must carry a named reason; docs/statmech-benchmark.md + docs/benchmarks/statmech.json (CI fails on a wrong answer or a lost refusal; `make statmech-benchmark`)
 uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
@@ -110,6 +112,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   produced it. The user's own input as read, a `stated` handbook entry, an identity that was not applied and anything from
   a result that was not accepted are `quoted`: shown, never marked verified. Do not widen `known_latex` back to "anything a
   tool printed"; `ToolOutput.evidence` is read from the engine's own result, never from the model.
+- `statistical_mechanics` is one tool with an `action`, not one tool per quantity. Its arguments deliberately exclude
+  the phase-space cell, the indistinguishability of copies, the numbers of a numerical evaluation and a sweep: the
+  model must ask, never pick them. The card's buttons and form post them to
+  `POST /v1/chat/conversations/{id}/tools/statistical_mechanics`; a test checks the tool schema has no such field.
 - `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
   never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
@@ -349,6 +355,94 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   are not implemented and must be refused, not approximated. The reference problems (`ode/benchmark.py`, run by
   `python -m minerva_engine.reference_benchmark`) take their answers from outside the solvers; add one for every new
   method. Diagnostics and `ode`/`ode_stage` events carry counters and fixed vocabulary only.
+- Finite sums, products and indexed data (`indexed/`, operation `sums`): the parsers refuse `Sum`, `Product`, `x[i]`, `\sum`,
+  `\prod` and `E[...]` unless the operation opts in (`Builder(allow_sums=...)`, default off), and every pointwise checker
+  (`verify_equal`, `check_derivative`, `check_antiderivative`, `check_definite`, `verify_equal_nc`, the rule matcher,
+  `domain_restrictions`, claims) refuses them through `indexed.guard.contains_indexed`: sampling one number per symbol gives
+  every `x[i]` the same value, so `sum x_i^2 = (sum x_i)^2 / n` "agreed". Do not remove those guards or route a sum through
+  a sampler. A rewrite is shown only if original and result agree on **explicit instances** (`indexed.instantiate`: the sums
+  expanded by us, never `Sum.doit`/`simplify`, at several sizes that always include n >= 2, one fresh symbol per element)
+  under the ordinary sampled check and symbolic zero; it is worded "checked for n = ...", never "proved for every n".
+  Ranges must be provably non-empty (`range_not_provable` otherwise), indices are bound once (no shadowing, no use outside
+  the sum), at most two nested, infinite sums are `unsupported`, and `x_{ij}`/`x_{i,j}` are refused as ambiguous.
+- Expectations (`stats/`, operation `expectation`): `E`, `Var`, `Cov` are unevaluated functions of **declared** random
+  variables (`random`); an undeclared symbol is a `parse_error`. Independence is never assumed: `independent` groups are
+  the only source of it, a result that used one is `conditional` ("holds given ...") and Minerva never checks the premise,
+  and a result is shown only if it agrees with the original on explicit finite joint distributions with exact weights that
+  are dependent unless independence was declared (`stats.pmf_check`). Only one independence group is modelled.
+- Gradients of matrix functions (`matrix/mexpr.py`, `matrix/gradient.py`; actions `gradient`, `jacobian`, `hessian` of
+  `matrix_calculus`, plain-text syntax only): built by differentials (never SymPy's matrix `diff`, which returns 0 for
+  `log det`), over the **reals**, and shown only if central differences of the original function at random matrices of the
+  declared sizes agree. A symmetric or positive definite variable gets the gradient *within the symmetric matrices*
+  (Frobenius), the candidate must itself be symmetric (a directional check cannot tell the unconstrained gradient from its
+  symmetric part), and `2G - diag(G)` is a separately verified, labelled alternative; the unconstrained gradient is never
+  returned for a symmetric variable. `inv`, `logdet` and the derivative of `det` of a matrix need it declared invertible
+  (`invertibility_not_declared`); declarations are checked against explicit entries; products are never reordered; a 1x1
+  product is a scalar factor and an ambiguous grouping is refused. `logdet` means log |det|. The symbolic leg is not run.
+  Matrix-valued functions have no gradient here (`non_scalar_gradient`).
+- Probability families (`stats/families.py`, operation `statistical_model`, action `moments`): a family is a parameter list
+  with constraints, a support and a density, nothing else; no estimator, moment or posterior is stored. Moments come from
+  `integrate`/`summation` (a size parameter is fitted from exact sums and verified at further sizes) and are shown only if
+  mpmath quadrature or summation of the density agrees at sampled parameters and the density normalises. **Absolute
+  convergence is established first** (`Numeric.absolute_moment_exists`: the tails of |x|^k f must shrink), because quadrature
+  "agrees" with a divergent integral; such a moment is `convergence_not_established`. Parameter constraints are decided by
+  `stats/domain.py`: provably violated is `parameter_invalid`, undecidable (`0 < p < 1` cannot be an assumption) is a premise
+  of the result, never silently true. `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
+- Statistical derivations (`stats/likelihood.py`, `mle.py`, `fisher.py`, `posterior.py`; operation `statistical_model`):
+  **independence is never assumed** (`iid` must be stated, else `independence_not_declared`, and a result that used it is
+  `conditional`); a prior is an assumption of the result and the result says so. Estimators are derived by solving the score
+  equations of the expanded log-likelihood (triangular systems only) and shown only if, on explicit data inside the support,
+  the score of the **direct** log-likelihood (sum of log densities, central differences) vanishes there, the point is inside
+  the parameter space and the Hessian is negative definite (second differences). `global` needs a symbolic proof of concavity
+  on the whole parameter space; otherwise `local` (proved at the point, or `measured`, saying so). A candidate estimator may
+  not depend on the unknowns it estimates, and a stationary point that is not a maximum is rejected. An estimate outside the
+  parameter space for the data is `candidate_inadmissible` (no MLE shown); a family whose support depends on the parameter
+  is `regularity_not_satisfied`. Fisher information is -E[Hessian] with derived moments, checked against the variance of the
+  score by quadrature (tolerance 1e-9: a 1e-6 error must be rejected). Posteriors are found by kernel matching, never from a
+  conjugacy table, and checked against prior x likelihood normalised by quadrature. Do not loosen those tolerances or add a
+  hardcoded estimator, information matrix or posterior; `docs/statistics-benchmark.md` and `stat-benchmark` measure them.
+- Statistical mechanics (`statmech/`, tool `statistical_mechanics`, endpoint `POST /v1/compute/statmech`, docs
+  `docs/statistical-mechanics.md`) builds a canonical partition function and derives every thermodynamic quantity by
+  one generic route: differentiate ln Z with the other state variables held fixed. Do not add a per-system or
+  per-quantity formula (heat capacity is dU/dT, pressure is -dF/dV at fixed T; the ideal gas result must come out
+  of the Hamiltonian). A held-fixed set that is not exactly the other state variables is `ensemble_mismatch`.
+  A formula is shown only if every deciding check against the independent oracle (`oracle.py`: direct enumeration
+  with log-sum-exp and a tail test, adaptive quadrature with an error estimate, finite differences of the
+  *enumerated* quantity) agreed; an undecided symbolic zero is "undecided", never a refutation, and "proved" is
+  used only with a symbolic zero. Do not make the oracle reuse the symbolic route, loosen its tolerances or let a
+  quadrature without an error estimate pass: the tests include a formula off by 1e-9. Convergence is never
+  assumed: an infinite sum needs the ratio test for every beta > 0 (above 1: `divergent`; inconclusive:
+  `convergence_not_provable`), an integral must be evaluated by the verified definite integrator under the declared
+  assumptions, and the energy must be bounded below so that differentiating under the sum or integral is justified.
+  Parametric integration bounds are mapped exactly onto numeric ones with the Jacobian (the integrator takes numeric
+  bounds only); do not teach the integrator to sample bounds. A classical Hamiltonian is split term by term and a
+  term that couples two variables is `not_separable`; no normal-mode change of variables is attempted. The
+  phase-space cell and whether copies are indistinguishable are conventions only the user chooses: they have no
+  default and are not arguments of the chat tool (they arrive through the card, `ToolContext.statmech_answers`), a
+  missing one is `convention_unconfirmed` with the question, and indistinguishable copies are the classical-limit
+  `N!` counting, never exact Bose or Fermi statistics. Numerical values and sweeps are the user's too. A series or
+  integral without a closed form is `numeric` only, never an identity. The fluctuation-response relation needs
+  `dE_i/dh = -A_i` with `A_i` independent of `h` (`coupling_not_linear` otherwise). Text syntax reads `E` as Euler's
+  number: a density-of-states energy is `En`. Diagnostics and logs hold stage names, counts and the enumerated
+  reasons only, never an energy or expression (`logging.ALLOWED_FIELDS`, a test enforces it); add a corpus case in
+  `statmech/benchmark.py` for every new system kind, quantity or refusal. Quantum matrices (at most 4x4, `quantum.py`)
+  are never reordered and never assumed to commute: Hermiticity and `[A, H] = 0` are checked and reported, the first
+  derivative of ln Z with a coupled parameter is beta times the mean (trace cyclicity), but a second derivative and a
+  covariance of non-commuting operators are refused (`operators_do_not_commute`: it is the Kubo-Duhamel covariance,
+  not `beta^2 Var`); the oracle is `mpmath.expm`/`eigh`, never the symbolic eigenvalues. The ensemble is never
+  substituted (`ensemble_mismatch`): grand canonical needs an occupation system (Bose needs mu provably below every
+  level), its state variables include mu and a derivative must hold exactly the others fixed (the oracle enumerates
+  occupation numbers; classical counting needs the Gibbs correction `-sum p ln(p n!)` in its entropy), and microcanonical
+  counting is exact (generating function checked by two other algorithms) with a finite-difference temperature and a
+  *measured* comparison with the canonical ensemble, never assumed equal. An approximation (`approximate`) is never
+  an identity: it reports assumptions, parameter, claimed order, validity and a measured error table (a measurement,
+  not a bound), its claimed order is a deciding check, and it is `asymptotic`; `high_temperature` is verified with
+  `check_series` and refused where ln Z is not analytic at beta = 0, `low_temperature` needs a decided level order,
+  `stirling` needs an indistinguishable-copies ln N!, `thermodynamic_limit` needs a chain with a symbolic length.
+  The chain's transfer matrix is verified against brute-force enumeration of every configuration (at most 14 sites).
+  Sample points are generic (never exactly zero): closed forms from eigenvalues and derivatives are 0/0 at special
+  points. Not supported yet (reported by `analyze`, never guessed): saddle-point and Laplace methods, Legendre
+  transforms, mean field, quantum systems beyond 4x4, interacting classical systems and open boundaries.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

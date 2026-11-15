@@ -1,5 +1,6 @@
 import { ApiError, extractDetail } from "./api";
 import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "./ode-types";
+import type { StatAnswers, StatToolArgs } from "./statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
 import type {
   ChatStatus,
@@ -65,6 +66,12 @@ export const chatApi = {
   /** Integrates with the initial values, parameters and interval the user typed into the form. */
   odeSolveNumerical: (id: string, request: OdeNumericInput) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/ode_solve_numerical`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Runs a statistical-mechanics card again with the user's own choices (no model involved). */
+  statmech: (id: string, request: StatToolArgs & StatAnswers) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/statistical_mechanics`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

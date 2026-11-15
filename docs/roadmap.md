@@ -13,7 +13,7 @@ Ordering favours correctness infrastructure before breadth.
 ## Next
 
 1. **Handbook breadth** (see `handbook-outline.md`): transforms (Fourier, Laplace), linear algebra, vector
-   calculus, differential equations, probability, group theory; physics chapters in depth. Tooling to import
+   calculus, differential equations, more probability (distribution tables, generating functions), group theory; physics chapters in depth. Tooling to import
    entries from openly licensed sources with provenance tracking; per-entry review status.
 2. **Numerical mechanics beyond the first version** (Lagrangian systems are solved and verified today, see
    `architecture.md`): generalised forces (damping, driving), constraints, a stiff solver, sweeping initial
@@ -51,7 +51,16 @@ Ordering favours correctness infrastructure before breadth.
    the argument (recall@1 of the handbook identities is 7 %).
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
-4. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
+4. **Statistical mechanics, remaining methods.** Done ([statistical-mechanics.md](statistical-mechanics.md)):
+   canonical partition functions of levels, level families, densities of states, separable classical systems,
+   Hermitian matrices and periodic chains; grand canonical particles with Bose, Fermi or classical counting;
+   microcanonical counting; held-fixed derivations, thermal averages and fluctuation-response; numerical
+   evaluation and sweeps; high- and low-temperature expansions, Stirling and the thermodynamic limit of a chain,
+   each with a measured error. Next: saddle-point and Laplace methods (needs a provable unique interior maximum),
+   Legendre transformations, mean-field self-consistency, larger or open chains, matrix-valued density matrices,
+   Bose condensation as an explicit limit, and a workbench view that carries one problem through several
+   derivations side by side.
+5. **Tensor algebra in the UI:** declare tensors and symmetries, canonicalize, show unsupported
    multi-term identities explicitly.
 
 ## Dimensional analysis follow-ups

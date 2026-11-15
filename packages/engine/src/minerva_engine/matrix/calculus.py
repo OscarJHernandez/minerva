@@ -29,8 +29,10 @@ from .expressions import (
     shape_of,
     to_terms,
 )
+from .gradient import run_gradient
 from .methods import Outcome, Problem, matrices_in, select
 from .models import (
+    GRADIENT_ACTIONS,
     MatrixBlocked,
     MatrixCalculusInput,
     MatrixCalculusResult,
@@ -63,7 +65,10 @@ def matrix_calculus(data: MatrixCalculusInput, limits: Limits) -> MatrixCalculus
     trace = _Trace(started, start_telemetry())
     deadline = started + DEADLINE_FRACTION * limits.timeout_seconds
     try:
-        result = _run(data, limits, deadline, trace)
+        if data.action in GRADIENT_ACTIONS:
+            result = run_gradient(data, limits, deadline)
+        else:
+            result = _run(data, limits, deadline, trace)
     except LimitError as exc:
         result = _fail(data, Status.RESOURCE_LIMIT, str(exc))
     except (UnsupportedMatrixExpression, UnsupportedInput) as exc:
@@ -94,6 +99,9 @@ VERIFICATION_IDS = {
     "sylvester_equation": "quadrature+series",
     "evolution_commuting": "central_difference+initial_condition+series",
     "evolution_numeric": "rk4+backward+liouville",
+    "gradient_differential": "central_difference_real",
+    "hessian_differential": "central_difference_real",
+    "jacobian_differential": "central_difference_real",
 }
 
 
@@ -101,6 +109,8 @@ def _failure_code(result: MatrixCalculusResult) -> str | None:
     status = result.status
     if status is Status.OK:
         return None
+    if result.reason:
+        return result.reason
     if status is Status.RESOURCE_LIMIT:
         text = result.message.lower()
         return "time_budget" if "time" in text else "size_limit"

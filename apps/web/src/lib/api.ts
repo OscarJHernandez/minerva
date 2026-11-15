@@ -1,4 +1,5 @@
 import type { DiscoveryReport } from "./chat-types";
+import type { StatMechRequest, StatMechResult } from "./statmech-types";
 import type {
   OdeAnalysis,
   OdeAnalyzeInput,
@@ -17,6 +18,8 @@ import type {
   DifferentiateResult,
   DistributionRequest,
   DistributionResult,
+  ExpectationRequest,
+  ExpectationResult,
   HistoryItem,
   IntegrateResult,
   IdentitiesResult,
@@ -28,7 +31,11 @@ import type {
   SeriesResult,
   SimplifyGoal,
   SimplifyResult,
+  StatModelRequest,
+  StatModelResult,
   StepResult,
+  SumsRequest,
+  SumsResult,
   User,
 } from "./types";
 
@@ -171,6 +178,32 @@ export const api = {
     request<GeometryResult>("/v1/compute/geometry", {
       method: "POST",
       body: JSON.stringify({ ...req, format: "latex", ...link }),
+    }),
+  sums: (c: ComputeInput, req: SumsRequest) =>
+    request<SumsResult>("/v1/compute/sums", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, ...req }),
+    }),
+  expectation: (c: ComputeInput, req: ExpectationRequest) =>
+    request<ExpectationResult>("/v1/compute/expectation", {
+      method: "POST",
+      body: JSON.stringify({ format: "latex", ...c, ...req }),
+    }),
+  statistics: (
+    req: StatModelRequest,
+    link?: { derivation_id?: string; parent_id?: string; save?: boolean },
+  ) =>
+    request<StatModelResult>("/v1/compute/statistics", {
+      method: "POST",
+      body: JSON.stringify({ ...req, ...link }),
+    }),
+  statmech: (
+    req: StatMechRequest,
+    link?: { derivation_id?: string; parent_id?: string; save?: boolean },
+  ) =>
+    request<StatMechResult>("/v1/compute/statmech", {
+      method: "POST",
+      body: JSON.stringify({ ...req, ...link }),
     }),
   distribution: (c: ComputeInput, req: DistributionRequest) =>
     request<DistributionResult>("/v1/compute/distribution", {

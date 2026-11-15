@@ -7,15 +7,19 @@ import type {
   GeometryResult,
   DistributionAnswer,
   DistributionResult,
+  ExpectationResult,
   IntegrateResult,
   IsolateResult,
   MatrixCalculusResult,
   MatrixRequest,
   SimplifyResult,
+  StatModelResult,
   Status,
   StepResult,
+  SumsResult,
 } from "./types";
 import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "./ode-types";
+import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
 
 export interface ExpansionReport {
   status: Status;
@@ -454,6 +458,42 @@ export type Card =
         /** The call as made (with the expression), so the question's buttons can ask again. */
         request: DistributionAnswer;
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "statmech";
+      title: string;
+      data: {
+        result: StatMechResult;
+        /** The model's call, so the card's controls can send it again with the user's choices. */
+        args: StatToolArgs;
+        /** What the user already chose (cell, copies, numbers): shown, and sent along again. */
+        answers: StatAnswers;
+        inputs: { input_latex: string }[];
+      };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "sums";
+      title: string;
+      /** `request`: the call as made (the expression and its settings). */
+      data: { result: SumsResult; request: Record<string, unknown> };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "expectation";
+      title: string;
+      data: { result: ExpectationResult; request: Record<string, unknown> };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "statistics";
+      title: string;
+      data: { result: StatModelResult; request: Record<string, unknown> };
     }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {

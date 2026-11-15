@@ -64,6 +64,41 @@
       "outcome": "correct"
     },
     {
+      "id": "statmech-two-level-thermodynamics",
+      "category": "statmech",
+      "source": "closed form Z = 1 + e^(-beta eps), plain arithmetic",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "statmech-quantum-oscillator",
+      "category": "statmech",
+      "source": "geometric series: Z = 1/(2 sinh(x/2)), Einstein heat capacity",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "statmech-ideal-gas-pressure-and-entropy",
+      "category": "statmech",
+      "source": "Z = Z_1^N/N! with the exact ln N!: pV = NkT, entropy via lgamma",
+      "expected": "correct",
+      "outcome": "correct"
+    },
+    {
+      "id": "statmech-divergent-series",
+      "category": "statmech",
+      "source": "E_n = -n: the terms grow like e^(beta n)",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "statmech-indistinguishability-is-a-choice",
+      "category": "statmech",
+      "source": "N! is a convention only the user chooses",
+      "expected": "refused",
+      "outcome": "refused_as_expected"
+    },
+    {
       "id": "ode-separable-closed-form",
       "category": "ode-analytic",
       "source": "closed form: y' = -2xy^2 gives y = 1/(1 + x^2)",

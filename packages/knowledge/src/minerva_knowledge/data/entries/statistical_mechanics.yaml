@@ -1,0 +1,243 @@
+- id: statmech.partition_function_discrete
+  title: Partition function of a discrete spectrum
+  kind: method
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'Z(\beta) = \sum_i g_i\, \mathrm{e}^{-\beta E_i}'
+  validity: "Canonical ensemble; g_i is the (positive integer) degeneracy of level E_i and beta > 0. Needs the sum to converge: finite lists always do, infinite ones must be shown to."
+  keywords: [partition function, canonical ensemble, degeneracy, boltzmann factor]
+- id: statmech.partition_function_continuous
+  title: Partition function from a density of states
+  kind: method
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'Z(\beta) = \int \rho(E)\, \mathrm{e}^{-\beta E}\, dE'
+  validity: "rho(E) is the density of states; the integral must converge for the beta considered, and the energy must be bounded below for derivatives to pass under the integral."
+  keywords: [partition function, density of states, laplace transform]
+- id: statmech.classical_partition_function
+  title: Classical phase-space partition function
+  kind: method
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'Z = \frac{1}{c\,N!}\int \mathrm{e}^{-\beta H(\mathbf{p},\mathbf{q})}\, d\Gamma'
+  validity: "The phase-space cell c (for example h^{3N}) and the factor N! for indistinguishable particles are conventions, not consequences: state which is used. N! is the classical-limit counting, not Bose or Fermi statistics."
+  keywords: [classical, phase space, indistinguishable, gibbs factor, cell]
+- id: statmech.canonical_probability
+  title: Canonical probability of a microstate
+  kind: method
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'p_i = \frac{\mathrm{e}^{-\beta E_i}}{Z}'
+  validity: "Canonical ensemble. The probability of a level with degeneracy g is g p_i."
+  keywords: [boltzmann distribution, probability, canonical ensemble, normalisation]
+- id: statmech.internal_energy_from_z
+  title: Internal energy from the partition function
+  kind: identity
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'U = -\frac{\partial \ln Z}{\partial \beta}'
+  validity: "The levels do not depend on beta, all other state variables are held fixed, and the sum or integral may be differentiated term by term (a finite sum always can)."
+  keywords: [internal energy, log partition function, derivative]
+- id: statmech.energy_variance_from_z
+  title: Energy fluctuations from the partition function
+  kind: identity
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: '\operatorname{Var}(E) = \frac{\partial^{2} \ln Z}{\partial \beta^{2}}'
+  validity: "Same conditions as for the internal energy; it equals the second cumulant of the energy and is never negative."
+  keywords: [variance, fluctuation, cumulant, partition function]
+- id: statmech.free_energy
+  title: Helmholtz free energy
+  kind: equation
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: dimensional
+  statement_latex: 'F = -k_B T \ln Z'
+  validity: "Canonical ensemble. The check is dimensional only: ln Z is dimensionless."
+  check:
+    kind: equation
+    lhs: "F"
+    rhs: "-kB*T*lnZ"
+    units: {F: "kg*m**2/s**2", kB: "kg*m**2/(s**2*K)", T: K, lnZ: "1"}
+  symbols:
+    - {name: F, meaning: Helmholtz free energy, unit: "kg*m**2/s**2"}
+    - {name: kB, meaning: Boltzmann constant, unit: "kg*m**2/(s**2*K)"}
+    - {name: T, meaning: temperature, unit: K}
+    - {name: lnZ, meaning: logarithm of the partition function, unit: "1"}
+  keywords: [free energy, helmholtz, partition function]
+- id: statmech.entropy_from_z
+  title: Entropy from the partition function
+  kind: equation
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: dimensional
+  statement_latex: 'S = k_B\left(\ln Z + \beta U\right)'
+  validity: "Canonical ensemble. The check is dimensional only; it agrees with minus the derivative of F with respect to T."
+  check:
+    kind: equation
+    lhs: "S"
+    rhs: "kB*(lnZ + beta*U)"
+    units: {S: "kg*m**2/(s**2*K)", kB: "kg*m**2/(s**2*K)", lnZ: "1", beta: "s**2/(kg*m**2)", U: "kg*m**2/s**2"}
+  symbols:
+    - {name: S, meaning: entropy, unit: "kg*m**2/(s**2*K)"}
+    - {name: kB, meaning: Boltzmann constant, unit: "kg*m**2/(s**2*K)"}
+    - {name: lnZ, meaning: logarithm of the partition function, unit: "1"}
+    - {name: beta, meaning: inverse temperature, unit: "s**2/(kg*m**2)"}
+    - {name: U, meaning: internal energy, unit: "kg*m**2/s**2"}
+  keywords: [entropy, gibbs entropy, partition function]
+- id: statmech.heat_capacity_from_variance
+  title: Heat capacity from energy fluctuations
+  kind: equation
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: dimensional
+  statement_latex: 'C = \frac{\partial U}{\partial T} = k_B \beta^{2} \operatorname{Var}(E)'
+  validity: "Canonical ensemble with the other state variables held fixed. The check is dimensional only."
+  check:
+    kind: equation
+    lhs: "C"
+    rhs: "kB*beta**2*VarE"
+    units: {C: "kg*m**2/(s**2*K)", kB: "kg*m**2/(s**2*K)", beta: "s**2/(kg*m**2)", VarE: "kg**2*m**4/s**4"}
+  symbols:
+    - {name: C, meaning: heat capacity, unit: "kg*m**2/(s**2*K)"}
+    - {name: kB, meaning: Boltzmann constant, unit: "kg*m**2/(s**2*K)"}
+    - {name: beta, meaning: inverse temperature, unit: "s**2/(kg*m**2)"}
+    - {name: VarE, meaning: variance of the energy, unit: "kg**2*m**4/s**4"}
+  keywords: [heat capacity, fluctuation, variance, specific heat]
+- id: statmech.fluctuation_response
+  title: Fluctuation–response relation for a linear coupling
+  kind: theorem
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: '\operatorname{Var}(A) = \frac{1}{\beta^{2}}\frac{\partial^{2} \ln Z}{\partial h^{2}},\quad E_i(h) = E_i(0) - h A_i'
+  validity: "Needs the energies to be linear in h with A_i independent of h. For operators the second derivative picks up a correction unless A commutes with H."
+  keywords: [susceptibility, response, fluctuation, cumulant, coupling]
+- id: statmech.equipartition
+  title: Equipartition for quadratic terms
+  kind: theorem
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: '\left\langle x\,\frac{\partial H}{\partial x}\right\rangle = k_B T'
+  validity: "Classical canonical ensemble; each variable that enters H only as a quadratic term contributes k_B T/2 to the mean energy."
+  keywords: [equipartition, quadratic, classical, mean energy]
+- id: statmech.quantum_oscillator_partition
+  title: Quantum harmonic oscillator partition function
+  kind: series
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: numeric
+  validity: "x = beta hbar omega > 0."
+  statement_latex: '\sum_{n=0}^{\infty} \mathrm{e}^{-x(n+1/2)} = \frac{1}{2\sinh(x/2)}'
+  check: {kind: series, term: "exp(-x*(n + 1/2))", index: n, lower: 0, upper: "oo", result: "1/(2*sinh(x/2))", params: {x: {min: 0.5, max: 3.0}}}
+  keywords: [oscillator, partition function, geometric series, einstein]
+- id: statmech.bose_einstein_occupation
+  title: Bose–Einstein mean occupation
+  kind: equation
+  chapter: physics.thermodynamics
+  section: quantum-statistics
+  verification: dimensional
+  statement_latex: '\langle n\rangle = \frac{1}{\mathrm{e}^{\beta(\varepsilon-\mu)} - 1}'
+  validity: "Grand canonical ensemble; needs mu below every single-particle energy. The check is dimensional only: the exponent is dimensionless."
+  check:
+    kind: equation
+    lhs: "n"
+    rhs: "1/(exp(beta*(eps - mu)) - 1)"
+    units: {n: "1", beta: "s**2/(kg*m**2)", eps: "kg*m**2/s**2", mu: "kg*m**2/s**2"}
+  symbols:
+    - {name: n, meaning: mean occupation number, unit: "1"}
+    - {name: beta, meaning: inverse temperature, unit: "s**2/(kg*m**2)"}
+    - {name: eps, meaning: single-particle energy, unit: "kg*m**2/s**2"}
+    - {name: mu, meaning: chemical potential, unit: "kg*m**2/s**2"}
+  keywords: [bose einstein, bosons, occupation number, grand canonical]
+- id: statmech.fermi_dirac_occupation
+  title: Fermi–Dirac mean occupation
+  kind: equation
+  chapter: physics.thermodynamics
+  section: quantum-statistics
+  verification: dimensional
+  statement_latex: '\langle n\rangle = \frac{1}{\mathrm{e}^{\beta(\varepsilon-\mu)} + 1}'
+  validity: "Grand canonical ensemble. The check is dimensional only: the exponent is dimensionless."
+  check:
+    kind: equation
+    lhs: "n"
+    rhs: "1/(exp(beta*(eps - mu)) + 1)"
+    units: {n: "1", beta: "s**2/(kg*m**2)", eps: "kg*m**2/s**2", mu: "kg*m**2/s**2"}
+  symbols:
+    - {name: n, meaning: mean occupation number, unit: "1"}
+    - {name: beta, meaning: inverse temperature, unit: "s**2/(kg*m**2)"}
+    - {name: eps, meaning: single-particle energy, unit: "kg*m**2/s**2"}
+    - {name: mu, meaning: chemical potential, unit: "kg*m**2/s**2"}
+  keywords: [fermi dirac, fermions, occupation number, grand canonical]
+- id: statmech.stirling_log_factorial
+  title: Stirling's approximation for ln N!
+  kind: theorem
+  chapter: physics.thermodynamics
+  section: approximations
+  verification: stated
+  statement_latex: '\ln N! \sim N\ln N - N + \tfrac{1}{2}\ln(2\pi N)'
+  validity: "Asymptotic as N grows; it is an equivalence of leading behaviour, not an identity. The error of the form shown falls like 1/(12 N)."
+  reference: {source: DLMF, locator: "§5.11", url: "https://dlmf.nist.gov/5.11"}
+  keywords: [stirling, factorial, asymptotic, thermodynamic limit]
+- id: statmech.grand_potential
+  title: Grand potential and mean particle number
+  kind: identity
+  chapter: physics.thermodynamics
+  section: grand-canonical
+  verification: stated
+  statement_latex: '\Omega = -k_B T \ln \Xi,\quad \langle N\rangle = -\frac{\partial \Omega}{\partial \mu} = \frac{1}{\beta}\frac{\partial \ln \Xi}{\partial \mu}'
+  validity: "Grand canonical ensemble, derivatives at fixed temperature and the other state variables; U - mu N = -d ln Xi / d beta at fixed mu."
+  keywords: [grand potential, chemical potential, particle number, grand canonical]
+- id: statmech.number_fluctuation
+  title: Particle-number fluctuations
+  kind: identity
+  chapter: physics.thermodynamics
+  section: grand-canonical
+  verification: stated
+  statement_latex: '\operatorname{Var}(N) = \frac{1}{\beta^{2}}\frac{\partial^{2} \ln \Xi}{\partial \mu^{2}} = k_B T\,\frac{\partial \langle N\rangle}{\partial \mu}'
+  validity: "Grand canonical ensemble at fixed temperature and the other state variables; never negative."
+  keywords: [fluctuation, particle number, variance, compressibility]
+- id: statmech.trace_cyclicity_response
+  title: First-order response of ln Z needs no commutation
+  kind: theorem
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: 'H(h) = H_0 - hB \ \Rightarrow\ \frac{\partial \ln Z}{\partial h} = \beta\langle B\rangle'
+  validity: "Holds for matrices that do not commute with H by the cyclicity of the trace. The second derivative equals beta^2 Var(B) only when B commutes with H; otherwise it is a Kubo-Duhamel covariance."
+  keywords: [trace cyclicity, response, noncommuting, kubo, quantum]
+- id: statmech.microcanonical_counting
+  title: Microstate count of N copies at fixed energy
+  kind: method
+  chapter: physics.thermodynamics
+  section: canonical
+  verification: stated
+  statement_latex: '\Omega(E) = \sum_{\{n_k\}:\ \sum_k n_k\varepsilon_k = E} \frac{N!}{\prod_k n_k!}\prod_k g_k^{n_k},\quad S = k_B \ln \Omega'
+  validity: "Distinguishable (labelled) copies of a list of levels with sum n_k = N; dividing by N! is the classical-limit counting for indistinguishable copies. The temperature of a finite system is a finite difference of ln Omega, not a derivative."
+  keywords: [microcanonical, multiplicity, entropy, counting, binomial]
+- id: statmech.sackur_tetrode
+  title: Entropy of a classical ideal gas
+  kind: equation
+  chapter: physics.thermodynamics
+  section: approximations
+  verification: stated
+  statement_latex: 'S = N k_B\left[\ln\left(\frac{V}{N}\left(\frac{2\pi m}{\beta h^{2}}\right)^{3/2}\right) + \frac{5}{2}\right]'
+  validity: "Classical ideal gas of N indistinguishable particles with phase-space cell h^3 and Stirling's approximation for ln N!; an asymptotic form, not an identity."
+  keywords: [ideal gas, entropy, sackur tetrode, stirling]
+- id: statmech.ising_chain_partition_function
+  title: Periodic Ising chain by the transfer matrix
+  kind: method
+  chapter: physics.thermodynamics
+  section: lattice
+  verification: stated
+  statement_latex: 'Z_N = \lambda_{+}^{N} + \lambda_{-}^{N},\quad \lambda_{\pm} = \mathrm{e}^{\beta J}\cosh\beta h \pm \sqrt{\mathrm{e}^{2\beta J}\sinh^{2}\beta h + \mathrm{e}^{-2\beta J}}'
+  validity: "Ring of N spins with H = -J sum s_i s_{i+1} - h sum s_i. The matrix has positive entries, so lambda_+ is simple and dominant: f = -(1/beta) ln lambda_+ per site as N grows, analytic in beta."
+  keywords: [ising, transfer matrix, one dimension, thermodynamic limit]
+

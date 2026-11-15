@@ -22,6 +22,9 @@ const OPERATION_LABEL: Record<string, string> = {
   ode_analyze: "Differential equation",
   ode_solve_symbolic: "ODE: closed form",
   ode_solve_numerical: "ODE: numerical",
+  sums: "Sums",
+  expectation: "Expectation",
+  statistical_model: "Statistics",
   identities: "Identities",
 };
 

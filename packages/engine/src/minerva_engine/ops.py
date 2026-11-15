@@ -18,6 +18,7 @@ from .claims import check_claims, split_equation
 from .distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
 from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .features import expression_features
+from .indexed.guard import SUMS_REFUSAL, contains_indexed
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import (
@@ -54,6 +55,8 @@ def parse_expression(
     allow_distributions: bool = False,
     notation: NotationLog | None = None,
     allow_noncommutative: bool = False,
+    allow_sums: bool = False,
+    random_variables: Iterable[str] = (),
 ) -> sp.Expr:
     if len(data.input) > limits.max_input_chars:
         raise LimitError("input is too long")
@@ -68,6 +71,8 @@ def parse_expression(
             strict_calls,
             notation,
             allow_noncommutative=allow_noncommutative,
+            allow_sums=allow_sums,
+            random_variables=random_variables,
         )
     else:
         expr = parse_text(
@@ -80,7 +85,11 @@ def parse_expression(
             strict_calls,
             notation,
             allow_noncommutative=allow_noncommutative,
+            allow_sums=allow_sums,
+            random_variables=random_variables,
         )
+    if not allow_sums and contains_indexed(expr):
+        raise UnsupportedInput(SUMS_REFUSAL)  # the parsers refuse them already: belt and braces
     if not allow_distributions and contains_distribution(expr):
         # Pointwise sampling cannot tell distributions apart (a delta is 0 at every sample point),
         # so every other operation refuses them rather than "verify" a wrong identity.
@@ -258,6 +267,38 @@ def op_ode_solve_numerical(payload: dict[str, Any]) -> dict[str, Any]:
     result = solve_numerical(
         OdeNumericInput(**payload["input"]), Limits(**payload["limits"]), payload.get("trace_id")
     )
+    return result.model_dump(mode="json")
+
+
+def op_sums(payload: dict[str, Any]) -> dict[str, Any]:
+    from .indexed.models import SumsInput
+    from .indexed.operation import sums
+
+    result = sums(SumsInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
+def op_expectation(payload: dict[str, Any]) -> dict[str, Any]:
+    from .stats.models import ExpectationInput
+    from .stats.operation import expectation
+
+    result = expectation(ExpectationInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
+def op_statistical_model(payload: dict[str, Any]) -> dict[str, Any]:
+    from .stats.models import StatModelInput
+    from .stats.statmodel import stat_model
+
+    result = stat_model(StatModelInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
+def op_statmech(payload: dict[str, Any]) -> dict[str, Any]:
+    from .statmech.models import StatMechInput
+    from .statmech.operation import statmech
+
+    result = statmech(StatMechInput(**payload["input"]), Limits(**payload["limits"]))
     return result.model_dump(mode="json")
 
 
@@ -571,6 +612,8 @@ def rule_rewrites(
     `sin(a)**2 + cos(a)**2` with the leftover term `-sin(y)**2` absorbed by `rest`, which is true but
     not what a chain of identities should be built from. `find_identities` keeps the lenient default.
     """
+    if contains_indexed(expr):
+        return  # a rule is matched against plain symbols, never against sums or random variables
     lhs, rhs, wilds = _pattern_parts(rule)
     if reverse:
         lhs, rhs = rhs, lhs
@@ -796,6 +839,10 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
 
 OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "simplify": op_simplify,
+    "sums": op_sums,
+    "expectation": op_expectation,
+    "statistical_model": op_statistical_model,
+    "statmech": op_statmech,
     "identities": op_identities,
     "transform": op_transform,
     "features": op_features,

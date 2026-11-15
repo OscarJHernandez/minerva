@@ -9,6 +9,7 @@ import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-r
 import { useDebugMode } from "@/lib/debug-mode";
 import { splitMath } from "@/lib/inline-math";
 import type { OdeAnalyzeInput, OdeInput, OdeNumericInput, OdeSolveInput } from "@/lib/ode-types";
+import type { StatAnswers, StatToolArgs } from "@/lib/statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 import type {
   AssistantContent,
@@ -59,6 +60,11 @@ const TOOL_LABEL: Record<string, string> = {
   matrix_calculus: "Running the matrix calculus and verifying the result",
   geometry: "Computing the geometry and checking it independently",
   distribution: "Applying delta and step identities and pairing with test functions",
+  statistical_mechanics:
+    "Building the partition function and checking it against an independent evaluation",
+  sums: "Rewriting the sum and checking it on explicit instances",
+  expectation: "Expanding moments and checking against explicit joint distributions",
+  statistical_model: "Deriving from the model and checking by a different route",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
   integrate_motion: "Integrating the equations of motion and verifying the run",
@@ -285,6 +291,22 @@ export function ChatApp() {
     [activeId, refreshList, router],
   );
 
+  /** The statistical-mechanics card's question: runs the call again with the user's choice. */
+  const runStatMech = useCallback(
+    async (request: StatToolArgs & StatAnswers) => {
+      if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      try {
+        const message = await chatApi.statmech(activeId, request);
+        setMessages((m) => [...m, message]);
+        await refreshList();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) router.push("/login");
+        throw e;
+      }
+    },
+    [activeId, refreshList, router],
+  );
+
   /** The geometry card's buttons: more quantities for the same metric, without the model. */
   const runGeometry = useCallback(
     async (request: GeometryRequest) => {
@@ -375,6 +397,7 @@ export function ChatApp() {
         geometry: runGeometry,
         distribution: runDistribution,
         ode: runOde,
+        statmech: runStatMech,
       }}
     >
       <div className="flex h-[calc(100dvh-3.5rem-1px)] gap-6">
