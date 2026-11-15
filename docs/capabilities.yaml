@@ -1224,7 +1224,7 @@ capabilities:
         op: ode_numeric
         equations: ['\dot{x} = a x - b x y', '\dot{y} = -c y + d x y']
         conditions: ["x(0) = 2", "y(0) = 1"]
-        parameters: {a: 1, b: 0.5, c: 0.75, d: 0.25}
+        parameters: { a: 1, b: 0.5, c: 0.75, d: 0.25 }
         t_end: 30
       - id: ode-boundary-value
         title: A boundary-value problem
@@ -1266,7 +1266,7 @@ capabilities:
         op: ode_analyze
         equations: ['\dot{x} = a x - b x y', '\dot{y} = -c y + d x y']
         detail: qualitative
-        assumptions: {a: [positive], b: [positive], c: [positive], d: [positive]}
+        assumptions: { a: [positive], b: [positive], c: [positive], d: [positive] }
       - id: ode-equilibria-pendulum
         title: "The pendulum: a centre of the linearisation is not called stable"
         op: ode_analyze
