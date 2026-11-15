@@ -295,6 +295,7 @@ def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
         Limits(**payload["limits"]),
         lower=payload.get("lower"),
         upper=payload.get("upper"),
+        strategy=payload.get("strategy"),
     )
     return result.model_dump(mode="json")
 
@@ -836,8 +837,8 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "differentiate": op_differentiate,
     "series": op_series,
     "integrate": op_integrate,
-    "distribution": op_distribution,
     "creative_telescoping": op_creative_telescoping,
+    "distribution": op_distribution,
     "matrix_calculus": op_matrix_calculus,
     "geometry": op_geometry,
     "variation": op_variation,

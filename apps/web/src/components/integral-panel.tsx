@@ -4,6 +4,7 @@ import { Math } from "@minerva/ui/math";
 import { useId, useState } from "react";
 import type { IntegrateResult } from "@/lib/types";
 import { StatusPill } from "./result-panel";
+import { StrategyBlock } from "./strategy-block";
 
 export function IntegralPanel({ result }: { result: IntegrateResult }) {
   const headingId = useId();
@@ -67,6 +68,17 @@ export function IntegralPanel({ result }: { result: IntegrateResult }) {
           </ul>
         </div>
       )}
+
+      {result.result_kind === "numeric" && result.numeric && (
+        <div className="mt-2">
+          <div className="text-xs uppercase tracking-wide text-muted">Numerical estimate</div>
+          <p className="text-2xl">≈ {result.numeric}</p>
+          <p className="text-sm text-muted">
+            estimated error {result.numeric_error}; no closed form was found
+          </p>
+        </div>
+      )}
+      {result.strategy && <StrategyBlock strategy={result.strategy} />}
 
       <p className="mt-3 text-sm text-muted">{result.message}</p>
       {result.notes.map((note) => (

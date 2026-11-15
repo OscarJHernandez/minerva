@@ -143,10 +143,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ format: "latex", ...c, variable, point, order }),
     }),
-  integrate: (c: ComputeInput, variable: string, bounds?: { lower: string; upper: string }) =>
+  integrate: (
+    c: ComputeInput,
+    variable: string,
+    bounds?: { lower: string; upper: string },
+    strategy?: string,
+  ) =>
     request<IntegrateResult>("/v1/compute/integrate", {
       method: "POST",
-      body: JSON.stringify({ format: "latex", ...c, variable, ...bounds }),
+      body: JSON.stringify({ format: "latex", ...c, variable, ...bounds, strategy }),
     }),
   matrix: (c: ComputeInput, req: MatrixRequest) =>
     request<MatrixCalculusResult>("/v1/compute/matrix", {
@@ -158,15 +163,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(c),
     }),
-  geometry: (req: GeometryRequest, link?: { derivation_id?: string; save?: boolean }) =>
-    request<GeometryResult>("/v1/compute/geometry", {
-      method: "POST",
-      body: JSON.stringify({ ...req, format: "latex", ...link }),
-    }),
   telescoping: (req: TelescopingRequest) =>
     request<TelescopingResult>("/v1/compute/telescoping", {
       method: "POST",
       body: JSON.stringify(req),
+    }),
+  geometry: (req: GeometryRequest, link?: { derivation_id?: string; save?: boolean }) =>
+    request<GeometryResult>("/v1/compute/geometry", {
+      method: "POST",
+      body: JSON.stringify({ ...req, format: "latex", ...link }),
     }),
   /** One step of a variational derivation: the whole functional is sent every time (nothing is remembered). */
   variation: (req: VariationRequest, link?: { derivation_id?: string; parent_id?: string }) =>

@@ -18,6 +18,7 @@ from minerva_engine import (
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
 from minerva_engine.indexed.models import SumAction
+from minerva_engine.integration_strategy.models import StrategyName
 from minerva_engine.matrix.models import MAX_MATRICES, Action
 from minerva_engine.stats.models import ExpectationAction
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -49,6 +50,7 @@ class IntegrateRequest(Linked):
     variable: str = Field(min_length=1, max_length=32)
     lower: str | None = Field(default=None, min_length=1, max_length=200)
     upper: str | None = Field(default=None, min_length=1, max_length=200)
+    strategy: StrategyName | None = None
 
 
 class IdentitiesRequest(Linked):

@@ -308,7 +308,7 @@ def integrate(
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
     expression = _expr(body)
-    result = engine.integrate(expression, body.variable, body.lower, body.upper)
+    result = engine.integrate(expression, body.variable, body.lower, body.upper, body.strategy)
     log.info(
         "compute",
         operation="integrate",
