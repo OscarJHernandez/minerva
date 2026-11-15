@@ -1,0 +1,214 @@
+{
+  "cases": [
+    {
+      "id": "u-substitution",
+      "technique": "substitution",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "substitution",
+      "verification": "proved"
+    },
+    {
+      "id": "u-substitution-exp",
+      "technique": "substitution",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "substitution",
+      "verification": "proved"
+    },
+    {
+      "id": "parts-linear",
+      "technique": "parts",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "parts",
+      "verification": "proved"
+    },
+    {
+      "id": "parts-quadratic",
+      "technique": "parts",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "parts",
+      "verification": "proved"
+    },
+    {
+      "id": "trig-power-reduction",
+      "technique": "trigonometric",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "trigonometric",
+      "verification": "proved"
+    },
+    {
+      "id": "trig-fourth-power",
+      "technique": "trigonometric",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "trigonometric",
+      "verification": "proved"
+    },
+    {
+      "id": "partial-fractions",
+      "technique": "partial_fractions",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "partial_fractions",
+      "verification": "proved"
+    },
+    {
+      "id": "partial-fractions-repeated",
+      "technique": "partial_fractions",
+      "source": "derivative check",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "partial_fractions",
+      "verification": "proved"
+    },
+    {
+      "id": "parity-odd",
+      "technique": "parity",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "parity",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "parity-even",
+      "technique": "parity",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "parity",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "king-rule",
+      "technique": "reflection",
+      "source": "closed form pi/4",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "reflection",
+      "selected": "reflection",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "frullani-exp",
+      "technique": "frullani",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "frullani",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "frullani-atan",
+      "technique": "frullani",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "frullani",
+      "selected": "frullani",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "schwinger-power",
+      "technique": "schwinger",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "schwinger",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "parameter-gaussian",
+      "technique": "parameter_differentiation",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "parameter_differentiation",
+      "verification": "numerically_checked"
+    },
+    {
+      "id": "numerical-no-closed-form",
+      "technique": "numerical",
+      "source": "mpmath quadrature",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "unsupported",
+      "selected": "numerical",
+      "verification": "numeric_estimate"
+    },
+    {
+      "id": "refuse-frullani-undeclared",
+      "technique": "frullani",
+      "source": "scales must be declared positive",
+      "expected": "refused",
+      "outcome": "refused_as_expected",
+      "default": "unsupported",
+      "selected": "-",
+      "verification": "none"
+    },
+    {
+      "id": "refuse-frullani-cosine",
+      "technique": "frullani",
+      "source": "g(infinity) does not exist",
+      "expected": "refused",
+      "outcome": "refused_as_expected",
+      "default": "not_verified",
+      "selected": "-",
+      "verification": "none"
+    },
+    {
+      "id": "refuse-odd-divergent",
+      "technique": "parity",
+      "source": "the half-range integral diverges",
+      "expected": "refused",
+      "outcome": "refused_as_expected",
+      "default": "unsupported",
+      "selected": "-",
+      "verification": "none"
+    },
+    {
+      "id": "refuse-numerical-divergent",
+      "technique": "numerical",
+      "source": "the integral diverges",
+      "expected": "refused",
+      "outcome": "refused_as_expected",
+      "default": "unsupported",
+      "selected": "-",
+      "verification": "none"
+    },
+    {
+      "id": "refuse-parts-on-rational",
+      "technique": "parts",
+      "source": "no integration by parts applies",
+      "expected": "result",
+      "outcome": "correct",
+      "default": "direct",
+      "selected": "direct",
+      "verification": "proved"
+    }
+  ]
+}
