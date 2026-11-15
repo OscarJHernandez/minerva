@@ -39,7 +39,13 @@ def test_outcomes_match_the_committed_report(rows: list[dict[str, object]]) -> N
 
 
 def test_the_corpus_covers_the_requested_domains() -> None:
-    assert {p.category for p in PROBLEMS} >= {"matrix", "distribution", "substitution", "mechanics"}
+    assert {p.category for p in PROBLEMS} >= {
+        "matrix",
+        "distribution",
+        "substitution",
+        "mechanics",
+        "statmech",
+    }
     assert all(p.source for p in PROBLEMS) and len({p.id for p in PROBLEMS}) == len(PROBLEMS)
 
 

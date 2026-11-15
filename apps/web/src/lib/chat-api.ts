@@ -1,4 +1,5 @@
 import { ApiError, extractDetail } from "./api";
+import type { StatAnswers, StatToolArgs } from "./statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "./types";
 import type { VariationRequest } from "./variation-types";
 import type {
@@ -53,6 +54,12 @@ export const chatApi = {
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?" (no model involved). */
   distribution: (id: string, request: DistributionAnswer) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/distribution`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+  /** Runs a statistical-mechanics card again with the user's own choices (no model involved). */
+  statmech: (id: string, request: StatToolArgs & StatAnswers) =>
+    json<StoredMessage>(`/v1/chat/conversations/${id}/tools/statistical_mechanics`, {
       method: "POST",
       body: JSON.stringify(request),
     }),

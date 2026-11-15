@@ -20,6 +20,9 @@ const OPERATION_LABEL: Record<string, string> = {
   geometry: "Geometry",
   variation: "Variational calculus",
   distribution: "Distributions",
+  sums: "Sums",
+  expectation: "Expectation",
+  statistical_model: "Statistics",
   identities: "Identities",
 };
 

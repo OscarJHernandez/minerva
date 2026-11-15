@@ -12,6 +12,8 @@ from minerva_engine import (
     DiscoveryReport,
     DistributionInput,
     DistributionResult,
+    ExpectationInput,
+    ExpectationResult,
     ExpressionInput,
     GeometryInput,
     GeometryResult,
@@ -21,8 +23,14 @@ from minerva_engine import (
     MatrixCalculusResult,
     RuleCondition,
     SeriesResult,
+    StatMechInput,
+    StatMechResult,
+    StatModelInput,
+    StatModelResult,
     Status,
     StepResult,
+    SumsInput,
+    SumsResult,
     TensorInput,
     TensorResult,
     VariationInput,
@@ -41,7 +49,7 @@ from pydantic import BaseModel, Field
 
 from .db import Calculation, Derivation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
-from .diagnostics import log_distribution
+from .diagnostics import log_distribution, log_statmech
 from .geometry_log import log_geometry
 from .logging import get_logger
 from .schemas import (
@@ -49,6 +57,7 @@ from .schemas import (
     ConservedRequest,
     DifferentiateRequest,
     DistributionRequest,
+    ExpectationRequest,
     GeometryRequest,
     IdentitiesRequest,
     IntegrateRequest,
@@ -59,8 +68,11 @@ from .schemas import (
     RewriteRequest,
     SeriesRequest,
     SimplifyRequest,
+    StatisticsRequest,
+    StatMechRequest,
     SubstituteRequest,
     SubtermsRequest,
+    SumsRequest,
     VariationRequest,
 )
 from .search_log import log_search_events
@@ -99,6 +111,18 @@ class VariationResponse(VariationReport):
 
 
 class DistributionResponse(DistributionResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class SumsResponse(SumsResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class ExpectationResponse(ExpectationResult):
+    calculation_id: uuid.UUID | None = None
+
+
+class StatisticsResponse(StatModelResult):
     calculation_id: uuid.UUID | None = None
 
 
@@ -338,6 +362,7 @@ def matrix_calculus(
         variable=body.variable,
         lower=body.lower,
         upper=body.upper,
+        candidate=body.candidate,
         trace_id=trace_id,
     )
     result = engine.matrix_calculus(engine_request)
@@ -489,6 +514,60 @@ def variation(
     return out
 
 
+class StatMechResponse(StatMechResult):
+    calculation_id: uuid.UUID | None = None
+
+
+def _longest_text(value: Any) -> int:
+    """Length of the longest free-text field anywhere in a request."""
+    if isinstance(value, str):
+        return len(value)
+    if isinstance(value, dict):
+        return max((_longest_text(v) for v in value.values()), default=0)
+    if isinstance(value, list):
+        return max((_longest_text(v) for v in value), default=0)
+    return 0
+
+
+@router.post("/statmech", response_model=StatMechResponse)
+def statmech(
+    body: StatMechRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> StatMechResponse:
+    """Statistical mechanics of an explicit system: partition function, thermodynamic derivations,
+    thermal averages and numerical evaluation.
+
+    The whole problem is part of the request, so repeating it with another action reuses it. Every
+    result is returned only if an independent numerical evaluation agreed."""
+    request = StatMechInput(**body.model_dump(exclude=set(Links.model_fields)))
+    _guard(user, limiter, settings, _longest_text(request.model_dump()))
+    _check_links(db, user, body)
+    result = engine.statmech(request)
+    log.info(
+        "compute",
+        operation="statmech",
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        reason=result.reason,
+        user_id=str(user.id),
+    )
+    log_statmech(result, request.system.kind, str(user.id))
+    out = StatMechResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        # the whole problem is kept (even on failure) so that the workbench can restore the form
+        saved["request"] = request.model_dump(mode="json")
+        out.calculation_id = _save_row(
+            db, user, "statmech", f"{request.system.kind} ({request.action})", request.format,
+            request.assumptions, body, result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
 @router.post("/distribution", response_model=DistributionResponse)
 def distribution(
     body: DistributionRequest,
@@ -526,6 +605,104 @@ def distribution(
         saved["request"] = request.model_dump(mode="json", exclude={"expression"})
         out.calculation_id = _save(db, user, "distribution", body, result.status.value, saved)
     return out
+
+
+def _log(operation: str, result: Any, user: UserDep) -> None:
+    """Statuses, durations and enumerated reasons only: never an expression, a name or a number."""
+    log.info(
+        "compute",
+        operation=operation,
+        status=result.status.value,
+        duration_ms=result.duration_ms,
+        reason=getattr(result, "reason", None),
+        user_id=str(user.id),
+    )
+
+
+@router.post("/sums", response_model=SumsResponse)
+def sums(
+    body: SumsRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> SumsResponse:
+    _guard(user, limiter, settings, len(body.input))
+    _check_links(db, user, body)
+    request = SumsInput(
+        expression=_expr(body), action=body.action, variable=body.variable, candidate=body.candidate
+    )
+    result = engine.sums(request)
+    _log("sums", result, user)
+    out = SumsResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        saved["request"] = request.model_dump(mode="json", exclude={"expression"})
+        out.calculation_id = _save(db, user, "sums", body, result.status.value, saved)
+    return out
+
+
+@router.post("/expectation", response_model=ExpectationResponse)
+def expectation(
+    body: ExpectationRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> ExpectationResponse:
+    _guard(user, limiter, settings, len(body.input))
+    _check_links(db, user, body)
+    request = ExpectationInput(
+        expression=_expr(body),
+        random=body.random,
+        independent=body.independent,
+        action=body.action,
+        candidate=body.candidate,
+    )
+    result = engine.expectation(request)
+    _log("expectation", result, user)
+    out = ExpectationResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        saved["request"] = request.model_dump(mode="json", exclude={"expression"})
+        out.calculation_id = _save(db, user, "expectation", body, result.status.value, saved)
+    return out
+
+
+@router.post("/statistics", response_model=StatisticsResponse)
+def statistics(
+    body: StatisticsRequest,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> StatisticsResponse:
+    _guard(user, limiter, settings, _model_length(body))
+    _check_links(db, user, body)
+    request = StatModelInput(**body.model_dump(exclude={"save", "derivation_id", "parent_id"}))
+    result = engine.statistical_model(request)
+    _log("statistical_model", result, user)
+    out = StatisticsResponse(**result.model_dump())
+    if body.save:
+        saved = result.model_dump(mode="json")
+        saved["request"] = request.model_dump(mode="json")
+        label = f"{request.action} {request.family}"
+        out.calculation_id = _save_row(
+            db, user, "statistical_model", label, "text", request.assumptions, body,
+            result.status.value, saved,
+        )  # fmt: skip
+    return out
+
+
+def _model_length(body: StatisticsRequest) -> int:
+    """The longest piece of text: every field is short, but a parameter could be an enormous expression."""
+    texts = [*body.parameters.values(), *(body.data or []), *(body.candidate or {}).values()]
+    if body.prior is not None:
+        texts += list(body.prior.parameters.values())
+    return max((len(t) for t in texts), default=0)
 
 
 @router.post("/identities", response_model=IdentitiesResponse)

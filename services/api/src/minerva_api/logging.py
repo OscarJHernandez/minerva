@@ -148,6 +148,9 @@ ALLOWED_FIELDS = frozenset(
         "matrix_method",
         "result_kind",
         "commutation",
+        # statistical mechanics: counts and enumerated kinds only, never energies or expressions
+        "levels",
+        "system_kind",
     }
 )
 

@@ -2,9 +2,11 @@
 
 from .calculus import matrix_calculus
 from .models import (
+    MatrixAlternative,
     MatrixCalculusInput,
     MatrixCalculusResult,
     MatrixDecl,
+    MatrixDerivative,
     MatrixDiagnostics,
     MatrixStage,
     MatrixStep,
@@ -12,9 +14,11 @@ from .models import (
 )
 
 __all__ = [
+    "MatrixAlternative",
     "MatrixCalculusInput",
     "MatrixCalculusResult",
     "MatrixDecl",
+    "MatrixDerivative",
     "MatrixDiagnostics",
     "MatrixStage",
     "MatrixStep",

@@ -1,7 +1,7 @@
 # Shortcuts for humans and agents. CI calls the underlying commands directly (see .github/workflows/ci.yml);
 # `make check` runs the same set. Run `make help` for the list.
 .DEFAULT_GOAL := help
-.PHONY: help setup check check-py check-web test handbook matrix-benchmark bench fmt dev bench-geometry bench-variational
+.PHONY: help setup check check-py check-web test handbook matrix-benchmark stat-benchmark statmech-benchmark bench fmt dev bench-geometry bench-variational
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -15,6 +15,9 @@ check: check-py check-web ## Everything CI runs for Python and web
 eval-check: ## Fast deterministic benchmark checks: case ground truth, scoring, reports, replay
 	uv run python scripts/eval_models.py --check-cases
 	uv run pytest services/api/tests/test_evaluation.py scripts/tests/test_replay_trace.py
+
+statmech-benchmark: ## Statistical mechanics corpus (answers from closed forms); fails on a wrong answer or a lost refusal
+	uv run python -m minerva_engine.statmech.benchmark --check
 
 reference: ## Independent reference problems (matrix, delta, substitution, mechanics); fails on a wrong answer
 	uv run python -m minerva_engine.reference_benchmark --check
@@ -55,6 +58,9 @@ bench: ## Transformation benchmark with latency and effort (local only; CI asser
 	uv run python -m minerva_knowledge step-benchmark --adapter steps --repeat 5
 matrix-benchmark: ## Matrix calculus benchmark (docs/matrix-benchmark.md)
 	uv run python -m minerva_knowledge matrix-benchmark --repeat 5
+
+stat-benchmark: ## Statistical derivation benchmark against the committed baseline (docs/statistics-benchmark.md)
+	uv run python -m minerva_knowledge stat-benchmark --compare docs/benchmarks/statistics.json
 
 fmt: ## Format Python and JavaScript
 	uv run ruff format .

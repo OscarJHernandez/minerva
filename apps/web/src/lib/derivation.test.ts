@@ -8,6 +8,9 @@ import {
   collectTargets,
   continuation,
   continuations,
+  independenceGroups,
+  instanceWording,
+  randomNames,
   relationLines,
   stepLabel,
   validateSettings,
@@ -237,5 +240,109 @@ describe("distribution steps", () => {
     expect(summary).toMatch(/3\/3 test-function pairings agree \(not a proof\)/);
     expect(summary).not.toMatch(/proved|sample points/);
     expect(continuation(item)).toEqual({ text: "2", latex: "2" });
+  });
+});
+
+describe("sums, expectations and statistical models", () => {
+  it("validates what each of them needs", () => {
+    expect(validateSettings("sums", DEFAULT_SETTINGS)).toBeNull();
+    expect(
+      validateSettings("sums", { ...DEFAULT_SETTINGS, sumsAction: "differentiate", variable: "" }),
+    ).toMatch(/variable/);
+    expect(validateSettings("expectation", DEFAULT_SETTINGS)).toBeNull();
+    expect(validateSettings("expectation", { ...DEFAULT_SETTINGS, random: " " })).toMatch(/random/);
+    expect(
+      validateSettings("expectation", { ...DEFAULT_SETTINGS, random: "X", independent: "X, Z" }),
+    ).toMatch(/Z is in an independence group/);
+  });
+
+  it("never defaults to independence", () => {
+    expect(DEFAULT_SETTINGS.independent).toBe("");
+    expect(independenceGroups(DEFAULT_SETTINGS.independent)).toEqual([]);
+    expect(independenceGroups("X, Y\n\nA B")).toEqual([
+      ["X", "Y"],
+      ["A", "B"],
+    ]);
+    expect(randomNames("X, Y  Z")).toEqual(["X", "Y", "Z"]);
+  });
+
+  it("continues a sums or expectation step from its text, and a statistical step from any expression", () => {
+    const sums = step("a", "sums", "Sum(x[i], (i, 1, n))", {
+      action: "expand",
+      result_text: "n*c",
+      result_latex: "n c",
+    });
+    expect(continuation(sums)).toEqual({ text: "n*c", latex: "n c" });
+    expect(stepLabel(sums)).toBe("Linearity of finite sums");
+    const stat = step("b", "statistical_model", "mle normal", {
+      action: "mle",
+      request: { family: "normal" },
+      estimates: [
+        {
+          parameter: "mu",
+          text: "Sum(x[i], (i, 1, n))/n",
+          latex: "m",
+          optimum: "local",
+          optimum_evidence: "proved",
+          admissible_if: [],
+        },
+        {
+          parameter: "v",
+          text: "W",
+          latex: "w",
+          optimum: "local",
+          optimum_evidence: "proved",
+          admissible_if: [],
+        },
+      ],
+      moments: {},
+      moments_latex: {},
+      expressions: {},
+      expressions_latex: {},
+    });
+    expect(continuations(stat).map((c) => c.text)).toEqual(["Sum(x[i], (i, 1, n))/n", "W"]);
+    expect(continuation(stat, 1)).toMatchObject({ text: "W" });
+    expect(stepLabel(stat)).toBe("Maximum-likelihood estimator, normal");
+  });
+
+  it("cannot continue a refused step", () => {
+    const refused = step(
+      "c",
+      "statistical_model",
+      "x",
+      { action: "mle", estimates: [] },
+      { status: "conditions_not_satisfied" },
+    );
+    expect(continuations(refused)).toEqual([]);
+  });
+
+  it("words the verification as what it is", () => {
+    const sums = step("a", "sums", "x", {
+      verification: {
+        sizes: [{ n: 1 }, { n: 2 }],
+        instances_checked: 2,
+        instances_agreed: 2,
+        passed: true,
+      },
+    });
+    expect(verificationSummary(sums)).toBe(
+      "checked for n = 1; n = 2 (explicit expansion; 2/2 agree), not proved for every size",
+    );
+    expect(instanceWording({ sizes: [], instances_checked: 1, instances_agreed: 1 })).toMatch(
+      /explicit instances/,
+    );
+    const expectation = step("e", "expectation", "x", {
+      verification: { models_checked: 2, models_agreed: 2 },
+    });
+    expect(verificationSummary(expectation)).toMatch(/evidence, not a proof/);
+    const stat = step("s", "statistical_model", "x", {
+      checks: [
+        { points_checked: 4, points_agreed: 4 },
+        { points_checked: 4, points_agreed: 3 },
+      ],
+    });
+    expect(verificationSummary(stat)).toBe(
+      "2 independent checks: 7/8 points agree (evidence, not a proof)",
+    );
   });
 });
