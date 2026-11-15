@@ -241,6 +241,10 @@ async def _model_step(
     step = _Step()
     parts: list[str] = []
     started = time.monotonic()
+    # Text that starts like JSON or a code fence may be a tool call written as prose: it is held back until
+    # the call ends, and shown only if it turns out to be prose. (The stored reply never contained it; the
+    # live view used to show it and then lose it.) Once the text starts like anything else it streams as usual.
+    holding = True
     try:
         # The model host's own timeout is per read: a stream that keeps trickling is cut here.
         async with asyncio.timeout(seconds):
@@ -249,7 +253,13 @@ async def _model_step(
                     if step.first_token_ms is None:
                         step.first_token_ms = _ms(started)
                     parts.append(chunk.text)
-                    yield {"event": "text", "data": {"delta": chunk.text}}
+                    if holding:
+                        so_far = "".join(parts).lstrip()
+                        if so_far and not so_far.startswith(("{", "`")):
+                            holding = False
+                            yield {"event": "text", "data": {"delta": "".join(parts)}}
+                    else:
+                        yield {"event": "text", "data": {"delta": chunk.text}}
                 step.calls.extend(chunk.tool_calls)
                 if chunk.usage is not None:
                     step.usage = chunk.usage
@@ -258,6 +268,8 @@ async def _model_step(
     except LLMError as exc:
         step.error = exc
     step.text = "".join(parts)
+    if holding and step.text.strip() and not looks_like_tool_call(step.text):
+        yield {"event": "text", "data": {"delta": step.text}}
     step.latency_ms = _ms(started)
     yield {"event": "_step", "data": step}
 
@@ -896,6 +908,8 @@ async def _run_turn(
         else Block(kind="text", segments=split_segments(item, known, quoted))
         for item in order
     ]
+    if _pending_claims(blocks):  # formulas the model wrote are about to be tested: tell the user
+        yield {"event": "phase", "data": {"phase": "checking"}}
     claims_started = time.monotonic()
     debug.claims, debug.claim_check = await _check_claims_in_budget(
         blocks, ctx, trace, remaining(), prior_relations, prior_assumptions, prior_matrices

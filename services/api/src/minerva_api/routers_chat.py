@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import copy
@@ -11,7 +12,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
@@ -35,7 +36,7 @@ from .agent.equations import (
     resolve_references,
     unverified_inputs,
 )
-from .agent.events import AssistantMessage, Block, TraceStep, TurnDebug
+from .agent.events import AssistantMessage, Block, Card, TraceStep, TurnDebug
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent, vector_names
 from .agent.openrouter import check_connection
@@ -157,6 +158,10 @@ class SendMessage(BaseModel):
     # Overrides of the model parameters for this turn (debug panel); ranges and who may change what
     # are enforced by `agent.params.resolve`.
     params: ParamOverrides | None = None
+    # new: a new message. retry: answer the last user message again (the reply after it, if any, is
+    # replaced; `content` is ignored). edit: replace the text of the last user message with `content` and
+    # answer it again. Neither stores the user's message a second time.
+    mode: Literal["new", "retry", "edit"] = "new"
 
 
 class ConnectionOut(BaseModel):
@@ -946,6 +951,40 @@ def _context_ok(settings: Settings) -> bool:
     return bool(needed < settings.llm_num_ctx - reserve)
 
 
+def _store_stopped(session_factory: Any, conv_id: uuid.UUID, order: list[str | Card]) -> None:
+    """Keep what had arrived when the client went away, so the conversation shows it as stopped.
+
+    Without this the user's message would sit with no reply, or a reply they saw would be gone after a
+    reload. Nothing arrived: nothing is stored. The partial prose is not checked (the turn ended), so its
+    formulas carry no mark but also no claim of verification.
+    """
+    if not order:
+        return
+    blocks = [
+        Block(kind="card", card=item)
+        if isinstance(item, Card)
+        else Block(kind="text", segments=split_segments(item, set(), {}))
+        for item in order
+    ]
+    message = AssistantMessage(
+        text="\n\n".join(i for i in order if isinstance(i, str)),
+        blocks=blocks,
+        trace=[],
+        truncated=True,
+        stop_reason="stopped",
+    )
+    with session_factory() as session:
+        session.add(
+            ChatMessage(
+                conversation_id=conv_id, role="assistant", content=message.model_dump(mode="json")
+            )
+        )
+        conv = session.get(Conversation, conv_id)
+        if conv is not None:
+            conv.updated_at = utcnow()
+        session.commit()
+
+
 def _backfill_numbers(db: Any, conversation: Conversation, messages: list[ChatMessage]) -> None:
     """Number the equations of a conversation that predates equation numbers (and was not numbered yet).
 
@@ -1072,24 +1111,35 @@ async def send_message(
             .order_by(ChatMessage.created_at, ChatMessage.id)
         )
     )
+    text = body.content
+    reused: ChatMessage | None = None  # retry / edit: the user message is kept, not stored again
+    if body.mode != "new":
+        last_user = next((m for m in reversed(previous) if m.role == "user"), None)
+        if last_user is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "There is no message to answer again.")
+        cut = previous.index(last_user)
+        for later in previous[cut + 1 :]:  # the reply being replaced
+            db.delete(later)
+        previous = previous[:cut]
+        reused = last_user
+        if body.mode == "retry":
+            text = str(last_user.content.get("text", ""))
     _backfill_numbers(db, conversation, previous)
     equations = build_table(previous, conversation.equation_counter)
     # What "equation 3" in this message means (resolved before this message's own formulas are numbered).
-    shown_references, reference_note_text = resolve_references(
-        find_references(body.content), equations
-    )
-    user_equations = number_user_text(body.content, equations)
+    shown_references, reference_note_text = resolve_references(find_references(text), equations)
+    user_equations = number_user_text(text, equations)
     history, prior_known, prior_quoted, prior_results, prior_restrictions = _history(
         previous, max_messages=params.history_messages, max_tokens=params.history_tokens
     )
-    prior_groups = conversation_groups(_conversation_events(previous, body.content))
+    prior_groups = conversation_groups(_conversation_events(previous, text))
     prior_unverified = unverified_inputs(previous)
-    prior_relations, prior_assumptions = _claim_context(previous, body.content)
-    prior_matrices = _prior_matrices(previous, body.content)
+    prior_relations, prior_assumptions = _claim_context(previous, text)
+    prior_matrices = _prior_matrices(previous, text)
     if history and history[-1]["role"] == "user":  # the last reply was never stored: one message
-        history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + body.content}
+        history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
     else:
-        history.append({"role": "user", "content": body.content})
+        history.append({"role": "user", "content": text})
     if reference_note_text:  # for the model only: the stored message stays as the user typed it
         history[-1] = {
             "role": "user",
@@ -1097,13 +1147,16 @@ async def send_message(
         }
 
     if not previous:
-        conversation.title = _title(body.content) or conversation.title
-    user_content: dict[str, Any] = {"text": body.content}
+        conversation.title = _title(text) or conversation.title
+    user_content: dict[str, Any] = {"text": text}
     if user_equations:
         user_content["equations"] = user_equations
     if shown_references:
         user_content["references"] = shown_references
-    db.add(ChatMessage(conversation_id=conversation.id, role="user", content=user_content))
+    if reused is not None:
+        reused.content = user_content  # a new object: the JSON column notices the change
+    else:
+        db.add(ChatMessage(conversation_id=conversation.id, role="user", content=user_content))
     conversation.equation_counter = equations.counter
     conversation.updated_at = utcnow()
     db.commit()
@@ -1138,6 +1191,10 @@ async def send_message(
         outcome = "error"
         counts: dict[str, Any] = {"steps": 0, "tool_calls": 0, "tool_errors": 0}  # numbers only
         stop_reason = "error"
+        arrived: list[
+            str | Card
+        ] = []  # prose and cards sent so far, in order (kept if the client leaves)
+        replied = False
         try:
             async for event in run_agent(
                 llm,
@@ -1157,7 +1214,15 @@ async def send_message(
                 prior_unverified=prior_unverified,
                 info=info,
             ):
+                if event["event"] == "text":
+                    if arrived and isinstance(arrived[-1], str):
+                        arrived[-1] += event["data"]["delta"]
+                    else:
+                        arrived.append(event["data"]["delta"])
+                elif event["event"] == "card":
+                    arrived.append(Card.model_validate(event["data"]))
                 if event["event"] == "message":
+                    replied = True
                     stop_reason = str(event["data"].get("stop_reason") or "completed")
                     outcome = "error" if stop_reason in ("model_error", "internal_error") else "ok"
                     trace = event["data"]["trace"]
@@ -1203,6 +1268,12 @@ async def send_message(
                         session.commit()
                 yield _sse(event["event"], {**event["data"], "trace_id": trace_id})
             yield _sse("done", {"trace_id": trace_id})
+        except (asyncio.CancelledError, GeneratorExit):
+            # The browser went away (Stop, a closed tab, a dropped connection) before the reply was stored.
+            stop_reason = "stopped"
+            if not replied:
+                _store_stopped(session_factory, conv_id, arrived)
+            raise
         except Exception:
             log.error("chat_turn_failed", trace_id=trace_id)
             yield _sse(

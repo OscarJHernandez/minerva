@@ -109,6 +109,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`test_every_tool_is_core_or_in_exactly_one_group`), a new rule goes in the block of its group, and
   `test_the_smallest_request_stays_far_below_a_small_window` fails when the core grows too large. Do not send every tool
   again "to be safe" and do not remove the estimate before a model call.
+- Turn lifecycle in the chat: `SendMessage.mode` is `new`, `retry` (answer the last user message again) or `edit` (replace its text
+  and answer again); the reply after it is deleted and the user message is kept, never stored twice (equation numbers are not
+  reused: the counter is a high-water mark, and a reference to a number whose message was replaced is told "no longer exists"). A
+  client that leaves mid-reply (Stop, a closed tab) gets what had arrived stored as a `stop_reason: "stopped"` message
+  (`_store_stopped`; nothing arrived: nothing stored), a `phase` event tells the client when the formulas are being checked, and text
+  that starts like JSON or a code fence is held back until the model call ends so a tool call written as prose is never shown. A
+  message sent after a reply that was never stored is merged with the unreplied one (the model never sees two user messages in a row).
+  The composer gives the text back when a send failed before anything was sent; the address `/c/<id>` names the open conversation.
 - Equation numbers (`agent/equations.py`): every displayed formula (reply or the user's message) and every tool result with a
   primary `result_latex` gets a number, one counter per conversation (`Conversation.equation_counter`, a high-water mark that is
   never lowered), assigned by the server after the turn in reading order; a formula already numbered keeps its number. A number

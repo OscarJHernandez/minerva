@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError, api } from "@/lib/api";
+import { safeNext } from "@/lib/next-path";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -19,7 +20,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     setError(null);
     try {
       await (isRegister ? api.register(email, password) : api.login(email, password));
-      router.push("/");
+      // Back to the page the user came from (the proxy adds `next`), if it is a path on this site.
+      router.push(safeNext(new URLSearchParams(window.location.search).get("next")));
       router.refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Something went wrong. Try again.");

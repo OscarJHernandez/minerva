@@ -192,10 +192,15 @@ def resolve_references(
         if item is None:
             if ref.explicit:
                 shown.append({"number": ref.number, "latex": None, "source": "unknown"})
-                known = f"(1) to ({table.counter})" if table.counter else "none yet"
-                lines.append(
-                    f"({ref.number}) does not exist in this conversation (equations: {known})."
-                )
+                if ref.number <= table.counter:  # it was numbered once: its message was replaced
+                    lines.append(
+                        f"({ref.number}) no longer exists: the message that had it was replaced."
+                    )
+                else:
+                    known = f"(1) to ({table.counter})" if table.counter else "none yet"
+                    lines.append(
+                        f"({ref.number}) does not exist in this conversation (equations: {known})."
+                    )
             continue
         shown.append({"number": ref.number, "latex": item.latex, "source": item.source})
         if item.result_id:

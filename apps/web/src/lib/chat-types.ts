@@ -890,6 +890,7 @@ export type StreamEvent =
   | { event: "text"; data: { delta: string } }
   | { event: "tool_call"; data: ToolRun }
   | { event: "card"; data: Card }
+  | { event: "phase"; data: { phase: "checking" } }
   | { event: "message"; data: AssistantContent }
   | {
       event: "error";

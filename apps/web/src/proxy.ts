@@ -8,7 +8,7 @@ const API_URL = () => process.env.MINERVA_API_URL ?? "http://localhost:8100";
  * Next.js 16 proxy (formerly middleware):
  *  - `/api/v1/*` is forwarded to the FastAPI service, so the browser only ever talks to one
  *    origin and the httpOnly session cookie stays same-origin. Nothing else is forwarded.
- *  - The workspace (`/`) redirects to `/login` when no session cookie is present. This is a
+ *  - The workspace (`/`, a conversation at `/c/<id>`, the workbench) redirects to `/login` when no session cookie is present. This is a
  *    convenience only; the API checks the session on every call and is the real authority.
  *  - Every HTML response gets a nonce-based Content-Security-Policy.
  */
@@ -22,10 +22,13 @@ export function proxy(request: NextRequest) {
   }
 
   if (
-    (pathname === "/" || pathname.startsWith("/workbench")) &&
+    (pathname === "/" || pathname.startsWith("/workbench") || pathname.startsWith("/c/")) &&
     !request.cookies.has(SESSION_COOKIE)
   ) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const login = new URL("/login", request.url);
+    // Come back to the page that was asked for (login checks it is a path on this site).
+    if (pathname !== "/") login.searchParams.set("next", pathname + search);
+    return NextResponse.redirect(login);
   }
 
   const nonce = btoa(crypto.randomUUID());

@@ -1,6 +1,7 @@
 """The follow-up scenario of the bug report, over HTTP: later turns must reach the model with the earlier ones."""
 
 import json
+import uuid
 from collections.abc import Iterator
 from typing import Any
 
@@ -163,3 +164,116 @@ def test_a_tool_call_in_an_earlier_turn_is_replayed_with_its_result(
     assert kinds == ["system", "user", "assistant", "tool", "assistant", "user"]
     assert "result_id=r1" in follow_up[3]["content"]
     assert Chunk  # the replay model builds its replies from chunks
+
+
+# --- retry, edit, stop ------------------------------------------------------------------------------------------
+def stored(client: TestClient, cid: str) -> list[dict[str, Any]]:
+    return client.get(f"/v1/chat/conversations/{cid}").json()["messages"]  # type: ignore[no-any-return]
+
+
+def test_retry_answers_the_last_message_again_without_storing_it_twice() -> None:
+    for client, cid, llm in start():
+        llm.replies = [say("first answer $$a = 1$$"), say("second answer")]
+        send(client, cid, "tell me about a")
+        before = stored(client, cid)
+        assert [m["role"] for m in before] == ["user", "assistant"]
+        events = send(client, cid, "ignored on retry", mode="retry")
+        assert next(d for e, d in events if e == "message")["text"] == "second answer"
+        after = stored(client, cid)
+        assert [m["role"] for m in after] == ["user", "assistant"]  # one user message, one reply
+        assert (
+            after[0]["content"]["text"] == "tell me about a"
+        )  # the stored text, not the request's
+        assert after[0]["id"] == before[0]["id"]  # the same row: not stored again
+        sent = llm.seen[-1]
+        assert [m["role"] for m in sent] == ["system", "user"] and sent[1][
+            "content"
+        ] == "tell me about a"
+
+
+def test_a_replaced_reply_is_gone_and_its_equation_numbers_are_not_reused() -> None:
+    for client, cid, llm in start():
+        llm.replies = [say("$$a = 1$$"), say("$$b = 2$$"), say("seen")]
+        send(client, cid, "one")
+        send(client, cid, "one", mode="retry")  # the reply with equation (1) is replaced
+        numbers = [
+            s["number"]
+            for m in stored(client, cid)
+            if m["role"] == "assistant"
+            for b in m["content"]["blocks"]
+            for s in b["segments"]
+            if s["type"] == "display_math"
+        ]
+        assert numbers == [2]  # (1) was given once and is never given again
+        send(client, cid, "use equation 1")
+        user = stored(client, cid)[-2]["content"]
+        assert user["references"] == [{"number": 1, "latex": None, "source": "unknown"}]
+        assert "no longer exists" in llm.seen[-1][-1]["content"]
+
+
+def test_edit_replaces_the_last_message_and_its_reply() -> None:
+    for client, cid, llm in start():
+        llm.replies = [say("old reply"), say("new reply")]
+        send(client, cid, "Integrate $$x^2$$")
+        events = send(client, cid, "Integrate $$x^3$$ instead", mode="edit")
+        assert next(d for e, d in events if e == "message")["text"] == "new reply"
+        messages = stored(client, cid)
+        assert [m["role"] for m in messages] == ["user", "assistant"]
+        assert messages[0]["content"]["text"] == "Integrate $$x^3$$ instead"
+        assert [e["latex"] for e in messages[0]["content"]["equations"]] == ["x^3"]
+        assert llm.seen[-1][-1]["content"] == "Integrate $$x^3$$ instead"
+
+
+def test_retry_with_nothing_to_answer_is_refused() -> None:
+    for client, cid, _llm in start():
+        refused = send(client, cid, "x", mode="retry")
+        assert refused[0][0] == "http" and refused[0][1]["status"] == 400
+
+
+def test_a_question_whose_reply_was_lost_can_be_retried() -> None:
+    from minerva_api.db import ChatMessage
+
+    for client, cid, llm in start():
+        llm.replies = [say("here it is")]
+        with client.app.state.session_factory() as session:  # type: ignore[attr-defined]
+            session.add(
+                ChatMessage(conversation_id=uuid.UUID(cid), role="user", content={"text": "lost"})
+            )
+            session.commit()
+        send(client, cid, "lost", mode="retry")
+        assert [m["role"] for m in stored(client, cid)] == ["user", "assistant"]
+        assert llm.seen[0][-1]["content"] == "lost"
+
+
+def test_the_user_is_told_when_formulas_are_being_checked() -> None:
+    for client, cid, llm in start():
+        llm.replies = [say("It is $x = y + 1$.")]
+        events = send(client, cid, "tell me")
+        kinds = [e for e, _ in events]
+        assert "phase" in kinds and kinds.index("phase") < kinds.index("message")
+        assert next(d for e, d in events if e == "phase")["phase"] == "checking"
+    for client, cid, llm in start():
+        llm.replies = [say("Which variable?")]  # nothing to check: no extra event
+        assert "phase" not in [e for e, _ in send(client, cid, "tell me")]
+
+
+def test_what_arrived_before_the_client_left_is_kept_as_stopped() -> None:
+    from minerva_api.agent.events import Card
+    from minerva_api.routers_chat import _store_stopped
+
+    for client, cid, _llm in start():
+        card = Card(id="c1", tool="simplify", type="error", title="t", data={"message": "m"})
+        _store_stopped(
+            client.app.state.session_factory,  # type: ignore[attr-defined]
+            uuid.UUID(cid),
+            ["The answer begins $x", card, "and goes on"],
+        )
+        (message,) = stored(client, cid)
+        content = message["content"]
+        assert message["role"] == "assistant" and content["stop_reason"] == "stopped"
+        assert content["truncated"] is True
+        assert [b["kind"] for b in content["blocks"]] == ["text", "card", "text"]
+        assert "$x" in content["text"]
+    for client, cid, _llm in start():
+        _store_stopped(client.app.state.session_factory, uuid.UUID(cid), [])  # type: ignore[attr-defined]
+        assert stored(client, cid) == []  # nothing arrived: nothing is stored

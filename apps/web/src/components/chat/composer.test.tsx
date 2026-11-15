@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Composer } from "./composer";
 
@@ -219,5 +219,49 @@ describe("Composer: layout guards", () => {
       expect(screen.getByRole("button", { name })).toHaveClass("h-9");
     }
     expect(screen.getByRole("button", { name: "Insert a formula" })).toHaveClass("-ml-2");
+  });
+});
+
+describe("Composer: a message is not lost", () => {
+  async function typeAndSend(onSend: () => Promise<boolean>) {
+    render(<Composer {...props} onSend={onSend} />);
+    const area = screen.getByLabelText("Message") as HTMLTextAreaElement;
+    fireEvent.change(area, { target: { value: "differentiate x^2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    return area;
+  }
+
+  it("gives the text back when the send failed before anything was sent", async () => {
+    const area = await typeAndSend(() => Promise.resolve(false));
+    await waitFor(() => expect(area.value).toBe("differentiate x^2"));
+  });
+
+  it("clears the box when the message went out", async () => {
+    const area = await typeAndSend(() => Promise.resolve(true));
+    await waitFor(() => expect(area.value).toBe(""));
+  });
+
+  it("does not overwrite what the user has typed since", async () => {
+    let finish: (ok: boolean) => void = () => undefined;
+    const area = await typeAndSend(() => new Promise<boolean>((resolve) => (finish = resolve)));
+    fireEvent.change(area, { target: { value: "something new" } });
+    finish(false);
+    await waitFor(() => expect(area.value).toBe("something new"));
+  });
+
+  it("counts near the limit and refuses a message that is too long", () => {
+    const onSend = vi.fn();
+    render(<Composer {...props} onSend={onSend} />);
+    const area = screen.getByLabelText("Message");
+    fireEvent.change(area, { target: { value: "x".repeat(100) } });
+    expect(screen.queryByTestId("message-counter")).not.toBeInTheDocument();
+    fireEvent.change(area, { target: { value: "x".repeat(3600) } });
+    expect(screen.getByTestId("message-counter")).toHaveTextContent("3600/4000");
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+    fireEvent.change(area, { target: { value: "x".repeat(4001) } });
+    expect(screen.getByRole("alert")).toHaveTextContent("too long to send");
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
+    expect(onSend).not.toHaveBeenCalled();
   });
 });

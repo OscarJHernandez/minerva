@@ -119,6 +119,7 @@ export async function sendMessage(
   signal?: AbortSignal,
   provider?: ProviderChoice,
   params?: Partial<ModelParams>,
+  mode?: "retry" | "edit",
 ): Promise<void> {
   const response = await fetch(`/api/v1/chat/conversations/${conversationId}/messages`, {
     method: "POST",
@@ -128,6 +129,7 @@ export async function sendMessage(
       content,
       ...(provider ? { provider } : {}),
       ...(params && Object.keys(params).length > 0 ? { params } : {}),
+      ...(mode ? { mode } : {}),
     }),
     signal,
   });

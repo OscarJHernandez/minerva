@@ -451,3 +451,33 @@ def test_a_prompt_cut_by_the_host_is_recognised_by_its_size() -> None:
     assert summarise([cut])["context"]["runs_at_window"] == 1
     fine = result("b", max_prompt_tokens=8000, context_window=32768)
     assert summarise([fine])["context"]["runs_at_window"] == 0
+
+
+# --- the live view never shows a tool call that was written as prose --------------------------------------------
+def streamed_text(events: list[dict[str, Any]]) -> list[str]:
+    return [e["data"]["delta"] for e in events if e["event"] == "text"]
+
+
+def test_a_tool_call_written_as_prose_is_never_streamed(ctx: ToolContext) -> None:
+    call_text = '{"name": "simplify", "arguments": {"latex": "x"}}'
+    llm = ReplayLLM(
+        [[Chunk(text=call_text[:20]), Chunk(text=call_text[20:])], say("Done, it is $x$.")],
+        repeat_last=False,
+    )
+    events = play(llm, ctx, [{"role": "user", "content": "simplify x"}])
+    shown = "".join(streamed_text(events))
+    assert "arguments" not in shown and "Done, it is" in shown
+
+
+def test_prose_that_starts_with_a_brace_is_shown_once_it_is_known_to_be_prose(
+    ctx: ToolContext,
+) -> None:
+    llm = ReplayLLM([[Chunk(text="{1, 2, 3}"), Chunk(text=" is a set of three numbers.")]])
+    events = play(llm, ctx, [{"role": "user", "content": "what is this"}])
+    assert "".join(streamed_text(events)) == "{1, 2, 3} is a set of three numbers."
+
+
+def test_ordinary_prose_still_streams_piece_by_piece(ctx: ToolContext) -> None:
+    llm = ReplayLLM([[Chunk(text="Hello"), Chunk(text=" there"), Chunk(text=", friend.")]])
+    events = play(llm, ctx, [{"role": "user", "content": "hi"}])
+    assert streamed_text(events) == ["Hello", " there", ", friend."]

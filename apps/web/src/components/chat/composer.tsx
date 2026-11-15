@@ -4,11 +4,13 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { ACCEPTED_IMAGE_TYPES, checkImageFile } from "@/lib/image-prep";
 import { FormulaPopover } from "./formula-popover";
 import { ImageFormulasPanel } from "./image-formulas-panel";
+import { MarksLegend } from "./marks-legend";
 
 interface Props {
   disabled: boolean;
   busy: boolean;
-  onSend: (text: string) => void;
+  /** Returns false when nothing was sent, so the text goes back into the box. */
+  onSend: (text: string) => void | Promise<boolean>;
   onStop: () => void;
   /** The server can read formulas from a picture. Hides the "Add image" button when false. */
   imagesEnabled?: boolean;
@@ -20,9 +22,14 @@ interface Props {
   panel?: ReactNode;
   /** Text to put in the message at the cursor (a reference to an equation); a new `id` inserts again. */
   insertRequest?: { id: number; text: string } | null;
+  /** Replaces what is in the box (editing the last message); a new `id` replaces again. */
+  replaceRequest?: { id: number; text: string } | null;
 }
 
 const MAX_HEIGHT_VH = 0.4;
+/** The longest message the server accepts (routers_chat.SendMessage). */
+export const MAX_MESSAGE_CHARS = 4000;
+const COUNTER_FROM = 3500;
 const NOT_SET_UP = "Reading images is not set up on this server, so the picture was not read.";
 
 /** The first picture in a paste or a drop. A screenshot may be in `items` while `files` is empty. */
@@ -53,12 +60,14 @@ export function Composer({
   panel,
   beforeSend,
   insertRequest,
+  replaceRequest,
 }: Props) {
   const [text, setText] = useState("");
   const [formula, setFormula] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [legend, setLegend] = useState(false);
   const dragDepth = useRef(0);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -86,6 +95,14 @@ export function Composer({
     [text.length],
   );
   const insert = useCallback((latex: string) => insertMany([latex]), [insertMany]);
+
+  const replacedId = useRef(0);
+  useEffect(() => {
+    if (!replaceRequest || replaceRequest.id === replacedId.current) return;
+    replacedId.current = replaceRequest.id;
+    setText(replaceRequest.text);
+    requestAnimationFrame(() => areaRef.current?.focus());
+  }, [replaceRequest]);
 
   // A reference clicked in the conversation ("(3)") goes in at the cursor, set apart from the word before it.
   const insertedId = useRef(0);
@@ -122,14 +139,22 @@ export function Composer({
     const value = text.trim();
     if (!value || disabled || busy) return;
     if (beforeSend && !beforeSend()) return;
-    onSend(value);
+    if (value.length > MAX_MESSAGE_CHARS) return;
+    const sent = onSend(value);
     setText("");
     if (areaRef.current) areaRef.current.style.height = "";
+    // A failed send must not cost the user their message: it goes back unless they started a new one.
+    if (sent instanceof Promise) {
+      void sent.then((ok) => {
+        if (ok === false) setText((t) => (t === "" ? value : t));
+      });
+    }
   }
 
   return (
     <div className="border-t border-rule bg-paper pb-4 pt-3">
       {panel}
+      {legend && <MarksLegend onClose={() => setLegend(false)} />}
       {formula && <FormulaPopover onInsert={insert} onClose={close} />}
       {image && <ImageFormulasPanel file={image} onInsert={insertMany} onClose={closeImage} />}
       {imageError && (
@@ -253,7 +278,20 @@ export function Composer({
             </>
           )}
           {toolbar}
-          <span className="ml-auto hidden pr-2 text-xs text-muted md:inline" aria-hidden="true">
+          {text.length >= COUNTER_FROM && (
+            <span
+              role={text.length > MAX_MESSAGE_CHARS ? "alert" : undefined}
+              data-testid="message-counter"
+              className={`ml-auto pr-2 text-xs tabular-nums ${text.length > MAX_MESSAGE_CHARS ? "text-bad" : "text-muted"}`}
+            >
+              {text.length}/{MAX_MESSAGE_CHARS}
+              {text.length > MAX_MESSAGE_CHARS && " — too long to send"}
+            </span>
+          )}
+          <span
+            className={`${text.length >= COUNTER_FROM ? "" : "ml-auto "}hidden pr-2 text-xs text-muted md:inline`}
+            aria-hidden="true"
+          >
             Ctrl/⌘ + Enter to send
           </span>
           {busy ? (
@@ -268,7 +306,7 @@ export function Composer({
             <button
               type="button"
               onClick={submit}
-              disabled={disabled || !text.trim()}
+              disabled={disabled || !text.trim() || text.trim().length > MAX_MESSAGE_CHARS}
               className="ml-auto h-9 shrink-0 rounded-lg bg-accent px-4 text-sm font-medium text-accent-ink disabled:opacity-40 md:ml-0"
             >
               Send
@@ -277,7 +315,15 @@ export function Composer({
         </div>
       </div>
       <p className="mt-1.5 text-center text-xs text-muted">
-        Results come from checked computation. Formulas written by the model alone are marked.
+        Results come from checked computation. Formulas written by the model alone are marked.{" "}
+        <button
+          type="button"
+          onClick={() => setLegend((l) => !l)}
+          aria-expanded={legend}
+          className="text-accent hover:underline"
+        >
+          What do the marks mean?
+        </button>
       </p>
     </div>
   );
