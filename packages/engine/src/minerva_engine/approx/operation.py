@@ -15,10 +15,13 @@ from .chebyshev import chebyshev
 from .common import Context, Refused, build_context, diagnostics, failure
 from .compare import compare
 from .expand import asymptotic, laurent, perturbation, taylor
+from .fourier import fourier
 from .leading import leading, limit
+from .legendre import legendre
 from .models import ApproximationInput, ApproximationReport
 from .multivar import multivariable
 from .pade import pade
+from .piecewise import piecewise
 
 Handler = Callable[[Context], ApproximationReport]
 
@@ -33,6 +36,9 @@ HANDLERS: dict[str, Handler] = {
     "pade": pade,
     "chebyshev": chebyshev,
     "compare": compare,
+    "fourier": fourier,
+    "legendre": legendre,
+    "piecewise": piecewise,
 }
 
 

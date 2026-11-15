@@ -21,8 +21,10 @@ from .expand import taylor
 from .interval import Measured, Reference, build_reference, measure, parse_tolerance, tolerance_met
 from .models import ApproximationReport, Candidate, Complexity
 from .pade import pade_core
+from .piecewise import build_piecewise, uniform_knots
 
 DEFAULT_METHODS = ("taylor", "pade", "chebyshev")
+ALL_METHODS = (*DEFAULT_METHODS, "piecewise")
 CAP = 30
 
 
@@ -78,6 +80,17 @@ def _chebyshev_candidate(
     return candidate_of(report, measured, f"Chebyshev, degree {degree}"), measured
 
 
+def _piecewise_candidate(
+    ctx: Context, ref: Reference, budget: int
+) -> tuple[Candidate, Measured | None]:
+    """Cubic Hermite pieces (4 coefficients each) with about the same number of coefficients."""
+    segments = max(1, (budget + 1) // 4)
+    report, measured = build_piecewise(
+        ctx, ref, uniform_knots(ref, segments), "pchip", None, None, []
+    )
+    return candidate_of(report, measured, f"Piecewise cubic, {segments} segments"), measured
+
+
 def _fit(candidate: Candidate, measured: Measured | None, tolerance: Any, kind: str | None) -> None:
     if candidate.status is Status.OK and measured is not None:
         candidate.tolerance_met = tolerance_met(measured, tolerance, kind)
@@ -93,7 +106,9 @@ def compare(ctx: Context) -> ApproximationReport:
     data = ctx.data
     ref = build_reference(ctx)
     tolerance, kind = parse_tolerance(ctx)
-    methods = [m for m in (data.methods or list(DEFAULT_METHODS)) if m in DEFAULT_METHODS]
+    methods = [m for m in (data.methods or list(DEFAULT_METHODS)) if m in ALL_METHODS]
+    if not data.methods and "jump_discontinuity" in ref.warnings:
+        methods.append("piecewise")
     if not methods:
         raise Refused(
             Status.UNSUPPORTED,
@@ -130,6 +145,8 @@ def compare(ctx: Context) -> ApproximationReport:
             round_.append(_pade_candidate(ctx, ref, x0, budget))
         if "chebyshev" in methods:
             round_.append(_chebyshev_candidate(ctx, ref, budget))
+        if "piecewise" in methods and budget >= 3:
+            round_.append(_piecewise_candidate(ctx, ref, budget))
         for cand, measured in round_:
             _fit(cand, measured, tolerance, kind)
         history += [c for c, _ in round_]

@@ -47,6 +47,7 @@ class Reference:
     zero_crossing: bool
     warnings: list[Warning] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    exact_ends: tuple[Any, Any] | None = None  # the interval ends as the user wrote them (SymPy)
 
     @property
     def domain_latex(self) -> str:
@@ -107,9 +108,9 @@ def single_variable(ctx: Context) -> None:
         )
 
 
-def build_reference(ctx: Context) -> Reference:
+def build_reference(ctx: Context, bounds: tuple[Any, Any] | None = None) -> Reference:
     single_variable(ctx)
-    a, b = parse_interval(ctx)
+    a, b = bounds if bounds is not None else parse_interval(ctx)
     with mpmath.workdps(DPS_REF):
         f = compile_mp(ctx.expr, ctx.var)
         n = GRID
