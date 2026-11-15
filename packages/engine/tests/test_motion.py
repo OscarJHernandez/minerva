@@ -121,7 +121,9 @@ def test_eccentric_orbit_sweep_is_verified_not_rejected_for_loose_tolerance() ->
 
 
 def test_double_pendulum_over_a_short_span_is_verified() -> None:
-    r = solve(
+    # A generous budget: on a busy CI pod the 20 s default let this run reach the time limit
+    # (resource_limit) before the verification this test is about.
+    request = MotionRequest(
         lagrangian=PENDULUM,
         coordinates=["theta_1", "theta_2"],
         parameters={"m_1": 1.0, "m_2": 1.0, "l_1": 1.0, "l_2": 1.0, "g": 9.81},
@@ -129,6 +131,7 @@ def test_double_pendulum_over_a_short_span_is_verified() -> None:
         initial_velocities=[0.0, 0.0],
         t_end=5.0,
     )
+    r = integrate_motion(request, Limits(timeout_seconds=120))
     assert r.status is Status.OK and r.runs[0].verification.passed
 
 
