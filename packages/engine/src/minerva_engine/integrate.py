@@ -304,7 +304,7 @@ def _grid_is_clean(fn: object, a: mpmath.mpf, b: mpmath.mpf) -> bool:
     return True
 
 
-def _definite(
+def definite_value(
     f: sp.Expr,
     symbol: sp.Symbol,
     lower: sp.Expr,
@@ -313,7 +313,12 @@ def _definite(
     notation: str,
     base: dict[str, object],
     deadline: float,
-) -> IntegrateResult:
+) -> tuple[sp.Expr | None, IntegrateResult]:
+    """A verified definite integral as an expression, with the full result.
+
+    The expression is None unless the status is OK: it exists only if SymPy's value came with
+    no unmet condition and quadrature agreed (the same checks as `integrate`).
+    """
     common = {
         **base,
         "definite": True,
@@ -324,11 +329,13 @@ def _definite(
     try:
         raw = sp.integrate(f, (symbol, lower, upper), conds="separate")
     except Exception:  # SymPy raises many things for what it cannot do
-        return _fail(Status.UNSUPPORTED, "Minerva could not integrate this expression.", **common)
+        return None, _fail(
+            Status.UNSUPPORTED, "Minerva could not integrate this expression.", **common
+        )
     value, cond = raw if isinstance(raw, tuple) else (raw, sp.true)
     if cond is not sp.true and cond is not True:
         parts = list(cond.args) if isinstance(cond, sp.And) else [cond]
-        return _fail(
+        return None, _fail(
             Status.CONDITIONS_NOT_SATISFIED,
             "The value exists only under conditions that your assumptions do not imply. Declare "
             "them (for example that a parameter is positive) and try again.",
@@ -336,13 +343,13 @@ def _definite(
             **common,
         )
     if value.has(sp.Integral):
-        return _fail(
+        return None, _fail(
             Status.UNSUPPORTED,
             "No closed form was found. This does not prove that none exists.",
             **common,
         )
     if value.has(sp.oo, -sp.oo, sp.zoo, sp.nan):
-        return _fail(
+        return None, _fail(
             Status.UNSUPPORTED,
             "SymPy reports that the integral diverges or is undefined. Minerva does not verify "
             "divergence, so it shows no value.",
@@ -350,7 +357,7 @@ def _definite(
         )
     check = check_definite(f, symbol, lower, upper, value, deadline=deadline)
     if not check.passed:
-        return _fail(
+        return None, _fail(
             Status.NOT_VERIFIED,
             "A value was produced but could not be verified by quadrature, so it is not shown. "
             f"{check.note}.",
@@ -363,7 +370,7 @@ def _definite(
             numeric = str(sp.N(value, 15))
         except (TypeError, ValueError):
             numeric = None
-    return IntegrateResult(
+    return value, IntegrateResult(
         status=Status.OK,
         result_latex=to_latex(value),
         result_text=str(value),
@@ -373,6 +380,21 @@ def _definite(
         message="Integrated with SymPy; the value was verified by independent quadrature.",
         **common,
     )
+
+
+def _definite(
+    f: sp.Expr,
+    symbol: sp.Symbol,
+    lower: sp.Expr,
+    upper: sp.Expr,
+    *,
+    notation: str,
+    base: dict[str, object],
+    deadline: float,
+) -> IntegrateResult:
+    return definite_value(f, symbol, lower, upper, notation=notation, base=base, deadline=deadline)[
+        1
+    ]
 
 
 def integrate(
