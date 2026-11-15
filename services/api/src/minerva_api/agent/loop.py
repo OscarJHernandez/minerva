@@ -22,6 +22,7 @@ from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
+from .choice import names_a_method
 from .declarations import declared_matrices, declared_vectors
 from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
@@ -39,6 +40,8 @@ from .prompts import SYSTEM_PROMPT
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
 from .segments import normalize, split_segments
 from .tools import (
+    NEEDS_CHOICE,
+    ODE_SOLVERS,
     TOOLS,
     ToolContext,
     ToolOutput,
@@ -165,6 +168,23 @@ def _events(history: Sequence[dict[str, Any]]) -> list[tuple[str, Any]]:
         for call in m.get("tool_calls") or []:
             out.append(("tool", (str(call.get("name", "")), call.get("arguments", {}))))
     return out
+
+
+def _latest_user_message(history: Sequence[dict[str, Any]]) -> tuple[str, bool]:
+    """The user's current message, and whether it answers a list of ODE methods the assistant just
+    offered (an `ode_analyze` call sits between the previous user message and this one)."""
+    users = [i for i, m in enumerate(history) if m.get("role") == "user"]
+    if not users:
+        return "", False
+    last = users[-1]
+    text = str(history[last].get("content") or "")
+    before = history[(users[-2] if len(users) > 1 else 0) : last]
+    replying = any(
+        m.get("name") == "ode_analyze"
+        or any(c.get("name") == "ode_analyze" for c in m.get("tool_calls") or [])
+        for m in before
+    )
+    return text, replying
 
 
 def _ms(since: float) -> int:
@@ -309,6 +329,7 @@ async def run_agent(
     equations: EquationTable | None = None,
     prior_unverified: Mapping[str, Sequence[str]] | None = None,
     info: TurnInfo | None = None,
+    declared_for_tools: Mapping[str, str] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
 
@@ -339,6 +360,7 @@ async def run_agent(
                 params,
                 equations,
                 prior_unverified,
+                declared_for_tools,
             ):
                 yield event
     finally:
@@ -363,6 +385,7 @@ async def _run_turn(
     params: EffectiveParams | None = None,
     equations: EquationTable | None = None,
     prior_unverified: Mapping[str, Sequence[str]] | None = None,
+    declared_for_tools: Mapping[str, str] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
     # Without parameters (tests, scripts that predate them) everything is sent and nothing is trimmed.
@@ -405,6 +428,11 @@ async def _run_turn(
     failure_kind: str | None = None  # LLMError.kind, or `internal`
     failure_category: ErrorCategory | None = None
     tool_calls_made = repeats = unproductive = malformed_streak = 0
+    # Differential equations: when the analysis offers several methods and the user's message named
+    # none, a solver call is refused and the model asks which one (`needs_user_choice`).
+    user_text, replying = _latest_user_message(history)
+    method_named = names_a_method(user_text, replying=replying)
+    offered: tuple[str, ...] = ()
     host_retried = False
     step = 0
 
@@ -624,6 +652,13 @@ async def _run_turn(
                         arguments, references = resolution.arguments, resolution.count
                         inherited, inherited_from = resolution.inherited, resolution.inherited_from
                         unverified_inputs = resolution.unverified
+                if (
+                    refusal is None
+                    and call.name in ODE_SOLVERS
+                    and len(offered) >= 2
+                    and not method_named
+                ):
+                    refusal = _error(call.name, NEEDS_CHOICE, ErrorCategory.NEEDS_USER_CHOICE.value)
                 key = _call_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
@@ -685,11 +720,16 @@ async def _run_turn(
                 if refusal is not None:
                     output = refusal
                 else:
+                    # What refuses a scalar tool is the strict reading of earlier messages (a name a
+                    # sentence declares, a user sentence can clear it); `prior_matrices`, the generous
+                    # reading, only leaves claims unchecked.
+                    gate = prior_matrices if declared_for_tools is None else declared_for_tools
                     ctx.matrices = (
                         frozenset(matrix_names(trace))
                         | frozenset(vector_names(trace))
-                        | frozenset(prior_matrices)
+                        | frozenset(gate)
                     )
+                    ctx.matrix_sources = dict(declared_for_tools or {})
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -715,6 +755,8 @@ async def _run_turn(
                     and toolset == "auto"
                 ):
                     active = grow(active, requested_groups(arguments))
+                if refusal is None and call.name == "ode_analyze" and output.status == "ok":
+                    offered = output.choices
                 duration = _ms(tool_started)
                 sandbox = tracer.sandbox_since(mark)
                 engine_ms = sum(c.ms for c in sandbox) if sandbox else None

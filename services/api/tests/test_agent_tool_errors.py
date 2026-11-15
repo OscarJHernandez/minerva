@@ -112,3 +112,22 @@ def test_the_prompt_numbers_its_rules_once_and_names_the_tools() -> None:
     assert "A stated size is enough" in SYSTEM_PROMPT
     for tool in ("simplify", "isolate_variable", "tensor_canonicalize", "check_units"):
         assert f"`{tool}`" in SYSTEM_PROMPT
+
+
+def test_a_failed_read_never_prints_none_as_the_input() -> None:
+    from minerva_api.agent.tools import ToolContext, execute
+    from minerva_engine import Engine, Limits
+    from minerva_knowledge import KnowledgeBase
+
+    ctx = ToolContext(
+        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
+    )
+    for tool, args in (
+        ("differentiate", {"latex": r"x'", "variables": [{"name": "x"}]}),
+        ("simplify", {"latex": r"x'"}),
+        ("integrate", {"latex": r"x'", "variable": "x"}),
+        ("series", {"latex": r"x'", "variable": "x"}),
+    ):
+        out = execute(tool, args, ctx)
+        assert out.status == "parse_error", tool
+        assert "$None$" not in out.for_model, tool

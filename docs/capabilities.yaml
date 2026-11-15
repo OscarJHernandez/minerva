@@ -12,6 +12,7 @@
 # fields that op needs:
 #   simplify     input, assumptions, goal (simplify | expand | factor | rewrite), target [function names]
 #   differentiate input, variables [{name, order}], assumptions
+#   time_derivative input, coordinates, lagrangian (optional, as an expression), time, assumptions
 #   series       input, variable, point, order, assumptions
 #   matrix       input, matrices [{name, rows, cols | entries, depends_on}], action (evaluate | simplify |
 #                differentiate | integrate | evolve), variable, lower, upper, commuting [[A, B]],
@@ -43,7 +44,7 @@
 #   solve        equation, variable
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
 #   invariants   input, coordinates, angles, degree, power_bound, harmonics
-#   variation    input, functions, given_functions [{name, args}], lower, upper, lower_term, upper_term, conditions
+#   variation    input, variable (default t), functions, given_functions [{name, args}], lower, upper, lower_term, upper_term, conditions
 #                [{function, order, end, kind, value}], assumptions, action (analyze | first | second | evaluate | solve),
 #                values {parameter: number}, definitions {given function: expression}, paths [{analytic: {fn: expression}}],
 #                with_second (an example may be run with numbers: those are the user's, never the model's)
@@ -1783,6 +1784,51 @@ capabilities:
         input: "m*x_dot^2/2 - k*x^2*t/2"
         coordinates: [x]
 
+  - id: time-derivative
+    title: Total time derivative along a motion
+    status: available
+    group: physics
+    where: [chat]
+    summary: >-
+      The derivative with respect to time of a momentum, an energy or any candidate constant, along a motion
+      in which the coordinates, their velocities and the time all change (the chain rule, so accelerations
+      appear). Given the Lagrangian, it also evaluates the result on that system's equations of motion and
+      says whether it vanishes there. The derivative is shown only if a central difference of the input
+      along random motions agrees with it.
+    limits:
+      - It is not a partial derivative; `differentiate` by t of an expression that contains velocities is
+        refused and points here.
+      - A zero is a statement about the Lagrangian given (on its equations of motion), never about other
+        systems, and the nonzero case is worded as an exact substitution of the verified accelerations.
+      - Expressions that already contain accelerations need third derivatives and are not supported.
+    examples:
+      - id: time-derivative-angular-momentum
+        title: Angular momentum, by the product rule
+        op: time_derivative
+        input: '\mu r^2 \dot{\theta}'
+        coordinates: [r, theta]
+        assumptions: { mu: [positive], r: [positive] }
+      - id: time-derivative-kepler-constant
+        title: Zero on the Kepler motions
+        op: time_derivative
+        input: '\mu r^2 \dot{\theta}'
+        coordinates: [r, theta]
+        lagrangian: '\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
+        assumptions: { mu: [positive], k: [positive], r: [positive] }
+      - id: time-derivative-not-constant
+        title: A quantity that is not constant on those motions
+        op: time_derivative
+        input: 'r \dot{r}'
+        coordinates: [r, theta]
+        lagrangian: '\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
+        assumptions: { mu: [positive], k: [positive], r: [positive] }
+      - id: time-derivative-partial-refused
+        title: A partial derivative by t is refused, not answered with 0
+        op: differentiate
+        input: '\mu r^2 \dot{\theta}'
+        variables: [{ name: t }]
+        assumptions: { mu: [positive], r: [positive] }
+
   - id: variation
     title: Variational calculus
     status: available
@@ -1828,6 +1874,13 @@ capabilities:
           - { function: x, order: 1, end: lower, kind: fixed, value: "0" }
           - { function: x, order: 0, end: upper, kind: free }
           - { function: x, order: 1, end: upper, kind: free }
+      - id: variation-brachistochrone
+        title: The brachistochrone, x as a function of y, with no bounds given
+        op: variation
+        input: '\frac{\sqrt{1 + \left(\frac{dx}{dy}\right)^2}}{\sqrt{2 g y}}'
+        variable: y
+        functions: [x]
+        assumptions: { g: [positive] }
       - id: variation-total-derivative
         title: A total derivative has no interior equation
         op: variation

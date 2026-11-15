@@ -636,6 +636,49 @@
       {
         "checks": [
           {
+            "expected": "x_dot/(2*t*sqrt(2*g*t)*sqrt(1+x_dot**2)) - x_ddot/(sqrt(2*g*t)*(1+x_dot**2)**(3/2))",
+            "got": "x_dot/(2*t*sqrt(2*g*t)*sqrt(1+x_dot**2)) - x_ddot/(sqrt(2*g*t)*(1+x_dot**2)**(3/2))",
+            "name": "EL[x]",
+            "ok": true
+          },
+          {
+            "expected": "equal",
+            "got": "equal",
+            "name": "x' reads as the same functional",
+            "ok": true
+          },
+          {
+            "expected": "ok",
+            "got": "ok",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "passed",
+            "got": "passed",
+            "name": "deciding check without bounds",
+            "ok": true
+          },
+          {
+            "expected": "not_verified",
+            "got": "not_verified",
+            "name": "status",
+            "ok": true
+          },
+          {
+            "expected": "could not be checked",
+            "got": "The first variation could not be checked",
+            "name": "across y = 0: not checked, never ok",
+            "ok": true
+          }
+        ],
+        "id": "brachistochrone",
+        "ok": true,
+        "title": "Brachistochrone dx/dy form, no bounds: EL, first integral, singular interval refused"
+      },
+      {
+        "checks": [
+          {
             "expected": "ok",
             "got": "ok",
             "name": "status",
@@ -671,32 +714,33 @@
         "title": "Trial family c t (1 - t): action c^2/6 - c/6"
       }
     ],
-    "passed": 21,
-    "total": 21
+    "passed": 22,
+    "total": 22
   },
   "measurements": {
     "seconds": {
-      "arc-length": 0.8,
-      "cantilever": 1.06,
-      "catenary": 1.76,
-      "coupled": 1.7,
-      "cubic": 0.31,
-      "endpoint-term": 0.74,
-      "forced": 0.72,
-      "free-end": 0.73,
-      "free-particle": 0.72,
-      "harmonic": 0.72,
-      "harmonic-long": 2.18,
-      "harmonic-resonant": 0.27,
-      "higher-derivative": 0.0,
+      "arc-length": 1.09,
+      "brachistochrone": 1.22,
+      "cantilever": 1.51,
+      "catenary": 2.36,
+      "coupled": 2.08,
+      "cubic": 0.43,
+      "endpoint-term": 0.95,
+      "forced": 0.91,
+      "free-end": 0.97,
+      "free-particle": 0.91,
+      "harmonic": 0.92,
+      "harmonic-long": 2.81,
+      "harmonic-resonant": 0.45,
+      "higher-derivative": 0.01,
       "mixed-orders": 0.0,
       "null-lagrangians": 0.0,
       "phase-space": 0.0,
-      "ritz": 0.03,
-      "simply-supported": 1.01,
+      "ritz": 0.04,
+      "simply-supported": 1.25,
       "singular": 0.0,
-      "stiff": 1.09,
-      "time-dependent": 0.75
+      "stiff": 1.42,
+      "time-dependent": 0.96
     }
   }
 }

@@ -598,3 +598,22 @@ describe("statistics and gradient cards in a report", () => {
     );
   });
 });
+
+describe("a turn with no stored reply", () => {
+  it("says a reply was being written when the copy was made mid-turn", () => {
+    const out = buildDebugReport({ ...input, messages: [user], replying: true });
+    expect(out).toContain("## A reply was being written");
+    expect(out).not.toContain("## No reply is stored");
+  });
+
+  it("says when the last message has no reply and no error was recorded", () => {
+    const out = buildDebugReport({ ...input, messages: [user], lastError: null });
+    expect(out).toContain("## No reply is stored for the last message");
+  });
+
+  it("adds neither note when the last message has a reply", () => {
+    const out = buildDebugReport({ ...input });
+    expect(out).not.toContain("## A reply was being written");
+    expect(out).not.toContain("## No reply is stored");
+  });
+});

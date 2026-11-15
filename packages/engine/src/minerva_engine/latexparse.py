@@ -77,6 +77,7 @@ def _tokenize(source: str) -> list[Token]:
                 continue
             if name in _IGNORED_SIZERS:
                 continue
+            name = {"{": "lbrace", "}": "rbrace"}.get(name, name)
             tokens.append(Token("cmd", name))
         else:
             tokens.append(Token(kind, text))
@@ -91,6 +92,9 @@ class _Parser:
         self.b = builder
         self.abs_depth = 0
         self.depth = 0
+        # Token index just after the last compound command (`\\frac{1}{2}`, `\\sqrt{x}`...): a bracket
+        # group may follow it by juxtaposition, whereas after a bare letter or number it may not.
+        self._compound_end = -1
         # Bases that are subscripted by a summation index somewhere in the text: `x_1` is then `x[1]`
         # everywhere, not the symbol "x_1" (see _prescan_indexed).
         self._indexed_bases = self._prescan_indexed() if builder.allow_sums else frozenset()
@@ -210,9 +214,21 @@ class _Parser:
         if tok.kind == "op":
             if tok.text == "|":
                 return self.abs_depth == 0
+            if tok.text == "[":
+                # `x[2]` would silently be x*2: a bracket group follows a letter or a number only
+                # through an explicit \\cdot. After a compound command (`\\frac12 [a+b]`), a closing
+                # parenthesis or an operator it groups.
+                prev = self.t[self.i - 1] if self.i > 0 else None
+                return (
+                    prev is None
+                    or prev.kind not in ("letter", "num")
+                    or self._compound_end == self.i
+                )
             return tok.text in "({"
         if tok.kind == "cmd":
-            return tok.text not in {"cdot", "times", "div", "right", "le", "ge", "neq", "to"}
+            return tok.text not in {
+                "cdot", "times", "div", "right", "rbrace", "le", "ge", "neq", "to",
+            }  # fmt: skip
         return False
 
     def term(self) -> sp.Expr:
@@ -321,6 +337,16 @@ class _Parser:
                 value = self.expr()
                 self.expect_op("}")
                 return value
+            if tok.text == "[":
+                self.advance()
+                value = self.expr()
+                if self.cur.kind == "op" and self.cur.text == ",":
+                    raise ParseError(
+                        "a comma inside square brackets is ambiguous (a commutator or an interval): "
+                        "write the expression alone"
+                    )
+                self.expect_op("]")
+                return value
             if tok.text == "|":
                 self.advance()
                 self.abs_depth += 1
@@ -330,7 +356,10 @@ class _Parser:
                 return sp.Abs(value)
             raise ParseError(self._unexpected())
         if tok.kind == "cmd":
-            return self._command(tok.text)
+            value = self._command(tok.text)
+            if not isinstance(value, sp.Symbol):
+                self._compound_end = self.i
+            return value
         raise ParseError("unexpected end of input")
 
     def _symbol_with_subscript(self, name: str) -> sp.Expr:
@@ -410,6 +439,111 @@ class _Parser:
             return _GREEK_NAME.get(tok.text, tok.text)
         raise ParseError("unsupported subscript")
 
+    # -- Leibniz derivative notation ----------------------------------------------------
+    @staticmethod
+    def _is_op(tok: Token, text: str) -> bool:
+        return tok.kind == "op" and tok.text == text
+
+    @staticmethod
+    def _is_d(tok: Token) -> bool:
+        return tok.kind == "letter" and tok.text == "d"
+
+    @staticmethod
+    def _name_of_token(tok: Token) -> str | None:
+        if tok.kind == "letter":
+            return tok.text
+        if tok.kind == "cmd" and tok.text in _GREEK:
+            return _GREEK_NAME.get(tok.text, tok.text)
+        return None
+
+    def _group_end(self, start: int) -> int | None:
+        """Index of the `}` that closes the `{` at `start`."""
+        depth = 0
+        for k in range(start, len(self.t)):
+            if self._is_op(self.t[k], "{"):
+                depth += 1
+            elif self._is_op(self.t[k], "}"):
+                depth -= 1
+                if depth == 0:
+                    return k
+        return None
+
+    def _script_order(self, toks: list[Token]) -> tuple[int, list[Token]] | None:
+        """`^k` or `^{k}` at the start of `toks`: (k, the tokens after it); none: (1, toks)."""
+        if not toks or not self._is_op(toks[0], "^"):
+            return 1, toks
+        if len(toks) >= 2 and toks[1].kind == "num" and toks[1].text.isdigit():
+            return int(toks[1].text), toks[2:]
+        if (
+            len(toks) >= 4
+            and self._is_op(toks[1], "{")
+            and toks[2].kind == "num"
+            and toks[2].text.isdigit()
+            and self._is_op(toks[3], "}")
+        ):
+            return int(toks[2].text), toks[4:]
+        return None
+
+    def _leibniz(self) -> sp.Expr | None:
+        """`\\frac{dX}{dV}`, `\\frac{d^kX}{dV^k}` and the operator form `\\frac{d}{dV}`.
+
+        Read as plain fractions the d's cancel (`\\frac{dx}{dy}` would be x/y), a wrong answer that
+        verifies perfectly. Outside a functional (jets off) the notation is refused; with jets the
+        derivative of a declared unknown function with respect to the independent variable is that
+        derivative's jet, and every other shape is refused. A caller that declared a symbol `d`
+        (assumptions) gets ordinary fractions. None: not this notation, nothing consumed.
+        """
+        if self.b.declares("d"):
+            return None
+        t, i = self.t, self.i
+        if not self._is_op(t[i], "{"):
+            return None
+        n_end = self._group_end(i)
+        if n_end is None or not self._is_op(t[n_end + 1], "{"):
+            return None
+        d_end = self._group_end(n_end + 1)
+        if d_end is None:
+            return None
+        num, den = t[i + 1 : n_end], t[n_end + 2 : d_end]
+        if not num or not den or not self._is_d(num[0]) or not self._is_d(den[0]):
+            return None
+        if len(den) < 2 or self._name_of_token(den[1]) is None:
+            return None  # `\\frac{d}{d+1}`: an ordinary fraction
+        rest = num[1:]
+        ordered = self._script_order(rest)
+        if ordered is None:
+            return None
+        n_order, rest = ordered
+        if rest and self._name_of_token(rest[0]) is None:
+            return None
+        den_ordered = self._script_order(den[2:])
+        den_order, den_rest = den_ordered if den_ordered is not None else (0, den[2:])
+        jets = self.b.jets
+        unknown = self._name_of_token(rest[0]) if len(rest) == 1 else None
+        variable = self._name_of_token(den[1])
+        if (
+            jets is not None
+            and unknown is not None
+            and unknown in jets.dependent
+            and variable == jets.variable
+            and not den_rest
+            and den_order == n_order
+        ):
+            self.i = d_end + 1
+            return jets.derivative(unknown, n_order)
+        if jets is not None:
+            raise ParseError(
+                "derivative notation: write the derivative of an unknown function with respect to "
+                f"the independent variable as \\frac{{dx}}{{d{jets.variable}}} (or "
+                "\\dot{x}, \\ddot{x}, x^{(k)}) with the same order above and below; other uses of "
+                "d are not read"
+            )
+        raise ParseError(
+            "derivative notation (\\frac{dx}{dy}, \\frac{d}{dx}) is not read here: as letters the d's "
+            "would cancel and give a different expression. Use `differentiate`, the differential "
+            "equation tools or `time_derivative`; to use d as an ordinary symbol, declare it"
+        )
+
     def _frac_argument(self) -> sp.Expr:
         """A braced group, or one token as in TeX (`\\frac12` is one half)."""
         if self.cur.kind == "op" and self.cur.text == "{":
@@ -426,6 +560,12 @@ class _Parser:
         self.advance()
         if name == "pi":
             return sp.pi
+        if name == "lbrace":  # \\{ ... \\} (also \\lbrace, \\rbrace) groups like parentheses
+            value = self.expr()
+            if not (self.cur.kind == "cmd" and self.cur.text == "rbrace"):
+                raise ParseError("expected '\\}'")
+            self.advance()
+            return value
         if name in {"exponentialE"}:
             return sp.E
         if name in {"imaginaryI"}:
@@ -439,6 +579,9 @@ class _Parser:
         if name == "Gamma":
             return self._apply("gamma", None)
         if name == "frac" or name in {"dfrac", "tfrac"}:
+            leibniz = self._leibniz()
+            if leibniz is not None:
+                return leibniz
             num = self._frac_argument()
             den = self._frac_argument()
             return self.b.divide(num, den)
@@ -584,6 +727,24 @@ class _Parser:
         return self.power()
 
 
+def _primes_to_dots(source: str, jets: JetBinding) -> str:
+    """In a functional, `x'` and `x''` after a declared unknown function are `\\dot{x}` and `\\ddot{x}`
+    (higher orders `x^{(k)}`). Anywhere else a prime is still an unexpected character."""
+    names = "|".join(sorted((re.escape(n) for n in jets.dependent if len(n) == 1), reverse=True))
+    if not names:
+        return source
+
+    def spell(match: re.Match[str]) -> str:
+        name, primes = match.group(1), len(match.group(2))
+        if primes == 1:
+            return f"\\dot{{{name}}}"
+        if primes == 2:
+            return f"\\ddot{{{name}}}"
+        return f"{name}^{{({primes})}}"
+
+    return re.sub(rf"(?<![A-Za-z\\])({names})('{{1,4}})", spell, source)
+
+
 def parse_latex(
     source: str,
     assumptions: dict[str, list[str]] | None = None,
@@ -616,6 +777,8 @@ def parse_latex(
     )
     if denominators is not None:
         builder.denominators = denominators
+    if jets is not None:
+        source = _primes_to_dots(source, jets)
     parser = _Parser(_tokenize(source), builder)
     try:
         expr = parser.parse()

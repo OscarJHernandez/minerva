@@ -15,6 +15,7 @@ from .events import CheckKind, Evidence, EvidenceReason
 _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "simplify": "numeric",
     "differentiate": "numeric",
+    "time_derivative": "numeric",  # central difference of the input along random polynomial motions
     "integrate": "numeric",
     "series": "series_checks",
     "matrix_calculus": "numeric",

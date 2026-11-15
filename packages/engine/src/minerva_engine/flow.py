@@ -31,6 +31,7 @@ from .lagrangian import (
     check_equations,
     derive,
     find_conserved,
+    reject_equation,
     verify_constant,
     verify_zero_derivative,
 )
@@ -213,6 +214,7 @@ def hamiltonian_flow(
         raise DerivationError(
             Status.PARSE_ERROR, "Give one distinct momentum name per coordinate (default p_<q>)."
         )
+    reject_equation(latex, "Hamiltonian")
     try:
         H = parse_latex(latex, assumptions, limits)
     except MinervaMathError as exc:

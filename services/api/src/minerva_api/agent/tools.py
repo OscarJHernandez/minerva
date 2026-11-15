@@ -82,6 +82,9 @@ class ToolContext:
     # Names this conversation declared as matrices or operators (set by the loop before each call).
     # Tools that treat symbols as commuting numbers refuse expressions that mention one.
     matrices: frozenset[str] = frozenset()
+    # Where a declared name came from, for the refusal: name -> "your message: «sentence»" (set by the
+    # loop). Never logged; shown only to the user who wrote the sentence.
+    matrix_sources: dict[str, str] = field(default_factory=dict)
     # What the USER answered on a card (`delta(...)` is a Dirac delta). Only the direct-post route fills
     # it; the agent loop never does, so the model cannot make such an answer.
     notation: dict[str, str] = field(default_factory=dict)
@@ -107,6 +110,9 @@ class ToolOutput:
     evidence: Evidence | None = None
     arguments_valid: bool = True  # False: the call was refused before any computation
     error_category: str | None = None  # tracing.ErrorCategory value, when the result is a failure
+    # The ids of the methods an analysis found applicable, in its order (`ode_analyze`); the loop asks
+    # the user which to run when there are several and their message named none.
+    choices: tuple[str, ...] = ()
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -557,7 +563,9 @@ class VariationArgs(BaseModel):
     integrand: str = Field(
         max_length=MAX_INPUT,
         description="The integrand L of the action S = integral of L dt, as LaTeX, using the unknown "
-        "functions and their derivatives: x, \\dot{x}, \\ddot{x}, \\dddot{x}, x^{(4)}. Example: "
+        "functions and their derivatives: x, \\dot{x}, \\ddot{x}, \\dddot{x}, x^{(4)}; with another independent "
+        "variable y the derivative of x is \\frac{dx}{dy} (or x'), \\frac{d^2x}{dy^2}; write no other "
+        "d-notation. Example: "
         "\\frac{m}{2}\\dot{x}^2+\\frac{\\alpha}{2}\\ddot{x}^2-V(x). Ask the user for it; never invent one.",
     )
     variable: str = Field(default="t", max_length=32, description="The independent variable")
@@ -704,6 +712,28 @@ class LagrangianArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class TimeDerivativeArgs(SimplifyArgs):
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description=r"The quantity in LaTeX, using q for coordinates and \dot{q} for velocities, e.g. "
+        r"\mu r^2 \dot{\theta}. Not an equation: send only the expression.",
+    )
+    coordinates: list[str] = Field(
+        min_length=1,
+        max_length=8,
+        description="Names of the coordinates that change along the motion, e.g. ['r', 'theta']. "
+        "Every velocity in the expression must belong to one of them.",
+    )
+    lagrangian: str | None = Field(
+        default=None,
+        max_length=MAX_INPUT,
+        description=r"Optional L(q, qdot, t) of the system, as an expression (not 'L = ...'). Given, the "
+        "derivative is also evaluated on that system's equations of motion and says whether it vanishes "
+        "there (is constant along its motions).",
+    )
+    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
 
 
 class ExpandMotionArgs(LagrangianArgs):
@@ -895,8 +925,21 @@ class LoadToolsArgs(BaseModel):
     )
 
 
+def _as_read(latex: str | None) -> str:
+    """`input_as_read=$...$; ` once the input was read, nothing when it could not be (never `$None$`)."""
+    return f"input_as_read=${latex}$; " if latex else ""
+
+
 def _expr(args: SimplifyArgs) -> ExpressionInput:
     return ExpressionInput(input=args.latex, format="latex", assumptions=args.assumptions)
+
+
+ODE_SOLVERS = frozenset({"ode_solve_symbolic", "ode_solve_numerical"})
+NEEDS_CHOICE = (
+    "The user has not said which method to use and several apply. Do not run one: list the applicable "
+    "methods from the analysis, in its order, with what each needs and its limits, and ask which one to "
+    "run. Stop calling tools."
+)
 
 
 def _error(
@@ -979,7 +1022,7 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
     )
     v = result.verification
     head = (
-        f"status={result.status.value}; goal={args.goal}; input_as_read=${result.input_latex}$; "
+        f"status={result.status.value}; goal={args.goal}; {_as_read(result.input_latex)}"
         + (
             f"result=${result.result_latex}$; "
             if result.status.value == "ok"
@@ -1019,7 +1062,7 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
     )
     v = result.verification
     text = (
-        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        f"status={result.status.value}; {_as_read(result.input_latex)}"
         + (f"derivative=${result.result_latex}$; " if result.result_latex else "")
         + (
             f"numerically checked: {v.steps_checked} step(s), numeric {v.points_agreed}/{v.points_checked} "
@@ -1043,6 +1086,50 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, known, result.status.value)
 
 
+def run_time_derivative(args: TimeDerivativeArgs, ctx: ToolContext) -> ToolOutput:
+    result = ctx.engine.time_derivative(_expr(args), args.coordinates, args.time, args.lagrangian)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="time_derivative",
+        type="differentiate",
+        title="Total time derivative",
+        data=result.model_dump(mode="json"),
+    )
+    v = result.verification
+    text = (
+        f"status={result.status.value}; {_as_read(result.input_latex)}"
+        + (f"total time derivative=${result.result_latex}$; " if result.result_latex else "")
+        + (
+            f"numerically checked along random motions: {v.points_agreed}/{v.points_checked} points; "
+            if v
+            else ""
+        )
+        + (
+            "zero on the equations of motion of the Lagrangian given; "
+            if result.zero_on_motion is True
+            else (
+                f"NOT zero on the equations of motion: ${result.on_motion_latex}$; "
+                if result.zero_on_motion is False
+                else ""
+            )
+        )
+        + result.message
+        + "".join(f" note: {n}" for n in result.notes)
+    )
+    known = [x for x in (result.input_latex, result.notation_latex, result.result_latex) if x]
+    quoted: list[tuple[str, str]] = []
+    if result.zero_on_motion is True and result.on_motion_latex:
+        known.append(result.on_motion_latex)
+    elif result.zero_on_motion is False and result.on_motion_latex:
+        quoted.append(
+            (
+                result.on_motion_latex,
+                "an exact substitution of the verified accelerations, not separately sampled",
+            )
+        )
+    return ToolOutput(card, text, known, result.status.value, quoted_latex=quoted)
+
+
 def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
     result = ctx.engine.series(_expr(args), args.variable, args.point, args.order)
     card = Card(
@@ -1054,8 +1141,12 @@ def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
     )
     v = result.verification
     text = (
-        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
-        f"about {result.variable}=${result.point_latex}$, order {result.order}; "
+        f"status={result.status.value}; {_as_read(result.input_latex)}"
+        + (
+            f"about {result.variable}=${result.point_latex}$, order {result.order}; "
+            if result.point_latex
+            else ""
+        )
         + (
             f"series=${result.result_latex} + {result.remainder_latex}$; "
             if result.result_latex and result.remainder_latex
@@ -1095,7 +1186,7 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
     )
     v = result.verification
     text = (
-        f"status={result.status.value}; input_as_read=${result.input_latex}$; "
+        f"status={result.status.value}; {_as_read(result.input_latex)}"
         + (
             f"{'value' if result.definite else 'antiderivative'}=${result.result_latex}$; "
             if result.result_latex
@@ -1719,6 +1810,8 @@ def run_variation(args: VariationArgs, ctx: ToolContext) -> ToolOutput:
         data=data,
     )
     head = f"action={report.action}; status={report.status.value}; "
+    if report.input_latex:
+        head += f"input_as_read=${report.input_latex}$; "
     lines = [head + report.message]
     if report.status.value in ("ok", "unchanged"):
         lines.extend(_variation_lines(report))
@@ -1779,7 +1872,7 @@ def run_matrix_calculus(args: MatrixCalculusArgs, ctx: ToolContext) -> ToolOutpu
     )
     shown = result.status.value == "ok"
     head = (
-        f"status={result.status.value}; action={result.action}; input_as_read=${result.input_latex}$; "
+        f"status={result.status.value}; action={result.action}; {_as_read(result.input_latex)}"
         if result.input_latex
         else f"status={result.status.value}; action={result.action}; "
     )
@@ -1909,7 +2002,7 @@ def run_distribution(args: DistributionArgs, ctx: ToolContext) -> ToolOutput:
     if result.reason:
         head += f"reason={result.reason}; "
     if result.input_latex:
-        head += f"input_as_read=${result.input_latex}$; "
+        head += f"{_as_read(result.input_latex)}"
     if shown:
         head += f"result=${result.result_latex}$; "
         head += (
@@ -1958,9 +2051,7 @@ def run_identities(args: IdentitiesArgs, ctx: ToolContext) -> ToolOutput:
         title="Identities",
         data=result.model_dump(mode="json"),
     )
-    lines = [
-        f"status={result.status.value}; input_as_read=${result.input_latex}$; {result.message}"
-    ]
+    lines = [f"status={result.status.value}; {_as_read(result.input_latex)}{result.message}"]
     known: list[str] = [result.input_latex] if result.input_latex else []
     for m in result.matches[:8]:
         a = m.application
@@ -2535,7 +2626,14 @@ def run_ode_analyze(args: OdeAnalyzeArgs, ctx: ToolContext) -> ToolOutput:
             "will try and check it, not that it will succeed. For a numerical solution the USER must give "
             "every initial value, parameter value and the end of the interval: ask; the card has a form."
         )
-    return ToolOutput(card, "\n".join(lines), known, result.status.value, quoted)
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        result.status.value,
+        quoted,
+        choices=tuple(m.id for m in ranked) if result.status.value == "ok" else (),
+    )
 
 
 def run_ode_symbolic(args: OdeSymbolicArgs, ctx: ToolContext) -> ToolOutput:
@@ -3004,9 +3102,7 @@ def run_rewrite_part(args: RewritePartArgs, ctx: ToolContext) -> ToolOutput:
         by=args.by,
     )
     card = _step_card("rewrite_part", "Change one part", "rewrite", result)
-    head = (
-        f"status={result.status.value}; input_as_read=${result.input_latex}$; action={args.action}"
-    )
+    head = f"status={result.status.value}; {_as_read(result.input_latex)}action={args.action}"
     lines: list[str] = []
     if result.status.value == "ok":
         head += f"; result=${result.result_latex}$; {_evidence_clause(result)}"
@@ -3295,6 +3391,16 @@ TOOLS: dict[str, Tool] = {
             run_lagrangian,
         ),
         Tool(
+            "time_derivative",
+            "The TOTAL time derivative of a quantity along a motion: coordinates, velocities and time all "
+            "change (chain rule; accelerations appear). Use it for d/dt of a momentum, an energy, an "
+            "angular momentum or any candidate constant, never `differentiate` (that is a partial "
+            "derivative and holds velocities fixed). With a Lagrangian it also evaluates the result on "
+            "its equations of motion and says whether it is zero there.",
+            TimeDerivativeArgs,
+            run_time_derivative,
+        ),
+        Tool(
             "expand_motion",
             "Expand the equations of motion of a Lagrangian about an equilibrium the user gives "
             "(default: every coordinate 0): the accelerations as a series in the deviations, up to a chosen "
@@ -3523,6 +3629,7 @@ SCALAR_TOOLS = frozenset(
     {
         "simplify",
         "differentiate",
+        "time_derivative",
         "series",
         "integrate",
         "isolate_variable",
@@ -3557,12 +3664,18 @@ def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> T
     hit = sorted(n for n in ctx.matrices if any(mentions_name(text, {n}) for text in texts))
     if not hit:
         return None
+    sources = "; ".join(
+        f"{n} comes from {ctx.matrix_sources[n]}" for n in hit if n in ctx.matrix_sources
+    )
     return _error(
         name,
-        f"{', '.join(hit)} was declared as a matrix, operator or vector field in this conversation; "
-        f"`{name}` treats symbols as commuting numbers and would give a wrong answer for it. Use "
-        "`matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a vector "
-        "field, or say that this is not supported. Do not compute it yourself.",
+        f"{', '.join(hit)} was declared as a matrix, operator or vector field in this conversation"
+        + (f" ({sources})" if sources else "")
+        + f"; `{name}` treats symbols as commuting numbers and would give a wrong answer for it. "
+        "Use `matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a "
+        "vector field, or say that this is not supported. If it is only a scalar, tell the user the "
+        'name was read as a matrix or vector and that saying "<name> is a scalar" clears it; do not '
+        "compute it yourself.",
         "unsupported",
     )
 

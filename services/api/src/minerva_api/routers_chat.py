@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
+import contextlib
 import copy
 import json
 import re
@@ -25,7 +26,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .agent.budget import fit_history
-from .agent.declarations import declared_matrices, declared_vectors
+from .agent.declarations import scan_declarations
 from .agent.equations import (
     EquationTable,
     build_table,
@@ -992,6 +993,41 @@ def _store_stopped(session_factory: Any, conv_id: uuid.UUID, order: list[str | C
         session.commit()
 
 
+FAILED_TEXT = (
+    "The assistant hit an internal error before it could answer. Your message was kept; send it "
+    "again or use Retry."
+)
+
+
+def _store_failed(session_factory: Any, conv_id: uuid.UUID, order: list[str | Card]) -> None:
+    """A turn that failed outside the agent loop leaves a message saying so (with what had arrived),
+    so a reload and a debug report show the failure instead of a user message with no reply."""
+    blocks = [
+        Block(kind="card", card=item)
+        if isinstance(item, Card)
+        else Block(kind="text", segments=split_segments(item, set(), {}))
+        for item in order
+    ]
+    blocks.append(Block(kind="text", segments=split_segments(FAILED_TEXT, set(), {})))
+    message = AssistantMessage(
+        text="\n\n".join([i for i in order if isinstance(i, str)] + [FAILED_TEXT]),
+        blocks=blocks,
+        trace=[],
+        truncated=True,
+        stop_reason="internal_error",
+    )
+    with session_factory() as session:
+        session.add(
+            ChatMessage(
+                conversation_id=conv_id, role="assistant", content=message.model_dump(mode="json")
+            )
+        )
+        conv = session.get(Conversation, conv_id)
+        if conv is not None:
+            conv.updated_at = utcnow()
+        session.commit()
+
+
 def _backfill_numbers(db: Any, conversation: Conversation, messages: list[ChatMessage]) -> None:
     """Number the equations of a conversation that predates equation numbers (and was not numbered yet).
 
@@ -1053,24 +1089,45 @@ def _claim_context(
     return relations[-MAX_RELATIONS:], assumptions
 
 
-def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
-    """Matrix names this conversation declared: in tool calls (`matrix_calculus`, or `noncommutative`
-    assumptions) and in words ("let A and B be matrices"). The whole conversation counts, not only
-    the history window: a name is cheap to remember and forgetting one makes a matrix claim checkable
-    as if it were about numbers."""
+def _declaration_inputs(
+    messages: list[ChatMessage], current: str
+) -> tuple[list[dict[str, Any]], list[tuple[str, str]]]:
+    """The tool calls of the whole conversation and every message in order, the current one last."""
     steps: list[dict[str, Any]] = []
-    texts: list[str] = [current]
+    entries: list[tuple[str, str]] = []
     for m in messages:
-        texts.append(str(m.content.get("text", "")))
+        entries.append((m.role, str(m.content.get("text", ""))))
         if m.role != "user":
             steps.extend(s for s in m.content.get("trace", []) if isinstance(s, dict))
-    # Vectors named in words are folded in: either kind is never sampled as numbers.
-    return sorted(
-        matrix_names(steps)
-        | vector_names(steps)
-        | declared_matrices(texts)
-        | declared_vectors(texts)
-    )
+    entries.append(("user", current))
+    return steps, entries
+
+
+def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
+    """Matrix and vector names this conversation declared, read generously: in tool calls
+    (`matrix_calculus`, `noncommutative` assumptions, `vector_calculus` fields) and in words ("let A
+    and B be matrices", any formula of a sentence that says "vector"). The whole conversation counts,
+    not only the history window: a name is cheap to remember and forgetting one makes a matrix claim
+    checkable as if it were about numbers. A name the user later called a scalar is dropped. This only
+    leaves claims unchecked; what refuses a tool is `_declared_for_tools`."""
+    steps, entries = _declaration_inputs(messages, current)
+    found, cleared = scan_declarations(entries, strict=False)
+    return sorted(((matrix_names(steps) | vector_names(steps)) - cleared) | set(found))
+
+
+def _declared_for_tools(messages: list[ChatMessage], current: str = "") -> dict[str, str]:
+    """name -> where it came from, for the names that make a scalar tool refuse: tool-call declarations
+    and sentences that *declare* a name (strict reading), minus names the user later called scalars."""
+    steps, entries = _declaration_inputs(messages, current)
+    found, cleared = scan_declarations(entries, strict=True)
+    out = {
+        name: ("a matrix or vector declared in a tool call earlier in this conversation")
+        for name in (matrix_names(steps) | vector_names(steps)) - cleared
+    }
+    for name, d in found.items():
+        who = "your message" if d.role == "user" else "my earlier reply"
+        out[name] = f"{who}: \u00ab{d.quote}\u00bb"
+    return out
 
 
 def _title(text: str) -> str:
@@ -1143,6 +1200,7 @@ async def send_message(
     prior_unverified = unverified_inputs(previous)
     prior_relations, prior_assumptions = _claim_context(previous, text)
     prior_matrices = _prior_matrices(previous, text)
+    declared_for_tools = _declared_for_tools(previous, text)
     if history and history[-1]["role"] == "user":  # the last reply was never stored: one message
         history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
     else:
@@ -1220,6 +1278,7 @@ async def send_message(
                 prior_relations=prior_relations,
                 prior_assumptions=prior_assumptions,
                 prior_matrices=prior_matrices,
+                declared_for_tools=declared_for_tools,
                 prior_results=prior_results,
                 prior_restrictions=prior_restrictions,
                 prior_groups=prior_groups,
@@ -1290,6 +1349,9 @@ async def send_message(
             raise
         except Exception:
             log.error("chat_turn_failed", trace_id=trace_id)
+            if not replied:
+                with contextlib.suppress(Exception):  # never let the record hide the error event
+                    _store_failed(session_factory, conv_id, arrived)
             yield _sse(
                 "error", {"message": "The assistant hit an internal error.", "trace_id": trace_id}
             )

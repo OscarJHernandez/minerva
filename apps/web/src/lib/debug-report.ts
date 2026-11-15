@@ -32,6 +32,8 @@ export interface ReportInput {
   messages: StoredMessage[];
   status: ChatStatus | null;
   lastError?: LastError | null;
+  /** A reply is still being written (the copy was made mid-turn). */
+  replying?: boolean;
   now?: Date;
 }
 
@@ -380,6 +382,20 @@ export function buildDebugReport(input: ReportInput): string {
     "## Conversation",
   ];
   input.messages.forEach((m, i) => lines.push("", ...turnMarkdown(m, i + 1)));
+  const lastMessage = input.messages[input.messages.length - 1];
+  if (input.replying) {
+    lines.push(
+      "",
+      "## A reply was being written",
+      "This report was copied while the assistant was still answering the last message, so that turn has no stored reply yet.",
+    );
+  } else if (lastMessage?.role === "user" && !input.lastError) {
+    lines.push(
+      "",
+      "## No reply is stored for the last message",
+      "The last message has no stored reply and no error was recorded: the turn was interrupted (Stop, a closed tab) before anything arrived, or the page was reloaded.",
+    );
+  }
   if (input.lastError) {
     lines.push("", "## Last turn failed", fence(input.lastError.message));
     if (input.lastError.debug) {

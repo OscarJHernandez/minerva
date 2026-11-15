@@ -406,6 +406,69 @@ def case_catenary() -> list[Check]:
     return checks
 
 
+BRACHISTOCHRONE = r"\frac{\sqrt{1 + \left(\frac{dx}{dy}\right)^2}}{\sqrt{2 g y}}"
+
+
+def case_brachistochrone() -> list[Check]:
+    """Time of descent with x as a function of y, written with the Leibniz derivative and no bounds.
+
+    Reference (by hand): P = x' / (sqrt(2 g y) sqrt(1 + x'^2)) and EL = -(D P), so the first integral
+    P = const gives the cycloid. The same functional on an interval across the singularity at y = 0 must
+    never be shown as verified: it is reported as not checked, naming the way out.
+    """
+    assume = {"g": ["positive"]}
+    p = problem_of(
+        integrand=BRACHISTOCHRONE, variable="y", lower=None, upper=None, assumptions=assume
+    )
+    prime = problem_of(
+        integrand=BRACHISTOCHRONE.replace(r"\frac{dx}{dy}", "x'"),
+        variable="y",
+        lower=None,
+        upper=None,
+        assumptions=assume,
+    )
+    d = first_variation(p)
+    checks = [
+        derivation_check(
+            "EL[x]",
+            p,
+            d.euler[0],
+            "x_dot/(2*t*sqrt(2*g*t)*sqrt(1+x_dot**2)) - x_ddot/(sqrt(2*g*t)*(1+x_dot**2)**(3/2))",
+        ),
+        Check(
+            "x' reads as the same functional",
+            "equal",
+            "equal" if prime.lagrangian == p.lagrangian else "different",
+            prime.lagrangian == p.lagrangian,
+        ),
+    ]
+    r = run(
+        "first", integrand=BRACHISTOCHRONE, variable="y", lower=None, upper=None, assumptions=assume
+    )
+    checks.append(status_check(r, Status.OK))
+    checks.append(
+        Check(
+            "deciding check without bounds",
+            "passed",
+            r.first.checks.deciding if r.first else "none",
+            bool(r.first and r.first.checks.deciding == "passed"),
+        )
+    )
+    across = run(
+        "first", integrand=BRACHISTOCHRONE, variable="y", lower="-1", upper="1", assumptions=assume
+    )
+    checks.append(status_check(across, Status.NOT_VERIFIED))
+    checks.append(
+        Check(
+            "across y = 0: not checked, never ok",
+            "could not be checked",
+            across.message[:40],
+            "could not be checked" in across.message and across.first is None,
+        )
+    )
+    return checks
+
+
 def case_singular() -> list[Check]:
     r = run("analyze", integrand=r"t\dot{x}^2")
     a = r.analysis
@@ -478,6 +541,11 @@ CASES: list[tuple[str, str, Callable[[], list[Check]]]] = [
     ("arc-length", "Arc length: EL and the straight line", case_arc_length),
     ("catenary", "Catenary: two distinct stationary paths", case_catenary),
     ("singular", "t x'^2: the Legendre determinant 2t vanishes at an end", case_singular),
+    (
+        "brachistochrone",
+        "Brachistochrone dx/dy form, no bounds: EL, first integral, singular interval refused",
+        case_brachistochrone,
+    ),
     ("ritz", "Trial family c t (1 - t): action c^2/6 - c/6", case_ritz),
 ]
 

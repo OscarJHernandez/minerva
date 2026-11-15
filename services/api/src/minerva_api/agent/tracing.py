@@ -47,6 +47,7 @@ class ErrorCategory(StrEnum):
     MALFORMED_MODEL_OUTPUT = "malformed_model_output"
     REPEATED_CALL = "repeated_call"
     LIMIT_REACHED = "limit_reached"
+    NEEDS_USER_CHOICE = "needs_user_choice"  # several methods apply and the user named none
 
 
 class StopReason(StrEnum):

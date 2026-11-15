@@ -485,3 +485,66 @@ def test_the_qualitative_card_form_posts_straight_to_the_tool(chat_client: Any) 
         json={"equations": ["y' = y"], "independent": "t", "window": [1, 0, 0, 1]},
     )
     assert bad.status_code == 422
+
+
+# --- ask which method unless the user named one --------------------------------------------------------
+def test_the_loop_refuses_a_solver_until_the_user_chooses(ctx: ToolContext) -> None:
+    import asyncio
+
+    from minerva_api.agent.llm import Chunk, ToolCall
+    from minerva_api.agent.loop import run_agent
+
+    class AnalyseThenSolve:
+        """A model that analyses and then goes straight to the closed form, as the report showed."""
+
+        name = provider = "test"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def chat(self, messages, tools, **kw):  # type: ignore[no-untyped-def]
+            self.calls += 1
+            if self.calls == 1:
+                yield Chunk(
+                    tool_calls=[
+                        ToolCall(
+                            "ode_analyze", {"equations": ["y''(x) = y(x)"], "independent": "x"}
+                        )
+                    ]
+                )
+            elif self.calls == 2:
+                yield Chunk(
+                    tool_calls=[
+                        ToolCall(
+                            "ode_solve_symbolic",
+                            {
+                                "equations": ["y''(x) = y(x)"],
+                                "independent": "x",
+                                "method": "closed_form",
+                            },
+                        )
+                    ]
+                )
+            else:
+                yield Chunk(text="Which method would you like?")
+
+    async def turn(message: str) -> list[dict[str, Any]]:
+        events = []
+        history = [{"role": "user", "content": message}]
+        async for event in run_agent(AnalyseThenSolve(), history, ctx):  # type: ignore[arg-type]
+            events.append(event)
+        return events
+
+    def solver_cards(events: list[dict[str, Any]]) -> list[str]:
+        return [
+            e["data"]["type"]
+            for e in events
+            if e["event"] == "card" and e["data"]["tool"] == "ode_solve_symbolic"
+        ]
+
+    bare = asyncio.run(turn("y''(x) = y(x)."))
+    assert solver_cards(bare) == ["error"]  # refused: nothing was solved
+    refused = next(e for e in bare if e["event"] == "card" and e["data"]["type"] == "error")
+    assert "list the applicable methods" in refused["data"]["data"]["message"]
+    named = asyncio.run(turn("Find the closed form of y''(x) = y(x)."))
+    assert solver_cards(named) == ["ode_solution"]  # the user named a method: it runs

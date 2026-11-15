@@ -41,6 +41,11 @@ Each method in the ranked list carries what it needs and what limits it. "Applic
 "will succeed"; a method that does not apply is listed with its reason. Stiffness is not predicted: the
 numerical integrator is chosen from measurements during the run.
 
+When several methods are applicable and the message names none (closed form, numerically, series, perturbation, phase
+plane, equilibria), the assistant lists them in this order and asks which to run; the server refuses a solver call
+until the user chooses (error category `needs_user_choice`). The card's sections run each method with the user's own
+numbers.
+
 ## Methods, checks, limits
 
 | Method | What it needs | Shown only if | Limits |

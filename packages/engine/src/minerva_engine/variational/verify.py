@@ -26,7 +26,7 @@ import mpmath as mp
 import sympy as sp
 from sympy.calculus.euler import euler_equations
 
-from ..errors import LimitError
+from ..errors import LimitError, ParseError
 from . import polypath
 from .firstvar import FirstVariationData, Stage
 from .jets import apply_standins
@@ -102,6 +102,51 @@ def perturbation(
         )
         coefficients.append(polypath.admissible(num.rng, degree, num.lower, num.upper, vanishing))
     return Poly(coefficients)
+
+
+# Where symbolic bounds are drawn, in the order tried. A sampled interval can straddle a singularity
+# or a branch point of the integrand (1/sqrt(y) at y = 0): every finite-difference comparison is then
+# inconclusive, which says nothing about the claimed variation. The ladder moves to an interval
+# entirely above or below zero, then reseeds; the user's own numbers are never replaced.
+INTERVAL_LADDER: tuple[tuple[str, int], ...] = (
+    ("sampled", 0),
+    ("positive", 0),
+    ("negative", 0),
+    ("positive", 1),
+    ("negative", 1),
+    ("sampled", 1),
+    ("sampled", 2),
+)
+REGULAR_QUADRATURE = mp.mpf("1e-14")  # error of the action's quadrature, relative to 1 + |action|
+
+
+def regular_numerics(problem: Problem, seed: int) -> Numerics:
+    """`Numerics` at an interval where the action's two quadrature rules agree to round-off.
+
+    Every numerical leg of the verification (first and second variation, pointwise Euler-Lagrange,
+    integration-by-parts steps) builds its sample setting here, so they cannot disagree about where the
+    integrand is regular. With numeric bounds (the user's) there is one setting and it is kept as is.
+    If no rung of the ladder is regular the first is returned and the comparison stays inconclusive.
+    """
+    if problem.bounds_numeric:
+        return Numerics(problem, seed)
+    first: Numerics | None = None
+    for kind, offset in INTERVAL_LADDER:
+        try:
+            num = Numerics(problem, seed + offset, interval=kind)
+        except (
+            ParseError
+        ):  # no such interval for these assumptions (a parameter declared positive...)
+            continue
+        first = first or num
+        path = num.field(num.random_path(2 * max(num.jets.orders) + 2))
+        try:
+            value, error = action_value(num, path)
+        except (ArithmeticError, ValueError, LimitError, ParseError):
+            continue
+        if mp.isfinite(abs(value)) and error <= REGULAR_QUADRATURE * (1 + abs(value)):
+            return num
+    return first or Numerics(problem, seed)
 
 
 def action_value(
@@ -224,7 +269,7 @@ def check_first_variation(
     comparisons: int = 4,
 ) -> VariationCheck:
     """Compare a claimed first variation with finite differences of the action itself."""
-    num = Numerics(problem, seed)
+    num = regular_numerics(problem, seed)
     jets = num.jets
     path = num.field(num.random_path(2 * max(jets.orders) + 2))
     plan: list[tuple[str, int | None]] = [("bubble", None), ("generic", None)]
@@ -254,7 +299,7 @@ def check_el_pointwise(
     The partial derivatives are SymPy's, the total derivative is numerical: this catches `∂` used
     where `D` was meant, but it does not check the theory, so it never decides.
     """
-    num = Numerics(problem, seed)
+    num = regular_numerics(problem, seed)
     jets = num.jets
     path = num.field(num.random_path(2 * max(jets.orders) + 2))
     worst = 0.0
@@ -290,7 +335,7 @@ def check_ibp_step(
 
     The derivative on the right is numerical, on polynomial paths and perturbations.
     """
-    num = Numerics(problem, seed)
+    num = regular_numerics(problem, seed)
     jets = num.jets
     path = num.field(num.random_path(2 * max(jets.orders) + 2))
     eta = num.field(perturbation(num, "generic"))

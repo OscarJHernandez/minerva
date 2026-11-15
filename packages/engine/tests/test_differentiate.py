@@ -181,3 +181,35 @@ def test_verifier_needs_enough_valid_points() -> None:
     result = check_derivative(sp.log(x - x), x, sp.Integer(0))  # zoo everywhere
     assert not result.passed
     assert result.points_checked < 4
+
+
+# -- velocities: d/dt of an expression with dotted symbols is not a partial derivative -------------------
+def test_derivative_by_t_of_velocities_is_refused_not_zero(engine: Engine) -> None:
+    # It used to answer "ok, 0, verified": r and \dot\theta are constants in t for a partial derivative.
+    r = d(engine, r"\mu r^2 \dot{\theta}", ("t", 1), fmt="latex", mu=["positive"], r=["positive"])
+    assert r.status == Status.UNSUPPORTED
+    assert "time_derivative" in r.message and "theta_dot" in r.message
+    assert r.result_latex is None
+
+
+def test_partial_derivative_by_a_coordinate_or_a_velocity_stays_and_says_so(engine: Engine) -> None:
+    by_r = d(engine, r"\mu r^2 \dot{\theta}", ("r", 1), fmt="latex", mu=["positive"])
+    assert by_r.status == Status.OK
+    assert (
+        sp.simplify(
+            sp.sympify(by_r.result_text)
+            - 2 * sp.Symbol("mu") * sp.Symbol("r") * sp.Symbol("theta_dot")
+        )
+        == 0
+    )
+    assert any("held fixed" in n for n in by_r.notes)
+    by_velocity = d(engine, r"\frac12 m \dot{x}^2", ("x_dot", 1), fmt="latex")
+    assert by_velocity.status == Status.OK
+    assert not any(
+        "held fixed" in n for n in by_velocity.notes
+    )  # a derivative by a velocity itself
+
+
+def test_expressions_without_velocities_still_differentiate_by_t(engine: Engine) -> None:
+    r = d(engine, "t**2*x", ("t", 1))
+    assert r.status == Status.OK and r.result_text == "2*t*x"

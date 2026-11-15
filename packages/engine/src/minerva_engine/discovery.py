@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import re
 import resource
 import sys
 import time
@@ -574,6 +575,12 @@ def _primitive(vector: dict[int, sp.Expr], columns: list[sp.Expr]) -> tuple[sp.E
 
 
 # ---------------------------------------------------------------------------------------------------------
+def _latex_name(constant_id: str) -> str:
+    """`C1` is the reference id; the formula writes `C_{1}`, as the relation between constants does."""
+    match = re.fullmatch(r"C(\d+)", constant_id)
+    return f"C_{{{match.group(1)}}}" if match else constant_id
+
+
 def discover(
     flow: Flow,
     declared_angles: list[str],
@@ -862,7 +869,7 @@ def discover(
         DiscoveredConstant(
             id=g.id,
             name=g.name,
-            expression_latex=f"{g.id} = {flow.show(g.shown)}",
+            expression_latex=f"{_latex_name(g.id)} = {flow.show(g.shown)}",
             kind=g.kind,
             source=g.source,
             tier=g.tier,

@@ -45,17 +45,27 @@ def _first(problem: Problem, data: VariationInput, deadline: float) -> Variation
         for k in range(len(derived.stages) - 1)
     ]
     crosscheck = sympy_euler(problem, form.interior)
-    if not (
-        check.passed
-        and pointwise.passed
-        and all(c.passed for c in stage_checks)
-        and crosscheck is not False
-    ):
+    contradicted = (
+        check.verdict == "failed"
+        or not pointwise.passed
+        or any(not c.passed for c in stage_checks)
+        or crosscheck is False
+    )
+    if contradicted:
         return VariationReport(
             status=Status.NOT_VERIFIED,
             action="first",
             message="The derived first variation did not pass its independent numerical checks, "
             "so it is not shown.",
+        )
+    if not check.passed:  # inconclusive: nothing disagreed, but nothing could be decided either
+        return VariationReport(
+            status=Status.NOT_VERIFIED,
+            action="first",
+            message="The first variation could not be checked: the finite-difference comparison "
+            "with the action was inconclusive on every interval tried (the integrand may be singular, "
+            "not real or too large there). Nothing was contradicted and nothing is shown. Give bounds "
+            "(for example 1 and 2) or assumptions such as 0 < a < b, and ask again.",
         )
     first = rep.build(problem, derived, check, pointwise, stage_checks, crosscheck)
     return VariationReport(
@@ -106,6 +116,7 @@ def variation(data: VariationInput, limits: Limits) -> VariationReport:
     started = time.monotonic()
     deadline = started + 0.8 * limits.timeout_seconds
     report: VariationReport
+    problem: Problem | None = None
     try:
         problem = read_problem(data, limits)
         handler = HANDLERS.get(data.action)
@@ -128,6 +139,11 @@ def variation(data: VariationInput, limits: Limits) -> VariationReport:
         report = VariationReport(status=Status.RESOURCE_LIMIT, action=data.action, message=str(exc))
     except MinervaMathError as exc:  # any other user-facing error
         report = VariationReport(status=Status.NOT_VERIFIED, action=data.action, message=str(exc))
+    if problem is not None:
+        try:
+            report.input_latex = problem.latex(problem.lagrangian)
+        except Exception:  # printing only; the result does not depend on it
+            report.input_latex = None
     report.duration_ms = (time.monotonic() - started) * 1000
     report.diagnostics.duration_ms = report.duration_ms
     return report

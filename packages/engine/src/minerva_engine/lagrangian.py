@@ -130,6 +130,7 @@ def derive(
     In text a velocity is written `q_dot` (LaTeX: `\\dot{q}`, which the parser turns into the same symbol).
     """
     _check_coordinates(coordinates)
+    reject_equation(latex, "Lagrangian")
     try:
         if format == "text":
             L = parse_text(latex, assumptions, limits)
@@ -138,6 +139,16 @@ def derive(
     except MinervaMathError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
     return derive_expr(L, coordinates, time)
+
+
+def reject_equation(source: str, what: str) -> None:
+    """An equation (`L = T - V`, `L = T =`...) is not the expression asked for: say so, never pick a side."""
+    if "=" in source:
+        raise DerivationError(
+            Status.PARSE_ERROR,
+            f"Send only the {what} as an expression, not an equation: for `L = T = ...` give "
+            "the part after the last `=`.",
+        )
 
 
 def _check_coordinates(coordinates: list[str]) -> None:

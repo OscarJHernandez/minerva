@@ -183,3 +183,45 @@ def test_time_dependence_and_limits(engine: Engine) -> None:
 
 def test_engine_limits_exist() -> None:
     assert Limits().timeout_seconds > 0
+
+
+# -- Leibniz notation of the unknown over the independent variable ---------------------------------
+def test_leibniz_fraction_of_the_unknown_is_its_derivative() -> None:
+    space = JetSpace.build("y", ("x",), (2,), 4)
+    binding = space.binding()
+    first, second = space.u[0][1], space.u[0][2]
+    assert parse_latex(r"\frac{dx}{dy}", jets=binding) == first
+    assert parse_latex(r"\dfrac{d^2x}{dy^2}", jets=binding) == second
+    assert parse_latex(r"\frac{d^{2}x}{dy^{2}}", jets=binding) == second
+    assert parse_latex(r"\sqrt{1+\left(\frac{dx}{dy}\right)^2}", jets=binding) == sp.sqrt(
+        1 + first**2
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        r"\frac{dy}{dx}",  # the unknown is x, the variable is y
+        r"\frac{dx}{dz}",  # not the independent variable
+        r"\frac{d^2x}{dy}",  # orders differ
+        r"\frac{d}{dy} x^2",  # operator form is never guessed
+        r"\frac{d^5x}{dy^5}",  # beyond the jet depth
+    ],
+)
+def test_other_leibniz_shapes_are_refused_with_jets(source: str) -> None:
+    space = JetSpace.build("y", ("x",), (2,), 4)
+    with pytest.raises(ParseError):
+        parse_latex(source, jets=space.binding())
+
+
+def test_primes_after_an_unknown_function_are_its_derivatives() -> None:
+    space = JetSpace.build("y", ("x",), (2,), 4)
+    binding = space.binding()
+    first, second = space.u[0][1], space.u[0][2]
+    assert parse_latex(r"\sqrt{1+(x')^2}", jets=binding) == sp.sqrt(1 + first**2)
+    assert parse_latex(r"x''", jets=binding) == second
+    assert parse_latex(r"x'''", jets=binding) == space.u[0][3]
+    with pytest.raises(ParseError):  # not an unknown function of this functional
+        parse_latex(r"z'", jets=binding)
+    with pytest.raises(ParseError):  # primes stay refused outside a functional
+        parse_latex(r"x'")

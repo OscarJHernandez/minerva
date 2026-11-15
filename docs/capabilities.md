@@ -2323,6 +2323,59 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - energy function: not conserved (L depends explicitly on time)
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
 
+### Total time derivative along a motion
+
+*Available in:* chat.
+
+The derivative with respect to time of a momentum, an energy or any candidate constant, along a motion in which the coordinates, their velocities and the time all change (the chain rule, so accelerations appear). Given the Lagrangian, it also evaluates the result on that system's equations of motion and says whether it vanishes there. The derivative is shown only if a central difference of the input along random motions agrees with it.
+
+**Limits**
+
+- It is not a partial derivative; `differentiate` by t of an expression that contains velocities is refused and points here.
+- A zero is a statement about the Lagrangian given (on its equations of motion), never about other systems, and the nonzero case is worded as an exact substitution of the verified accelerations.
+- Expressions that already contain accelerations need third derivatives and are not supported.
+
+#### Angular momentum, by the product rule
+
+- **Input:** `\mu r^2 \dot{\theta}` (LaTeX)
+- **Assumptions:** mu positive; r positive
+- **Status:** `ok`
+- **Total time derivative:** $\frac{d}{dt}\left(\mu r^{2} \dot{\theta}\right) = \mu r \left(r \ddot{\theta} + 2 \dot{r} \dot{\theta}\right)$
+- **Check:** central difference of the input along random motions agreed at 10 of 10 points
+- Total time derivative along a motion; verified against a central difference of the input along random motions.
+- Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.
+
+#### Zero on the Kepler motions
+
+- **Input:** `\mu r^2 \dot{\theta}` (LaTeX)
+- **Assumptions:** mu positive; k positive; r positive
+- **Status:** `ok`
+- **Total time derivative:** $\frac{d}{dt}\left(\mu r^{2} \dot{\theta}\right) = \mu r \left(r \ddot{\theta} + 2 \dot{r} \dot{\theta}\right)$
+- **On the equations of motion (zero):** $0$
+- **Check:** central difference of the input along random motions agreed at 10 of 10 points
+- Total time derivative along a motion; verified against a central difference of the input along random motions.
+- Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.
+- Zero on the equations of motion of the Lagrangian given (confirmed numerically; also a symbolic zero). That is a statement about this Lagrangian's motions, not about other systems.
+
+#### A quantity that is not constant on those motions
+
+- **Input:** `r \dot{r}` (LaTeX)
+- **Assumptions:** mu positive; k positive; r positive
+- **Status:** `ok`
+- **Total time derivative:** $\frac{d}{dt}\left(r \dot{r}\right) = r \ddot{r} + \dot{r}^{2}$
+- **On the equations of motion:** $- \frac{k}{\mu r} + r^{2} \dot{\theta}^{2} + \dot{r}^{2}$
+- **Check:** central difference of the input along random motions agreed at 10 of 10 points
+- Total time derivative along a motion; verified against a central difference of the input along random motions.
+- Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.
+- Not zero on the equations of motion: the expression below substitutes the accelerations of the confirmed Euler-Lagrange equations (an exact substitution, not separately sampled), so it is not a constant of motion.
+
+#### A partial derivative by t is refused, not answered with 0
+
+- **Input:** `\mu r^2 \dot{\theta}` (LaTeX)
+- **Assumptions:** mu positive; r positive
+- **Status:** `unsupported`
+- This expression contains velocities (theta_dot). Differentiating by t here would hold them fixed (a partial derivative), not give the total time derivative along a motion; use `time_derivative` for that.
+
 ### Variational calculus
 
 *Available in:* workbench, chat, HTTP API.
@@ -2358,6 +2411,18 @@ Give an action functional of one or several functions, with derivatives of any o
 - **Natural condition (upper end, x, order 0):** $- x^{(3)} = 0$
 - **Natural condition (upper end, x, order 1):** $\ddot{x} = 0$
 - **Check:** Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof.
+
+#### The brachistochrone, x as a function of y, with no bounds given
+
+- **Integrand:** `\frac{\sqrt{1 + \left(\frac{dx}{dy}\right)^2}}{\sqrt{2 g y}}` (LaTeX)
+- **Unknown functions:** x
+- **Assumptions:** g positive
+- **Status:** `ok`
+- **First variation:** $\delta S = \int_{a}^{b} \left(\left(- \frac{2 \sqrt{2} \ddot{x} y}{4 \sqrt{g} \dot{x}^{2} y^{\frac{3}{2}} \sqrt{\dot{x}^{2} + 1} + 4 \sqrt{g} y^{\frac{3}{2}} \sqrt{\dot{x}^{2} + 1}} + \frac{\sqrt{2} \dot{x}^{3}}{4 \sqrt{g} \dot{x}^{2} y^{\frac{3}{2}} \sqrt{\dot{x}^{2} + 1} + 4 \sqrt{g} y^{\frac{3}{2}} \sqrt{\dot{x}^{2} + 1}} + \frac{\sqrt{2} \dot{x}}{4 \sqrt{g} \dot{x}^{2} y^{\frac{3}{2}} \sqrt{\dot{x}^{2} + 1} + 4 \sqrt{g} y^{\frac{3}{2}} \sqrt{\dot{x}^{2} + 1}}\right)\,\eta_{x}\right)\mathrm{d}y + \left[\frac{\sqrt{2} \dot{x}}{2 \sqrt{g} \sqrt{y} \sqrt{\dot{x}^{2} + 1}}\,\eta_{x}\right]_{a}^{b}$
+- **Euler-Lagrange (x):** $\frac{\sqrt{2} \left(- 2 \ddot{x} y + \dot{x}^{3} + \dot{x}\right)}{4 \sqrt{g} y^{\frac{3}{2}} \left(\dot{x}^{2} + 1\right)^{\frac{3}{2}}} = 0$
+- **Boundary form:** $\left[\frac{\sqrt{2} \dot{x}}{2 \sqrt{g} \sqrt{y} \sqrt{\dot{x}^{2} + 1}}\,\eta_{x}\right]_{a}^{b}$
+- **Check:** Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof.
+- 2 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it.
 
 #### A total derivative has no interior equation
 
@@ -2432,10 +2497,10 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - **Lagrangian:** `\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}`
 - **Coordinates:** r, theta
 - **Status:** `ok`
-- **C1, momentum conjugate to theta:** $C1 = m r^{2} \dot{\theta}$
-- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$
-- **C3, newly found:** $C3 = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
-- **C4, newly found:** $C4 = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
+- **C1, momentum conjugate to theta:** $C_{1} = m r^{2} \dot{\theta}$
+- **C2, energy function:** $C_{2} = - \frac{k}{r} + \frac{m r^{2} \dot{\theta}^{2}}{2} + \frac{m \dot{r}^{2}}{2}$
+- **C3, newly found:** $C_{3} = - k \cos{\left(\theta \right)} + m r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
+- **C4, newly found:** $C_{4} = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
 - **Exact relation:** $2 C_{1}^{2} C_{2} - C_{3}^{2} m - C_{4}^{2} m + k^{2} m = 0$
 - **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
@@ -2449,10 +2514,10 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - **Hamiltonian:** `\frac{p_r^2}{2m} + \frac{p_\theta^2}{2 m r^2} - \frac{k}{r}`
 - **Coordinates:** r, theta
 - **Status:** `ok`
-- **C1, momentum conjugate to theta:** $C1 = p_{\theta}$
-- **C2, energy function:** $C2 = - \frac{k}{r} + \frac{p_{r}^{2}}{2 m} + \frac{p_{\theta}^{2}}{2 m r^{2}}$
-- **C3, newly found:** $C3 = - k m \sin{\left(\theta \right)} - p_{r} p_{\theta} \cos{\left(\theta \right)} + \frac{p_{\theta}^{2} \sin{\left(\theta \right)}}{r}$
-- **C4, newly found:** $C4 = - k m \cos{\left(\theta \right)} + p_{r} p_{\theta} \sin{\left(\theta \right)} + \frac{p_{\theta}^{2} \cos{\left(\theta \right)}}{r}$
+- **C1, momentum conjugate to theta:** $C_{1} = p_{\theta}$
+- **C2, energy function:** $C_{2} = - \frac{k}{r} + \frac{p_{r}^{2}}{2 m} + \frac{p_{\theta}^{2}}{2 m r^{2}}$
+- **C3, newly found:** $C_{3} = - k m \sin{\left(\theta \right)} - p_{r} p_{\theta} \cos{\left(\theta \right)} + \frac{p_{\theta}^{2} \sin{\left(\theta \right)}}{r}$
+- **C4, newly found:** $C_{4} = - k m \cos{\left(\theta \right)} + p_{r} p_{\theta} \sin{\left(\theta \right)} + \frac{p_{\theta}^{2} \cos{\left(\theta \right)}}{r}$
 - **Exact relation:** $2 C_{1}^{2} C_{2} m - C_{3}^{2} - C_{4}^{2} + k^{2} m^{2} = 0$
 - **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
@@ -2465,10 +2530,10 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - **Hamiltonian:** `\frac{p_1^2 + q_1^2}{2} + \frac{p_2^2 + 4 q_2^2}{2}`
 - **Coordinates:** q_1, q_2
 - **Status:** `ok`
-- **C1, energy function:** $C1 = \frac{p_{1}^{2}}{2} + \frac{p_{2}^{2}}{2} + \frac{q_{1}^{2}}{2} + 2 q_{2}^{2}$
-- **C2, newly found:** $C2 = p_{1}^{2} + q_{1}^{2}$
-- **C3, newly found:** $C3 = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}$
-- **C4, newly found:** $C4 = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}$
+- **C1, energy function:** $C_{1} = \frac{p_{1}^{2}}{2} + \frac{p_{2}^{2}}{2} + \frac{q_{1}^{2}}{2} + 2 q_{2}^{2}$
+- **C2, newly found:** $C_{2} = p_{1}^{2} + q_{1}^{2}$
+- **C3, newly found:** $C_{3} = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}$
+- **C4, newly found:** $C_{4} = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}$
 - **Exact relation:** $- 2 C_{1} C_{2}^{2} + C_{2}^{3} + 4 C_{3}^{2} + C_{4}^{2} = 0$
 - **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
@@ -2483,7 +2548,7 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - **Lagrangian:** `\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3`
 - **Coordinates:** x, y
 - **Status:** `ok`
-- **C1, energy function:** $C1 = x^{2} y + \frac{x^{2}}{2} + \frac{\dot{x}^{2}}{2} - \frac{y^{3}}{3} + \frac{y^{2}}{2} + \frac{\dot{y}^{2}}{2}$
+- **C1, energy function:** $C_{1} = x^{2} y + \frac{x^{2}}{2} + \frac{\dot{x}^{2}}{2} - \frac{y^{3}}{3} + \frac{y^{2}}{2} + \frac{\dot{y}^{2}}{2}$
 - **Result:** no additional constant within the explored families
 - Functionally independent: 1 (proved).
 - 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).

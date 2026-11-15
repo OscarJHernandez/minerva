@@ -6201,6 +6201,134 @@
       ]
     },
     {
+      "id": "time-derivative",
+      "title": "Total time derivative along a motion",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "The derivative with respect to time of a momentum, an energy or any candidate constant, along a motion in which the coordinates, their velocities and the time all change (the chain rule, so accelerations appear). Given the Lagrangian, it also evaluates the result on that system's equations of motion and says whether it vanishes there. The derivative is shown only if a central difference of the input along random motions agrees with it.",
+      "limits": [
+        "It is not a partial derivative; `differentiate` by t of an expression that contains velocities is refused and points here.",
+        "A zero is a statement about the Lagrangian given (on its equations of motion), never about other systems, and the nonzero case is worded as an exact substitution of the verified accelerations.",
+        "Expressions that already contain accelerations need third derivatives and are not supported."
+      ],
+      "examples": [
+        {
+          "id": "time-derivative-angular-momentum",
+          "title": "Angular momentum, by the product rule",
+          "op": "time_derivative",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\mu r^2 \\dot{\\theta}",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "mu positive; r positive",
+          "outputs": [
+            {
+              "label": "Total time derivative",
+              "latex": "\\frac{d}{dt}\\left(\\mu r^{2} \\dot{\\theta}\\right) = \\mu r \\left(r \\ddot{\\theta} + 2 \\dot{r} \\dot{\\theta}\\right)"
+            }
+          ],
+          "checks": [
+            "central difference of the input along random motions agreed at 10 of 10 points"
+          ],
+          "notes": [
+            "Total time derivative along a motion; verified against a central difference of the input along random motions.",
+            "Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative."
+          ]
+        },
+        {
+          "id": "time-derivative-kepler-constant",
+          "title": "Zero on the Kepler motions",
+          "op": "time_derivative",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\mu r^2 \\dot{\\theta}",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "mu positive; k positive; r positive",
+          "outputs": [
+            {
+              "label": "Total time derivative",
+              "latex": "\\frac{d}{dt}\\left(\\mu r^{2} \\dot{\\theta}\\right) = \\mu r \\left(r \\ddot{\\theta} + 2 \\dot{r} \\dot{\\theta}\\right)"
+            },
+            {
+              "label": "On the equations of motion (zero)",
+              "latex": "0"
+            }
+          ],
+          "checks": [
+            "central difference of the input along random motions agreed at 10 of 10 points"
+          ],
+          "notes": [
+            "Total time derivative along a motion; verified against a central difference of the input along random motions.",
+            "Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.",
+            "Zero on the equations of motion of the Lagrangian given (confirmed numerically; also a symbolic zero). That is a statement about this Lagrangian's motions, not about other systems."
+          ]
+        },
+        {
+          "id": "time-derivative-not-constant",
+          "title": "A quantity that is not constant on those motions",
+          "op": "time_derivative",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "r \\dot{r}",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "mu positive; k positive; r positive",
+          "outputs": [
+            {
+              "label": "Total time derivative",
+              "latex": "\\frac{d}{dt}\\left(r \\dot{r}\\right) = r \\ddot{r} + \\dot{r}^{2}"
+            },
+            {
+              "label": "On the equations of motion",
+              "latex": "- \\frac{k}{\\mu r} + r^{2} \\dot{\\theta}^{2} + \\dot{r}^{2}"
+            }
+          ],
+          "checks": [
+            "central difference of the input along random motions agreed at 10 of 10 points"
+          ],
+          "notes": [
+            "Total time derivative along a motion; verified against a central difference of the input along random motions.",
+            "Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.",
+            "Not zero on the equations of motion: the expression below substitutes the accelerations of the confirmed Euler-Lagrange equations (an exact substitution, not separately sampled), so it is not a constant of motion."
+          ]
+        },
+        {
+          "id": "time-derivative-partial-refused",
+          "title": "A partial derivative by t is refused, not answered with 0",
+          "op": "differentiate",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Input",
+              "source": "\\mu r^2 \\dot{\\theta}",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "mu positive; r positive",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "This expression contains velocities (theta_dot). Differentiating by t here would hold them fixed (a partial derivative), not give the total time derivative along a motion; use `time_derivative` for that."
+          ]
+        }
+      ]
+    },
+    {
       "id": "variation",
       "title": "Variational calculus",
       "status": "available",
@@ -6300,6 +6428,44 @@
             "Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof."
           ],
           "notes": []
+        },
+        {
+          "id": "variation-brachistochrone",
+          "title": "The brachistochrone, x as a function of y, with no bounds given",
+          "op": "variation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Integrand",
+              "source": "\\frac{\\sqrt{1 + \\left(\\frac{dx}{dy}\\right)^2}}{\\sqrt{2 g y}}",
+              "syntax": "latex"
+            },
+            {
+              "label": "Unknown functions",
+              "text": "x"
+            }
+          ],
+          "assumptions": "g positive",
+          "outputs": [
+            {
+              "label": "First variation",
+              "latex": "\\delta S = \\int_{a}^{b} \\left(\\left(- \\frac{2 \\sqrt{2} \\ddot{x} y}{4 \\sqrt{g} \\dot{x}^{2} y^{\\frac{3}{2}} \\sqrt{\\dot{x}^{2} + 1} + 4 \\sqrt{g} y^{\\frac{3}{2}} \\sqrt{\\dot{x}^{2} + 1}} + \\frac{\\sqrt{2} \\dot{x}^{3}}{4 \\sqrt{g} \\dot{x}^{2} y^{\\frac{3}{2}} \\sqrt{\\dot{x}^{2} + 1} + 4 \\sqrt{g} y^{\\frac{3}{2}} \\sqrt{\\dot{x}^{2} + 1}} + \\frac{\\sqrt{2} \\dot{x}}{4 \\sqrt{g} \\dot{x}^{2} y^{\\frac{3}{2}} \\sqrt{\\dot{x}^{2} + 1} + 4 \\sqrt{g} y^{\\frac{3}{2}} \\sqrt{\\dot{x}^{2} + 1}}\\right)\\,\\eta_{x}\\right)\\mathrm{d}y + \\left[\\frac{\\sqrt{2} \\dot{x}}{2 \\sqrt{g} \\sqrt{y} \\sqrt{\\dot{x}^{2} + 1}}\\,\\eta_{x}\\right]_{a}^{b}"
+            },
+            {
+              "label": "Euler-Lagrange (x)",
+              "latex": "\\frac{\\sqrt{2} \\left(- 2 \\ddot{x} y + \\dot{x}^{3} + \\dot{x}\\right)}{4 \\sqrt{g} y^{\\frac{3}{2}} \\left(\\dot{x}^{2} + 1\\right)^{\\frac{3}{2}}} = 0"
+            },
+            {
+              "label": "Boundary form",
+              "latex": "\\left[\\frac{\\sqrt{2} \\dot{x}}{2 \\sqrt{g} \\sqrt{y} \\sqrt{\\dot{x}^{2} + 1}}\\,\\eta_{x}\\right]_{a}^{b}"
+            }
+          ],
+          "checks": [
+            "Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof."
+          ],
+          "notes": [
+            "2 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it."
+          ]
         },
         {
           "id": "variation-total-derivative",
@@ -7059,19 +7225,19 @@
           "outputs": [
             {
               "label": "C1, momentum conjugate to theta",
-              "latex": "C1 = m r^{2} \\dot{\\theta}"
+              "latex": "C_{1} = m r^{2} \\dot{\\theta}"
             },
             {
               "label": "C2, energy function",
-              "latex": "C2 = - \\frac{k}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
+              "latex": "C_{2} = - \\frac{k}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
             },
             {
               "label": "C3, newly found",
-              "latex": "C3 = - k \\cos{\\left(\\theta \\right)} + m r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
+              "latex": "C_{3} = - k \\cos{\\left(\\theta \\right)} + m r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
             },
             {
               "label": "C4, newly found",
-              "latex": "C4 = k \\sin{\\left(\\theta \\right)} - m r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
+              "latex": "C_{4} = k \\sin{\\left(\\theta \\right)} - m r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
             },
             {
               "label": "Exact relation",
@@ -7108,19 +7274,19 @@
           "outputs": [
             {
               "label": "C1, momentum conjugate to theta",
-              "latex": "C1 = p_{\\theta}"
+              "latex": "C_{1} = p_{\\theta}"
             },
             {
               "label": "C2, energy function",
-              "latex": "C2 = - \\frac{k}{r} + \\frac{p_{r}^{2}}{2 m} + \\frac{p_{\\theta}^{2}}{2 m r^{2}}"
+              "latex": "C_{2} = - \\frac{k}{r} + \\frac{p_{r}^{2}}{2 m} + \\frac{p_{\\theta}^{2}}{2 m r^{2}}"
             },
             {
               "label": "C3, newly found",
-              "latex": "C3 = - k m \\sin{\\left(\\theta \\right)} - p_{r} p_{\\theta} \\cos{\\left(\\theta \\right)} + \\frac{p_{\\theta}^{2} \\sin{\\left(\\theta \\right)}}{r}"
+              "latex": "C_{3} = - k m \\sin{\\left(\\theta \\right)} - p_{r} p_{\\theta} \\cos{\\left(\\theta \\right)} + \\frac{p_{\\theta}^{2} \\sin{\\left(\\theta \\right)}}{r}"
             },
             {
               "label": "C4, newly found",
-              "latex": "C4 = - k m \\cos{\\left(\\theta \\right)} + p_{r} p_{\\theta} \\sin{\\left(\\theta \\right)} + \\frac{p_{\\theta}^{2} \\cos{\\left(\\theta \\right)}}{r}"
+              "latex": "C_{4} = - k m \\cos{\\left(\\theta \\right)} + p_{r} p_{\\theta} \\sin{\\left(\\theta \\right)} + \\frac{p_{\\theta}^{2} \\cos{\\left(\\theta \\right)}}{r}"
             },
             {
               "label": "Exact relation",
@@ -7156,19 +7322,19 @@
           "outputs": [
             {
               "label": "C1, energy function",
-              "latex": "C1 = \\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{2} + 2 q_{2}^{2}"
+              "latex": "C_{1} = \\frac{p_{1}^{2}}{2} + \\frac{p_{2}^{2}}{2} + \\frac{q_{1}^{2}}{2} + 2 q_{2}^{2}"
             },
             {
               "label": "C2, newly found",
-              "latex": "C2 = p_{1}^{2} + q_{1}^{2}"
+              "latex": "C_{2} = p_{1}^{2} + q_{1}^{2}"
             },
             {
               "label": "C3, newly found",
-              "latex": "C3 = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}"
+              "latex": "C_{3} = p_{1}^{2} q_{2} - p_{1} p_{2} q_{1} - q_{1}^{2} q_{2}"
             },
             {
               "label": "C4, newly found",
-              "latex": "C4 = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}"
+              "latex": "C_{4} = p_{1}^{2} p_{2} + 4 p_{1} q_{1} q_{2} - p_{2} q_{1}^{2}"
             },
             {
               "label": "Exact relation",
@@ -7206,7 +7372,7 @@
           "outputs": [
             {
               "label": "C1, energy function",
-              "latex": "C1 = x^{2} y + \\frac{x^{2}}{2} + \\frac{\\dot{x}^{2}}{2} - \\frac{y^{3}}{3} + \\frac{y^{2}}{2} + \\frac{\\dot{y}^{2}}{2}"
+              "latex": "C_{1} = x^{2} y + \\frac{x^{2}}{2} + \\frac{\\dot{x}^{2}}{2} - \\frac{y^{3}}{3} + \\frac{y^{2}}{2} + \\frac{\\dot{y}^{2}}{2}"
             },
             {
               "label": "Result",

@@ -27,7 +27,7 @@ from .models import End
 from .numerics import JetField, Numerics, Poly, ShiftedField
 from .quadrature import Integral, _legendre_rule, fd_table, integrate
 from .setup import Problem
-from .verify import Comparison, VariationCheck, action_value, perturbation
+from .verify import Comparison, VariationCheck, action_value, perturbation, regular_numerics
 
 Pair = tuple[int, int]  # (function index, derivative order)
 STEPS2 = (mp.mpf("5e-3"), mp.mpf("2.5e-3"), mp.mpf("1.25e-3"))
@@ -103,7 +103,7 @@ def check_second_variation(
     comparisons: int = 3,
 ) -> VariationCheck:
     """Second differences of the action against the claimed quadratic form (polynomial paths)."""
-    num = Numerics(problem, seed)
+    num = regular_numerics(problem, seed)
     jets = num.jets
     path = num.field(num.random_path(2 * max(jets.orders) + 2))
     floor = mp.mpf("1e-12") * (1 + abs(action_value(num, path)[0]))

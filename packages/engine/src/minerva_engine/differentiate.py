@@ -19,6 +19,7 @@ symbolic test of a derivative exists, and the report does not pretend otherwise.
 from __future__ import annotations
 
 import random
+import re
 import time
 from typing import Literal
 
@@ -74,6 +75,10 @@ class DifferentiateResult(BaseModel):
     steps: list[DerivativeStep] = Field(default_factory=list)
     verification: DerivativeVerification | None = None
     notes: list[str] = Field(default_factory=list)
+    # Only for the total time derivative of a Lagrangian system (`time_derivative` with a Lagrangian).
+    on_motion_latex: str | None = None
+    zero_on_motion: bool | None = None
+    symbolic_zero_on_motion: bool | None = None
     message: str = ""
     duration_ms: int = 0
 
@@ -174,6 +179,11 @@ def check_derivative(
 
 
 # --- the operation -----------------------------------------------------------------------------
+# `\\dot{x}` and `\\ddot{x}` are the symbols x_dot and x_ddot.
+_VELOCITY = re.compile(r".+_d?dot$")
+_TIME_NAMES = frozenset({"t", "tau"})
+
+
 def _nodes(expr: sp.Basic) -> int:
     return sum(1 for _ in sp.preorder_traversal(expr))
 
@@ -227,7 +237,23 @@ def differentiate(
                 **base,
             )
 
+    velocities = sorted(s.name for s in expr.free_symbols if _VELOCITY.fullmatch(s.name))
     notes: list[str] = []
+    if velocities:
+        for symbol, _ in symbols:
+            if symbol.name in _TIME_NAMES:
+                return _fail(
+                    Status.UNSUPPORTED,
+                    f"This expression contains velocities ({', '.join(velocities)}). Differentiating "
+                    f"by {symbol.name} here would hold them fixed (a partial derivative), not give the "
+                    "total time derivative along a motion; use `time_derivative` for that.",
+                    **base,
+                )
+        if any(not _VELOCITY.fullmatch(s.name) for s, _ in symbols):
+            notes.append(
+                "Partial derivative: the velocities in this expression "
+                f"({', '.join(velocities)}) are held fixed."
+            )
     steps: list[DerivativeStep] = []
     current = expr
     done = points = agreed = checked_steps = 0
