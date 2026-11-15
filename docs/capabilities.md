@@ -1052,8 +1052,8 @@ For an integral that depends on a parameter, Minerva searches for a differential
 - **Differential equation:** $I(a) + 2 a\,I'(a) = 0$
 - **Value:** $I = \frac{\sqrt{\pi}}{\sqrt{a}}$
 - **Check:** proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12
-- **Check:** established: the real part of the exponent tends to -\infty at the lower end; the same bound holds uniformly for every parameter derivative
-- **Check:** established: the real part of the exponent tends to -\infty at the upper end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the real part of the exponent tends to minus infinity at the lower end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the real part of the exponent tends to minus infinity at the upper end; the same bound holds uniformly for every parameter derivative
 - **Check:** established: the leading coefficient has a constant sign on the parameter domain
 - **Check:** satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)
 - evaluated: The integral was evaluated from the derived differential equation and checked.
@@ -1070,8 +1070,8 @@ For an integral that depends on a parameter, Minerva searches for a differential
 - **Value:** $I = \frac{\sqrt{\pi} \mathrm{e}^{- 2 a}}{2}$
 - **Check:** proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12
 - **Check:** established: constant sign shown by a coefficient certificate
-- **Check:** established: the real part of the exponent tends to -\infty at the lower end; the same bound holds uniformly for every parameter derivative
-- **Check:** established: the real part of the exponent tends to -\infty at the upper end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the real part of the exponent tends to minus infinity at the lower end; the same bound holds uniformly for every parameter derivative
+- **Check:** established: the real part of the exponent tends to minus infinity at the upper end; the same bound holds uniformly for every parameter derivative
 - **Check:** established: the leading coefficient has a constant sign on the parameter domain
 - **Check:** satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)
 - evaluated: The integral was evaluated from the derived differential equation and checked.

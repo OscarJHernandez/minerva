@@ -4078,8 +4078,8 @@
           ],
           "checks": [
             "proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12",
-            "established: the real part of the exponent tends to -\\infty at the lower end; the same bound holds uniformly for every parameter derivative",
-            "established: the real part of the exponent tends to -\\infty at the upper end; the same bound holds uniformly for every parameter derivative",
+            "established: the real part of the exponent tends to minus infinity at the lower end; the same bound holds uniformly for every parameter derivative",
+            "established: the real part of the exponent tends to minus infinity at the upper end; the same bound holds uniformly for every parameter derivative",
             "established: the leading coefficient has a constant sign on the parameter domain",
             "satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)"
           ],
@@ -4126,8 +4126,8 @@
           "checks": [
             "proved exactly: L f - dG/dx simplifies to zero; both numerical legs agree; numerical legs 20/20 and 12/12",
             "established: constant sign shown by a coefficient certificate",
-            "established: the real part of the exponent tends to -\\infty at the lower end; the same bound holds uniformly for every parameter derivative",
-            "established: the real part of the exponent tends to -\\infty at the upper end; the same bound holds uniformly for every parameter derivative",
+            "established: the real part of the exponent tends to minus infinity at the lower end; the same bound holds uniformly for every parameter derivative",
+            "established: the real part of the exponent tends to minus infinity at the upper end; the same bound holds uniformly for every parameter derivative",
             "established: the leading coefficient has a constant sign on the parameter domain",
             "satisfies the equation exactly and the initial values; confirmed by numerical quadrature at sampled parameter values (evidence, not a proof)"
           ],

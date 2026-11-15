@@ -153,9 +153,7 @@ export function TelescopingCard({ result }: { result: TelescopingResult }) {
       ))}
       {result.families.length > 0 && (
         <p className="mt-2 text-xs text-muted">
-          Searched {result.families.length} famil{result.families.length === 1 ? "y" : "ies"} (
-          operator order, certificate degree). A relation found within them says nothing about other
-          families; none found proves nothing outside them.
+          {`Searched ${result.families.length} ${result.families.length === 1 ? "family" : "families"} (operator order, certificate degree). A relation found within them says nothing about other families; none found proves nothing outside them.`}
         </p>
       )}
     </section>

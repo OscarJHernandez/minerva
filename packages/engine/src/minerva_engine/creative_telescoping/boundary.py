@@ -306,7 +306,7 @@ def analyse(
                 Condition(
                     latex=f"|f| \\text{{ decays exponentially at }} {where}",
                     established=True,
-                    how=f"the real part of the exponent tends to -\\infty at {label}; the same "
+                    how=f"the real part of the exponent tends to minus infinity at {label}; the same "
                     "bound holds uniformly for every parameter derivative",
                 )
             )
@@ -317,7 +317,7 @@ def analyse(
                 Condition(
                     latex=f"|f| \\text{{ grows exponentially at }} {where}",
                     established=False,
-                    how="the real part of the exponent tends to +\\infty",
+                    how="the real part of the exponent tends to plus infinity",
                 )
             )
             out.divergent = True
