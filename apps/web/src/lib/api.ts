@@ -1,5 +1,6 @@
 import type { DiscoveryReport } from "./chat-types";
 import type { StatMechRequest, StatMechResult } from "./statmech-types";
+import type { TelescopingRequest, TelescopingResult } from "./telescoping-types";
 import type {
   ApplyIdentityResult,
   Assumptions,
@@ -161,6 +162,11 @@ export const api = {
     request<GeometryResult>("/v1/compute/geometry", {
       method: "POST",
       body: JSON.stringify({ ...req, format: "latex", ...link }),
+    }),
+  telescoping: (req: TelescopingRequest) =>
+    request<TelescopingResult>("/v1/compute/telescoping", {
+      method: "POST",
+      body: JSON.stringify(req),
     }),
   /** One step of a variational derivation: the whole functional is sent every time (nothing is remembered). */
   variation: (req: VariationRequest, link?: { derivation_id?: string; parent_id?: string }) =>

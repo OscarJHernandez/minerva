@@ -519,6 +519,10 @@ export function Workbench() {
           <Link href="/workbench/conserved" className="text-accent hover:underline">
             Find its conserved quantities
           </Link>
+          {" · "}A parameterised integral?{" "}
+          <Link href="/workbench/telescoping" className="text-accent hover:underline">
+            Creative telescoping
+          </Link>
         </p>
         <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
           {(

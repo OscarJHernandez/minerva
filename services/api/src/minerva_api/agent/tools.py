@@ -2500,6 +2500,17 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     tool = TOOLS.get(name)
     if tool is None:
         return _error(
+    if (
+        name == "integrate"
+        and output.status in ("unsupported", "conditions_not_satisfied", "not_verified")
+        and arguments.get("lower") is not None
+        and arguments.get("upper") is not None
+    ):
+        hints.append(
+            "hint: if this integrand depends on a parameter (besides the integration variable) and "
+            "is a product of rational functions, powers and exponentials, `creative_telescoping` "
+            "may derive a verified differential equation for the integral."
+        )
             name,
             f"unknown tool {name!r}; available: {', '.join(TOOLS)}",
             "unknown_tool",
@@ -2517,6 +2528,7 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     try:
         output = tool.run(args, ctx)
     except ValidationError as exc:
+        "creative_telescoping",
         return _error(
             name,
             f"invalid arguments: {exc.errors()[0]['msg']}",
@@ -2699,4 +2711,25 @@ TOOLS["statistical_mechanics"] = Tool(
     "transforms, interacting classical systems.",
     StatMechArgs,
     run_statistical_mechanics,
+)
+
+
+from .telescoping_tools import TelescopingArgs, run_creative_telescoping  # noqa: E402
+
+TOOLS["creative_telescoping"] = Tool(
+    "creative_telescoping",
+    "A definite integral that depends on a parameter, I(a) = integral of f(x, a) dx, when `integrate` "
+    "cannot give a verified value. SEARCHES (it does not look anything up) for a differential operator "
+    "L in the parameter and a certificate G with L f = dG/dx, proves that identity exactly, checks "
+    "convergence, differentiation under the integral sign and the boundary terms from the DECLARED "
+    "assumptions only (declare the parameter real and positive when the problem says so), derives the "
+    "differential equation of I(a) and solves it with independently verified initial values. "
+    "Supported integrands: products of rational functions, powers (exponents free of x) and "
+    "exponentials of rational functions, in the variable and the parameter. Reports a PARTIAL result "
+    "(certificate or equation only) when the value cannot be established, and refuses sums of such "
+    "terms, trigonometric functions, x**a, divergent integrals and poles inside the interval. A value "
+    "is confirmed by numerical quadrature: call it 'checked numerically', never proved. Never invent "
+    "an operator, certificate, equation or constant.",
+    TelescopingArgs,
+    run_creative_telescoping,
 )

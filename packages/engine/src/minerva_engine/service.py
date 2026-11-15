@@ -8,6 +8,7 @@ import time
 from typing import Any, Literal
 
 from .claims import ClaimCheck, clean_assumptions
+from .creative_telescoping.models import TelescopingInput, TelescopingResult
 from .differentiate import DifferentiateResult, DiffVariable
 from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
@@ -280,6 +281,24 @@ class Engine:
         """Expand E, Var and Cov of declared random variables by linearity; independence only where
         declared (the result is then conditional on it). Shown only if it agrees with the original on
         explicit finite joint distributions."""
+    def creative_telescoping(self, request: TelescopingInput) -> TelescopingResult:
+        """Find and prove a telescoping relation for a parameterised integral, derive the ODE of
+        the integral, and evaluate it only if every condition and an independent check agree."""
+        outcome, ms = self._run("creative_telescoping", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return TelescopingResult(
+                status=status,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                variable=request.variable,
+                parameter=request.parameter,
+                duration_ms=ms,
+            )
+        result = TelescopingResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
         outcome, ms = self._run("expectation", {"input": request.model_dump()})
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             status, message = self._failure_status(outcome.outcome)

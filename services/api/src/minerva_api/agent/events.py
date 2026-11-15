@@ -56,6 +56,7 @@ class Card(BaseModel):
         "discovery",
         "motion",
         "variation",
+        "telescoping",
         "dimensional",
         "units",
         "step",

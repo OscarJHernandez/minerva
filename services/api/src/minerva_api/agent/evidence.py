@@ -30,6 +30,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "integrate_motion": "numeric",
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
+    "creative_telescoping": "symbolic_zero",  # the certificate is an exact identity; a value adds quadrature
     "variation": "numeric",  # finite differences of the action agree with the claimed variation
     "statistical_mechanics": "numeric",  # independent enumeration / quadrature; a symbolic zero is reported as such
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
@@ -84,6 +85,15 @@ def evidence_for(tool: str, status: str, card_data: dict[str, Any]) -> Evidence:
         _dict(data.get("first")).get("verification")
     )
     quadrature = _dict(data.get("quadrature"))
+    if tool == "creative_telescoping":
+        # the certificate is proved exactly; a value, if any, rests on quadrature of the original
+        verification = _dict(data.get("certificate_check"))
+        values = _dict(data.get("value_verification"))
+        if values:
+            quadrature = {
+                "points_checked": values.get("quadrature_points_checked"),
+                "points_agreed": values.get("quadrature_points_agreed"),
+            }
     lookup = tool in _LOOKUPS
 
     if status == "ok":
@@ -100,6 +110,8 @@ def evidence_for(tool: str, status: str, card_data: dict[str, Any]) -> Evidence:
         check = "symbolic_zero"
     elif tool == "integrate" and data.get("definite") is True:
         check = "quadrature"
+    if tool == "creative_telescoping" and status == "ok":
+        check = "quadrature" if data.get("outcome") == "evaluated" else "symbolic_zero"
 
     source = quadrature or verification
     checked = _first_int(

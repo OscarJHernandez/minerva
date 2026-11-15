@@ -279,6 +279,13 @@ def op_statmech(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_creative_telescoping(payload: dict[str, Any]) -> dict[str, Any]:
+    from .creative_telescoping import TelescopingInput, creative_telescoping
+
+    result = creative_telescoping(TelescopingInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_integrate(payload: dict[str, Any]) -> dict[str, Any]:
     from .integrate import integrate
 
@@ -830,6 +837,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "series": op_series,
     "integrate": op_integrate,
     "distribution": op_distribution,
+    "creative_telescoping": op_creative_telescoping,
     "matrix_calculus": op_matrix_calculus,
     "geometry": op_geometry,
     "variation": op_variation,

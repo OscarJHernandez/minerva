@@ -392,6 +392,22 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif ("telescop" in lower or "differentiating under" in lower) and latex:
+            # Development stand-in: the parameter is named in the prompt ("parameter a"), default a.
+            named = re.search(r"parameter\s+([A-Za-z])\b", lower)
+            tel_args: dict[str, Any] = {
+                "latex": latex,
+                "variable": "x",
+                "parameter": named.group(1) if named else "a",
+            }
+            bounds = re.search(r"from\s+(-?[\w\\]+)\s+to\s+(-?[\w\\]+)", lower)
+            if bounds:
+                tel_args["lower"], tel_args["upper"] = bounds.group(1), bounds.group(2)
+            if named:
+                tel_args["assumptions"] = {named.group(1): ["positive"], "x": ["real"]}
+            async for c in self._say("I will search for a telescoping relation and check it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("creative_telescoping", tel_args)])
         elif (
             "variation" in lower or "euler-lagrange" in lower or "action functional" in lower
         ) and latex:
@@ -521,6 +537,24 @@ class ScriptedLLM:
                 text = (
                     "Nothing better was found, so the expression is returned unchanged. If some "
                     "symbols are known to be positive or real, tell me and I will try again."
+                )
+            else:
+                text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."
+        elif tool == "creative_telescoping":
+            found = re.search(r"status=(\w+)", content)
+            reached = re.search(r"outcome=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            outcome = reached.group(1) if reached else "none"
+            if status == "ok" and outcome == "evaluated":
+                text = (
+                    "The card shows the operator, the proved certificate, the boundary terms, the "
+                    "differential equation and the value derived from it. The value agrees with "
+                    "numerical quadrature (evidence, not a proof)."
+                )
+            elif status == "ok":
+                text = (
+                    "Only part of the integral was established: the card shows what was proved and "
+                    "what remains unresolved. The integral itself has not been evaluated."
                 )
             else:
                 text = f"I could not complete that ({status}). The card says why; tell me how to rephrase it."

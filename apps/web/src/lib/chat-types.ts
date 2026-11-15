@@ -20,6 +20,7 @@ import type {
 } from "./types";
 import type { FunctionalRequest, VariationReport } from "./variation-types";
 import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
+import type { TelescopingResult } from "./telescoping-types";
 
 export interface ExpansionReport {
   status: Status;
@@ -570,6 +571,13 @@ export type Card =
       type: "invariants";
       title: string;
       data: { report: InvariantReport };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "telescoping";
+      title: string;
+      data: TelescopingResult & { request: Record<string, unknown> };
     }
   | {
       id: string;
