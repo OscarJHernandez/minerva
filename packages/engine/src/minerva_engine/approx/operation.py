@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from typing import Any
 
 from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..models import Limits, Status
@@ -53,6 +54,28 @@ HANDLERS: dict[str, Handler] = {
 }
 
 
+def approximation_with(
+    ctx: Context, method: str, update: dict[str, Any], handlers: dict[str, Handler]
+) -> ApproximationReport:
+    """Run `method` on the same expression with some fields of the request changed (the strategy engine)."""
+    handler = handlers[method]
+    data = ctx.data.model_copy(update={"method": method, **update})
+    sub = Context(data, ctx.limits, ctx.started, ctx.expr, ctx.var)
+    try:
+        return handler(sub)
+    except Refused as refused:
+        return failure(method, refused, data=data)
+
+
+def _auto(ctx: Context) -> ApproximationReport:
+    from .strategy import auto
+
+    return auto(ctx, HANDLERS)
+
+
+HANDLERS["auto"] = _auto
+
+
 def approximation(data: ApproximationInput, limits: Limits) -> ApproximationReport:
     started = time.monotonic()
     handler = HANDLERS.get(data.method)
@@ -85,7 +108,7 @@ def approximation(data: ApproximationInput, limits: Limits) -> ApproximationRepo
                 Refused(Status.NOT_VERIFIED, "verification_failed", str(exc)),
                 data=data,
             )
-    report.method = data.method
+    report.method = report.method or data.method
     report.duration_ms = (time.monotonic() - started) * 1000
     report.diagnostics = diagnostics(report, started)
     return report

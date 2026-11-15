@@ -121,6 +121,14 @@ def _eval(fn: Fn, *args: Any) -> Any:
     return value if mpmath.isfinite(value) else None
 
 
+def _centre(x0: sp.Expr) -> Any:
+    """The expansion point at the working precision. (Through a Python complex it carries only 53
+    bits, so an exactly zero coefficient at an algebraic point such as 2**(1/6) was estimated as 1e-15
+    and the series rejected.)"""
+    with mpmath.workdps(DPS):
+        return mpmath.mpmathify(sp.N(x0, DPS))
+
+
 def _circle(fn: Fn, params: tuple[Any, ...], x0: Any, radius: Any, order: int) -> list[Any] | None:
     """Scaled coefficient estimates s_k = c_k r^k, k = 0..order, from the trapezoid rule."""
     values = []
@@ -272,7 +280,7 @@ def check_series(
         except (TypeError, ValueError, NameError):
             verification.note = "the expression cannot be evaluated numerically"
             return verification
-        x0_mp = mpmath.mpmathify(complex(x0))
+        x0_mp = _centre(x0)
         checked = 0
         smallest = 1.0
         for _ in range(attempts):
@@ -338,7 +346,7 @@ def _measured(f: sp.Expr, var: sp.Symbol, x0: sp.Expr, candidate: sp.Expr) -> li
             p_fn = sp.lambdify(var, candidate, modules="mpmath")
         except (TypeError, ValueError, NameError):
             return out
-        x0_mp = mpmath.mpmathify(complex(x0))
+        x0_mp = _centre(x0)
         for distance in (0.5, 0.1, 0.01):
             point = x0_mp + unit * mpmath.mpf(distance)
             exact = _eval(f_fn, point)
