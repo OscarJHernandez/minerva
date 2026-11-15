@@ -631,6 +631,7 @@ export type Operation =
   | "matrix_calculus"
   | "geometry"
   | "distribution"
+  | "statmech"
   | "rewrite"
   | "substitute"
   | "isolate";

@@ -30,6 +30,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "integrate_motion": "numeric",
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
+    "statistical_mechanics": "numeric",  # independent enumeration / quadrature; a symbolic zero is reported as such
     "geometry": "numeric",  # closed-form and independent checks; a symbolic proof is reported as such
     "substitute": "numeric",  # the replaced form reproduces the original (a congruence check, sampled)
     "rewrite_part": "numeric",  # the whole expression before and after, sampled

@@ -34,10 +34,12 @@ import { AssumptionsEditor } from "../assumptions-editor";
 import { DerivationView } from "./derivation-view";
 import { ExpressionEditor, type EditorFormat } from "./expression-editor";
 import { restoreMatrixForm, type MatrixForm } from "@/lib/matrix-form";
+import type { StatMechRequest } from "@/lib/statmech-types";
 import { GeometryWorkbench } from "./geometry-workbench";
 import { restoreStatForm, type StatForm } from "@/lib/statistics-form";
 import { StatisticsWorkbench } from "./statistics-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
+import { StatMechWorkbench } from "./statmech-workbench";
 import { IdentityPicker } from "./identity-picker";
 import { OperationBar } from "./operation-bar";
 import { PartPicker, type PartAction } from "./part-picker";
@@ -112,9 +114,13 @@ export function Workbench() {
   const [earlier, setEarlier] = useState<HistoryItem[]>([]);
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
-  const [mode, setMode] = useState<"expression" | "geometry" | "matrix" | "statistics">(
-    "expression",
-  );
+  const [mode, setMode] = useState<
+    "expression" | "geometry" | "matrix" | "statistics" | "statmech"
+  >("expression");
+  const [statmechRestore, setStatmechRestore] = useState<{
+    request: StatMechRequest;
+    nonce: number;
+  } | null>(null);
   const [matrixRestore, setMatrixRestore] = useState<{
     form: MatrixForm;
     nonce: number;
@@ -414,6 +420,15 @@ export function Workbench() {
   }
 
   function openEarlier(item: HistoryItem) {
+    if (item.operation === "statmech") {
+      // the whole problem was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: StatMechRequest }).request;
+      if (request) {
+        setMode("statmech");
+        setStatmechRestore({ request, nonce: Date.now() });
+      }
+      return;
+    }
     if (item.operation === "geometry") {
       // the whole problem was stored with the result, so the form can be restored and changed
       const request = (item.result as { request?: GeometryRequest }).request;
@@ -485,7 +500,7 @@ export function Workbench() {
           </Link>
         </p>
         <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
-          {(["expression", "matrix", "statistics", "geometry"] as const).map((m) => (
+          {(["expression", "matrix", "statistics", "statmech", "geometry"] as const).map((m) => (
             <button
               key={m}
               type="button"
@@ -503,7 +518,9 @@ export function Workbench() {
                   ? "Matrices"
                   : m === "statistics"
                     ? "Statistics"
-                    : "Geometry"}
+                    : m === "statmech"
+                      ? "Statistical mechanics"
+                      : "Geometry"}
             </button>
           ))}
         </div>
@@ -624,6 +641,12 @@ export function Workbench() {
         ) : mode === "matrix" ? (
           <MatrixWorkbench
             restore={matrixRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+          />
+        ) : mode === "statmech" ? (
+          <StatMechWorkbench
+            restore={statmechRestore}
             onUnauthorized={() => router.push("/login")}
             onSaved={() => void refreshSaved()}
           />

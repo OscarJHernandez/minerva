@@ -97,6 +97,24 @@ one most likely to be wrong.
     and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
     server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
+  - `statmech` (`statmech/`, `Engine.statmech`, `POST /v1/compute/statmech`, chat tool `statistical_mechanics`):
+    partition functions and thermodynamics of explicit systems: a list of levels, a level family (finite or
+    infinite sums, proved convergent by the ratio test), a density of states (the verified definite integrator),
+    a separable classical Hamiltonian, a Hermitian matrix (spectral decomposition, operators never assumed to
+    commute), particles with Bose, Fermi or classical-counting statistics (grand canonical), and a periodic chain
+    (transfer matrix); optionally N independent copies, and microcanonical counting of microstates. One generic
+    route derives the quantities: differentiate ln Z (or ln Xi) with a validated held-fixed set. Thermal averages,
+    fluctuation-response relations, numerical evaluation with sweeps, and approximations that report their
+    assumptions, order, validity and a measured error (high- and low-temperature expansions, Stirling, the
+    thermodynamic limit of a chain) follow. `oracle.py`, `quantum.py`, `grand.py`, `micro.py` and `lattice.py`
+    each hold a second, independent route (direct enumeration with log-sum-exp and a tail test, adaptive
+    quadrature with an error estimate, `mpmath.expm`/`eigh`, occupation-number enumeration, brute force over every
+    chain configuration, fourth-order finite differences of the enumerated quantity); `canonical.py` decides what is
+    shown (a formula needs every numeric check to agree; a symbolic zero is reported separately). The phase-space
+    cell, indistinguishable copies and numerical values are the user's: they are not arguments of the chat tool and
+    arrive through the card (`/tools/statistical_mechanics`). Refusals carry one of an enumerated list of reasons.
+    `statmech/benchmark.py` is the closed-form corpus (`docs/statmech-benchmark.md`,
+    `docs/benchmarks/statmech.json`); see [statistical-mechanics.md](statistical-mechanics.md).
   - `differentiate` (`differentiate.py`): `sympy.diff` one order at a time, for one to four variables
     and a total order up to 10 (mixed partials included). Every step is compared with a 40-digit
     central finite difference of the previous expression at assumption-respecting random points;
@@ -241,7 +259,7 @@ and explains; it never computes and never decides correctness.
   that streams `/api/chat`); requested tool calls run in the sandbox through `tools.execute`, results go back to the
   model, until it answers. A step cap and a time cap end runaway loops.
 - **Tools** (`tools.py`): `search_handbook`, `get_entry`, `simplify`, `differentiate`, `integrate`, `series`, `matrix_calculus`, `geometry`, `find_identities`, `substitute`, `rewrite_part`, `isolate_variable`, `tensor_canonicalize`, `dimensional_analysis`,
-  `check_units`, `solve_polynomial`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
+  `check_units`, `solve_polynomial`, `statistical_mechanics`, `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities`, `expand_motion`, `perturbation_solve` and `integrate_motion`. Each is a
   pure computation. `integrate_motion` reuses the engine's request model as its schema, and the prompt tells the model never to
   choose parameter values, initial conditions or time spans itself. The Lagrangian card has a form for them that
   posts to `POST /v1/chat/conversations/{id}/tools/integrate_motion`: the model is not involved (it works with

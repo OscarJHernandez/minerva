@@ -468,6 +468,207 @@ capabilities:
         action: evolve
         variable: t
 
+  - id: statistical-mechanics
+    title: Statistical mechanics of explicit systems
+    status: available
+    group: physics
+    where: [workbench, chat, api]
+    summary: >-
+      Builds the partition function of a list of levels, a level family E(n) (finite or infinite), a density of
+      states, a separable classical Hamiltonian, a Hermitian matrix, particles with Bose, Fermi or classical
+      counting, or a periodic chain (transfer matrix), and derives thermodynamic quantities from it by one generic
+      route: differentiate ln Z (or ln Xi) with the other state variables held fixed. Heat capacity is dU/dT,
+      pressure is -dF/dV at fixed temperature, a particle number is a chemical-potential derivative; none is a
+      stored formula. Thermal averages, variances, cumulants and fluctuation-response relations follow, as do
+      microcanonical counts and approximations that report their assumptions, order, validity and a measured error.
+      A formula is shown only if an independent numerical evaluation agreed (direct enumeration with
+      log-sum-exp, adaptive quadrature, matrix exponentials, occupation numbers, brute force over every chain
+      configuration, numerical derivatives); convergence is proved or the request is refused.
+    limits:
+      - An approximation is never an identity. High- and low-temperature expansions, Stirling's ln N! and the thermodynamic limit of a chain are labelled asymptotic and carry a measured error table (a measurement, not a bound); saddle-point and Laplace methods, Legendre transforms and mean field are not supported.
+      - An infinite sum needs a ratio-test proof for every beta > 0 (otherwise `divergent` or `convergence_not_provable`); an integral goes through the verified definite integrator under your assumptions. No interchange of a limit, sum, integral and derivative is assumed.
+      - A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). A matrix is at most 4x4 with closed-form eigenvalues and is never assumed to commute with anything, so a response relation beyond the first derivative, and a covariance, are refused for operators that do not commute. A chain is periodic, with at most three site values, a symmetric bond and at most 14 sites for the brute-force check.
+      - The ensemble is never substituted. Grand canonical needs particles with a statistic (Bose needs mu provably below every level); microcanonical counting needs numeric levels, a number of copies and a total energy that some microstate has, and its comparison with the canonical ensemble is measured, never assumed.
+      - The phase-space cell and whether copies are indistinguishable are your choices, never defaulted; indistinguishable copies use the classical-limit N! counting, not exact Bose or Fermi statistics. Numbers for a numerical evaluation are yours too.
+      - Numerical agreement is evidence, not a proof; a symbolic zero is reported separately and only where SymPy finds one. A series or integral without a closed form is evaluated numerically only and labelled as such.
+    examples:
+      - id: two-level-heat-capacity
+        title: The heat capacity of a two-level system, derived as dU/dT
+        op: statmech
+        request:
+          system: { kind: levels, levels: [{ energy: "0" }, { energy: epsilon }] }
+          assumptions: { epsilon: [positive] }
+          action: derive
+          quantities: [Z, F, U]
+          partials: [{ of: U, variable: T, held_fixed: [], label: C }]
+      - id: quantum-oscillator
+        title: A quantum oscillator, from an infinite sum with a convergence proof
+        op: statmech
+        request:
+          system: { kind: level_family, energy: "hbar*omega*(n + 1/2)" }
+          assumptions: { hbar: [positive], omega: [positive] }
+          action: derive
+          quantities: [Z, U]
+      - id: classical-ideal-gas
+        title: Pressure of a classical ideal gas, from the free energy
+        op: statmech
+        request:
+          system:
+            kind: classical
+            hamiltonian: "(px**2 + py**2 + pz**2)/(2*m)"
+            variables:
+              - { name: x, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: y, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: z, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: px }
+              - { name: py }
+              - { name: pz }
+            phase_space_cell: "h**3"
+          copies: { count: N, identical: true }
+          parameters: [V]
+          assumptions: { m: [positive], h: [positive], V: [positive], N: [integer, positive] }
+          action: derive
+          quantities: [U]
+          partials: [{ of: F, variable: V, held_fixed: [T], scale: "-1", label: p }]
+        note: >-
+          The cell h^3 and the division by N! were chosen by the user. Without them the result is
+          `convention_unconfirmed`, with the question to answer.
+      - id: three-dimensional-density-of-states
+        title: A density of states, integrated by the verified integrator
+        op: statmech
+        request:
+          system: { kind: density_of_states, density: "sqrt(En)", lower: "0" }
+          action: derive
+          quantities: [Z, U]
+      - id: spin-fluctuation-response
+        title: Magnetic fluctuations from a derivative of ln Z with respect to the field
+        op: statmech
+        request:
+          system:
+            kind: levels
+            levels:
+              - { energy: "-mu*h", observables: { M: mu } }
+              - { energy: "mu*h", observables: { M: "-mu" } }
+          parameters: [h]
+          assumptions: { mu: [positive], h: [real] }
+          coupling: { parameter: h, observable: M }
+          action: expectation
+          observable: M
+          statistic: variance
+      - id: spin-tilted-field
+        title: A spin in a tilted field, with an operator that does not commute with H
+        op: statmech
+        request:
+          system:
+            kind: quantum
+            hamiltonian: [["-h", "-d"], ["-d", "h"]]
+            observables: { sz: [["1", "0"], ["0", "-1"]] }
+          parameters: [h]
+          assumptions: { h: [positive], d: [positive] }
+          coupling: { parameter: h, observable: sz }
+          action: expectation
+          observable: sz
+          statistic: mean
+        note: >-
+          The mean is computed with the operator where it stands, and d ln Z/dh = beta times it holds by trace
+          cyclicity. Asking for the variance through the second derivative is refused (`operators_do_not_commute`):
+          there it would be the Kubo-Duhamel covariance.
+      - id: fermi-gas-levels
+        title: Fermions in three levels, with a chemical potential
+        op: statmech
+        request:
+          ensemble: grand_canonical
+          system:
+            kind: occupation
+            statistics: fermi
+            levels: [{ energy: "0" }, { energy: eps }, { energy: "2*eps", degeneracy: "2" }]
+          assumptions: { eps: [positive] }
+          action: derive
+          quantities: [N, U, Var_N]
+          partials: [{ of: U, variable: T, held_fixed: [mu], label: C_mu }]
+      - id: microcanonical-counting
+        title: Counting the microstates of 40 two-level units at fixed energy
+        op: statmech
+        request:
+          ensemble: microcanonical
+          system: { kind: levels, levels: [{ energy: "0" }, { energy: "1" }] }
+          copies: { count: "40", identical: false }
+          total_energy: "16"
+          action: partition
+        note: >-
+          Omega is an exact count, checked against two other algorithms. The temperature estimate is a finite
+          difference and its comparison with the canonical ensemble is a measurement that improves with N.
+      - id: ising-thermodynamic-limit
+        title: The 1-D Ising ring in a field by the transfer matrix, and its thermodynamic limit
+        op: statmech
+        request:
+          system: { kind: chain, states: ["1", "-1"], bond: "-J*s*t", site: "-h*s", length: N }
+          assumptions: { J: [real], h: [real], N: [integer, positive] }
+          action: approximate
+          method: thermodynamic_limit
+        note: >-
+          The transfer matrix is checked against brute-force enumeration of every configuration; the
+          free energy per site comes from the dominant eigenvalue (Perron-Frobenius), with the finite-size
+          error measured for N = 2 to 12.
+      - id: high-temperature-expansion
+        title: A high-temperature expansion, as an approximation with a measured error
+        op: statmech
+        request:
+          system: { kind: levels, levels: [{ energy: "0" }, { energy: epsilon }] }
+          assumptions: { epsilon: [positive] }
+          action: approximate
+          method: high_temperature
+          order: 4
+      - id: stirling-sackur-tetrode
+        title: Stirling's approximation turns the exact ideal-gas entropy into the Sackur-Tetrode form
+        op: statmech
+        request:
+          system:
+            kind: classical
+            hamiltonian: "(px**2 + py**2 + pz**2)/(2*m)"
+            variables:
+              - { name: x, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: y, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: z, domain_lower: "0", domain_upper: "V**(1/3)" }
+              - { name: px }
+              - { name: py }
+              - { name: pz }
+            phase_space_cell: "h**3"
+          copies: { count: N, identical: true }
+          parameters: [V]
+          assumptions: { m: [positive], h: [positive], V: [positive], N: [integer, positive] }
+          action: approximate
+          method: stirling
+        note: >-
+          The result is asymptotic, never exact: its error table shows N times the error of ln N! approaching 1/12.
+      - id: expansion-at-a-singular-point-declined
+        title: An expansion where ln Z is not analytic is declined
+        op: statmech
+        request:
+          system: { kind: level_family, energy: "hbar*omega*(n + 1/2)" }
+          assumptions: { hbar: [positive], omega: [positive] }
+          action: approximate
+          method: high_temperature
+          order: 2
+      - id: divergent-series-declined
+        title: A partition function that does not exist is declined
+        op: statmech
+        request:
+          system: { kind: level_family, energy: "-n" }
+          action: partition
+      - id: wrong-held-fixed-declined
+        title: A derivative at the wrong fixed variables is declined
+        op: statmech
+        request:
+          system: { kind: levels, levels: [{ energy: "1/V" }, { energy: "2/V" }] }
+          parameters: [V]
+          assumptions: { V: [positive] }
+          action: derive
+          partials: [{ of: F, variable: V, held_fixed: [] }]
+        note: >-
+          In the canonical ensemble a derivative with respect to V holds the temperature fixed; a derivative at
+          fixed energy or entropy needs a change of variables, which is not supported.
+
   - id: distribution-calculus
     title: Dirac delta and Heaviside calculus
     status: available

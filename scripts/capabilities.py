@@ -25,6 +25,7 @@ from minerva_engine import (
     ExpectationInput,
     GeometryInput,
     Limits,
+    StatMechInput,
     StatModelInput,
     SumsInput,
 )
@@ -660,6 +661,82 @@ _READING_WORDS = {
 }
 
 
+def run_statmech(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    request = StatMechInput(**spec["request"])
+    r = engine.statmech(request)
+    system = request.system
+    descriptions = {
+        "levels": lambda s: f"{len(s.levels)} levels",
+        "level_family": lambda s: (
+            f"E({s.index}) = {s.energy}, {s.index} from {s.lower} to {s.upper}"
+        ),
+        "density_of_states": lambda s: (
+            f"rho({s.variable}) = {s.density}, from {s.lower} to {s.upper}"
+        ),
+        "classical": lambda s: f"H = {s.hamiltonian}",
+        "quantum": lambda s: (
+            f"a {len(s.hamiltonian)}x{len(s.hamiltonian)} Hermitian matrix H"
+            + (f" and operators {', '.join(s.observables)}" if s.observables else "")
+        ),
+        "occupation": lambda s: (
+            f"{s.statistics} particles in {len(s.levels)} levels, chemical potential {s.mu}"
+        ),
+        "chain": lambda s: f"periodic chain of N = {s.length} sites, bond {s.bond}, site {s.site}",
+    }
+    inputs = [{"label": "System", "source": descriptions[system.kind](system), "syntax": "text"}]
+    if request.ensemble != "canonical":
+        inputs.append({"label": "Ensemble", "source": request.ensemble.replace("_", " ")})
+    if request.total_energy is not None:
+        inputs.append({"label": "Fixed total energy", "source": request.total_energy})
+    if request.copies is not None:
+        inputs.append(
+            {
+                "label": "Copies",
+                "source": f"{request.copies.count}, "
+                + (
+                    "indistinguishable (you chose)"
+                    if request.copies.identical
+                    else "distinguishable"
+                ),
+            }
+        )
+    if request.method is not None:
+        inputs.append({"label": "Method", "source": request.method.replace("_", " ")})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        for q in r.quantities:
+            outputs.append({"label": q.title, "latex": q.latex})
+            names = sorted({c.name.replace("_", " ") for c in q.checks if c.passed})
+            if names:
+                checks.append(f"{q.name}: {', '.join(names)} agreed")
+        if r.verification.passed:
+            checks.append(
+                f"{r.verification.points_agreed} of {r.verification.points_checked} sample points "
+                "agree with an independent evaluation (evidence, not a proof)"
+            )
+        if r.approximation is not None:
+            a = r.approximation
+            notes.append(
+                f"An approximation, not an identity. Expansion parameter: {a.parameter}. "
+                f"Expected accuracy: {a.order}. Valid: {a.validity}."
+            )
+            notes.append("Assumes: " + "; ".join(a.assumptions) + ".")
+            if a.error_table:
+                notes.append(
+                    f"Measured error against the independent evaluation ({len(a.error_table)} points; "
+                    "a measurement, not a bound)."
+                )
+        notes += r.notes
+    else:
+        notes.append(f"Refused ({r.reason}).")
+        notes += r.questions
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 def run_distribution(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     del kb
     variable = spec["variable"]
@@ -1024,6 +1101,7 @@ RUNNERS = {
     "statistics": run_statistics,
     "geometry": run_geometry,
     "distribution": run_distribution,
+    "statmech": run_statmech,
     "identities": run_identities,
     "tensor": run_tensor,
     "solve": run_solve,

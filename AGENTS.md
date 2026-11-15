@@ -57,6 +57,7 @@ uv run python -m minerva_knowledge stat-benchmark [--group G] [--json P] [--comp
 uv run python -m minerva_knowledge generate [--check] # regenerate data/entries/generated_*.yaml from seeds in generate.py
 uv run python -m minerva_knowledge step-benchmark [--adapter existing|steps] [--repeat N]  # transformation cases (docs/transformations-benchmark.md); `make bench` for latency
 uv run python -m minerva_engine.geometry.benchmark [--check] # geometry corpus, latency/memory/growth; writes docs/benchmarks/geometry.json + docs/geometry-benchmark.md (--check: deterministic part only)
+uv run python -m minerva_engine.statmech.benchmark [--check]       # statistical mechanics against closed forms, with refusals that must carry a named reason; docs/statmech-benchmark.md + docs/benchmarks/statmech.json (CI fails on a wrong answer or a lost refusal; `make statmech-benchmark`)
 uv run python -m minerva_engine.reference_benchmark [--check]      # problems whose answers come from outside Minerva (mpmath.expm, regularised deltas, quarter-period quadrature, plain arithmetic); docs/reference-benchmark.md + docs/benchmarks/reference.json; CI fails on a wrong answer or a lost one
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
@@ -111,6 +112,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   produced it. The user's own input as read, a `stated` handbook entry, an identity that was not applied and anything from
   a result that was not accepted are `quoted`: shown, never marked verified. Do not widen `known_latex` back to "anything a
   tool printed"; `ToolOutput.evidence` is read from the engine's own result, never from the model.
+- `statistical_mechanics` is one tool with an `action`, not one tool per quantity. Its arguments deliberately exclude
+  the phase-space cell, the indistinguishability of copies, the numbers of a numerical evaluation and a sweep: the
+  model must ask, never pick them. The card's buttons and form post them to
+  `POST /v1/chat/conversations/{id}/tools/statistical_mechanics`; a test checks the tool schema has no such field.
 - `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
   never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
@@ -382,6 +387,48 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   score by quadrature (tolerance 1e-9: a 1e-6 error must be rejected). Posteriors are found by kernel matching, never from a
   conjugacy table, and checked against prior x likelihood normalised by quadrature. Do not loosen those tolerances or add a
   hardcoded estimator, information matrix or posterior; `docs/statistics-benchmark.md` and `stat-benchmark` measure them.
+- Statistical mechanics (`statmech/`, tool `statistical_mechanics`, endpoint `POST /v1/compute/statmech`, docs
+  `docs/statistical-mechanics.md`) builds a canonical partition function and derives every thermodynamic quantity by
+  one generic route: differentiate ln Z with the other state variables held fixed. Do not add a per-system or
+  per-quantity formula (heat capacity is dU/dT, pressure is -dF/dV at fixed T; the ideal gas result must come out
+  of the Hamiltonian). A held-fixed set that is not exactly the other state variables is `ensemble_mismatch`.
+  A formula is shown only if every deciding check against the independent oracle (`oracle.py`: direct enumeration
+  with log-sum-exp and a tail test, adaptive quadrature with an error estimate, finite differences of the
+  *enumerated* quantity) agreed; an undecided symbolic zero is "undecided", never a refutation, and "proved" is
+  used only with a symbolic zero. Do not make the oracle reuse the symbolic route, loosen its tolerances or let a
+  quadrature without an error estimate pass: the tests include a formula off by 1e-9. Convergence is never
+  assumed: an infinite sum needs the ratio test for every beta > 0 (above 1: `divergent`; inconclusive:
+  `convergence_not_provable`), an integral must be evaluated by the verified definite integrator under the declared
+  assumptions, and the energy must be bounded below so that differentiating under the sum or integral is justified.
+  Parametric integration bounds are mapped exactly onto numeric ones with the Jacobian (the integrator takes numeric
+  bounds only); do not teach the integrator to sample bounds. A classical Hamiltonian is split term by term and a
+  term that couples two variables is `not_separable`; no normal-mode change of variables is attempted. The
+  phase-space cell and whether copies are indistinguishable are conventions only the user chooses: they have no
+  default and are not arguments of the chat tool (they arrive through the card, `ToolContext.statmech_answers`), a
+  missing one is `convention_unconfirmed` with the question, and indistinguishable copies are the classical-limit
+  `N!` counting, never exact Bose or Fermi statistics. Numerical values and sweeps are the user's too. A series or
+  integral without a closed form is `numeric` only, never an identity. The fluctuation-response relation needs
+  `dE_i/dh = -A_i` with `A_i` independent of `h` (`coupling_not_linear` otherwise). Text syntax reads `E` as Euler's
+  number: a density-of-states energy is `En`. Diagnostics and logs hold stage names, counts and the enumerated
+  reasons only, never an energy or expression (`logging.ALLOWED_FIELDS`, a test enforces it); add a corpus case in
+  `statmech/benchmark.py` for every new system kind, quantity or refusal. Quantum matrices (at most 4x4, `quantum.py`)
+  are never reordered and never assumed to commute: Hermiticity and `[A, H] = 0` are checked and reported, the first
+  derivative of ln Z with a coupled parameter is beta times the mean (trace cyclicity), but a second derivative and a
+  covariance of non-commuting operators are refused (`operators_do_not_commute`: it is the Kubo-Duhamel covariance,
+  not `beta^2 Var`); the oracle is `mpmath.expm`/`eigh`, never the symbolic eigenvalues. The ensemble is never
+  substituted (`ensemble_mismatch`): grand canonical needs an occupation system (Bose needs mu provably below every
+  level), its state variables include mu and a derivative must hold exactly the others fixed (the oracle enumerates
+  occupation numbers; classical counting needs the Gibbs correction `-sum p ln(p n!)` in its entropy), and microcanonical
+  counting is exact (generating function checked by two other algorithms) with a finite-difference temperature and a
+  *measured* comparison with the canonical ensemble, never assumed equal. An approximation (`approximate`) is never
+  an identity: it reports assumptions, parameter, claimed order, validity and a measured error table (a measurement,
+  not a bound), its claimed order is a deciding check, and it is `asymptotic`; `high_temperature` is verified with
+  `check_series` and refused where ln Z is not analytic at beta = 0, `low_temperature` needs a decided level order,
+  `stirling` needs an indistinguishable-copies ln N!, `thermodynamic_limit` needs a chain with a symbolic length.
+  The chain's transfer matrix is verified against brute-force enumeration of every configuration (at most 14 sites).
+  Sample points are generic (never exactly zero): closed forms from eigenvalues and derivatives are 0/0 at special
+  points. Not supported yet (reported by `analyze`, never guessed): saddle-point and Laplace methods, Legendre
+  transforms, mean field, quantum systems beyond 4x4, interacting classical systems and open boundaries.
 - Tensor support is exactly what `sympy.tensor.tensor` does (monoterm symmetries). Multi-term
   identities (Bianchi) are out of scope for abstract-index tensors and must be reported as such; explicit
   components in coordinates are `geometry/`, where the Bianchi identities are checked numerically.

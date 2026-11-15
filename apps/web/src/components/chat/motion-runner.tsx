@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { MotionRequest, PerturbationRequest } from "@/lib/chat-types";
+import type { StatAnswers, StatToolArgs } from "@/lib/statmech-types";
 import type { DistributionAnswer, GeometryRequest } from "@/lib/types";
 
 /**
@@ -16,6 +17,8 @@ export interface MotionRunner {
   geometry?: (request: GeometryRequest) => Promise<void>;
   /** Runs a delta card again with the user's answer to "is that a Dirac delta?". */
   distribution?: (request: DistributionAnswer) => Promise<void>;
+  /** Runs a statistical-mechanics card again with the user's choices (a cell, numbers, ...). */
+  statmech?: (request: StatToolArgs & StatAnswers) => Promise<void>;
 }
 
 const MotionRunnerContext = createContext<MotionRunner | null>(null);

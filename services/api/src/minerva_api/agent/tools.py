@@ -63,6 +63,9 @@ class ToolContext:
     # What the USER answered on a card (`delta(...)` is a Dirac delta). Only the direct-post route fills
     # it; the agent loop never does, so the model cannot make such an answer.
     notation: dict[str, str] = field(default_factory=dict)
+    # What the USER answered or chose for statistical mechanics (phase-space cell, indistinguishable
+    # copies, numbers, sweep). Only the direct-post route fills it; the model cannot make these choices.
+    statmech_answers: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -2417,4 +2420,28 @@ TOOLS["statistical_model"] = Tool(
     "Uniform(0, theta), moments that do not exist (Cauchy) and kernels outside the known families.",
     StatModelArgs,
     run_statistical_model,
+)
+
+
+from .statmech_tools import StatMechArgs, run_statistical_mechanics  # noqa: E402
+
+TOOLS["statistical_mechanics"] = Tool(
+    "statistical_mechanics",
+    "Statistical mechanics of an explicit system in the canonical ensemble: a list of levels with "
+    "degeneracies, a level family E(n) (finite or infinite), a density of states, or a separable classical "
+    "Hamiltonian, optionally with N independent copies. Builds the partition function, derives free "
+    "energy, internal energy, entropy, variance, heat capacity, pressure and any other partial derivative "
+    "with the other state variables held fixed, and thermal averages, variances and cumulants. A formula is "
+    "shown only if an independent enumeration or quadrature agreed; convergence of an infinite sum or "
+    "integral is proved or the tool refuses (divergent, convergence_not_provable, not_separable). "
+    "Conventions (phase-space cell, indistinguishable copies) and numbers for numerical evaluation belong "
+    "to the USER: the tool asks on its card, never choose them. Also quantum systems given by an explicit "
+    "Hermitian matrix (operators are never assumed to commute), the grand canonical ensemble for Bose, "
+    "Fermi or classical-counting particles (chemical potential, particle-number fluctuations) and "
+    "microcanonical counting of microstates. Also approximations that report assumptions, order, validity and a measured error: high- and "
+    "low-temperature expansions, Stirling's ln N!, and a one-dimensional chain by the transfer matrix with "
+    "its thermodynamic limit. Not supported: saddle-point and Laplace methods, mean field, Legendre "
+    "transforms, interacting classical systems.",
+    StatMechArgs,
+    run_statistical_mechanics,
 )

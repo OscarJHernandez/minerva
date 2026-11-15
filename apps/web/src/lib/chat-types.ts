@@ -18,6 +18,7 @@ import type {
   StepResult,
   SumsResult,
 } from "./types";
+import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types";
 
 export interface ExpansionReport {
   status: Status;
@@ -455,6 +456,20 @@ export type Card =
         methods: EntrySummary[];
         /** The call as made (with the expression), so the question's buttons can ask again. */
         request: DistributionAnswer;
+      };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "statmech";
+      title: string;
+      data: {
+        result: StatMechResult;
+        /** The model's call, so the card's controls can send it again with the user's choices. */
+        args: StatToolArgs;
+        /** What the user already chose (cell, copies, numbers): shown, and sent along again. */
+        answers: StatAnswers;
+        inputs: { input_latex: string }[];
       };
     }
   | {

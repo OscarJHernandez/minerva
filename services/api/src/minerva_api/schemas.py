@@ -12,6 +12,7 @@ from minerva_engine import (
     GeometryInput,
     MatrixDecl,
     Pins,
+    StatMechInput,
     StatModelInput,
 )
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
@@ -151,6 +152,10 @@ class MatrixCalculusRequest(Linked):
 
 class GeometryRequest(GeometryInput, Links):
     """Coordinates and a metric (plus optional tensor field) and the quantities to compute."""
+
+
+class StatMechRequest(StatMechInput, Links):
+    """A statistical-mechanics problem (system, ensemble, conventions) and the action to run."""
 
 
 class DistributionRequest(Linked):

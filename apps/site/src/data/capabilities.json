@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 179,
+  "handbook_entries": 200,
   "groups": [
     {
       "id": "math",
@@ -1404,6 +1404,535 @@
           "notes": [
             "Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).",
             "The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statistical-mechanics",
+      "title": "Statistical mechanics of explicit systems",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Builds the partition function of a list of levels, a level family E(n) (finite or infinite), a density of states, a separable classical Hamiltonian, a Hermitian matrix, particles with Bose, Fermi or classical counting, or a periodic chain (transfer matrix), and derives thermodynamic quantities from it by one generic route: differentiate ln Z (or ln Xi) with the other state variables held fixed. Heat capacity is dU/dT, pressure is -dF/dV at fixed temperature, a particle number is a chemical-potential derivative; none is a stored formula. Thermal averages, variances, cumulants and fluctuation-response relations follow, as do microcanonical counts and approximations that report their assumptions, order, validity and a measured error. A formula is shown only if an independent numerical evaluation agreed (direct enumeration with log-sum-exp, adaptive quadrature, matrix exponentials, occupation numbers, brute force over every chain configuration, numerical derivatives); convergence is proved or the request is refused.",
+      "limits": [
+        "An approximation is never an identity. High- and low-temperature expansions, Stirling's ln N! and the thermodynamic limit of a chain are labelled asymptotic and carry a measured error table (a measurement, not a bound); saddle-point and Laplace methods, Legendre transforms and mean field are not supported.",
+        "An infinite sum needs a ratio-test proof for every beta > 0 (otherwise `divergent` or `convergence_not_provable`); an integral goes through the verified definite integrator under your assumptions. No interchange of a limit, sum, integral and derivative is assumed.",
+        "A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). A matrix is at most 4x4 with closed-form eigenvalues and is never assumed to commute with anything, so a response relation beyond the first derivative, and a covariance, are refused for operators that do not commute. A chain is periodic, with at most three site values, a symmetric bond and at most 14 sites for the brute-force check.",
+        "The ensemble is never substituted. Grand canonical needs particles with a statistic (Bose needs mu provably below every level); microcanonical counting needs numeric levels, a number of copies and a total energy that some microstate has, and its comparison with the canonical ensemble is measured, never assumed.",
+        "The phase-space cell and whether copies are indistinguishable are your choices, never defaulted; indistinguishable copies use the classical-limit N! counting, not exact Bose or Fermi statistics. Numbers for a numerical evaluation are yours too.",
+        "Numerical agreement is evidence, not a proof; a symbolic zero is reported separately and only where SymPy finds one. A series or integral without a closed form is evaluated numerically only and labelled as such."
+      ],
+      "examples": [
+        {
+          "id": "two-level-heat-capacity",
+          "title": "The heat capacity of a two-level system, derived as dU/dT",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "1 + \\mathrm{e}^{- \\beta \\epsilon}"
+            },
+            {
+              "label": "Helmholtz free energy",
+              "latex": "- \\frac{\\log{\\left(1 + \\mathrm{e}^{- \\beta \\epsilon} \\right)}}{\\beta}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
+            },
+            {
+              "label": "Partial derivative of internal energy with respect to T",
+              "latex": "\\frac{\\beta^{2} \\epsilon^{2} k_{B}}{2 \\left(\\cosh{\\left(\\beta \\epsilon \\right)} + 1\\right)}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "F: enumeration agreed",
+            "U: enumeration, finite difference, symbolic zero agreed",
+            "C: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "quantum-oscillator",
+          "title": "A quantum oscillator, from an infinite sum with a convergence proof",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = hbar*omega*(n + 1/2), n from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "\\frac{1}{2 \\sinh{\\left(\\frac{\\beta \\hbar \\omega}{2} \\right)}}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{\\hbar \\omega}{2 \\tanh{\\left(\\frac{\\beta \\hbar \\omega}{2} \\right)}}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "U: enumeration, finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "classical-ideal-gas",
+          "title": "Pressure of a classical ideal gas, from the free energy",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "H = (px**2 + py**2 + pz**2)/(2*m)",
+              "syntax": "text"
+            },
+            {
+              "label": "Copies",
+              "source": "N, indistinguishable (you chose)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{3 N}{2 \\beta}"
+            },
+            {
+              "label": "Partial derivative of helmholtz free energy with respect to V",
+              "latex": "\\frac{N}{V \\beta}"
+            }
+          ],
+          "checks": [
+            "U: enumeration, finite difference agreed",
+            "p: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Phase-space measure: Z_1 = (1/cell) times the integral of exp(-beta H) over the stated domains, with the cell you chose.",
+            "Indistinguishable copies use Z = Z_1^N / N!, the classical-limit counting; it is not exact Bose or Fermi statistics.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The cell h^3 and the division by N! were chosen by the user. Without them the result is `convention_unconfirmed`, with the question to answer."
+          ]
+        },
+        {
+          "id": "three-dimensional-density-of-states",
+          "title": "A density of states, integrated by the verified integrator",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "rho(En) = sqrt(En), from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "\\frac{\\sqrt{\\pi}}{2 \\beta^{\\frac{3}{2}}}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{3}{2 \\beta}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "U: enumeration, finite difference, symbolic zero agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "spin-fluctuation-response",
+          "title": "Magnetic fluctuations from a derivative of ln Z with respect to the field",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Variance of M",
+              "latex": "\\frac{\\mu^{2}}{\\cosh^{2}{\\left(\\beta h \\mu \\right)}}"
+            }
+          ],
+          "checks": [
+            "variance_M: enumeration, fluctuation response, nonnegative variance agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "spin-tilted-field",
+          "title": "A spin in a tilted field, with an operator that does not commute with H",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "a 2x2 Hermitian matrix H and operators sz",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Mean of sz",
+              "latex": "\\frac{h \\tanh{\\left(\\beta \\sqrt{d^{2} + h^{2}} \\right)}}{\\sqrt{d^{2} + h^{2}}}"
+            }
+          ],
+          "checks": [
+            "mean_sz: enumeration, fluctuation response, spectral decomposition agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The mean is computed with the operator where it stands, and d ln Z/dh = beta times it holds by trace cyclicity. Asking for the variance through the second derivative is refused (`operators_do_not_commute`): there it would be the Kubo-Duhamel covariance."
+          ]
+        },
+        {
+          "id": "fermi-gas-levels",
+          "title": "Fermions in three levels, with a chemical potential",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "fermi particles in 3 levels, chemical potential mu",
+              "syntax": "text"
+            },
+            {
+              "label": "Ensemble",
+              "source": "grand canonical"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Mean particle number",
+              "latex": "\\frac{2 \\left(\\mathrm{e}^{\\beta \\mu} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(eps - \\mu\\right)} + 1\\right) + \\left(\\mathrm{e}^{\\beta \\mu} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(2 eps - \\mu\\right)} + 1\\right) + \\left(\\mathrm{e}^{\\beta \\left(eps - \\mu\\right)} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(2 eps - \\mu\\right)} + 1\\right) \\mathrm{e}^{\\beta \\mu}}{\\left(\\mathrm{e}^{\\beta \\mu} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(eps - \\mu\\right)} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(2 eps - \\mu\\right)} + 1\\right)}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{eps \\left(\\mathrm{e}^{2 \\beta eps} + 4 \\mathrm{e}^{\\beta eps} + 5 \\mathrm{e}^{\\beta \\mu}\\right) \\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}}"
+            },
+            {
+              "label": "Particle-number variance",
+              "latex": "\\frac{2}{\\mathrm{e}^{2 \\beta eps - \\beta \\mu} + 1} - \\frac{2 \\mathrm{e}^{2 \\beta eps - \\beta \\mu}}{\\left(\\mathrm{e}^{2 \\beta eps - \\beta \\mu} + 1\\right)^{3}} - \\frac{2}{\\left(\\mathrm{e}^{2 \\beta eps - \\beta \\mu} + 1\\right)^{3}} + \\frac{1}{\\mathrm{e}^{\\beta eps - \\beta \\mu} + 1} - \\frac{\\mathrm{e}^{\\beta eps - \\beta \\mu}}{\\left(\\mathrm{e}^{\\beta eps - \\beta \\mu} + 1\\right)^{3}} - \\frac{1}{\\left(\\mathrm{e}^{\\beta eps - \\beta \\mu} + 1\\right)^{3}} + \\frac{\\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{\\beta \\mu} + 1} - \\frac{\\mathrm{e}^{3 \\beta \\mu}}{\\left(\\mathrm{e}^{\\beta \\mu} + 1\\right)^{3}} - \\frac{\\mathrm{e}^{2 \\beta \\mu}}{\\left(\\mathrm{e}^{\\beta \\mu} + 1\\right)^{3}}"
+            },
+            {
+              "label": "Partial derivative of internal energy with respect to T",
+              "latex": "- \\frac{\\beta^{2} eps k_{B} \\mu \\left(\\mathrm{e}^{2 \\beta eps} + 4 \\mathrm{e}^{\\beta eps} + 5 \\mathrm{e}^{\\beta \\mu}\\right) \\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}} + \\frac{eps \\left(- 2 \\beta^{2} eps k_{B} \\mathrm{e}^{2 \\beta eps} - 4 \\beta^{2} eps k_{B} \\mathrm{e}^{\\beta eps} - 5 \\beta^{2} k_{B} \\mu \\mathrm{e}^{\\beta \\mu}\\right) \\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}} + \\frac{eps \\left(\\mathrm{e}^{2 \\beta eps} + 4 \\mathrm{e}^{\\beta eps} + 5 \\mathrm{e}^{\\beta \\mu}\\right) \\left(3 \\beta^{2} eps k_{B} \\mathrm{e}^{3 \\beta eps} + 2 \\beta^{2} k_{B} \\mu \\mathrm{e}^{2 \\beta \\mu} + \\beta^{2} k_{B} \\left(eps + \\mu\\right) \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\beta^{2} k_{B} \\left(2 eps + \\mu\\right) \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}\\right) \\mathrm{e}^{\\beta \\mu}}{\\left(\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}\\right)^{2}}"
+            }
+          ],
+          "checks": [
+            "N: enumeration, finite difference agreed",
+            "U: enumeration, finite difference agreed",
+            "Var_N: enumeration, finite difference, nonnegative variance agreed",
+            "C_mu: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Fermi-Dirac: independent particles; each of the g_i states of a level is counted separately.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "microcanonical-counting",
+          "title": "Counting the microstates of 40 two-level units at fixed energy",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            },
+            {
+              "label": "Ensemble",
+              "source": "microcanonical"
+            },
+            {
+              "label": "Fixed total energy",
+              "source": "16"
+            },
+            {
+              "label": "Copies",
+              "source": "40, distinguishable"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Number of microstates",
+              "latex": "62852101650"
+            },
+            {
+              "label": "Microcanonical entropy",
+              "latex": "k_{B} \\ln \\left(62852101650\\right)"
+            },
+            {
+              "label": "Temperature estimate and canonical comparison (a measurement)",
+              "latex": "\\beta \\approx \\frac{\\Delta \\ln \\Omega}{\\Delta E}"
+            }
+          ],
+          "checks": [
+            "Omega: enumeration, normalisation agreed",
+            "1 of 1 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "Omega is an exact count, checked against two other algorithms. The temperature estimate is a finite difference and its comparison with the canonical ensemble is a measurement that improves with N."
+          ]
+        },
+        {
+          "id": "ising-thermodynamic-limit",
+          "title": "The 1-D Ising ring in a field by the transfer matrix, and its thermodynamic limit",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "periodic chain of N = N sites, bond -J*s*t, site -h*s",
+              "syntax": "text"
+            },
+            {
+              "label": "Method",
+              "source": "thermodynamic limit"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Free energy per site, N -> infinity",
+              "latex": "- \\frac{\\log{\\left(\\frac{\\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}}}{2} + \\frac{\\mathrm{e}^{\\beta \\left(J - h\\right)}}{2} + \\frac{\\mathrm{e}^{\\beta \\left(J + h\\right)}}{2} \\right)}}{\\beta}"
+            },
+            {
+              "label": "Energy per site, N -> infinity",
+              "latex": "- \\frac{- 8 J \\cosh{\\left(2 J \\beta \\right)} + \\left(\\left(J - h\\right) \\mathrm{e}^{\\beta \\left(J - h\\right)} + \\left(J + h\\right) \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right) \\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}} + \\left(\\left(J - h\\right) \\mathrm{e}^{\\beta \\left(J - h\\right)} + \\left(J + h\\right) \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right) \\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)}{\\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}} \\left(\\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}} + \\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)}"
+            }
+          ],
+          "checks": [
+            "f_inf: residual order agreed",
+            "6 of 6 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "An approximation, not an identity. Expansion parameter: N. Expected accuracy: finite-size error of F/N is -(1/(beta N)) ln(1 + (lambda_2/lambda_1)^N + ...): exponentially small in N (ratio |lambda_2/lambda_1| = 0.286481 at the first sample point). Valid: the free energy per site is analytic in beta for beta > 0 (a simple dominant eigenvalue), so this chain has no phase transition at finite temperature.",
+            "Assumes: N tends to infinity at a fixed temperature, with periodic boundary conditions; the largest transfer-matrix eigenvalue is simple and strictly dominant (positive matrix).",
+            "Measured error against the independent evaluation (6 points; a measurement, not a bound).",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The transfer matrix is checked against brute-force enumeration of every configuration; the free energy per site comes from the dominant eigenvalue (Perron-Frobenius), with the finite-size error measured for N = 2 to 12."
+          ]
+        },
+        {
+          "id": "high-temperature-expansion",
+          "title": "A high-temperature expansion, as an approximation with a measured error",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            },
+            {
+              "label": "Method",
+              "source": "high temperature"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "ln Z, order 4 in beta",
+              "latex": "- \\frac{\\beta^{4} \\epsilon^{4}}{192} + \\frac{\\beta^{2} \\epsilon^{2}}{8} - \\frac{\\beta \\epsilon}{2} + \\log{\\left(2 \\right)}"
+            },
+            {
+              "label": "Internal energy, order 3 in beta",
+              "latex": "\\frac{\\beta^{3} \\epsilon^{4}}{48} - \\frac{\\beta \\epsilon^{2}}{4} + \\frac{\\epsilon}{2}"
+            }
+          ],
+          "checks": [
+            "lnZ_series: residual order, series check agreed",
+            "U_series: residual order agreed",
+            "2 of 2 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "An approximation, not an identity. Expansion parameter: beta. Expected accuracy: truncation error O(beta^5) for ln Z, O(beta^4) for U. Valid: inside the radius of convergence of the series, set by the nearest zero of Z(beta) in the complex plane; Cauchy-estimate radius at the checked parameter values: 0.5.",
+            "Assumes: beta is small: beta times the spread of the energies is much less than 1; ln Z is analytic at beta = 0 (Z(0) finite and positive); the levels do not depend on beta and the other state variables are fixed.",
+            "Measured error against the independent evaluation (3 points; a measurement, not a bound).",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "stirling-sackur-tetrode",
+          "title": "Stirling's approximation turns the exact ideal-gas entropy into the Sackur-Tetrode form",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "H = (px**2 + py**2 + pz**2)/(2*m)",
+              "syntax": "text"
+            },
+            {
+              "label": "Copies",
+              "source": "N, indistinguishable (you chose)"
+            },
+            {
+              "label": "Method",
+              "source": "stirling"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "ln Z with Stirling's ln N!",
+              "latex": "- N \\log{\\left(N \\right)} + N \\log{\\left(\\frac{2 \\sqrt{2} \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}}{\\beta^{\\frac{3}{2}} h^{3}} \\right)} + N - \\frac{\\log{\\left(2 \\pi N \\right)}}{2}"
+            },
+            {
+              "label": "Free energy with Stirling's ln N!",
+              "latex": "\\frac{- N + \\frac{\\log{\\left(2 \\pi N N^{2 N} \\left(\\frac{2 \\sqrt{2} \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}}{\\beta^{\\frac{3}{2}} h^{3}}\\right)^{- 2 N} \\right)}}{2}}{\\beta}"
+            },
+            {
+              "label": "Entropy with Stirling's ln N!",
+              "latex": "\\frac{k_{B} \\left(5 N - \\log{\\left(2 \\pi N^{2 N + 1} \\left(\\frac{2 \\sqrt{2} \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}}{\\beta^{\\frac{3}{2}} h^{3}}\\right)^{- 2 N} \\right)}\\right)}{2}"
+            },
+            {
+              "label": "Entropy at leading order (the Sackur-Tetrode form for an ideal gas)",
+              "latex": "\\frac{N k_{B} \\left(\\log{\\left(\\frac{8 \\pi^{3} V^{2} m^{3}}{N^{2} \\beta^{3} h^{6}} \\right)} + 5\\right)}{2}"
+            },
+            {
+              "label": "Free energy at leading order",
+              "latex": "\\frac{N \\left(\\log{\\left(\\frac{\\sqrt{2} N \\beta^{\\frac{3}{2}} h^{3}}{4 \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}} \\right)} - 1\\right)}{\\beta}"
+            }
+          ],
+          "checks": [
+            "lnZ_stirling: residual order agreed",
+            "6 of 6 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "An approximation, not an identity. Expansion parameter: 1/N. Expected accuracy: the error of the form shown in ln N! is about 1/(12 N); the leading form drops 1/2 ln(2 pi N). Valid: N of about 10 or more for the full form; it is an asymptotic equivalence, not an identity, and the internal energy is untouched (ln N! does not depend on beta).",
+            "Assumes: N is large: N >> 1; the copies are indistinguishable (the user's choice), so ln N! is part of ln Z.",
+            "Measured error against the independent evaluation (4 points; a measurement, not a bound).",
+            "Phase-space measure: Z_1 = (1/cell) times the integral of exp(-beta H) over the stated domains, with the cell you chose.",
+            "Indistinguishable copies use Z = Z_1^N / N!, the classical-limit counting; it is not exact Bose or Fermi statistics.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The result is asymptotic, never exact: its error table shows N times the error of ln N! approaching 1/12."
+          ]
+        },
+        {
+          "id": "expansion-at-a-singular-point-declined",
+          "title": "An expansion where ln Z is not analytic is declined",
+          "op": "statmech",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = hbar*omega*(n + 1/2), n from 0 to oo",
+              "syntax": "text"
+            },
+            {
+              "label": "Method",
+              "source": "high temperature"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (singular_expansion_point).",
+            "Z is not finite and positive at beta = 0 (it diverges there, as for an oscillator or a density of states), so ln Z has no Taylor series about beta = 0; Laurent and logarithmic expansions are not supported"
+          ]
+        },
+        {
+          "id": "divergent-series-declined",
+          "title": "A partition function that does not exist is declined",
+          "op": "statmech",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = -n, n from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (divergent).",
+            "the series diverges: the ratio of successive terms of a_n tends to a limit above 1 (the partition function does not exist for beta > 0)"
+          ]
+        },
+        {
+          "id": "wrong-held-fixed-declined",
+          "title": "A derivative at the wrong fixed variables is declined",
+          "op": "statmech",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (ensemble_mismatch).",
+            "a derivative with respect to V in the canonical ensemble holds exactly beta fixed; derivatives at fixed energy, entropy or other quantities need a change of variables, which is not supported",
+            "In the canonical ensemble a derivative with respect to V holds the temperature fixed; a derivative at fixed energy or entropy needs a change of variables, which is not supported."
           ]
         }
       ]
