@@ -1422,7 +1422,9 @@ RUNNERS = {
 
 def build() -> dict[str, Any]:
     spec = yaml.safe_load(SOURCE.read_text())
-    engine = Engine()
+    # The documented outputs must not depend on how fast the machine is: a loaded CI runner turned a correct
+    # example into a `resource_limit` under the 10 s default and made the committed pages "out of date".
+    engine = Engine(Limits(timeout_seconds=120))
     kb = KnowledgeBase.load()
     seen: set[str] = set()
     capabilities: list[dict[str, Any]] = []
