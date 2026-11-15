@@ -39,6 +39,8 @@ import { GeometryWorkbench } from "./geometry-workbench";
 import { restoreStatForm, type StatForm } from "@/lib/statistics-form";
 import { StatisticsWorkbench } from "./statistics-workbench";
 import { MatrixWorkbench } from "./matrix-workbench";
+import { OdeWorkbench } from "./ode-workbench";
+import type { OdeInput } from "@/lib/ode-types";
 import { VariationalWorkbench, type VariationRestore } from "./variational-workbench";
 import type { VariationRequest } from "@/lib/variation-types";
 import { StatMechWorkbench } from "./statmech-workbench";
@@ -117,7 +119,7 @@ export function Workbench() {
   const [focusSignal, setFocusSignal] = useState(0);
   const [open, setOpen] = useState({ identities: true, assumptions: true, saved: false });
   const [mode, setMode] = useState<
-    "expression" | "geometry" | "matrix" | "statistics" | "statmech" | "variational"
+    "expression" | "geometry" | "matrix" | "statistics" | "statmech" | "ode" | "variational"
   >("expression");
   const [statmechRestore, setStatmechRestore] = useState<{
     request: StatMechRequest;
@@ -127,6 +129,7 @@ export function Workbench() {
     form: MatrixForm;
     nonce: number;
   } | null>(null);
+  const [odeRestore, setOdeRestore] = useState<{ request: OdeInput; nonce: number } | null>(null);
   const [variationRestore, setVariationRestore] = useState<VariationRestore | null>(null);
   const [statRestore, setStatRestore] = useState<{ form: StatForm; nonce: number } | null>(null);
   const [geometryRestore, setGeometryRestore] = useState<{
@@ -431,7 +434,28 @@ export function Workbench() {
     }
   }
 
+  /** A right-hand side from a closed-form solution, to work on as an ordinary expression. */
+  function continueWithSolution(expression: string) {
+    setMode("expression");
+    reset();
+    setFormat("text");
+    setText(expression);
+  }
+
   function openEarlier(item: HistoryItem) {
+    if (
+      item.operation === "ode_analyze" ||
+      item.operation === "ode_solve_symbolic" ||
+      item.operation === "ode_solve_numerical"
+    ) {
+      // the whole problem was stored with the result, so the form can be restored and changed
+      const request = (item.result as { request?: OdeInput }).request;
+      if (request) {
+        setMode("ode");
+        setOdeRestore({ request, nonce: Date.now() });
+      }
+      return;
+    }
     if (item.operation === "statmech") {
       // the whole problem was stored with the result, so the form can be restored and changed
       const request = (item.result as { request?: StatMechRequest }).request;
@@ -522,7 +546,15 @@ export function Workbench() {
         </p>
         <div role="group" aria-label="Workbench mode" className="flex flex-wrap gap-2">
           {(
-            ["expression", "matrix", "statistics", "statmech", "geometry", "variational"] as const
+            [
+              "expression",
+              "matrix",
+              "statistics",
+              "statmech",
+              "geometry",
+              "ode",
+              "variational",
+            ] as const
           ).map((m) => (
             <button
               key={m}
@@ -545,7 +577,9 @@ export function Workbench() {
                       ? "Statistical mechanics"
                       : m === "geometry"
                         ? "Geometry"
-                        : "Variational calculus"}
+                        : m === "ode"
+                          ? "Differential equations"
+                          : "Variational calculus"}
             </button>
           ))}
         </div>
@@ -657,7 +691,14 @@ export function Workbench() {
       </aside>
 
       <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-        {mode === "statistics" ? (
+        {mode === "ode" ? (
+          <OdeWorkbench
+            restore={odeRestore}
+            onUnauthorized={() => router.push("/login")}
+            onSaved={() => void refreshSaved()}
+            onUseExpression={(expression) => continueWithSolution(expression)}
+          />
+        ) : mode === "statistics" ? (
           <StatisticsWorkbench
             restore={statRestore}
             onUnauthorized={() => router.push("/login")}

@@ -33,6 +33,7 @@ from minerva_engine import (
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
+from minerva_engine.ode import OdeAnalyzeInput, OdeNumericInput, OdeSolveInput
 from minerva_knowledge import KnowledgeBase
 from minerva_knowledge.identities import find_identities, simplify_expression
 
@@ -990,6 +991,210 @@ def run_isolate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+def _ode_inputs(spec: dict[str, Any]) -> list[dict[str, str]]:
+    syntax = _syntax(spec)
+    lines = [{"label": "Equation", "source": e, "syntax": syntax} for e in spec["equations"]]
+    lines += [
+        {"label": "Condition", "source": c, "syntax": syntax} for c in spec.get("conditions", [])
+    ]
+    lines += [
+        {"label": "Parameter", "source": f"{k} = {v:g}", "syntax": "text"}
+        for k, v in (spec.get("parameters") or {}).items()
+    ]
+    for key, label in (("independent", "Independent variable"), ("t_end", "End of the interval")):
+        if spec.get(key) is not None:
+            lines.append({"label": label, "source": str(spec[key]), "syntax": "text"})
+    return lines
+
+
+def run_ode_analyze(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.ode_analyze(
+        OdeAnalyzeInput(
+            equations=spec["equations"],
+            format=_syntax(spec),  # type: ignore[arg-type]
+            independent=spec.get("independent"),
+            conditions=spec.get("conditions", []),
+            assumptions=spec.get("assumptions") or {},
+            detail=spec.get("detail", "structure"),
+            parameters=spec.get("parameters") or {},
+            window=spec.get("window"),
+        )
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.structure and r.interpretation:
+        s = r.structure
+        outputs += [
+            {"label": "As Minerva read it", "latex": e} for e in r.interpretation.equations_latex
+        ]
+        notes.append(
+            f"{'System' if s.kind == 'system' else 'Equation'} of order {s.order}, "
+            f"{'linear' if s.linear else 'nonlinear'}, {'autonomous' if s.autonomous else 'not autonomous'}; "
+            f"{s.state_dimension} first-order states."
+        )
+        if r.classes:
+            notes.append(
+                "Classes (SymPy's classification, each solver verifies its own result): "
+                + ", ".join(r.classes)
+                + "."
+            )
+        outputs += [
+            {"label": "Solved for the highest derivative", "latex": e} for e in r.solved_latex
+        ]
+        ranked = sorted((m for m in r.methods if m.rank), key=lambda m: m.rank or 0)
+        notes += [f"{m.rank}. {m.title}: {m.reason}." for m in ranked]
+        notes += [f"Not applicable: {m.title}: {m.reason}." for m in r.methods if not m.applicable]
+        q = r.qualitative
+        if q is not None and q.status.value == "ok":
+            for e in q.equilibria:
+                outputs.append(
+                    {
+                        "label": f"Equilibrium: {e.classification.replace('_', ' ')}",
+                        "latex": ", ".join(e.point_latex),
+                    }
+                )
+                if e.eigenvalues_latex:
+                    outputs.append(
+                        {"label": "Eigenvalues", "latex": ", ".join(e.eigenvalues_latex)}
+                    )
+                elif e.eigenvalues_numeric:
+                    outputs.append(
+                        {"label": "Eigenvalues", "text": ", ".join(e.eigenvalues_numeric)}
+                    )
+            checks.append("Jacobian agrees with numerical differences of the field")
+            checks.append(
+                "every equilibrium substituted back into the field"
+                + (
+                    "; the list is complete (polynomial field)"
+                    if q.complete
+                    else "; the list may be incomplete"
+                )
+            )
+            notes.append(q.local_note)
+            notes += q.notes
+            if q.direction_field is not None:
+                notes.append("A direction field was computed on the window given.")
+        elif q is not None:
+            notes.append(q.message)
+    else:
+        notes.append(r.message)
+    notes += [n for n in r.notes[1:3]]
+    return _example(spec, r.status.value, _ode_inputs(spec), outputs, checks, notes)
+
+
+def run_ode_solve(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.ode_solve_symbolic(
+        OdeSolveInput(
+            equations=spec["equations"],
+            format=_syntax(spec),  # type: ignore[arg-type]
+            independent=spec.get("independent"),
+            conditions=spec.get("conditions", []),
+            assumptions=spec.get("assumptions") or {},
+            method=spec.get("method", "closed_form"),
+            order=spec.get("order", 6),
+            small_parameter=spec.get("small_parameter"),
+            equilibrium=spec.get("equilibrium"),
+        )
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    label = {"closed_form": "Solution", "series": "Series", "perturbation": "Expansion"}[
+        r.method or "closed_form"
+    ]
+    for item in r.solutions:
+        for equation in item.equations_latex:
+            outputs.append({"label": label, "latex": equation})
+        v = item.verification
+        if item.expansion:
+            checks.append(
+                f"the truncated result put into the equation as written: its residual falls at the claimed order "
+                f"({v.points_agreed} of {v.points_checked} confirmations)"
+            )
+            notes.append(item.expansion.validity)
+            if item.expansion.secular_orders:
+                notes.append(
+                    "Terms that grow with the variable appear at order "
+                    + ", ".join(map(str, item.expansion.secular_orders))
+                    + ": valid only on a bounded interval."
+                )
+        else:
+            checks.append(
+                f"substituted into the equation as written, derivatives taken numerically: {v.points_agreed} of "
+                f"{v.points_checked} points agree; "
+                + (
+                    "also proved by a symbolic zero test"
+                    if v.symbolic_zero
+                    else "no symbolic proof (numerically checked)"
+                )
+            )
+            notes.append(
+                {
+                    "general": "The general solution (independent constants as many as the order).",
+                    "particular": "A particular solution: every constant is fixed by the conditions.",
+                    "partial": "A family with fewer independent constants than the order.",
+                }[item.family]
+            )
+        for c in item.conditions:
+            checks.append(f"condition {'holds' if c.satisfied else 'FAILS'}: {c.latex}")
+        if item.restrictions_latex:
+            outputs.append(
+                {"label": "Valid only where", "latex": ", ".join(item.restrictions_latex)}
+            )
+    if r.status.value != "ok":
+        notes.append(r.message)
+    elif r.dropped:
+        notes.append(f"{r.dropped} candidate(s) failed their checks and are not shown.")
+    return _example(spec, r.status.value, _ode_inputs(spec), outputs, checks, notes)
+
+
+def run_ode_numeric(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.ode_solve_numerical(
+        OdeNumericInput(
+            equations=spec["equations"],
+            format=_syntax(spec),  # type: ignore[arg-type]
+            independent=spec.get("independent"),
+            conditions=spec.get("conditions", []),
+            assumptions=spec.get("assumptions") or {},
+            parameters=spec.get("parameters") or {},
+            t_end=spec.get("t_end"),
+            kind=spec.get("kind", "ivp"),
+            method=spec.get("method", "auto"),
+            rtol=spec.get("rtol", 1e-8),
+            atol=spec.get("atol", 1e-10),
+        )
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.t:
+        end = r.t_end
+        for series in r.series:
+            outputs.append(
+                {
+                    "label": f"{series.label_latex} at the end of the interval",
+                    "text": f"{series.label_latex.replace(chr(92), '')}({end:g}) = {series.values[-1]:.6g}",
+                }
+            )
+        notes.append(f"{r.method_used}: {r.method_reason}; {r.steps} steps.")
+        if r.verification:
+            for c in r.verification.checks:
+                value = (
+                    f" ({c.value:.1e} against {c.tolerance:.0e})"
+                    if c.value is not None and c.tolerance
+                    else ""
+                )
+                checks.append(f"{c.name.replace('_', ' ')}: {c.status}{value}")
+        notes += [
+            "A numerical approximation on the interval given: not exact, not valid beyond it; the checks are measurements, not a bound on the error."
+        ]
+        notes += [f"Warning: {w.replace('_', ' ')}." for w in r.warnings]
+    else:
+        notes.append(r.message)
+    return _example(spec, r.status.value, _ode_inputs(spec), outputs, checks, notes)
+
+
 def run_sums(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     del kb
     r = engine.sums(
@@ -1164,6 +1369,9 @@ def run_statistics(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
 
 
 RUNNERS = {
+    "ode_analyze": run_ode_analyze,
+    "ode_solve": run_ode_solve,
+    "ode_numeric": run_ode_numeric,
     "simplify": run_simplify,
     "differentiate": run_differentiate,
     "series": run_series,

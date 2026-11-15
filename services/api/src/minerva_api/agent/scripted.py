@@ -89,6 +89,11 @@ class ScriptedLLM:
                 yield chunk
             return
 
+        if (re.search(r"\bode\b", lower) or "differential equation" in lower) and latex:
+            async for chunk in self._ode(user, lower):
+                yield chunk
+            return
+
         if "without tools" in lower or "just tell me" in lower:
             async for c in self._say(
                 "Here is the value from memory: $\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}$. "
@@ -499,6 +504,85 @@ class ScriptedLLM:
             ):
                 yield c
 
+    async def _ode(self, user: str, lower: str) -> AsyncIterator[Chunk]:
+        """Development stand-in for differential equations. Every number is read from the message and
+        nothing is invented: a request that lacks one is answered with a question, as a model should."""
+        equations = [f.strip() for f in _DOLLAR.findall(user)]
+        plain = re.sub(r"\$[^$]*\$", " ", user)
+        conditions = [
+            f"{name}({point}) = {value}"
+            for name, point, value in re.findall(
+                r"([A-Za-z]\w*'*)\(\s*(-?[\d.]+)\s*\)\s*=\s*(-?[\d.]+)", plain
+            )
+        ]
+        found = re.search(r"independent (?:variable )?(?:is )?([A-Za-z]\w*)", plain, re.I)
+        args: dict[str, Any] = {"equations": equations, "conditions": conditions}
+        if found:
+            args["independent"] = found.group(1)
+        elif not any("dot" in e for e in equations):
+            async for c in self._say("Which variable is independent (for example t or x)?"):
+                yield c
+            return
+        if re.search(r"equilibri|stability|phase plane", lower):
+            given = {
+                k: float(v)
+                for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)
+                if k != "window"
+            }
+            args.update({"detail": "qualitative", "parameters": given})
+            box = re.search(
+                r"window\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)", plain
+            )
+            if box:
+                args["window"] = [float(x) for x in box.groups()]
+            args.pop("conditions", None)
+            async for c in self._say("I will find the equilibria and classify them locally. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_analyze", args)])
+        elif "boundary" in lower and conditions:
+            parameters = {
+                k: float(v)
+                for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)
+                if k not in ("rtol", "atol")
+            }
+            args.update({"parameters": parameters, "kind": "bvp"})
+            async for c in self._say("I will solve the boundary-value problem and check it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_solve_numerical", args)])
+        elif "series" in lower:
+            order = int(m.group(1)) if (m := re.search(r"order (\d+)", lower)) else 6
+            args.update({"method": "series", "order": order})
+            async for c in self._say("I will build the series and check it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_solve_symbolic", args)])
+        elif "numerical" in lower:
+            given = {
+                k: float(v)
+                for k, v in re.findall(r"(\w+)\s*=\s*(-?\d+(?:\.\d+)?)", plain)
+                if not re.fullmatch(r"[A-Za-z]\w*'*\(.*", k)
+            }
+            end = given.pop("t_end", None)
+            parameters = {k: v for k, v in given.items() if k not in ("rtol", "atol")}
+            if end is None or not conditions:
+                async for c in self._say(
+                    "I need the initial values and the end of the interval (t_end), and a value for "
+                    "every parameter. I will not choose them."
+                ):
+                    yield c
+                return
+            args.update({"parameters": parameters, "t_end": end})
+            async for c in self._say("I will integrate it and check the result. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_solve_numerical", args)])
+        elif "closed form" in lower or "exact" in lower or "symbolic" in lower:
+            async for c in self._say("I will look for a closed form and verify it. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_solve_symbolic", args)])
+        else:
+            async for c in self._say("I will read the equation and see which methods apply. "):
+                yield c
+            yield Chunk(tool_calls=[ToolCall("ode_analyze", args)])
+
     async def _after_tool(self, messages: Sequence[dict[str, Any]]) -> AsyncIterator[Chunk]:
         tool = messages[-1].get("name", "")
         content = str(messages[-1]["content"])
@@ -795,6 +879,30 @@ class ScriptedLLM:
                 text = "The card shows the move and the whole expression after it, verified."
             else:
                 text = f"I could not do that ({status}). The card says why; tell me how to rephrase it."
+        elif tool in ("ode_analyze", "ode_solve_symbolic", "ode_solve_numerical"):
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status != "ok":
+                text = (
+                    f"Minerva could not do that ({status}), so I have no result to give you. The card says "
+                    "why. That is not a statement that no solution exists."
+                )
+            elif tool == "ode_analyze":
+                text = (
+                    "The card shows how I read the equation, its structure and the methods Minerva can try, "
+                    "in order. For a numerical solution I need every initial value, every parameter value and "
+                    "the end of the interval from you; the card has a form for them."
+                )
+            elif tool == "ode_solve_symbolic":
+                text = (
+                    "The card shows the closed form. Minerva substituted it back into your equation at "
+                    "sample points, with derivatives taken numerically, and checked the conditions separately."
+                )
+            else:
+                text = (
+                    "The card shows the trajectory on the interval you gave. It is a numerical approximation: "
+                    "an independent integrator agreed, and refining the tolerance converged."
+                )
         elif tool == "solve_polynomial":
             text = (
                 "The card shows the factorisation, whether a formula in radicals exists, the verified roots "

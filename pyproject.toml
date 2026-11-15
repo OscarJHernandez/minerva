@@ -58,5 +58,5 @@ mypy_path = ["packages/engine/src", "packages/knowledge/src", "services/api/src"
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["sympy.*", "mpmath.*", "argon2.*"]
+module = ["sympy.*", "mpmath.*", "argon2.*", "scipy.*"]
 ignore_missing_imports = true

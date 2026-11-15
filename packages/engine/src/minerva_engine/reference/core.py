@@ -5,7 +5,7 @@ A problem expects either a **correct** answer (the engine's result must agree wi
 
 Fields beyond the id, domain and source:
   oracle    what the expected answer comes from: `mpmath_quad`, `mpmath_diff`, `mpmath_taylor`,
-            `mpmath_polyroots`, `mpmath_expm`, `closed_form`, `arithmetic`, `exact_bracket`, `exact_solution`,
+            `mpmath_polyroots`, `mpmath_expm`, `mpmath_odefun_taylor`, `closed_form`, `arithmetic`, `exact_bracket`, `exact_solution`,
             `finite_difference`. Never Minerva's own computation.
   evidence  the strongest kind of check the *engine itself* reports for an accepted result: `symbolic_proof`
             (a symbolic zero test passed), `numeric_agreement` (independent numerical checks only),
@@ -41,6 +41,7 @@ ORACLES = frozenset(
         "mpmath_taylor",
         "mpmath_polyroots",
         "mpmath_expm",
+        "mpmath_odefun_taylor",
         "closed_form",
         "arithmetic",
         "exact_bracket",

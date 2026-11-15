@@ -67,6 +67,7 @@ def test_the_corpus_covers_the_requested_domains_with_both_kinds_of_problem() ->
         "algebra",
         "statmech",
         "variational",
+        "ode",
     }
     assert all(p.source for p in PROBLEMS) and len({p.id for p in PROBLEMS}) == len(PROBLEMS)
     for category in categories:
@@ -133,6 +134,50 @@ def _corrupt(result: Any) -> Any:
             for r in verification.perturbations
         ]
         updates["verification"] = verification.model_copy(update={"perturbations": perturbed})
+    # ODE results: closed forms and series are scaled by 1.001, numeric series likewise, and each equilibrium's
+    # eigenvalues are scaled and its class flipped. The frequency of a perturbation solution is scaled too.
+    ode_solutions = getattr(result, "solutions", None)
+    if ode_solutions:
+        scaled = []
+        for item in ode_solutions:
+            change: dict[str, Any] = {}
+            if item.rhs_text:
+                change["rhs_text"] = [f"({t})*1.001" for t in item.rhs_text]
+            if item.kind == "perturbation" and len(item.equations_latex) > 1:
+                lhs, _, rhs = item.equations_latex[1].partition("=")
+                change["equations_latex"] = [
+                    item.equations_latex[0],
+                    f"{lhs}= ({rhs})\\cdot 1.001",
+                    *item.equations_latex[2:],
+                ]
+            scaled.append(item.model_copy(update=change))
+        updates["solutions"] = scaled
+    ode_series = getattr(result, "series", None)
+    if ode_series:
+        updates["series"] = [
+            s.model_copy(update={"values": [v * 1.001 for v in s.values]}) for s in ode_series
+        ]
+    qualitative = getattr(result, "qualitative", None)
+    if qualitative is not None and qualitative.equilibria:
+        flip = {"centre": "saddle", "saddle": "centre"}
+
+        def _eigen(text: str) -> str:
+            try:
+                z = complex(text.replace(" ", "").replace("i", "j")) * 1.001
+            except ValueError:
+                return text
+            return f"{z.real}{z.imag:+}i"
+
+        shifted = [
+            eq.model_copy(
+                update={
+                    "eigenvalues_numeric": [_eigen(v) for v in eq.eigenvalues_numeric],
+                    "classification": flip.get(eq.classification, "non_hyperbolic"),
+                }
+            )
+            for eq in qualitative.equilibria
+        ]
+        updates["qualitative"] = qualitative.model_copy(update={"equilibria": shifted})
     if getattr(result, "frequency_latex", None):
         updates["frequency_latex"] = "\\omega = 2"
     if getattr(result, "restrictions_latex", None):

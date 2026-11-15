@@ -65,6 +65,9 @@ function cardSummary(card: Card | null | undefined): string[] {
     card.type === "solve" ||
     card.type === "lagrangian" ||
     card.type === "motion" ||
+    card.type === "ode_analysis" ||
+    card.type === "ode_solution" ||
+    card.type === "ode_numeric" ||
     card.type === "dimensional" ||
     card.type === "units"
   ) {

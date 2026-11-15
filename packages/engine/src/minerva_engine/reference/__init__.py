@@ -12,6 +12,7 @@ from . import (
     distribution,
     matrix,
     mechanics,
+    ode,
     series,
     statmech,
     substitution,
@@ -29,6 +30,7 @@ PROBLEMS: list[Problem] = [
     *algebra.PROBLEMS,
     *statmech.PROBLEMS,
     *variational.PROBLEMS,
+    *ode.PROBLEMS,
 ]
 
 __all__ = ["PROBLEMS", "Problem"]

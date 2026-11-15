@@ -28,6 +28,9 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "search_invariants": "numeric",
     "find_conserved_quantities": "numeric",  # each constant: symbolic zero and numeric points on the flow
     "integrate_motion": "numeric",
+    "ode_analyze": "numeric",  # the solved form is confirmed at sample points; the classes are not formulas
+    "ode_solve_symbolic": "numeric",  # substituted back with numerical derivatives; a symbolic zero is separate
+    "ode_solve_numerical": "numeric",  # independent integrator, refinement, defect, first integral
     "find_identities": "numeric",
     "distribution": "numeric",  # test-function pairings agree; conditions are established exactly
     "variation": "numeric",  # finite differences of the action agree with the claimed variation
