@@ -17,6 +17,8 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 CASES_FILE = Path(__file__).with_name("cases.yaml")
+RELIABILITY_FILE = Path(__file__).with_name("cases_reliability.yaml")
+SUITES = ("core", "reliability", "all")
 
 Category = Literal[
     "symbolic",  # simple symbolic calculations
@@ -95,6 +97,44 @@ class Reference(BaseModel):
     arguments: dict[str, Any]
 
 
+class Followup(BaseModel):
+    """A later turn of a live conversation: the agent has really answered the earlier ones.
+
+    Its state (earlier results, restrictions, declared matrices, assumptions) is rebuilt from the earlier
+    answers exactly as the chat route does, so `@r1` and inherited restrictions work as they do in production.
+    The fields mean what they mean on `EvalCase`.
+    """
+
+    prompt: str
+    expected_tool: str
+    also_ok: list[str] = Field(default_factory=list)
+    forbid: list[str] = Field(default_factory=list)
+    tools_optional: bool = False
+    sequence: list[str] = Field(default_factory=list)
+    args: ArgCheck | None = None
+    expect_card: ExpectCard | None = None
+    reference: Reference | None = None  # a correct call for this turn, run by --check-cases
+    reply_matches: str | None = None
+    reply_forbids: str | None = None
+    max_unchecked: int | None = None
+    max_calls: int = 1
+    wrong_formulas: list[str] = Field(default_factory=list)
+    right_formulas: list[str] = Field(default_factory=list)
+    must_reuse: bool = False
+    restrictions_reported: str | None = None
+    stops_after_failure: bool = False
+    forbid_assumptions: bool = False
+
+    def as_case(self, parent: EvalCase, number: int) -> EvalCase:
+        return EvalCase(
+            id=f"{parent.id}#{number}",
+            category=parent.category,
+            source=parent.source,
+            informational=parent.informational,
+            **self.model_dump(),
+        )
+
+
 class EvalCase(BaseModel):
     id: str
     category: Category
@@ -120,8 +160,19 @@ class EvalCase(BaseModel):
     right_formulas: list[str] = Field(default_factory=list)
     informational: bool = False  # reported, but not counted in the score
     source: str = ""  # where the expected outcome comes from (a test or benchmark file)
+    # --- reliability checks (cases_reliability.yaml). All off by default, and left out of the case-set digest
+    # while off, so the digest of the original cases does not change.
+    # A later tool call must refer to an earlier verified result (`@r1`), not retype it.
+    must_reuse: bool = False
+    # Regular expression: the reply must state the domain restriction a result carries (x != 1 ...).
+    restrictions_reported: str | None = None
+    # After a tool result that is not verified (not_verified, error, ...) no further tool is called.
+    stops_after_failure: bool = False
+    # The user stated no assumptions, so none may be passed to a tool (no invented positivity, realness, ...).
+    forbid_assumptions: bool = False
+    followups: list[Followup] = Field(default_factory=list)  # later turns, answered live
 
-    @field_validator("reply_matches", "reply_forbids")
+    @field_validator("reply_matches", "reply_forbids", "restrictions_reported")
     @classmethod
     def _regex(cls, value: str | None) -> str | None:
         if value is not None:
@@ -145,7 +196,13 @@ class EvalCase(BaseModel):
             raise ValueError(f"{self.id}: the reference call must use the expected tool")
         if not self.source:
             raise ValueError(f"{self.id}: say where the expected outcome comes from")
+        for number, turn in enumerate(self.followups, start=2):
+            turn.as_case(self, number)  # validates the later turns the same way
         return self
+
+    def turns(self) -> list[EvalCase]:
+        """This case and each follow-up turn, as the cases that are scored one by one."""
+        return [self, *(t.as_case(self, n) for n, t in enumerate(self.followups, start=2))]
 
     @property
     def expects_tool(self) -> bool:
@@ -168,7 +225,42 @@ def load_cases(path: Path = CASES_FILE) -> list[EvalCase]:
     return cases
 
 
+def load_suite(suite: str = "core") -> list[EvalCase]:
+    """`core` (cases.yaml), `reliability` (cases_reliability.yaml: live multi-turn and assumption checks) or both."""
+    if suite not in SUITES:
+        raise ValueError(f"unknown suite {suite!r}; choose from {', '.join(SUITES)}")
+    cases: list[EvalCase] = []
+    if suite in ("core", "all"):
+        cases += load_cases(CASES_FILE)
+    if suite in ("reliability", "all"):
+        cases += load_cases(RELIABILITY_FILE)
+    ids = [c.id for c in cases]
+    if len(set(ids)) != len(ids):
+        raise ValueError("duplicate case ids across suites")
+    return cases
+
+
+_RELIABILITY_FIELDS = (
+    "must_reuse",
+    "restrictions_reported",
+    "stops_after_failure",
+    "forbid_assumptions",
+    "followups",
+)
+
+
+def _digest_view(case: EvalCase) -> str:
+    """The case as hashed: reliability fields still at their default are left out, so adding them to the
+    schema did not change the digest of any earlier case."""
+    unused = {
+        name
+        for name in _RELIABILITY_FIELDS
+        if getattr(case, name) == EvalCase.model_fields[name].get_default(call_default_factory=True)
+    }
+    return case.model_dump_json(exclude=unused)
+
+
 def cases_digest(cases: list[EvalCase]) -> str:
     """Fingerprint of the case set, so two reports can tell whether they ran the same questions."""
-    blob = "\n".join(c.model_dump_json() for c in cases)
+    blob = "\n".join(_digest_view(c) for c in cases)
     return hashlib.sha256(blob.encode()).hexdigest()[:12]

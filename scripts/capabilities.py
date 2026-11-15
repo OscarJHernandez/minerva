@@ -1397,9 +1397,15 @@ RUNNERS = {
 }
 
 
+EXAMPLE_TIMEOUT_SECONDS = 120.0
+
+
 def build() -> dict[str, Any]:
     spec = yaml.safe_load(SOURCE.read_text())
-    engine = Engine()
+    # Generous on purpose: a result must not depend on how fast the machine is. With the default 10 s, five
+    # examples near their limit turned into `resource_limit` on a slow or busy runner and the generated files
+    # no longer matched. A call that really cannot finish is still stopped by its own size and step caps.
+    engine = Engine(Limits(timeout_seconds=EXAMPLE_TIMEOUT_SECONDS))
     kb = KnowledgeBase.load()
     seen: set[str] = set()
     capabilities: list[dict[str, Any]] = []

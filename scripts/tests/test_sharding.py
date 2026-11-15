@@ -44,3 +44,11 @@ def test_malformed_values_are_refused(value: str) -> None:
 
 def test_valid_value() -> None:
     assert MODULE.parse_shard("2/5") == (2, 5)
+
+
+def test_tier_defaults_to_pr_and_rejects_unknown_values() -> None:
+    assert MODULE.parse_tier(None) == "pr"
+    assert MODULE.parse_tier("") == "pr"
+    assert MODULE.parse_tier("extended") == "extended"
+    with pytest.raises(ValueError, match="MINERVA_TEST_TIER"):
+        MODULE.parse_tier("nightly")  # a typo must not silently run (or skip) the wrong set

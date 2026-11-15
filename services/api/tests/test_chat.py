@@ -247,10 +247,11 @@ def test_messages_stored_before_debug_existed_still_work() -> None:
             "trace": [{"id": "a", "name": "simplify", "arguments": {}, "for_model": "r=$x$"}],
         }
 
-    history, known, quoted, results = _history([Row()])  # type: ignore[list-item]
+    history, known, quoted, results, restrictions = _history([Row()])  # type: ignore[list-item]
     assert history[1]["content"] == "r=$x$"
     # How it was verified was not recorded, so the formula is quoted and never vouched for.
     assert "x" not in known and "x" in quoted and results == {}
+    assert restrictions == {}  # nothing was recorded, so none are invented
 
 
 def test_chat_logs_contain_no_message_content(capsys) -> None:  # type: ignore[no-untyped-def]

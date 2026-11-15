@@ -62,6 +62,10 @@ uv run python -m minerva_engine.reference_benchmark [--check]      # problems wh
 uv run python -m minerva_knowledge benchmark --only distributions [--json out.json] [--compare docs/benchmarks/distributions.json]
 uv run python -m minerva_engine.variational.benchmark [--check]  # 21 closed-form cases; docs/variational-benchmark.md + docs/benchmarks/variational.json
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
+uv run python scripts/verification_report.py [--check|--compare docs/benchmarks/verification-summary-baseline.json]   # false accepts/rejects, counterexamples, evidence kinds by domain; CI runs --check (docs/verification-testing.md)
+uv run python -m minerva_engine.reference_benchmark [--check] [--tier pr|extended]   # (extended rewrites the report) expected answers are hand-written in minerva_engine/reference/, never regenerated
+MINERVA_TEST_TIER=extended MINERVA_HYPOTHESIS_PROFILE=extended uv run pytest packages/engine --hypothesis-seed=N   # extended tier: `make test-extended` (nightly workflow runs it)
+uv run python scripts/eval_models.py --suite reliability --check-cases   # live multi-turn reliability cases (also `make eval-reliability`; --suite core|reliability|all)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --repeat 3 --seed 7 --label NAME \
@@ -106,6 +110,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   enforce this (`test_tracing.py`). The detailed trace (arguments and results) lives only in the stored assistant message,
   under the conversation's own access, deletion and export rules: do not give it a table, file or endpoint of its own.
   Logging and tracing failures must never reach the mathematics (`Tracer.emit` and the engine observer swallow them).
+- Restrictions travel with a verified result (`ResultStore.restrictions`): when a later call reuses `@rN`, its card gets
+  `inherited_restrictions_latex` and its tool message names them ("Inherited from @r1"); they are rebuilt from stored cards
+  for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `routers_chat._history` (V-015).
 - A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
   `malformed_output`, `internal_error`). An identical call in a turn is not run twice; a model call that failed before any
   output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
@@ -146,6 +153,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Handbook entries declare `verification`: symbolic / numeric / structural / dimensional / stated.
   `stated` entries are literature records, never applied, and must not carry a rule or check.
   Do not label an entry `symbolic` unless the checker finds a symbolic zero.
+- `verify_equal` probes after its random points agree (`counterexample.py`, `TARGETED`): boundaries and zeros of the
+  arguments of `Abs`/`Max`/`Piecewise`/`floor`/`log`/fractional powers, the negative real axis and large imaginary parts
+  for complex symbols, integers beyond ±6 and simple special values, extreme scales, at *exact rational points*, and a
+  disagreement counts only if it is stable at 60 and 120 digits (`NOISE_FLOOR`): cancellation is counted, never reported.
+  Probes can only add a disagreement, never count as agreement. A point defined on one side only is not a counterexample
+  (removable singularities). Do not widen `REL_TOL` or shrink the wide tranche to compensate, do not catch exceptions
+  around the search, and keep `Counterexample` (it holds expressions) out of every log field and trace event. A pass
+  still means "no disagreement found"; `docs/verification-testing.md` lists what sampling cannot find (V-014).
 - Numeric agreement is evidence, not proof. `verify_equal` samples two tranches (ordinary region and a wide one,
   |x| up to 50, |Im| up to 10, high precision) and counts a point where only one side is a pole as a disagreement;
   `Verification.symbolic_zero` is the only symbolic evidence. UI and tool text say "proved equal" only with a symbolic
@@ -497,6 +512,12 @@ user-visible capability also gets an example in `docs/capabilities.yaml`, then r
 - Logging: structlog JSON with an allow-list of fields (`logging.py`). Never log expressions, emails,
   passwords, tokens, cookies or request bodies. A test enforces this.
 - Small, reviewable commits. Tests with every behaviour change. No placeholder implementations.
+- Verification tests: add a false identity (and its true twin) to `packages/engine/tests/adversarial/corpus.py`, a
+  problem with a hand-written oracle and source locator to `minerva_engine/reference/`, a generator to
+  `packages/engine/tests/strategies/`. A known unfixed defect is a strict `xfail`/`pending` row with an id in
+  `docs/verification-defects.md`; never delete or loosen a row, and never regenerate an expected answer from the code under
+  test. Tiers: pull-request tests stay fast (`pr` Hypothesis profile, 8 derandomized examples); slow or random-seed
+  searches are marked `extended`.
 
 ## Security and open-source rules
 

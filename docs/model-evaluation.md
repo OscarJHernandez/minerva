@@ -200,3 +200,13 @@ before drawing a conclusion:
 ```bash
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --out docs/model-evaluation.md
 ```
+
+## Reliability suite (not yet measured with a model)
+
+`--suite reliability` adds eight live multi-turn cases (`cases_reliability.yaml`) and four failure classes
+(`invented_assumption`, `ignored_failed_verification`, `misreported_restriction`, `result_reuse`). The deterministic
+side (ideal and adversarial scripted trajectories, no model) is `make eval-reliability`. No real-model run of this suite has
+been made yet. To measure it against a baseline with the same models and settings, see "Agent reliability" in
+[verification-testing.md](verification-testing.md); the model-eval workflow (`model-eval.yml`) runs the same commands when
+`MINERVA_EVAL_BASE_URL` is configured as a repository variable. The case-set digest of the core suite is unchanged, so the
+earlier runs above remain comparable for it.

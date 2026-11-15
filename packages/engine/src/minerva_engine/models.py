@@ -74,6 +74,10 @@ class Verification(BaseModel):
     numeric_points_checked: int = 0
     numeric_points_agreed: int = 0
     numeric_points_skipped: int = 0  # sample points where both sides were undefined or failed
+    # Targeted probes (boundaries, branch cuts, large integers, ...) after the random points agreed. They can
+    # only add a disagreement; a probe never counts as agreement. `probe_kind` is a fixed label, never content.
+    numeric_points_probed: int = 0
+    probe_kind: str | None = None  # set when a probe found a point where the two sides differ
     passed: bool = False
     note: str = ""
 
