@@ -23,7 +23,12 @@ agreement. Convergence conditions that SymPy reports and the declared assumption
 from __future__ import annotations
 
 import random
+import signal
+import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from typing import Literal
 
 import mpmath
 import sympy as sp
@@ -39,6 +44,7 @@ from .differentiate import (
 )
 from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .indexed.guard import contains_indexed
+from .integration_strategy.models import StrategyReport
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, SAMPLE_ATTEMPTS, _sample
@@ -100,6 +106,11 @@ class IntegrateResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     message: str = ""
     duration_ms: int = 0
+    # How the result was reached (`direct` = SymPy's route), what else was suggested, and what was
+    # tried. `closed_form` is a formula; `numeric` is an estimate with `numeric_error` and no formula.
+    result_kind: Literal["closed_form", "numeric"] = "closed_form"
+    numeric_error: str | None = None
+    strategy: StrategyReport | None = None
 
 
 def _fail(status: Status, message: str, **extra: object) -> IntegrateResult:
@@ -397,13 +408,14 @@ def _definite(
     ]
 
 
-def integrate(
+def _integrate_direct(
     data: ExpressionInput,
     variable: str,
     limits: Limits,
     lower: str | None = None,
     upper: str | None = None,
 ) -> IntegrateResult:
+    """SymPy's own route, verified. The original `integrate`, unchanged."""
     from .ops import parse_expression  # local import: ops imports this module
 
     started = time.monotonic()
@@ -501,4 +513,256 @@ def integrate(
         notes=notes,
         message="Integrated with SymPy; the antiderivative was verified by a numerical derivative.",
         **base,
+    )
+
+
+STRATEGY_NAMES = frozenset(
+    {
+        "auto",
+        "substitution",
+        "parts",
+        "trigonometric",
+        "partial_fractions",
+        "parity",
+        "reflection",
+        "frullani",
+        "schwinger",
+        "parameter_differentiation",
+        "numerical",
+    }
+)
+
+
+class _DirectTimeout(BaseException):  # not an Exception: SymPy's broad handlers must not swallow it
+    """The direct route used its share of the time budget."""
+
+
+@contextmanager
+def _share_of_budget(seconds: float) -> Iterator[None]:
+    """Interrupt the block after `seconds` (main thread of a POSIX process); otherwise do nothing.
+
+    The sandbox child runs operations in its main thread, so a SymPy integral that would use the
+    whole budget (`sin(x)**n / (sin(x)**n + cos(x)**n)` does) is cut short and the strategies still
+    get their turn.
+    """
+    usable = (
+        seconds > 0
+        and hasattr(signal, "setitimer")
+        and threading.current_thread() is threading.main_thread()
+    )
+    if not usable:
+        yield
+        return
+
+    def interrupt(signum: int, frame: object) -> None:
+        raise _DirectTimeout
+
+    previous = signal.signal(signal.SIGALRM, interrupt)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+DIRECT_SHARE = 0.6  # of the time budget, when strategies are available to take over
+
+
+def integrate(
+    data: ExpressionInput,
+    variable: str,
+    limits: Limits,
+    lower: str | None = None,
+    upper: str | None = None,
+    strategy: str | None = None,
+) -> IntegrateResult:
+    """Integrate, trying SymPy's route first and the deterministic strategies where it fails.
+
+    The direct route is unchanged and runs first (within a share of the time budget, so that the
+    strategies can still run). If it is `unsupported` or `not_verified`, `integration_strategy.explore`
+    tries the promising techniques, each candidate verified by the same independent checkers
+    against the original integrand. With `strategy` (`auto` or a technique name) the strategies run
+    first and their result, with its explanation, is the answer; SymPy's route is the fallback.
+    The answer carries a `StrategyReport`: the technique, why it applies, its steps, what else was
+    suggested and what was tried.
+    """
+    from .integration_strategy.explore import explore, suggest
+    from .integration_strategy.models import Attempt, StrategyReport
+    from .ops import parse_expression
+
+    if strategy is not None and strategy not in STRATEGY_NAMES:
+        return _fail(Status.PARSE_ERROR, "Unknown integration strategy.")
+    started = time.monotonic()
+    deadline = started + 0.8 * limits.timeout_seconds
+    if (lower is None) != (upper is None):
+        return _integrate_direct(data, variable, limits, lower, upper)
+    try:
+        f = parse_expression(data, limits)
+        symbol = Builder(data.assumptions, limits).symbol(variable)
+        low = _bound(lower, data, limits) if lower is not None else None
+        high = _bound(upper, data, limits) if upper is not None else None
+    except MinervaMathError:
+        return _integrate_direct(data, variable, limits, lower, upper)
+    if symbol.is_integer or symbol.is_rational:
+        return _integrate_direct(data, variable, limits, lower, upper)
+
+    suggestions = suggest(f, symbol, low, high)
+    only = None if strategy in (None, "auto") else strategy
+
+    def run_explore() -> object:
+        return explore(
+            f,
+            symbol,
+            low,
+            high,
+            limits=limits,
+            deadline=deadline,
+            assumptions=data.assumptions,
+            only=only,  # type: ignore[arg-type]
+        )
+
+    def run_direct(share: float) -> IntegrateResult:
+        try:
+            with _share_of_budget(share):
+                return _integrate_direct(data, variable, limits, lower, upper)
+        except _DirectTimeout:
+            return _fail(
+                Status.UNSUPPORTED,
+                "SymPy's route did not finish within its share of the time budget.",
+                input_latex=to_latex(f),
+                variable=variable,
+            )
+
+    from .integration_strategy.explore import Explored
+
+    if strategy is not None:
+        explored = run_explore()
+        assert isinstance(explored, Explored)  # noqa: S101
+        if explored.expr is not None or explored.estimate is not None:
+            return _from_strategy(IntegrateResult(status=Status.OK), explored, f, symbol, low, high)
+        direct = run_direct(0.0)
+        report = explored.report
+        if direct.status is Status.OK:
+            direct.strategy = StrategyReport(
+                technique="direct",
+                suggestions=suggestions,
+                verification=_direct_level(direct),
+                attempts=[*report.attempts, Attempt(technique="direct", outcome="verified")],
+                candidates_rejected=report.candidates_rejected,
+            )
+        else:
+            direct.strategy = report
+        return direct
+
+    direct = run_direct(DIRECT_SHARE * (deadline - started) if suggestions else 0.0)
+    if direct.status is Status.OK:
+        direct.strategy = StrategyReport(
+            technique="direct", suggestions=suggestions, verification=_direct_level(direct)
+        )
+        return direct
+    if direct.status not in (Status.UNSUPPORTED, Status.NOT_VERIFIED):
+        direct.strategy = StrategyReport(suggestions=suggestions)
+        return direct
+
+    explored = run_explore()
+    assert isinstance(explored, Explored)  # noqa: S101
+    report = explored.report
+    if explored.expr is None and explored.estimate is None:
+        direct.strategy = report
+        if report.attempts or report.suggestions:
+            direct.notes.append(
+                "Other techniques were tried or are suggested: see the strategy report."
+            )
+        return direct
+    if explored.estimate is not None:
+        # Found without being asked: the status stays what the direct route reported (no closed
+        # form), and the estimate rides along, labelled. Only an explicit request makes it `ok`.
+        direct.numeric = explored.estimate.value
+        direct.numeric_error = explored.estimate.error
+        direct.result_kind = "numeric"
+        direct.strategy = report
+        direct.notes.append(
+            "A numerical estimate is shown; it is not a closed form. Ask for the numerical "
+            "strategy to get it as a result."
+        )
+        return direct
+    return _from_strategy(direct, explored, f, symbol, low, high)
+
+
+def _direct_level(result: IntegrateResult) -> str:
+    if result.verification is not None and result.verification.symbolic_zero:
+        return "proved"
+    return "numerically_checked"
+
+
+def _from_strategy(
+    base: IntegrateResult,
+    explored: object,
+    f: sp.Expr,
+    symbol: sp.Symbol,
+    low: sp.Expr | None,
+    high: sp.Expr | None,
+) -> IntegrateResult:
+    """The IntegrateResult for a verified strategy result."""
+    from .integration_strategy.explore import Explored
+
+    assert isinstance(explored, Explored)  # noqa: S101 - the caller passes what explore returned
+    report = explored.report
+    definite = low is not None and high is not None
+    notation = (
+        to_latex(sp.Integral(f, (symbol, low, high)))
+        if definite
+        else to_latex(sp.Integral(f, symbol))
+    )
+    common = {
+        "input_latex": to_latex(f),
+        "variable": symbol.name,
+        "definite": definite,
+        "lower_latex": to_latex(low) if low is not None else None,
+        "upper_latex": to_latex(high) if high is not None else None,
+        "notation_latex": notation,
+        "strategy": report,
+    }
+    technique = (report.technique or "").replace("_", " ")
+    if explored.estimate is not None:
+        est = explored.estimate
+        return IntegrateResult(
+            status=Status.OK,
+            numeric=est.value,
+            numeric_error=est.error,
+            result_kind="numeric",
+            notes=[report.note],
+            message=(
+                "No closed form was found. This is a numerical estimate only: two independent "
+                "quadrature rules agreed to the stated error."
+            ),
+            **common,
+        )
+    value = explored.expr
+    assert value is not None  # noqa: S101 - checked by the caller
+    numeric = None
+    if not value.free_symbols:
+        try:
+            numeric = str(sp.N(value, 15))
+        except (TypeError, ValueError):
+            numeric = None
+    notes = (
+        ["Checked against numerical quadrature, not against an antiderivative."]
+        if definite
+        else [
+            "This is one antiderivative: add an arbitrary constant, which may differ on each "
+            "connected piece of the domain."
+        ]
+    )
+    return IntegrateResult(
+        status=Status.OK,
+        result_latex=to_latex(value),
+        result_text=str(value),
+        numeric=numeric,
+        quadrature=explored.quadrature,
+        verification=explored.antiderivative,
+        notes=notes,
+        message=f"Integrated by {technique}; the result was verified independently of the technique.",
+        **common,
     )
