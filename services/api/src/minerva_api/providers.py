@@ -241,10 +241,11 @@ def local_model_choices(installed: list[str], current: str) -> dict[str, Any]:
     have = {recommended_family(n) for n in names}
     return {
         "models": rows,
+        # only when the host answered with models: nothing to compare with otherwise
         "suggested": [
             {"family": family, "note": note}
             for family, note in RECOMMENDED_LOCAL
-            if family not in have
+            if installed and family not in have
         ],
     }
 

@@ -318,6 +318,7 @@ def test_status_lists_installed_local_models_with_recommended_ones_first() -> No
 def test_status_when_the_local_host_is_down_lists_no_models() -> None:
     ollama = _ollama_client(None).get("/v1/chat/status").json()["providers"]["ollama"]
     assert ollama["reachable"] is False and ollama["models"] == []
+    assert ollama["suggested"] == []  # nothing to compare with when the host did not answer
 
 
 def test_a_turn_can_pick_another_installed_model_and_nothing_else(
