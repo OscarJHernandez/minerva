@@ -11,17 +11,21 @@ from collections.abc import Callable
 
 from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..models import Limits, Status
+from .cfrac import continued_fraction
 from .chebyshev import chebyshev
 from .common import Context, Refused, build_context, diagnostics, failure
 from .compare import compare
+from .composed import integral_expansion, reversion, root_expansion
 from .expand import asymptotic, laurent, perturbation, taylor
 from .fourier import fourier
+from .laplace import laplace
 from .leading import leading, limit
 from .legendre import legendre
 from .models import ApproximationInput, ApproximationReport
 from .multivar import multivariable
 from .pade import pade
 from .piecewise import piecewise
+from .sums import accelerate, euler_maclaurin
 
 Handler = Callable[[Context], ApproximationReport]
 
@@ -39,6 +43,13 @@ HANDLERS: dict[str, Handler] = {
     "fourier": fourier,
     "legendre": legendre,
     "piecewise": piecewise,
+    "continued_fraction": continued_fraction,
+    "euler_maclaurin": euler_maclaurin,
+    "accelerate": accelerate,
+    "integral_expansion": integral_expansion,
+    "root_expansion": root_expansion,
+    "reversion": reversion,
+    "laplace": laplace,
 }
 
 
