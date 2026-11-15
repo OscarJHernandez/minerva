@@ -304,3 +304,16 @@ def unverified_inputs(messages: Iterable[Any]) -> dict[str, list[str]]:
             if rid and isinstance(carried, list) and carried:
                 out[rid] = [str(c) for c in carried]
     return out
+
+
+_MODEL_TAG = re.compile(r"(\$\$.+?\$\$|\\\[.+?\\\])[ \t]*\(\s*\d{1,3}\s*\)", re.DOTALL)
+
+
+def strip_equation_tags(text: str) -> str:
+    """Remove a number the model wrote itself right after a displayed formula ("$$...$$ (3)").
+
+    The server numbers equations; a number the model writes would be its guess (it copies the pattern
+    from the replayed history) and could differ from the real one, so it is dropped before the reply is
+    split, stored and numbered. A "(3)" anywhere else in the prose, in a sentence or a list, stays.
+    """
+    return _MODEL_TAG.sub(r"\1", text)

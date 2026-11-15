@@ -28,7 +28,7 @@ import { ModelPicker } from "./model-picker";
 import { ModelSettingsPanel } from "./model-settings-panel";
 import { CopyButton } from "./debug-panel";
 import { conversationPath } from "@/lib/next-path";
-import { retryLabel, untilLastUser } from "@/lib/retry";
+import { retryLabel, untilLastUser, withUserDetails } from "@/lib/retry";
 import { InsertReferenceProvider } from "./equation-number";
 import { ParamsPanel } from "./params-panel";
 import type { Overrides } from "@/lib/model-params";
@@ -250,6 +250,9 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
             patchPending((p) => appendText(p, event.data.delta));
           } else if (event.event === "tool_call") {
             patchPending((p) => ({ ...p, tools: [...p.tools, event.data] }));
+          } else if (event.event === "user") {
+            // What the server found in the message: equation numbers and what a reference was taken to be.
+            setMessages((m) => withUserDetails(m, event.data));
           } else if (event.event === "phase") {
             patchPending((p) => ({ ...p, phase: event.data.phase }));
           } else if (event.event === "card") {
@@ -689,11 +692,22 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                 )}
               </div>
               {debugOn && status?.params && status.params.editable.length > 0 && (
-                <ParamsPanel
-                  info={status.params}
-                  value={paramOverrides}
-                  onChange={setParamOverrides}
-                />
+                // Folded by default: on a phone the panel would otherwise fill the screen.
+                <details className="mt-1" data-testid="params-details">
+                  <summary className="cursor-pointer text-xs text-muted">
+                    Model parameters for the next turn
+                    {Object.keys(paramOverrides).length > 0
+                      ? ` (${Object.keys(paramOverrides).length} changed)`
+                      : ""}
+                  </summary>
+                  <div className="mt-1">
+                    <ParamsPanel
+                      info={status.params}
+                      value={paramOverrides}
+                      onChange={setParamOverrides}
+                    />
+                  </div>
+                </details>
               )}
             </div>
           </section>

@@ -1,4 +1,4 @@
-import type { StoredMessage } from "./chat-types";
+import type { EquationReference, StoredMessage, UserEquation } from "./chat-types";
 
 /** The conversation up to and including its last user message, whose text can be replaced. */
 export function untilLastUser(messages: StoredMessage[], text?: string): StoredMessage[] {
@@ -25,4 +25,20 @@ const INCOMPLETE = new Set([
 /** "Retry" when the reply ended early or failed, "Regenerate" when it is complete and the user wants another. */
 export function retryLabel(stopReason: string | null | undefined): "Retry" | "Regenerate" {
   return INCOMPLETE.has(stopReason ?? "") ? "Retry" : "Regenerate";
+}
+
+/** Adds what the server found in the last user message (its equations, its references) to the one on screen. */
+export function withUserDetails(
+  messages: StoredMessage[],
+  details: { equations?: UserEquation[]; references?: EquationReference[] },
+): StoredMessage[] {
+  const last = messages.map((m) => m.role).lastIndexOf("user");
+  const user = messages[last];
+  if (!user) return messages;
+  const content = {
+    ...user.content,
+    ...(details.equations?.length ? { equations: details.equations } : {}),
+    ...(details.references?.length ? { references: details.references } : {}),
+  };
+  return [...messages.slice(0, last), { ...user, content }, ...messages.slice(last + 1)];
 }

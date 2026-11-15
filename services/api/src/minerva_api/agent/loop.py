@@ -23,7 +23,7 @@ from minerva_engine import trace_scope
 
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .declarations import declared_matrices, declared_vectors
-from .equations import EquationTable, number_blocks
+from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
     AssistantMessage,
     Block,
@@ -895,7 +895,8 @@ async def _run_turn(
         failure_category = ErrorCategory.TOOL_FAILURE
 
     # ---- the end of the turn: one place builds the message, whatever way the turn ended ----------
-    raw = "\n\n".join(full_text).strip()
+    raw = strip_equation_tags("\n\n".join(full_text).strip())
+    order = [strip_equation_tags(i) if isinstance(i, str) else i for i in order]
     if stop is not StopReason.COMPLETED:
         sentence = STOP_SENTENCES[stop]
         raw = (raw + "\n\n" if raw else "") + sentence

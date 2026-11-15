@@ -51,7 +51,7 @@ export function ImageFormulasPanel({
             original,
             latex: original.latex,
             edited: false,
-            selected: original.status === "ok",
+            selected: original.status === "ok" || writtenInFull(original.message),
             editing: false,
           })),
         });
@@ -180,6 +180,14 @@ export function ImageFormulasPanel({
   );
 }
 
+/**
+ * An integral, sum, limit or derivative written out in full is well-formed, but it is not a bare expression
+ * that a tool can take as it stands (the tools take the integrand and the bounds separately). That is a
+ * property of the formula, not a reading mistake, so it is offered for insertion like any other.
+ */
+export const writtenInFull = (message?: string | null) =>
+  !!message && /is not supported in this operation/.test(message);
+
 function Reading({ item }: { item: Item }) {
   if (item.edited) {
     return (
@@ -195,6 +203,15 @@ function Reading({ item }: { item: Item }) {
         <span>Minerva reads this as </span>
         <Math latex={read_as} />
       </div>
+    );
+  }
+  if (writtenInFull(message)) {
+    return (
+      <p className="mt-1 text-xs text-muted">
+        This looks like an integral, sum, limit or derivative written out in full. Minerva&apos;s
+        tools take the parts separately, so say what you want done with it (for example
+        &quot;integrate it from a to b&quot;); it is inserted as written.
+      </p>
     );
   }
   return (

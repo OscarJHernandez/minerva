@@ -1196,6 +1196,13 @@ async def send_message(
         ] = []  # prose and cards sent so far, in order (kept if the client leaves)
         replied = False
         try:
+            if user_equations or shown_references:
+                # What the user's message was found to contain, before the reply: numbers for its displayed
+                # formulas and what "equation 3" was taken to mean. (The stored message has the same.)
+                yield _sse(
+                    "user",
+                    {"equations": user_equations, "references": shown_references},
+                )
             async for event in run_agent(
                 llm,
                 history,
@@ -1296,5 +1303,11 @@ async def send_message(
     return StreamingResponse(
         stream(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no", "X-Trace-ID": trace_id},
+        headers={
+            # no-transform: a proxy (the web app's, a CDN) must not compress the stream, which makes it
+            # arrive in one piece at the end instead of as the reply is written.
+            "Cache-Control": "no-store, no-transform",
+            "X-Accel-Buffering": "no",
+            "X-Trace-ID": trace_id,
+        },
     )

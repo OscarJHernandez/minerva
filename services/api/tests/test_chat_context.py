@@ -277,3 +277,20 @@ def test_what_arrived_before_the_client_left_is_kept_as_stopped() -> None:
     for client, cid, _llm in start():
         _store_stopped(client.app.state.session_factory, uuid.UUID(cid), [])  # type: ignore[attr-defined]
         assert stored(client, cid) == []  # nothing arrived: nothing is stored
+
+
+def test_what_the_message_was_found_to_contain_is_sent_before_the_reply() -> None:
+    for client, cid, llm in start():
+        llm.replies = [say("ok"), say("fine")]
+        first = send(client, cid, "Take $$x + 1$$ please")
+        kinds = [e for e, _ in first]
+        assert kinds.index("user") < kinds.index("message")
+        assert next(d for e, d in first if e == "user")["equations"] == [
+            {"number": 1, "latex": "x + 1"}
+        ]
+        second = send(client, cid, "Integrate equation 1")
+        user = next(d for e, d in second if e == "user")
+        assert user["references"][0]["number"] == 1 and user["references"][0]["latex"] == "x + 1"
+    for client, cid, llm in start():
+        llm.replies = [say("ok")]
+        assert "user" not in [e for e, _ in send(client, cid, "no formulas here")]

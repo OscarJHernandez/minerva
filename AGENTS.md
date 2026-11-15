@@ -117,6 +117,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   that starts like JSON or a code fence is held back until the model call ends so a tool call written as prose is never shown. A
   message sent after a reply that was never stored is merged with the unreplied one (the model never sees two user messages in a row).
   The composer gives the text back when a send failed before anything was sent; the address `/c/<id>` names the open conversation.
+- The reply is a server-sent stream and must reach the browser as it is written. Through the web app's proxy Next.js gzips it
+  and delivers the whole reply in one piece at the end (no live text; Stop keeps nothing), which is why `apps/web/next.config.ts`
+  sets `compress: false` (the CDN or nginx in front compresses). Do not turn it back on; if a deployment puts another buffering
+  proxy in front, the stream must be exempt (`X-Accel-Buffering: no`, `Cache-Control: no-transform` are sent). Check with a
+  fetch from the browser: many chunks over seconds, not two at the end.
 - Equation numbers (`agent/equations.py`): every displayed formula (reply or the user's message) and every tool result with a
   primary `result_latex` gets a number, one counter per conversation (`Conversation.equation_counter`, a high-water mark that is
   never lowered), assigned by the server after the turn in reading order; a formula already numbered keeps its number. A number

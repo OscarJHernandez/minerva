@@ -891,6 +891,7 @@ export type StreamEvent =
   | { event: "tool_call"; data: ToolRun }
   | { event: "card"; data: Card }
   | { event: "phase"; data: { phase: "checking" } }
+  | { event: "user"; data: { equations?: UserEquation[]; references?: EquationReference[] } }
   | { event: "message"; data: AssistantContent }
   | {
       event: "error";

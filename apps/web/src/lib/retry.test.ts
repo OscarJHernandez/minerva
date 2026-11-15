@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StoredMessage } from "./chat-types";
-import { retryLabel, untilLastUser } from "./retry";
+import { retryLabel, untilLastUser, withUserDetails } from "./retry";
 
 const m = (role: "user" | "assistant", text: string): StoredMessage => ({
   id: text,
@@ -35,5 +35,26 @@ describe("retryLabel", () => {
     }
     expect(retryLabel("completed")).toBe("Regenerate");
     expect(retryLabel(undefined)).toBe("Regenerate");
+  });
+});
+
+describe("withUserDetails", () => {
+  it("adds the equations and references the server found to the last user message", () => {
+    const all = [m("user", "a"), m("assistant", "b"), m("user", "use (1) and $$x$$")];
+    const out = withUserDetails(all, {
+      equations: [{ number: 2, latex: "x" }],
+      references: [{ number: 1, latex: "y", source: "written_by_model" }],
+    });
+    expect(out[2]?.content.equations).toEqual([{ number: 2, latex: "x" }]);
+    expect(out[2]?.content.references?.[0]?.number).toBe(1);
+    expect(out[0]).toBe(all[0]); // nothing else is touched
+    expect(out[1]).toBe(all[1]);
+  });
+
+  it("changes nothing when there is nothing to add or no user message", () => {
+    const all = [m("user", "a")];
+    expect(withUserDetails(all, {})[0]?.content).toEqual({ text: "a" });
+    const none = [m("assistant", "b")];
+    expect(withUserDetails(none, { equations: [{ number: 1, latex: "x" }] })).toBe(none);
   });
 });
