@@ -15,3 +15,7 @@ class LimitError(MinervaMathError):
 
 class UnsupportedInput(MinervaMathError):
     """The input parses but belongs to a different operation (reported as `unsupported`)."""
+
+
+class RangeNotProvable(MinervaMathError):
+    """A sum or product has symbolic bounds whose range is not provably non-empty."""

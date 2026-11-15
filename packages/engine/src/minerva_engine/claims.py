@@ -26,6 +26,7 @@ from pydantic import BaseModel
 
 from .distributions.guard import contains_distribution
 from .errors import MinervaMathError
+from .indexed.guard import contains_indexed
 from .latexparse import parse_latex
 from .models import ALLOWED_ASSUMPTIONS, Limits
 from .restrictions import domain_restrictions
@@ -195,6 +196,10 @@ _DISTRIBUTION_DETAIL = (
     "could not check: this may denote a Dirac delta or step function, which cannot be tested "
     "by sampling (use the distribution operation)"
 )
+_INDEXED_DETAIL = (
+    "could not check: sums, indexed data and expectations cannot be tested by sampling numbers "
+    "(use the sums or expectation operation)"
+)
 
 
 class ClaimChecker:
@@ -230,7 +235,7 @@ class ClaimChecker:
         parsed = self._parse(latex)
         if parsed and self._mentions_matrix(parsed):
             return
-        if parsed and any(contains_distribution(p) for p in parsed):
+        if parsed and any(contains_distribution(p) or contains_indexed(p) for p in parsed):
             return
         found = _definition(parsed) if parsed else None
         if found is None:
@@ -300,6 +305,9 @@ class ClaimChecker:
             return ClaimCheck(status="unverified", kind="relation", detail=_MATRIX_DETAIL)
         if any(contains_distribution(p) for p in parsed):
             return ClaimCheck(status="unverified", detail=_DISTRIBUTION_DETAIL)
+        if any(contains_indexed(p) for p in parsed):
+            # sampling numbers cannot stand in for data vectors or random variables
+            return ClaimCheck(status="unverified", detail=_INDEXED_DETAIL)
         outcome, detail = _compare(parsed)
         if outcome == "holds":
             return _holds_with_domain(parsed, denominators, detail).model_copy(

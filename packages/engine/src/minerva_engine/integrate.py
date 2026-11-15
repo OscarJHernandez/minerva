@@ -38,6 +38,7 @@ from .differentiate import (
     check_derivative,
 )
 from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
+from .indexed.guard import contains_indexed
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
 from .verify import MIN_VALID_POINTS, SAMPLE_ATTEMPTS, _sample
@@ -128,6 +129,11 @@ def _fixing(a: sp.Expr, b: sp.Expr, var: sp.Symbol) -> dict[sp.Symbol, sp.Expr] 
 
 def check_antiderivative(f: sp.Expr, var: sp.Symbol, candidate: sp.Expr) -> IntegrateVerification:
     """Numerically differentiate `candidate` and compare with `f`, branch by branch."""
+    if contains_indexed(f) or contains_indexed(candidate):
+        return IntegrateVerification(
+            passed=False,
+            note="sums, indexed variables and expectations cannot be checked at sampled numbers",
+        )
     checked = agreed = 0
     directions: set[str] = set()
     branches = _branches(candidate)
@@ -236,6 +242,11 @@ def check_definite(
     seed: int = 20260101,
 ) -> QuadratureVerification:
     """Compare `value` with adaptive quadrature of `f`, at sampled parameter values."""
+    if contains_indexed(f) or contains_indexed(value):
+        return QuadratureVerification(
+            passed=False,
+            note="sums, indexed variables and expectations cannot be checked at sampled numbers",
+        )
     params = sorted((f.free_symbols | value.free_symbols) - {var}, key=lambda s: s.name)
     rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
     a, b = _mp(lower), _mp(upper)

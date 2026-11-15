@@ -303,7 +303,9 @@ def test_a_follow_up_is_scored_on_the_state_the_first_turn_really_produced(
 
 def test_the_digest_of_the_original_cases_did_not_change() -> None:
     """Adding the reliability fields to the schema must not change which questions the core suite asks."""
-    assert cases_digest(load_cases()) == "1050a8e33d4e"
+    assert (
+        cases_digest(load_cases()) == "cf1b7c232fa7"
+    )  # main's own digest after the statmech cases; this branch adds none
     assert cases_digest(load_suite("reliability")) != cases_digest(load_cases())
 
 

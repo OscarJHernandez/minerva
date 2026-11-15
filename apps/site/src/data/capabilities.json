@@ -1,5 +1,5 @@
 {
-  "handbook_entries": 179,
+  "handbook_entries": 200,
   "groups": [
     {
       "id": "math",
@@ -15,6 +15,11 @@
       "id": "knowledge",
       "title": "Handbook and identities",
       "summary": "A citable, machine-checked collection of identities and equations, and the search over it."
+    },
+    {
+      "id": "statistics",
+      "title": "Statistics",
+      "summary": "Sums, expectations, probability models, estimators, information and Bayesian updates, derived and checked rather than looked up."
     },
     {
       "id": "interfaces",
@@ -1399,6 +1404,535 @@
           "notes": [
             "Not applied: U(t) = exp of the integral of the generator needs AB = BA (not established).",
             "The generator does not commute with itself at different times, so U(t) is a time-ordered exponential; time-ordered exponentials, Dyson series and Magnus expansions are not supported for abstract matrices (give explicit entries and the end time for a numerical solution)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statistical-mechanics",
+      "title": "Statistical mechanics of explicit systems",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Builds the partition function of a list of levels, a level family E(n) (finite or infinite), a density of states, a separable classical Hamiltonian, a Hermitian matrix, particles with Bose, Fermi or classical counting, or a periodic chain (transfer matrix), and derives thermodynamic quantities from it by one generic route: differentiate ln Z (or ln Xi) with the other state variables held fixed. Heat capacity is dU/dT, pressure is -dF/dV at fixed temperature, a particle number is a chemical-potential derivative; none is a stored formula. Thermal averages, variances, cumulants and fluctuation-response relations follow, as do microcanonical counts and approximations that report their assumptions, order, validity and a measured error. A formula is shown only if an independent numerical evaluation agreed (direct enumeration with log-sum-exp, adaptive quadrature, matrix exponentials, occupation numbers, brute force over every chain configuration, numerical derivatives); convergence is proved or the request is refused.",
+      "limits": [
+        "An approximation is never an identity. High- and low-temperature expansions, Stirling's ln N! and the thermodynamic limit of a chain are labelled asymptotic and carry a measured error table (a measurement, not a bound); saddle-point and Laplace methods, Legendre transforms and mean field are not supported.",
+        "An infinite sum needs a ratio-test proof for every beta > 0 (otherwise `divergent` or `convergence_not_provable`); an integral goes through the verified definite integrator under your assumptions. No interchange of a limit, sum, integral and derivative is assumed.",
+        "A classical Hamiltonian must be a sum of one-variable terms; a coupling term is refused (`not_separable`). A matrix is at most 4x4 with closed-form eigenvalues and is never assumed to commute with anything, so a response relation beyond the first derivative, and a covariance, are refused for operators that do not commute. A chain is periodic, with at most three site values, a symmetric bond and at most 14 sites for the brute-force check.",
+        "The ensemble is never substituted. Grand canonical needs particles with a statistic (Bose needs mu provably below every level); microcanonical counting needs numeric levels, a number of copies and a total energy that some microstate has, and its comparison with the canonical ensemble is measured, never assumed.",
+        "The phase-space cell and whether copies are indistinguishable are your choices, never defaulted; indistinguishable copies use the classical-limit N! counting, not exact Bose or Fermi statistics. Numbers for a numerical evaluation are yours too.",
+        "Numerical agreement is evidence, not a proof; a symbolic zero is reported separately and only where SymPy finds one. A series or integral without a closed form is evaluated numerically only and labelled as such."
+      ],
+      "examples": [
+        {
+          "id": "two-level-heat-capacity",
+          "title": "The heat capacity of a two-level system, derived as dU/dT",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "1 + \\mathrm{e}^{- \\beta \\epsilon}"
+            },
+            {
+              "label": "Helmholtz free energy",
+              "latex": "- \\frac{\\log{\\left(1 + \\mathrm{e}^{- \\beta \\epsilon} \\right)}}{\\beta}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
+            },
+            {
+              "label": "Partial derivative of internal energy with respect to T",
+              "latex": "\\frac{\\beta^{2} \\epsilon^{2} k_{B}}{2 \\left(\\cosh{\\left(\\beta \\epsilon \\right)} + 1\\right)}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "F: enumeration agreed",
+            "U: enumeration, finite difference, symbolic zero agreed",
+            "C: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "quantum-oscillator",
+          "title": "A quantum oscillator, from an infinite sum with a convergence proof",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = hbar*omega*(n + 1/2), n from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "\\frac{1}{2 \\sinh{\\left(\\frac{\\beta \\hbar \\omega}{2} \\right)}}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{\\hbar \\omega}{2 \\tanh{\\left(\\frac{\\beta \\hbar \\omega}{2} \\right)}}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "U: enumeration, finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "classical-ideal-gas",
+          "title": "Pressure of a classical ideal gas, from the free energy",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "H = (px**2 + py**2 + pz**2)/(2*m)",
+              "syntax": "text"
+            },
+            {
+              "label": "Copies",
+              "source": "N, indistinguishable (you chose)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{3 N}{2 \\beta}"
+            },
+            {
+              "label": "Partial derivative of helmholtz free energy with respect to V",
+              "latex": "\\frac{N}{V \\beta}"
+            }
+          ],
+          "checks": [
+            "U: enumeration, finite difference agreed",
+            "p: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Phase-space measure: Z_1 = (1/cell) times the integral of exp(-beta H) over the stated domains, with the cell you chose.",
+            "Indistinguishable copies use Z = Z_1^N / N!, the classical-limit counting; it is not exact Bose or Fermi statistics.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The cell h^3 and the division by N! were chosen by the user. Without them the result is `convention_unconfirmed`, with the question to answer."
+          ]
+        },
+        {
+          "id": "three-dimensional-density-of-states",
+          "title": "A density of states, integrated by the verified integrator",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "rho(En) = sqrt(En), from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Partition function",
+              "latex": "\\frac{\\sqrt{\\pi}}{2 \\beta^{\\frac{3}{2}}}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{3}{2 \\beta}"
+            }
+          ],
+          "checks": [
+            "Z: enumeration agreed",
+            "U: enumeration, finite difference, symbolic zero agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "spin-fluctuation-response",
+          "title": "Magnetic fluctuations from a derivative of ln Z with respect to the field",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Variance of M",
+              "latex": "\\frac{\\mu^{2}}{\\cosh^{2}{\\left(\\beta h \\mu \\right)}}"
+            }
+          ],
+          "checks": [
+            "variance_M: enumeration, fluctuation response, nonnegative variance agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "spin-tilted-field",
+          "title": "A spin in a tilted field, with an operator that does not commute with H",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "a 2x2 Hermitian matrix H and operators sz",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Mean of sz",
+              "latex": "\\frac{h \\tanh{\\left(\\beta \\sqrt{d^{2} + h^{2}} \\right)}}{\\sqrt{d^{2} + h^{2}}}"
+            }
+          ],
+          "checks": [
+            "mean_sz: enumeration, fluctuation response, spectral decomposition agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The mean is computed with the operator where it stands, and d ln Z/dh = beta times it holds by trace cyclicity. Asking for the variance through the second derivative is refused (`operators_do_not_commute`): there it would be the Kubo-Duhamel covariance."
+          ]
+        },
+        {
+          "id": "fermi-gas-levels",
+          "title": "Fermions in three levels, with a chemical potential",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "fermi particles in 3 levels, chemical potential mu",
+              "syntax": "text"
+            },
+            {
+              "label": "Ensemble",
+              "source": "grand canonical"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Mean particle number",
+              "latex": "\\frac{2 \\left(\\mathrm{e}^{\\beta \\mu} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(eps - \\mu\\right)} + 1\\right) + \\left(\\mathrm{e}^{\\beta \\mu} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(2 eps - \\mu\\right)} + 1\\right) + \\left(\\mathrm{e}^{\\beta \\left(eps - \\mu\\right)} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(2 eps - \\mu\\right)} + 1\\right) \\mathrm{e}^{\\beta \\mu}}{\\left(\\mathrm{e}^{\\beta \\mu} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(eps - \\mu\\right)} + 1\\right) \\left(\\mathrm{e}^{\\beta \\left(2 eps - \\mu\\right)} + 1\\right)}"
+            },
+            {
+              "label": "Internal energy",
+              "latex": "\\frac{eps \\left(\\mathrm{e}^{2 \\beta eps} + 4 \\mathrm{e}^{\\beta eps} + 5 \\mathrm{e}^{\\beta \\mu}\\right) \\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}}"
+            },
+            {
+              "label": "Particle-number variance",
+              "latex": "\\frac{2}{\\mathrm{e}^{2 \\beta eps - \\beta \\mu} + 1} - \\frac{2 \\mathrm{e}^{2 \\beta eps - \\beta \\mu}}{\\left(\\mathrm{e}^{2 \\beta eps - \\beta \\mu} + 1\\right)^{3}} - \\frac{2}{\\left(\\mathrm{e}^{2 \\beta eps - \\beta \\mu} + 1\\right)^{3}} + \\frac{1}{\\mathrm{e}^{\\beta eps - \\beta \\mu} + 1} - \\frac{\\mathrm{e}^{\\beta eps - \\beta \\mu}}{\\left(\\mathrm{e}^{\\beta eps - \\beta \\mu} + 1\\right)^{3}} - \\frac{1}{\\left(\\mathrm{e}^{\\beta eps - \\beta \\mu} + 1\\right)^{3}} + \\frac{\\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{\\beta \\mu} + 1} - \\frac{\\mathrm{e}^{3 \\beta \\mu}}{\\left(\\mathrm{e}^{\\beta \\mu} + 1\\right)^{3}} - \\frac{\\mathrm{e}^{2 \\beta \\mu}}{\\left(\\mathrm{e}^{\\beta \\mu} + 1\\right)^{3}}"
+            },
+            {
+              "label": "Partial derivative of internal energy with respect to T",
+              "latex": "- \\frac{\\beta^{2} eps k_{B} \\mu \\left(\\mathrm{e}^{2 \\beta eps} + 4 \\mathrm{e}^{\\beta eps} + 5 \\mathrm{e}^{\\beta \\mu}\\right) \\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}} + \\frac{eps \\left(- 2 \\beta^{2} eps k_{B} \\mathrm{e}^{2 \\beta eps} - 4 \\beta^{2} eps k_{B} \\mathrm{e}^{\\beta eps} - 5 \\beta^{2} k_{B} \\mu \\mathrm{e}^{\\beta \\mu}\\right) \\mathrm{e}^{\\beta \\mu}}{\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}} + \\frac{eps \\left(\\mathrm{e}^{2 \\beta eps} + 4 \\mathrm{e}^{\\beta eps} + 5 \\mathrm{e}^{\\beta \\mu}\\right) \\left(3 \\beta^{2} eps k_{B} \\mathrm{e}^{3 \\beta eps} + 2 \\beta^{2} k_{B} \\mu \\mathrm{e}^{2 \\beta \\mu} + \\beta^{2} k_{B} \\left(eps + \\mu\\right) \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\beta^{2} k_{B} \\left(2 eps + \\mu\\right) \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}\\right) \\mathrm{e}^{\\beta \\mu}}{\\left(\\mathrm{e}^{3 \\beta eps} + \\mathrm{e}^{2 \\beta \\mu} + \\mathrm{e}^{\\beta \\left(eps + \\mu\\right)} + \\mathrm{e}^{\\beta \\left(2 eps + \\mu\\right)}\\right)^{2}}"
+            }
+          ],
+          "checks": [
+            "N: enumeration, finite difference agreed",
+            "U: enumeration, finite difference agreed",
+            "Var_N: enumeration, finite difference, nonnegative variance agreed",
+            "C_mu: finite difference agreed",
+            "8 of 8 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Fermi-Dirac: independent particles; each of the g_i states of a level is counted separately.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "microcanonical-counting",
+          "title": "Counting the microstates of 40 two-level units at fixed energy",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            },
+            {
+              "label": "Ensemble",
+              "source": "microcanonical"
+            },
+            {
+              "label": "Fixed total energy",
+              "source": "16"
+            },
+            {
+              "label": "Copies",
+              "source": "40, distinguishable"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Number of microstates",
+              "latex": "62852101650"
+            },
+            {
+              "label": "Microcanonical entropy",
+              "latex": "k_{B} \\ln \\left(62852101650\\right)"
+            },
+            {
+              "label": "Temperature estimate and canonical comparison (a measurement)",
+              "latex": "\\beta \\approx \\frac{\\Delta \\ln \\Omega}{\\Delta E}"
+            }
+          ],
+          "checks": [
+            "Omega: enumeration, normalisation agreed",
+            "1 of 1 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "Omega is an exact count, checked against two other algorithms. The temperature estimate is a finite difference and its comparison with the canonical ensemble is a measurement that improves with N."
+          ]
+        },
+        {
+          "id": "ising-thermodynamic-limit",
+          "title": "The 1-D Ising ring in a field by the transfer matrix, and its thermodynamic limit",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "periodic chain of N = N sites, bond -J*s*t, site -h*s",
+              "syntax": "text"
+            },
+            {
+              "label": "Method",
+              "source": "thermodynamic limit"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Free energy per site, N -> infinity",
+              "latex": "- \\frac{\\log{\\left(\\frac{\\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}}}{2} + \\frac{\\mathrm{e}^{\\beta \\left(J - h\\right)}}{2} + \\frac{\\mathrm{e}^{\\beta \\left(J + h\\right)}}{2} \\right)}}{\\beta}"
+            },
+            {
+              "label": "Energy per site, N -> infinity",
+              "latex": "- \\frac{- 8 J \\cosh{\\left(2 J \\beta \\right)} + \\left(\\left(J - h\\right) \\mathrm{e}^{\\beta \\left(J - h\\right)} + \\left(J + h\\right) \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right) \\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}} + \\left(\\left(J - h\\right) \\mathrm{e}^{\\beta \\left(J - h\\right)} + \\left(J + h\\right) \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right) \\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)}{\\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}} \\left(\\sqrt{\\left(\\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)^{2} - 8 \\sinh{\\left(2 J \\beta \\right)}} + \\mathrm{e}^{\\beta \\left(J - h\\right)} + \\mathrm{e}^{\\beta \\left(J + h\\right)}\\right)}"
+            }
+          ],
+          "checks": [
+            "f_inf: residual order agreed",
+            "6 of 6 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "An approximation, not an identity. Expansion parameter: N. Expected accuracy: finite-size error of F/N is -(1/(beta N)) ln(1 + (lambda_2/lambda_1)^N + ...): exponentially small in N (ratio |lambda_2/lambda_1| = 0.286481 at the first sample point). Valid: the free energy per site is analytic in beta for beta > 0 (a simple dominant eigenvalue), so this chain has no phase transition at finite temperature.",
+            "Assumes: N tends to infinity at a fixed temperature, with periodic boundary conditions; the largest transfer-matrix eigenvalue is simple and strictly dominant (positive matrix).",
+            "Measured error against the independent evaluation (6 points; a measurement, not a bound).",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The transfer matrix is checked against brute-force enumeration of every configuration; the free energy per site comes from the dominant eigenvalue (Perron-Frobenius), with the finite-size error measured for N = 2 to 12."
+          ]
+        },
+        {
+          "id": "high-temperature-expansion",
+          "title": "A high-temperature expansion, as an approximation with a measured error",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            },
+            {
+              "label": "Method",
+              "source": "high temperature"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "ln Z, order 4 in beta",
+              "latex": "- \\frac{\\beta^{4} \\epsilon^{4}}{192} + \\frac{\\beta^{2} \\epsilon^{2}}{8} - \\frac{\\beta \\epsilon}{2} + \\log{\\left(2 \\right)}"
+            },
+            {
+              "label": "Internal energy, order 3 in beta",
+              "latex": "\\frac{\\beta^{3} \\epsilon^{4}}{48} - \\frac{\\beta \\epsilon^{2}}{4} + \\frac{\\epsilon}{2}"
+            }
+          ],
+          "checks": [
+            "lnZ_series: residual order, series check agreed",
+            "U_series: residual order agreed",
+            "2 of 2 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "An approximation, not an identity. Expansion parameter: beta. Expected accuracy: truncation error O(beta^5) for ln Z, O(beta^4) for U. Valid: inside the radius of convergence of the series, set by the nearest zero of Z(beta) in the complex plane; Cauchy-estimate radius at the checked parameter values: 0.5.",
+            "Assumes: beta is small: beta times the spread of the energies is much less than 1; ln Z is analytic at beta = 0 (Z(0) finite and positive); the levels do not depend on beta and the other state variables are fixed.",
+            "Measured error against the independent evaluation (3 points; a measurement, not a bound).",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation."
+          ]
+        },
+        {
+          "id": "stirling-sackur-tetrode",
+          "title": "Stirling's approximation turns the exact ideal-gas entropy into the Sackur-Tetrode form",
+          "op": "statmech",
+          "status": "ok",
+          "input": [
+            {
+              "label": "System",
+              "source": "H = (px**2 + py**2 + pz**2)/(2*m)",
+              "syntax": "text"
+            },
+            {
+              "label": "Copies",
+              "source": "N, indistinguishable (you chose)"
+            },
+            {
+              "label": "Method",
+              "source": "stirling"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "ln Z with Stirling's ln N!",
+              "latex": "- N \\log{\\left(N \\right)} + N \\log{\\left(\\frac{2 \\sqrt{2} \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}}{\\beta^{\\frac{3}{2}} h^{3}} \\right)} + N - \\frac{\\log{\\left(2 \\pi N \\right)}}{2}"
+            },
+            {
+              "label": "Free energy with Stirling's ln N!",
+              "latex": "\\frac{- N + \\frac{\\log{\\left(2 \\pi N N^{2 N} \\left(\\frac{2 \\sqrt{2} \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}}{\\beta^{\\frac{3}{2}} h^{3}}\\right)^{- 2 N} \\right)}}{2}}{\\beta}"
+            },
+            {
+              "label": "Entropy with Stirling's ln N!",
+              "latex": "\\frac{k_{B} \\left(5 N - \\log{\\left(2 \\pi N^{2 N + 1} \\left(\\frac{2 \\sqrt{2} \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}}{\\beta^{\\frac{3}{2}} h^{3}}\\right)^{- 2 N} \\right)}\\right)}{2}"
+            },
+            {
+              "label": "Entropy at leading order (the Sackur-Tetrode form for an ideal gas)",
+              "latex": "\\frac{N k_{B} \\left(\\log{\\left(\\frac{8 \\pi^{3} V^{2} m^{3}}{N^{2} \\beta^{3} h^{6}} \\right)} + 5\\right)}{2}"
+            },
+            {
+              "label": "Free energy at leading order",
+              "latex": "\\frac{N \\left(\\log{\\left(\\frac{\\sqrt{2} N \\beta^{\\frac{3}{2}} h^{3}}{4 \\pi^{\\frac{3}{2}} V m^{\\frac{3}{2}}} \\right)} - 1\\right)}{\\beta}"
+            }
+          ],
+          "checks": [
+            "lnZ_stirling: residual order agreed",
+            "6 of 6 sample points agree with an independent evaluation (evidence, not a proof)"
+          ],
+          "notes": [
+            "An approximation, not an identity. Expansion parameter: 1/N. Expected accuracy: the error of the form shown in ln N! is about 1/(12 N); the leading form drops 1/2 ln(2 pi N). Valid: N of about 10 or more for the full form; it is an asymptotic equivalence, not an identity, and the internal energy is untouched (ln N! does not depend on beta).",
+            "Assumes: N is large: N >> 1; the copies are indistinguishable (the user's choice), so ln N! is part of ln Z.",
+            "Measured error against the independent evaluation (4 points; a measurement, not a bound).",
+            "Phase-space measure: Z_1 = (1/cell) times the integral of exp(-beta H) over the stated domains, with the cell you chose.",
+            "Indistinguishable copies use Z = Z_1^N / N!, the classical-limit counting; it is not exact Bose or Fermi statistics.",
+            "Every result above agreed with an independent numerical evaluation.",
+            "Verified against an independent numerical evaluation.",
+            "The result is asymptotic, never exact: its error table shows N times the error of ln N! approaching 1/12."
+          ]
+        },
+        {
+          "id": "expansion-at-a-singular-point-declined",
+          "title": "An expansion where ln Z is not analytic is declined",
+          "op": "statmech",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = hbar*omega*(n + 1/2), n from 0 to oo",
+              "syntax": "text"
+            },
+            {
+              "label": "Method",
+              "source": "high temperature"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (singular_expansion_point).",
+            "Z is not finite and positive at beta = 0 (it diverges there, as for an oscillator or a density of states), so ln Z has no Taylor series about beta = 0; Laurent and logarithmic expansions are not supported"
+          ]
+        },
+        {
+          "id": "divergent-series-declined",
+          "title": "A partition function that does not exist is declined",
+          "op": "statmech",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "System",
+              "source": "E(n) = -n, n from 0 to oo",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (divergent).",
+            "the series diverges: the ratio of successive terms of a_n tends to a limit above 1 (the partition function does not exist for beta > 0)"
+          ]
+        },
+        {
+          "id": "wrong-held-fixed-declined",
+          "title": "A derivative at the wrong fixed variables is declined",
+          "op": "statmech",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "System",
+              "source": "2 levels",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (ensemble_mismatch).",
+            "a derivative with respect to V in the canonical ensemble holds exactly beta fixed; derivatives at fixed energy, entropy or other quantities need a change of variables, which is not supported",
+            "In the canonical ensemble a derivative with respect to V holds the temperature fixed; a derivative at fixed energy or entropy needs a change of variables, which is not supported."
           ]
         }
       ]
@@ -3877,6 +4411,831 @@
             "strict parser: the formula is parsed, never simplified or evaluated"
           ],
           "notes": []
+        }
+      ]
+    },
+    {
+      "id": "finite-sums",
+      "title": "Finite sums and products",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Expand, factor and differentiate finite sums and products with symbolic bounds, over indexed data (`Sum(x[i]^2, (i, 1, n))` in text, `\\sum_{i=1}^{n} x_i^2` in LaTeX). A rewrite is shown only if it agrees with the original on explicit expansions at several sizes (always including n of at least 2) with a separate unknown for every element; sampling one number per symbol would accept `sum x^2 = (sum x)^2 / n`, which is true for n = 1, so no other operation accepts a sum. Agreement at those sizes is evidence, not a proof for every n.",
+      "limits": [
+        "Bounds must be provably non-empty integers (declare the upper bound an integer and positive); infinite sums are declined.",
+        "At most two nested sums; `x_{ij}` and `x_{i,j}` are declined as ambiguous.",
+        "The result is worded \"checked for n = ...\", never \"proved for every n\".",
+        "`log(prod f) = sum log f` needs every factor provably positive."
+      ],
+      "examples": [
+        {
+          "id": "sum-expand-squares",
+          "title": "Expand a sum of squared deviations",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum((x[i] - mu)^2, (i, 1, n))",
+              "syntax": "text",
+              "latex": "\\sum_{i=1}^{n} \\left(- \\mu + x_{i}\\right)^{2}"
+            }
+          ],
+          "assumptions": "n integer, positive; x real; mu real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\mu^{2} n - 2 \\mu \\sum_{i=1}^{n} x_{i} + \\sum_{i=1}^{n} x_{i}^{2}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-sample-variance-identity",
+          "title": "The identity behind the sample variance",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum((x[i] - Sum(x[j], (j, 1, n))/n)^2, (i, 1, n))",
+              "syntax": "text",
+              "latex": "\\sum_{i=1}^{n} \\left(x_{i} - \\frac{\\sum_{j=1}^{n} x_{j}}{n}\\right)^{2}"
+            }
+          ],
+          "assumptions": "n integer, positive; x real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sum_{i=1}^{n} x_{i}^{2} - \\frac{\\left(\\sum_{j=1}^{n} x_{j}\\right)^{2}}{n}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-latex",
+          "title": "The same in LaTeX",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "\\sum_{i=1}^{n}(x_i-\\mu)^2",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "n integer, positive; x real; mu real",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\mu^{2} n - 2 \\mu \\sum_{i=1}^{n} x_{i} + \\sum_{i=1}^{n} x_{i}^{2}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-log-of-product",
+          "title": "The log of a product, for positive factors",
+          "op": "sums",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "log(Product(x[i], (i, 1, n)))",
+              "syntax": "text",
+              "latex": "\\log{\\left(\\prod_{i=1}^{n} x_{i} \\right)}"
+            }
+          ],
+          "assumptions": "n integer, positive; x positive",
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\sum_{i=1}^{n} \\log{\\left(x_{i} \\right)}"
+            }
+          ],
+          "checks": [
+            "4 of 4 explicit instances agree; checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ],
+          "notes": [
+            "checked for n = 1; n = 2; n = 3; n = 5 (explicit expansion), not proved for every size"
+          ]
+        },
+        {
+          "id": "sum-false-identity",
+          "title": "A false identity that holds for n = 1 is rejected",
+          "op": "sums",
+          "status": "not_verified",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum(x[i]^2, (i, 1, n))",
+              "syntax": "text",
+              "latex": "\\sum_{i=1}^{n} x_{i}^{2}"
+            },
+            {
+              "label": "Answer to check",
+              "source": "Sum(x[i], (i, 1, n))^2/n"
+            }
+          ],
+          "assumptions": "n integer, positive; x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (verification_failed).",
+            "the result did not agree with the original on explicit instances; not shown"
+          ]
+        },
+        {
+          "id": "sum-range-not-provable",
+          "title": "A range that cannot be shown non-empty is declined",
+          "op": "sums",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Sum(x[i], (i, 1, m))",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": "x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (range_not_provable).",
+            "cannot show that the bounds are integers: declare the symbols in them integer (and the upper one positive or nonnegative)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "expectations",
+      "title": "Expectation, variance and covariance",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Linearity of expectation and bilinearity of covariance for declared random variables, including sums over indexed variables. Independence is never assumed: covariance terms stay unless you state independence, and a result that used it holds given it (Minerva does not check that it is true). A result is shown only if it agrees with the original on explicit finite joint distributions that are dependent unless independence was declared.",
+      "limits": [
+        "Only variables you list are random; an expectation with none of them is declined.",
+        "One independence group is supported, and `[[\"X\"]]` for an indexed X means its components are mutually independent.",
+        "Moments are assumed to exist (the check uses finite supports).",
+        "The check is evidence from explicit distributions, not a proof for every distribution."
+      ],
+      "examples": [
+        {
+          "id": "var-of-sum",
+          "title": "Variance of a sum keeps the covariance",
+          "op": "expectation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Var(X + Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Var}\\left(X + Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "2 \\operatorname{Cov}\\left(X, Y\\right) + \\operatorname{Var}\\left(X\\right) + \\operatorname{Var}\\left(Y\\right)"
+            }
+          ],
+          "checks": [
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ],
+          "notes": [
+            "No independence was used.",
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ]
+        },
+        {
+          "id": "var-of-sum-independent",
+          "title": "With independence stated, the result holds given it",
+          "op": "expectation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Var(X + Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Var}\\left(X + Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            },
+            {
+              "label": "Independence you stated",
+              "source": "X and Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "\\operatorname{Var}\\left(X\\right) + \\operatorname{Var}\\left(Y\\right)"
+            }
+          ],
+          "checks": [
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ],
+          "notes": [
+            "Holds given: X and Y are independent (Minerva does not check that this is true).",
+            "holds given: X and Y are independent. agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ]
+        },
+        {
+          "id": "covariance-from-moments",
+          "title": "Covariance from raw moments",
+          "op": "expectation",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Cov(X, Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Cov}\\left(X, Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Result",
+              "latex": "- \\mathbb{E}\\left[X\\right] \\mathbb{E}\\left[Y\\right] + \\mathbb{E}\\left[X Y\\right]"
+            }
+          ],
+          "checks": [
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ],
+          "notes": [
+            "No independence was used.",
+            "agrees on 2 of 2 explicit joint distributions; evidence, not a proof for every distribution"
+          ]
+        },
+        {
+          "id": "product-without-independence",
+          "title": "E[XY] does not factor without independence",
+          "op": "expectation",
+          "status": "unchanged",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "E[X*Y]",
+              "syntax": "text",
+              "latex": "\\mathbb{E}\\left[X Y\\right]"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "nothing more can be derived without further assumptions (independence is never assumed)"
+          ]
+        },
+        {
+          "id": "var-wrong-answer",
+          "title": "Dropping the covariance term is rejected",
+          "op": "expectation",
+          "status": "not_verified",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "Var(X + Y)",
+              "syntax": "text",
+              "latex": "\\operatorname{Var}\\left(X + Y\\right)"
+            },
+            {
+              "label": "Random variables",
+              "source": "X, Y"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (verification_failed).",
+            "the result did not agree with the original on explicit joint distributions; not shown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "statistical-derivations",
+      "title": "Maximum likelihood, Fisher information and Bayesian updates",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Derive, from a density, the moments of a family (Bernoulli, binomial, Poisson, normal, beta, gamma, Cauchy, uniform), the log-likelihood and score, the maximum-likelihood estimator, the Fisher information and the posterior for a prior. Estimators come from the score equations and are accepted only if the direct log-likelihood has zero slope there, the point lies in the parameter space and the Hessian is negative definite; an optimum is called global only when concavity is proved. Posteriors are found by matching the kernel, never from a table. Independence of observations is never assumed; a likelihood of several observations needs you to state it.",
+      "limits": [
+        "Estimates that lie outside the parameter space for the data (a Bernoulli sample of all zeros, identical normal observations) are declined, not invented.",
+        "Families whose support depends on the parameter (uniform on (0, theta)) have no score or information.",
+        "The score equations are solved one parameter at a time (triangular systems); moments of the Cauchy family do not exist and are declined.",
+        "A prior is your assumption; the posterior holds for it. Only kernels of the supported families are recognised.",
+        "Numerical agreement (quadrature, a direct log-likelihood) is evidence, not a proof; the symbolic parts are stated separately."
+      ],
+      "examples": [
+        {
+          "id": "gaussian-mle",
+          "title": "Maximum-likelihood estimators of a normal mean and variance",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "normal, action mle"
+            },
+            {
+              "label": "Observations",
+              "source": "n observations of x (stated: independent and identically distributed)"
+            },
+            {
+              "label": "Parameters",
+              "source": "mu, v"
+            }
+          ],
+          "assumptions": "n integer, positive; x real",
+          "outputs": [
+            {
+              "label": "Estimator of mu",
+              "latex": "\\frac{\\sum_{i=1}^{n} x_{i}}{n}"
+            },
+            {
+              "label": "Estimator of v",
+              "latex": "\\frac{\\sum_{i=1}^{n} \\left(x_{i} - \\frac{\\sum_{j=1}^{n} x_{j}}{n}\\right)^{2}}{n}"
+            }
+          ],
+          "checks": [
+            "the expanded log-likelihood against the direct sum of log densities, on explicit data: 8 of 8",
+            "the score against central differences of the direct log-likelihood, on explicit data: 8 of 8",
+            "the direct log-likelihood has zero slope at the estimators, on explicit data: 4 of 4",
+            "second differences of the direct log-likelihood: negative definite at the estimators: 4 of 4"
+          ],
+          "notes": [
+            "mu: local maximum (proved); no condition on the data.",
+            "v: local maximum (proved); valid only if $\\frac{\\sum_{i=1}^{n} \\left(x_{i} - \\frac{\\sum_{j=1}^{n} x_{j}}{n}\\right)^{2}}{n} > 0$.",
+            "Holds given: the observations are independent and identically distributed.",
+            "the Hessian is negative definite at the estimators (given the admissibility condition); checked on 4 explicit data sets (numerical agreement is evidence, not a proof)"
+          ]
+        },
+        {
+          "id": "bernoulli-mle",
+          "title": "The sample proportion, and where it exists",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "bernoulli, action mle"
+            },
+            {
+              "label": "Observations",
+              "source": "n observations of x (stated: independent and identically distributed)"
+            },
+            {
+              "label": "Parameters",
+              "source": "p"
+            }
+          ],
+          "assumptions": "n integer, positive",
+          "outputs": [
+            {
+              "label": "Estimator of p",
+              "latex": "\\frac{\\sum_{i=1}^{n} x_{i}}{n}"
+            }
+          ],
+          "checks": [
+            "the expanded log-likelihood against the direct sum of log densities, on explicit data: 8 of 8",
+            "the score against central differences of the direct log-likelihood, on explicit data: 8 of 8",
+            "the direct log-likelihood has zero slope at the estimators, on explicit data: 4 of 4",
+            "second differences of the direct log-likelihood: negative definite at the estimators: 4 of 4"
+          ],
+          "notes": [
+            "p: global maximum (proved); valid only if $0 < \\frac{\\sum_{i=1}^{n} x_{i}}{n} < 1$.",
+            "Holds given: the observations are independent and identically distributed.",
+            "the log-likelihood is concave on the whole parameter space; checked on 4 explicit data sets (numerical agreement is evidence, not a proof)"
+          ]
+        },
+        {
+          "id": "bernoulli-all-zeros",
+          "title": "No maximum-likelihood estimate for a sample of all zeros",
+          "op": "statistics",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Model",
+              "source": "bernoulli, action mle"
+            },
+            {
+              "label": "Observations",
+              "source": "4 observations of x (stated: independent and identically distributed)"
+            },
+            {
+              "label": "Data",
+              "source": "0, 0, 0, 0"
+            },
+            {
+              "label": "Parameters",
+              "source": "p"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (candidate_inadmissible).",
+            "for these data the maximum would be at p = 0, which is outside the parameter space: the supremum of the likelihood is not attained, so there is no maximum-likelihood estimate"
+          ]
+        },
+        {
+          "id": "mle-needs-independence",
+          "title": "Several observations need a statement of independence",
+          "op": "statistics",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Model",
+              "source": "normal, action mle"
+            },
+            {
+              "label": "Known parameters",
+              "source": "v = v"
+            },
+            {
+              "label": "Observations",
+              "source": "n observations of x (NOT stated)"
+            },
+            {
+              "label": "Parameters",
+              "source": "mu"
+            }
+          ],
+          "assumptions": "n integer, positive; v positive; x real",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (independence_not_declared).",
+            "a likelihood of several observations is a product of densities only if they are independent; state that the observations are independent and identically distributed"
+          ]
+        },
+        {
+          "id": "normal-fisher-information",
+          "title": "Fisher information of a normal mean and standard deviation",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "normal, action fisher_information"
+            },
+            {
+              "label": "Parameters",
+              "source": "mu, sigma"
+            }
+          ],
+          "assumptions": "mu real; sigma positive",
+          "outputs": [
+            {
+              "label": "Fisher information",
+              "latex": "\\begin{pmatrix}\\frac{1}{\\sigma^{2}} & 0 \\\\ 0 & \\frac{2}{\\sigma^{2}}\\end{pmatrix}"
+            }
+          ],
+          "checks": [
+            "the information against the variance of the score (quadrature or summation, numerically differentiated log density): 5 of 5",
+            "the expected score is 0 (regularity), by quadrature or summation: 5 of 5"
+          ],
+          "notes": [
+            "equal to the variance of the score by quadrature, and the expected score is 0; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "beta-binomial-posterior",
+          "title": "A Beta prior and a binomial likelihood",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "binomial, action posterior"
+            },
+            {
+              "label": "Known parameters",
+              "source": "n = n"
+            },
+            {
+              "label": "Prior (yours)",
+              "source": "beta(alpha = alpha, beta = beta)"
+            },
+            {
+              "label": "Parameters",
+              "source": "p"
+            }
+          ],
+          "assumptions": "n integer, positive; k integer, nonnegative; alpha positive; beta positive",
+          "outputs": [
+            {
+              "label": "Posterior (beta)",
+              "latex": "\\alpha = \\alpha + k,\\; \\beta = \\beta - k + n"
+            }
+          ],
+          "checks": [
+            "posterior density against prior x likelihood divided by its integral (quadrature), at several values of the parameter: 4 of 4",
+            "the posterior density integrates to 1 (quadrature): 4 of 4"
+          ],
+          "notes": [
+            "Holds given: the prior is as stated; it is an assumption, not a fact.",
+            "equal to prior times likelihood divided by its integral (quadrature) at sampled values; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "gamma-moments",
+          "title": "Moments derived from a density",
+          "op": "statistics",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Model",
+              "source": "gamma, action moments"
+            },
+            {
+              "label": "Known parameters",
+              "source": "alpha = alpha, beta = beta"
+            }
+          ],
+          "assumptions": "alpha positive; beta positive",
+          "outputs": [
+            {
+              "label": "Mean",
+              "latex": "\\frac{\\alpha}{\\beta}"
+            },
+            {
+              "label": "Variance",
+              "latex": "\\frac{\\alpha}{\\beta^{2}}"
+            },
+            {
+              "label": "Second",
+              "latex": "\\frac{\\alpha \\left(\\alpha + 1\\right)}{\\beta^{2}}"
+            }
+          ],
+          "checks": [
+            "quadrature or summation of the density at sampled parameter values: 5 of 5",
+            "mean: quadrature or summation of the density at sampled parameter values: 5 of 5",
+            "variance: quadrature or summation of the density at sampled parameter values: 5 of 5",
+            "second: quadrature or summation of the density at sampled parameter values: 5 of 5"
+          ],
+          "notes": [
+            "each moment agrees with quadrature or summation of the density at 5 parameter points; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "cauchy-mean-does-not-exist",
+          "title": "The mean of a Cauchy variable is declined",
+          "op": "statistics",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Model",
+              "source": "cauchy, action moments"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (convergence_not_established).",
+            "the mean and variance of the Cauchy family do not exist (the integral of |x| f(x) does not converge); a principal value is not the mean"
+          ]
+        },
+        {
+          "id": "uniform-has-no-information",
+          "title": "A support that depends on the parameter has no Fisher information",
+          "op": "statistics",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Model",
+              "source": "uniform_0_theta, action fisher_information"
+            },
+            {
+              "label": "Parameters",
+              "source": "theta"
+            }
+          ],
+          "assumptions": "theta positive",
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (regularity_not_satisfied).",
+            "the support of the Uniform on (0, theta) family depends on its parameter: differentiation under the integral sign is not allowed, so the Fisher information (as -E[second derivative] or as the variance of the score) is not defined"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "matrix-gradients",
+      "title": "Gradients, Jacobians and Hessians of matrix functions",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "workbench",
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Derivatives of scalar functions of vectors and matrices, such as the Gaussian log-likelihood with respect to the mean or the covariance (`-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)`), built by differentials and accepted only if central differences of the original function agree at random real matrices of the declared sizes. Matrices keep their order; the derivative with respect to a symmetric matrix is the gradient within the symmetric matrices (the unconstrained gradient is never returned for it), with the entrywise form labelled separately.",
+      "limits": [
+        "Plain-text syntax only for these actions (`tr`, `det`, `logdet`, `transpose`, `inv`, `*` for the matrix product); `logdet` means log of the absolute determinant.",
+        "Over the real numbers (a transpose, not a conjugate transpose); Hermitian and Wirtinger derivatives are not supported.",
+        "`inv`, `logdet` and the derivative of `det` need the matrix declared invertible (or positive definite) by you.",
+        "Matrix-valued functions have no gradient here (the derivative of a matrix by a matrix is a fourth-order tensor).",
+        "The symbolic leg is not run; numerical agreement is evidence, not a proof."
+      ],
+      "examples": [
+        {
+          "id": "gaussian-gradient-mean",
+          "title": "The Gaussian log-density with respect to the mean",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "-1/2*transpose(x - mu)*inv(S)*(x - mu)",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "x: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "mu: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "S: 3 by 3, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Gradient",
+              "latex": "S^{-1} \\left(x - \\mu\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples"
+          ],
+          "notes": [
+            "Convention: unconstrained derivative (every entry free); real field, a transpose and not a conjugate transpose.",
+            "Method: Gradient by differentials (gradient_differential).",
+            "verified against the numerical derivative; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "gaussian-gradient-covariance",
+          "title": "With respect to a positive definite covariance",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "x: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "mu: 3 by 1, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "S: 3 by 3, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Gradient",
+              "latex": "- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}"
+            },
+            {
+              "label": "Entrywise form (independent entries, i <= j)",
+              "latex": "- S^{-1} + S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1} - \\operatorname{diag}\\left(- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}\\right)"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples"
+          ],
+          "notes": [
+            "Convention: gradient within the symmetric matrices (Frobenius inner product); real field, a transpose and not a conjugate transpose.",
+            "Method: Gradient by differentials (gradient_differential).",
+            "verified against the numerical derivative; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "quadratic-form-hessian",
+          "title": "The Hessian of a quadratic form",
+          "op": "matrix",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "transpose(x)*A*x",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "A: 3 by 3, entries not given"
+            },
+            {
+              "label": "Matrix",
+              "source": "x: 3 by 1, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Hessian",
+              "latex": "A + A^{\\top}"
+            }
+          ],
+          "checks": [
+            "numeric check agreed at 4 of 4 random samples"
+          ],
+          "notes": [
+            "Convention: unconstrained derivative (every entry free); real field, a transpose and not a conjugate transpose.",
+            "Method: Hessian by differentials (hessian_differential).",
+            "verified against the numerical derivative; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "logdet-needs-invertible",
+          "title": "An inverse is never assumed",
+          "op": "matrix",
+          "status": "conditions_not_satisfied",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "logdet(X)",
+              "syntax": "text"
+            },
+            {
+              "label": "Matrix",
+              "source": "X: 3 by 3, entries not given"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (invertibility_not_declared).",
+            "X must be declared invertible: the derivative needs its inverse"
+          ]
         }
       ]
     },

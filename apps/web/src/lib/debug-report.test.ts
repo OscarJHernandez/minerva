@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { matrixFrechet, okDistributionIntegral } from "@/test/fixtures";
+import {
+  expectationConditional,
+  gradientSymmetric,
+  mleGaussian,
+  momentsCauchy,
+  sumsOk,
+} from "@/test/stat-fixtures";
 import type { StoredMessage, TraceEvent } from "./chat-types";
 import { sphere, sphereRequest } from "../test/geometry-fixtures";
 import {
@@ -493,5 +500,101 @@ describe("matrix cards in a debug report", () => {
     expect(report).toContain("- verification: numeric 4/4, exact leg true");
     expect(report).toContain("trace req0123-card0123; tried [integrate_polynomial:no_match");
     expect(report).toContain("fallbacks []");
+  });
+});
+
+describe("statistics and gradient cards in a report", () => {
+  /** The report finds a card through the trace step with the same id. */
+  type AnyCard = { id: string; tool: string; [k: string]: unknown };
+  const withCards = (...cards: AnyCard[]): StoredMessage => ({
+    ...assistant,
+    content: {
+      ...assistant.content,
+      trace: cards.map((c) => ({
+        id: c.id,
+        name: c.tool,
+        arguments: {},
+        for_model: "status=ok",
+        duration_ms: 10,
+        status: "ok" as const,
+      })),
+      blocks: cards.map((card) => ({ kind: "card" as const, segments: [], card: card as never })),
+    },
+  });
+  const withCard = (card: AnyCard) => withCards(card);
+
+  it("states the evidence, the premises, the estimates and the checks, never the unverified", () => {
+    const report = buildDebugReport({
+      ...input,
+      messages: [
+        user,
+        withCard({
+          id: "c1",
+          tool: "statistical_model",
+          type: "statistics",
+          title: "Statistics",
+          data: { result: mleGaussian, request: {} },
+        }),
+      ],
+    });
+    expect(report).toContain("- card: statistics");
+    expect(report).toContain("- evidence: conditional; premises: the observations are independent");
+    expect(report).toContain("- estimate mu: Sum(x[i], (i, 1, n))/n [local/proved]");
+    expect(report).toContain("- checks: score 4/4, second_order 4/4");
+  });
+
+  it("flags a failed check and carries the refusal reason", () => {
+    const report = buildDebugReport({
+      ...input,
+      messages: [
+        user,
+        withCard({
+          id: "c2",
+          tool: "statistical_model",
+          type: "statistics",
+          title: "Statistics",
+          data: { result: momentsCauchy, request: {} },
+        }),
+      ],
+    });
+    expect(report).toContain("- status: conditions_not_satisfied (convergence_not_established)");
+  });
+
+  it("reports sums, expectations and gradients", () => {
+    const report = buildDebugReport({
+      ...input,
+      messages: [
+        user,
+        withCards(
+          {
+            id: "c3",
+            tool: "sums",
+            type: "sums",
+            title: "Sums",
+            data: { result: sumsOk, request: {} },
+          },
+          {
+            id: "c4",
+            tool: "expectation",
+            type: "expectation",
+            title: "Expectation",
+            data: { result: expectationConditional, request: {} },
+          },
+          {
+            id: "c5",
+            tool: "matrix_calculus",
+            type: "matrix",
+            title: "Matrix",
+            data: { result: gradientSymmetric, methods: [], request: {} },
+          },
+        ),
+      ],
+    });
+    expect(report).toContain("- verification: instances 4/4");
+    expect(report).toContain("- evidence: conditional; given: X and Y are independent");
+    expect(report).toContain("- verification: joint distributions 2/2");
+    expect(report).toContain(
+      "- derivative: gradient, constraint positive_definite, convention symmetric_frobenius, result -1/2*inv(S)",
+    );
   });
 });

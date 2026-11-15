@@ -133,5 +133,5 @@ uv run python scripts/eval_models.py --suite all --base-url http://HOST:11434 --
     --label NEW --json-out docs/benchmarks/NEW.json --out docs/benchmarks/NEW.md --compare docs/benchmarks/BASELINE.json
 ```
 
-The core suite's case-set digest is unchanged (`1050a8e33d4e`), so earlier core runs stay comparable; reports that include the
+The core suite's case-set digest is unchanged by this work (`cf1b7c232fa7`, the value on `main` after the statistical-mechanics cases; it was `1050a8e33d4e` before), so earlier core runs stay comparable; reports that include the
 reliability suite carry a different digest, and the comparison says so. The host name never goes into a report.

@@ -16,6 +16,7 @@ import mpmath
 import sympy as sp
 
 from .distributions.guard import contains_distribution
+from .indexed.guard import contains_indexed
 from .models import Verification
 
 if TYPE_CHECKING:
@@ -110,6 +111,8 @@ def numeric_detail(
     genuine pole counts as a disagreement (the two expressions have different domains); a point
     where both are undefined, or evaluation failed, is skipped and counted.
     """
+    if contains_indexed(a) or contains_indexed(b):
+        return 0, 0, 0  # one sample per free symbol cannot represent indexed data
     symbols = sorted(a.free_symbols | b.free_symbols, key=lambda s: s.name)
     rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
     checked = agreed = skipped = 0
@@ -164,6 +167,20 @@ def verify_with_witness(
 
     The witness holds expressions: hand it to the user's own conversation, never to a log.
     """
+    if contains_indexed(original) or contains_indexed(candidate):
+        # One sample per free symbol gives every x[i] the same value: sum x_i^2 = (sum x_i)^2 / n
+        # would "agree". Only the instance-based checkers may verify sums and expectations.
+        return (
+            Verification(
+                symbolic_zero=False,
+                numeric_points_checked=0,
+                numeric_points_agreed=0,
+                numeric_points_skipped=0,
+                passed=False,
+                note="sums, indexed variables and expectations cannot be verified by sampling numbers",
+            ),
+            None,
+        )
     if contains_distribution(original) or contains_distribution(candidate):
         # Sampling cannot see a delta (it is 0 at every sample), so it proves nothing here.
         return (

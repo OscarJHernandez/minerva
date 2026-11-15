@@ -84,6 +84,19 @@
       },
       {
         "source": "reference",
+        "domain": "statmech",
+        "problems": 5,
+        "correct": 3,
+        "refused_as_expected": 2,
+        "false_accepts": 0,
+        "incorrect_accepted": 0,
+        "false_rejects": 0,
+        "pending": 0,
+        "known_open": 0,
+        "counterexamples": 0
+      },
+      {
+        "source": "reference",
         "domain": "substitution",
         "problems": 2,
         "correct": 1,
@@ -214,9 +227,9 @@
       }
     ],
     "totals": {
-      "problems": 172,
-      "correct": 90,
-      "refused_as_expected": 80,
+      "problems": 177,
+      "correct": 93,
+      "refused_as_expected": 82,
       "false_accepts": 0,
       "incorrect_accepted": 0,
       "false_rejects": 0,
@@ -226,10 +239,10 @@
     },
     "evidence_of_accepted_reference_results": {
       "symbolic_proof": 5,
-      "numeric_agreement": 21,
+      "numeric_agreement": 24,
       "structural": 4,
       "conditional": 1,
-      "refusal": 14,
+      "refusal": 16,
       "unrecorded": 0
     },
     "counterexamples_by_probe": {
@@ -239,7 +252,7 @@
       "special": 5
     },
     "agent_suite": {
-      "core_cases": 94,
+      "core_cases": 107,
       "reliability_cases": 8,
       "reliability_turns": 12,
       "failure_classes": [
@@ -262,10 +275,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.15,
-    "adversarial_median_ms": 9.1,
-    "adversarial_max_ms": 123.5,
-    "report_wall_s": 2.6,
-    "peak_rss_mb": 119.2
+    "adversarial_total_s": 1.12,
+    "adversarial_median_ms": 9.4,
+    "adversarial_max_ms": 118.1,
+    "report_wall_s": 2.59,
+    "peak_rss_mb": 125.4
   }
 }

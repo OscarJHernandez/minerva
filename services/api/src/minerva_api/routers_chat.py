@@ -17,6 +17,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from minerva_engine import MotionRequest, trace_scope
 from minerva_engine.distributions.models import NotationName, Reading, check_readings
+from minerva_engine.statmech.models import Sweep
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_age
 from .agent.openrouter import check_connection
 from .agent.refs import reference_note
 from .agent.segments import normalize, split_segments
+from .agent.statmech_tools import StatMechArgs
 from .agent.tools import DistributionArgs, GeometryArgs, PerturbationArgs, ToolContext, execute
 from .agent.tracing import (
     AgentCompleted,
@@ -358,6 +360,7 @@ def _run_tool_directly(
     limiter: Any,
     settings: Any,
     notation: dict[str, str] | None = None,
+    answers: dict[str, Any] | None = None,
 ) -> MessageOut:
     """Run one tool with the user's own numbers (from a card's form), store it as an assistant message.
 
@@ -375,7 +378,14 @@ def _run_tool_directly(
     try:
         with trace_scope(trace_id):
             output = execute(
-                name, arguments, ToolContext(engine=engine, kb=kb, notation=dict(notation or {}))
+                name,
+                arguments,
+                ToolContext(
+                    engine=engine,
+                    kb=kb,
+                    notation=dict(notation or {}),
+                    statmech_answers=dict(answers or {}),
+                ),
             )
     finally:
         deactivate(tracer)
@@ -413,7 +423,11 @@ def _run_tool_directly(
                 id=output.card.id,
                 name=name,
                 # The user's answer is recorded next to the call so that a replay is faithful.
-                arguments={**arguments, "notation": notation} if notation else arguments,
+                arguments={
+                    **arguments,
+                    **({"notation": notation} if notation else {}),
+                    **({"answers": answers} if answers else {}),
+                },
                 for_model=output.for_model,
                 duration_ms=elapsed,
                 status=output.status,
@@ -581,6 +595,52 @@ def distribution_directly(
         limiter,
         settings,
         notation={k: v for k, v in body.notation.items()},
+    )
+
+
+class StatMechAnswer(StatMechArgs):
+    """A statistical-mechanics card's call with what the USER chose: the phase-space cell, whether the
+    copies are indistinguishable, the numbers for an evaluation and a sweep."""
+
+    phase_space_cell: str | None = Field(default=None, max_length=64)
+    identical: bool | None = None
+    values: dict[str, str] = Field(default_factory=dict, max_length=16)
+    sweep: Sweep | None = None
+
+
+@router.post(
+    "/conversations/{conversation_id}/tools/statistical_mechanics",
+    response_model=MessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def statmech_directly(
+    conversation_id: uuid.UUID,
+    body: StatMechAnswer,
+    user: UserDep,
+    db: DbDep,
+    engine: EngineDep,
+    kb: KbDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MessageOut:
+    """Run a statistical-mechanics card again with the user's choices (the model is not involved)."""
+    answer_fields = {"phase_space_cell", "identical", "values", "sweep"}
+    answers = {
+        k: v
+        for k, v in body.model_dump(mode="json", include=answer_fields).items()
+        if v not in (None, {}, [])
+    }
+    return _run_tool_directly(
+        "statistical_mechanics",
+        body.model_dump(mode="json", exclude=answer_fields),
+        conversation_id,
+        user,
+        db,
+        engine,
+        kb,
+        limiter,
+        settings,
+        answers=answers,
     )
 
 

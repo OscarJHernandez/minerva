@@ -17,8 +17,11 @@
 | [invariant-benchmark.md](invariant-benchmark.md) | Adaptive against fixed-parameter search on generated Hamiltonians (generated) |
 | [handbook-benchmark.md](handbook-benchmark.md) | Identity retrieval quality on hand-written cases |
 | [transformations-benchmark.md](transformations-benchmark.md) | Substitute, collect, solve for a variable and change one part: baseline of the older operations, results and latency |
+| [statistical-mechanics.md](statistical-mechanics.md) | Partition functions and thermodynamic derivations: systems, held-fixed derivatives, how each result is checked, what is never assumed, what is not supported |
+| [statmech-benchmark.md](statmech-benchmark.md) | Statistical mechanics against closed forms, and refusals with their reasons (generated; data in [benchmarks/statmech.json](benchmarks/statmech.json)) |
 | [geometry-benchmark.md](geometry-benchmark.md) | Differential geometry: correctness against closed forms and `sympy.diffgeom`, latency, expression growth and memory (generated; data in [benchmarks/geometry.json](benchmarks/geometry.json)) |
 | [matrix-benchmark.md](matrix-benchmark.md) | Matrix calculus: coverage, method selection, verification and timing on hand-written cases, with a baseline |
+| [statistics-benchmark.md](statistics-benchmark.md) | Statistical derivations (sums, expectations, families, maximum likelihood, Fisher information, Bayesian updates, matrix gradients): hand-derived references, adversarial cases, a baseline and a regression gate |
 | [handbook-outline.md](handbook-outline.md) | Planned handbook chapters |
 | [licensing.md](licensing.md) | Licence assessment, including the GPL-licensed integrations |
 | [security-publication.md](security-publication.md) | Security and publication notes |

@@ -22,6 +22,7 @@ from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .expansion import ExpansionReport
 from .geometry import GeometryInput, GeometryResult
 from .independence import IndependenceReport, Relation
+from .indexed.models import InstanceVerification, SumsInput, SumsResult, SumStep
 from .integrate import IntegrateResult, IntegrateVerification, QuadratureVerification
 from .invariants import InvariantReport
 from .lagrangian import LagrangianReport
@@ -68,6 +69,14 @@ from .pi_groups import (
 from .series import SeriesResult, SeriesTerm, SeriesVerification
 from .service import Engine
 from .solve import SolveReport
+from .statmech.models import StatMechInput, StatMechResult
+from .stats.models import (
+    ExpectationInput,
+    ExpectationResult,
+    PmfVerification,
+    StatModelInput,
+    StatModelResult,
+)
 from .textparse import parse_text
 
 __all__ = [
@@ -94,12 +103,15 @@ __all__ = [
     "DistributionVerification",
     "Engine",
     "ExpansionReport",
+    "ExpectationInput",
+    "ExpectationResult",
     "ExpressionInput",
     "FormulaReading",
     "GeometryInput",
     "GeometryResult",
     "IdentitiesResult",
     "IndependenceReport",
+    "InstanceVerification",
     "IntegrateResult",
     "IntegrateVerification",
     "InvariantReport",
@@ -116,6 +128,7 @@ __all__ = [
     "ParseError",
     "PerturbationReport",
     "Pins",
+    "PmfVerification",
     "QuadratureVerification",
     "QuantitySpec",
     "Reason",
@@ -131,11 +144,18 @@ __all__ = [
     "SimplifyResult",
     "Solution",
     "SolveReport",
+    "StatMechInput",
+    "StatMechResult",
+    "StatModelInput",
+    "StatModelResult",
     "Status",
     "Step",
     "StepDiagnostics",
     "StepResult",
     "Subterm",
+    "SumStep",
+    "SumsInput",
+    "SumsResult",
     "Sweep",
     "TensorInput",
     "TensorResult",

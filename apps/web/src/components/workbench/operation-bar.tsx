@@ -31,6 +31,8 @@ const OPERATIONS: { id: StepOperation | "identities"; label: string; needsSettin
   { id: "collect", label: "Collect", needsSettings: true },
   { id: "isolate", label: "Solve for", needsSettings: true },
   { id: "distribution", label: "Deltas", needsSettings: true },
+  { id: "sums", label: "Sums", needsSettings: true },
+  { id: "expectation", label: "Expectation", needsSettings: true },
   { id: "identities", label: "Identities", needsSettings: false },
 ];
 
@@ -188,6 +190,69 @@ export function OperationBar({
               />
             </Field>
           )}
+          {selected === "sums" && (
+            <>
+              <Field label="action">
+                <select
+                  value={settings.sumsAction}
+                  onChange={(e) => set({ sumsAction: e.target.value as Settings["sumsAction"] })}
+                  aria-label="Sums action"
+                  className={FIELD}
+                >
+                  <option value="expand">expand by linearity</option>
+                  <option value="evaluate_constant">closed form (no data)</option>
+                  <option value="factor">factor into a product of sums</option>
+                  <option value="log_of_product">log of a product</option>
+                  <option value="differentiate">differentiate</option>
+                </select>
+              </Field>
+              <p className="w-full text-xs text-muted">
+                Write Sum((x[i] - mu)**2, (i, 1, n)) in plain text or \sum_{"{i=1}"}^n in LaTeX.
+                Declare n an integer, positive. The result is checked on explicit instances at
+                several sizes (n = 1, 2, 3, 5), not proved for every n.
+              </p>
+            </>
+          )}
+          {selected === "expectation" && (
+            <>
+              <Field label="action">
+                <select
+                  value={settings.expectAction}
+                  onChange={(e) =>
+                    set({ expectAction: e.target.value as Settings["expectAction"] })
+                  }
+                  aria-label="Expectation action"
+                  className={FIELD}
+                >
+                  <option value="expand">expand E, Var, Cov</option>
+                  <option value="to_moments">through raw moments</option>
+                </select>
+              </Field>
+              <Field label="random variables">
+                <input
+                  value={settings.random}
+                  onChange={(e) => set({ random: e.target.value })}
+                  aria-label="Random variables"
+                  placeholder="X, Y"
+                  maxLength={200}
+                  className={`${FIELD} w-32 font-mono`}
+                />
+              </Field>
+              <label className="flex w-full flex-col gap-1 text-xs text-muted">
+                Independent groups, one per line (your statement; empty means no independence is
+                assumed, and the covariance terms stay)
+                <textarea
+                  value={settings.independent}
+                  onChange={(e) => set({ independent: e.target.value })}
+                  aria-label="Independent groups"
+                  placeholder="X, Y"
+                  rows={2}
+                  maxLength={400}
+                  className={`${FIELD} w-full font-mono`}
+                />
+              </label>
+            </>
+          )}
           {selected === "distribution" && (
             <Field label="action">
               <select
@@ -204,6 +269,7 @@ export function OperationBar({
           )}
           {(selected === "differentiate" ||
             selected === "integrate" ||
+            (selected === "sums" && settings.sumsAction === "differentiate") ||
             selected === "series" ||
             selected === "distribution") && (
             <Field label={selected === "distribution" ? "variable (real)" : "by"}>

@@ -6,7 +6,7 @@ and the helpers shared by the judges. `minerva_engine.reference_benchmark` runs 
 
 from __future__ import annotations
 
-from . import algebra, calculus, distribution, matrix, mechanics, series, substitution
+from . import algebra, calculus, distribution, matrix, mechanics, series, statmech, substitution
 from .core import Problem
 
 PROBLEMS: list[Problem] = [
@@ -17,6 +17,7 @@ PROBLEMS: list[Problem] = [
     *calculus.PROBLEMS,
     *series.PROBLEMS,
     *algebra.PROBLEMS,
+    *statmech.PROBLEMS,
 ]
 
 __all__ = ["PROBLEMS", "Problem"]

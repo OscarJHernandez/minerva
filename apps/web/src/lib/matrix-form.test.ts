@@ -111,3 +111,81 @@ describe("matrix form helpers", () => {
     }
   });
 });
+
+describe("gradients, Jacobians and Hessians", () => {
+  const gaussian = () => {
+    const form = {
+      ...blankForm(),
+      format: "text" as const,
+      input: "-1/2*logdet(S) - 1/2*transpose(x - mu)*inv(S)*(x - mu)",
+      matrices: [
+        { ...blankMatrix("x"), rows: 3, cols: 1, entries: [[""], [""], [""]] },
+        { ...blankMatrix("S"), rows: 3, cols: 3, positiveDefinite: true },
+      ],
+      action: "gradient" as const,
+      variable: "S",
+    };
+    return form;
+  };
+
+  it("sends the declarations the user stated, and only those", () => {
+    const built = buildMatrixRequest({
+      ...gaussian(),
+      matrices: [
+        { ...blankMatrix("x"), rows: 3, cols: 1 },
+        { ...blankMatrix("S"), rows: 3, cols: 3, symmetric: true },
+        { ...blankMatrix("T"), rows: 3, cols: 3, positiveDefinite: true },
+      ],
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const [x, s, t] = built.request.matrices;
+    expect(x).not.toHaveProperty("symmetric");
+    expect(s).toMatchObject({ symmetric: true });
+    expect(s).not.toHaveProperty("positive_definite");
+    expect(t).toMatchObject({ positive_definite: true });
+    expect(built.request).toMatchObject({
+      action: "gradient",
+      variable: "S",
+      lower: null,
+      upper: null,
+    });
+    expect(built.request.invertible).toEqual([]); // invertibility is never declared for the user
+  });
+
+  it("requires plain text and a declared matrix to differentiate by", () => {
+    expect(buildMatrixRequest({ ...gaussian(), format: "latex" })).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/plain-text syntax/),
+    });
+    expect(buildMatrixRequest({ ...gaussian(), variable: "Q" })).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/declared matrices/),
+    });
+  });
+
+  it("refuses to call a non-square matrix symmetric", () => {
+    const form = gaussian();
+    form.matrices[1] = { ...form.matrices[1]!, cols: 2, symmetric: true };
+    expect(buildMatrixRequest(form)).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/square/),
+    });
+  });
+
+  it("restores the declarations of a saved problem", () => {
+    const built = buildMatrixRequest(gaussian());
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    const restored = restoreMatrixForm(built.request, built.input, built.format, {});
+    expect(restored.matrices[1]).toMatchObject({ positiveDefinite: true, symmetric: false });
+    expect(restored.action).toBe("gradient");
+  });
+
+  it("offers the Gaussian examples with the plain-text syntax", () => {
+    const example = EXAMPLES.find((x) => x.id === "gaussian-gradient-covariance")!;
+    const built = buildMatrixRequest(example.form);
+    expect(built.ok && built.format).toBe("text");
+    expect(built.ok && built.request.matrices.some((m) => m.positive_definite)).toBe(true);
+  });
+});

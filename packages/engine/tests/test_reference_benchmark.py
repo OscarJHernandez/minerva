@@ -65,6 +65,7 @@ def test_the_corpus_covers_the_requested_domains_with_both_kinds_of_problem() ->
         "calculus",
         "series",
         "algebra",
+        "statmech",
     }
     assert all(p.source for p in PROBLEMS) and len({p.id for p in PROBLEMS}) == len(PROBLEMS)
     for category in categories:
@@ -112,6 +113,11 @@ def _corrupt(result: Any) -> Any:
         first = [list(row) for row in entries]
         first[0][0] = f"({first[0][0]}) + 1/1000"
         updates["result_entries"] = first
+    quantities = getattr(result, "quantities", None)
+    if quantities:  # statistical mechanics: every returned formula is scaled by 1.001
+        updates["quantities"] = [
+            q.model_copy(update={"text": f"({q.text})*1.001"}) for q in quantities
+        ]
     if getattr(result, "frequency_latex", None):
         updates["frequency_latex"] = "\\omega = 2"
     if getattr(result, "restrictions_latex", None):
