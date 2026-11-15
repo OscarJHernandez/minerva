@@ -406,7 +406,7 @@ def series(
                 "(|x|, re, im, conjugate, sign, a step); it has no Taylor series.",
                 **base,
             )
-    if expr.atoms(sp.Derivative, sp.Integral, sp.Sum, sp.Product):
+    if expr.atoms(sp.Derivative, sp.Integral, sp.Sum, sp.Product, sp.Indexed):
         return _fail(
             Status.UNSUPPORTED,
             "Unevaluated derivatives, sums and integrals are not supported.",

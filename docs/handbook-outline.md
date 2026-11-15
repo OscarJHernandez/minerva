@@ -34,7 +34,7 @@ Status: **●** has entries, **○** planned.
 | --- | --- | --- |
 | ● | Classical mechanics | Dynamics, oscillations; later: Lagrangian/Hamiltonian formalism, rigid bodies |
 | ● | Electromagnetism | Force laws; Maxwell's equations in SI (field equations to adopt as premises, units-checked), potentials, gauges, continuity, energy and the Poynting vector, constitutive relations, statics, boundary conditions (stated); later: Gaussian units, radiation |
-| ● | Thermodynamics and statistical mechanics | Gas laws, entropy, radiation; later: partition functions, ensembles |
+| ● | Thermodynamics and statistical mechanics | Gas laws, entropy, radiation; canonical-ensemble definitions and relations, occupation numbers, Stirling; later: grand canonical relations, Maxwell relations, transfer matrices |
 | ● | Quantum mechanics | Fundamental relations; later: angular momentum algebra, perturbation theory, hydrogen atom |
 | ● | Special and general relativity | Kinematics, energy-momentum; field equations (stated); later: metrics, geodesics |
 | ● | Quantum field theory | Free field equations (stated); later: propagators, Feynman rules, Ward identities |

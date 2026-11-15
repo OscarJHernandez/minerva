@@ -15,6 +15,8 @@ from collections.abc import Iterable
 
 import sympy as sp
 
+from .indexed.guard import contains_indexed
+
 _MAX_OPS = 300
 
 
@@ -83,6 +85,8 @@ def domain_restrictions(
     have cancelled already) that `after` no longer excludes; and denominators `after` introduces.
     A factor that the declared assumptions prove nonzero is not reported.
     """
+    if contains_indexed(before) or contains_indexed(after):
+        return [], False  # zeros of denominators containing sums are not analysed
     try:
         if sp.count_ops(before) > _MAX_OPS or sp.count_ops(after) > _MAX_OPS:
             return [], False

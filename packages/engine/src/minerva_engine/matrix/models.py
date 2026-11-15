@@ -12,8 +12,27 @@ MAX_MATRICES = 6
 MAX_ABSTRACT_SIZE = 8
 MAX_EXPLICIT_SIZE = 4
 
-Action = Literal["evaluate", "simplify", "differentiate", "integrate", "evolve"]
-ResultKind = Literal["explicit", "expression", "equation", "representation", "numeric"]
+Action = Literal[
+    "evaluate",
+    "simplify",
+    "differentiate",
+    "integrate",
+    "evolve",
+    "gradient",
+    "jacobian",
+    "hessian",
+]
+GRADIENT_ACTIONS = ("gradient", "jacobian", "hessian")
+ResultKind = Literal[
+    "explicit",
+    "expression",
+    "equation",
+    "representation",
+    "numeric",
+    "gradient",
+    "jacobian",
+    "hessian",
+]
 
 
 class MatrixDecl(BaseModel):
@@ -48,6 +67,18 @@ class MatrixDecl(BaseModel):
         ),
     )
 
+    symmetric: bool = Field(
+        default=False,
+        description=(
+            "The matrix is symmetric (square). A derivative with respect to it is then taken within "
+            "the symmetric matrices, which is a different object from the unconstrained derivative"
+        ),
+    )
+    positive_definite: bool = Field(
+        default=False,
+        description="Symmetric positive definite (implies symmetric and invertible)",
+    )
+
     @field_validator("entries")
     @classmethod
     def _entries(cls, value: list[list[str]] | None) -> list[list[str]] | None:
@@ -70,6 +101,8 @@ class MatrixDecl(BaseModel):
                 raise ValueError("give either entries or a size, not both")
         elif self.rows is None:
             raise ValueError("give the entries, or at least the number of rows")
+        if (self.symmetric or self.positive_definite) and self.shape[0] != self.shape[1]:
+            raise ValueError("a symmetric or positive definite matrix is square")
         return self
 
     @property
@@ -104,6 +137,9 @@ class MatrixCalculusInput(BaseModel):
         pattern=r"^[A-Za-z0-9_-]{1,64}$",
         description="Opaque id that correlates this computation with the request that asked for it",
     )
+    # gradient, jacobian, hessian: a candidate answer to check instead of deriving one
+    # ({"result": "..."}); it is accepted only if the numerical derivative of the function agrees
+    candidate: dict[str, str] | None = Field(default=None, max_length=4)
 
 
 class MatrixStep(BaseModel):
@@ -175,8 +211,36 @@ class MatrixDiagnostics(BaseModel):
     failure_reason: str | None = None  # a code, never a free-text message
 
 
+class MatrixAlternative(BaseModel):
+    """The same derivative under another convention, verified separately."""
+
+    convention: Literal["symmetric_entrywise"]
+    latex: str
+    text: str
+    points_checked: int = 0
+    points_agreed: int = 0
+    note: str = ""
+
+
+class MatrixDerivative(BaseModel):
+    """What kind of derivative a result is. Over the reals: a transpose is not a conjugate transpose."""
+
+    kind: Literal["gradient", "jacobian", "hessian"]
+    variable_shape: tuple[int, int]
+    result_shape: tuple[int, int]
+    # gradient/hessian: the shape of the variable (denominator layout); jacobian: rows = outputs
+    layout: Literal["shape_of_variable", "numerator"]
+    field: Literal["real"] = "real"
+    constraint: Literal["none", "symmetric", "positive_definite"] = "none"
+    convention: Literal["unconstrained", "symmetric_frobenius"] = "unconstrained"
+    alternatives: list[MatrixAlternative] = Field(default_factory=list)
+
+
 class MatrixCalculusResult(BaseModel):
     status: Status
+    reason: str | None = None  # a code for a refusal (invertibility_not_declared, ...)
+    result_text: str | None = None  # gradient, jacobian, hessian: plain-text syntax, reads back
+    derivative: MatrixDerivative | None = None
     action: Action | None = None
     input_latex: str | None = None
     structure: str = ""  # the recognised structure, in words
