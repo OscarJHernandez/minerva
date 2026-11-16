@@ -1,5 +1,5 @@
-"""Defects found by the reliability audit, each pinned by a test that failed before its fix (D1-D7 in
-`docs/reliability/overview.md`): what a routed call costs, what a recovered call registers as seen, which
+"""Defects found by the reliability audit, each pinned by a test that failed before its fix (A-001 to A-005 in
+`docs/verification-defects.md`): what a routed call costs, what a recovered call registers as seen, which
 context a tool reads, what a stopped turn keeps."""
 
 import asyncio

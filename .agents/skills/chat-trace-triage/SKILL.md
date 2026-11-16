@@ -60,11 +60,17 @@ The server log never contains expressions; `trace_id`, `request_id`, durations a
 the right log lines, not to recover content. To measure rather than guess how often a class happens, run the
 benchmark (`docs/observability.md`) and read its failure-class table.
 
+Format 3 reports start each turn with a `diagnosis:` line (the subsystem that owns the first failure, or
+`undetermined`, and whether the turn is replayable); read it before the table above, and treat
+`undetermined` as "look at every candidate", never as a guess.
+
 ## 3. Reduce and pin
 
 1. Reduce the failing input to the smallest expression that still shows the class (replay it by hand
    with `execute(...)`, as in `scripts/tests/test_replay_trace.py`).
-2. Write the regression test first (engine, API or web, matching the class) and watch it fail.
+2. Turn the failure into a fixture with `scripts/replay_trace.py report.md --to-fixture /tmp/f.json`, replace
+   the arguments with your own minimal example, and commit it to `services/api/tests/fixtures/failures/`
+   (`test_failure_fixtures.py` replays it), or write the regression test first (engine, API or web, matching the class) and watch it fail.
 3. Fix, then re-run the replay on the original report: the affected call should now be `DIFFERENT`
    and correct, or the tool should refuse the input with an explicit status.
 4. Follow `verify-change` before saying it is done.
