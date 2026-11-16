@@ -598,7 +598,9 @@ def test_matrix_calculus_logs_diagnostic_counters_only(capsys) -> None:  # type:
 
 def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type: ignore[no-untyped-def]
     marker = "zzMARKERzz"
-    app = build_app()
+    # The search takes about 7 s here and 20 s or more on a loaded CI runner; the 30 s default of the
+    # test app turned that into `resource_limit`. The search itself is unchanged.
+    app = build_app(compute_timeout_seconds=90.0)
     with TestClient(app) as c:
         register(c)
         r = c.post(
