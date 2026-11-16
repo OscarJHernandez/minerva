@@ -193,7 +193,7 @@ class SeriesArgs(SimplifyArgs):
 class MatrixCalculusArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
-        description="Expression in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
+        description="Expression in LaTeX (text syntax for the gradient actions) in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
         "(a bare e is an ordinary symbol). Products keep their order. Matrices are constant unless "
         "declared with depends_on; a matrix that depends on the variable is written A(t), and tA "
         "always means t times A. For action evolve this is the generator A(t) of dU/dt = A(t)U.",
@@ -642,7 +642,7 @@ def variation_input(args: VariationArgs, ctx: ToolContext) -> VariationInput:
 class DistributionArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
-        description="Expression with Dirac delta or Heaviside functions, as the user wrote it: "
+        description="LaTeX expression with Dirac delta or Heaviside functions, as the user wrote it: "
         "\\delta(x-a), \\theta(x), or the explicit \\operatorname{DiracDelta}(x-a) and "
         "\\operatorname{Heaviside}(x). \\delta(...) and \\theta(...) are read as distributions only after "
         "the USER confirms it on the card; do not rewrite them yourself. For integrate give only the "
@@ -701,7 +701,8 @@ class IdentitiesArgs(SimplifyArgs):
 
 class TensorArgs(BaseModel):
     expression: str = Field(
-        max_length=MAX_INPUT, description="e.g. S(a,b)*A(-a,-b); a leading - lowers an index"
+        max_length=MAX_INPUT,
+        description="In text syntax (not LaTeX), e.g. S(a,b)*A(-a,-b); a leading - lowers an index",
     )
     tensors: dict[str, TensorSpec] = Field(description="Rank and symmetry of every tensor used")
     dimension: int = Field(default=4, ge=1, le=64)
@@ -718,6 +719,29 @@ class SolveArgs(BaseModel):
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
+SyntaxChoice = Literal["auto", "latex", "text"]
+FORMAT_DESCRIPTION = (
+    "`auto` (default) reads text syntax (`theta_dot`, `*`, `sin(x)`) as text and anything with a "
+    "backslash as LaTeX; set `latex` or `text` to say which."
+)
+_TEXT_MARKERS = re.compile(r"\*|_d?dot\b|_ddot\b|\b[A-Za-z]\w*\s*\(")
+
+
+def resolve_syntax(source: str, requested: SyntaxChoice) -> Literal["latex", "text"]:
+    """Choose between the two strict parsers; the input itself is never rewritten."""
+    if requested != "auto":
+        return requested
+    return "text" if "\\" not in source and _TEXT_MARKERS.search(source) else "latex"
+
+
+def strip_assignment(source: str, name: str) -> str:
+    """`L = expr` -> `expr` for a single `=` whose left side is exactly `name`; anything else unchanged."""
+    left, sign, right = source.partition("=")
+    if sign and left.strip() == name and "=" not in right:
+        return right.strip()
+    return source
+
+
 class LagrangianArgs(BaseModel):
     lagrangian: str = Field(
         max_length=MAX_INPUT,
@@ -730,6 +754,14 @@ class LagrangianArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class AnalyzeLagrangianArgs(LagrangianArgs):
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of `lagrangian`: LaTeX (\\dot{\\theta}) or text (theta_dot, sin(theta)*phi_dot^2). "
+        + FORMAT_DESCRIPTION,
+    )
 
 
 class TimeDerivativeArgs(SimplifyArgs):
@@ -747,7 +779,7 @@ class TimeDerivativeArgs(SimplifyArgs):
     lagrangian: str | None = Field(
         default=None,
         max_length=MAX_INPUT,
-        description=r"Optional L(q, qdot, t) of the system, as an expression (not 'L = ...'). Given, the "
+        description=r"Optional L(q, qdot, t) of the system in LaTeX, as an expression (not 'L = ...'). Given, the "
         "derivative is also evaluated on that system's equations of motion and says whether it vanishes "
         "there (is constant along its motions).",
     )
@@ -800,6 +832,10 @@ class InvariantArgs(BaseModel):
     lagrangian: str = Field(
         max_length=MAX_INPUT,
         description=r"L(q, qdot) in LaTeX, using \dot{q} for velocities. The same Lagrangian as for analyze_lagrangian.",
+    )
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of `lagrangian`: LaTeX or text (theta_dot). " + FORMAT_DESCRIPTION,
     )
     coordinates: list[str] = Field(
         min_length=1,
@@ -2165,9 +2201,14 @@ def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
-def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
+def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
+    source = strip_assignment(args.lagrangian, "L")
     report = ctx.engine.analyze_lagrangian(
-        args.lagrangian, args.coordinates, args.time, args.assumptions
+        source,
+        args.coordinates,
+        args.time,
+        args.assumptions,
+        format=resolve_syntax(source, args.format),
     )
     methods = (
         ctx.kb.search(SearchQuery(features=report.features, chapter="physics.mechanics", limit=8))
@@ -2451,8 +2492,9 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
 
 
 def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
+    source = strip_assignment(args.lagrangian, "L")
     report = ctx.engine.search_invariants(
-        args.lagrangian,
+        source,
         args.coordinates,
         args.angles,
         args.degree,
@@ -2460,6 +2502,7 @@ def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
         args.harmonics,
         args.time,
         args.assumptions,
+        format=resolve_syntax(source, args.format),
     )
     card = Card(
         id=uuid.uuid4().hex[:8],
@@ -3509,7 +3552,7 @@ TOOLS: dict[str, Tool] = {
             "Given a Lagrangian and its generalised coordinates, derive the Euler-Lagrange equations, "
             "conjugate momenta and accelerations, and find verified constants of motion (cyclic "
             "coordinates, energy, rotations). States which symmetries were not searched for.",
-            LagrangianArgs,
+            AnalyzeLagrangianArgs,
             run_lagrangian,
         ),
         Tool(

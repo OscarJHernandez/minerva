@@ -51,7 +51,7 @@ class SumsArgs(SimplifyArgs):
 class ExpectationArgs(SimplifyArgs):
     latex: str = Field(
         max_length=2000,
-        description="An expression in E, Var and Cov, e.g. \\operatorname{Var}(X+Y) or "
+        description="A LaTeX expression in E, Var and Cov, e.g. \\operatorname{Var}(X+Y) or "
         "\\mathbb{E}[aX+bY+c] or \\mathbb{E}[\\sum_{i=1}^{n}X_i].",
     )
     random: list[str] = Field(

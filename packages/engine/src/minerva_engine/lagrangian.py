@@ -138,6 +138,15 @@ def derive(
             L = parse_latex(latex, assumptions, limits)
     except MinervaMathError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
+    names = {sym.name for sym in L.free_symbols}
+    absent = [n for n in coordinates if not names & {n, f"{n}_dot", f"{n}_ddot"}]
+    if absent:
+        raise DerivationError(
+            Status.PARSE_ERROR,
+            f"The declared coordinate(s) {', '.join(absent)} appear in neither the position nor the "
+            f"velocity form in the Lagrangian as read (symbols: {', '.join(sorted(names)) or 'none'}). "
+            "Check the spelling: velocities are \\dot{q} in LaTeX and q_dot in text.",
+        )
     return derive_expr(L, coordinates, time)
 
 
