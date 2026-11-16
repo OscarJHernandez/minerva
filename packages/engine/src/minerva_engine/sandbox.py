@@ -15,10 +15,12 @@ expected to add its own CPU, memory and network restrictions.
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import multiprocessing
 import os
 import resource
 import threading
+import time
 import traceback
 from dataclasses import dataclass
 from enum import StrEnum
@@ -113,6 +115,20 @@ def _child_main(conn: Connection, op: str, payload: dict[str, Any], cpu: int, me
         conn.close()
 
 
+# A caller that gives up on a call (the agent's time limit, a client that left) cannot stop a Python thread.
+# It sets this event instead: the sandbox looks at it while it waits, kills its child and frees its slot, and
+# starts no further child for the same caller. The event travels with the context a worker thread copies.
+cancel_event: contextvars.ContextVar[threading.Event | None] = contextvars.ContextVar(
+    "minerva_sandbox_cancel", default=None
+)
+_SLICE = 0.05  # how often a waiting call looks at its cancel event, in seconds
+
+
+def _cancelled() -> bool:
+    event = cancel_event.get()
+    return event is not None and event.is_set()
+
+
 class Sandbox:
     def __init__(self, limits: Limits | None = None) -> None:
         self.limits = limits or Limits()
@@ -121,12 +137,24 @@ class Sandbox:
     def run(self, op: str, payload: dict[str, Any], timeout: float | None = None) -> SandboxResult:
         """`timeout` replaces the default wall-clock limit for this call (long, bounded searches)."""
         seconds = timeout if timeout is not None else self.limits.timeout_seconds
-        if not self._slots.acquire(timeout=self.limits.timeout_seconds):
-            return SandboxResult(Outcome.BUSY)
+        if _cancelled():
+            return SandboxResult(Outcome.KILLED)  # the caller has left: start nothing
+        if not self._acquire():
+            return SandboxResult(Outcome.BUSY if not _cancelled() else Outcome.KILLED)
         try:
             return self._run(op, payload, seconds)
         finally:
             self._slots.release()
+
+    def _acquire(self) -> bool:
+        deadline = time.monotonic() + self.limits.timeout_seconds
+        while not _cancelled():
+            left = deadline - time.monotonic()
+            if self._slots.acquire(timeout=max(0.0, min(_SLICE, left))):
+                return True
+            if left <= 0:
+                return False
+        return False
 
     def _run(self, op: str, payload: dict[str, Any], seconds: float) -> SandboxResult:
         ctx = _context()
@@ -137,8 +165,12 @@ class Sandbox:
         proc.start()
         child.close()
         try:
-            if not parent.poll(seconds):
-                return SandboxResult(Outcome.TIMEOUT)
+            deadline = time.monotonic() + seconds
+            while not parent.poll(max(0.0, min(_SLICE, deadline - time.monotonic()))):
+                if _cancelled():
+                    return SandboxResult(Outcome.KILLED)  # the finally below kills the child
+                if time.monotonic() >= deadline:
+                    return SandboxResult(Outcome.TIMEOUT)
             try:
                 kind, value = parent.recv()
             except (EOFError, OSError):

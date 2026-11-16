@@ -206,7 +206,7 @@ class TurnDebug(BaseModel):
     """Everything needed to reproduce a turn, shown only when the user switches debug mode on."""
 
     # Deterministic routing (routing.py): empty when no rule applied, else decision, reason and tool.
-    routing: dict[str, str] = Field(default_factory=dict)
+    routing: dict[str, str | int] = Field(default_factory=dict)
 
     request_id: str = ""
     api_version: str = ""

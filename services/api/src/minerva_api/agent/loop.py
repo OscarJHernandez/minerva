@@ -12,6 +12,7 @@ import asyncio
 import hashlib
 import json
 import re
+import threading
 import time
 import uuid
 from collections.abc import AsyncIterator, Mapping, Sequence
@@ -21,6 +22,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import ClaimEvidence, trace_scope
 from minerva_engine.notation.models import Normalization
+from minerva_engine.sandbox import cancel_event
 
 from ..logging import error_fields
 from .arguments import repair_arguments
@@ -222,6 +224,11 @@ def _latest_user_message(history: Sequence[dict[str, Any]]) -> tuple[str, bool]:
     return text, replying
 
 
+TOOL_MIN_SECONDS = (
+    0.1  # a tool is never started with less than this left: the turn's deadline holds
+)
+
+
 def _ms(since: float) -> int:
     return int((time.monotonic() - since) * 1000)
 
@@ -232,6 +239,10 @@ class _Routed:
 
     call: ToolCall
     output: ToolOutput
+    duration_ms: int = (
+        0  # what the computation cost, measured where it ran (not when it is recorded)
+    )
+    sandbox: list[Any] = field(default_factory=list)
 
 
 async def _run_route(
@@ -240,25 +251,55 @@ async def _run_route(
     """Run the routed call like any other. Anything but a verified result drops the route, and the model
     plans the turn as if there had been none (the decision is recorded either way)."""
     call = ToolCall(route.tool, dict(route.arguments))
-    reason = RouteReason(route.reason)
+    started = time.monotonic()
+    mark = tracer.sandbox_mark()
+    output: ToolOutput | None
     try:
-        output = await asyncio.wait_for(
-            run_in_threadpool(execute, call.name, call.arguments, ctx),
-            timeout=max(remaining(), 1.0),
+        reason = RouteReason(route.reason)
+        output = await _cancellable(
+            max(remaining(), TOOL_MIN_SECONDS),
+            run_in_threadpool,
+            execute,
+            call.name,
+            call.arguments,
+            ctx,
         )
     except Exception:
         output = None
+    duration = _ms(started)
+    sandbox = tracer.sandbox_since(mark)
     if output is None or not output.arguments_valid or output.status != "ok":
         tracer.emit(AgentRouted, decision="declined", reason=RouteReason.DECLINED, tool=route.tool)
         debug.routing = {
             "decision": "declined",
             "reason": RouteReason.DECLINED.value,
             "tool": route.tool,
+            "duration_ms": duration,
         }
         return None
     tracer.emit(AgentRouted, decision="routed", reason=reason, tool=route.tool)
     debug.routing = {"decision": "routed", "reason": reason.value, "tool": route.tool}
-    return _Routed(call, output)
+    return _Routed(call, output, duration, sandbox)
+
+
+async def _cancellable(timeout: float, make: Any, *args: Any) -> Any:
+    """Await `make()` for at most `timeout` seconds, and tell the sandbox to stop what the call started.
+
+    A Python thread cannot be cancelled: without this a timed-out call leaves its child process running up to
+    the sandbox's own limit, holding one of its few slots. The event is part of the context the worker thread
+    copies, so every sandbox call the tool makes sees it; one set after the timeout starts no further child.
+    """
+    event = threading.Event()
+    token = cancel_event.set(event)
+    try:
+        return await asyncio.wait_for(make(*args), timeout=timeout)
+    except (
+        BaseException
+    ):  # a timeout, a client that left, anything: the work has no reader any more
+        event.set()
+        raise
+    finally:
+        cancel_event.reset(token)
 
 
 def _already_run(output: ToolOutput) -> Any:
@@ -644,6 +685,8 @@ async def _run_turn(
     try:
         if info.routing and not replying and (route := plan_route(user_text)) is not None:
             pre = await _run_route(route, ctx, tracer, debug, remaining)
+            if pre is None:
+                tool_calls_made += 1  # it ran: a declined route is in the budget, not a step
             if pre is not None and toolset == "auto":
                 needed = group_of(pre.call.name)
                 active = grow(active, [needed] if needed else [])
@@ -1011,12 +1054,17 @@ async def _run_turn(
                     ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
                     ctx.input_notes = input_notes
                     run_tool: Any = execute
+                    recovered_key: str | None = None
                     if routed_now is not None and call.id == routed_now.call.id:
                         run_tool = _already_run(routed_now.output)
                     try:
-                        output = await asyncio.wait_for(
-                            run_in_threadpool(run_tool, call.name, arguments, ctx),
-                            timeout=max(remaining(), 1.0),
+                        output = await _cancellable(
+                            max(remaining(), TOOL_MIN_SECONDS),
+                            run_in_threadpool,
+                            run_tool,
+                            call.name,
+                            arguments,
+                            ctx,
                         )
                         # The one deterministic correction, before the model hears about the failure.
                         alternative = (
@@ -1026,16 +1074,24 @@ async def _run_turn(
                         )
                         if alternative is not None:
                             tool_calls_made += 1
-                            retried = await asyncio.wait_for(
-                                run_in_threadpool(run_tool, call.name, alternative[0], ctx),
-                                timeout=max(remaining(), 1.0),
-                            )
-                            if retried.status == "ok":
+                            try:
+                                retried = await _cancellable(
+                                    max(remaining(), TOOL_MIN_SECONDS),
+                                    run_in_threadpool,
+                                    run_tool,
+                                    call.name,
+                                    alternative[0],
+                                    ctx,
+                                )
+                            except TimeoutError:
+                                retried = None  # keep what the first reading said, not a timeout
+                            if retried is not None and retried.status == "ok":
                                 retried.for_model += (
                                     "\nrecovered: the first reading failed, so the input was read "
                                     f"with format {alternative[0]['format']}."
                                 )
                                 output, arguments, policy = retried, alternative[0], alternative[1]
+                                recovered_key = canonical_key(call.name, arguments)
                     except TimeoutError:
                         output = _tool_failure(
                             call.name,
@@ -1054,7 +1110,10 @@ async def _run_turn(
                     finally:  # only this call is the model's: the context is not left marked
                         ctx.numbers_delegated, ctx.user_numbers = False, None
                         ctx.input_notes = ()
-                    seen[key] = call_id
+                    if not timed_out:
+                        seen[key] = call_id  # a call that never finished has no result to point to
+                        if recovered_key is not None:
+                            seen[recovered_key] = call_id  # the corrected spelling is the same call
                     if not output.arguments_valid:
                         invalid_seen[key] = output.for_model
                     failure_class = classify(output)
@@ -1076,6 +1135,8 @@ async def _run_turn(
                     offered = output.choices
                 duration = _ms(tool_started)
                 sandbox = tracer.sandbox_since(mark)
+                if refusal is None and routed_now is not None and call.id == routed_now.call.id:
+                    duration, sandbox = routed_now.duration_ms, routed_now.sandbox  # it ran earlier
                 engine_ms = sum(c.ms for c in sandbox) if sandbox else None
                 bad_outcome = next((c.outcome for c in sandbox if c.outcome != "ok"), None)
                 site = next((c for c in sandbox if c.error_type), None)
@@ -1575,17 +1636,16 @@ async def _check_claims_in_budget(
     if not _pending_claims(blocks):
         return [], "none"
     try:
-        report = await asyncio.wait_for(
-            check_model_claims(
-                blocks,
-                ctx,
-                trace,
-                prior_relations,
-                prior_assumptions,
-                prior_matrices,
-                prior_evidence,
-            ),
-            timeout=max(seconds_left, CLAIM_CHECK_MIN_SECONDS),
+        report = await _cancellable(
+            max(seconds_left, CLAIM_CHECK_MIN_SECONDS),
+            check_model_claims,
+            blocks,
+            ctx,
+            trace,
+            prior_relations,
+            prior_assumptions,
+            prior_matrices,
+            prior_evidence,
         )
         return report, "ok"
     except TimeoutError:
