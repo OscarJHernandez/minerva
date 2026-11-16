@@ -86,6 +86,14 @@ def _prose(token: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z]{2,}", word)) and word.lower() not in _FUNCTIONS
 
 
+def _in_table_row(text: str, position: int) -> bool:
+    """Whether the line holding `position` starts with a bar (a Markdown table row)."""
+    i = text.rfind("\n", 0, position) + 1
+    while i < len(text) and text[i] in " \t":
+        i += 1
+    return text.startswith("|", i)
+
+
 def _bare_equations(text: str) -> list[tuple[int, int]]:
     """Spans of equations written without $...$, e.g. `x^3 + x^2 + 1 = 0`.
 
@@ -94,6 +102,11 @@ def _bare_equations(text: str) -> list[tuple[int, int]]:
     """
     spans: list[tuple[int, int]] = []
     tokens = [(m.start(), m.end(), m.group()) for m in re.finditer(r"\S+", text)]
+    # A line of a Markdown table is cells, not an equation: its bars are not math. Its tokens stay in
+    # the list but never match, so a run cannot reach across the row.
+    tokens = [
+        (a, b, "\x00") if _in_table_row(text, a) else (a, b, t) for a, b, t in tokens
+    ]
     i = 0
     while i < len(tokens):
         if not _mathy(tokens[i][2].strip("*_")):

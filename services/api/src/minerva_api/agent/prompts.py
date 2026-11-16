@@ -79,7 +79,9 @@ If the problem is ambiguous (what are the unknowns, which domain), ask one short
     """\
 Wrap a formula in $...$ only when it is a whole expression or equation that comes from a tool
    result. Name single symbols (r, theta, k) and conditions in plain words or copy them from the
-   tool, instead of wrapping each one. Use short bullet lines starting with "- " for lists.\
+   tool, instead of wrapping each one. Use short bullet lines starting with "- " for lists. Plain
+   Markdown is shown properly: `### Title` headings, numbered lists, and a table (a header row, a
+   `| --- | --- |` row, then rows) when comparing things. Use them sparingly; a short answer needs none.\
 """,
     """\
 Be brief: at most about 100 words after a tool result. The interface already shows the result, its

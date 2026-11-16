@@ -488,3 +488,18 @@ def test_the_server_splitter_matches_the_shared_fixture(case: dict[str, Any]) ->
 
     found = [[s.type, s.value] for s in split_segments(case["text"], set()) if s.type != "text"]
     assert found == case["formulas"]
+
+
+def test_a_markdown_table_row_is_never_taken_for_an_equation() -> None:
+    """`| x = 1 |` is two bars around a cell: a math segment with the bars in it would not split."""
+    from minerva_api.agent.segments import split_segments
+
+    text = "Before\n| Feature | Value |\n| :--- | :--- |\n| x = 1 | y = 2 |\n\nThen x = 3 holds."
+    parts = split_segments(text, set(), {})
+    math = [s.value for b in [parts] for s in b if s.type == "math"]
+    assert all("|" not in value for value in math)
+    assert "x = 3" in math  # an equation outside the table is still found
+    assert "x = 1" not in math and "y = 2" not in math
+    # the table text itself arrives unchanged
+    joined = "".join(s.value for s in parts if s.type == "text")
+    assert "| x = 1 | y = 2 |" in joined

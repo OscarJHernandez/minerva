@@ -149,6 +149,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   parameter**: a test pins the field list. Do not add a verification tolerance, a limit or the claim check to it.
 - After each turn, formulas in the model's prose are compared with formulas present in this conversation's tool results;
   anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
+- Chat prose is a small Markdown subset drawn by `apps/web/src/components/chat/rich-text.tsx` (no Markdown library):
+  `**bold**`, `` `code` ``, `-` and numbered lists, `#` to `######` headings, pipe tables (a header row, a `---` separator
+  row, rows; only text is split on `|`, so `$|x|$` stays in its cell) and formulas; raw HTML is shown as text. The prompt
+  allows headings and tables, and `segments._bare_equations` skips table rows (their bars are not math). An inline formula
+  that is more than a lone symbol has a copy/edit bar that floats above it (hover, focus or a tap) and takes no room in the line.
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on a fixed benchmark through the real loop (`agent/evaluation/`: cases are data in
