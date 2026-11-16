@@ -345,6 +345,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         if (bubble) setMessages((m) => m.slice(0, -1));
         fail(e);
         if (mode !== "new" && id) await open(id, { keepError: true }); // what the server still has
+        if (mode === "new" && id && activeIdRef.current === id) {
+          // Creating the conversation remounted the composer. Restore into the new one.
+          setReplaceRequest({ id: ++requestCounter.current, text });
+          return true;
+        }
         return false;
       }
       fail(e);

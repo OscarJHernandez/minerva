@@ -95,6 +95,26 @@ describe("Composer drafts", () => {
     expect(screen.getByLabelText("Message")).toHaveValue("integrate $x^2$");
     sessionStorage.removeItem(key);
   });
+
+  it("retains the submitted text until the send finishes", async () => {
+    const key = "minerva:draft:test-user:pending";
+    let resolveSend: ((ok: boolean) => void) | undefined;
+    const onSend = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveSend = resolve;
+        }),
+    );
+    const view = render(<Composer {...props} draftKey={key} onSend={onSend} />);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "prove $x=1$" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(sessionStorage.getItem(key)).toBe("prove $x=1$");
+    view.unmount();
+    render(<Composer {...props} draftKey={key} />);
+    expect(screen.getByLabelText("Message")).toHaveValue("prove $x=1$");
+    resolveSend?.(true);
+    await waitFor(() => expect(sessionStorage.getItem(key)).toBeNull());
+  });
 });
 
 describe("Composer: drag and drop", () => {

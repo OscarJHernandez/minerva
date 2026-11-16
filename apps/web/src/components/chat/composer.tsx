@@ -75,10 +75,16 @@ export function Composer({
       return "";
     }
   });
+  const sendingText = useRef<string | null>(null);
+  const currentText = useRef(text);
+  useEffect(() => {
+    currentText.current = text;
+  }, [text]);
   useEffect(() => {
     if (!draftKey) return;
     try {
-      if (text) sessionStorage.setItem(draftKey, text);
+      const retained = text || sendingText.current;
+      if (retained) sessionStorage.setItem(draftKey, retained);
       else sessionStorage.removeItem(draftKey);
     } catch {
       // Private browsing and storage quotas must not prevent composing.
@@ -169,14 +175,26 @@ export function Composer({
     if (!value || disabled || busy) return;
     if (beforeSend && !beforeSend()) return;
     if (value.length > MAX_MESSAGE_CHARS) return;
+    sendingText.current = value;
     const sent = onSend(value);
     setText("");
     if (areaRef.current) areaRef.current.style.height = "";
     // A failed send must not cost the user their message: it goes back unless they started a new one.
     if (sent instanceof Promise) {
       void sent.then((ok) => {
+        sendingText.current = null;
         if (ok === false) setText((t) => (t === "" ? value : t));
+        else if (draftKey) {
+          try {
+            if (currentText.current) sessionStorage.setItem(draftKey, currentText.current);
+            else sessionStorage.removeItem(draftKey);
+          } catch {
+            // The send succeeded even if storage is unavailable.
+          }
+        }
       });
+    } else {
+      sendingText.current = null;
     }
   }
 
