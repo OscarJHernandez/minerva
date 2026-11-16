@@ -221,7 +221,10 @@ def test_edit_replaces_the_last_message_and_its_reply() -> None:
         assert [m["role"] for m in messages] == ["user", "assistant"]
         assert messages[0]["content"]["text"] == "Integrate $$x^3$$ instead"
         assert [e["latex"] for e in messages[0]["content"]["equations"]] == ["x^3"]
-        assert llm.seen[-1][-1]["content"] == "Integrate $$x^3$$ instead"
+        sent = llm.seen[-1][-1]["content"]
+        # The model gets the user's text as typed, then the handle of the displayed formula (for the model only).
+        assert sent.startswith("Integrate $$x^3$$ instead")
+        assert "@e2" in sent.removeprefix("Integrate $$x^3$$ instead")
 
 
 def test_retry_with_nothing_to_answer_is_refused() -> None:
