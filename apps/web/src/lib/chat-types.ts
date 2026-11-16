@@ -124,8 +124,16 @@ export interface PerturbationRequest {
   };
 }
 
+/** What was changed to read an input (a spelling read as another, a wrapper removed): shown, never silent. */
+export interface InputReading {
+  format: "latex" | "text";
+  normalizations: { kind: string; source: string; target: string; note: string }[];
+}
+
 export interface LagrangianReport {
   status: Status;
+  /** Absent on messages stored before the field existed. */
+  reading?: InputReading | null;
   lagrangian_latex: string | null;
   coordinates: string[];
   parameters: string[];
@@ -733,6 +741,8 @@ export interface TraceStep {
   /** The name the model wrote when it was an accepted alias of `name`, and how it was recognised. */
   requested_name?: string | null;
   alias_kind?: string | null;
+  /** What the recovery policy did: `format_switch`, `refused_equivalent` or `budget_exhausted`. */
+  policy?: string | null;
   /** Chosen by a rule (agent/routing.py), not by the model. */
   routed?: boolean;
 }

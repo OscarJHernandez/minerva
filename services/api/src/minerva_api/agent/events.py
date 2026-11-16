@@ -147,6 +147,10 @@ class TraceStep(BaseModel):
     # and how it was recognised (`toolsets.ALIAS_KINDS`). Absent when the name was already exact.
     requested_name: str | None = None
     alias_kind: str | None = None
+    # What the recovery policy did with this call (`recovery.py`): `format_switch` (re-run with the other
+    # strict parser after the first reading failed), `refused_equivalent` (an equivalent call had already
+    # failed or run) or `budget_exhausted` (the tool had failed too often this turn).
+    policy: str | None = None
     # What each verified formula is and the coordinates of the system, so a later equation of the model
     # can be compared with this result (see `claim_evidence.py`).
     routed: bool = False  # chosen by a rule (routing.py), not by the model

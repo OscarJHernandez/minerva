@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 import sympy as sp
 
-from .errors import MinervaMathError
+from .errors import MinervaMathError, diagnostic_of
 from .features import expression_features
 from .models import (
     BlockedMove,
@@ -357,7 +357,7 @@ def transform(
         expr = parse_expression(data, limits)
     except MinervaMathError as exc:
         status, message = _failure(exc)
-        return TransformResult(status=status, message=message)
+        return TransformResult(status=status, message=message, diagnostic=diagnostic_of(exc))
 
     width = max(1, min(width, MAX_WIDTH))
     depth = max(1, min(depth, MAX_DEPTH))

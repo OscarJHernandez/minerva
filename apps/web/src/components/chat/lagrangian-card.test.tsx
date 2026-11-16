@@ -25,6 +25,38 @@ const lagrangian: LagrangianReport = {
 };
 const request = { lagrangian: "L", coordinates: ["x"], time: "t", assumptions: {} };
 
+describe("LagrangianCard reading", () => {
+  it("says how a spelled velocity was read", () => {
+    const read: LagrangianReport = {
+      ...lagrangian,
+      reading: {
+        format: "text",
+        normalizations: [
+          {
+            kind: "derivative_spelling",
+            source: "Xdot",
+            target: "X_dot",
+            note: "the velocity of X",
+          },
+        ],
+      },
+    };
+    render(<LagrangianCard report={read} methods={[]} />);
+    const line = screen.getByLabelText("How the input was read");
+    expect(line).toHaveTextContent("Read as: Xdot → X_dot (the velocity of X)");
+  });
+
+  it("shows nothing when the input was read as written", () => {
+    render(
+      <LagrangianCard
+        report={{ ...lagrangian, reading: { format: "latex", normalizations: [] } }}
+        methods={[]}
+      />,
+    );
+    expect(screen.queryByLabelText("How the input was read")).not.toBeInTheDocument();
+  });
+});
+
 describe("LagrangianCard numerical form", () => {
   it("mentions the independent check of the equations", () => {
     render(<LagrangianCard report={lagrangian} methods={[]} request={request} />);

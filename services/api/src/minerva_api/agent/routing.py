@@ -17,8 +17,10 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from minerva_engine.notation.derivatives import spelled_derivatives
+
+from .mathinput import strip_assignment
 from .segments import split_segments
-from .tools import strip_assignment
 
 MAX_COORDINATES = 8
 
@@ -33,8 +35,7 @@ _NEEDS_PLANNING = re.compile(
     re.IGNORECASE,
 )
 _VELOCITY_LATEX = re.compile(r"\\dot\s*(\{\s*(\\?[A-Za-z]+)\s*\}|\\?([A-Za-z]+))(\s*[_^])?")
-_VELOCITY_TEXT = re.compile(r"\b([A-Za-z]\w*?)_dot\b")
-_ACCELERATION = re.compile(r"\\ddot|_ddot\b")
+_ACCELERATION = re.compile(r"\\ddot")
 _LAGRANGIAN_LINE = re.compile(r"(?:^|\n|\s)L\s*(?:\(.*?\))?\s*=\s*([^\n]+)")
 
 
@@ -78,7 +79,13 @@ def _coordinates(formula: str) -> list[str] | None:
         if "_" in (match.group(2) or ""):
             return None
         names.append(name)
-    names += [m.group(1) for m in _VELOCITY_TEXT.finditer(formula)]
+    if "\\" not in formula:
+        spelled = spelled_derivatives(formula)
+        if spelled is None:
+            return None  # a name with two readings (`xddot`): left to the model
+        if any(order > 1 for _, order in spelled):
+            return None  # an acceleration: not a first-order Lagrangian, left to the model
+        names += [stem for stem, _ in spelled]
     unique = list(dict.fromkeys(names))
     if not unique or len(unique) > MAX_COORDINATES or any(not n for n in unique):
         return None

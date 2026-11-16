@@ -1,0 +1,1155 @@
+{
+  "applied": 222,
+  "by_operator": {
+    "derivative:joined": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:latex_letter_run": {
+      "diagnosed": 4,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:leibniz": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:spaced": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:upper": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:assignment_prefix": {
+      "diagnosed": 4,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:formula_alias": {
+      "diagnosed": 20,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:json_as_string": {
+      "diagnosed": 25,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:list_as_string": {
+      "diagnosed": 12,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:number_as_string": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 5,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "transport:code_fence": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 26
+    },
+    "transport:dollar_wrapper": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 26
+    },
+    "transport:doubled_backslash": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 20
+    },
+    "transport:markdown_escape": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 21
+    },
+    "transport:trailing_period": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 4,
+      "same_after_cleaning": 0,
+      "untyped_failure": 21
+    },
+    "transport:unicode_look_alikes": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 9,
+      "same_after_cleaning": 0,
+      "untyped_failure": 17
+    }
+  },
+  "by_tool": {
+    "analyze_lagrangian": {
+      "diagnosed": 4,
+      "different_verified_result": 0,
+      "same": 5,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "approximation": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "check_units": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 2,
+      "same_after_cleaning": 0,
+      "untyped_failure": 2
+    },
+    "creative_telescoping": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "differentiate": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "dimensional_analysis": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "distribution": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "electromagnetism": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "expand_motion": {
+      "diagnosed": 5,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "expectation": {
+      "diagnosed": 3,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 4
+    },
+    "find_conserved_quantities": {
+      "diagnosed": 3,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "find_identities": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "integrate": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "integrate_motion": {
+      "diagnosed": 5,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "isolate_variable": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "matrix_calculus": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "ode_analyze": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 4
+    },
+    "ode_solve_numerical": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 3
+    },
+    "ode_solve_symbolic": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 2,
+      "same_after_cleaning": 0,
+      "untyped_failure": 4
+    },
+    "perturbation_solve": {
+      "diagnosed": 5,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "rewrite_part": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 5,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "series": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 2,
+      "same_after_cleaning": 0,
+      "untyped_failure": 4
+    },
+    "simplify": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "solve_polynomial": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "statistical_mechanics": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "statistical_model": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "substitute": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "tensor_canonicalize": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
+    "time_derivative": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "variation": {
+      "diagnosed": 3,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "vector_calculus": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 4
+    }
+  },
+  "defects": [
+    {
+      "case": "lagrangian-kepler",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "approximation-interval-is-not-invented",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "approximation"
+    },
+    {
+      "case": "false-energy-units",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "check_units"
+    },
+    {
+      "case": "telescoping-gaussian-parameter",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "creative_telescoping"
+    },
+    {
+      "case": "differentiate-first",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "differentiate"
+    },
+    {
+      "case": "delta-integral-uses-the-tool",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "distribution"
+    },
+    {
+      "case": "expand-pendulum",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "expand_motion"
+    },
+    {
+      "case": "variance-of-a-sum-keeps-the-covariance",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "expectation"
+    },
+    {
+      "case": "conserved-quantities-oscillator",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "find_conserved_quantities"
+    },
+    {
+      "case": "followup-uses-context",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "find_identities"
+    },
+    {
+      "case": "definite-by-tool",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "integrate"
+    },
+    {
+      "case": "motion-values-given",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "integrate_motion"
+    },
+    {
+      "case": "isolate-gives-both-roots",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "isolate_variable"
+    },
+    {
+      "case": "declared-matrices-no-invented-commutation#2",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "matrix_calculus"
+    },
+    {
+      "case": "ode-analyze-before-solving",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "ode_analyze"
+    },
+    {
+      "case": "numbers-handed-over-are-chosen-and-said",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_numerical"
+    },
+    {
+      "case": "ode-bare-equation-asks-which-method#2",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_symbolic"
+    },
+    {
+      "case": "perturbation-duffing",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "perturbation_solve"
+    },
+    {
+      "case": "series-tan",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "series"
+    },
+    {
+      "case": "assumptions-carried",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "simplify"
+    },
+    {
+      "case": "solve-quintic",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "solve_polynomial"
+    },
+    {
+      "case": "premise-stays-conditional",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "substitute"
+    },
+    {
+      "case": "tensor-contraction",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "tensor_canonicalize"
+    },
+    {
+      "case": "kepler-conserved-quantities-then-total-time-derivative#2",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "time_derivative"
+    },
+    {
+      "case": "brachistochrone-euler-lagrange-leibniz-form",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "variation"
+    },
+    {
+      "case": "integral-flux-through-a-sphere",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "vector_calculus"
+    },
+    {
+      "case": "lagrangian-kepler",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "approximation-interval-is-not-invented",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "approximation"
+    },
+    {
+      "case": "false-energy-units",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "check_units"
+    },
+    {
+      "case": "telescoping-gaussian-parameter",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "creative_telescoping"
+    },
+    {
+      "case": "differentiate-first",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "differentiate"
+    },
+    {
+      "case": "delta-integral-uses-the-tool",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "distribution"
+    },
+    {
+      "case": "expand-pendulum",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "expand_motion"
+    },
+    {
+      "case": "variance-of-a-sum-keeps-the-covariance",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "expectation"
+    },
+    {
+      "case": "conserved-quantities-oscillator",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "find_conserved_quantities"
+    },
+    {
+      "case": "followup-uses-context",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "find_identities"
+    },
+    {
+      "case": "definite-by-tool",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "integrate"
+    },
+    {
+      "case": "motion-values-given",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "integrate_motion"
+    },
+    {
+      "case": "isolate-gives-both-roots",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "isolate_variable"
+    },
+    {
+      "case": "declared-matrices-no-invented-commutation#2",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "matrix_calculus"
+    },
+    {
+      "case": "ode-analyze-before-solving",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "ode_analyze"
+    },
+    {
+      "case": "numbers-handed-over-are-chosen-and-said",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_numerical"
+    },
+    {
+      "case": "ode-bare-equation-asks-which-method#2",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_symbolic"
+    },
+    {
+      "case": "perturbation-duffing",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "perturbation_solve"
+    },
+    {
+      "case": "series-tan",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "series"
+    },
+    {
+      "case": "assumptions-carried",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "simplify"
+    },
+    {
+      "case": "solve-quintic",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "solve_polynomial"
+    },
+    {
+      "case": "premise-stays-conditional",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "substitute"
+    },
+    {
+      "case": "tensor-contraction",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "tensor_canonicalize"
+    },
+    {
+      "case": "kepler-conserved-quantities-then-total-time-derivative#2",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "time_derivative"
+    },
+    {
+      "case": "brachistochrone-euler-lagrange-leibniz-form",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "variation"
+    },
+    {
+      "case": "integral-flux-through-a-sphere",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "vector_calculus"
+    },
+    {
+      "case": "lagrangian-kepler",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "approximation-interval-is-not-invented",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "approximation"
+    },
+    {
+      "case": "telescoping-gaussian-parameter",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "creative_telescoping"
+    },
+    {
+      "case": "differentiate-product",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "differentiate"
+    },
+    {
+      "case": "delta-integral-uses-the-tool",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "distribution"
+    },
+    {
+      "case": "expand-pendulum",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "expand_motion"
+    },
+    {
+      "case": "variance-of-a-sum-keeps-the-covariance",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "expectation"
+    },
+    {
+      "case": "conserved-quantities-oscillator",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "find_conserved_quantities"
+    },
+    {
+      "case": "followup-uses-context",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "find_identities"
+    },
+    {
+      "case": "definite-by-tool",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "integrate"
+    },
+    {
+      "case": "motion-values-given",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "integrate_motion"
+    },
+    {
+      "case": "isolate-gives-both-roots",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "isolate_variable"
+    },
+    {
+      "case": "declared-matrices-no-invented-commutation#2",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "matrix_calculus"
+    },
+    {
+      "case": "perturbation-duffing",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "perturbation_solve"
+    },
+    {
+      "case": "series-tan",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "series"
+    },
+    {
+      "case": "assumptions-carried",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "simplify"
+    },
+    {
+      "case": "unsupported-transcendental",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "solve_polynomial"
+    },
+    {
+      "case": "kepler-conserved-quantities-then-total-time-derivative#2",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "time_derivative"
+    },
+    {
+      "case": "brachistochrone-euler-lagrange-leibniz-form",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "variation"
+    },
+    {
+      "case": "vector-curl-curl-rewrite",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "vector_calculus"
+    },
+    {
+      "case": "lagrangian-kepler",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "approximation-large-x",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "approximation"
+    },
+    {
+      "case": "telescoping-gaussian-parameter",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "creative_telescoping"
+    },
+    {
+      "case": "differentiate-first",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "differentiate"
+    },
+    {
+      "case": "delta-integral-uses-the-tool",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "distribution"
+    },
+    {
+      "case": "expand-pendulum",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "expand_motion"
+    },
+    {
+      "case": "conserved-quantities-oscillator",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "find_conserved_quantities"
+    },
+    {
+      "case": "followup-uses-context",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "find_identities"
+    },
+    {
+      "case": "integrate-gaussian",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "integrate"
+    },
+    {
+      "case": "motion-values-given",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "integrate_motion"
+    },
+    {
+      "case": "isolate-gives-both-roots",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "isolate_variable"
+    },
+    {
+      "case": "declared-matrices-then-false-expansion",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "matrix_calculus"
+    },
+    {
+      "case": "ode-analyze-before-solving",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "ode_analyze"
+    },
+    {
+      "case": "ode-no-closed-form-is-not-impossibility",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_symbolic"
+    },
+    {
+      "case": "perturbation-duffing",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "perturbation_solve"
+    },
+    {
+      "case": "chain-hyperbolic-trig",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "simplify"
+    },
+    {
+      "case": "solve-quintic",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "solve_polynomial"
+    },
+    {
+      "case": "premise-stays-conditional",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "substitute"
+    },
+    {
+      "case": "tensor-contraction",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "tensor_canonicalize"
+    },
+    {
+      "case": "kepler-conserved-quantities-then-total-time-derivative#2",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "time_derivative"
+    },
+    {
+      "case": "brachistochrone-euler-lagrange-leibniz-form",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "variation"
+    },
+    {
+      "case": "lagrangian-kepler",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "approximation-interval-is-not-invented",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "approximation"
+    },
+    {
+      "case": "telescoping-gaussian-parameter",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "creative_telescoping"
+    },
+    {
+      "case": "differentiate-first",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "differentiate"
+    },
+    {
+      "case": "delta-integral-uses-the-tool",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "distribution"
+    },
+    {
+      "case": "expand-pendulum",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "expand_motion"
+    },
+    {
+      "case": "variance-of-a-sum-keeps-the-covariance",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "expectation"
+    },
+    {
+      "case": "conserved-quantities-oscillator",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "find_conserved_quantities"
+    },
+    {
+      "case": "followup-uses-context",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "find_identities"
+    },
+    {
+      "case": "definite-by-tool",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "integrate"
+    },
+    {
+      "case": "declared-matrices-no-invented-commutation#2",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "matrix_calculus"
+    },
+    {
+      "case": "ode-bare-equation-asks-which-method",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "ode_analyze"
+    },
+    {
+      "case": "ode-boundary-value-problem",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_numerical"
+    },
+    {
+      "case": "ode-bare-equation-asks-which-method#2",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "ode_solve_symbolic"
+    },
+    {
+      "case": "series-tan",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "series"
+    },
+    {
+      "case": "assumptions-carried",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "simplify"
+    },
+    {
+      "case": "premise-stays-conditional",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "substitute"
+    },
+    {
+      "case": "tensor-contraction",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "tensor_canonicalize"
+    },
+    {
+      "case": "kepler-conserved-quantities-then-total-time-derivative#2",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "time_derivative"
+    },
+    {
+      "case": "brachistochrone-euler-lagrange-leibniz-form",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "variation"
+    },
+    {
+      "case": "integral-flux-through-a-sphere",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "vector_calculus"
+    },
+    {
+      "case": "lagrangian-kepler",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "telescoping-gaussian-parameter",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "creative_telescoping"
+    },
+    {
+      "case": "differentiate-mixed",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "differentiate"
+    },
+    {
+      "case": "delta-integral-uses-the-tool",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "distribution"
+    },
+    {
+      "case": "expand-pendulum",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "expand_motion"
+    },
+    {
+      "case": "conserved-quantities-oscillator",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "find_conserved_quantities"
+    },
+    {
+      "case": "followup-uses-context",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "find_identities"
+    },
+    {
+      "case": "motion-values-given",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "integrate_motion"
+    },
+    {
+      "case": "isolate-gives-both-roots",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "isolate_variable"
+    },
+    {
+      "case": "declared-matrices-then-false-expansion",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "matrix_calculus"
+    },
+    {
+      "case": "perturbation-duffing",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "perturbation_solve"
+    },
+    {
+      "case": "chain-hyperbolic-trig",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "simplify"
+    },
+    {
+      "case": "solve-quintic",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "solve_polynomial"
+    },
+    {
+      "case": "premise-stays-conditional",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "substitute"
+    },
+    {
+      "case": "tensor-contraction",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "tensor_canonicalize"
+    },
+    {
+      "case": "kepler-conserved-quantities-then-total-time-derivative#2",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "time_derivative"
+    },
+    {
+      "case": "brachistochrone-euler-lagrange-leibniz-form",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "variation"
+    }
+  ],
+  "format": 1,
+  "mode": "pr (without the cleaning layer)",
+  "not_applicable": {
+    "derivative:joined": 132,
+    "derivative:latex_letter_run": 127,
+    "derivative:leibniz": 132,
+    "derivative:spaced": 132,
+    "derivative:upper": 132,
+    "shape:assignment_prefix": 124,
+    "shape:formula_alias": 44,
+    "shape:json_as_string": 56,
+    "shape:list_as_string": 108,
+    "shape:number_as_string": 126,
+    "transport:code_fence": 22,
+    "transport:dollar_wrapper": 22,
+    "transport:doubled_backslash": 56,
+    "transport:markdown_escape": 74,
+    "transport:trailing_period": 43,
+    "transport:unicode_look_alikes": 47
+  },
+  "recovered_without_a_model_call": 26,
+  "recovery_rate": 0.1171,
+  "references": 133,
+  "tools_covered": 33,
+  "totals": {
+    "diagnosed": 65,
+    "different_verified_result": 0,
+    "same": 26,
+    "same_after_cleaning": 0,
+    "untyped_failure": 131
+  }
+}

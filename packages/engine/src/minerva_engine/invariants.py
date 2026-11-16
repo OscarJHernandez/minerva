@@ -43,6 +43,7 @@ from .lagrangian import (
     verify_constant,
 )
 from .models import Limits, Status, Verification
+from .notation.models import InputAware
 
 MAX_COORDINATES = 3
 MAX_UNKNOWNS = 500
@@ -58,7 +59,7 @@ class FoundConstant(BaseModel):
     verification: Verification | None = None
 
 
-class InvariantReport(BaseModel):
+class InvariantReport(InputAware):
     status: Status
     lagrangian_latex: str | None = None
     coordinates: list[str] = Field(default_factory=list)
@@ -115,7 +116,7 @@ def search_invariants(
     try:
         d = derive(latex, coordinates, time, assumptions, limits, format)
     except DerivationError as exc:
-        return _fail(exc.status, exc.message)
+        return _fail(exc.status, exc.message, diagnostic=exc.diagnostic)
     show = d.show
     base: dict[str, Any] = {
         "lagrangian_latex": show(d.lagrangian),

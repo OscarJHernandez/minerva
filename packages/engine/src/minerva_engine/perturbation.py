@@ -46,6 +46,7 @@ from .expansion import NamedLatex, Refusal, _fresh, _zero_check, prepare
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
 from .motion import MotionRequest, integrate_motion
+from .notation.models import InputAware
 from .series import SeriesVerification, _eval, _falls, check_series
 from .verify import MIN_VALID_POINTS, _sample
 
@@ -114,7 +115,7 @@ class Comparison(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
-class PerturbationReport(BaseModel):
+class PerturbationReport(InputAware):
     status: Status
     lagrangian_latex: str | None = None
     coordinates: list[str] = Field(default_factory=list)

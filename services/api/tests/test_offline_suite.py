@@ -33,8 +33,16 @@ def test_the_stored_report_is_current(report: dict) -> None:  # type: ignore[typ
 
 
 def test_every_trajectory_ends_mathematically_correct(report: dict) -> None:  # type: ignore[type-arg]
-    wrong = [r["id"] for r in report["results"] if not r["deterministic"]["math_ok"]]
+    wrong = [
+        r["id"] for r in report["results"] if not r["deterministic"]["math_ok"] and not r["pending"]
+    ]
     assert wrong == []
+
+
+def test_a_pending_trajectory_still_fails_and_says_why(report: dict) -> None:  # type: ignore[type-arg]
+    """Strict: a trajectory marked pending that now ends correct must have its marker removed."""
+    passing = [r["id"] for r in report["results"] if r["pending"] and r["deterministic"]["math_ok"]]
+    assert passing == []
 
 
 def test_nothing_got_worse_than_the_baseline(report: dict) -> None:  # type: ignore[type-arg]

@@ -139,6 +139,33 @@ def number_user_text(text: str, table: EquationTable) -> list[dict[str, Any]]:
     return out
 
 
+MAX_HANDLES = 8
+
+
+def handles_note(user_equations: Sequence[dict[str, Any]]) -> str:
+    """The note that tells the model the handles of the displayed formulas in the user's message.
+
+    The model is never told these numbers otherwise, so it copies a formula by hand and mistypes it (a
+    Lagrangian's velocities, a sign). A handle in a tool argument is replaced by the user's exact text, so
+    copying becomes unnecessary. Only the handles are listed, in the order written: the formulas are in the
+    message above, and the note stays a few tokens long. Nothing about a handle says it is verified.
+    """
+    numbers = [int(item["number"]) for item in user_equations[:MAX_HANDLES]]
+    if not numbers:
+        return ""
+    names = ", ".join(f"@e{n}" for n in numbers)
+    more = len(user_equations) - len(numbers)
+    return (
+        "[notice from Minerva, not from the user] The displayed formulas of the user's message are, in the "
+        f"order written: {names}"
+        + (f" (and {more} more)" if more > 0 else "")
+        + ". In a tool call, write the handle (for example `@e"
+        + f"{numbers[0]}"
+        + "`) as the whole formula argument instead of copying the formula: Minerva substitutes the "
+        "user's exact text."
+    )
+
+
 # --- references in the user's message --------------------------------------------------------------
 _EXPLICIT = re.compile(r"\b(?:eq|eqn|equation)\b\.?\s*\(?\s*(\d{1,4})\s*\)?", re.IGNORECASE)
 # A lone "(3)": not right after a letter, digit or closing bracket (f(3), x_(3)), not before one.

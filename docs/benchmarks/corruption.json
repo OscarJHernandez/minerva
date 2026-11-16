@@ -1,0 +1,368 @@
+{
+  "applied": 737,
+  "by_operator": {
+    "derivative:joined": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:latex_letter_run": {
+      "diagnosed": 4,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:leibniz": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:spaced": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:upper": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:assignment_prefix": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 9,
+      "untyped_failure": 0
+    },
+    "shape:formula_alias": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 89,
+      "untyped_failure": 0
+    },
+    "shape:json_as_string": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 67,
+      "untyped_failure": 0
+    },
+    "shape:list_as_string": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 22,
+      "untyped_failure": 0
+    },
+    "shape:number_as_string": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 5,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "transport:code_fence": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 111,
+      "untyped_failure": 0
+    },
+    "transport:dollar_wrapper": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 111,
+      "untyped_failure": 0
+    },
+    "transport:doubled_backslash": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 77,
+      "untyped_failure": 0
+    },
+    "transport:markdown_escape": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 59,
+      "untyped_failure": 0
+    },
+    "transport:trailing_period": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 90,
+      "untyped_failure": 0
+    },
+    "transport:unicode_look_alikes": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 86,
+      "untyped_failure": 0
+    }
+  },
+  "by_tool": {
+    "analyze_lagrangian": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 4,
+      "same_after_cleaning": 37,
+      "untyped_failure": 0
+    },
+    "approximation": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 37,
+      "untyped_failure": 0
+    },
+    "check_units": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 12,
+      "untyped_failure": 0
+    },
+    "creative_telescoping": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 22,
+      "untyped_failure": 0
+    },
+    "differentiate": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 72,
+      "untyped_failure": 0
+    },
+    "dimensional_analysis": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 2,
+      "untyped_failure": 0
+    },
+    "distribution": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 15,
+      "untyped_failure": 0
+    },
+    "electromagnetism": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 1,
+      "untyped_failure": 0
+    },
+    "expand_motion": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 20,
+      "untyped_failure": 0
+    },
+    "expectation": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 7,
+      "untyped_failure": 0
+    },
+    "find_conserved_quantities": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 9,
+      "untyped_failure": 0
+    },
+    "find_identities": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 27,
+      "untyped_failure": 0
+    },
+    "integrate": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 70,
+      "untyped_failure": 0
+    },
+    "integrate_motion": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 9,
+      "untyped_failure": 0
+    },
+    "isolate_variable": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 17,
+      "untyped_failure": 0
+    },
+    "matrix_calculus": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 38,
+      "untyped_failure": 0
+    },
+    "ode_analyze": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 8,
+      "untyped_failure": 0
+    },
+    "ode_solve_numerical": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 14,
+      "untyped_failure": 0
+    },
+    "ode_solve_symbolic": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 18,
+      "untyped_failure": 0
+    },
+    "perturbation_solve": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 9,
+      "untyped_failure": 0
+    },
+    "rewrite_part": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 6,
+      "untyped_failure": 0
+    },
+    "series": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 10,
+      "untyped_failure": 0
+    },
+    "simplify": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 123,
+      "untyped_failure": 0
+    },
+    "solve_polynomial": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 16,
+      "untyped_failure": 0
+    },
+    "statistical_mechanics": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 3,
+      "untyped_failure": 0
+    },
+    "statistical_model": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 4,
+      "untyped_failure": 0
+    },
+    "substitute": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 20,
+      "untyped_failure": 0
+    },
+    "tensor_canonicalize": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 11,
+      "untyped_failure": 0
+    },
+    "time_derivative": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 16,
+      "untyped_failure": 0
+    },
+    "variation": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 27,
+      "untyped_failure": 0
+    },
+    "vector_calculus": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 41,
+      "untyped_failure": 0
+    }
+  },
+  "defects": [],
+  "format": 1,
+  "mode": "pr",
+  "not_applicable": {
+    "derivative:joined": 132,
+    "derivative:latex_letter_run": 127,
+    "derivative:leibniz": 132,
+    "derivative:spaced": 132,
+    "derivative:upper": 132,
+    "shape:assignment_prefix": 124,
+    "shape:formula_alias": 44,
+    "shape:json_as_string": 56,
+    "shape:list_as_string": 108,
+    "shape:number_as_string": 126,
+    "transport:code_fence": 22,
+    "transport:dollar_wrapper": 22,
+    "transport:doubled_backslash": 56,
+    "transport:markdown_escape": 74,
+    "transport:trailing_period": 43,
+    "transport:unicode_look_alikes": 47
+  },
+  "recovered_without_a_model_call": 730,
+  "recovery_rate": 0.9905,
+  "references": 133,
+  "tools_covered": 33,
+  "totals": {
+    "diagnosed": 7,
+    "different_verified_result": 0,
+    "same": 9,
+    "same_after_cleaning": 721,
+    "untyped_failure": 0
+  }
+}

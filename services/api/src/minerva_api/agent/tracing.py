@@ -23,6 +23,7 @@ from enum import StrEnum
 from typing import Any, Literal, get_args
 
 from minerva_engine import Engine, SandboxCall
+from minerva_engine.notation.models import InputCode
 from pydantic import BaseModel, field_validator
 from pydantic_core import core_schema
 
@@ -235,8 +236,11 @@ class ToolCompleted(TraceEvent):
 
 
 # The closed vocabulary of `reason_code`: the error types of argument validation (pydantic-core's own
-# list). A later registry of engine reasons extends it; nothing else can be logged as a code.
-REASON_CODES: frozenset[str] = frozenset(get_args(core_schema.ErrorType))
+# list) and the engine's input codes (`minerva_engine.notation.models.InputCode`, why a mathematical input
+# could not be read). Nothing else can be logged as a code.
+REASON_CODES: frozenset[str] = frozenset(get_args(core_schema.ErrorType)) | frozenset(
+    code.value for code in InputCode
+)
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,79}")
 _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{0,119}")
 _PATH = re.compile(r"[A-Za-z_*][A-Za-z0-9_.*]{0,119}")

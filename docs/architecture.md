@@ -359,6 +359,16 @@ and explains; it never computes and never decides correctness.
   as `@rN` instead of being retyped; a formula is marked verified only if a verified result produced it (the user's own
   input, handbook entries that are only stated and identities that were not applied are marked *quoted*).
   Matrix calculus results add `MatrixDiagnostics` (methods tried, stage times, tolerance, residual, fallback and failure codes) without names or entries; the engine takes its `trace_id` from the active trace (or, for `POST /v1/compute/matrix`, the request id), and the log fields it adds are enums and numbers only.
+- **Input layer and recovery** (see [agent-reliability.md](agent-reliability.md)): between what a model sends and
+  what the engine runs there is deterministic code, from closed lists, with no guessing. A call's arguments are
+  repaired in shape (`agent/arguments.py`), cleaned of transport damage (`agent/mathinput.py`,
+  `engine notation/transport.py`), and the engine reads derivative spellings of declared coordinates through one reader
+  (`notation/derivatives.py`) or refuses with a typed `InputCode`. The result tells the model what was read
+  (`input:`/`input cleaned:` lines) or why not (one `diagnostic:` JSON line; only the code is logged). The loop then
+  applies `agent/recovery.py`: one re-run with the other strict parser when the text is of the other syntax, a canonical
+  call key so an equivalent call that ran or failed is not run again, and a budget of consecutive failures per tool.
+  Verification is never touched. `scripts/eval_corruptions.py` applies every known model mistake to every benchmark
+  reference call and requires the clean result or a typed refusal.
 - **Models:** `MINERVA_LLM_MODE` is `off`, `ollama` (your own host: `MINERVA_LLM_BASE_URL`, `MINERVA_LLM_MODEL`) or
   `scripted` (deterministic stand-in for tests and UI work, development only). `scripts/eval_models.py` measures a
   model's tool-calling and honesty through the real loop on a fixed benchmark (`agent/evaluation/`: cases as data, scoring,

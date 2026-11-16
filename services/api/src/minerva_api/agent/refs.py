@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .equations import Equation
+from .mathinput import MATH_FIELDS
 from .tools import ToolOutput
 
 REFERENCE = re.compile(r"@r(\d+)\b")
@@ -28,7 +29,7 @@ REFERENCEABLE_TOOLS = frozenset(
     {"simplify", "differentiate", "integrate", "series", "creative_telescoping"}
 )
 # Arguments that may contain references (the ones that hold a mathematical expression).
-EXPRESSION_ARGUMENTS = ("latex", "expression", "equation", "lagrangian", "integrand")
+EXPRESSION_ARGUMENTS = MATH_FIELDS
 
 
 @dataclass

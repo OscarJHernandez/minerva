@@ -18,7 +18,7 @@ from .build import NotationLog
 from .claim_evidence import ClaimEvidence
 from .claims import check_claims, split_equation
 from .distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
-from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput, diagnostic_of
 from .features import expression_features
 from .indexed.guard import SUMS_REFUSAL, contains_indexed
 from .latexparse import parse_latex
@@ -159,7 +159,9 @@ def op_simplify(payload: dict[str, Any]) -> dict[str, Any]:
         expr = parse_expression(data, limits, denominators)
     except MinervaMathError as exc:
         status, message = _failure(exc)
-        return SimplifyResult(status=status, message=message).model_dump(mode="json")
+        return SimplifyResult(
+            status=status, message=message, diagnostic=diagnostic_of(exc)
+        ).model_dump(mode="json")
 
     input_latex = to_latex(expr)
     result = sp.simplify(expr)
@@ -794,7 +796,9 @@ def op_identities(payload: dict[str, Any]) -> dict[str, Any]:
         expr = parse_expression(data, limits)
     except MinervaMathError as exc:
         status, message = _failure(exc)
-        return IdentitiesResult(status=status, message=message).model_dump(mode="json")
+        return IdentitiesResult(
+            status=status, message=message, diagnostic=diagnostic_of(exc)
+        ).model_dump(mode="json")
 
     applications: list[RuleApplication] = []
     # One sandbox timeout covers every rule. Stop early and say so, instead of letting one slow

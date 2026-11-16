@@ -30,7 +30,7 @@ from .differentiate import (
     DiffVariable,
     _fail,
 )
-from .errors import LimitError, MinervaMathError, UnsupportedInput
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
 from .lagrangian import (
     MAX_COORDINATES,
     DerivationError,
@@ -41,6 +41,12 @@ from .lagrangian import (
 )
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
+from .notation.derivatives import (
+    join_spaced_keywords,
+    refuse_latex_letter_runs,
+    resolve_derivatives,
+)
+from .notation.models import InputCode, InputReading, Normalization
 from .variational import polypath
 from .verify import _sample
 
@@ -164,9 +170,35 @@ def time_derivative(
     try:
         if lagrangian is not None:
             reject_equation(lagrangian, "Lagrangian")
+        spaced: tuple[Normalization, ...] = ()
+        if data.format == "text":
+            joined, spaced = join_spaced_keywords(data.input, coordinates)
+            if spaced:
+                data = data.model_copy(update={"input": joined})
+        else:
+            refuse_latex_letter_runs(data.input, coordinates)
         expr = parse_expression(data, limits)
+        resolved = resolve_derivatives(expr, coordinates, time, data.assumptions)
+        expr = resolved.expr
+        reading = InputReading(
+            format=data.format, normalizations=[*spaced, *resolved.normalizations]
+        )
     except DerivationError as exc:
-        return _fail(exc.status, exc.message, variables=variables, total_order=1)
+        return _fail(
+            exc.status, exc.message, variables=variables, total_order=1, diagnostic=exc.diagnostic
+        )
+    except ParseError as exc:
+        # A velocity of a coordinate nobody declared is a statement about the call, not about the maths.
+        status = (
+            Status.UNSUPPORTED if exc.code is InputCode.UNDECLARED_DEPENDENT else Status.PARSE_ERROR
+        )
+        return _fail(
+            status,
+            str(exc),
+            variables=variables,
+            total_order=1,
+            diagnostic=exc.diagnostic("latex"),
+        )
     except LimitError as exc:
         return _fail(Status.RESOURCE_LIMIT, str(exc), variables=variables, total_order=1)
     except UnsupportedInput as exc:
@@ -192,6 +224,7 @@ def time_derivative(
         "input_latex": input_latex,
         "variables": variables,
         "total_order": 1,
+        "reading": reading,
     }
     if any(s.name.endswith("_ddot") for s in expr.free_symbols):
         return _fail(

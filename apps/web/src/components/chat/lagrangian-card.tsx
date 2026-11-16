@@ -23,6 +23,18 @@ export function LagrangianCard({
       </div>
       {report.lagrangian_latex && <Formula latex={`L = ${report.lagrangian_latex}`} display />}
       <p className="text-sm text-muted">{report.message}</p>
+      {report.reading && report.reading.normalizations.length > 0 && (
+        <p className="mt-1 text-xs text-muted" aria-label="How the input was read">
+          Read as:{" "}
+          {report.reading.normalizations.map((n, i) => (
+            <span key={i}>
+              {i > 0 && "; "}
+              <code>{n.source}</code> → <code>{n.target}</code>
+              {n.note ? ` (${n.note})` : ""}
+            </span>
+          ))}
+        </p>
+      )}
 
       {report.equations.length > 0 && (
         <div className="mt-4">

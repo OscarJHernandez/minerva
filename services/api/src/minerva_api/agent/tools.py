@@ -46,6 +46,7 @@ from minerva_engine import (
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_engine.integration_strategy.models import StrategyName
+from minerva_engine.notation.models import Normalization
 from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -59,6 +60,7 @@ from minerva_knowledge.identities import (
     vector_identity_rules,
 )
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
@@ -70,6 +72,16 @@ from ..vector_log import log_vector
 from .choice import numbers_in
 from .events import Card, Evidence
 from .evidence import evidence_for
+from .mathinput import (
+    FORMAT_DESCRIPTION,
+    MATH_FIELDS,
+    SyntaxChoice,
+    input_lines,
+    input_record,
+    resolve_syntax,
+    strip_assignment,
+    transport_line,
+)
 from .prompts import GROUP_SUMMARY, GROUP_TOOLS
 from .segments import normalize
 from .toolsets import GROUPS, requested_groups
@@ -106,6 +118,9 @@ class ToolContext:
     # user wrote. `user_numbers is None` means the numbers came from the user.
     numbers_delegated: bool = False
     user_numbers: frozenset[float] | None = None
+    # Set by the loop for one call (and cleared after it): what `mathinput.prepare_arguments` removed from
+    # the model's arguments (markdown escapes, a `$` wrapper, `L =`...). `execute` shows it with the result.
+    input_notes: tuple[Normalization, ...] = ()
 
 
 @dataclass
@@ -151,6 +166,7 @@ class SimplifyArgs(BaseModel):
 
 
 class SimplifyToolArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     goal: Literal["simplify", "expand", "factor", "rewrite"] = Field(
         default="simplify",
         description="What the result should be: simplify (fewest operations), expand, factor, or "
@@ -164,6 +180,7 @@ class SimplifyToolArgs(SimplifyArgs):
 
 
 class DifferentiateArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT, description="The expression to differentiate, in LaTeX, e.g. x^x"
     )
@@ -177,6 +194,7 @@ class DifferentiateArgs(SimplifyArgs):
 
 
 class SeriesArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT,
         description="The expression to expand, in LaTeX, e.g. \\frac{1}{\\sqrt{1-x^2}}",
@@ -673,6 +691,7 @@ class DistributionArgs(SimplifyArgs):
 
 
 class IntegrateArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT, description="The integrand, in LaTeX, e.g. x\\cos x (no \\int or dx)"
     )
@@ -701,6 +720,7 @@ class IntegrateArgs(SimplifyArgs):
 
 
 class IdentitiesArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     query: str = Field(default="", max_length=200, description="Optional extra search words")
 
 
@@ -722,29 +742,6 @@ class SolveArgs(BaseModel):
         default=None, max_length=32, description="The unknown, if the equation has several symbols"
     )
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
-
-
-SyntaxChoice = Literal["auto", "latex", "text"]
-FORMAT_DESCRIPTION = (
-    "`auto` (default) reads text syntax (`theta_dot`, `*`, `sin(x)`) as text and anything with a "
-    "backslash as LaTeX; set `latex` or `text` to say which."
-)
-_TEXT_MARKERS = re.compile(r"\*|_d?dot\b|_ddot\b|\b[A-Za-z]\w*\s*\(")
-
-
-def resolve_syntax(source: str, requested: SyntaxChoice) -> Literal["latex", "text"]:
-    """Choose between the two strict parsers; the input itself is never rewritten."""
-    if requested != "auto":
-        return requested
-    return "text" if "\\" not in source and _TEXT_MARKERS.search(source) else "latex"
-
-
-def strip_assignment(source: str, name: str) -> str:
-    """`L = expr` -> `expr` for a single `=` whose left side is exactly `name`; anything else unchanged."""
-    left, sign, right = source.partition("=")
-    if sign and left.strip() == name and "=" not in right:
-        return right.strip()
-    return source
 
 
 class LagrangianArgs(BaseModel):
@@ -770,6 +767,7 @@ class AnalyzeLagrangianArgs(LagrangianArgs):
 
 
 class TimeDerivativeArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT,
         description=r"The quantity in LaTeX, using q for coordinates and \dot{q} for velocities, e.g. "
@@ -990,7 +988,13 @@ def _as_read(latex: str | None) -> str:
 
 
 def _expr(args: SimplifyArgs) -> ExpressionInput:
-    return ExpressionInput(input=args.latex, format="latex", assumptions=args.assumptions)
+    """The formula as the tool reads it: LaTeX unless the tool takes a `format` and it says text."""
+    syntax = getattr(args, "format", "latex")
+    return ExpressionInput(
+        input=args.latex,
+        format="text" if syntax == "text" else "latex",
+        assumptions=args.assumptions,
+    )
 
 
 ODE_SOLVERS = frozenset({"ode_solve_symbolic", "ode_solve_numerical"})
@@ -4004,7 +4008,7 @@ SCALAR_TOOLS = frozenset(
         "approximation",
     }
 )
-_EXPRESSION_FIELDS = ("latex", "equation", "expression", "integrand")
+_EXPRESSION_FIELDS = MATH_FIELDS
 
 
 def _argument_texts(arguments: dict[str, Any]) -> list[str]:
@@ -4090,6 +4094,17 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     output.error_category = category.value if category else None
     _classify_known(name, output)
     _add_hints(name, arguments, output)
+    reading, diagnostic = input_record(output.card.data)
+    lines, code = input_lines(output.status, reading, diagnostic)
+    if lines:
+        output.for_model = "\n".join([output.for_model, *lines])
+    if code and output.reason_code is None:
+        output.reason_code = code
+    if ctx.input_notes:
+        line = transport_line(ctx.input_notes)
+        if line is not None:
+            output.for_model = f"{output.for_model}\n{line}"
+        output.card.data["input_cleaned"] = [n.model_dump(mode="json") for n in ctx.input_notes]
     return output
 
 
@@ -4167,7 +4182,7 @@ def check_arguments(name: str, arguments: dict[str, Any]) -> bool:
     if tool is None:
         return False
     try:
-        tool.args_model(**arguments)
+        tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except (ValidationError, TypeError):
         return False
     return True

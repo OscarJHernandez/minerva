@@ -219,7 +219,12 @@ def transform_expression(
     """Chains of verified rewrites toward `goal`, using the handbook and SymPy's own moves."""
     status, message, features, _ = engine.features(expression)
     if status is not Status.OK:
-        return TransformResponse(status=status, message=message)
+        failed = TransformResponse(status=status, message=message)
+        if status is Status.PARSE_ERROR:
+            # The feature probe reports only a message; the transform reads the input the same way and
+            # carries the typed reason (why it could not be read, and the spelling that would work).
+            failed.diagnostic = engine.transform(expression, [], goal, target).diagnostic
+        return failed
     candidates = chain_candidates(kb, features, target or [], text, limit)
     rules = [e.rule for e in candidates if e.rule is not None]
     result = engine.transform(expression, rules, goal, target)
