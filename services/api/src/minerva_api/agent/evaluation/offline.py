@@ -125,8 +125,26 @@ def _trajectories() -> list[Trajectory]:
             ],
             expect_tool="analyze_lagrangian",
             must_back=WEDGE_MUST,
-            pending="velocities written Xdot / sdot are not read as velocities, and markdown-escaped "
-            "operators are a parse error",
+        ),
+        Trajectory(
+            "wedge-xdot-first-call",
+            "notation",
+            "the model writes the velocities as Xdot and gets the analysis at once",
+            wedge_ask,
+            lambda: [call("analyze_lagrangian", wedge_plain), say(WEDGE_ANSWER)],
+            expect_tool="analyze_lagrangian",
+            must_back=WEDGE_MUST,
+        ),
+        Trajectory(
+            "wedge-routed-xdot",
+            "notation",
+            "the Lagrangian is typed with Xdot, Ydot, sdot: routed, one model call",
+            "What are the equations of motion for L = " + WEDGE_PLAIN,
+            lambda: [say(WEDGE_ANSWER)],
+            routing=True,
+            expect_tool="analyze_lagrangian",
+            must_back=WEDGE_MUST,
+            comparable=False,
         ),
         Trajectory(
             "pendulum-original-failure",

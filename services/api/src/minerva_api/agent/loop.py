@@ -20,6 +20,7 @@ from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import ClaimEvidence, trace_scope
+from minerva_engine.notation.models import Normalization
 
 from ..logging import error_fields
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
@@ -36,6 +37,7 @@ from .events import (
     TurnDebug,
 )
 from .llm import LLMClient, LLMError, ToolCall, Usage
+from .mathinput import MATH_FIELDS, prepare_arguments
 from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
 from .reasoning import ReasoningGate, clean_reply
@@ -365,11 +367,7 @@ def _call_key(name: str, arguments: dict[str, Any]) -> str:
 
 def _dropped_assumptions(arguments: dict[str, Any], declared: Mapping[str, list[str]]) -> list[str]:
     """Symbols declared earlier that this call uses in its formula but does not declare again."""
-    formula = " ".join(
-        str(arguments[k])
-        for k in ("latex", "expression", "equation", "lagrangian")
-        if k in arguments
-    )
+    formula = " ".join(str(arguments[k]) for k in MATH_FIELDS if k in arguments)
     given = arguments.get("assumptions")
     given = given if isinstance(given, dict) else {}
     return [
@@ -845,6 +843,7 @@ async def _run_turn(
                 inherited: list[str] = []
                 inherited_from: list[str] = []
                 unverified_inputs: list[str] = []
+                input_notes: tuple[Normalization, ...] = ()
                 if call.malformed or not call.name:
                     defect = MALFORMED_TEXT.get(call.malformed or "missing_name", "it was unusable")
                     refusal = _error(
@@ -867,6 +866,9 @@ async def _run_turn(
                         arguments, references = resolution.arguments, resolution.count
                         inherited, inherited_from = resolution.inherited, resolution.inherited_from
                         unverified_inputs = resolution.unverified
+                        # Transport damage (markdown escapes, a `$` wrapper, `L =`) is removed before the
+                        # call is keyed, so a retry that differs only by it is the same call.
+                        arguments, input_notes = prepare_arguments(call.name, arguments)
                 if (
                     refusal is None
                     and call.name in ODE_SOLVERS
@@ -972,6 +974,7 @@ async def _run_turn(
                     )
                     ctx.matrix_sources = dict(declared_for_tools or {})
                     ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
+                    ctx.input_notes = input_notes
                     run_tool: Any = execute
                     if routed_now is not None and call.id == routed_now.call.id:
                         run_tool = _already_run(routed_now.output)
@@ -997,6 +1000,7 @@ async def _run_turn(
                         )  # class and location, never the message
                     finally:  # only this call is the model's: the context is not left marked
                         ctx.numbers_delegated, ctx.user_numbers = False, None
+                        ctx.input_notes = ()
                     seen[key] = call_id
                     if not output.arguments_valid:
                         invalid_seen[key] = output.for_model

@@ -46,6 +46,7 @@ from minerva_engine import (
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_engine.integration_strategy.models import StrategyName
+from minerva_engine.notation.models import Normalization
 from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -70,6 +71,15 @@ from ..vector_log import log_vector
 from .choice import numbers_in
 from .events import Card, Evidence
 from .evidence import evidence_for
+from .mathinput import (
+    FORMAT_DESCRIPTION,
+    MATH_FIELDS,
+    SyntaxChoice,
+    input_lines,
+    resolve_syntax,
+    strip_assignment,
+    transport_line,
+)
 from .prompts import GROUP_SUMMARY, GROUP_TOOLS
 from .segments import normalize
 from .toolsets import GROUPS, requested_groups
@@ -106,6 +116,9 @@ class ToolContext:
     # user wrote. `user_numbers is None` means the numbers came from the user.
     numbers_delegated: bool = False
     user_numbers: frozenset[float] | None = None
+    # Set by the loop for one call (and cleared after it): what `mathinput.prepare_arguments` removed from
+    # the model's arguments (markdown escapes, a `$` wrapper, `L =`...). `execute` shows it with the result.
+    input_notes: tuple[Normalization, ...] = ()
 
 
 @dataclass
@@ -722,29 +735,6 @@ class SolveArgs(BaseModel):
         default=None, max_length=32, description="The unknown, if the equation has several symbols"
     )
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
-
-
-SyntaxChoice = Literal["auto", "latex", "text"]
-FORMAT_DESCRIPTION = (
-    "`auto` (default) reads text syntax (`theta_dot`, `*`, `sin(x)`) as text and anything with a "
-    "backslash as LaTeX; set `latex` or `text` to say which."
-)
-_TEXT_MARKERS = re.compile(r"\*|_d?dot\b|_ddot\b|\b[A-Za-z]\w*\s*\(")
-
-
-def resolve_syntax(source: str, requested: SyntaxChoice) -> Literal["latex", "text"]:
-    """Choose between the two strict parsers; the input itself is never rewritten."""
-    if requested != "auto":
-        return requested
-    return "text" if "\\" not in source and _TEXT_MARKERS.search(source) else "latex"
-
-
-def strip_assignment(source: str, name: str) -> str:
-    """`L = expr` -> `expr` for a single `=` whose left side is exactly `name`; anything else unchanged."""
-    left, sign, right = source.partition("=")
-    if sign and left.strip() == name and "=" not in right:
-        return right.strip()
-    return source
 
 
 class LagrangianArgs(BaseModel):
@@ -2245,6 +2235,8 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         },
     )
     lines = [f"status={report.status.value}; {report.message}"]
+    extra_lines, reason = input_lines(report.status.value, report.reading, report.diagnostic)
+    lines.extend(extra_lines)
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
     quoted: list[tuple[str, str]] = []
     roles: dict[str, str] = {}
@@ -2298,6 +2290,7 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         quoted_latex=quoted,
         formula_roles=roles,
         variables=tuple(report.coordinates),
+        reason_code=reason,
     )
 
 
@@ -4004,7 +3997,7 @@ SCALAR_TOOLS = frozenset(
         "approximation",
     }
 )
-_EXPRESSION_FIELDS = ("latex", "equation", "expression", "integrand")
+_EXPRESSION_FIELDS = MATH_FIELDS
 
 
 def _argument_texts(arguments: dict[str, Any]) -> list[str]:
@@ -4090,6 +4083,11 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     output.error_category = category.value if category else None
     _classify_known(name, output)
     _add_hints(name, arguments, output)
+    if ctx.input_notes:
+        line = transport_line(ctx.input_notes)
+        if line is not None:
+            output.for_model = f"{output.for_model}\n{line}"
+        output.card.data["input_cleaned"] = [n.model_dump(mode="json") for n in ctx.input_notes]
     return output
 
 
