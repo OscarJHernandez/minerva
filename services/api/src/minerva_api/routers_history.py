@@ -5,14 +5,20 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, select, update
 
-from .db import Calculation, Derivation
+from .db import Calculation, Derivation, utcnow
 from .deps import DbDep, UserDep
-from .schemas import HistoryItem
+from .schemas import HistoryItem, Restored
+from .softdelete import maybe_purge, subtree_ids, within_window
 
-router = APIRouter(prefix="/v1/history", tags=["history"])
+
+def _housekeeping(db: DbDep) -> None:
+    maybe_purge(db)
+
+
+router = APIRouter(prefix="/v1/history", tags=["history"], dependencies=[Depends(_housekeeping)])
 
 
 def _item(row: Calculation) -> HistoryItem:
@@ -36,7 +42,7 @@ def list_history(
 ) -> list[HistoryItem]:
     rows = db.scalars(
         select(Calculation)
-        .where(Calculation.user_id == user.id)
+        .where(Calculation.user_id == user.id, Calculation.deleted_at.is_(None))
         .order_by(Calculation.created_at.desc())
         .limit(limit)
     )
@@ -46,28 +52,82 @@ def list_history(
 @router.get("/{calculation_id}", response_model=HistoryItem)
 def get_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> HistoryItem:
     row = db.scalar(
-        select(Calculation).where(Calculation.id == calculation_id, Calculation.user_id == user.id)
+        select(Calculation).where(
+            Calculation.id == calculation_id,
+            Calculation.user_id == user.id,
+            Calculation.deleted_at.is_(None),
+        )
     )
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return _item(row)
 
 
-@router.delete("/{calculation_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> Response:
-    # Steps that continued this one keep their place but lose the link (SQLite does not cascade).
+@router.delete("/{calculation_id}", response_model=Restored)
+def delete_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> Restored:
+    """Hide a step and the steps that continued it (a continuation of a removed step has nothing to
+    continue from). One shared stamp lets `restore` bring back exactly this set."""
+    row = db.scalar(
+        select(Calculation).where(
+            Calculation.id == calculation_id,
+            Calculation.user_id == user.id,
+            Calculation.deleted_at.is_(None),
+        )
+    )
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    ids = subtree_ids(db, user.id, row)
+    now = utcnow()
     db.execute(
         update(Calculation)
-        .where(Calculation.parent_id == calculation_id, Calculation.user_id == user.id)
-        .values(parent_id=None)
+        .where(Calculation.id.in_(ids), Calculation.user_id == user.id)
+        .values(deleted_at=now)
     )
-    result = db.execute(
-        delete(Calculation).where(Calculation.id == calculation_id, Calculation.user_id == user.id)
+    if row.derivation_id is not None:
+        derivation = db.get(Derivation, row.derivation_id)
+        if derivation is not None:
+            derivation.updated_at = now
+    db.commit()
+    return Restored(ids=ids)
+
+
+@router.post("/{calculation_id}/restore", response_model=Restored)
+def restore_history_item(calculation_id: uuid.UUID, user: UserDep, db: DbDep) -> Restored:
+    """Undo a deletion made by `DELETE /v1/history/{id}` within the undo window."""
+    row = db.scalar(
+        select(Calculation).where(
+            Calculation.id == calculation_id,
+            Calculation.user_id == user.id,
+            Calculation.deleted_at.is_not(None),
+        )
+    )
+    if row is None or row.deleted_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    if not within_window(row.deleted_at):
+        raise HTTPException(status.HTTP_410_GONE, "The undo window has passed")
+    if row.derivation_id is not None:
+        derivation = db.get(Derivation, row.derivation_id)
+        if derivation is None or derivation.deleted_at is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Its derivation was deleted")
+        derivation.updated_at = utcnow()
+    ids = list(
+        db.scalars(
+            select(Calculation.id).where(
+                Calculation.user_id == user.id,
+                Calculation.deleted_at == row.deleted_at,
+                Calculation.derivation_id == row.derivation_id
+                if row.derivation_id is not None
+                else Calculation.id == row.id,
+            )
+        )
+    )
+    db.execute(
+        update(Calculation)
+        .where(Calculation.id.in_(ids), Calculation.user_id == user.id)
+        .values(deleted_at=None)
     )
     db.commit()
-    if result.rowcount == 0:  # type: ignore[attr-defined]
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return Restored(ids=ids)
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)

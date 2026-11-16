@@ -308,6 +308,12 @@ export const api = {
   derivation: (id: string) => request<Derivation>(`/v1/derivations/${id}`),
   deleteDerivation: (id: string) => request<void>(`/v1/derivations/${id}`, { method: "DELETE" }),
   history: (limit = 50) => request<HistoryItem[]>(`/v1/history?limit=${limit}`),
-  deleteHistoryItem: (id: string) => request<void>(`/v1/history/${id}`, { method: "DELETE" }),
+  /** Hides the step and the steps that continued it; the answer names them. Undo with `restore*`. */
+  deleteHistoryItem: (id: string) =>
+    request<{ ids: string[] }>(`/v1/history/${id}`, { method: "DELETE" }),
+  restoreHistoryItem: (id: string) =>
+    request<{ ids: string[] }>(`/v1/history/${id}/restore`, { method: "POST" }),
+  restoreDerivation: (id: string) =>
+    request<{ ids: string[] }>(`/v1/derivations/${id}/restore`, { method: "POST" }),
   clearHistory: () => request<void>("/v1/history", { method: "DELETE" }),
 };

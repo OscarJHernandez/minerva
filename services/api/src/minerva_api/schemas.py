@@ -264,6 +264,12 @@ class HistoryItem(BaseModel):
     parent_id: uuid.UUID | None = None
 
 
+class Restored(BaseModel):
+    """The steps a delete hid or a restore brought back."""
+
+    ids: list[uuid.UUID]
+
+
 class DerivationSummary(BaseModel):
     id: uuid.UUID
     updated_at: datetime

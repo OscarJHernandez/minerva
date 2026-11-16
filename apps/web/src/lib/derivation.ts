@@ -208,18 +208,20 @@ function shown(item: HistoryItem): Shown {
  * back as the same expression (`I`, `e` and some function names), the text form does or is refused.
  * A step that was not verified (or has no text form) cannot be continued.
  */
-export function continuation(item: HistoryItem, which = 0): Continuation | null {
+export function continuation(item: HistoryItem, which?: number): Continuation | null {
   if (item.status !== "ok" && item.status !== "unchanged") return null;
   if (item.operation === "isolate") {
     // An equation has several solutions: a step continues from one of them (its value), and with
     // more than one the choice is the user's, so nothing is continued automatically.
     const solutions = (item.result as unknown as IsolateResult).solutions ?? [];
-    if (solutions.length !== 1 && which === 0 && solutions.length > 1) return null;
-    const chosen = solutions[which];
+    // `which` undefined is "no choice made": only a lone solution is then continued. An explicit
+    // choice, including the first of several (index 0), is the user's and is honoured.
+    const index = which ?? (solutions.length === 1 ? 0 : -1);
+    const chosen = solutions[index];
     return chosen ? { text: chosen.text, latex: chosen.latex } : null;
   }
   if (item.operation === "statistical_model") {
-    return statContinuations(item)[which] ?? null;
+    return statContinuations(item)[which ?? 0] ?? null;
   }
   const r = shown(item);
   if (!r.result_text) return null;

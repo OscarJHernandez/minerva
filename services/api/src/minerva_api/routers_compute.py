@@ -245,11 +245,16 @@ def _check_links(db: DbDep, user: UserDep, body: Links) -> None:
             )
         return
     derivation = db.get(Derivation, body.derivation_id)
-    if derivation is None or derivation.user_id != user.id:
+    if derivation is None or derivation.user_id != user.id or derivation.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     if body.parent_id is not None:
         parent = db.get(Calculation, body.parent_id)
-        if parent is None or parent.user_id != user.id or parent.derivation_id != derivation.id:
+        if (
+            parent is None
+            or parent.user_id != user.id
+            or parent.derivation_id != derivation.id
+            or parent.deleted_at is not None
+        ):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 "The step to continue from is not in this derivation.",
@@ -272,7 +277,12 @@ def _parent_domain(db: DbDep, user: UserDep, links: Links) -> ContinuationDomain
     if not links.save or links.parent_id is None:
         return ContinuationDomain()
     parent = db.get(Calculation, links.parent_id)
-    if parent is None or parent.user_id != user.id or parent.derivation_id != links.derivation_id:
+    if (
+        parent is None
+        or parent.user_id != user.id
+        or parent.derivation_id != links.derivation_id
+        or parent.deleted_at is not None
+    ):
         return ContinuationDomain()
     prior = ContinuationDomain.model_validate(parent.result.get("inherited_domain") or {})
     solution_conditions: list[str] = []

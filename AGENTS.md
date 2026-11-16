@@ -39,6 +39,13 @@ Request flow for identities: API -> `engine.features` (sandbox) -> `knowledge.ca
 (FTS5 + structural features) -> `engine.apply_rules` (sandbox: match, check conditions, rewrite,
 verify). Retrieval only proposes; the engine decides.
 
+Workbench deletion is a soft delete with a ten-minute undo (`services/api/.../softdelete.py`): deleting a step hides it and
+every step that continued it (one shared `deleted_at` stamp), deleting a derivation hides it and its live steps, and
+`POST /v1/history/{id}/restore` / `POST /v1/derivations/{id}/restore` bring back exactly the rows with that stamp inside
+`UNDO_WINDOW`. The client never re-sends a result, so an undo cannot plant an unverified one. Every read path filters
+`deleted_at IS NULL` (a deleted step is not a valid parent); expired rows are purged for all accounts by the next request
+(throttled) and at start-up, not when their owner returns. `DELETE /v1/history` (clear all) stays a hard delete.
+
 Text search of the handbook (`Fts5Retriever`, `search_handbook`, the handbook page) never answers with entries that
 share only a filler word: a query word whose stem is in more than 25% of the entries is ignored (measured on the
 index, no stop-word list; a query of only such words returns nothing), and an entry must match enough of the
