@@ -2,7 +2,9 @@
 
 import { Math } from "@minerva/ui/math";
 import Link from "next/link";
-import { useState } from "react";
+import { AssumptionReview } from "../assumption-review";
+import { ResultActions } from "../result-actions";
+import type { ComponentProps } from "react";
 import {
   assumptionsSummary,
   continuation,
@@ -13,6 +15,7 @@ import {
 } from "@/lib/derivation";
 import type {
   ApplyIdentityResult,
+  Assumptions,
   DifferentiateResult,
   DistributionNotation,
   DistributionResult,
@@ -36,6 +39,10 @@ import type { VariationReport } from "@/lib/variation-types";
 import { StatisticsPanel } from "../statistics-panel";
 import { DiagnosticsView, IsolatePanel, Premises, StepResultPanel } from "../step-result-panel";
 
+export type ResultOperation = Parameters<
+  NonNullable<ComponentProps<typeof ResultActions>["onChoose"]>
+>[0];
+
 interface Props {
   item: HistoryItem;
   /** 1-based position in the derivation. */
@@ -44,6 +51,8 @@ interface Props {
   parentNumber: number | null;
   current: boolean;
   /** `which`: for an equation, the index of the solution to continue with. */
+  onApprove?: (item: HistoryItem, assumptions: Assumptions) => Promise<string | null>;
+  onChoose?: (item: HistoryItem, operation: ResultOperation) => void;
   onContinue: (item: HistoryItem, edit: boolean, which?: number) => void;
   onDelete: (item: HistoryItem) => void;
   /** The user's answer to "is that a Dirac delta?": runs the step again with it. */
@@ -136,29 +145,14 @@ function FullResult({
   }
 }
 
-function Copy({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className="text-xs text-accent hover:underline"
-      onClick={async () => {
-        await navigator.clipboard?.writeText(value);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }}
-    >
-      {copied ? "Copied" : label}
-    </button>
-  );
-}
-
 export function StepCard({
   item,
   number,
   parentNumber,
   current,
   onContinue,
+  onChoose,
+  onApprove,
   onDelete,
   onAnswerNotation,
 }: Props) {
@@ -174,10 +168,10 @@ export function StepCard({
   const extra = item.result as unknown as {
     restrictions_latex?: string[];
     restrictions_complete?: boolean;
+    inherited_domain?: { restrictions_latex: string[]; restrictions_complete: boolean };
   };
   const restrictions = failed ? [] : (extra.restrictions_latex ?? []);
   const restrictionsIncomplete = !failed && extra.restrictions_complete === false;
-  const continuing = cont !== null;
   const identity =
     item.operation === "apply_identity" ? (item.result as unknown as ApplyIdentityResult) : null;
   const isolated = item.operation === "isolate" ? (item.result as unknown as IsolateResult) : null;
@@ -236,7 +230,7 @@ export function StepCard({
         {item.format === "latex" ? (
           <Math latex={item.input} />
         ) : (
-          <code className="font-mono text-xs">{item.input}</code>
+          <code className="break-all font-mono text-xs">{item.input}</code>
         )}
       </div>
 
@@ -251,6 +245,19 @@ export function StepCard({
           <IsolatePanel result={isolated} onContinue={(i) => onContinue(item, false, i)} />
         </div>
       )}
+      {item.operation === "simplify" &&
+        onApprove &&
+        !item.parent_id &&
+        !(item.result as { chat_source?: unknown }).chat_source &&
+        ((item.result as SimplifyResult).blocked ?? []).map((blocked) => (
+          <AssumptionReview
+            key={blocked.rule_id + blocked.direction + blocked.matched_latex}
+            conditions={blocked.unmet_conditions}
+            assumptions={item.assumptions}
+            onApprove={(next) => onApprove(item, next)}
+            action="Approve and rerun simplification"
+          />
+        ))}
       {failed && message && <p className="mt-2 text-sm text-warn">{message}</p>}
 
       {restrictions.length > 0 && (
@@ -264,10 +271,13 @@ export function StepCard({
           ))}
         </p>
       )}
-      {restrictions.length > 0 && continuing && (
-        <p className="text-xs text-muted">
-          A step that continues from this result does not carry these exclusions.
+      {(extra.inherited_domain?.restrictions_latex ?? []).map((restriction) => (
+        <p key={restriction} className="text-xs text-muted">
+          Source restriction: <Math latex={restriction} />
         </p>
+      ))}
+      {extra.inherited_domain?.restrictions_complete === false && (
+        <p className="text-xs text-warn">Some source restrictions could not be determined.</p>
       )}
       {restrictionsIncomplete && (
         <p className="mt-1 text-xs text-warn">
@@ -300,8 +310,29 @@ export function StepCard({
             >
               Edit
             </button>
-            {cont.latex && <Copy label="Copy LaTeX" value={cont.latex} />}
-            <Copy label="Copy text" value={cont.text} />
+            <ResultActions
+              text={cont.text}
+              latex={cont.latex}
+              limited={
+                restrictions.length > 0 ||
+                restrictionsIncomplete ||
+                !!extra.inherited_domain?.restrictions_latex.length ||
+                extra.inherited_domain?.restrictions_complete === false
+              }
+              onChoose={
+                onChoose &&
+                [
+                  "simplify",
+                  "differentiate",
+                  "integrate",
+                  "series",
+                  "rewrite",
+                  "apply_identity",
+                ].includes(item.operation)
+                  ? (operation) => onChoose(item, operation)
+                  : undefined
+              }
+            />
           </>
         ) : (
           failed && <span className="text-xs text-muted">No result to continue from.</span>

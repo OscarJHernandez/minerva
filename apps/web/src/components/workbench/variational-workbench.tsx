@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormDraft } from "@/lib/use-form-draft";
 import { useEffect, useId, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import type { HistoryItem } from "@/lib/types";
@@ -43,15 +44,18 @@ const BUSY_TEXT: Partial<Record<VariationAction, string>> = {
  */
 export function VariationalWorkbench({
   restore,
+  draftKey,
   onUnauthorized,
   onSaved,
 }: {
+  draftKey?: string;
   restore: VariationRestore | null;
   onUnauthorized: () => void;
   onSaved: () => void;
 }) {
   const uid = useId();
   const [form, setForm] = useState<VariationForm>(() => blankForm());
+  useFormDraft(form, setForm, draftKey, restore !== null);
   const [derivationId, setDerivationId] = useState<string | null>(null);
   const [steps, setSteps] = useState<HistoryItem[]>([]);
   const [busy, setBusy] = useState<VariationAction | null>(null);

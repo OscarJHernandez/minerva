@@ -465,6 +465,8 @@ export interface DistributionResult {
 export type Applicability = "applicable" | "conditions_not_satisfied" | "not_verified" | "no_match";
 
 export interface RuleCondition {
+  bound_latex?: string | null;
+  symbol?: string | null;
   variable: string;
   assumption: Assumption;
 }

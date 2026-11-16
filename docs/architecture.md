@@ -378,6 +378,23 @@ and explains; it never computes and never decides correctness.
   are ordinary user text. The picture is held in memory for the request only: never stored, never logged (the
   log line has status, duration and user id). Transcription quality depends on the model and is not scored yet.
 
+### Workbench continuity
+
+The expression inspector parses with the same sandboxed engine as compute. It can show how the engine reads an
+input and proposes a format conversion only when the two parses produce the same expression and record the same
+denominators. For example, `x**2 + pi` can switch to LaTeX, while a fraction that cancels as it is read stays in
+its source format if printing it would lose an exclusion.
+
+Start a new calculation from a saved step or use **Continue in workbench** on a supported scalar chat result.
+For example, after simplifying `(x**2-1)/(x-1)`, differentiating the result preserves the source exclusion
+of `x = 1` on the saved derivative. Operations that need to enforce a restricted domain, such as integration,
+are refused when the continuation cannot enforce it. Chat handoffs resolve the result from the account's
+stored conversation. A series handoff operates on its Taylor polynomial. For a blocked handbook match,
+**Review assumptions** shows which concrete symbols need declarations before running the calculation again.
+
+Workbench drafts use the same account-scoped tab storage as chat. Workbench mode search and recent-history
+search operate on the options and saved items already loaded in the browser.
+
 ### Controlled transformation steps
 
 `steps.py` (choose a part, rewrite it), `substitute.py` (user relations), `isolate.py` (solve for a variable) and

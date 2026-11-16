@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormDraft } from "@/lib/use-form-draft";
 import { useEffect, useId, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import type { VectorRequest, VectorResult } from "@/lib/types";
@@ -35,15 +36,18 @@ interface Run {
  */
 export function VectorWorkbench({
   restore,
+  draftKey,
   onUnauthorized,
   onSaved,
 }: {
   /** A saved problem to load into the form (the nonce lets the same one be loaded again). */
+  draftKey?: string;
   restore: { form: VectorForm; nonce: number } | null;
   onUnauthorized: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<VectorForm>(() => blankForm());
+  useFormDraft(form, setForm, draftKey, restore !== null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

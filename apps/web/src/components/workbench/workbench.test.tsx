@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryItem } from "@/lib/types";
 import { identities, match, step } from "@/test/fixtures";
@@ -137,6 +137,29 @@ beforeEach(() => {
 });
 
 describe("Workbench derivation", () => {
+  it("keeps newer edits when an earlier request completes", async () => {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(api.simplify).mockImplementationOnce(async (request) => {
+      await pending;
+      const saved = await fakes.simplify(request as never);
+      return saved as unknown as Awaited<ReturnType<typeof api.simplify>>;
+    });
+    render(<Workbench />);
+    type("x + 1");
+    fireEvent.click(screen.getByRole("button", { name: "Simplify" }));
+    await waitFor(() => expect(api.simplify).toHaveBeenCalledOnce());
+    type("y + 2");
+    await act(async () => {
+      release();
+      await pending;
+    });
+    expect(screen.getByLabelText("Mathematical expression")).toHaveValue("y + 2");
+    expect(screen.queryByRole("listitem", { name: /Step 1: Simplify/ })).not.toBeInTheDocument();
+  });
+
   it("adds a step, then continues from its text form with the step as parent", async () => {
     render(<Workbench />);
     type("\\sin^2 x + \\cos^2 x + x");

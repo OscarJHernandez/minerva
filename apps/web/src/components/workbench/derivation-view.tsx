@@ -2,14 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import { continuations } from "@/lib/derivation";
-import type { DistributionNotation, HistoryItem } from "@/lib/types";
-import { StepCard } from "./step-card";
+import type { Assumptions, DistributionNotation, HistoryItem } from "@/lib/types";
+import { StepCard, type ResultOperation } from "./step-card";
 
 interface Props {
   steps: HistoryItem[];
   /** The step the editor is continuing, if any. */
   currentId: string | null;
   onContinue: (item: HistoryItem, edit: boolean, which?: number) => void;
+  onApprove?: (item: HistoryItem, assumptions: Assumptions) => Promise<string | null>;
+  onChoose?: (item: HistoryItem, operation: ResultOperation) => void;
   onDelete: (item: HistoryItem) => void;
   onAnswerNotation?: (item: HistoryItem, notation: DistributionNotation) => Promise<void>;
 }
@@ -19,6 +21,8 @@ export function DerivationView({
   steps,
   currentId,
   onContinue,
+  onChoose,
+  onApprove,
   onDelete,
   onAnswerNotation,
 }: Props) {
@@ -66,6 +70,8 @@ export function DerivationView({
             parentNumber={item.parent_id ? (numbers.get(item.parent_id) ?? null) : null}
             current={item.id === currentId && continuations(item).length > 0}
             onContinue={onContinue}
+            onChoose={onChoose}
+            onApprove={onApprove}
             onDelete={onDelete}
             onAnswerNotation={onAnswerNotation}
           />

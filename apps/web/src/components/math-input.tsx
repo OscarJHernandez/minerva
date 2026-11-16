@@ -47,7 +47,7 @@ export function MathInput({ value, onChange, onSubmit }: Props) {
     if (el.value !== value) el.setValue(value, { silenceNotifications: true });
     const handleInput = () => changeRef.current(el.value);
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Enter" && !event.shiftKey) {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         submitRef.current();
       }
@@ -90,7 +90,7 @@ export function MathInput({ value, onChange, onSubmit }: Props) {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 onSubmit();
               }
@@ -100,6 +100,7 @@ export function MathInput({ value, onChange, onSubmit }: Props) {
             className="w-full rounded border border-rule bg-raised p-3 font-mono text-sm"
             placeholder="\\sin^2 x + \\cos^2 x"
           />
+          <p className="mt-1 text-xs text-muted">Ctrl/Cmd+Enter runs the operation.</p>
           {value.trim() && (
             <div
               className="mt-2 overflow-x-auto rounded border border-rule bg-sunk p-3"

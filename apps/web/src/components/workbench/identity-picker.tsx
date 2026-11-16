@@ -1,6 +1,6 @@
 "use client";
 
-import type { IdentitiesResult, IdentityMatch } from "@/lib/types";
+import type { Assumptions, IdentitiesResult, IdentityMatch } from "@/lib/types";
 import { IdentitiesPanel } from "../identities-panel";
 
 interface Props {
@@ -13,6 +13,8 @@ interface Props {
   disabled: boolean;
   onFind: () => void;
   onApply: (match: IdentityMatch) => void;
+  assumptions?: Assumptions;
+  onApprove?: (next: Assumptions) => Promise<string | null>;
 }
 
 /**
@@ -28,6 +30,8 @@ export function IdentityPicker({
   disabled,
   onFind,
   onApply,
+  assumptions,
+  onApprove,
 }: Props) {
   return (
     <div>
@@ -46,7 +50,10 @@ export function IdentityPicker({
       )}
       {result && !stale && (
         <div className="mt-3">
-          <IdentitiesPanel result={result} apply={{ busy: applying, onApply }} />
+          <IdentitiesPanel
+            result={result}
+            apply={{ busy: applying, onApply, assumptions, onApprove }}
+          />
         </div>
       )}
       {!result && !stale && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormDraft } from "@/lib/use-form-draft";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import {
@@ -70,14 +71,17 @@ function Labelled({ label, children }: { label: string; children: React.ReactNod
  */
 export function StatMechWorkbench({
   restore,
+  draftKey,
   onUnauthorized,
   onSaved,
 }: {
+  draftKey?: string;
   restore: { request: StatMechRequest; nonce: number } | null;
   onUnauthorized: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<StatForm>(() => blankForm());
+  useFormDraft(form, setForm, draftKey, restore !== null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
