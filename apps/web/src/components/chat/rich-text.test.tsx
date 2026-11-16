@@ -111,6 +111,44 @@ describe("RichText", () => {
     expect(container.textContent).toContain("<img src=x onerror=alert(1)>");
   });
 
+  it("renders *italic* and _italic_, and leaves products, snake_case and stray stars alone", () => {
+    const { container } = render(
+      <RichText
+        segments={[
+          seg(
+            "text",
+            "from Greek *brachistos* and _chronos_; then 2 * 3 * 4, snake_case_name, a lone * star and **bold *both***",
+          ),
+        ]}
+      />,
+    );
+    const italics = [...container.querySelectorAll("em")].map((e) => e.textContent);
+    expect(italics).toContain("brachistos");
+    expect(italics).toContain("chronos");
+    expect(container.textContent).toContain("2 * 3 * 4");
+    expect(container.textContent).toContain("snake_case_name");
+    expect(container.textContent).toContain("a lone * star");
+    expect(container.textContent).not.toContain("*brachistos*");
+  });
+
+  it("does not read a star between a formula and text as emphasis", () => {
+    const { container } = render(
+      <RichText
+        segments={[seg("text", "a "), seg("math", "x*y", "unchecked"), seg("text", " * b")]}
+      />,
+    );
+    expect(container.querySelector("em")).toBeNull();
+    expect(container.textContent).toContain("* b");
+  });
+
+  it("renders a ### heading, not the hashes", () => {
+    const { container } = render(
+      <RichText segments={[seg("text", "Intro\n### The Problem Statement\nBody")]} />,
+    );
+    expect(container.textContent).not.toContain("###");
+    expect(container.querySelector("h1,h2,h3,h4,h5,h6")?.textContent).toBe("The Problem Statement");
+  });
+
   it("shows a quoted formula as quoted, not as verified, and says why", () => {
     const { container } = render(
       <RichText
