@@ -243,4 +243,24 @@ describe("stageTimings", () => {
     expect(stageTimings(null)).toEqual([]);
     expect(stageTimings(debug([]))).toEqual([]);
   });
+  it("shows a rule-routed first call and a declined route", () => {
+    const rows = buildTimeline(
+      debug([
+        ev("agent.routed", 1, {
+          decision: "routed",
+          reason: "lagrangian_equations",
+          tool: "analyze_lagrangian",
+        }),
+        ev("agent.routed", 2, {
+          decision: "declined",
+          reason: "not_verified_or_refused",
+          tool: "analyze_lagrangian",
+        }),
+      ]),
+      [],
+    );
+    expect(rows[0]).toMatchObject({ kind: "route", tone: "ok" });
+    expect(rows[0]!.title).toContain("no model call");
+    expect(rows[1]).toMatchObject({ kind: "route", tone: "warn" });
+  });
 });

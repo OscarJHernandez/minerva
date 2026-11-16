@@ -654,3 +654,58 @@ describe("a turn with no stored reply", () => {
     expect(out).not.toContain("## No reply is stored");
   });
 });
+
+describe("routing, aliases, context sizes and evidence links", () => {
+  it("are listed in the report", () => {
+    const routed: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        trace: [
+          {
+            ...assistant.content.trace![0]!,
+            name: "analyze_lagrangian",
+            requested_name: "mechanics.analyze_lagrangian",
+            alias_kind: "group_prefix",
+            routed: true,
+          },
+        ],
+        debug: {
+          ...assistant.content.debug!,
+          routing: {
+            decision: "routed",
+            reason: "lagrangian_equations",
+            tool: "analyze_lagrangian",
+          },
+          llm_calls: [
+            {
+              ms: 5,
+              text_chars: 0,
+              tool_calls: 0,
+              est_system: 2900,
+              est_tools: 4600,
+              est_history: 0,
+              est_turn: 700,
+            },
+          ],
+          claims: [
+            {
+              value: "\\ddot\\phi = 1",
+              status: "supported",
+              detail: "",
+              evidence_source: "r1",
+              evidence_rule: "same_left_side",
+              evidence_basis: "numeric",
+            },
+          ],
+        },
+      },
+    };
+    const out = buildDebugReport({ ...input, messages: [user, routed] });
+    expect(out).toContain("routing: routed (lagrangian_equations) → analyze_lagrangian");
+    expect(out).toContain('the model wrote "mechanics.analyze_lagrangian" (read as group_prefix)');
+    expect(out).toContain("chosen by a rule");
+    expect(out).toContain("| 1 | 2900 | 4600 | 0 | 700 |");
+    expect(out).toContain("linked to result r1 by same_left_side, numeric");
+  });
+});

@@ -484,7 +484,9 @@ def assemble(groups: Sequence[str] | None = None, *, load_tools: bool = True) ->
     if load_tools and groups is not None:
         rule(LOAD_TOOLS_NOTICE)
     for name in names:
-        lines.append(f"Tools: {name}. {GROUP_ROUTER[name]}")
+        lines.append(
+            f"{name.capitalize()} tools (call them by exactly these names) for {GROUP_ROUTER[name]}"
+        )
         for body in GROUP_RULES[name]:
             rule(body)
     return "\n".join(lines) + "\n"

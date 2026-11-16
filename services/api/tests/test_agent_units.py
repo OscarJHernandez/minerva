@@ -404,7 +404,7 @@ def test_lagrangian_tool_offers_the_numerical_solution_and_echoes_the_request(
         ctx,
     )
     assert out.card.data["request"]["coordinates"] == ["x"]
-    assert "next step: integrate_motion" in out.for_model and "do not choose them" in out.for_model
+    assert "integrate_motion" in out.for_model and "never yours" in out.for_model
     report = out.card.data["report"]
     assert all(e["verification"]["passed"] for e in report["equations"])
 

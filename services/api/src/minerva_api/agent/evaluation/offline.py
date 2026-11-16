@@ -1,0 +1,522 @@
+"""Offline orchestration suite: the real agent loop, real tools and the real claim check, with a replayed model.
+
+It measures what the loop does with a given sequence of model actions, so a change to dispatch, parsing,
+routing, evidence or context size shows up as a number without any network or model host. It does not
+measure how well a language model chooses those actions (that is `scripts/eval_models.py`, which needs a
+host). Each trajectory is data: the user's message, what the model does at each call, and what must be true
+afterwards. Deterministic fields (calls, tokens estimated by `budget.estimate_tokens`, marks) are what
+`--check` compares; timings are reported and never gated.
+
+Metrics per trajectory
+    model_calls, tool_calls, valid_calls, unknown_names, aliases, routed   how the loop was driven
+    recovered         a refused call was followed by an accepted one of the same tool
+    est_tokens_in/out estimated request and reply tokens summed over model calls (pessimistic, comparable)
+    formulas, with_evidence, evidence_pct, unsupported   claims in the final answer and their marks
+    math_ok           every claim that must be backed is, none that must not be is, the tool ran ok
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+from ...settings import Settings
+from ..budget import estimate_tokens, request_chars
+from ..llm import Chunk, ToolCall
+from ..loop import AgentLimits, TurnInfo, is_claim, is_lone_symbol, run_agent
+from ..params import defaults
+from ..replay import ReplayLLM, call, say
+from ..tools import ToolContext
+
+BACKED = ("from_tool", "checked", "conditional")
+LAGRANGIAN_LATEX = (
+    r"\frac12 m R^2 (\dot{\theta}^2 + \sin^2(\theta) \dot{\phi}^2) - m g R \cos(\theta)"
+)
+LAGRANGIAN_TEXT = "1/2*m*R^2*(theta_dot^2 + sin(theta)^2*phi_dot^2) - m*g*R*cos(theta)"
+THETA_RIGHT = r"\ddot\theta = \sin\theta\cos\theta\,\dot\phi^2 + \frac{g}{R}\sin\theta"
+THETA_WRONG = r"\ddot\theta = \sin\theta\cos\theta\,\dot\phi^2 - \frac{g}{R}\sin\theta"
+PHI_RIGHT = r"\ddot\phi = -2\cot\theta\,\dot\theta\dot\phi"
+P_PHI = r"p_\phi = mR^2\sin^2\theta\,\dot\phi"
+ENERGY = r"E=\frac12 mR^2(\dot\theta^2+\sin^2\theta\,\dot\phi^2)+mgR\cos\theta"
+PENDULUM_ANSWER = (
+    f"With $\\theta$ and $\\phi$ as coordinates:\n\n$${THETA_RIGHT}$$\n\n$${PHI_RIGHT}$$\n\n"
+    f"$\\phi$ is cyclic, so ${P_PHI}$ is conserved, and so is ${ENERGY}$."
+)
+PENDULUM_MUST = [THETA_RIGHT, PHI_RIGHT, P_PHI, ENERGY]
+
+
+@dataclass
+class Trajectory:
+    id: str
+    category: str
+    description: str
+    message: str
+    replies: Callable[[], list[list[Chunk]]]
+    routing: bool = False
+    expect_tool: str | None = None
+    must_back: list[str] = field(default_factory=list)  # claims that must end up backed
+    must_not_back: list[str] = field(default_factory=list)  # claims that must NOT be backed
+    # Run on the unmodified code too: false for trajectories that describe behaviour only the fixes make
+    # possible (a router-chosen first call, a model that now succeeds at once).
+    comparable: bool = True
+
+
+def _bad_call(**extra: Any) -> list[Chunk]:
+    return [Chunk(tool_calls=[ToolCall("simplify", {}, **extra)])]
+
+
+def _trajectories() -> list[Trajectory]:
+    ask = f"Find the equations of motion for $L = {LAGRANGIAN_LATEX}$"
+    ask_text = f"What are the equations of motion for L = {LAGRANGIAN_TEXT}"
+    pend_args_text = {"lagrangian": LAGRANGIAN_TEXT, "coordinates": ["theta", "phi"]}
+    pend_args_latex = {"lagrangian": LAGRANGIAN_LATEX, "coordinates": ["theta", "phi"]}
+    return [
+        Trajectory(
+            "pendulum-original-failure",
+            "notation",
+            "the recorded failure: a dotted tool name, text syntax sent as LaTeX, a retry in LaTeX, then the answer",
+            ask,
+            lambda: [
+                call("mechanics.analyze_lagrangian", pend_args_text),
+                call("analyze_lagrangian", pend_args_text),
+                call("analyze_lagrangian", pend_args_latex),
+                say(PENDULUM_ANSWER),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=PENDULUM_MUST,
+        ),
+        Trajectory(
+            "pendulum-routed-latex",
+            "lagrangian",
+            "the request is routed: one rule-chosen tool call, then the model writes the answer",
+            ask,
+            lambda: [say(PENDULUM_ANSWER)],
+            routing=True,
+            expect_tool="analyze_lagrangian",
+            must_back=PENDULUM_MUST,
+            comparable=False,
+        ),
+        Trajectory(
+            "pendulum-routed-text-velocities",
+            "notation",
+            "the same request with theta_dot / phi_dot written as text",
+            ask_text,
+            lambda: [say(PENDULUM_ANSWER)],
+            routing=True,
+            expect_tool="analyze_lagrangian",
+            must_back=PENDULUM_MUST,
+            comparable=False,
+        ),
+        Trajectory(
+            "pendulum-model-calls-with-text",
+            "notation",
+            "no routing: the model sends text syntax straight to analyze_lagrangian",
+            ask_text,
+            lambda: [call("analyze_lagrangian", pend_args_text), say(PENDULUM_ANSWER)],
+            expect_tool="analyze_lagrangian",
+            must_back=PENDULUM_MUST,
+        ),
+        Trajectory(
+            "pendulum-assignment-and-greek",
+            "notation",
+            "the model sends `L = ...` with theta_dot, as a model often does",
+            ask_text,
+            lambda: [
+                call(
+                    "analyze_lagrangian", {**pend_args_text, "lagrangian": "L = " + LAGRANGIAN_TEXT}
+                ),
+                say(PENDULUM_ANSWER),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=PENDULUM_MUST,
+        ),
+        Trajectory(
+            "pendulum-wrong-sign-stays-unbacked",
+            "lagrangian",
+            "a correct answer containing one wrong equation: the wrong one must not be backed",
+            ask,
+            lambda: [
+                call("analyze_lagrangian", pend_args_latex),
+                say(PENDULUM_ANSWER.replace(THETA_RIGHT, THETA_WRONG)),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=[PHI_RIGHT, P_PHI, ENERGY],
+            must_not_back=[THETA_WRONG],
+        ),
+        Trajectory(
+            "cyclic-oscillator",
+            "conserved",
+            "a one-dimensional oscillator: energy is conserved",
+            r"Equations of motion for $L=\frac12 m\dot{x}^2-\frac12 k x^2$ and what is conserved?",
+            lambda: [
+                call(
+                    "analyze_lagrangian",
+                    {"lagrangian": r"\frac12 m\dot{x}^2-\frac12 k x^2", "coordinates": ["x"]},
+                ),
+                say(r"The energy $E=\frac12 m\dot{x}^2+\frac12 k x^2$ is conserved."),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=[r"E=\frac12 m\dot{x}^2+\frac12 k x^2"],
+        ),
+        Trajectory(
+            "simplify-with-functions-prefix",
+            "algebra",
+            "the model prefixes the tool name with `functions.`",
+            r"Simplify $\frac{x^2-1}{x-1}$",
+            lambda: [
+                call("functions.simplify", {"latex": r"\frac{x^2-1}{x-1}"}),
+                say(r"It equals $x+1$, valid for $x \neq 1$."),
+            ],
+            expect_tool="simplify",
+            must_back=[],
+        ),
+        Trajectory(
+            "simplify-text-syntax-then-fix",
+            "notation",
+            "text syntax in a LaTeX field is refused with the fix; the model corrects it",
+            r"Simplify $\sin^2 x+\cos^2 x$",
+            lambda: [
+                call("simplify", {"latex": "sin(x)^2 + cos(x)^2"}),
+                call("simplify", {"latex": r"\sin(x)^2 + \cos(x)^2"}),
+                say(r"The expression equals $1$."),
+            ],
+            expect_tool="simplify",
+        ),
+        Trajectory(
+            "unreadable-arguments-then-valid",
+            "recovery",
+            "the host delivers a tool call whose arguments are not JSON; the model is told and sends a valid one",
+            r"Simplify $\frac{x^2-1}{x-1}$",
+            lambda: [
+                _bad_call(malformed="arguments_not_json"),
+                call("simplify", {"latex": r"\frac{x^2-1}{x-1}"}),
+                say(r"It equals $x+1$ for $x \neq 1$."),
+            ],
+            expect_tool="simplify",
+        ),
+        Trajectory(
+            "tool-call-written-as-prose",
+            "recovery",
+            "the model writes its tool call as text; it is told to send a real call",
+            r"Differentiate $x^2 \sin x$",
+            lambda: [
+                say('{"name": "differentiate", "arguments": {"latex": "x^2 \\\\sin x"}}'),
+                call(
+                    "differentiate",
+                    {"latex": r"x^2 \sin x", "variables": [{"name": "x", "order": 1}]},
+                ),
+                say(r"The derivative is $x\left(x\cos x+2\sin x\right)$."),
+            ],
+            expect_tool="differentiate",
+        ),
+        Trajectory(
+            "unknown-tool-is-refused",
+            "recovery",
+            "a tool that does not exist is refused (never redirected), the model then uses the right one",
+            r"Integrate $x\cos x$",
+            lambda: [
+                call("mechanics.integrate", {"latex": r"x\cos x", "variable": "x"}),
+                call("integrate", {"latex": r"x\cos x", "variable": "x"}),
+                say(r"An antiderivative is $x\sin x+\cos x$."),
+            ],
+            expect_tool="integrate",
+            must_back=[],
+        ),
+        Trajectory(
+            "integrate-antiderivative",
+            "calculus",
+            "an indefinite integral and its antiderivative",
+            r"Integrate $x\cos x$",
+            lambda: [
+                call("integrate", {"latex": r"x\cos x", "variable": "x"}),
+                say(r"An antiderivative is $x\sin x+\cos x$."),
+            ],
+            expect_tool="integrate",
+        ),
+        Trajectory(
+            "matrix-expansion-noncommuting",
+            "matrix",
+            "(A+B)^2 for 2x2 matrices keeps the order of products",
+            r"Expand $(A+B)^2$ for $2\times2$ matrices $A$ and $B$",
+            lambda: [
+                call(
+                    "matrix_calculus",
+                    {
+                        "latex": r"(A+B)^2",
+                        "matrices": [
+                            {"name": "A", "rows": 2, "cols": 2},
+                            {"name": "B", "rows": 2, "cols": 2},
+                        ],
+                        "action": "simplify",
+                    },
+                ),
+                say(r"It is $A^2+AB+BA+B^2$, and in general $AB \neq BA$."),
+            ],
+            expect_tool="matrix_calculus",
+            must_not_back=[r"(A+B)^2 = A^2 + 2AB + B^2"],
+        ),
+        Trajectory(
+            "ode-first-order",
+            "ode",
+            "a linear first-order equation solved in closed form",
+            r"Solve $y' = -2y$",
+            lambda: [
+                call("ode_solve_symbolic", {"equations": ["y' = -2 y"], "independent": "x"}),
+                say(r"The solutions are $y(x) = C_1 e^{-2x}$."),
+            ],
+            expect_tool="ode_solve_symbolic",
+        ),
+        Trajectory(
+            "vector-divergence-product",
+            "vector",
+            "the divergence of a scalar times a vector field; vector identities are never sampled",
+            r"What is $\nabla\cdot(f\mathbf{A})$?",
+            lambda: [
+                call(
+                    "vector_calculus",
+                    {
+                        "expression": r"\nabla\cdot(f\mathbf{A})",
+                        "coordinates": "cartesian",
+                        "fields": [
+                            {"name": "A", "kind": "vector"},
+                            {"name": "f", "kind": "scalar"},
+                        ],
+                        "action": "evaluate",
+                    },
+                ),
+                say(
+                    r"By the product rule $\nabla\cdot(f\mathbf{A}) = f\,\nabla\cdot\mathbf{A} + \mathbf{A}\cdot\nabla f$."
+                ),
+            ],
+            expect_tool="vector_calculus",
+            must_not_back=[
+                r"\nabla\cdot(f\mathbf{A}) = f\,\nabla\cdot\mathbf{A} + \mathbf{A}\cdot\nabla f"
+            ],
+        ),
+    ]
+
+
+TRAJECTORIES = _trajectories()
+IDS = [t.id for t in TRAJECTORIES]
+
+
+def _reply_tokens(reply: list[Chunk]) -> int:
+    chars = sum(len(c.text or "") for c in reply)
+    for chunk in reply:
+        for tc in chunk.tool_calls or []:
+            chars += len(tc.name) + len(json.dumps(tc.arguments))
+    return estimate_tokens(chars)
+
+
+def _formulas(message: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        s
+        for b in message["blocks"]
+        if b["kind"] == "text"
+        for s in b["segments"]
+        if s["type"] != "text"
+    ]
+
+
+def _norm(latex: str) -> str:
+    return "".join(latex.split())
+
+
+async def _play(llm: ReplayLLM, trajectory: Trajectory, ctx: ToolContext) -> dict[str, Any]:
+    info = TurnInfo()
+    if hasattr(info, "routing"):
+        info.routing = trajectory.routing
+    events = [
+        e
+        async for e in run_agent(
+            llm,
+            [{"role": "user", "content": trajectory.message}],
+            ctx,
+            AgentLimits(retry_delay_seconds=0),
+            info=info,
+            params=defaults(
+                Settings()
+            ),  # the chat route's defaults: tools go in groups (toolset auto)
+        )
+    ]
+    return next(e["data"] for e in events if e["event"] == "message")
+
+
+def run_trajectory(trajectory: Trajectory, ctx: ToolContext) -> dict[str, Any]:
+    """Run one trajectory and return its metrics (`deterministic` is what `--check` compares)."""
+    replies = trajectory.replies()
+    llm = ReplayLLM(replies)
+    started = time.monotonic()
+    message = asyncio.run(_play(llm, trajectory, ctx))
+    total_ms = round((time.monotonic() - started) * 1000)
+    debug = message["debug"]
+    trace = message["trace"]
+
+    tokens_in = 0
+    for seen, tools in zip(llm.seen, llm.tools_seen, strict=True):
+        system = str(seen[0].get("content") or "")
+        tokens_in += estimate_tokens(request_chars(system, tools, seen[1:]))
+    used = replies[: len(llm.seen)]
+    tokens_out = sum(_reply_tokens(r) for r in used)
+
+    formulas = _formulas(message)
+    counted = [f for f in formulas if not is_lone_symbol(f["value"])]
+    backed_values = {_norm(f["value"]) for f in counted if f["status"] in BACKED}
+    claims = [f for f in counted if is_claim(f["value"])]
+    unsupported = [f for f in claims if f["status"] not in BACKED]
+
+    def backed(latex: str) -> bool:
+        return _norm(latex.strip("$ ")) in backed_values
+
+    tools_ok = [s for s in trace if s.get("status") == "ok"]
+    refused = [s for s in trace if s.get("status") not in ("ok", None)]
+    recovered = bool(refused) and any(
+        s["name"] == trajectory.expect_tool for s in tools_ok if s.get("status") == "ok"
+    )
+    math_ok = (
+        (
+            trajectory.expect_tool is None
+            or any(s["name"] == trajectory.expect_tool for s in tools_ok)
+        )
+        and all(backed(c) for c in trajectory.must_back)
+        and not any(backed(c) for c in trajectory.must_not_back)
+    )
+    claim_ms = next(
+        (
+            e.get("verify_ms")
+            for e in debug.get("events", [])
+            if e.get("event") == "verification.completed" and e.get("scope") == "claims"
+        ),
+        None,
+    )
+    deterministic = {
+        "model_calls": len(debug["llm_calls"]),
+        "tool_calls": len(trace),
+        "valid_calls": sum(1 for s in trace if s.get("arguments_valid")),
+        "ok_calls": len(tools_ok),
+        "unknown_names": sum(1 for s in trace if s.get("error_category") == "unknown_tool"),
+        "aliases": sum(1 for s in trace if s.get("alias_kind")),
+        "routed": sum(1 for s in trace if s.get("routed")),
+        "recovered": recovered,
+        "est_tokens_in": tokens_in,
+        "est_tokens_out": tokens_out,
+        "formulas": len(counted),
+        "with_evidence": sum(1 for f in counted if f["status"] in BACKED),
+        "claims": len(claims),
+        "unsupported_claims": len(unsupported),
+        "contradicted": sum(1 for f in counted if f["status"] == "contradicted"),
+        "unparsed_claims": sum(1 for c in debug["claims"] if c["status"] == "unparsed"),
+        "stop_reason": debug.get("stop_reason"),
+        "math_ok": math_ok,
+    }
+    deterministic["evidence_pct"] = (
+        round(100 * deterministic["with_evidence"] / deterministic["formulas"], 1)
+        if deterministic["formulas"]
+        else None
+    )
+    return {
+        "id": trajectory.id,
+        "category": trajectory.category,
+        "description": trajectory.description,
+        "comparable": trajectory.comparable,
+        "deterministic": deterministic,
+        "timing": {
+            "total_ms": total_ms,
+            "tool_ms": sum(s.get("duration_ms") or 0 for s in trace),
+            "claim_check_ms": claim_ms,
+        },
+    }
+
+
+def run_suite(ctx: ToolContext, ids: list[str] | None = None) -> dict[str, Any]:
+    chosen = [t for t in TRAJECTORIES if ids is None or t.id in ids]
+    results = [run_trajectory(t, ctx) for t in chosen]
+    det = [r["deterministic"] for r in results]
+    summary = {
+        "trajectories": len(results),
+        "math_ok": sum(1 for d in det if d["math_ok"]),
+        "model_calls": sum(d["model_calls"] for d in det),
+        "tool_calls": sum(d["tool_calls"] for d in det),
+        "invalid_calls": sum(d["tool_calls"] - d["valid_calls"] for d in det),
+        "unknown_names": sum(d["unknown_names"] for d in det),
+        "est_tokens_in": sum(d["est_tokens_in"] for d in det),
+        "est_tokens_out": sum(d["est_tokens_out"] for d in det),
+        "unsupported_claims": sum(d["unsupported_claims"] for d in det),
+        "unparsed_claims": sum(d["unparsed_claims"] for d in det),
+    }
+    return {"format": 1, "summary": summary, "results": results}
+
+
+def deterministic_view(report: dict[str, Any]) -> dict[str, Any]:
+    """What `--check` compares: no timings."""
+    return {
+        "summary": report["summary"],
+        "results": {r["id"]: r["deterministic"] for r in report["results"]},
+    }
+
+
+def compare(base: dict[str, Any], new: dict[str, Any]) -> list[str]:
+    """Human-readable differences; a line starting `REGRESSION` is a change for the worse.
+
+    Only trajectories present and comparable in both reports are compared, so adding a trajectory is
+    never a regression. Tokens count as worse when they grow by more than 5%."""
+    old = {r["id"]: r for r in base["results"]}
+    lines: list[str] = []
+    for r in new["results"]:
+        before = old.get(r["id"])
+        if before is None or not r["comparable"]:
+            continue
+        a, b = before["deterministic"], r["deterministic"]
+        tag = r["id"]
+        if a["math_ok"] and not b["math_ok"]:
+            lines.append(f"REGRESSION {tag}: no longer mathematically correct")
+        if (a["evidence_pct"] or 0) > (b["evidence_pct"] or 0):
+            lines.append(f"REGRESSION {tag}: evidence {a['evidence_pct']}% -> {b['evidence_pct']}%")
+        if b["est_tokens_in"] > a["est_tokens_in"] * 1.05:
+            lines.append(
+                f"REGRESSION {tag}: input tokens {a['est_tokens_in']} -> {b['est_tokens_in']}"
+            )
+        if b["tool_calls"] - b["valid_calls"] > a["tool_calls"] - a["valid_calls"]:
+            lines.append(f"REGRESSION {tag}: more invalid tool calls")
+        for key in (
+            "model_calls",
+            "ok_calls",
+            "est_tokens_in",
+            "evidence_pct",
+            "unsupported_claims",
+        ):
+            if a[key] != b[key]:
+                lines.append(f"{tag}: {key} {a[key]} -> {b[key]}")
+    return lines
+
+
+def markdown(report: dict[str, Any]) -> str:
+    s = report["summary"]
+    out = [
+        "# Offline orchestration suite",
+        "",
+        "The real agent loop, tools and claim check with a replayed model (no network). Tokens are estimates "
+        "(`budget.estimate_tokens`, deliberately pessimistic); timings are one run on one machine.",
+        "",
+        f"{s['math_ok']}/{s['trajectories']} trajectories end mathematically correct · "
+        f"{s['model_calls']} model calls · {s['tool_calls']} tool calls "
+        f"({s['invalid_calls']} invalid, {s['unknown_names']} unknown names) · "
+        f"≈{s['est_tokens_in']} tokens in, ≈{s['est_tokens_out']} out · "
+        f"{s['unsupported_claims']} unbacked claims",
+        "",
+        "| Trajectory | Category | Model calls | Tool calls (ok) | Routed | Tokens in | Evidence | Math ok | Tool ms | Claim ms |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for r in report["results"]:
+        d, t = r["deterministic"], r["timing"]
+        evidence = "-" if d["evidence_pct"] is None else f"{d['with_evidence']}/{d['formulas']}"
+        out.append(
+            f"| {r['id']} | {r['category']} | {d['model_calls']} | {d['tool_calls']} ({d['ok_calls']}) | "
+            f"{d['routed']} | {d['est_tokens_in']} | {evidence} | {'yes' if d['math_ok'] else 'NO'} | "
+            f"{t['tool_ms']} | {t['claim_check_ms'] if t['claim_check_ms'] is not None else '-'} |"
+        )
+    return "\n".join(out) + "\n"

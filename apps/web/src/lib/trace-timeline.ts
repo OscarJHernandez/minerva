@@ -14,7 +14,7 @@ export interface TimelineRow {
   /** Milliseconds since the turn started (monotonic clock on the server). */
   t_ms: number;
   step: number | null;
-  kind: "start" | "model" | "tool" | "verify" | "retry" | "stop" | "end";
+  kind: "start" | "model" | "tool" | "verify" | "retry" | "route" | "stop" | "end";
   title: string;
   detail: string;
   tone: "neutral" | "ok" | "warn" | "bad";
@@ -184,6 +184,21 @@ export function buildTimeline(
         });
         break;
       }
+      case "agent.routed":
+        rows.push({
+          ...base,
+          kind: "route",
+          tone: e.decision === "routed" ? "ok" : "warn",
+          title:
+            e.decision === "routed"
+              ? `Routed to ${str(e.tool)} by rule (no model call)`
+              : `Rule proposed ${str(e.tool)}; not used`,
+          detail:
+            e.decision === "routed"
+              ? "the request left no doubt which tool to run; its result was verified like any other"
+              : "the tool did not return a verified result, so the model plans the turn",
+        });
+        break;
       case "agent.retry":
         rows.push({
           ...base,

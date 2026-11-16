@@ -768,6 +768,52 @@ def _primes_to_dots(source: str, jets: JetBinding) -> str:
     return re.sub(rf"(?<![A-Za-z\\])({names})('{{1,4}})", spell, source)
 
 
+_PLAIN_FUNCTIONS = (
+    "arcsinh|arccosh|arctanh|arcsin|arccos|arctan|sinh|cosh|tanh|coth|sin|cos|tan|cot|sec|csc|"
+    "exp|ln|log|sqrt"
+)
+_GREEK_WORDS = (
+    "alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|rho|sigma|tau|"
+    "upsilon|phi|chi|psi|omega"
+)
+_TEXT_COMMANDS = re.compile(
+    r"\\(?:text|textrm|textit|mathrm|mathit|mathbf|mathbb|mathcal|mathsf|operatorname)\s*\{[^{}]*\}"
+)
+_SUBSCRIPT_GROUPS = re.compile(r"_\s*\{[^{}]*\}")
+_LETTER_SUBSCRIPT = re.compile(r"(?<!\\)_\s*([A-Za-z]{2,})")
+_BARE_FUNCTION = re.compile(rf"(?<![\\A-Za-z])({_PLAIN_FUNCTIONS})\s*\(")
+_BARE_GREEK = re.compile(rf"(?<![\\A-Za-z])({_GREEK_WORDS})(?![A-Za-z])")
+
+
+def reject_text_syntax(source: str) -> None:
+    """Refuse input that is plain-text syntax written where LaTeX is expected.
+
+    The LaTeX grammar reads a run of letters as a product of one-letter symbols, so `theta_dot` becomes
+    `t*h*e*t*a_d*o*t` and `sin(x)` becomes `s*i*n*x`: a verified answer about another expression. These
+    forms are almost never meant as products, so they are refused with the way to write them.
+    """
+    text = _SUBSCRIPT_GROUPS.sub("_{}", _TEXT_COMMANDS.sub("{}", source))
+    if match := _LETTER_SUBSCRIPT.search(text):
+        word = match.group(1)
+        raise ParseError(
+            f"a subscript of several letters is ambiguous in LaTeX (`_{word}` reads as the subscript "
+            f"`{word[0]}` times `{word[1:]}`): write `_{{{word}}}`, `\\dot{{x}}` for a time derivative, "
+            "or use format text for names such as theta_dot"
+        )
+    if match := _BARE_FUNCTION.search(text):
+        name = match.group(1)
+        raise ParseError(
+            f"`{name}(` without a backslash is read as a product of letters in LaTeX: write "
+            f"`\\{name}(…)`, or use format text"
+        )
+    if match := _BARE_GREEK.search(text):
+        name = match.group(1)
+        raise ParseError(
+            f"the letters `{name}` without a backslash are read as a product of one-letter symbols: "
+            f"write `\\{name}`, or use format text"
+        )
+
+
 def parse_latex(
     source: str,
     assumptions: dict[str, list[str]] | None = None,
@@ -786,6 +832,7 @@ def parse_latex(
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
         raise LimitError("input is too long")
+    reject_text_syntax(source)
     builder = Builder(
         assumptions,
         limits,

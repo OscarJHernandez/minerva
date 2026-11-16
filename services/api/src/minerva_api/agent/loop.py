@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
-from minerva_engine import trace_scope
+from minerva_engine import ClaimEvidence, trace_scope
 
 from ..logging import error_fields
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
@@ -40,6 +40,7 @@ from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
 from .reasoning import ReasoningGate, clean_reply
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
+from .routing import plan_route
 from .segments import normalize, split_segments
 from .tools import (
     NEEDS_CHOICE,
@@ -61,11 +62,13 @@ from .toolsets import (
     grow,
     prompt_for,
     requested_groups,
+    resolve_tool_name,
     tool_names,
 )
 from .tracing import (
     AgentCompleted,
     AgentRetry,
+    AgentRouted,
     AgentStarted,
     AgentStopped,
     ErrorCategory,
@@ -73,6 +76,7 @@ from .tracing import (
     LLMResponse,
     OutcomeKind,
     RetryReason,
+    RouteReason,
     Sink,
     StopReason,
     ToolCompleted,
@@ -106,6 +110,9 @@ class TurnInfo:
     api_version: str = ""
     trace_id: str = ""  # one per agent request; generated here when the caller has none
     sink: Sink | None = None  # where trace events go as they happen (the server log); may be None
+    # Run a tool without asking the model when the request leaves no doubt which (see routing.py). Off by
+    # default so scripted tests see only what they scripted; the chat route turns it on from settings.
+    routing: bool = False
 
 
 # What the user reads when a turn ends for a reason other than a finished answer. Fixed text: it names
@@ -203,6 +210,65 @@ def _latest_user_message(history: Sequence[dict[str, Any]]) -> tuple[str, bool]:
 
 def _ms(since: float) -> int:
     return int((time.monotonic() - since) * 1000)
+
+
+@dataclass
+class _Routed:
+    """A call decided by rule (routing.py) that already ran, its result waiting for the loop to record."""
+
+    call: ToolCall
+    output: ToolOutput
+
+
+async def _run_route(
+    route: Any, ctx: ToolContext, tracer: Tracer, debug: TurnDebug, remaining: Any
+) -> _Routed | None:
+    """Run the routed call like any other. Anything but a verified result drops the route, and the model
+    plans the turn as if there had been none (the decision is recorded either way)."""
+    call = ToolCall(route.tool, dict(route.arguments))
+    reason = RouteReason(route.reason)
+    try:
+        output = await asyncio.wait_for(
+            run_in_threadpool(execute, call.name, call.arguments, ctx),
+            timeout=max(remaining(), 1.0),
+        )
+    except Exception:
+        output = None
+    if output is None or not output.arguments_valid or output.status != "ok":
+        tracer.emit(AgentRouted, decision="declined", reason=RouteReason.DECLINED, tool=route.tool)
+        debug.routing = {
+            "decision": "declined",
+            "reason": RouteReason.DECLINED.value,
+            "tool": route.tool,
+        }
+        return None
+    tracer.emit(AgentRouted, decision="routed", reason=reason, tool=route.tool)
+    debug.routing = {"decision": "routed", "reason": reason.value, "tool": route.tool}
+    return _Routed(call, output)
+
+
+def _already_run(output: ToolOutput) -> Any:
+    """Stands in for `execute` for the routed call, which ran before the first step."""
+
+    def run(*_args: Any) -> ToolOutput:
+        return output
+
+    return run
+
+
+def _resolve_calls(calls: Sequence[ToolCall]) -> tuple[list[ToolCall], dict[str, tuple[str, str]]]:
+    """Calls with accepted aliases replaced by the registered name; `{call id: (requested, kind)}`."""
+    resolved: list[ToolCall] = []
+    aliases: dict[str, tuple[str, str]] = {}
+    for call in calls:
+        name, kind = resolve_tool_name(call.name, TOOLS) if call.name else (call.name, None)
+        if kind is not None:
+            aliases[call.id] = (call.name, kind)
+            call = ToolCall(
+                name=name, arguments=call.arguments, id=call.id, malformed=call.malformed
+            )
+        resolved.append(call)
+    return resolved, aliases
 
 
 def _sanitized(name: str) -> str:
@@ -420,6 +486,7 @@ async def run_agent(
     prior_unverified: Mapping[str, Sequence[str]] | None = None,
     info: TurnInfo | None = None,
     declared_for_tools: Mapping[str, str] | None = None,
+    prior_evidence: Sequence[Mapping[str, Any]] = (),
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
 
@@ -451,6 +518,7 @@ async def run_agent(
                 equations,
                 prior_unverified,
                 declared_for_tools,
+                prior_evidence,
             ):
                 yield event
     finally:
@@ -476,6 +544,7 @@ async def _run_turn(
     equations: EquationTable | None = None,
     prior_unverified: Mapping[str, Sequence[str]] | None = None,
     declared_for_tools: Mapping[str, str] | None = None,
+    prior_evidence: Sequence[Mapping[str, Any]] = (),
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
     # Without parameters (tests, scripts that predate them) everything is sent and nothing is trimmed.
@@ -555,12 +624,19 @@ async def _run_turn(
         max_tool_calls=limits.max_tool_calls,
         history_messages=len(history),
     )
+    pre: _Routed | None = None
     try:
+        if info.routing and not replying and (route := plan_route(user_text)) is not None:
+            pre = await _run_route(route, ctx, tracer, debug, remaining)
+            if pre is not None and toolset == "auto":
+                needed = group_of(pre.call.name)
+                active = grow(active, [needed] if needed else [])
         while step < limits.max_steps:
             if remaining() <= 0:
                 stop = StopReason.TIME_LIMIT
                 break
             step += 1
+            routed_now = pre if step == 1 else None
             tools_now = _schemas_for(tool_names(active, toolset))
             system_now = prompt_for(active, toolset)
             trimmed = 0
@@ -583,50 +659,69 @@ async def _run_turn(
             else:
                 messages[0] = {"role": "system", "content": system_now}
             estimate = estimate_tokens(request_chars(system_now, tools_now, messages[1:]))
+            breakdown = {
+                "est_system": estimate_tokens(len(system_now)),
+                "est_tools": estimate_tokens(len(json.dumps(tools_now))),
+                "est_history": estimate_tokens(
+                    sum(message_chars(m) for m in messages[1 : 1 + kept_history])
+                ),
+                "est_turn": estimate_tokens(
+                    sum(message_chars(m) for m in messages[1 + kept_history :])
+                ),
+            }
             debug.prompt_estimate_tokens = max(debug.prompt_estimate_tokens, estimate)
             debug.groups = list(active)
-            tracer.emit(
-                LLMRequest,
-                step,
-                message_count=len(messages),
-                tool_count=len(tools_now),
-                prompt_estimate_tokens=estimate,
-                window=params.num_ctx if params is not None else 0,
-                dropped_messages=trimmed,
-                groups_loaded=len(active),
-            )
+            if routed_now is None:
+                tracer.emit(
+                    LLMRequest,
+                    step,
+                    message_count=len(messages),
+                    tool_count=len(tools_now),
+                    prompt_estimate_tokens=estimate,
+                    window=params.num_ctx if params is not None else 0,
+                    dropped_messages=trimmed,
+                    groups_loaded=len(active),
+                )
             result = _Step()
-            async for ev in _model_step(llm, messages, tools_now, remaining()):
-                if ev["event"] == "_step":
-                    result = ev["data"]
-                else:
-                    yield ev
+            if (
+                routed_now is not None
+            ):  # the call was decided by rule and already ran: no model call
+                result = _Step(calls=[routed_now.call])
+            else:
+                async for ev in _model_step(llm, messages, tools_now, remaining()):
+                    if ev["event"] == "_step":
+                        result = ev["data"]
+                    else:
+                        yield ev
             usage = result.usage
-            debug.llm_calls.append(
-                LLMCallDebug(
-                    ms=result.latency_ms,
-                    text_chars=len(result.text),
-                    tool_calls=len(result.calls),
+            if routed_now is None:
+                debug.llm_calls.append(
+                    LLMCallDebug(
+                        ms=result.latency_ms,
+                        text_chars=len(result.text),
+                        tool_calls=len(result.calls),
+                        first_token_ms=result.first_token_ms,
+                        finish_reason=_finish(result),
+                        prompt_tokens=usage.prompt_tokens if usage else None,
+                        completion_tokens=usage.completion_tokens if usage else None,
+                        cost_usd=usage.cost_usd if usage else None,
+                        **breakdown,
+                    )
+                )
+                tracer.emit(
+                    LLMResponse,
+                    step,
+                    latency_ms=result.latency_ms,
                     first_token_ms=result.first_token_ms,
                     finish_reason=_finish(result),
-                    prompt_tokens=usage.prompt_tokens if usage else None,
-                    completion_tokens=usage.completion_tokens if usage else None,
-                    cost_usd=usage.cost_usd if usage else None,
+                    tool_calls=len(result.calls),
+                    proposed_tool=_sanitized(result.calls[0].name) if result.calls else None,
+                    text_chars=len(result.text),
+                    tokens_in=usage.prompt_tokens if usage else None,
+                    tokens_out=usage.completion_tokens if usage else None,
                 )
-            )
-            tracer.emit(
-                LLMResponse,
-                step,
-                latency_ms=result.latency_ms,
-                first_token_ms=result.first_token_ms,
-                finish_reason=_finish(result),
-                tool_calls=len(result.calls),
-                proposed_tool=_sanitized(result.calls[0].name) if result.calls else None,
-                text_chars=len(result.text),
-                tokens_in=usage.prompt_tokens if usage else None,
-                tokens_out=usage.completion_tokens if usage else None,
-            )
-            text, calls = result.text, result.calls
+            text = result.text
+            calls, aliases = _resolve_calls(result.calls)
 
             if result.timed_out:
                 stop = StopReason.TIME_LIMIT
@@ -877,9 +972,12 @@ async def _run_turn(
                     )
                     ctx.matrix_sources = dict(declared_for_tools or {})
                     ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
+                    run_tool: Any = execute
+                    if routed_now is not None and call.id == routed_now.call.id:
+                        run_tool = _already_run(routed_now.output)
                     try:
                         output = await asyncio.wait_for(
-                            run_in_threadpool(execute, call.name, arguments, ctx),
+                            run_in_threadpool(run_tool, call.name, arguments, ctx),
                             timeout=max(remaining(), 1.0),
                         )
                     except TimeoutError:
@@ -981,6 +1079,19 @@ async def _run_turn(
                         engine_ms=engine_ms,
                         result_id=result_id,
                         model_arguments=call.arguments if arguments != call.arguments else None,
+                        routed=routed_now is not None and call.id == routed_now.call.id,
+                        formula_roles={
+                            f: r for f, r in output.formula_roles.items() if f in output.known_latex
+                        },
+                        variables=list(output.variables),
+                        restrictions=[
+                            r
+                            for key in ("restrictions_latex", "inherited_restrictions_latex")
+                            for r in (output.card.data.get(key) or [])
+                            if isinstance(r, str)
+                        ],
+                        requested_name=aliases[call.id][0] if call.id in aliases else None,
+                        alias_kind=aliases[call.id][1] if call.id in aliases else None,
                         assumptions_dropped=dropped,
                         verified_latex=list(output.known_latex),
                         quoted=dict(output.quoted_latex),
@@ -1134,12 +1245,27 @@ async def _run_turn(
         yield {"event": "phase", "data": {"phase": "checking"}}
     claims_started = time.monotonic()
     debug.claims, debug.claim_check = await _check_claims_in_budget(
-        blocks, ctx, trace, remaining(), prior_relations, prior_assumptions, prior_matrices
+        blocks,
+        ctx,
+        trace,
+        remaining(),
+        prior_relations,
+        prior_assumptions,
+        prior_matrices,
+        prior_evidence,
     )
     claims_ms = _ms(claims_started)
     if equations is not None:  # numbers are assigned here, in reading order, never by the model
         number_blocks(blocks, equations, result_ids)
-    formulas = [s for b in blocks if b.kind == "text" for s in b.segments if s.type != "text"]
+    # A lone symbol (`\\theta`) asserts nothing: it is not counted as a formula that lacks evidence. An
+    # expression that is not a relation still counts, and is not sent to the claim checker.
+    formulas = [
+        s
+        for b in blocks
+        if b.kind == "text"
+        for s in b.segments
+        if s.type != "text" and not is_lone_symbol(s.value)
+    ]
     backed = sum(1 for s in formulas if s.status in ("from_tool", "checked", "conditional"))
     debug.formulas, debug.formulas_with_evidence = len(formulas), backed
     debug.evidence_pct = round(100 * backed / len(formulas), 1) if formulas else None
@@ -1153,11 +1279,11 @@ async def _run_turn(
             reason="verified" if debug.claim_check == "ok" else "error",
             verify_ms=claims_ms,
             claims=len(debug.claims),
-            claims_holding=statuses.count("holds"),
+            claims_holding=statuses.count("holds") + statuses.count("supported"),
             claims_conditional=statuses.count("conditional"),
             claims_contradicted=statuses.count("fails"),
             claims_unchecked=len(debug.claims)
-            - sum(statuses.count(s) for s in ("holds", "conditional", "fails")),
+            - sum(statuses.count(s) for s in ("holds", "supported", "conditional", "fails")),
         )
     debug.duration_ms = _ms(started)
     debug.error = failure
@@ -1279,6 +1405,74 @@ def _prose_of(blocks: list[Block]) -> list[str]:
 
 
 MAX_CLAIMS = 12
+MAX_EVIDENCE = 40
+# An equation or inequality is a claim Minerva can test; a lone symbol such as `r` or `\\theta` is not
+# (same rule as `isClaim` in apps/web/src/components/chat/rich-text.tsx).
+_RELATION = re.compile(r"=|<|>|\\(?:le|ge|leq|geq|neq|ne|approx|equiv|sim|propto|to|implies)\b")
+
+
+def is_claim(latex: str) -> bool:
+    return _RELATION.search(latex) is not None
+
+
+# A symbol on its own: a letter or Greek command, optionally accented, subscripted or primed (`\\theta`,
+# `m`, `x_1`, `\\dot{\\phi}`, `p_{\\theta}`). Naming it asserts nothing, so there is nothing to verify.
+_LONE_SYMBOL = re.compile(
+    r"\s*(?:\\(?:dot|ddot|bar|hat|vec|tilde)\s*\{\s*)?(?:\\[A-Za-z]+|[A-Za-z])\s*\}?"
+    r"(?:_\s*(?:\{[^{}]*\}|\\[A-Za-z]+|\w))?(?:'+)?\s*"
+)
+
+
+def is_lone_symbol(latex: str) -> bool:
+    return _LONE_SYMBOL.fullmatch(latex) is not None
+
+
+def claim_evidence(
+    trace: Sequence[TraceStep], prior: Sequence[Mapping[str, Any]] = ()
+) -> list[ClaimEvidence]:
+    """The verified equations of this conversation, newest last, for linking the model's equations to them.
+
+    Only formulas a verified result produced (`verified_latex`) and that are equations. How each was
+    established comes from the engine's own result; a result without a symbolic zero is `numeric`.
+    """
+    rows: list[Mapping[str, Any]] = [*prior, *(step.model_dump() for step in trace)]
+    found: list[ClaimEvidence] = []
+    for row in rows:
+        if row.get("status") not in ("ok", None) or row.get("repeated"):
+            continue
+        evidence = row.get("evidence") or {}
+        symbolic = isinstance(evidence, Mapping) and evidence.get("check") == "symbolic_zero"
+        roles = row.get("formula_roles") or {}
+        for latex in row.get("verified_latex") or []:
+            if "=" not in latex:
+                continue
+            found.append(
+                ClaimEvidence(
+                    latex=latex,
+                    source=str(row.get("result_id") or ""),
+                    basis="symbolic" if symbolic else "numeric",
+                    role=str(roles.get(latex, "")),
+                    variables=[str(v) for v in row.get("variables") or []],
+                    restrictions=[str(r) for r in row.get("restrictions") or []],
+                )
+            )
+    return found[-MAX_EVIDENCE:]
+
+
+def _supported_note(result: Any) -> str:
+    where = (
+        " It holds where " + ", ".join(f"${r}$" for r in result.restrictions)
+        if result.restrictions
+        else ""
+    )
+    basis = (
+        "equivalent by a symbolic zero"
+        if result.evidence_basis == "symbolic"
+        else "equivalent when sampled"
+    )
+    return f"{result.detail}; {basis}.{where}"
+
+
 CLAIM_CHECK_MIN_SECONDS = 2.0  # the claim check may run a little past the deadline, never unbounded
 
 
@@ -1290,6 +1484,7 @@ async def _check_claims_in_budget(
     prior_relations: Sequence[str] = (),
     prior_assumptions: dict[str, list[str]] | None = None,
     prior_matrices: Sequence[str] = (),
+    prior_evidence: Sequence[Mapping[str, Any]] = (),
 ) -> tuple[list[ClaimDebug], str]:
     """Run the claim check inside what is left of the turn's time.
 
@@ -1301,7 +1496,13 @@ async def _check_claims_in_budget(
     try:
         report = await asyncio.wait_for(
             check_model_claims(
-                blocks, ctx, trace, prior_relations, prior_assumptions, prior_matrices
+                blocks,
+                ctx,
+                trace,
+                prior_relations,
+                prior_assumptions,
+                prior_matrices,
+                prior_evidence,
             ),
             timeout=max(seconds_left, CLAIM_CHECK_MIN_SECONDS),
         )
@@ -1318,7 +1519,10 @@ def _pending_claims(blocks: list[Block]) -> list[Any]:
         for b in blocks
         if b.kind == "text"
         for s in b.segments
-        if s.type != "text" and s.status == "unchecked" and len(s.value) <= 500
+        if s.type != "text"
+        and s.status == "unchecked"
+        and len(s.value) <= 500
+        and is_claim(s.value)
     ][:MAX_CLAIMS]
 
 
@@ -1329,6 +1533,7 @@ async def check_model_claims(
     prior_relations: Sequence[str] = (),
     prior_assumptions: dict[str, list[str]] | None = None,
     prior_matrices: Sequence[str] = (),
+    prior_evidence: Sequence[Mapping[str, Any]] = (),
 ) -> list[ClaimDebug]:
     """Test the equations the model wrote itself; mark them checked, contradicted or unchecked.
 
@@ -1357,6 +1562,7 @@ async def check_model_claims(
         list(prior_relations),
         sorted(matrices),
         sorted(declared_vectors(prose) | vector_names(trace)),
+        claim_evidence(trace, prior_evidence),
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):
@@ -1367,9 +1573,16 @@ async def check_model_claims(
                 detail=result.detail,
                 kind=result.kind,
                 given=list(result.given),
+                evidence_source=result.evidence_source,
+                evidence_rule=result.evidence_rule,
+                evidence_basis=result.evidence_basis,
             )
         )
-        if result.status == "holds":
+        if result.status == "supported":
+            # The same statement as a result a tool verified, found by mathematics, not by spelling.
+            segment.status = "from_tool"
+            segment.note = _supported_note(result)
+        elif result.status == "holds":
             segment.status = "checked"
         elif result.status == "conditional":
             segment.status = "conditional"

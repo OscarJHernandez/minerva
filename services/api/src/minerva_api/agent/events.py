@@ -143,6 +143,18 @@ class TraceStep(BaseModel):
     # kept so later turns mark formulas the same way, instead of guessing from the text.
     verified_latex: list[str] = Field(default_factory=list)
     quoted: dict[str, str] = Field(default_factory=dict)
+    # The name the model wrote when it was an accepted alias of `name` (`mechanics.analyze_lagrangian`),
+    # and how it was recognised (`toolsets.ALIAS_KINDS`). Absent when the name was already exact.
+    requested_name: str | None = None
+    alias_kind: str | None = None
+    # What each verified formula is and the coordinates of the system, so a later equation of the model
+    # can be compared with this result (see `claim_evidence.py`).
+    routed: bool = False  # chosen by a rule (routing.py), not by the model
+    formula_roles: dict[str, str] = Field(default_factory=dict)
+    variables: list[str] = Field(default_factory=list)
+    restrictions: list[str] = Field(
+        default_factory=list
+    )  # where the result is valid (own + inherited)
 
 
 class Block(BaseModel):
@@ -164,20 +176,33 @@ class LLMCallDebug(BaseModel):
     prompt_tokens: int | None = None  # as reported by the provider, when it reports them
     completion_tokens: int | None = None
     cost_usd: float | None = None
+    # Where the request's size came from, in estimated tokens (budget.estimate_tokens, pessimistic):
+    # the system prompt, the tool schemas, the earlier conversation and this turn's own messages.
+    est_system: int | None = None
+    est_tools: int | None = None
+    est_history: int | None = None
+    est_turn: int | None = None
 
 
 class ClaimDebug(BaseModel):
     """How an equation the model wrote itself was tested, and why it ended up with its mark."""
 
     value: str
-    status: str  # holds | conditional | fails | unverified
+    status: str  # holds | supported | conditional | fails | unverified
     detail: str = ""
     kind: str | None = None  # identity | relation (a symbol on one side only)
     given: list[str] = Field(default_factory=list)  # earlier definitions the result used
+    # `supported`: the verified result it was linked to, by which rule, and how that link was established.
+    evidence_source: str | None = None
+    evidence_rule: str | None = None
+    evidence_basis: str | None = None
 
 
 class TurnDebug(BaseModel):
     """Everything needed to reproduce a turn, shown only when the user switches debug mode on."""
+
+    # Deterministic routing (routing.py): empty when no rule applied, else decision, reason and tool.
+    routing: dict[str, str] = Field(default_factory=dict)
 
     request_id: str = ""
     api_version: str = ""

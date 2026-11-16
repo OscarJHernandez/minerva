@@ -24,6 +24,7 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel
 
+from .claim_evidence import ClaimEvidence, EvidenceIndex
 from .distributions.guard import contains_distribution
 from .errors import MinervaMathError
 from .indexed.guard import contains_indexed
@@ -33,7 +34,14 @@ from .restrictions import domain_restrictions
 from .verify import verify_equal
 
 ClaimStatus = Literal[
-    "holds", "conditional", "fails", "not_identity", "unverified", "not_an_equation", "unparsed"
+    "holds",
+    "supported",
+    "conditional",
+    "fails",
+    "not_identity",
+    "unverified",
+    "not_an_equation",
+    "unparsed",
 ]
 
 _TRAILER = re.compile(r"\\q?quad\b.*$|\\text\{[^}]*\}.*$|,\s*(?:for|if|where|when)\b.*$", re.DOTALL)
@@ -53,6 +61,12 @@ class ClaimCheck(BaseModel):
     detail: str = ""
     kind: ClaimKind | None = None
     given: list[str] = []
+    # `supported`: the same statement as a result a tool verified (see `claim_evidence.py`): which result,
+    # how the link was established, and where that result is valid.
+    evidence_source: str | None = None
+    evidence_rule: str | None = None
+    evidence_basis: Literal["symbolic", "numeric"] | None = None
+    restrictions: list[str] = []
 
 
 def split_equation(latex: str) -> list[str] | None:
@@ -92,6 +106,7 @@ def check_claims(
     limits: Limits,
     matrices: Sequence[str] = (),
     vectors: Sequence[str] = (),
+    evidence: Sequence[ClaimEvidence] = (),
 ) -> list[ClaimCheck]:
     """Check equations in order. `relations` are formulas stated earlier in the conversation: the
     ones that are definitions (`\\theta = \\phi + \\omega t`) are used by substitution. Each checked
@@ -101,7 +116,9 @@ def check_claims(
     declared as vector fields: the same rule applies, and so does the notation (`\\nabla`, bold or
     arrowed letters, `\\times` between non-numerals), which is never sampled whatever the names."""
     clean, noncommutative = clean_assumptions(assumptions)
-    checker = ClaimChecker(clean, limits, frozenset(matrices) | noncommutative, frozenset(vectors))
+    checker = ClaimChecker(
+        clean, limits, frozenset(matrices) | noncommutative, frozenset(vectors), evidence
+    )
     for relation in relations:
         checker.learn(relation)
     results: list[ClaimCheck] = []
@@ -236,6 +253,7 @@ _IMPLICATION_DETAIL = "an implication between statements is not tested as an equ
 # E and I are Euler's number and the imaginary unit in Minerva's input: `E = ...` as a definition of an
 # energy cannot be read, and is not a claim about the constant.
 _RESERVED_LONE = re.compile(r"(?:E|I)")
+_RESERVED_NAME = r"Q_{c}"
 _RESERVED_DETAIL = (
     "a definition of a quantity named E or I; Minerva reads those letters as Euler's number and the "
     "imaginary unit, so it is not tested (a name such as E_0 or W would be)"
@@ -268,11 +286,13 @@ class ClaimChecker:
         limits: Limits,
         matrices: frozenset[str] = frozenset(),
         vectors: frozenset[str] = frozenset(),
+        evidence: Sequence[ClaimEvidence] = (),
     ) -> None:
         self.assumptions = assumptions
         self.limits = limits
         self.matrices = matrices
         self.vectors = vectors
+        self.evidence = EvidenceIndex(list(evidence), assumptions, limits) if evidence else None
         # symbol -> (right side with earlier definitions substituted, its text, texts it was built on)
         self.definitions: dict[sp.Symbol, tuple[sp.Expr, str, list[str]]] = {}
 
@@ -364,6 +384,10 @@ class ClaimChecker:
             return ClaimCheck(status="unverified", kind="relation", detail=_LEIBNIZ_DETAIL)
         if _IMPLICATION.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_IMPLICATION_DETAIL)
+        if self.evidence is not None and not _DISTRIBUTION_NOTATION.search(latex):
+            linked = self._match_evidence(sides)
+            if linked is not None:
+                return linked
         if any(_RESERVED_LONE.fullmatch(side.strip()) for side in sides):
             return ClaimCheck(status="unverified", kind="relation", detail=_RESERVED_DETAIL)
         if _DISTRIBUTION_NOTATION.search(latex):
@@ -426,6 +450,39 @@ class ClaimChecker:
             status="not_identity",
             detail=f"not an identity ({detail}); it may still be an equation to solve or a definition",
             kind="identity",
+        )
+
+    def _match_evidence(self, sides: list[str]) -> ClaimCheck | None:
+        """`supported` if the claim is the same statement as a result a tool verified (never otherwise)."""
+        if self.evidence is None or len(sides) != 2:
+            return None
+        # `E = ...` names an energy, but E is Euler's number to the parser: the name is only a label here
+        # (matching it needs the right side to equal a verified conserved quantity), so it is replaced.
+        named = [
+            _RESERVED_NAME if _RESERVED_LONE.fullmatch(side.strip()) else side for side in sides
+        ]
+        try:
+            parsed = [parse_latex(side, self.assumptions, self.limits) for side in named]
+        except MinervaMathError:
+            return None
+        if (
+            self._mentions_matrix(parsed)
+            or any(contains_distribution(p) or contains_indexed(p) for p in parsed)
+            or not self.evidence.items
+        ):
+            return None
+        found = self.evidence.match(parsed)
+        if found is None:
+            return None
+        where = f" ({found.source})" if found.source else ""
+        return ClaimCheck(
+            status="supported",
+            detail=f"{found.detail}{where}",
+            kind="relation",
+            evidence_source=found.source or None,
+            evidence_rule=found.rule,
+            evidence_basis=found.basis,
+            restrictions=list(found.restrictions),
         )
 
     def _check_relation(self, parsed: list[sp.Expr], kind: str, latex: str = "") -> ClaimCheck:

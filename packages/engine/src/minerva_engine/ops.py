@@ -15,6 +15,7 @@ import sympy as sp
 from pydantic import ValidationError
 
 from .build import NotationLog
+from .claim_evidence import ClaimEvidence
 from .claims import check_claims, split_equation
 from .distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
 from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
@@ -528,7 +529,8 @@ def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     formulas = [str(f) for f in payload["formulas"]]
     matrices = [str(m) for m in payload.get("matrices", [])]
     vectors = [str(v) for v in payload.get("vectors", [])]
-    results = check_claims(formulas, assumptions, relations, limits, matrices, vectors)
+    evidence = [ClaimEvidence(**e) for e in payload.get("evidence", [])]
+    results = check_claims(formulas, assumptions, relations, limits, matrices, vectors, evidence)
     return {"results": [r.model_dump() for r in results]}
 
 

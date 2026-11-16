@@ -131,6 +131,11 @@ class ToolOutput:
     reason_code: str | None = None
     invalid_fields: tuple[str, ...] = ()
     error_site: dict[str, Any] = field(default_factory=dict)
+    # What each formula is (`equation_of_motion`, `acceleration`, `momentum`, `conserved`), and the names of
+    # the system's coordinates: used only to compare the model's later equations with this result
+    # (`claim_evidence.py`). Never read from the model.
+    formula_roles: dict[str, str] = field(default_factory=dict)
+    variables: tuple[str, ...] = ()
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -193,7 +198,7 @@ class SeriesArgs(SimplifyArgs):
 class MatrixCalculusArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
-        description="Expression in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
+        description="Expression in LaTeX (text syntax for the gradient actions) in the declared matrices. Write exponentials as \\exp(tA), never as e^{tA} "
         "(a bare e is an ordinary symbol). Products keep their order. Matrices are constant unless "
         "declared with depends_on; a matrix that depends on the variable is written A(t), and tA "
         "always means t times A. For action evolve this is the generator A(t) of dU/dt = A(t)U.",
@@ -642,7 +647,7 @@ def variation_input(args: VariationArgs, ctx: ToolContext) -> VariationInput:
 class DistributionArgs(SimplifyArgs):
     latex: str = Field(
         max_length=MAX_INPUT,
-        description="Expression with Dirac delta or Heaviside functions, as the user wrote it: "
+        description="LaTeX expression with Dirac delta or Heaviside functions, as the user wrote it: "
         "\\delta(x-a), \\theta(x), or the explicit \\operatorname{DiracDelta}(x-a) and "
         "\\operatorname{Heaviside}(x). \\delta(...) and \\theta(...) are read as distributions only after "
         "the USER confirms it on the card; do not rewrite them yourself. For integrate give only the "
@@ -701,7 +706,8 @@ class IdentitiesArgs(SimplifyArgs):
 
 class TensorArgs(BaseModel):
     expression: str = Field(
-        max_length=MAX_INPUT, description="e.g. S(a,b)*A(-a,-b); a leading - lowers an index"
+        max_length=MAX_INPUT,
+        description="In text syntax (not LaTeX), e.g. S(a,b)*A(-a,-b); a leading - lowers an index",
     )
     tensors: dict[str, TensorSpec] = Field(description="Rank and symmetry of every tensor used")
     dimension: int = Field(default=4, ge=1, le=64)
@@ -718,6 +724,29 @@ class SolveArgs(BaseModel):
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
+SyntaxChoice = Literal["auto", "latex", "text"]
+FORMAT_DESCRIPTION = (
+    "`auto` (default) reads text syntax (`theta_dot`, `*`, `sin(x)`) as text and anything with a "
+    "backslash as LaTeX; set `latex` or `text` to say which."
+)
+_TEXT_MARKERS = re.compile(r"\*|_d?dot\b|_ddot\b|\b[A-Za-z]\w*\s*\(")
+
+
+def resolve_syntax(source: str, requested: SyntaxChoice) -> Literal["latex", "text"]:
+    """Choose between the two strict parsers; the input itself is never rewritten."""
+    if requested != "auto":
+        return requested
+    return "text" if "\\" not in source and _TEXT_MARKERS.search(source) else "latex"
+
+
+def strip_assignment(source: str, name: str) -> str:
+    """`L = expr` -> `expr` for a single `=` whose left side is exactly `name`; anything else unchanged."""
+    left, sign, right = source.partition("=")
+    if sign and left.strip() == name and "=" not in right:
+        return right.strip()
+    return source
+
+
 class LagrangianArgs(BaseModel):
     lagrangian: str = Field(
         max_length=MAX_INPUT,
@@ -730,6 +759,14 @@ class LagrangianArgs(BaseModel):
     )
     time: str = Field(default="t", max_length=16, description="Name of the time symbol")
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class AnalyzeLagrangianArgs(LagrangianArgs):
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of `lagrangian`: LaTeX (\\dot{\\theta}) or text (theta_dot, sin(theta)*phi_dot^2). "
+        + FORMAT_DESCRIPTION,
+    )
 
 
 class TimeDerivativeArgs(SimplifyArgs):
@@ -747,7 +784,7 @@ class TimeDerivativeArgs(SimplifyArgs):
     lagrangian: str | None = Field(
         default=None,
         max_length=MAX_INPUT,
-        description=r"Optional L(q, qdot, t) of the system, as an expression (not 'L = ...'). Given, the "
+        description=r"Optional L(q, qdot, t) of the system in LaTeX, as an expression (not 'L = ...'). Given, the "
         "derivative is also evaluated on that system's equations of motion and says whether it vanishes "
         "there (is constant along its motions).",
     )
@@ -800,6 +837,10 @@ class InvariantArgs(BaseModel):
     lagrangian: str = Field(
         max_length=MAX_INPUT,
         description=r"L(q, qdot) in LaTeX, using \dot{q} for velocities. The same Lagrangian as for analyze_lagrangian.",
+    )
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of `lagrangian`: LaTeX or text (theta_dot). " + FORMAT_DESCRIPTION,
     )
     coordinates: list[str] = Field(
         min_length=1,
@@ -2165,9 +2206,14 @@ def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
-def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
+def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
+    source = strip_assignment(args.lagrangian, "L")
     report = ctx.engine.analyze_lagrangian(
-        args.lagrangian, args.coordinates, args.time, args.assumptions
+        source,
+        args.coordinates,
+        args.time,
+        args.assumptions,
+        format=resolve_syntax(source, args.format),
     )
     methods = (
         ctx.kb.search(SearchQuery(features=report.features, chapter="physics.mechanics", limit=8))
@@ -2183,9 +2229,15 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
         data={
             "report": report.model_dump(mode="json"),
             "methods": method_data,
-            # What was analysed, so the card's numerical-solution form can resend exactly this.
+            "restrictions_latex": report.restrictions_latex,
+            # What was analysed, so the card's numerical-solution form can resend exactly this. A
+            # Lagrangian given in text goes back as the LaTeX Minerva printed (the form posts LaTeX).
             "request": {
-                "lagrangian": args.lagrangian,
+                "lagrangian": (
+                    args.lagrangian
+                    if resolve_syntax(source, args.format) == "latex"
+                    else report.lagrangian_latex or args.lagrangian
+                ),
                 "coordinates": args.coordinates,
                 "time": args.time,
                 "assumptions": args.assumptions,
@@ -2195,31 +2247,42 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
     quoted: list[tuple[str, str]] = []
+    roles: dict[str, str] = {}
     for e in report.equations:
         lines.append(f"equation of motion ({e.coordinate}): ${e.latex}$")
         known.append(e.latex)
+        roles[e.latex] = "equation_of_motion"
     for m in report.momenta:
         lines.append(f"momentum: ${m.latex}$")
         known.append(m.latex)
+        roles[m.latex] = "momentum"
     for a in report.accelerations:
         lines.append(f"acceleration: ${a.latex}$")
         known.append(a.latex)
+        roles[a.latex] = "acceleration"
     for c in report.conserved:
         flag = "verified on the equations of motion" if c.verified else "NOT verified"
         lines.append(f"conserved ({c.kind}, {flag}): {c.name}: ${c.expression_latex}$; {c.reason}")
         if c.verified:
             known.append(c.expression_latex)
+            roles[c.expression_latex] = "conserved"
         else:
             quoted.append((c.expression_latex, NOT_VERIFIED))
     lines.extend(f"tested, not found: {t}" for t in report.tested)
     lines.extend(f"note: {n}" for n in report.notes)
-    if report.accelerations:
-        needed = ", ".join(report.parameters) or "none"
+    if report.restrictions_latex:
         lines.append(
-            "next step: integrate_motion solves these numerically and verifies the run. Ask the user for "
-            f"values of the parameters ({needed}), the initial positions and velocities and the time span; "
-            "do not choose them unless the user tells you to. One parameter may be swept over 2-6 values. "
-            "The card has a form for this."
+            "valid only where "
+            + ", ".join(f"${r}$" for r in report.restrictions_latex)
+            + " (the accelerations divide by the mass matrix; at these points the formulas say nothing)"
+        )
+        known.extend(report.restrictions_latex)
+    elif not report.restrictions_complete:
+        lines.append("domain restrictions could not be fully determined")
+    if report.accelerations:
+        lines.append(
+            "Answer what was asked. Numerical integration (integrate_motion) only if the user asks; it "
+            "needs their parameter values, initial conditions and time span, never yours."
         )
     if method_data:
         lines.append(
@@ -2227,7 +2290,15 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
-    return ToolOutput(card, "\n".join(lines), known, report.status.value, quoted_latex=quoted)
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        report.status.value,
+        quoted_latex=quoted,
+        formula_roles=roles,
+        variables=tuple(report.coordinates),
+    )
 
 
 def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
@@ -2451,8 +2522,9 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
 
 
 def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
+    source = strip_assignment(args.lagrangian, "L")
     report = ctx.engine.search_invariants(
-        args.lagrangian,
+        source,
         args.coordinates,
         args.angles,
         args.degree,
@@ -2460,6 +2532,7 @@ def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
         args.harmonics,
         args.time,
         args.assumptions,
+        format=resolve_syntax(source, args.format),
     )
     card = Card(
         id=uuid.uuid4().hex[:8],
@@ -3060,7 +3133,10 @@ def run_load_tools(args: LoadToolsArgs, ctx: ToolContext) -> ToolOutput:
             arguments_valid=False,
         )
     tools = [t for g in found for t in GROUP_TOOLS[g]]
-    message = f"Loaded {', '.join(found)}: {', '.join(tools)} are available now."
+    message = (
+        f"Loaded the {' and '.join(found)} group(s); the tools are now available. Call them by "
+        f"exactly these names, nothing before or after: {', '.join(tools)}."
+    )
     if unknown:
         message += f" Unknown groups ignored: {', '.join(map(str, unknown))}."
     card = Card(
@@ -3506,7 +3582,7 @@ TOOLS: dict[str, Tool] = {
             "Given a Lagrangian and its generalised coordinates, derive the Euler-Lagrange equations, "
             "conjugate momenta and accelerations, and find verified constants of motion (cyclic "
             "coordinates, energy, rotations). States which symmetries were not searched for.",
-            LagrangianArgs,
+            AnalyzeLagrangianArgs,
             run_lagrangian,
         ),
         Tool(
@@ -3971,7 +4047,8 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     if tool is None:
         return _error(
             name,
-            f"unknown tool {name!r}; available: {', '.join(TOOLS)}",
+            f"unknown tool {name!r}. Call a tool by exactly its name, with no group or namespace "
+            f"in front of it. Tools: {', '.join(TOOLS)}.",
             "unknown_tool",
             arguments_valid=False,
         )

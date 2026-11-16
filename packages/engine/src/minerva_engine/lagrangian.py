@@ -18,6 +18,7 @@ the Runge-Lenz vector) are not found, and the report says so.
 from __future__ import annotations
 
 import itertools
+import time as time_module
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -28,6 +29,7 @@ from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
+from .restrictions import determinant_conditions
 from .textparse import parse_text
 from .verify import euler_lagrange_check, numeric_check
 
@@ -67,6 +69,12 @@ class LagrangianReport(BaseModel):
     tested: list[str] = Field(default_factory=list)
     features: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    # Where the solution is not defined: the mass matrix is divided by in solving for the accelerations,
+    # so its determinant's factors must be nonzero (coordinate singularities such as the poles).
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
+    # Milliseconds per stage (parse, derive, solve, check, conserved): counters only, never content.
+    stages: dict[str, int] = Field(default_factory=dict)
     message: str = ""
     duration_ms: int = 0
 
@@ -101,6 +109,8 @@ class Derivation:
     time_dependent: bool
     solution: dict[sp.Symbol, sp.Expr] = field(default_factory=dict)  # qdd_i -> expression
     names: dict[sp.Symbol, str] = field(default_factory=dict)
+    mass_determinant: sp.Expr | None = None  # divided by when solving for the accelerations
+    stages: dict[str, int] = field(default_factory=dict)  # milliseconds per stage
 
     @property
     def n(self) -> int:
@@ -131,6 +141,7 @@ def derive(
     """
     _check_coordinates(coordinates)
     reject_equation(latex, "Lagrangian")
+    started = time_module.perf_counter()
     try:
         if format == "text":
             L = parse_text(latex, assumptions, limits)
@@ -138,7 +149,19 @@ def derive(
             L = parse_latex(latex, assumptions, limits)
     except MinervaMathError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
-    return derive_expr(L, coordinates, time)
+    parse_ms = round((time_module.perf_counter() - started) * 1000)
+    names = {sym.name for sym in L.free_symbols}
+    absent = [n for n in coordinates if not names & {n, f"{n}_dot", f"{n}_ddot"}]
+    if absent:
+        raise DerivationError(
+            Status.PARSE_ERROR,
+            f"The declared coordinate(s) {', '.join(absent)} appear in neither the position nor the "
+            f"velocity form in the Lagrangian as read (symbols: {', '.join(sorted(names)) or 'none'}). "
+            "Check the spelling: velocities are \\dot{q} in LaTeX and q_dot in text.",
+        )
+    derivation = derive_expr(L, coordinates, time)
+    derivation.stages = {"parse": parse_ms, **derivation.stages}
+    return derivation
 
 
 def reject_equation(source: str, what: str) -> None:
@@ -221,14 +244,20 @@ def derive_expr(
         names=names,
     )
     n = d.n
+    started = time_module.perf_counter()
     d.euler_raw = [sp.expand(d.total_derivative(d.momenta[i]) - sp.diff(L, q[i])) for i in range(n)]
     d.euler = [sp.simplify(e) for e in d.euler_raw]
+    d.stages["derive"] = round((time_module.perf_counter() - started) * 1000)
 
+    started = time_module.perf_counter()
     mass = sp.Matrix(n, n, lambda i, j: sp.diff(L, qd[i], qd[j]))
-    if sp.simplify(mass.det()) != 0:
+    determinant = sp.simplify(mass.det())
+    if determinant != 0:
+        d.mass_determinant = determinant
         rest = sp.Matrix([e.subs({a: 0 for a in qdd}) for e in d.euler_raw])
         accel = mass.LUsolve(-rest)
         d.solution = {qdd[i]: sp.simplify(accel[i]) for i in range(n)}
+    d.stages["solve"] = round((time_module.perf_counter() - started) * 1000)
     return d
 
 
@@ -371,7 +400,9 @@ def analyze_lagrangian(
         return _fail(exc.status, exc.message)
     q, qdd, p, n, show = d.q, d.qdd, d.momenta, d.n, d.show
 
+    started = time_module.perf_counter()
     checks = check_equations(d)
+    d.stages["check"] = round((time_module.perf_counter() - started) * 1000)
     if not all(c.passed for c in checks):
         failed = [coordinates[i] for i, c in enumerate(checks) if not c.passed]
         return LagrangianReport(
@@ -424,7 +455,15 @@ def analyze_lagrangian(
             "accelerations cannot be solved for uniquely: the system is constrained or degenerate."
         )
 
+    if d.mass_determinant is not None:
+        report.restrictions_latex, report.restrictions_complete = determinant_conditions(
+            d.mass_determinant
+        )
+
+    started = time_module.perf_counter()
     search = find_conserved(d)
+    d.stages["conserved"] = round((time_module.perf_counter() - started) * 1000)
+    report.stages = dict(d.stages)
     report.conserved = [item for item, _ in search.items]
     report.tested += search.tested
     report.features += search.features

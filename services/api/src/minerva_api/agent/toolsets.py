@@ -52,6 +52,36 @@ def group_of(tool: str) -> str | None:
     return _GROUP_OF.get(tool)
 
 
+ALIAS_KINDS = ("case", "group_prefix", "functions_prefix")
+
+
+def resolve_tool_name(requested: str, known: Iterable[str]) -> tuple[str, str | None]:
+    """The registered name a model's tool name stands for, and how it was recognised.
+
+    The rules are closed: surrounding space and letter case, `functions.<tool>`, and `<group>.<tool>` or
+    `<group>/<tool>` when that group really contains the tool. Anything else is returned unchanged, so a
+    genuinely unknown tool stays unknown (and is refused by `execute`). Alias kinds are a fixed vocabulary.
+    """
+    registry = set(known)
+    if requested in registry:
+        return requested, None
+    name = requested.strip()
+    if name in registry:
+        return name, "case"
+    lowered = name.lower()
+    if lowered in registry:
+        return lowered, "case"
+    for sep in (".", "/"):
+        prefix, found, rest = lowered.partition(sep)
+        if not found:
+            continue
+        if prefix == "functions" and rest in registry:
+            return rest, "functions_prefix"
+        if rest in GROUP_TOOLS.get(prefix, ()) and rest in registry:
+            return rest, "group_prefix"
+    return requested, None
+
+
 def groups_in_text(text: str) -> list[str]:
     """Groups whose keywords appear in a user's message, in registry order."""
     lowered = text.lower()

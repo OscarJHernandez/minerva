@@ -730,6 +730,11 @@ export interface TraceStep {
   /** What the model wrote before `@rN` references were replaced; only when it differs. */
   model_arguments?: Record<string, unknown> | null;
   assumptions_dropped?: string[];
+  /** The name the model wrote when it was an accepted alias of `name`, and how it was recognised. */
+  requested_name?: string | null;
+  alias_kind?: string | null;
+  /** Chosen by a rule (agent/routing.py), not by the model. */
+  routed?: boolean;
 }
 
 export interface LLMCall {
@@ -742,6 +747,11 @@ export interface LLMCall {
   prompt_tokens?: number | null;
   completion_tokens?: number | null;
   cost_usd?: number | null;
+  /** Estimated tokens by source of the request: system prompt, tool schemas, earlier conversation, this turn. */
+  est_system?: number | null;
+  est_tools?: number | null;
+  est_history?: number | null;
+  est_turn?: number | null;
 }
 
 /** One content-free trace event (see docs/observability.md); fields vary by `event`. */
@@ -772,7 +782,13 @@ export interface TurnDebug {
     detail: string;
     kind?: string | null;
     given?: string[];
+    /** `supported`: the verified result it was linked to, by which rule, and how that link was established. */
+    evidence_source?: string | null;
+    evidence_rule?: string | null;
+    evidence_basis?: string | null;
   }[];
+  /** Deterministic routing (agent/routing.py): empty when no rule applied. */
+  routing?: { decision?: string; reason?: string; tool?: string };
   error: string | null;
   /** Where an unexpected exception was raised: its class and the module and line of our own code. Never its message. Empty unless the turn ended in an internal error. */
   error_site?: { error_type?: string; error_module?: string; error_line?: number };
