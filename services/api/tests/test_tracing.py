@@ -46,6 +46,8 @@ EVENTS = {
     "llm.response",
     "tool.started",
     "tool.completed",
+    "tool.failed",
+    "tool.declined",
     "verification.completed",
     "agent.retry",
     "agent.stopped",
@@ -357,7 +359,7 @@ def test_one_trace_id_joins_the_header_the_stream_the_stored_message_and_the_log
     assert stored["trace_id"] == header
     assert {e["trace_id"] for e in stored["events"]} == {header}
     logged = [r for r in json_lines(capsys.readouterr().out) if r.get("trace_id") == header]
-    assert {r["event"] for r in logged} >= EVENTS - {"agent.retry"}
+    assert {r["event"] for r in logged} >= EVENTS - {"agent.retry", "tool.failed", "tool.declined"}
     assert any(r["event"] == "chat_turn" for r in logged)
     assert (
         header != response.headers["x-request-id"]

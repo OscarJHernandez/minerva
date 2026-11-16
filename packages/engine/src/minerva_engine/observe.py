@@ -25,6 +25,10 @@ class SandboxCall:
     outcome: str  # ok | timeout | killed | error | busy (the sandbox's own words)
     ms: int  # wall clock including the wait for a free sandbox slot
     trace_id: str | None
+    # An `error` outcome: the exception's class and where our code raised it. Never its message.
+    error_type: str | None = None
+    error_module: str | None = None
+    error_line: int | None = None
 
 
 Observer = Callable[[SandboxCall], None]

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import traceback
 from collections.abc import Mapping, MutableMapping
 from typing import Any
 
@@ -174,16 +175,141 @@ ALLOWED_FIELDS = frozenset(
         "checks",
         "checks_passed",
         "warnings",
+        # Tool outcome lines and where an error was raised (agent/tracing.py, `error_fields`): names from
+        # fixed sets (the tool registry, an argument model's own field names, enums), counts and code
+        # locations. Never an argument value, a user's symbol name or an exception message.
+        "outcome_kind",
+        "reason_code",
+        "arg_fields",
+        "invalid_fields",
+        "tools_called",
+        "failed_tools",
+        "declined_tools",
+        "first_failure_code",
+        "error_type",
+        "error_module",
+        "error_line",
     }
 )
+
+
+# Exception classes whose names are fixed by code we ship or depend on; any other class name could be
+# chosen by data (a dynamically created class), so it is reported as `other`.
+_KNOWN_ERROR_ROOTS = frozenset(
+    {
+        "builtins",
+        "sympy",
+        "mpmath",
+        "sqlalchemy",
+        "pydantic",
+        "pydantic_core",
+        "httpx",
+        "asyncio",
+        "json",
+        "concurrent",
+        "multiprocessing",
+    }
+)
+
+
+def error_fields(exc: BaseException) -> dict[str, Any]:
+    """Where an exception came from, for the log: class name, module and line. Never its message.
+
+    The message of an exception can hold an expression, a symbol or an input value; the class and the
+    innermost frame of our own code (`minerva_*`) are fixed by the source and say where to look.
+    """
+    cls = type(exc)
+    root = cls.__module__.split(".")[0]
+    known = root in _KNOWN_ERROR_ROOTS or root.startswith("minerva_")
+    out: dict[str, Any] = {"error_type": cls.__name__ if known else "other"}
+    innermost: tuple[str, int] | None = None
+    for frame, line in traceback.walk_tb(exc.__traceback__):
+        module = str(frame.f_globals.get("__name__", ""))
+        if module.startswith("minerva_"):
+            innermost = (module, line)
+    if innermost is not None:
+        out["error_module"], out["error_line"] = innermost
+    return out
 
 
 def _allow_list(_: Any, __: str, event_dict: MutableMapping[str, Any]) -> Mapping[str, Any]:
     return {k: v for k, v in event_dict.items() if k in ALLOWED_FIELDS}
 
 
+# Loggers of the libraries we run under. Their records are never written as they come: the message of
+# a record (uvicorn's "Exception in ASGI application", a SQLAlchemy statement with its parameters, an
+# HTTP client's URL) can hold a user's expression, e-mail address or input, and structlog would
+# otherwise promote it to the `event` field, which the allow-list keeps.
+_FOREIGN_LOGGERS = (
+    "uvicorn",
+    "sqlalchemy",
+    "httpx",
+    "httpcore",
+    "asyncio",
+    "multiprocessing",
+    "alembic",
+    "fastapi",
+    "starlette",
+)
+
+
+def _foreign_record(_: Any, __: str, event_dict: MutableMapping[str, Any]) -> Mapping[str, Any]:
+    """Reduce a record from another library to its logger, level and, for an exception, where it
+    came from. The event name becomes a fixed value built from the logger's name (a name from a fixed
+    list, else `other`); the message, the arguments and the traceback text are dropped."""
+    record = event_dict.get("_record")
+    name = str(getattr(record, "name", ""))
+    known = any(name == root or name.startswith(root + ".") for root in _FOREIGN_LOGGERS)
+    out: dict[str, Any] = {
+        key: event_dict[key]
+        for key in ("level", "timestamp", "_record", "_from_structlog")
+        if key in event_dict
+    }
+    out["event"] = f"foreign:{name}" if known else "foreign_log"
+    out["logger"] = name if known else "other"
+    exc_info = getattr(record, "exc_info", None)
+    if exc_info and exc_info[1] is not None:
+        out.update(error_fields(exc_info[1]))
+    return out
+
+
+def _stdlib_handler() -> logging.Handler:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(
+        structlog.stdlib.ProcessorFormatter(
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                _allow_list,
+                structlog.processors.JSONRenderer(),
+            ],
+            foreign_pre_chain=[
+                structlog.stdlib.add_log_level,
+                structlog.processors.TimeStamper(fmt="iso", utc=True),
+                _foreign_record,
+            ],
+        )
+    )
+    handler._minerva = True  # type: ignore[attr-defined]  # ours: replaced, never duplicated
+    return handler
+
+
+def _install_stdlib_logging(level: str) -> None:
+    """One path for everything that is written: records of the libraries go through the same
+    reduction and allow-list as our own events, as one JSON line each."""
+    handler = _stdlib_handler()
+    root = logging.getLogger()
+    root.handlers = [h for h in root.handlers if not getattr(h, "_minerva", False)] + [handler]
+    root.setLevel(level)
+    for name in ("uvicorn", "uvicorn.error"):  # uvicorn gives these their own plain-text handlers
+        library = logging.getLogger(name)
+        library.handlers = [handler]
+        library.propagate = False
+    # Our `request` line replaces the access log, without the client's address or the query string.
+    logging.getLogger("uvicorn.access").disabled = True
+
+
 def configure_logging(level: str = "INFO") -> None:
-    logging.basicConfig(stream=sys.stdout, level=level, format="%(message)s")
+    _install_stdlib_logging(level)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,

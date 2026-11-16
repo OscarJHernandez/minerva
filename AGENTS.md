@@ -176,6 +176,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   enforce this (`test_tracing.py`). The detailed trace (arguments and results) lives only in the stored assistant message,
   under the conversation's own access, deletion and export rules: do not give it a table, file or endpoint of its own.
   Logging and tracing failures must never reach the mathematics (`Tracer.emit` and the engine observer swallow them).
+- A tool call that did not deliver a verified result writes one log line at the default setting: `tool.failed` (something to
+  fix) or `tool.declined` (an honest answer or a call not run), with the tool, status, error category, `reason_code`,
+  `arg_fields`, `invalid_fields` and, for an unexpected exception, the class and the module and line of our code
+  (`logging.error_fields`, the sandbox child's `_site`): never an argument value, a symbol the user chose or an exception
+  message (`docs/observability.md`, "Tool outcomes in the log"). A new `ErrorCategory` needs an entry in
+  `tracing.OUTCOME_OF_CATEGORY`; a new log field needs the allow-list and a closed vocabulary or validator. Everything
+  written to stdout passes the allow-list, library records included (`logging._foreign_record`): do not add a handler or
+  `print` that bypasses it, and keep `--no-access-log` on the API's uvicorn command.
 - Restrictions travel with a verified result (`ResultStore.restrictions`): when a later call reuses `@rN`, its card gets
   `inherited_restrictions_latex` and its tool message names them ("Inherited from @r1"); they are rebuilt from stored cards
   for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `routers_chat._history` (V-015).

@@ -86,5 +86,15 @@ def test_a_resource_limit_is_reported_with_its_outcome() -> None:
 
 def test_the_record_holds_no_expression() -> None:
     fields = set(SandboxCall.__dataclass_fields__)
-    assert fields == {"operation", "outcome", "ms", "trace_id"}
+    # The last three are where an unexpected exception was raised: its class, and the module and line of
+    # our own code (never its message, which can hold an expression). Reviewed when they were added.
+    assert fields == {
+        "operation",
+        "outcome",
+        "ms",
+        "trace_id",
+        "error_type",
+        "error_module",
+        "error_line",
+    }
     assert isinstance(Sandbox, type)

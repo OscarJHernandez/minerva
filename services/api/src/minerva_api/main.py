@@ -27,7 +27,7 @@ from .agent.llm import LLMClient, OllamaClient
 from .agent.scripted import ScriptedLLM
 from .agent.vision import FormulaReader, OllamaFormulaReader, ScriptedFormulaReader
 from .db import Base, make_engine, make_session_factory
-from .logging import configure_logging, get_logger
+from .logging import configure_logging, error_fields, get_logger
 from .security import RateLimiter
 from .settings import Settings, get_settings
 from .softdelete import maybe_purge
@@ -116,7 +116,18 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
         if request.method in UNSAFE and origin and origin.rstrip("/") not in settings.origins:
             return JSONResponse({"detail": "Cross-origin request rejected"}, status_code=403)
         start = time.monotonic()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # The exception goes on to the handler below; the request still gets its line.
+            log.info(
+                "request",
+                method=request.method,
+                route=getattr(request.scope.get("route"), "path", "unmatched"),
+                status_code=500,
+                duration_ms=int((time.monotonic() - start) * 1000),
+            )
+            raise
         route = getattr(request.scope.get("route"), "path", "unmatched")
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -131,6 +142,23 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
             duration_ms=int((time.monotonic() - start) * 1000),
         )
         return response
+
+    @app.exception_handler(Exception)
+    async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
+        # Fixed body and a log line with the exception's class and where our code raised it. Its message
+        # can hold the user's expression or input, so it is never written or returned.
+        log.error(
+            "unhandled_error",
+            route=getattr(request.scope.get("route"), "path", "unmatched"),
+            **error_fields(exc),
+        )
+        return JSONResponse(
+            {
+                "detail": "Internal server error",
+                "request_id": getattr(request.state, "request_id", None),
+            },
+            status_code=500,
+        )
 
     @app.get("/healthz", tags=["health"])
     def healthz() -> dict[str, str]:

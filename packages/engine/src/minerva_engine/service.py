@@ -106,7 +106,17 @@ class Engine:
         if observer is not None:
             # Observing must never change a computation: whatever the observer does, the result stands.
             with contextlib.suppress(Exception):
-                observer(SandboxCall(op, result.outcome.value, ms, current_trace_id()))
+                observer(
+                    SandboxCall(
+                        op,
+                        result.outcome.value,
+                        ms,
+                        current_trace_id(),
+                        result.error_type,
+                        result.error_module,
+                        result.error_line,
+                    )
+                )
         return result, ms
 
     @staticmethod

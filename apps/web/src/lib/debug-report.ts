@@ -273,6 +273,11 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
         `stop reason: ${stop}${STOP_EXPLANATION[stop] ? ` (${STOP_EXPLANATION[stop]})` : ""}`,
       );
     if (d.error) lines.push(`error: ${d.error}`);
+    const site = d.error_site;
+    if (site?.error_type)
+      lines.push(
+        `raised: ${site.error_type}${site.error_module ? ` at ${site.error_module}:${site.error_line ?? "?"}` : ""}`,
+      );
     lines.push(...settingsSummary(d));
     const stages = stageTimings(d);
     if (stages.length > 0) {
