@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Composer } from "./composer";
 
@@ -77,6 +77,23 @@ describe("Composer: add image", () => {
     });
     expect(notPrevented).toBe(true); // the browser pastes the text as usual
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("Composer drafts", () => {
+  it("restores an unsent message for its conversation only", () => {
+    const key = "minerva:draft:test-user:conversation-a";
+    sessionStorage.removeItem(key);
+    const view = render(<Composer {...props} draftKey={key} />);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "integrate $x^2$" } });
+    expect(sessionStorage.getItem(key)).toBe("integrate $x^2$");
+    view.unmount();
+    render(<Composer {...props} draftKey="minerva:draft:test-user:conversation-b" />);
+    expect(screen.getByLabelText("Message")).toHaveValue("");
+    cleanup();
+    render(<Composer {...props} draftKey={key} />);
+    expect(screen.getByLabelText("Message")).toHaveValue("integrate $x^2$");
+    sessionStorage.removeItem(key);
   });
 });
 

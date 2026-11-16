@@ -26,6 +26,8 @@ interface Props {
   referenceRequest?: { id: number; text: string } | null;
   /** Replaces what is in the box (editing the last message); a new `id` replaces again. */
   replaceRequest?: { id: number; text: string } | null;
+  /** Account and conversation scoped key for an unsent message in this browser tab. */
+  draftKey?: string;
 }
 
 const MAX_HEIGHT_VH = 0.4;
@@ -64,8 +66,24 @@ export function Composer({
   insertRequest,
   referenceRequest,
   replaceRequest,
+  draftKey,
 }: Props) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => {
+    try {
+      return draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "";
+    } catch {
+      return "";
+    }
+  });
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      if (text) sessionStorage.setItem(draftKey, text);
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // Private browsing and storage quotas must not prevent composing.
+    }
+  }, [draftKey, text]);
   const [formula, setFormula] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);

@@ -44,6 +44,13 @@ export function UserMenu() {
         type="button"
         className="shrink-0 whitespace-nowrap rounded border border-rule px-2 py-1 text-[13px] hover:bg-sunk sm:px-2.5 sm:text-sm"
         onClick={async () => {
+          try {
+            for (const key of Object.keys(sessionStorage)) {
+              if (key.startsWith(`minerva:draft:${user.id}:`)) sessionStorage.removeItem(key);
+            }
+          } catch {
+            // Logging out must work even when browser storage is unavailable.
+          }
           await api.logout().catch(() => undefined);
           modelSettings.clear(); // forget any OpenRouter key held in memory
           setUser(null);
