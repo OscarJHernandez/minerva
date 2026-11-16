@@ -26,4 +26,4 @@ EXPOSE 8100
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/healthz', timeout=3).status == 200 else 1)"
 # Migrations run first; the app refuses to start outside development with placeholder secrets.
-CMD ["sh", "-c", "alembic -c services/api/alembic.ini upgrade head && exec uvicorn minerva_api.main:app_from_env --factory --host 0.0.0.0 --port 8100 --no-server-header"]
+CMD ["sh", "-c", "alembic -c services/api/alembic.ini upgrade head && exec uvicorn minerva_api.main:app_from_env --factory --host 0.0.0.0 --port 8100 --no-server-header --no-access-log"]

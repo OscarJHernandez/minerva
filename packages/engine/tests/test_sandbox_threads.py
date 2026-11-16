@@ -22,3 +22,25 @@ def test_an_explicit_setting_is_respected(monkeypatch) -> None:
     monkeypatch.setattr(sandbox, "_ctx", None)
     sandbox._context()
     assert os.environ["OPENBLAS_NUM_THREADS"] == "2"
+
+
+def test_an_exception_in_the_child_reports_its_class_and_location_never_its_message() -> None:
+    from minerva_engine import Limits
+
+    secret = "secret@example.com"
+    result = sandbox.Sandbox(Limits(timeout_seconds=20)).run("simplify", {secret: 1})
+    assert result.outcome is sandbox.Outcome.ERROR and result.value is None
+    assert result.error_type == "KeyError"
+    # the innermost frame of OUR code that raised it, not the sandbox's own plumbing
+    assert result.error_module == "minerva_engine.ops"
+    assert isinstance(result.error_line, int) and result.error_line > 0
+    assert secret not in repr(result)
+
+
+def test_a_class_that_is_not_ours_is_reported_as_other() -> None:
+    class Custom(Exception):
+        pass
+
+    Custom.__module__ = "somewhere_else"
+    name, module, line = sandbox._site(Custom("boom"))
+    assert name == "other" and module is None and line is None

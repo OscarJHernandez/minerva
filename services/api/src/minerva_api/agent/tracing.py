@@ -15,14 +15,16 @@ Observing must never change a computation: `Tracer.emit` swallows its own failur
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from collections.abc import Callable
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from minerva_engine import Engine, SandboxCall
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from pydantic_core import core_schema
 
 from .events import CheckKind, EvidenceReason
 
@@ -118,6 +120,47 @@ def category_for(status: str | None, sandbox_outcome: str | None = None) -> Erro
     return _STATUS_CATEGORY.get(status or "")
 
 
+OutcomeKind = Literal["failure", "answer"]
+
+# What a non-ok tool result is. A `failure` is something to fix in Minerva or in how the model called
+# it; an `answer` is what the engine or the handbook established (no entry, nothing changed, not
+# supported, a condition not provable, the user must choose) or a call that was not run because of a
+# limit. Total over `ErrorCategory`: a test fails when a category is added without a decision here.
+OUTCOME_OF_CATEGORY: dict[ErrorCategory, OutcomeKind] = {
+    ErrorCategory.INVALID_ARGUMENTS: "failure",
+    ErrorCategory.UNKNOWN_TOOL: "failure",
+    ErrorCategory.PARSE_ERROR: "failure",
+    ErrorCategory.NOT_VERIFIED: "failure",
+    ErrorCategory.TIMEOUT: "failure",
+    ErrorCategory.RESOURCE_LIMIT: "failure",
+    ErrorCategory.SANDBOX_KILLED: "failure",
+    ErrorCategory.BUSY: "failure",
+    ErrorCategory.TOOL_FAILURE: "failure",
+    ErrorCategory.MODEL_HOST: "failure",
+    ErrorCategory.MALFORMED_MODEL_OUTPUT: "failure",
+    ErrorCategory.CONDITIONS_NOT_SATISFIED: "answer",
+    ErrorCategory.UNSUPPORTED: "answer",
+    ErrorCategory.LIMIT_REACHED: "answer",
+    ErrorCategory.NEEDS_USER_CHOICE: "answer",
+    ErrorCategory.REPEATED_CALL: "answer",
+}
+_ANSWER_STATUSES_WITHOUT_CATEGORY = frozenset({"unchanged", "no_results"})
+
+
+def outcome_kind(status: str | None, category: ErrorCategory | str | None) -> OutcomeKind | None:
+    """`None` for a verified result, otherwise whether the call failed or was an honest answer."""
+    if status == "ok":
+        return None
+    if category:
+        try:
+            return OUTCOME_OF_CATEGORY[ErrorCategory(category)]
+        except (ValueError, KeyError):
+            return "failure"
+    if status in _ANSWER_STATUSES_WITHOUT_CATEGORY:
+        return "answer"
+    return "failure"
+
+
 # ------------------------------------------------------------------------------------------ events
 class TraceEvent(BaseModel):
     trace_id: str
@@ -184,6 +227,82 @@ class ToolCompleted(TraceEvent):
     result_id: str | None = None
 
 
+# The closed vocabulary of `reason_code`: the error types of argument validation (pydantic-core's own
+# list). A later registry of engine reasons extends it; nothing else can be logged as a code.
+REASON_CODES: frozenset[str] = frozenset(get_args(core_schema.ErrorType))
+_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,79}")
+_DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{0,119}")
+_PATH = re.compile(r"[A-Za-z_*][A-Za-z0-9_.*]{0,119}")
+
+
+class ErrorSite(BaseModel):
+    """Where an unexpected exception was raised: its class, and the module and line of our own code.
+    Never its message, which can hold the user's expression. Whatever is not a name of that kind is
+    dropped by the validators, whoever built the value."""
+
+    error_type: str | None = None
+    error_module: str | None = None
+    error_line: int | None = None
+
+    @field_validator("error_type")
+    @classmethod
+    def _class_name(cls, value: str | None) -> str | None:
+        return value if value is not None and _NAME.fullmatch(value) else None
+
+    @field_validator("error_module")
+    @classmethod
+    def _module_name(cls, value: str | None) -> str | None:
+        ok = value is not None and value.startswith("minerva_") and _DOTTED.fullmatch(value)
+        return value if ok else None
+
+
+class ToolOutcome(TraceEvent, ErrorSite):
+    """One line for a tool call that did not deliver a verified result: which tool, what kind of call,
+    and the coded reason. `arg_fields` are the argument names the model filled that belong to the
+    tool's own schema, `invalid_fields` the schema paths that failed validation (list indices and
+    dictionary keys, which can be the user's symbols, replaced by `*`). No value of any argument."""
+
+    tool: str = ""
+    call_id: str = ""
+    status: ToolStatus = "other"
+    error_category: ErrorCategory | None = None
+    outcome_kind: OutcomeKind = "failure"
+    reason_code: str | None = None  # a fixed code (a validation error type), never text
+    arguments_valid: bool = True
+    repeated: bool = False
+    references: int = 0
+    duration_ms: int = 0
+    engine_ms: int | None = None
+    arg_fields: list[str] = []
+    invalid_fields: list[str] = []
+
+    # Second line of defence behind the code that builds these values: whatever does not look like a
+    # name from our own code or schema (an e-mail address, an expression) is dropped, never logged.
+    @field_validator("reason_code")
+    @classmethod
+    def _known_code(cls, value: str | None) -> str | None:
+        return value if value in REASON_CODES else None
+
+    @field_validator("arg_fields")
+    @classmethod
+    def _field_names(cls, value: list[str]) -> list[str]:
+        return [v for v in value if _NAME.fullmatch(v)]
+
+    @field_validator("invalid_fields")
+    @classmethod
+    def _field_paths(cls, value: list[str]) -> list[str]:
+        return [v for v in value if _PATH.fullmatch(v)]
+
+
+class ToolFailed(ToolOutcome):
+    event: Literal["tool.failed"] = "tool.failed"
+
+
+class ToolDeclined(ToolOutcome):
+    event: Literal["tool.declined"] = "tool.declined"
+    outcome_kind: OutcomeKind = "answer"
+
+
 class VerificationCompleted(TraceEvent):
     event: Literal["verification.completed"] = "verification.completed"
     scope: Literal["tool", "claims"] = "tool"
@@ -210,7 +329,7 @@ class AgentRetry(TraceEvent):
     attempt: int = 1
 
 
-class AgentStopped(TraceEvent):
+class AgentStopped(TraceEvent, ErrorSite):
     event: Literal["agent.stopped"] = "agent.stopped"
     reason: StopReason = StopReason.COMPLETED
     steps: int = 0
@@ -218,7 +337,7 @@ class AgentStopped(TraceEvent):
     error_category: ErrorCategory | None = None
 
 
-class AgentCompleted(TraceEvent):
+class AgentCompleted(TraceEvent, ErrorSite):
     event: Literal["agent.completed"] = "agent.completed"
     status: Literal["ok", "error"] = "ok"
     total_ms: int = 0
@@ -239,6 +358,17 @@ class AgentCompleted(TraceEvent):
     stop_reason: StopReason = StopReason.COMPLETED
     error_category: ErrorCategory | None = None
     events_dropped: int = 0
+    # Which tools the turn called, and which of them failed or were declined (registry names, in the
+    # order first called; a name the model invented is `unknown`).
+    tools_called: list[str] = []
+    failed_tools: list[str] = []
+    declined_tools: list[str] = []
+    first_failure_code: ErrorCategory | None = None
+
+    @field_validator("tools_called", "failed_tools", "declined_tools")
+    @classmethod
+    def _tool_names(cls, value: list[str]) -> list[str]:
+        return [v for v in value if _NAME.fullmatch(v)]
 
 
 EVENT_MODELS: tuple[type[TraceEvent], ...] = (
@@ -247,6 +377,8 @@ EVENT_MODELS: tuple[type[TraceEvent], ...] = (
     LLMResponse,
     ToolStarted,
     ToolCompleted,
+    ToolFailed,
+    ToolDeclined,
     VerificationCompleted,
     AgentRetry,
     AgentStopped,
@@ -265,6 +397,11 @@ IDENTIFIER_FIELDS = frozenset(
         "proposed_tool",
         "call_id",
         "result_id",
+        # Closed vocabularies enforced by validators on the event (`ToolOutcome`): a validation error
+        # type, the class and module of our own code that raised.
+        "reason_code",
+        "error_type",
+        "error_module",
     }
 )
 

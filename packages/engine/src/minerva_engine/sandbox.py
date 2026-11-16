@@ -19,6 +19,7 @@ import multiprocessing
 import os
 import resource
 import threading
+import traceback
 from dataclasses import dataclass
 from enum import StrEnum
 from multiprocessing.connection import Connection
@@ -66,6 +67,29 @@ class Outcome(StrEnum):
 class SandboxResult:
     outcome: Outcome
     value: dict[str, Any] | None = None
+    # For `Outcome.ERROR` only: the class of the exception and where our code raised it (see `_site`).
+    error_type: str | None = None
+    error_module: str | None = None
+    error_line: int | None = None
+
+
+# Classes whose names are fixed by code we ship or depend on; any other name is reported as `other`.
+_KNOWN_ERROR_ROOTS = frozenset(
+    {"builtins", "sympy", "mpmath", "numpy", "scipy", "minerva_engine", "minerva_knowledge"}
+)
+
+
+def _site(exc: BaseException) -> tuple[str, str | None, int | None]:
+    """Where an exception was raised, as the child reports it: class name, module and line of the
+    innermost frame of our own code. Never the message, which can hold the user's expression."""
+    cls = type(exc)
+    name = cls.__name__ if cls.__module__.split(".")[0] in _KNOWN_ERROR_ROOTS else "other"
+    innermost: tuple[str, int] | None = None
+    for frame, line in traceback.walk_tb(exc.__traceback__):
+        module = str(frame.f_globals.get("__name__", ""))
+        if module.startswith("minerva_"):
+            innermost = (module, line)
+    return (name, *innermost) if innermost else (name, None, None)
 
 
 def _child_main(conn: Connection, op: str, payload: dict[str, Any], cpu: int, mem: int) -> None:
@@ -84,7 +108,7 @@ def _child_main(conn: Connection, op: str, payload: dict[str, Any], cpu: int, me
         conn.send(("ok", result))
     except BaseException as exc:
         with contextlib.suppress(Exception):
-            conn.send(("error", type(exc).__name__))
+            conn.send(("error", _site(exc)))
     finally:
         conn.close()
 
@@ -121,9 +145,10 @@ class Sandbox:
                 return SandboxResult(Outcome.KILLED)
             if kind == "ok":
                 return SandboxResult(Outcome.OK, value)
-            if value in ("MemoryError", "RecursionError"):
+            name, module, line = value
+            if name in ("MemoryError", "RecursionError"):
                 return SandboxResult(Outcome.KILLED)  # hit a resource limit, not a bug
-            return SandboxResult(Outcome.ERROR)
+            return SandboxResult(Outcome.ERROR, None, name, module, line)
         finally:
             parent.close()
             if proc.is_alive():

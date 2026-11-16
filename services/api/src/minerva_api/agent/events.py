@@ -192,6 +192,9 @@ class TurnDebug(BaseModel):
     llm_calls: list[LLMCallDebug] = Field(default_factory=list)
     claims: list[ClaimDebug] = Field(default_factory=list)
     error: str | None = None
+    # Where an unexpected exception was raised (error_type, error_module, error_line): code locations
+    # only, never its message. Empty unless the turn ended in an internal error.
+    error_site: dict[str, Any] = Field(default_factory=dict)
     # Added with tracing; absent on messages stored before it existed.
     trace_id: str = (
         ""  # one per agent request; joins the stored trace, the events and the log lines

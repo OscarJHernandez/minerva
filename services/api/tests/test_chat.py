@@ -841,6 +841,40 @@ def test_a_turn_that_fails_outside_the_loop_leaves_a_stored_message(
     assert "simulated" not in json.dumps(stored)  # the cause never reaches the user or the record
 
 
+def test_a_failed_turn_logs_its_class_and_location_never_its_message(
+    chat_client: tuple[TestClient, str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # The log used to say only that the turn failed, so an internal error could not be diagnosed; the
+    # message of the exception is never written because it can hold the user's expression.
+    from minerva_api import logging as api_logging
+
+    client, cid = chat_client
+
+    async def boom(*args: object, **kwargs: object):  # type: ignore[no-untyped-def]
+        raise RuntimeError("cannot simplify x^2 + secret@example.com")
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr("minerva_api.routers_chat.run_agent", boom)
+    api_logging.configure_logging()  # bind the logger to the stream capsys captures now
+    capsys.readouterr()
+    events = sse(client, cid, "simplify $x + x$")
+    out = capsys.readouterr().out
+    lines = [json.loads(x) for x in out.splitlines() if x.startswith("{")]
+    failed = next(r for r in lines if r["event"] == "chat_turn_failed")
+    assert failed["error_type"] == "RuntimeError" and failed["trace_id"]
+    assert failed["error_module"] == "minerva_api.routers_chat" and failed["error_line"] > 0
+    assert "secret@example.com" not in out and "x^2" not in out
+    # the same facts join the stored message, so the debug report names them
+    detail = client.get(f"/v1/chat/conversations/{cid}").json()
+    debug = detail["messages"][-1]["content"]["debug"]
+    assert debug["trace_id"] == failed["trace_id"] and debug["stop_reason"] == "internal_error"
+    assert debug["error_site"]["error_type"] == "RuntimeError"
+    assert "secret@example.com" not in json.dumps(debug)
+    assert [e for e, _ in events][-2:] == ["error", "done"]
+
+
 def test_rename_and_import_a_stored_result(chat_client: tuple[TestClient, str]) -> None:
     client, conversation = chat_client
     path = f"/v1/chat/conversations/{conversation}"

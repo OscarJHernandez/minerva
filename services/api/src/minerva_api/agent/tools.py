@@ -13,7 +13,8 @@ import re
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from types import UnionType
+from typing import Any, Literal, Union, get_args, get_origin
 
 from minerva_engine import (
     CompareRequest,
@@ -57,10 +58,11 @@ from minerva_knowledge.identities import (
     summarize,
     vector_identity_rules,
 )
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError, model_validator
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
+from ..logging import error_fields
 from ..ode_log import log_ode
 from ..search_log import log_search_events
 from ..variation_log import log_variation
@@ -122,6 +124,13 @@ class ToolOutput:
     # The ids of the methods an analysis found applicable, in its order (`ode_analyze`); the loop asks
     # the user which to run when there are several and their message named none.
     choices: tuple[str, ...] = ()
+    # For the log and the trace only (see tracing.ToolOutcome): a fixed code for why the call failed
+    # (a validation error type), the schema paths that failed validation with list indices and
+    # dictionary keys replaced by `*`, and where an unexpected exception was raised. Never a value, a
+    # symbol name or an exception message.
+    reason_code: str | None = None
+    invalid_fields: tuple[str, ...] = ()
+    error_site: dict[str, Any] = field(default_factory=dict)
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -3660,16 +3669,82 @@ def schemas() -> list[dict[str, Any]]:
     return [t.schema() for t in TOOLS.values()]
 
 
-_SHAPE_HINTS = {
-    "assumptions": 'an object mapping each symbol to a list of words, e.g. {"x": ["positive"]}',
-    "quantities": 'a list of objects, e.g. [{"symbol": "F", "unit": "N"}]',
-    "matrices": 'a list of objects, e.g. [{"name": "A", "rows": 2}]',
-    "variables": 'a list of names, e.g. ["x", "y"]',
-    "conditions": (
-        'a list of strings like "y(0) = 1", or objects with the keys unknown, order, at and '
-        'value, e.g. {"unknown": "y", "order": 0, "at": "0", "value": "1"}'
-    ),
+# Examples of the usual wrong shapes. An example is shown only if it validates against the very field
+# that failed (`_shape_hint`): the same field name has different shapes in different tools (`quantities`
+# is a list of objects for the unit tools and a list of names for `geometry`), and a hint that teaches a
+# key the schema does not have makes the model repeat the same wrong call.
+_SHAPE_EXAMPLES: dict[str, Any] = {
+    "assumptions": {"x": ["positive"]},
+    "quantities": [{"name": "F", "unit": "N"}],
+    "matrices": [{"name": "A", "rows": 2}],
+    "variables": ["x", "y"],
+    "conditions": ["y(0) = 1", {"unknown": "y", "order": 0, "at": "0", "value": "1"}],
 }
+_SHAPE_MAX_KEYS = 8
+
+
+def _shape_of(schema: dict[str, Any], defs: dict[str, Any], depth: int = 0) -> str:
+    """The shape a JSON schema asks for, in words, with the schema's own key names."""
+    if "$ref" in schema:
+        schema = defs.get(str(schema["$ref"]).rsplit("/", 1)[-1], {})
+    if "anyOf" in schema:
+        parts = [_shape_of(s, defs, depth) for s in schema["anyOf"] if s.get("type") != "null"]
+        return " or ".join(dict.fromkeys(parts))
+    if "enum" in schema:
+        return "one of " + ", ".join(f'"{v}"' for v in schema["enum"])
+    kind = schema.get("type")
+    if kind == "array":
+        item = _shape_of(schema.get("items", {}), defs, depth)
+        if item.startswith("an object with"):
+            item = "objects, each with" + item[len("an object with") :]
+        return "a list of " + item
+    if kind == "object":
+        props = schema.get("properties")
+        if props and depth < 2:
+            required = [k for k in props if k in set(schema.get("required", []))]
+            others = [k for k in props if k not in required]
+            keys = []
+            for key in (required + others)[:_SHAPE_MAX_KEYS]:
+                tag = ", required" if key in required else ""
+                keys.append(f"{key} ({_shape_of(props[key], defs, depth + 1)}{tag})")
+            more = len(props) - len(keys)
+            tail = f", and {more} more" if more > 0 else ""
+            return "an object with the keys " + ", ".join(keys) + tail
+        extra = schema.get("additionalProperties")
+        if isinstance(extra, dict):
+            return "an object mapping names to " + _shape_of(extra, defs, depth)
+        return "an object"
+    words = {
+        "string": "text",
+        "integer": "an integer",
+        "number": "a number",
+        "boolean": "true or false",
+    }
+    return words.get(str(kind), "a value")
+
+
+def _shape_hint(model: type[BaseModel], field: str) -> str | None:
+    """What `field` of `model` must look like, from the schema itself, plus an example that validates."""
+    info = model.model_fields.get(field)
+    if info is None:
+        return None
+    schema = model.model_json_schema()
+    prop = schema.get("properties", {}).get(field)
+    if prop is None:
+        return None
+    structured = '"$ref"' in json.dumps(prop) or '"properties"' in json.dumps(prop)
+    example = _SHAPE_EXAMPLES.get(field)
+    if example is not None and info.annotation is not None:
+        try:
+            TypeAdapter(info.annotation).validate_python(example)
+        except ValidationError:
+            example = None
+    if example is None and not structured:
+        return None
+    described = _shape_of(prop, schema.get("$defs", {}))
+    if example is None and described in ("a value", "an object"):
+        return None  # nothing the model could act on
+    return f"{described}, e.g. {json.dumps(example)}" if example is not None else described
 
 
 def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[str, Any]:
@@ -3688,7 +3763,74 @@ def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[s
     return out
 
 
-def _validation_message(exc: ValidationError) -> str:
+_REASON_CODE = re.compile(r"[a-z][a-z_]{0,39}")
+_UNION_NOISE = ("function-after", "function-before", "function-wrap", "json-or-python")
+
+
+def _candidates(annotation: Any) -> list[Any]:
+    """The concrete types an annotation allows (the members of a union, without `None`)."""
+    if get_origin(annotation) in (Union, UnionType):
+        return [a for a in get_args(annotation) if a is not type(None)]
+    return [annotation]
+
+
+def _step(candidates: list[Any], segment: Any) -> tuple[str | None, list[Any]] | None:
+    """Follow one segment of a validation error's location through the argument model.
+
+    Returns `(text to log or None, the types at the next level)`, or `None` when the segment cannot be
+    placed in the schema. Only names of the model's own fields are ever logged: an index or a
+    dictionary key (which can be a symbol the user chose) becomes `*`."""
+    for tp in candidates:
+        origin = get_origin(tp)
+        if isinstance(tp, type) and issubclass(tp, BaseModel):
+            if isinstance(segment, str) and segment in tp.model_fields:
+                return segment, _candidates(tp.model_fields[segment].annotation)
+        elif origin in (list, set, frozenset, tuple):
+            if isinstance(segment, int):
+                inner = get_args(tp)
+                return "*", _candidates(inner[0]) if inner else []
+        elif origin is dict:
+            inner = get_args(tp)
+            return "*", _candidates(inner[1]) if len(inner) > 1 else []
+    # a union member's own name (`OdeCondition`, `str`) or a validator wrapper is not a path segment
+    names = {getattr(tp, "__name__", None) for tp in candidates}
+    if isinstance(segment, str) and (segment in names or segment.startswith(_UNION_NOISE)):
+        return None, candidates
+    return None
+
+
+def _safe_path(model: type[BaseModel], loc: tuple[Any, ...]) -> str:
+    """`loc` as a schema path that cannot hold user data, cut with `*` where it cannot be placed."""
+    parts: list[str] = []
+    candidates: list[Any] = [model]
+    for segment in loc:
+        step = _step(candidates, segment)
+        if step is None:
+            parts.append("*")
+            break
+        label, candidates = step
+        if label is not None:
+            parts.append(label)
+    return ".".join(parts) or "*"
+
+
+def _validation_fields(
+    exc: ValidationError, model: type[BaseModel]
+) -> tuple[str | None, tuple[str, ...]]:
+    """A fixed reason code and the schema paths of the failed fields, for the log."""
+    code: str | None = None
+    paths: list[str] = []
+    for err in exc.errors():
+        path = _safe_path(model, tuple(err["loc"]))
+        if path not in paths:
+            paths.append(path)
+        kind = str(err.get("type", ""))
+        if code is None and _REASON_CODE.fullmatch(kind):
+            code = kind
+    return code, tuple(paths[:6])
+
+
+def _validation_message(exc: ValidationError, model: type[BaseModel]) -> str:
     """Every distinct problem (up to three) with the fix for the usual wrong shapes.
 
     A list of four conditions that all lack the same key is one problem, not four, and the error of
@@ -3712,7 +3854,7 @@ def _validation_message(exc: ValidationError) -> str:
         first = ".".join(str(p) for p in err["loc"] if p not in ("OdeCondition", "str"))
         label = first if count == 1 else f"{where} ({count} items, e.g. {first})"
         parts.append(f"{label}: {msg}")
-        hint = _SHAPE_HINTS.get(str(err["loc"][0])) if err["loc"] else None
+        hint = _shape_hint(model, str(err["loc"][0])) if err["loc"] else None
         if hint and hint not in hints:
             hints.append(hint)
     more = len(problems) - len(shown)
@@ -3836,7 +3978,14 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     try:
         args = tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except ValidationError as exc:
-        return _error(name, _validation_message(exc), "invalid_arguments", arguments_valid=False)
+        invalid = _error(
+            name,
+            _validation_message(exc, tool.args_model),
+            "invalid_arguments",
+            arguments_valid=False,
+        )
+        invalid.reason_code, invalid.invalid_fields = _validation_fields(exc, tool.args_model)
+        return invalid
     except TypeError:
         return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
     refused = _matrix_refusal(name, arguments, ctx)
@@ -3851,8 +4000,12 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
             "invalid_arguments",
             arguments_valid=False,
         )
-    except Exception:  # a bug in one tool must not end the turn; the text is fixed, never the cause
-        return _error(name, "the tool failed unexpectedly")
+    except (
+        Exception
+    ) as exc:  # a bug in one tool must not end the turn; the text is fixed, never the cause
+        failed = _error(name, "the tool failed unexpectedly")
+        failed.error_site = error_fields(exc)  # class and code location only, never the message
+        return failed
     # What the engine established, read from its own result: the model has no say in it.
     with contextlib.suppress(Exception):
         output.evidence = evidence_for(name, output.status, output.card.data)
