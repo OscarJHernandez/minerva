@@ -58,6 +58,10 @@ class Derivation(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Soft delete: set when the user deletes it; undone by a restore within the undo window, then purged.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None, nullable=True
+    )
 
 
 class Calculation(Base):
@@ -80,6 +84,10 @@ class Calculation(Base):
     )
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("calculations.id", ondelete="SET NULL"), default=None
+    )
+    # Soft delete: rows deleted together share one stamp, which is how a restore finds them again.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None, nullable=True, index=True
     )
 
 

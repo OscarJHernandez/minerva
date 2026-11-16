@@ -30,6 +30,7 @@ from .db import Base, make_engine, make_session_factory
 from .logging import configure_logging, error_fields, get_logger
 from .security import RateLimiter
 from .settings import Settings, get_settings
+from .softdelete import maybe_purge
 
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -75,6 +76,8 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
             Base.metadata.create_all(db_engine)
         app.state.db_engine = db_engine
         app.state.session_factory = make_session_factory(db_engine)
+        with app.state.session_factory() as housekeeping:
+            maybe_purge(housekeeping)  # deletions past their undo window become final
         app.state.kb = KnowledgeBase.load()
         app.state.engine = Engine(
             Limits(

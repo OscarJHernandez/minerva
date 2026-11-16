@@ -279,7 +279,7 @@ def test_history_is_isolated_per_user(app) -> None:  # type: ignore[no-untyped-d
         assert b.get(f"/v1/history/{cid}").status_code == 404
         assert b.delete(f"/v1/history/{cid}").status_code == 404
         assert a.get(f"/v1/history/{cid}").status_code == 200
-        assert a.delete(f"/v1/history/{cid}").status_code == 204
+        assert a.delete(f"/v1/history/{cid}").status_code == 200
         assert a.get("/v1/history").json() == []
 
 

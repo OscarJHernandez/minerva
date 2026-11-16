@@ -141,6 +141,8 @@ describe("controlled steps", () => {
       isolateResult() as unknown as Record<string, unknown>,
     );
     expect(continuation(two)).toBeNull();
+    // choosing the FIRST of several is a choice like any other (it used to return nothing)
+    expect(continuation(two, 0)?.text).toBe("sqrt(b/a)");
     expect(continuation(two, 1)).toEqual({
       text: "-sqrt(b/a)",
       latex: "x = - \\sqrt{\\frac{b}{a}}",

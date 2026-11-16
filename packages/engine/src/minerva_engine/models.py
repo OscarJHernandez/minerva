@@ -378,7 +378,7 @@ class Premise(BaseModel):
 class Step(BaseModel):
     """One recorded transformation with its justification."""
 
-    action: Literal["substitute", "builtin", "rule", "collect", "peel", "polynomial"]
+    action: Literal["substitute", "builtin", "rule", "replace", "collect", "peel", "polynomial"]
     name: str = ""  # a rule id, a SymPy move (`sympy.expand`), or what was peeled
     direction: Literal["forward", "reverse"] | None = None
     matched_latex: str | None = None  # the part acted on

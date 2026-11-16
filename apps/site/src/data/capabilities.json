@@ -5238,7 +5238,7 @@
           "outputs": [],
           "checks": [],
           "notes": [
-            "The left side of no relation occurs in the expression (as SymPy reads it), so nothing was replaced."
+            "The left side of no relation occurs in the expression (as SymPy reads it), so nothing was replaced. z does not occur as written, so that relation was not used. Rewrite the expression into a form that contains it (Rewrite as), then substitute."
           ]
         },
         {
@@ -5294,6 +5294,7 @@
       "summary": "Applies one move to one part of an expression and leaves the rest alone: expand, factor, cancel, simplify, collect terms by chosen variables or powers, or a handbook identity. You choose the part from a list the server makes (or type it); if it occurs more than once you choose the occurrence. The whole expression before and after is verified, and an identity whose conditions are not provable from your assumptions is reported and not applied.",
       "limits": [
         "A part is chosen for one exact expression; if the expression has changed, the choice is refused as stale and never applied somewhere else.",
+        "Rewrite as takes the form you type and verifies the whole expression against the original (numerically, and symbolically where SymPy finds a zero); a form that is not equal is refused. It is not available for noncommuting symbols.",
         "An identity is matched against the chosen part alone, with the same filters as everywhere else (no invented roots, reciprocals or the imaginary unit).",
         "Collect works on symbols and parts of the expression, at most four, and by commuting ones for noncommuting expressions. For noncommuting symbols only expand and collect are supported, on polynomial expressions; every other operation reports that it does not support them.",
         "Verification is numerical, and symbolic where SymPy finds a zero; for noncommuting symbols random matrices sized from the degree are used."
@@ -5404,6 +5405,61 @@
           ],
           "notes": [
             "The same part occurs twice; only the chosen occurrence changes."
+          ]
+        },
+        {
+          "id": "rewrite-as-typed-form",
+          "title": "Rewrite as a form you type",
+          "op": "rewrite",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x^4 + y^4"
+            },
+            {
+              "label": "Move",
+              "source": "replace"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Applied rewrite as to the part",
+              "latex": "x^{4} + y^{4}"
+            },
+            {
+              "label": "Result",
+              "latex": "- 2 x^{2} y^{2} + \\left(x^{2} + y^{2}\\right)^{2}"
+            }
+          ],
+          "checks": [
+            "whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points"
+          ],
+          "notes": [
+            "Nothing is matched or proposed: the part becomes the form you typed, and the whole expression is verified against the original. This is how the x + y = 5, xy = 6 problem starts: x^4 + y^4 first becomes (x^2 + y^2)^2 - 2 x^2 y^2, then x^2 + y^2 becomes (x + y)^2 - 2xy, and a substitution gives 97."
+          ]
+        },
+        {
+          "id": "rewrite-as-wrong-form",
+          "title": "A form that is not equal is refused",
+          "op": "rewrite",
+          "status": "not_verified",
+          "input": [
+            {
+              "label": "Expression",
+              "source": "x^2 + y^2"
+            },
+            {
+              "label": "Move",
+              "source": "replace"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "The part was rewritten but the whole expression could not be verified, so the result is not shown. numeric check found a disagreement"
           ]
         },
         {

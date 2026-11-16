@@ -33,4 +33,8 @@ settings.load_profile(_PROFILE)
 
 @pytest.fixture(scope="session")
 def engine() -> Engine:
-    return Engine(Limits(timeout_seconds=20, max_concurrency=2))
+    # A wall-clock cap, not a mathematical tolerance: the heaviest derivations here take a few seconds
+    # alone and several times that on a loaded CI runner (five shards plus other jobs), where a 20 s cap
+    # turned them into `resource_limit` / `not_verified`. Tests that exercise the timeout itself build
+    # their own short-limit engine.
+    return Engine(Limits(timeout_seconds=60, max_concurrency=2))

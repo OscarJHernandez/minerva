@@ -342,6 +342,22 @@ def _builtin(
     return _Move(function[action](piece), "builtin", f"sympy.{action}")
 
 
+def _replace_move(piece: sp.Expr, target: str, data: ExpressionInput, limits: Limits) -> _Move:
+    """Rewrite the chosen part as a form the user typed ("rewrite as").
+
+    Nothing is matched or proposed here: the typed form replaces the part and the *whole*
+    expression is then verified against the original by the caller, so a wrong target is
+    `not_verified` and never shown. Noncommuting symbols are refused (a numeric sample of
+    commuting symbols says nothing about matrices).
+    """
+    new = _read_part(target, data, limits)
+    if noncommuting_symbols(piece) or noncommuting_symbols(new):
+        raise UnsupportedInput(
+            "rewriting as a typed form is not supported for noncommuting symbols"
+        )
+    return _Move(new, "replace", "rewrite as")
+
+
 def _rule_move(piece: sp.Expr, rule: Rule, reverse: bool) -> _Move:
     if reverse and not can_reverse(rule):
         raise UnsupportedInput("this identity cannot be applied right to left")
@@ -455,6 +471,11 @@ def op_rewrite_at(payload: dict[str, Any]) -> dict[str, Any]:
                 move = _rule_move(
                     chosen.piece, Rule(**payload["rule"]), bool(payload.get("reverse"))
                 )
+            elif action == "replace":
+                target = str(payload.get("target") or "").strip()
+                if not target:
+                    raise ParseError("type the form to rewrite the part as")
+                move = _replace_move(chosen.piece, target, data, limits)
             else:
                 move = _builtin(chosen.piece, action, list(payload.get("by") or []), data, limits)
         diag.candidates = max(diag.candidates, 1)

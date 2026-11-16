@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormDraft } from "@/lib/use-form-draft";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import type { HistoryItem } from "@/lib/types";
 import {
@@ -16,6 +16,7 @@ import type { VariationAction, VariationReport, VariationRequest } from "@/lib/v
 import { AssumptionsEditor } from "../assumptions-editor";
 import { ConditionsEditor, FIELD, NumbersFields } from "../variation-fields";
 import { VariationPanel } from "../variation-panel";
+import { UndoToast } from "./undo-toast";
 
 /** A saved derivation (or a blank one) to load into the workbench; the nonce lets it be loaded again. */
 export interface VariationRestore {
@@ -47,11 +48,14 @@ export function VariationalWorkbench({
   draftKey,
   onUnauthorized,
   onSaved,
+  onDerivationChange,
 }: {
   draftKey?: string;
   restore: VariationRestore | null;
   onUnauthorized: () => void;
   onSaved: () => void;
+  /** Tells the page which derivation is open here, so deleting it from the saved list resets this mode. */
+  onDerivationChange?: (id: string | null) => void;
 }) {
   const uid = useId();
   const [form, setForm] = useState<VariationForm>(() => blankForm());
@@ -60,6 +64,12 @@ export function VariationalWorkbench({
   const [steps, setSteps] = useState<HistoryItem[]>([]);
   const [busy, setBusy] = useState<VariationAction | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [undo, setUndo] = useState<{ message: string; id: string } | null>(null);
+  const deleting = useRef(new Set<string>());
+
+  useEffect(() => {
+    onDerivationChange?.(derivationId);
+  }, [derivationId, onDerivationChange]);
 
   useEffect(() => {
     if (!restore) return;
@@ -122,13 +132,34 @@ export function VariationalWorkbench({
   }
 
   async function deleteStep(item: HistoryItem) {
+    if (deleting.current.has(item.id)) return;
+    deleting.current.add(item.id);
     try {
-      await api.deleteHistoryItem(item.id);
-      if (derivationId) setSteps((await api.derivation(derivationId)).steps);
+      // the server hides this step and every later one (each continued the one before it)
+      const { ids } = await api.deleteHistoryItem(item.id);
+      setSteps((all) => all.filter((s) => !ids.includes(s.id)));
+      setUndo({
+        message: ids.length > 1 ? `Step and ${ids.length - 1} after it deleted.` : "Step deleted.",
+        id: item.id,
+      });
       onSaved();
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) onUnauthorized();
       else setError(e instanceof ApiError ? e.message : "The step could not be deleted.");
+    } finally {
+      deleting.current.delete(item.id);
+    }
+  }
+
+  async function undoDelete(id: string) {
+    setUndo(null);
+    try {
+      await api.restoreHistoryItem(id);
+      if (derivationId) setSteps((await api.derivation(derivationId)).steps);
+      onSaved();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) onUnauthorized();
+      else setError(e instanceof ApiError ? e.message : "The step could not be restored.");
     }
   }
 
@@ -360,6 +391,15 @@ export function VariationalWorkbench({
           <h2 className="mb-3 font-serif text-xl">
             Derivation <span className="text-sm font-normal text-muted">({reports.length})</span>
           </h2>
+          {undo && (
+            <div className="mb-3">
+              <UndoToast
+                message={undo.message}
+                onUndo={() => void undoDelete(undo.id)}
+                onDismiss={() => setUndo(null)}
+              />
+            </div>
+          )}
           <ol className="space-y-3">
             {reports.map((item, i) => (
               <li key={item.id} id={`step-${item.id}`} aria-label={`Step ${i + 1}`}>

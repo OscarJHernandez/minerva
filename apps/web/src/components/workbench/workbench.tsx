@@ -43,6 +43,7 @@ import type {
 } from "@/lib/types";
 import { AssumptionsEditor } from "../assumptions-editor";
 import { DerivationView } from "./derivation-view";
+import { UndoToast } from "./undo-toast";
 import { ExpressionEditor, type EditorFormat } from "./expression-editor";
 import { restoreMatrixForm, type MatrixForm } from "@/lib/matrix-form";
 import type { StatMechRequest } from "@/lib/statmech-types";
@@ -158,6 +159,10 @@ export function Workbench() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // What was just deleted, with the way back (see `deleteStep`, `deleteDerivation`).
+  const [notice, setNotice] = useState<{ message: string; undo: () => Promise<void> } | null>(null);
+  const [variationId, setVariationId] = useState<string | null>(null); // the variational mode's open derivation
+  const deleting = useRef(new Set<string>());
   const [lookup, setLookup] = useState<{ key: string; result: IdentitiesResult } | null>(null);
   const [partOpen, setPartOpen] = useState(false);
   const [parts, setParts] = useState<{ key: string; result: StepResult } | null>(null);
@@ -314,6 +319,27 @@ export function Workbench() {
             setRewriteGoal(draft.rewriteGoal ?? null);
             setRewriteTarget(draft.rewriteTarget ?? []);
             setSavedVariables(draft.savedVariables ?? null);
+            if (draft.derivationId && api.derivation) {
+              // The stored steps are a copy: what the server holds now is what counts (a step may
+              // have been deleted in another tab, or the whole derivation).
+              void api
+                .derivation(draft.derivationId)
+                .then((fresh) => {
+                  if (cancelled || request !== generation.current) return;
+                  setSteps(fresh.steps);
+                  setFromId((id) => (id && fresh.steps.some((x) => x.id === id) ? id : null));
+                })
+                .catch((e: unknown) => {
+                  if (cancelled || request !== generation.current) return;
+                  if (e instanceof ApiError && e.status === 404) {
+                    setDerivationId(null);
+                    setSteps([]);
+                    setFromId(null);
+                    setFromWhich(0);
+                    setError("That derivation no longer exists; it was deleted.");
+                  }
+                });
+            }
           }
         } catch {
           // The workbench remains usable without browser storage.
@@ -403,7 +429,7 @@ export function Workbench() {
     setError(null);
   }
 
-  function continueFrom(item: HistoryItem, edit: boolean, which = 0) {
+  function continueFrom(item: HistoryItem, edit: boolean, which?: number) {
     const next = continuation(item, which);
     if (!next) return;
     invalidate();
@@ -412,7 +438,7 @@ export function Workbench() {
     setFormat("text");
     setText(next.text);
     setFromId(item.id);
-    setFromWhich(which);
+    setFromWhich(which ?? 0);
     setAssumptions(item.assumptions); // the result is valid under the assumptions it was made with
     setError(null);
     if (edit) setFocusSignal((n) => n + 1);
@@ -552,6 +578,10 @@ export function Workbench() {
       void addStep(operation, (c) =>
         api.rewrite(c, { action: "collect", by: collectTargets(settings.collectBy), selection }),
       );
+    else if (operation === "rewriteAs")
+      void addStep(operation, (c) =>
+        api.rewrite(c, { action: "replace", target: settings.rewriteAs.trim(), selection }),
+      );
     else if (operation === "isolate")
       void addStep(operation, (c) => api.isolate(c, settings.solveFor));
     else if (operation === "differentiate")
@@ -686,6 +716,7 @@ export function Workbench() {
       if (derivation.steps[0]?.operation === "variation") {
         // a variational derivation lives in its own mode, which keeps its steps and form
         setMode("variational");
+        setVariationId(id);
         setVariationRestore({
           nonce: generation.current,
           derivationId: id,
@@ -707,29 +738,81 @@ export function Workbench() {
     }
   }
 
-  async function deleteDerivation(id: string) {
-    if (!window.confirm("Delete this derivation and its steps? This cannot be undone.")) return;
+  /** Take back a deletion, then show what the server now holds. */
+  async function undo(restore: () => Promise<unknown>) {
+    setNotice(null);
     try {
-      await api.deleteDerivation(id);
-      if (id === derivationId) reset();
+      await restore();
+      if (derivationId) setSteps((await api.derivation(derivationId)).steps);
       await refreshSaved();
     } catch (e) {
       handleError(e);
     }
   }
 
-  async function deleteStep(item: HistoryItem) {
-    const request = generation.current;
+  async function deleteDerivation(id: string) {
+    if (deleting.current.has(id)) return;
+    deleting.current.add(id);
     try {
-      await api.deleteHistoryItem(item.id);
-      if (derivationId) {
-        const derivation = await api.derivation(derivationId);
-        if (request === generation.current) setSteps(derivation.steps);
+      await api.deleteDerivation(id);
+      if (id === derivationId) reset();
+      else if (id === variationId) {
+        setVariationRestore({ nonce: generation.current, derivationId: null, steps: [] });
       }
-      if (request === generation.current && item.id === fromId) setFromId(null);
+      setNotice({
+        message: "Derivation deleted.",
+        undo: () => undo(() => api.restoreDerivation(id)),
+      });
       await refreshSaved();
     } catch (e) {
       handleError(e);
+    } finally {
+      deleting.current.delete(id);
+    }
+  }
+
+  /**
+   * Delete a step and the steps that continued it. The screen changes at once and is put back, with
+   * the reason, if the server refuses. The change is a filter of the current list, never a copy taken
+   * before the request, so a step added or an edit made meanwhile is not undone by it.
+   */
+  async function deleteStep(item: HistoryItem) {
+    if (deleting.current.has(item.id)) return;
+    deleting.current.add(item.id);
+    const below = new Set([item.id]);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const s of steps) {
+        if (s.parent_id && below.has(s.parent_id) && !below.has(s.id)) {
+          below.add(s.id);
+          grew = true;
+        }
+      }
+    }
+    const removed = steps.filter((s) => below.has(s.id));
+    const dropFrom = (ids: Set<string>) => setSteps((all) => all.filter((s) => !ids.has(s.id)));
+    dropFrom(below);
+    if (fromId && below.has(fromId)) {
+      setFromId(null);
+      setFromWhich(0);
+    }
+    try {
+      const { ids } = await api.deleteHistoryItem(item.id);
+      dropFrom(new Set(ids));
+      setNotice({
+        message: ids.length > 1 ? `Step and ${ids.length - 1} after it deleted.` : "Step deleted.",
+        undo: () => undo(() => api.restoreHistoryItem(item.id)),
+      });
+      await refreshSaved();
+    } catch (e) {
+      setSteps((all) =>
+        [...all, ...removed.filter((r) => !all.some((s) => s.id === r.id))].sort((a, b) =>
+          a.created_at.localeCompare(b.created_at),
+        ),
+      );
+      handleError(e);
+    } finally {
+      deleting.current.delete(item.id);
     }
   }
 
@@ -903,6 +986,18 @@ export function Workbench() {
             Approximations
           </Link>
         </p>
+        {error && (
+          <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <UndoToast
+            message={notice.message}
+            onUndo={() => void notice.undo()}
+            onDismiss={() => setNotice(null)}
+          />
+        )}
         <label className="block text-xs text-muted">
           Search workbench modes
           <input
@@ -1061,11 +1156,6 @@ export function Workbench() {
                 onRun={runPart}
               />
             )}
-            {error && (
-              <p role="alert" className="rounded bg-bad-soft px-3 py-2 text-sm text-bad">
-                {error}
-              </p>
-            )}
           </>
         )}
       </div>
@@ -1192,6 +1282,7 @@ export function Workbench() {
               draftKey={draftKey ? draftKey + ":variational" : undefined}
               onUnauthorized={() => router.push("/login")}
               onSaved={() => void refreshSaved()}
+              onDerivationChange={setVariationId}
             />
           </div>
         )}

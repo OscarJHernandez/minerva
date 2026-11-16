@@ -59,7 +59,8 @@ vi.mock("@/lib/api", async () => {
       ]),
       history: vi.fn(async () => [single]),
       deleteHistoryItem: vi.fn(),
-      deleteDerivation: vi.fn(),
+      deleteDerivation: vi.fn(async () => undefined),
+      restoreDerivation: vi.fn(async () => ({ ids: [] })),
       clearHistory: vi.fn(),
     },
   };
@@ -100,5 +101,23 @@ describe("Workbench: variational mode", () => {
     expect(
       screen.queryByRole("region", { name: /^Variational calculus ·/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("resets the variational mode when the derivation open in it is deleted", async () => {
+    render(<Workbench />);
+    await userEvent.click(screen.getByRole("button", { name: /^Saved/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Open derivation of 2 steps/ }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole("region", { name: /^Variational calculus ·/ })).toHaveLength(2),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Delete this derivation" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: /^Variational calculus ·/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("Derivation deleted.");
   });
 });

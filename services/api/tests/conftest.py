@@ -60,7 +60,10 @@ def make_settings(**over: object) -> Settings:
         "env": "development",
         "database_url": database_url_for_tests(),
         "session_secret": SecretStr("test-secret-value-test-secret-value!"),
-        "compute_timeout_seconds": 30.0,
+        # A wall-clock cap for the test app, not a mathematical tolerance. The conserved-quantity search
+        # takes ~7 s alone and 20-40 s on a loaded CI runner, which a 30 s cap turned into
+        # `resource_limit`. Tests of the timeout pass their own small value (see `build_app(...)`).
+        "compute_timeout_seconds": 90.0,
         "compute_max_concurrency": 2,
         "auth_rate_per_minute": 1000,
         "compute_rate_per_minute": 1000,

@@ -170,29 +170,62 @@ def _order_dependent(
     return bool(_simultaneous(expr, relations) != stated)
 
 
-def _preserves_restrictions(
+def _carry_restrictions(
     restrictions: list[str],
     relations: list[Relation],
+    data: ExpressionInput,
     limits: Limits,
-) -> bool:
-    """Keep a restriction only when the substitution cannot rewrite its operands."""
-    if not restrictions:
-        return True
-    if any(not relation.pattern.free_symbols for relation in relations):
-        return False
-    replaced = {symbol.name for relation in relations for symbol in relation.pattern.free_symbols}
+) -> list[str]:
+    """The restrictions of earlier steps that still stand after these premises are used.
+
+    A restriction `a \\neq b` was established by an earlier step. The premises are the user's and
+    unchecked, so they never remove it (no restriction is "discharged"): it is carried on as it
+    was. What they can do is contradict it: if putting them into `a - b` gives exactly zero, the
+    premises say the very thing the earlier step excluded (`x = y` after `x - y \\neq 0`), and the
+    substitution is refused instead of silently continuing on excluded ground. A restriction that
+    cannot be read is refused too: dropping it would be a plausible-looking wrong answer.
+    """
+    kept: list[str] = []
     for restriction in restrictions:
         parts = restriction.split(r"\neq")
-        if len(parts) != 2:
-            return False
-        for part in parts:
-            try:
-                expression = parse_expression(ExpressionInput(input=part.strip()), limits)
-            except MinervaMathError:
-                return False
-            if any(symbol.name in replaced for symbol in expression.free_symbols):
-                return False
-    return True
+        if len(parts) != 2 or not all(part.strip() for part in parts):
+            raise UnsupportedInput("A restriction of an earlier step could not be read.")
+        try:
+            sides = [
+                parse_expression(
+                    ExpressionInput(
+                        input=part.strip(), format="latex", assumptions=data.assumptions
+                    ),
+                    limits,
+                )
+                for part in parts
+            ]
+        except MinervaMathError as exc:
+            raise UnsupportedInput("A restriction of an earlier step could not be read.") from exc
+        difference = sides[0] - sides[1]
+        order = tuple(range(len(relations)))
+        for candidate in (
+            _sequence(difference, relations, order),
+            _simultaneous(difference, relations),
+        ):
+            if sp.expand(candidate) == 0:
+                raise UnsupportedInput(
+                    f"The premises contradict an earlier restriction ({restriction}): "
+                    "substituting them makes the excluded quantity zero."
+                )
+        kept.append(restriction)
+    return kept
+
+
+def _not_found_hint(missing: list[Relation]) -> str:
+    """Substitution replaces a left side only where it stands as written: say which did not, and what to do."""
+    if not missing:
+        return ""
+    sides = ", ".join(to_latex(r.pattern) for r in missing)
+    return (
+        f" {sides} does not occur as written, so that relation was not used. "
+        "Rewrite the expression into a form that contains it (Rewrite as), then substitute."
+    )
 
 
 def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
@@ -217,10 +250,9 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
         expr = read_expression(data, limits, diag, denominators)
         with diag.timed("parse_ms"):
             relations = [read_relation(t, data, limits, denominators) for t in texts]
-        if not _preserves_restrictions(
-            payload.get("inherited_restrictions", []), relations, limits
-        ):
-            raise UnsupportedInput("The substitution could change a source domain restriction.")
+        carried = _carry_restrictions(
+            [str(r) for r in payload.get("inherited_restrictions", [])], relations, data, limits
+        )
         diag.premises = len(relations)
         input_latex = to_latex(expr)
         deadline = started + 0.7 * limits.timeout_seconds
@@ -260,6 +292,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
                 )
 
         steps: list[Step] = []
+        missing: list[Relation] = []  # relations whose left side was not found as written
         used: list[Relation] = []
         current = expr
         failed: Verification | None = None
@@ -276,6 +309,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
                     found = _marked(marked, relations[index].pattern)
                     if found is None:
                         diag.reject(Reason.PATTERN_NOT_FOUND)
+                        missing.append(relations[index])
                         continue
                     marked, placeholder = found
                     placeholders[placeholder] = relations[index]
@@ -342,7 +376,7 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
                         "original expression."
                         if applied
                         else "The left side of no relation occurs in the expression (as SymPy "
-                        "reads it), so nothing was replaced."
+                        "reads it), so nothing was replaced." + _not_found_hint(missing)
                     ),
                 )
             )
@@ -398,6 +432,12 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
                         else ""
                     )
                     + _restriction_note(restrictions, complete)
+                    + (
+                        f" Still required from earlier steps: {', '.join(carried)}."
+                        if carried
+                        else ""
+                    )
+                    + (_not_found_hint(missing) if missing else "")
                     + (
                         ""
                         if order_dependent is not True

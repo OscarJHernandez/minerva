@@ -39,6 +39,13 @@ Request flow for identities: API -> `engine.features` (sandbox) -> `knowledge.ca
 (FTS5 + structural features) -> `engine.apply_rules` (sandbox: match, check conditions, rewrite,
 verify). Retrieval only proposes; the engine decides.
 
+Workbench deletion is a soft delete with a ten-minute undo (`services/api/.../softdelete.py`): deleting a step hides it and
+every step that continued it (one shared `deleted_at` stamp), deleting a derivation hides it and its live steps, and
+`POST /v1/history/{id}/restore` / `POST /v1/derivations/{id}/restore` bring back exactly the rows with that stamp inside
+`UNDO_WINDOW`. The client never re-sends a result, so an undo cannot plant an unverified one. Every read path filters
+`deleted_at IS NULL` (a deleted step is not a valid parent); expired rows are purged for all accounts by the next request
+(throttled) and at start-up, not when their owner returns. `DELETE /v1/history` (clear all) stays a hard delete.
+
 Text search of the handbook (`Fts5Retriever`, `search_handbook`, the handbook page) never answers with entries that
 share only a filler word: a query word whose stem is in more than 25% of the entries is ignored (measured on the
 index, no stop-word list; a query of only such words returns nothing), and an entry must match enough of the
@@ -449,6 +456,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (a log or exponential gives a family in an integer `k_1`); assumptions on the unknown are not used to choose among them. Do not
   weaken `back_substitute`, `forward_probe` or `count_roots`: their tests include a dropped root, an extraneous root, a missing
   branch, a missing integer family and a wrong formula.
+- Substitution and restrictions of earlier steps (`substitute._carry_restrictions`): a continued `substitute` receives the
+  restrictions of its parent chain (e.g. `x - y \neq 0` after cancelling `(x^3-y^3)/(x-y)`). The user's premises never remove
+  one (no "discharge": Minerva does not check them), so each is carried on unchanged and named in the message. A premise
+  that makes the excluded quantity exactly zero (`x = y` after `x - y \neq 0`) is refused, and a restriction that cannot be
+  read is refused rather than dropped. A relation whose left side is not found *as written* says so and points to
+  "Rewrite as" (`x + y` is not found in `x^2 + y^2`; substitution matches syntactic occurrences only).
 - Noncommuting symbols: declared `noncommutative`, allowed only for polynomial expressions in substitute, rewrite (expand, collect by
   commuting targets) and subterms. `Engine._run` refuses them everywhere else, `Builder` refuses them unless asked, and identities are
   checked on random matrices of size `max(3, degree // 2 + 1)` (smaller matrices accept false identities).

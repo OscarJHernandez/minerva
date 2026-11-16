@@ -178,9 +178,12 @@ class Engine:
         rule: Rule | None = None,
         reverse: bool = False,
         by: list[str] | None = None,
+        target: str | None = None,
         debug: bool = False,
     ) -> StepResult:
-        """Apply one move (`rule`, `simplify`, `expand`, `factor`, `cancel`, `collect`) to one part."""
+        """Apply one move (`rule`, `replace`, `simplify`, `expand`, `factor`, `cancel`, `collect`) to one part.
+
+        `replace` rewrites the part as the form in `target` (the user's); the whole expression is verified."""
         payload = {
             "expression": expression.model_dump(),
             "action": action,
@@ -190,6 +193,7 @@ class Engine:
             "rule": rule.model_dump() if rule else None,
             "reverse": reverse,
             "by": by or [],
+            "target": target,
             "debug": debug,
         }
         return self._step("rewrite_at", payload, "rewrite")
