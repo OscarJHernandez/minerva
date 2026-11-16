@@ -131,6 +131,11 @@ class ToolOutput:
     reason_code: str | None = None
     invalid_fields: tuple[str, ...] = ()
     error_site: dict[str, Any] = field(default_factory=dict)
+    # What each formula is (`equation_of_motion`, `acceleration`, `momentum`, `conserved`), and the names of
+    # the system's coordinates: used only to compare the model's later equations with this result
+    # (`claim_evidence.py`). Never read from the model.
+    formula_roles: dict[str, str] = field(default_factory=dict)
+    variables: tuple[str, ...] = ()
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -2242,20 +2247,25 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
     quoted: list[tuple[str, str]] = []
+    roles: dict[str, str] = {}
     for e in report.equations:
         lines.append(f"equation of motion ({e.coordinate}): ${e.latex}$")
         known.append(e.latex)
+        roles[e.latex] = "equation_of_motion"
     for m in report.momenta:
         lines.append(f"momentum: ${m.latex}$")
         known.append(m.latex)
+        roles[m.latex] = "momentum"
     for a in report.accelerations:
         lines.append(f"acceleration: ${a.latex}$")
         known.append(a.latex)
+        roles[a.latex] = "acceleration"
     for c in report.conserved:
         flag = "verified on the equations of motion" if c.verified else "NOT verified"
         lines.append(f"conserved ({c.kind}, {flag}): {c.name}: ${c.expression_latex}$; {c.reason}")
         if c.verified:
             known.append(c.expression_latex)
+            roles[c.expression_latex] = "conserved"
         else:
             quoted.append((c.expression_latex, NOT_VERIFIED))
     lines.extend(f"tested, not found: {t}" for t in report.tested)
@@ -2280,7 +2290,15 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
             + "; ".join(f"{m['id']} ({m['title']}, {m['verification']})" for m in method_data)
         )
         known.extend(m["statement_latex"] for m in method_data)
-    return ToolOutput(card, "\n".join(lines), known, report.status.value, quoted_latex=quoted)
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        report.status.value,
+        quoted_latex=quoted,
+        formula_roles=roles,
+        variables=tuple(report.coordinates),
+    )
 
 
 def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:

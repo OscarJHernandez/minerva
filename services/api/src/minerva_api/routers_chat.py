@@ -1174,6 +1174,35 @@ def _declaration_inputs(
     return steps, entries
 
 
+def _prior_evidence(messages: list[ChatMessage]) -> list[dict[str, Any]]:
+    """The verified results of earlier turns, as the claim check needs them (`claim_evidence.py`).
+
+    Read from the stored trace of the whole conversation, never from the model's text: a message stored
+    before verification was recorded has no `verified_latex` and so contributes nothing.
+    """
+    rows: list[dict[str, Any]] = []
+    for m in messages:
+        if m.role == "assistant":
+            rows.extend(
+                {
+                    k: step.get(k)
+                    for k in (
+                        "status",
+                        "repeated",
+                        "evidence",
+                        "formula_roles",
+                        "verified_latex",
+                        "variables",
+                        "restrictions",
+                        "result_id",
+                    )
+                }
+                for step in m.content.get("trace", [])
+                if step.get("verified_latex")
+            )
+    return rows
+
+
 def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
     """Matrix and vector names this conversation declared, read generously: in tool calls
     (`matrix_calculus`, `noncommutative` assumptions, `vector_calculus` fields) and in words ("let A
@@ -1271,6 +1300,7 @@ async def send_message(
     prior_unverified = unverified_inputs(previous)
     prior_relations, prior_assumptions = _claim_context(previous, text)
     prior_matrices = _prior_matrices(previous, text)
+    prior_evidence = _prior_evidence(previous)
     declared_for_tools = _declared_for_tools(previous, text)
     if history and history[-1]["role"] == "user":  # the last reply was never stored: one message
         history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
@@ -1347,6 +1377,7 @@ async def send_message(
                 limits,
                 prior_known=prior_known,
                 prior_quoted=prior_quoted,
+                prior_evidence=prior_evidence,
                 prior_relations=prior_relations,
                 prior_assumptions=prior_assumptions,
                 prior_matrices=prior_matrices,
