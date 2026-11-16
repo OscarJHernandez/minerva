@@ -3553,6 +3553,10 @@ _SHAPE_HINTS = {
     "quantities": 'a list of objects, e.g. [{"symbol": "F", "unit": "N"}]',
     "matrices": 'a list of objects, e.g. [{"name": "A", "rows": 2}]',
     "variables": 'a list of names, e.g. ["x", "y"]',
+    "conditions": (
+        'a list of strings like "y(0) = 1", or objects with the keys unknown, order, at and '
+        'value, e.g. {"unknown": "y", "order": 0, "at": "0", "value": "1"}'
+    ),
 }
 
 
@@ -3573,16 +3577,35 @@ def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[s
 
 
 def _validation_message(exc: ValidationError) -> str:
-    """Every problem (up to three) with the fix for the usual wrong shapes, not only the first."""
+    """Every distinct problem (up to three) with the fix for the usual wrong shapes.
+
+    A list of four conditions that all lack the same key is one problem, not four, and the error of
+    the branch of a union (`OdeCondition | str`) that the value never tried to be is noise."""
+    problems: dict[tuple[str, str], list[Any]] = {}
+    for err in exc.errors():
+        loc = [p for p in err["loc"] if p not in ("OdeCondition", "str")]
+        given = err.get("input")
+        union_noise = (err["loc"][-1:] == ("str",) and isinstance(given, dict)) or (
+            "OdeCondition" in err["loc"] and not isinstance(given, dict)
+        )
+        if union_noise:
+            continue
+        where = ".".join("*" if isinstance(p, int) else str(p) for p in loc)
+        entry = problems.setdefault((where, err["msg"]), [err, 0])
+        entry[1] += 1
+    shown = list(problems.items())[:3]
     parts: list[str] = []
-    for err in exc.errors()[:3]:
-        where = ".".join(str(p) for p in err["loc"])
+    hints: list[str] = []
+    for (where, msg), (err, count) in shown:
+        first = ".".join(str(p) for p in err["loc"] if p not in ("OdeCondition", "str"))
+        label = first if count == 1 else f"{where} ({count} items, e.g. {first})"
+        parts.append(f"{label}: {msg}")
         hint = _SHAPE_HINTS.get(str(err["loc"][0])) if err["loc"] else None
-        parts.append(f"{where}: {err['msg']}" + (f" (it must be {hint})" if hint else ""))
-    more = len(exc.errors()) - 3
-    return (
-        "invalid arguments (" + "; ".join(parts) + (f"; and {more} more" if more > 0 else "") + ")"
-    )
+        if hint and hint not in hints:
+            hints.append(hint)
+    more = len(problems) - len(shown)
+    text = "; ".join(parts) + (f"; and {more} more" if more > 0 else "")
+    return f"invalid arguments ({text})" + "".join(f" It must be {hint}." for hint in hints)
 
 
 _BARE_E_POWER = re.compile(r"(?<![A-Za-z\\])e\s*\^")

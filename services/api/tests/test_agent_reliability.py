@@ -101,6 +101,21 @@ def test_an_identical_call_is_not_run_again(
     assert msg["stop_reason"] == "completed"  # one repeat is tolerated
 
 
+def test_repeating_a_call_that_was_refused_says_so_not_that_a_result_is_above(
+    ctx: ToolContext,
+) -> None:
+    bad = {"latex": r"x+x", "assumptions": ["x", "positive"]}  # the shape is wrong: refused
+    llm = ReplayLLM([call("simplify", bad), call("simplify", bad), say("Could not run it.")])
+    msg = final(play(llm, ctx))
+    first, second = msg["trace"]
+    assert first["arguments_valid"] is False and first["status"] == "error"
+    assert second["repeated"] is True and second["arguments_valid"] is False
+    assert second["error_category"] == "invalid_arguments"
+    told = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"]
+    assert "its result is above" not in told[-1]
+    assert "refused before anything ran" in told[-1] and "invalid arguments" in told[-1]
+
+
 def test_the_same_call_with_different_arguments_is_not_a_repeat(ctx: ToolContext) -> None:
     llm = ReplayLLM(
         [

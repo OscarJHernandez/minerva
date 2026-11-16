@@ -204,3 +204,26 @@ def test_a_symbol_that_only_a_condition_mentions_is_a_parameter() -> None:
     assert [s.name for s in problem.parameters] == ["a", "y_0"]
     with pytest.raises(ParseError, match="variable"):
         read(r"y' = a y", independent="x", conditions=["y(x) = 1"])
+
+
+# --- first-order systems written with names such as y1 ---------------------------------------
+
+
+def test_leibniz_fractions_are_read_in_text_for_declared_unknowns_only() -> None:
+    problem = read("dy1/dt = y2", "dy2/dt = -y1", fmt="text", unknowns=["y1", "y2"], independent="t")
+    assert problem.unknowns == ["y1", "y2"] and problem.orders == {"y1": 1, "y2": 1}
+    assert problem.parameters == []
+    second = read("d^2y/dt^2 = -y", fmt="text", unknowns=["y"], independent="t")
+    assert second.orders == {"y": 2}
+    # Not declared: the fraction is a product of letters and is never read as a derivative.
+    with pytest.raises(ParseError, match="listed in `unknowns`"):
+        read("dy1/dt = y2", fmt="text")
+    # The orders above and below must agree.
+    mismatch = read("dy/dt^2 = y", fmt="text", unknowns=["y"], independent="t")
+    assert "dy" in {s.name for s in mismatch.parameters}
+
+
+def test_a_name_such_as_y1_in_latex_is_refused_with_the_fix() -> None:
+    with pytest.raises(ParseError, match=r"y_1.*format to text"):
+        read("y1' = y2", unknowns=["y1", "y2"], independent="t")
+    assert read("y_1' = y_2", unknowns=["y_1", "y_2"], independent="t").unknowns == ["y_1", "y_2"]

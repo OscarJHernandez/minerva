@@ -117,6 +117,10 @@ REPEAT_MESSAGE = (
     "error: this exact call already ran in this turn; its result is above. Do not repeat it: use that "
     "result, or tell the user what could not be established."
 )
+REPEAT_INVALID_MESSAGE = (
+    "These are the same arguments as the call above, which was refused before anything ran: change "
+    "the arguments as described, or tell the user what could not be established."
+)
 CAP_MESSAGE = "error: not run, the limit on tool calls or time for one answer was reached"
 NOTICE_PREFIX = "[notice from Minerva, not from the user] "
 TEXT_TOOL_NOTICE = (
@@ -423,6 +427,9 @@ async def _run_turn(
     )
     declared: dict[str, list[str]] = dict(prior_assumptions or {})
     seen: dict[str, str] = {}
+    # A call whose arguments failed validation, with what the model was told: sending the same
+    # arguments again is told the same thing, not "its result is above" (there is no result).
+    invalid_seen: dict[str, str] = {}
     stop = StopReason.COMPLETED
     failure: str | None = None
     failure_kind: str | None = None  # LLMError.kind, or `internal`
@@ -662,17 +669,29 @@ async def _run_turn(
                 key = _call_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
+                    earlier_error = invalid_seen.get(key)
+                    repeat_valid = earlier_error is None
+                    repeat_category = (
+                        ErrorCategory.REPEATED_CALL
+                        if repeat_valid
+                        else ErrorCategory.INVALID_ARGUMENTS
+                    )
+                    repeat_text = (
+                        REPEAT_MESSAGE
+                        if earlier_error is None
+                        else f"{earlier_error}\n{REPEAT_INVALID_MESSAGE}"
+                    )
                     trace.append(
                         TraceStep(
                             id=call_id,
                             call_id=call.id,
                             name=call.name,
                             arguments=arguments,
-                            for_model=REPEAT_MESSAGE,
+                            for_model=repeat_text,
                             status="skipped",
                             repeated=True,
-                            arguments_valid=True,
-                            error_category=ErrorCategory.REPEATED_CALL.value,
+                            arguments_valid=repeat_valid,
+                            error_category=repeat_category.value,
                         )
                     )
                     tracer.emit(
@@ -680,7 +699,7 @@ async def _run_turn(
                         step,
                         tool=log_name,
                         call_id=call_id,
-                        arguments_valid=True,
+                        arguments_valid=repeat_valid,
                         repeated=True,
                     )
                     tracer.emit(
@@ -689,14 +708,14 @@ async def _run_turn(
                         tool=log_name,
                         call_id=call_id,
                         status="skipped",
-                        error_category=ErrorCategory.REPEATED_CALL,
+                        error_category=repeat_category,
                     )
                     messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": call.id,
                             "name": call.name,
-                            "content": REPEAT_MESSAGE,
+                            "content": repeat_text,
                         }
                     )
                     continue
@@ -748,6 +767,8 @@ async def _run_turn(
                             call.name, "it failed unexpectedly", ErrorCategory.TOOL_FAILURE
                         )
                     seen[key] = call_id
+                    if not output.arguments_valid:
+                        invalid_seen[key] = output.for_model
                 if (
                     call.name == LOAD_TOOLS
                     and refusal is None

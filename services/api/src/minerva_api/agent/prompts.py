@@ -18,8 +18,6 @@ step by step together with the user, using tools that perform verified computati
 handbook of known formulas.
 
 Rules you must follow:
-
-Rules you must follow:
 """
 
 # What this conversation is: said once, in the core, because a model that is not told otherwise may
@@ -128,7 +126,10 @@ Never repeat a call that already ran with the same arguments: its result is abov
    call again only when the tool said it could not read it (`parse_error`) or the arguments were invalid. Do
    not rewrite the input of an `unchanged`, `unsupported` or `conditions_not_satisfied` result hoping for a
    different answer: report what the tool said and what the user could try. Do not restate a formula from a
-   result that was not verified as if it were an answer.\
+   result that was not verified as if it were an answer. When a tool failed, refused the input or does not
+   support the request, say so plainly and stop: never describe what its result "would" show, and never
+   carry out the computation in prose instead. Offer what a tool can do (a different tool, a different
+   notation) or what the user could try.\
 """,
     """\
 `substitute`, `rewrite_part` and `isolate_variable` are controlled steps. The relations given to `substitute` are
@@ -200,7 +201,10 @@ For an ordinary differential equation or system call `ode_analyze` first, with t
    with detail=qualitative: the classification is local and from the linearisation (never "globally
    stable"), a zero real part or parameters without values leave it undecided, and the parameter values
    and the phase-plane window are the user's to give. Write a product after an unknown as `y \\cdot (1-y)`, not
-   `y(1-y)`. A Lagrangian goes to `analyze_lagrangian`, not to these tools.\
+   `y(1-y)`. A system written with names such as y1, y2: set `format` to "text", write each equation as
+   `y1' = y3` (or `dy1/dt = y3`), list the names in `unknowns`, name the variable in `independent`, and give
+   a condition as the string `y1(0) = 1` or as an object with every key, {"unknown": "y1", "at": "0",
+   "value": "1"}. A Lagrangian goes to `analyze_lagrangian`, not to these tools.\
 """,
     ),
     "variation": (
