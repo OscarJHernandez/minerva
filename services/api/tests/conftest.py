@@ -1,5 +1,7 @@
 import os
+import re
 from collections.abc import Iterator
+from functools import cache
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7,15 +9,56 @@ from minerva_api.db import Base, make_engine
 from minerva_api.main import create_app
 from minerva_api.settings import Settings
 from pydantic import SecretStr
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 PASSWORD = "correct horse battery"
+WORKER = re.compile(r"gw[0-9]+")
+
+
+@cache
+def _worker_database(url: str, worker: str) -> str:
+    """`url` with the database name suffixed by the xdist worker (`..._gw0`), created if it does not exist.
+
+    Every test drops and recreates the tables of its database, so two workers must not share one. The
+    worker id is validated and the name quoted by the dialect, never interpolated raw.
+    """
+    if not WORKER.fullmatch(worker):
+        raise RuntimeError("unexpected pytest-xdist worker id")
+    parsed = make_url(url)
+    name = f"{parsed.database}_{worker}"
+    admin = create_engine(url, isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as conn:
+            exists = conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": name}
+            ).scalar()
+            if not exists:
+                conn.execute(
+                    text(f"CREATE DATABASE {admin.dialect.identifier_preparer.quote(name)}")
+                )
+    finally:
+        admin.dispose()
+    return parsed.set(database=name).render_as_string(hide_password=False)
+
+
+def database_url_for_tests() -> str:
+    """The database of this test process: the configured one, or a private one per xdist worker.
+
+    SQLite in memory is already private to each process. A PostgreSQL URL gets one database per worker so the
+    API tests can run in parallel (`pytest -n 3`); without xdist the configured database is used as before.
+    """
+    url = os.environ.get("MINERVA_TEST_DATABASE_URL") or "sqlite+pysqlite:///:memory:"
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    if url.startswith("sqlite") or not worker:
+        return url
+    return _worker_database(url, worker)
 
 
 def make_settings(**over: object) -> Settings:
     base: dict[str, object] = {
         "env": "development",
-        "database_url": os.environ.get("MINERVA_TEST_DATABASE_URL")
-        or "sqlite+pysqlite:///:memory:",
+        "database_url": database_url_for_tests(),
         "session_secret": SecretStr("test-secret-value-test-secret-value!"),
         "compute_timeout_seconds": 30.0,
         "compute_max_concurrency": 2,

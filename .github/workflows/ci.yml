@@ -114,9 +114,126 @@ jobs:
 
   # The tests are spread over runner pods with MINERVA_TEST_SHARD=i/n (root `conftest.py`: every test belongs to
   # exactly one shard, an unset variable runs everything). `ci-ok` needs every shard, so a shard that fails or is
-  # cancelled fails the run. Two groups, because the API tests drop and recreate the tables of one shared database
-  # in every test (`services/api/tests/conftest.py`) and so cannot run in parallel inside one pod; each pod has its
-  # own PostgreSQL sidecar, so separate pods do not interfere. `--durations` shows which tests to speed up next.
+  # cancelled fails the run. The API tests are one more pod (`tests-api`): they drop and recreate the tables of their
+  # database in every test, so each xdist worker there has a database of its own (`services/api/tests/conftest.py`).
+  # `--durations` shows which tests to speed up next.
+  tests:
+    name: Tests (engine, handbook, scripts) ${{ matrix.shard }}/5
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      # 3 workers: pods have no CPU limit, so this uses idle cores. `loadfile`: one worker owns each file, so a
+      # benchmark module's corpus fixture runs once instead of once per worker (root `conftest.py`).
+      - name: Tests, shard ${{ matrix.shard }} of 5
+        env:
+          MINERVA_TEST_SHARD: ${{ matrix.shard }}/5
+        run: uv run pytest -n 3 --dist loadfile --durations=15 --ignore=services/api
+
+  web: ${{ steps.paths.outputs.web }}
+      chart: ${{ steps.paths.outputs.chart }}
+      images: ${{ steps.paths.outputs.images }}
+      workflows: ${{ steps.paths.outputs.workflows }}
+      deps: ${{ steps.paths.outputs.deps }}
+      # The git tree this run checked out (on a pull request: the merge of its head into the base). `ci-ok`
+      # records it, and the Deploy workflow skips its own CI run when main's tree is exactly this one.
+      tree: ${{ steps.paths.outputs.tree }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - id: paths
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != pull_request ]; then
+            files=""; all=true
+          else
+            files=$(git diff --name-only HEAD^1 HEAD); all=false
+          fi
+          match() { [ "$all" = true ] || printf '%s\n' "$files" | grep -Eq "$1"; }
+          out() { if match "$2"; then echo "$1=true"; else echo "$1=false"; fi; }
+          # Python and web tests run together or not at all: a pull-request run that attests "this tree was tested"
+          # (see `ci-ok`) must have run both suites, whichever side the change was on.
+          code='^(packages/|services/|scripts/|pyproject\.toml$|uv\.lock$|AGENTS\.md$|CLAUDE\.md$|\.agents/|\.claude/|\.github/|apps/|package\.json$|pnpm-|\.prettier)'
+          {
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            out python "$code"
+            out web "$code"
+            out chart '^(deploy/|scripts/|\.github/)'
+            # A pull request builds the images only when what goes into them changes shape: the Dockerfiles and
+            # chart, the build script, the dependency manifests. Deploy builds and publishes them from main anyway.
+            out images '^(deploy/|scripts/build-image\.sh$|pnpm-lock\.yaml$|uv\.lock$|(.*/)?(pyproject\.toml|package\.json)$|\.github/)'
+            out deps '^(pnpm-lock\.yaml$|uv\.lock$|(.*/)?(pyproject\.toml|package\.json)$|\.github/)'
+            out workflows '^\.github/'
+          } | tee -a "$GITHUB_OUTPUT"
+
+  python:
+    name: Python (lint, types, handbook)
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    timeout-minutes: 10
+    env:
+      # Forks have no PostgreSQL sidecar: the tests then use in-memory SQLite. (Both branches are non-empty
+      # strings; `cond && '' || x` would always pick x because '' is falsy in expressions.)
+      MINERVA_TEST_DATABASE_URL: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'sqlite+pysqlite:///:memory:' || 'postgresql+psycopg://postgres@127.0.0.1:5432/postgres' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - name: The handbook data is tracked (a .gitignore rule once hid it)
+        run: git ls-files --error-unmatch packages/knowledge/src/minerva_knowledge/data/chapters.yaml
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy packages/engine/src packages/knowledge/src services/api/src
+      - name: Verify every handbook entry at its declared level
+        run: uv run python -m minerva_knowledge verify
+      - name: The verification report is current (adversarial corpus, reference problems, benchmarks)
+        # About ten seconds: it re-runs the adversarial corpus through the numerical verifier and compares
+        # the counts with docs/benchmarks/verification-summary.json. A false accept or a false reject fails here.
+        run: uv run python scripts/verification_report.py --check
+      - name: Migrations apply and match the models (PostgreSQL)
+        if: ${{ !startsWith(env.MINERVA_TEST_DATABASE_URL, 'sqlite') }}
+        working-directory: services/api
+        run: |
+          export MINERVA_DATABASE_URL="$MINERVA_TEST_DATABASE_URL"
+          uv run alembic upgrade head
+          uv run alembic check
+      - name: Agent files and skills are consistent
+        run: uv run python scripts/check_agent_files.py
+      - name: The API starts with production dependencies only (no dev tools)
+        # The image installs `--no-dev`; a dependency declared only as a dev tool passes every test and then
+        # crashes the container at import time.
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/prod-venv
+        run: |
+          uv sync --frozen --no-dev --no-editable --package minerva-api
+          "$UV_PROJECT_ENVIRONMENT/bin/python" -c "import minerva_api.main"
+
+  # The tests are spread over runner pods with MINERVA_TEST_SHARD=i/n (root `conftest.py`: every test belongs to
+  # exactly one shard, an unset variable runs everything). `ci-ok` needs every shard, so a shard that fails or is
+  # cancelled fails the run. The API tests are one more pod (`tests-api`): they drop and recreate the tables of their
+  # database in every test, so each xdist worker there has a database of its own (`services/api/tests/conftest.py`).
+  # `--durations` shows which tests to speed up next.
   tests:
     name: Tests (engine, handbook, scripts) ${{ matrix.shard }}/5
     needs: changes
