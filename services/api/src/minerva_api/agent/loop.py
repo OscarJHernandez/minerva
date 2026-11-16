@@ -40,6 +40,7 @@ from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
 from .reasoning import ReasoningGate, clean_reply
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
+from .routing import plan_route
 from .segments import normalize, split_segments
 from .tools import (
     NEEDS_CHOICE,
@@ -67,6 +68,7 @@ from .toolsets import (
 from .tracing import (
     AgentCompleted,
     AgentRetry,
+    AgentRouted,
     AgentStarted,
     AgentStopped,
     ErrorCategory,
@@ -74,6 +76,7 @@ from .tracing import (
     LLMResponse,
     OutcomeKind,
     RetryReason,
+    RouteReason,
     Sink,
     StopReason,
     ToolCompleted,
@@ -107,6 +110,9 @@ class TurnInfo:
     api_version: str = ""
     trace_id: str = ""  # one per agent request; generated here when the caller has none
     sink: Sink | None = None  # where trace events go as they happen (the server log); may be None
+    # Run a tool without asking the model when the request leaves no doubt which (see routing.py). Off by
+    # default so scripted tests see only what they scripted; the chat route turns it on from settings.
+    routing: bool = False
 
 
 # What the user reads when a turn ends for a reason other than a finished answer. Fixed text: it names
@@ -204,6 +210,50 @@ def _latest_user_message(history: Sequence[dict[str, Any]]) -> tuple[str, bool]:
 
 def _ms(since: float) -> int:
     return int((time.monotonic() - since) * 1000)
+
+
+@dataclass
+class _Routed:
+    """A call decided by rule (routing.py) that already ran, its result waiting for the loop to record."""
+
+    call: ToolCall
+    output: ToolOutput
+
+
+async def _run_route(
+    route: Any, ctx: ToolContext, tracer: Tracer, debug: TurnDebug, remaining: Any
+) -> _Routed | None:
+    """Run the routed call like any other. Anything but a verified result drops the route, and the model
+    plans the turn as if there had been none (the decision is recorded either way)."""
+    call = ToolCall(route.tool, dict(route.arguments))
+    reason = RouteReason(route.reason)
+    try:
+        output = await asyncio.wait_for(
+            run_in_threadpool(execute, call.name, call.arguments, ctx),
+            timeout=max(remaining(), 1.0),
+        )
+    except Exception:
+        output = None
+    if output is None or not output.arguments_valid or output.status != "ok":
+        tracer.emit(AgentRouted, decision="declined", reason=RouteReason.DECLINED, tool=route.tool)
+        debug.routing = {
+            "decision": "declined",
+            "reason": RouteReason.DECLINED.value,
+            "tool": route.tool,
+        }
+        return None
+    tracer.emit(AgentRouted, decision="routed", reason=reason, tool=route.tool)
+    debug.routing = {"decision": "routed", "reason": reason.value, "tool": route.tool}
+    return _Routed(call, output)
+
+
+def _already_run(output: ToolOutput) -> Any:
+    """Stands in for `execute` for the routed call, which ran before the first step."""
+
+    def run(*_args: Any) -> ToolOutput:
+        return output
+
+    return run
 
 
 def _resolve_calls(calls: Sequence[ToolCall]) -> tuple[list[ToolCall], dict[str, tuple[str, str]]]:
@@ -574,12 +624,19 @@ async def _run_turn(
         max_tool_calls=limits.max_tool_calls,
         history_messages=len(history),
     )
+    pre: _Routed | None = None
     try:
+        if info.routing and not replying and (route := plan_route(user_text)) is not None:
+            pre = await _run_route(route, ctx, tracer, debug, remaining)
+            if pre is not None and toolset == "auto":
+                needed = group_of(pre.call.name)
+                active = grow(active, [needed] if needed else [])
         while step < limits.max_steps:
             if remaining() <= 0:
                 stop = StopReason.TIME_LIMIT
                 break
             step += 1
+            routed_now = pre if step == 1 else None
             tools_now = _schemas_for(tool_names(active, toolset))
             system_now = prompt_for(active, toolset)
             trimmed = 0
@@ -604,47 +661,54 @@ async def _run_turn(
             estimate = estimate_tokens(request_chars(system_now, tools_now, messages[1:]))
             debug.prompt_estimate_tokens = max(debug.prompt_estimate_tokens, estimate)
             debug.groups = list(active)
-            tracer.emit(
-                LLMRequest,
-                step,
-                message_count=len(messages),
-                tool_count=len(tools_now),
-                prompt_estimate_tokens=estimate,
-                window=params.num_ctx if params is not None else 0,
-                dropped_messages=trimmed,
-                groups_loaded=len(active),
-            )
+            if routed_now is None:
+                tracer.emit(
+                    LLMRequest,
+                    step,
+                    message_count=len(messages),
+                    tool_count=len(tools_now),
+                    prompt_estimate_tokens=estimate,
+                    window=params.num_ctx if params is not None else 0,
+                    dropped_messages=trimmed,
+                    groups_loaded=len(active),
+                )
             result = _Step()
-            async for ev in _model_step(llm, messages, tools_now, remaining()):
-                if ev["event"] == "_step":
-                    result = ev["data"]
-                else:
-                    yield ev
+            if (
+                routed_now is not None
+            ):  # the call was decided by rule and already ran: no model call
+                result = _Step(calls=[routed_now.call])
+            else:
+                async for ev in _model_step(llm, messages, tools_now, remaining()):
+                    if ev["event"] == "_step":
+                        result = ev["data"]
+                    else:
+                        yield ev
             usage = result.usage
-            debug.llm_calls.append(
-                LLMCallDebug(
-                    ms=result.latency_ms,
-                    text_chars=len(result.text),
-                    tool_calls=len(result.calls),
+            if routed_now is None:
+                debug.llm_calls.append(
+                    LLMCallDebug(
+                        ms=result.latency_ms,
+                        text_chars=len(result.text),
+                        tool_calls=len(result.calls),
+                        first_token_ms=result.first_token_ms,
+                        finish_reason=_finish(result),
+                        prompt_tokens=usage.prompt_tokens if usage else None,
+                        completion_tokens=usage.completion_tokens if usage else None,
+                        cost_usd=usage.cost_usd if usage else None,
+                    )
+                )
+                tracer.emit(
+                    LLMResponse,
+                    step,
+                    latency_ms=result.latency_ms,
                     first_token_ms=result.first_token_ms,
                     finish_reason=_finish(result),
-                    prompt_tokens=usage.prompt_tokens if usage else None,
-                    completion_tokens=usage.completion_tokens if usage else None,
-                    cost_usd=usage.cost_usd if usage else None,
+                    tool_calls=len(result.calls),
+                    proposed_tool=_sanitized(result.calls[0].name) if result.calls else None,
+                    text_chars=len(result.text),
+                    tokens_in=usage.prompt_tokens if usage else None,
+                    tokens_out=usage.completion_tokens if usage else None,
                 )
-            )
-            tracer.emit(
-                LLMResponse,
-                step,
-                latency_ms=result.latency_ms,
-                first_token_ms=result.first_token_ms,
-                finish_reason=_finish(result),
-                tool_calls=len(result.calls),
-                proposed_tool=_sanitized(result.calls[0].name) if result.calls else None,
-                text_chars=len(result.text),
-                tokens_in=usage.prompt_tokens if usage else None,
-                tokens_out=usage.completion_tokens if usage else None,
-            )
             text = result.text
             calls, aliases = _resolve_calls(result.calls)
 
@@ -897,9 +961,12 @@ async def _run_turn(
                     )
                     ctx.matrix_sources = dict(declared_for_tools or {})
                     ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
+                    run_tool: Any = execute
+                    if routed_now is not None and call.id == routed_now.call.id:
+                        run_tool = _already_run(routed_now.output)
                     try:
                         output = await asyncio.wait_for(
-                            run_in_threadpool(execute, call.name, arguments, ctx),
+                            run_in_threadpool(run_tool, call.name, arguments, ctx),
                             timeout=max(remaining(), 1.0),
                         )
                     except TimeoutError:
@@ -1001,6 +1068,7 @@ async def _run_turn(
                         engine_ms=engine_ms,
                         result_id=result_id,
                         model_arguments=call.arguments if arguments != call.arguments else None,
+                        routed=routed_now is not None and call.id == routed_now.call.id,
                         formula_roles={
                             f: r for f, r in output.formula_roles.items() if f in output.known_latex
                         },

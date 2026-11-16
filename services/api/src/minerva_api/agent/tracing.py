@@ -66,6 +66,13 @@ class StopReason(StrEnum):
     INTERNAL_ERROR = "internal_error"
 
 
+class RouteReason(StrEnum):
+    """Why a rule chose the first call (a fixed vocabulary), or why its result was not used."""
+
+    LAGRANGIAN_EQUATIONS = "lagrangian_equations"
+    DECLINED = "not_verified_or_refused"
+
+
 class RetryReason(StrEnum):
     MODEL_HOST = "model_host"
     MALFORMED_MODEL_OUTPUT = "malformed_model_output"
@@ -329,6 +336,13 @@ class AgentRetry(TraceEvent):
     attempt: int = 1
 
 
+class AgentRouted(TraceEvent):
+    event: Literal["agent.routed"] = "agent.routed"
+    decision: Literal["routed", "declined"] = "routed"
+    reason: RouteReason = RouteReason.LAGRANGIAN_EQUATIONS
+    tool: str = ""
+
+
 class AgentStopped(TraceEvent, ErrorSite):
     event: Literal["agent.stopped"] = "agent.stopped"
     reason: StopReason = StopReason.COMPLETED
@@ -381,6 +395,7 @@ EVENT_MODELS: tuple[type[TraceEvent], ...] = (
     ToolDeclined,
     VerificationCompleted,
     AgentRetry,
+    AgentRouted,
     AgentStopped,
     AgentCompleted,
 )

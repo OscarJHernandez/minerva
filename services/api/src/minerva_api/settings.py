@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     llm_history_messages: int = Field(default=20, ge=2, le=200)  # stored messages replayed
     llm_history_tokens: int = Field(default=0, ge=0, le=262144)  # 0: only the window limits it
     llm_toolset: Literal["auto", "core", "all"] = "auto"  # which tools are sent (toolsets.py)
+    # Run the obvious first tool without asking the model (routing.py); the model still writes the answer.
+    agent_routing: bool = True
     # Per-turn overrides from the chat's debug panel. Off unless enabled; the context size can only be
     # changed by the accounts listed here ("*" = every signed-in user), never above llm_num_ctx_max.
     llm_tuning: bool = False

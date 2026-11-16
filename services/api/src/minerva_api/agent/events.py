@@ -149,6 +149,7 @@ class TraceStep(BaseModel):
     alias_kind: str | None = None
     # What each verified formula is and the coordinates of the system, so a later equation of the model
     # can be compared with this result (see `claim_evidence.py`).
+    routed: bool = False  # chosen by a rule (routing.py), not by the model
     formula_roles: dict[str, str] = Field(default_factory=dict)
     variables: list[str] = Field(default_factory=list)
     restrictions: list[str] = Field(
@@ -193,6 +194,9 @@ class ClaimDebug(BaseModel):
 
 class TurnDebug(BaseModel):
     """Everything needed to reproduce a turn, shown only when the user switches debug mode on."""
+
+    # Deterministic routing (routing.py): empty when no rule applied, else decision, reason and tool.
+    routing: dict[str, str] = Field(default_factory=dict)
 
     request_id: str = ""
     api_version: str = ""

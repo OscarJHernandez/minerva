@@ -148,6 +148,7 @@ ALLOWED_FIELDS = frozenset(
         "claims_contradicted",
         "claims_unchecked",
         "attempt",
+        "decision",
         "total_ms",
         "invalid_calls",
         "repeated_calls",

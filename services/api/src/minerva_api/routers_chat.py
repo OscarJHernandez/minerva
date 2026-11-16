@@ -1344,6 +1344,7 @@ async def send_message(
         api_version=request.app.version,
         trace_id=trace_id,
         sink=_event_sink(settings.agent_events),
+        routing=settings.agent_routing,
     )
     model_label = (
         llm.name
