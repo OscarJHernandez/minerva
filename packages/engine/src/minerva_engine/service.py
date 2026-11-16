@@ -22,6 +22,7 @@ from .lagrangian import LagrangianReport
 from .matrix import MatrixCalculusInput, MatrixCalculusResult, MatrixDiagnostics, MatrixStage
 from .models import (
     ExpressionInput,
+    ExpressionInspection,
     FormulaReading,
     IdentitiesResult,
     IsolateResult,
@@ -656,6 +657,15 @@ class Engine:
         result = TensorResult(**outcome.value)
         result.duration_ms = ms
         return result
+
+    def inspect_expression(
+        self, expression: ExpressionInput, target: Literal["latex", "text"] | None = None
+    ) -> ExpressionInspection:
+        outcome, _ = self._run("inspect", {"expression": expression.model_dump(), "target": target})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return ExpressionInspection(status=status, message=message)
+        return ExpressionInspection.model_validate(outcome.value)
 
     def features(self, expression: ExpressionInput) -> tuple[Status, str, list[str], str | None]:
         """Structural features of the expression (parsed inside the sandbox)."""

@@ -1018,7 +1018,10 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
         tool="simplify",
         type="simplify",
         title="Simplify",
-        data=result.model_dump(mode="json"),
+        data={
+            **result.model_dump(mode="json"),
+            "original_request": args.model_dump(mode="json"),
+        },
     )
     v = result.verification
     head = (
@@ -1058,7 +1061,10 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
         tool="differentiate",
         type="differentiate",
         title="Differentiate",
-        data=result.model_dump(mode="json"),
+        data={
+            **result.model_dump(mode="json"),
+            "original_request": args.model_dump(mode="json"),
+        },
     )
     v = result.verification
     text = (
@@ -1137,7 +1143,10 @@ def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
         tool="series",
         type="series",
         title="Series",
-        data=result.model_dump(mode="json"),
+        data={
+            **result.model_dump(mode="json"),
+            "original_request": args.model_dump(mode="json"),
+        },
     )
     v = result.verification
     text = (
@@ -1182,7 +1191,10 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
         tool="integrate",
         type="integrate",
         title="Integrate",
-        data=result.model_dump(mode="json"),
+        data={
+            **result.model_dump(mode="json"),
+            "original_request": args.model_dump(mode="json"),
+        },
     )
     v = result.verification
     text = (

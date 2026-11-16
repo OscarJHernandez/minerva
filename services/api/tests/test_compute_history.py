@@ -63,6 +63,7 @@ def test_blocked_identity_names_its_conditions_and_assumptions_unlock_it(
     assert blocked["steps"] == []
     unmet = {c["variable"] for c in blocked["blocked"][0]["unmet_conditions"]}
     assert unmet == {"a", "b"}
+    assert {c["symbol"] for c in blocked["blocked"][0]["unmet_conditions"]} == {"x", "y"}
     unlocked = authed.post(
         "/v1/compute/simplify",
         json={"input": r"\log x + \log y", "assumptions": {"x": ["positive"], "y": ["positive"]}},
@@ -799,3 +800,56 @@ def test_a_failed_stage_is_logged_with_its_failure_category(capsys) -> None:  # 
     assert (
         failed and failed[0]["stage"] == "inverse_metric" and failed[0]["failure"] == "unsupported"
     )
+
+
+def test_inspect_converts_only_when_parser_and_exclusions_agree(authed: TestClient) -> None:
+    def inspect(source: str, format: str, target: str) -> dict:  # type: ignore[type-arg]
+        response = authed.post(
+            "/v1/compute/inspect",
+            json={
+                "input": source,
+                "format": format,
+                "target": target,
+            },
+        )
+        assert response.status_code == 200
+        return response.json()  # type: ignore[no-any-return]
+
+    exact = inspect(r"x^2 + \pi", "latex", "text")
+    assert exact["status"] == "ok"
+    assert exact["converted"] == "x**2 + pi"
+    assert inspect(r"\frac{x-1}{x-1}", "latex", "text")["converted"] is None
+    assert inspect("I + 1", "text", "latex")["converted"] is not None
+    assert inspect(r"\frac{x}{", "latex", "text")["status"] == "parse_error"
+    assert authed.get("/v1/history").json() == []
+
+
+def test_continuation_carries_restrictions_and_blocks_integration(authed: TestClient) -> None:
+    derivation = authed.post("/v1/derivations").json()["id"]
+    source = authed.post(
+        "/v1/compute/simplify",
+        json={
+            "input": "(x**2-1)/(x-1)",
+            "format": "text",
+            "derivation_id": derivation,
+        },
+    ).json()
+    assert source["restrictions_latex"]
+    payload = {
+        "input": source["result_text"],
+        "format": "text",
+        "derivation_id": derivation,
+        "parent_id": source["calculation_id"],
+    }
+    blocked = authed.post("/v1/compute/integrate", json={**payload, "variable": "x"})
+    assert blocked.status_code == 422
+    derivative = authed.post(
+        "/v1/compute/differentiate",
+        json={
+            **payload,
+            "variables": [{"name": "x", "order": 1}],
+        },
+    ).json()
+    assert derivative["status"] == "ok"
+    saved = authed.get(f"/v1/derivations/{derivation}").json()["steps"][-1]
+    assert saved["result"]["inherited_domain"]["restrictions_latex"] == source["restrictions_latex"]

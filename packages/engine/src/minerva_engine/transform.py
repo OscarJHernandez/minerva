@@ -27,11 +27,11 @@ from .models import (
     ExpressionInput,
     Limits,
     Rule,
-    RuleCondition,
     Status,
     TransformChain,
     TransformResult,
     TransformStep,
+    UnmetCondition,
     Verification,
 )
 from .ops import _failure, can_reverse, parse_expression, rule_rewrites
@@ -155,7 +155,7 @@ class _Move:
     direction: str | None
     matched: str | None
     result: sp.Expr
-    unmet: tuple[tuple[str, str], ...] = ()
+    unmet: tuple[UnmetCondition, ...] = ()
     binding_cost: int = 0
 
 
@@ -214,7 +214,7 @@ class _Search:
                     for rw in rule_rewrites(
                         expr, rule, reverse=direction == "reverse", strict=True
                     ):
-                        unmet = tuple((c.variable, c.assumption) for c in rw.unmet)
+                        unmet = tuple(rw.unmet)
                         yield _Move(
                             "rule",
                             rule.id,
@@ -253,7 +253,7 @@ class _Search:
                 rule_id=move.name,
                 direction=move.direction,
                 matched_latex=move.matched or "",
-                unmet_conditions=[RuleCondition(variable=v, assumption=a) for v, a in move.unmet],
+                unmet_conditions=list(move.unmet),
             ),
         )
 
