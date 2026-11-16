@@ -191,6 +191,7 @@ class Engine:
         *,
         order: str | None = None,
         debug: bool = False,
+        inherited_restrictions: list[str] | None = None,
     ) -> StepResult:
         """Replace the left side of each relation `l = r` by its right side, one relation at a time.
 
@@ -202,6 +203,7 @@ class Engine:
             "relations": relations,
             "order": order,
             "debug": debug,
+            "inherited_restrictions": inherited_restrictions or [],
         }
         return self._step("substitute", payload, "substitute")
 

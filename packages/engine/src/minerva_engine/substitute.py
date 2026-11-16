@@ -170,6 +170,31 @@ def _order_dependent(
     return bool(_simultaneous(expr, relations) != stated)
 
 
+def _preserves_restrictions(
+    restrictions: list[str],
+    relations: list[Relation],
+    limits: Limits,
+) -> bool:
+    """Keep a restriction only when the substitution cannot rewrite its operands."""
+    if not restrictions:
+        return True
+    if any(not relation.pattern.free_symbols for relation in relations):
+        return False
+    replaced = {symbol.name for relation in relations for symbol in relation.pattern.free_symbols}
+    for restriction in restrictions:
+        parts = restriction.split(r"\neq")
+        if len(parts) != 2:
+            return False
+        for part in parts:
+            try:
+                expression = parse_expression(ExpressionInput(input=part.strip()), limits)
+            except MinervaMathError:
+                return False
+            if any(symbol.name in replaced for symbol in expression.free_symbols):
+                return False
+    return True
+
+
 def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
     started = time.monotonic()
     limits = Limits(**payload["limits"])
@@ -192,6 +217,10 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
         expr = read_expression(data, limits, diag, denominators)
         with diag.timed("parse_ms"):
             relations = [read_relation(t, data, limits, denominators) for t in texts]
+        if not _preserves_restrictions(
+            payload.get("inherited_restrictions", []), relations, limits
+        ):
+            raise UnsupportedInput("The substitution could change a source domain restriction.")
         diag.premises = len(relations)
         input_latex = to_latex(expr)
         deadline = started + 0.7 * limits.timeout_seconds

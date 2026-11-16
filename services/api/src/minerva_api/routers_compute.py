@@ -275,12 +275,25 @@ def _parent_domain(db: DbDep, user: UserDep, links: Links) -> ContinuationDomain
     if parent is None or parent.user_id != user.id or parent.derivation_id != links.derivation_id:
         return ContinuationDomain()
     prior = ContinuationDomain.model_validate(parent.result.get("inherited_domain") or {})
+    solution_conditions: list[str] = []
+    if parent.operation == "isolate":
+        solutions = parent.result.get("solutions") or []
+        selected = [
+            solution
+            for solution in solutions
+            if isinstance(links, ExpressionInput)
+            and links.format == "text"
+            and links.input == solution.get("text")
+        ]
+        for solution in selected or solutions:
+            solution_conditions.extend(solution.get("conditions_latex") or [])
     return ContinuationDomain(
         restrictions_latex=list(
             dict.fromkeys(
                 prior.restrictions_latex
                 + (parent.result.get("restrictions_latex") or [])
                 + (parent.result.get("conditions_latex") or [])
+                + solution_conditions
             )
         ),
         restrictions_complete=prior.restrictions_complete
@@ -1242,9 +1255,15 @@ def substitute(
     that depends on them is conditional, and says so."""
     _guard_total(user, limiter, settings, body.input, *body.relations)
     _check_links(db, user, body)
-    _guard_continuation_domain(db, user, body)
+    domain = _parent_domain(db, user, body)
+    if not domain.restrictions_complete:
+        _guard_continuation_domain(db, user, body)
     result = engine.substitute(
-        _expr(body), body.relations, order=body.order, debug=settings.debug_compute
+        _expr(body),
+        body.relations,
+        order=body.order,
+        debug=settings.debug_compute,
+        inherited_restrictions=domain.restrictions_latex,
     )
     _log_step("substitute", user, result.status.value, result)
     out = StepResponse(**result.model_dump())

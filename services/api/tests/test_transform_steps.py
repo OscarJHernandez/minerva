@@ -243,6 +243,19 @@ def test_a_solution_can_be_continued_with_its_value(authed: TestClient) -> None:
         parent_id=iso["calculation_id"],
     )
     assert nxt["status"] == "ok" and nxt["result_text"] == "b/a"
+    saved = authed.get(f"/v1/derivations/{d}").json()["steps"][-1]
+    assert saved["result"]["inherited_domain"]["restrictions_latex"] == [r"a \neq 0"]
+    unsafe = post(
+        authed,
+        "substitute",
+        input=value,
+        format="text",
+        relations=["a = b"],
+        derivation_id=d,
+        parent_id=iso["calculation_id"],
+    )
+    assert unsafe["status"] == "unsupported"
+    assert unsafe["result_text"] is None
 
 
 def test_nothing_is_saved_when_not_asked_and_other_users_cannot_join(client: TestClient) -> None:

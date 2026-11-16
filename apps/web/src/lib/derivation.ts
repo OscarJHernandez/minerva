@@ -453,7 +453,7 @@ export function instanceWording(v: {
 }
 
 /** Restrictions inherited from the source are separate from the evidence for the latest operation. */
-export function inheritedDomain(item: HistoryItem) {
+export function inheritedDomain(item: HistoryItem, which = 0) {
   const result = item.result as {
     restrictions_latex?: string[];
     conditions_latex?: string[];
@@ -466,6 +466,9 @@ export function inheritedDomain(item: HistoryItem) {
         ...(result.inherited_domain?.restrictions_latex ?? []),
         ...(result.restrictions_latex ?? []),
         ...(result.conditions_latex ?? []),
+        ...(item.operation === "isolate"
+          ? ((item.result as unknown as IsolateResult).solutions?.[which]?.conditions_latex ?? [])
+          : []),
       ]),
     ],
     incomplete:

@@ -424,7 +424,7 @@ export function Workbench() {
     if (sourceDomain && (sourceDomain.exclusions.length || sourceDomain.incomplete)) {
       if (
         (!parentId && !chatSource) ||
-        !["simplify", "differentiate", "expand", "factor"].includes(busyKey)
+        !["simplify", "differentiate", "expand", "factor", "substitute"].includes(busyKey)
       ) {
         setError("This operation cannot preserve the source result's domain restrictions.");
         return;
