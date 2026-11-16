@@ -34,8 +34,10 @@ export const chatApi = {
   status: () => json<ChatStatus>("/v1/chat/status"),
   list: () => json<ConversationSummary[]>("/v1/chat/conversations"),
   create: () => json<ConversationSummary>("/v1/chat/conversations", { method: "POST", body: "{}" }),
-  get: (id: string) =>
-    json<ConversationSummary & { messages: StoredMessage[] }>(`/v1/chat/conversations/${id}`),
+  get: (id: string, signal?: AbortSignal) =>
+    json<ConversationSummary & { messages: StoredMessage[] }>(`/v1/chat/conversations/${id}`, {
+      signal,
+    }),
   /** Runs the numerical solution with the user's own numbers; the reply is the stored card message. */
   integrateMotion: (id: string, request: MotionRequest) =>
     json<StoredMessage>(`/v1/chat/conversations/${id}/tools/integrate_motion`, {

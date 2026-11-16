@@ -65,6 +65,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<StoredMessage[]>([]);
+  const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
@@ -93,6 +94,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const [lastError, setLastError] = useState<LastError | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const cloudConfirmed = useRef<Set<string>>(new Set());
+  const loadRef = useRef<AbortController | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Each navigation owns its asynchronous work. A late response may finish, but cannot paint
   // into a different conversation.
@@ -165,6 +167,8 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   useEffect(
     () => () => {
       ++viewGeneration.current;
+      loadRef.current?.abort();
+      loadRef.current = null;
       abortRef.current?.abort();
     },
     [],
@@ -189,7 +193,12 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   async function open(id: string, options: { keepError?: boolean } = {}) {
     const generation = ++viewGeneration.current;
     if (!options.keepError) clearComposerRequests();
+    loadRef.current?.abort();
     abortRef.current?.abort();
+    abortRef.current = null;
+    const controller = new AbortController();
+    loadRef.current = controller;
+    setLoading(true);
     activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
@@ -201,7 +210,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     }
     setListOpen(false);
     try {
-      const detail = await chatApi.get(id);
+      const detail = await chatApi.get(id, controller.signal);
       if (viewGeneration.current !== generation) return;
       setMessages(detail.messages);
       setPending(null);
@@ -216,6 +225,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         return;
       }
       fail(e);
+    } finally {
+      if (loadRef.current === controller) {
+        loadRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -230,7 +244,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     clearComposerRequests();
     pendingRef.current = null;
     ++viewGeneration.current;
+    loadRef.current?.abort();
+    loadRef.current = null;
+    setLoading(false);
     abortRef.current?.abort();
+    abortRef.current = null;
     activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
@@ -285,7 +303,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
    */
   async function send(text: string, mode: SendMode = "new"): Promise<boolean> {
     const generation = viewGeneration.current;
-    if (pendingRef.current) return false;
+    if (loadRef.current || abortRef.current) return false;
     pendingRef.current = { items: [], tools: [], cards: 0, startedAt: Date.now() };
     setPending(pendingRef.current);
     setError(null);
@@ -404,7 +422,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (id) await open(id, { keepError: true });
       return true;
     } finally {
-      if (generation === viewGeneration.current) {
+      if (generation === viewGeneration.current && abortRef.current === controller) {
         abortRef.current = null;
         pendingRef.current = null;
         setPending(null);
@@ -709,7 +727,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                 aria-live="off"
               >
                 {messages.length === 0 && !pending ? (
-                  <EmptyState onPick={(t) => void send(t)} disabled={busy || !status} />
+                  <EmptyState onPick={(t) => void send(t)} disabled={busy || loading || !status} />
                 ) : (
                   <div className="mx-auto max-w-3xl space-y-6">
                     {messages.map((m, i) => (
@@ -788,7 +806,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                   draftKey={
                     accountId ? `minerva:draft:${accountId}:${activeId ?? "new"}` : undefined
                   }
-                  disabled={!status}
+                  disabled={loading || !status}
                   imagesEnabled={status?.images === true}
                   beforeSend={confirmCloud}
                   toolbar={
