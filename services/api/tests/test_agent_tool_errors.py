@@ -163,3 +163,19 @@ def test_a_failed_read_never_prints_none_as_the_input() -> None:
         out = execute(tool, args, ctx)
         assert out.status == "parse_error", tool
         assert "$None$" not in out.for_model, tool
+
+
+def test_differentiating_an_integral_over_an_unknown_curve_says_what_is_not_supported(
+    ctx: ToolContext,
+) -> None:
+    latex = r"T(y_0) = \int_0^{y_0} \frac{\sqrt{1+(x')^2}}{\sqrt{2 g (y_0 - y)}} dy"
+    out = execute("differentiate", {"latex": latex, "variables": [{"name": "y_0"}]}, ctx)
+    assert out.status == "parse_error" and out.known_latex == []
+    assert "prime" in out.for_model and "variation" in out.for_model
+    assert "evaluate it with `integrate`" in out.for_model
+    assert "do not carry out the differentiation yourself" in out.for_model
+    # no hint for an input that has no integral
+    plain = execute(
+        "differentiate", {"latex": r"\frac{dx}{dy} + 1", "variables": [{"name": "y"}]}, ctx
+    )
+    assert "evaluate it with `integrate`" not in plain.for_model

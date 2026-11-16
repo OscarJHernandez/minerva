@@ -104,9 +104,7 @@ def _bare_equations(text: str) -> list[tuple[int, int]]:
     tokens = [(m.start(), m.end(), m.group()) for m in re.finditer(r"\S+", text)]
     # A line of a Markdown table is cells, not an equation: its bars are not math. Its tokens stay in
     # the list but never match, so a run cannot reach across the row.
-    tokens = [
-        (a, b, "\x00") if _in_table_row(text, a) else (a, b, t) for a, b, t in tokens
-    ]
+    tokens = [(a, b, "\x00") if _in_table_row(text, a) else (a, b, t) for a, b, t in tokens]
     i = 0
     while i < len(tokens):
         if not _mathy(tokens[i][2].strip("*_")):

@@ -2510,9 +2510,7 @@ def values_provenance(texts: list[str], ctx: ToolContext) -> tuple[str, list[str
         return "user", []
     if ctx.numbers_delegated:
         return "assistant_delegated", texts
-    mine = [
-        t for t in texts if not all(_user_wrote(x, ctx.user_numbers) for x in numbers_in(t))
-    ]
+    mine = [t for t in texts if not all(_user_wrote(x, ctx.user_numbers) for x in numbers_in(t))]
     return ("assistant" if mine else "user"), mine
 
 
@@ -2548,7 +2546,9 @@ def _ode_value_texts(args: OdeNumericArgs) -> list[str]:
 
 def _motion_value_texts(args: MotionArgs) -> list[str]:
     texts = [f"{k} = {v:g}" for k, v in args.parameters.items()]
-    for name, q, v in zip(args.coordinates, args.initial_positions, args.initial_velocities):
+    for name, q, v in zip(
+        args.coordinates, args.initial_positions, args.initial_velocities, strict=True
+    ):
         texts.append(f"{name}(t_start) = {q:g}")
         texts.append(f"d{name}/dt(t_start) = {v:g}")
     if args.t_start != 0:
@@ -3725,6 +3725,13 @@ def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None
         hints.append(
             "hint: E, I, pi and oo are reserved names; rename a symbol called E or I (for example "
             "En or Ik) and try again."
+        )
+    if name == "differentiate" and output.status == "parse_error" and "\\int" in text:
+        hints.append(
+            "hint: differentiating an integral with respect to a parameter is not supported. If the "
+            "integrand is explicit, evaluate it with `integrate` first; an integral over an unknown "
+            "function is a functional, and `variation` gives its Euler-Lagrange equation. Say what is "
+            "not supported; do not carry out the differentiation yourself."
         )
     if name == "tensor_canonicalize" and output.status == "parse_error":
         hints.append(

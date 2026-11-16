@@ -53,7 +53,9 @@ _DELEGATION = re.compile(
     re.IGNORECASE,
 )
 # A question about what would be reasonable is not a hand-over.
-_QUESTION = re.compile(r"\b(?:which|what|how)\b[^.?!]*\b(?:reasonable|sensible|values|numbers)\b[^.?!]*\?", re.I)
+_QUESTION = re.compile(
+    r"\b(?:which|what|how)\b[^.?!]*\b(?:reasonable|sensible|values|numbers)\b[^.?!]*\?", re.I
+)
 _NUMBER = re.compile(
     r"(?<![A-Za-z0-9_.^])[-+]?(?:\d+\s*/\s*\d+|\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)"
 )

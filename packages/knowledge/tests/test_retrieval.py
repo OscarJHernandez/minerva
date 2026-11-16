@@ -39,7 +39,9 @@ def test_no_match_for_nonsense(kb: KnowledgeBase) -> None:
 # --- queries made of common words must not be answered with entries that only share "of" -------
 
 
-def test_a_query_with_one_real_word_and_filler_matches_nothing_irrelevant(kb: KnowledgeBase) -> None:
+def test_a_query_with_one_real_word_and_filler_matches_nothing_irrelevant(
+    kb: KnowledgeBase,
+) -> None:
     # The handbook has nothing about the brachistochrone; "of" is in more than half of the entries.
     assert ids(kb, text="curve of fastest descent") == []
     assert ids(kb, text="brachistochrone") == []
@@ -74,8 +76,6 @@ def test_filler_does_not_hide_the_real_words(kb: KnowledgeBase) -> None:
 def test_structural_hits_are_kept_whatever_the_words_say(kb: KnowledgeBase) -> None:
     # Identity retrieval passes text and features: a rule that fits by structure is a candidate even
     # when none of the words matches it.
-    with_features = [
-        e.id for e in kb.candidate_rules({"f:log"}, text="zzzz of the", limit=50)
-    ]
+    with_features = [e.id for e in kb.candidate_rules({"f:log"}, text="zzzz of the", limit=50)]
     assert {"log.product", "log.quotient", "log.power"} <= set(with_features)
     assert kb.candidate_rules(set(), text="of the") == []

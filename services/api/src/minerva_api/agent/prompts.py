@@ -174,6 +174,11 @@ A numerical solution (integrate_motion) needs numbers that only the user can cho
    with the Lagrangian instead of rewriting the equations by hand.\
 """,
         """\
+To linearise about an equilibrium or a circular orbit (small oscillations), call `expand_motion` with the
+   Lagrangian, the coordinates and the equilibrium written in text syntax (for example `p^2/(G*M*m^2)`).
+   Never differentiate and substitute by hand: its expansion, frequencies and modes are checked.\
+""",
+        """\
 perturbation_solve gives a local series in a small parameter. Do not call it valid for large values of
    that parameter. Its optional comparison with the numerical solution needs numbers only the user can
    choose (parameters, small parameter or amplitude, end time): ask, never pick them.\
@@ -432,14 +437,14 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
 
 GROUP_KEYWORDS: dict[str, str] = {
     "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
-    "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
+    "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",
     "vector": "gradient|divergence|\\bcurl\\b|laplacian|\\bgrad\\b|\\bdiv\\b|nabla|\\\\nabla|cross product|dot product|vector field|cylindrical|spherical coordinates|stokes|gauss'?s? (law|theorem)|maxwell|electromagnet|electrostatic|poynting|gauge|flux|line integral|surface integral|poisson|coulomb|multipole",
     "geometry": "metric|christoffel|curvature|riemann|ricci|geodesic|einstein tensor|schwarzschild|covariant derivative|tensor|manifold|spacetime|minkowski|\\\\nabla_",
     "statmech": "partition function|statistical mechanic|canonical ensemble|ensemble|free energy|heat capacity|boltzmann|entropy|\\bising\\b|thermodynamic|fermi[- ]dirac|bose[- ]einstein|microcanonical|density of states",
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
-    "distributions": "dirac|\\bdelta\\b|heaviside|step function|\\\\delta|\\\\theta|generali[sz]ed function|distribution",
+    "distributions": "dirac|heaviside|step function|delta function|generali[sz]ed function|\\\\delta\\s*\\(",
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
 }

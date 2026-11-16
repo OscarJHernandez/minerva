@@ -90,7 +90,14 @@ def test_a_question_or_a_plain_message_is_not_a_hand_over(text: str) -> None:
 
 
 def test_numbers_in_a_text_skip_digits_inside_names() -> None:
-    assert numbers_in("y1(0)=1, r_0 = 0.5, k=1e-3, 3/4, x^2, -2") == [0.0, 1.0, 0.5, 0.001, 0.75, -2.0]
+    assert numbers_in("y1(0)=1, r_0 = 0.5, k=1e-3, 3/4, x^2, -2") == [
+        0.0,
+        1.0,
+        0.5,
+        0.001,
+        0.75,
+        -2.0,
+    ]
 
 
 def test_a_hand_over_lasts_two_more_messages_and_ends_when_the_user_gives_numbers() -> None:

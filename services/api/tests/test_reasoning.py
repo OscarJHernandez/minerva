@@ -20,7 +20,9 @@ def test_a_leading_reasoning_block_is_dropped_with_its_marker() -> None:
 
 def test_reasoning_that_never_reaches_its_marker_shows_nothing() -> None:
     # the call ended at the length limit inside the reasoning (the report's "ERm? what happened?")
-    assert run("thought\n导出的结果 is f'(r). Wait, I should check", " the rules...\nActually,") == ""
+    assert (
+        run("thought\n导出的结果 is f'(r). Wait, I should check", " the rules...\nActually,") == ""
+    )
 
 
 def test_the_marker_may_arrive_split_across_chunks() -> None:

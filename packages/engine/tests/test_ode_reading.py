@@ -210,7 +210,9 @@ def test_a_symbol_that_only_a_condition_mentions_is_a_parameter() -> None:
 
 
 def test_leibniz_fractions_are_read_in_text_for_declared_unknowns_only() -> None:
-    problem = read("dy1/dt = y2", "dy2/dt = -y1", fmt="text", unknowns=["y1", "y2"], independent="t")
+    problem = read(
+        "dy1/dt = y2", "dy2/dt = -y1", fmt="text", unknowns=["y1", "y2"], independent="t"
+    )
     assert problem.unknowns == ["y1", "y2"] and problem.orders == {"y1": 1, "y2": 1}
     assert problem.parameters == []
     second = read("d^2y/dt^2 = -y", fmt="text", unknowns=["y"], independent="t")
