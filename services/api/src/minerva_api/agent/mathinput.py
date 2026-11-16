@@ -127,6 +127,25 @@ def transport_line(notes: tuple[Normalization, ...]) -> str | None:
     return "input cleaned: " + "; ".join(n.describe() for n in notes)
 
 
+def input_record(data: dict[str, Any]) -> tuple[InputReading | None, InputDiagnostic | None]:
+    """The `reading` and `diagnostic` an engine report carried into a card (under `report` or `result`)."""
+    for key in ("report", "result"):
+        inner = data.get(key)
+        if not isinstance(inner, dict):
+            continue
+        reading, diagnostic = inner.get("reading"), inner.get("diagnostic")
+        if reading is None and diagnostic is None:
+            continue
+        try:
+            return (
+                InputReading.model_validate(reading) if reading else None,
+                InputDiagnostic.model_validate(diagnostic) if diagnostic else None,
+            )
+        except ValueError:
+            return None, None
+    return None, None
+
+
 def reading_lines(reading: InputReading | None) -> list[str]:
     """One line saying what was changed to read the input; empty when the input was read as written."""
     if reading is None or not reading.normalizations:

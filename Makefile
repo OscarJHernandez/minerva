@@ -1,7 +1,7 @@
 # Shortcuts for humans and agents. CI calls the underlying commands directly (see .github/workflows/ci.yml);
 # `make check` runs the same set. Run `make help` for the list.
 .DEFAULT_GOAL := help
-.PHONY: help setup check check-py check-web test handbook matrix-benchmark stat-benchmark statmech-benchmark bench fmt dev bench-geometry bench-variational bench-approximation eval-check eval-reliability eval-offline reference reference-extended test-extended verification-report verification-compare eval bench-telescoping
+.PHONY: help setup check check-py check-web test handbook matrix-benchmark stat-benchmark statmech-benchmark bench fmt dev bench-geometry bench-variational bench-approximation eval-check eval-reliability eval-offline eval-corruptions reference reference-extended test-extended verification-report verification-compare eval bench-telescoping
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -23,6 +23,9 @@ eval-reliability: ## Reliability suite without a model: ideal and adversarial tr
 eval-offline: ## Orchestration suite with a replayed model (tool names, notation, routing, evidence, tokens); compares with the stored report
 	uv run python scripts/eval_offline.py --check
 	uv run python scripts/eval_offline.py --compare docs/benchmarks/orchestration-offline-baseline.json
+
+eval-corruptions: ## Every known model mistake applied to every benchmark reference call; must be harmless (docs/benchmarks/corruption.md)
+	uv run python scripts/eval_corruptions.py --check
 
 statmech-benchmark: ## Statistical mechanics corpus (answers from closed forms); fails on a wrong answer or a lost refusal
 	uv run python -m minerva_engine.statmech.benchmark --check

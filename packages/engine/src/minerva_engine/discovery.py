@@ -52,6 +52,7 @@ from .independence import IndependenceReport, PolyContext, analyze_independence,
 from .invariants import _new_directions
 from .lagrangian import DerivationError
 from .models import Limits, Status, Verification
+from .notation.models import InputAware
 
 MAX_COORDINATES = 3
 MAX_FACTORS_IN_PRODUCT = 4
@@ -147,7 +148,7 @@ class DiscoveredConstant(BaseModel):
     reason: str = ""
 
 
-class DiscoveryReport(BaseModel):
+class DiscoveryReport(InputAware):
     status: Status
     system: Literal["lagrangian", "hamiltonian"] = "lagrangian"
     function_latex: str | None = None
@@ -1047,7 +1048,7 @@ def discover_invariants(
         else:
             flow = lagrangian_flow(function_latex, coordinates, time_name, assumptions, limits)
     except DerivationError as exc:
-        return DiscoveryReport(status=exc.status, message=exc.message)
+        return DiscoveryReport(status=exc.status, message=exc.message, diagnostic=exc.diagnostic)
     try:
         return discover(flow, angles, budget, pins, limits, started)
     except (sp.PolynomialError, sp.polys.polyerrors.BasePolynomialError):

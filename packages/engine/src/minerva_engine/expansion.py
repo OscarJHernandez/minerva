@@ -36,6 +36,7 @@ from .errors import LimitError, MinervaMathError, UnsupportedInput
 from .lagrangian import Derivation, DerivationError, check_equations, derive
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status, Verification
+from .notation.models import InputAware
 from .series import MAX_ORDER, SeriesVerification, check_series
 from .verify import MIN_VALID_POINTS, numeric_check
 
@@ -71,7 +72,7 @@ class NamedLatex(BaseModel):
     name_latex: str = ""  # the name as LaTeX, e.g. \\theta for "theta"
 
 
-class ExpansionReport(BaseModel):
+class ExpansionReport(InputAware):
     status: Status
     lagrangian_latex: str | None = None
     coordinates: list[str] = Field(default_factory=list)
@@ -149,7 +150,7 @@ def prepare(
     try:
         d = derive(latex, coordinates, time_name, assumptions, limits)
     except DerivationError as exc:
-        return Refusal(exc.status, str(exc))
+        return Refusal(exc.status, str(exc), {"diagnostic": exc.diagnostic})
 
     shown_coordinates = [to_latex(s) for s in d.q]
     base: dict[str, object] = {

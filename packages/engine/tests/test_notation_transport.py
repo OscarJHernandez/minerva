@@ -28,7 +28,7 @@ CLEAN = [
 @pytest.mark.parametrize("name", sorted(DAMAGE))
 @pytest.mark.parametrize("source", CLEAN)
 def test_every_damage_is_undone(name: str, source: str) -> None:
-    damaged = DAMAGE[name](source)  # type: ignore[operator]
+    damaged = DAMAGE[name](source)
     if damaged == source:
         return  # this damage does not apply to this string
     cleaned, notes = clean_transport(damaged)
@@ -87,7 +87,7 @@ def test_nested_wrappers_are_peeled() -> None:
 
 @given(st.sampled_from(sorted(DAMAGE)), st.sampled_from(CLEAN), st.sampled_from(sorted(DAMAGE)))
 def test_two_damages_compose(first: str, source: str, second: str) -> None:
-    damaged = DAMAGE[second](DAMAGE[first](source))  # type: ignore[operator]
+    damaged = DAMAGE[second](DAMAGE[first](source))
     cleaned, _ = clean_transport(damaged)
     # The cleaner is a left inverse of any pair that does not double-escape the same character twice.
     assert cleaned.replace("\\*", "*") == source or cleaned == source or "\\" in cleaned

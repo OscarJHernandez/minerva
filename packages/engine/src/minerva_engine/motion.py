@@ -27,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .errors import MinervaMathError
 from .lagrangian import Derivation, DerivationError, check_equations, derive, find_conserved
 from .models import Limits, Status
+from .notation.models import InputAware, InputDiagnostic
 
 MAX_RUNS = 6
 MAX_NUMBERS = 20_000  # floats in all returned series, so the card and the stored message stay small
@@ -114,7 +115,7 @@ class MotionRun(BaseModel):
     verification: MotionVerification = Field(default_factory=MotionVerification)
 
 
-class MotionReport(BaseModel):
+class MotionReport(InputAware):
     status: Status
     lagrangian_latex: str | None = None
     coordinates: list[str] = Field(default_factory=list)
@@ -137,8 +138,8 @@ def _round(values: list[float]) -> list[float]:
     return [float(f"{x:.10g}") for x in values]
 
 
-def _fail(status: Status, message: str) -> MotionReport:
-    return MotionReport(status=status, message=message)
+def _fail(status: Status, message: str, diagnostic: InputDiagnostic | None = None) -> MotionReport:
+    return MotionReport(status=status, message=message, diagnostic=diagnostic)
 
 
 # --- numerical integration ---------------------------------------------------------------------
@@ -390,7 +391,7 @@ def integrate_motion(request: MotionRequest, limits: Limits) -> MotionReport:
             request.lagrangian, request.coordinates, request.time, request.assumptions, limits
         )
     except DerivationError as exc:
-        return _fail(exc.status, exc.message)
+        return _fail(exc.status, exc.message, exc.diagnostic)
     if not d.solution:
         return _fail(
             Status.UNSUPPORTED,

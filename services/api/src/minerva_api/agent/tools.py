@@ -76,6 +76,7 @@ from .mathinput import (
     MATH_FIELDS,
     SyntaxChoice,
     input_lines,
+    input_record,
     resolve_syntax,
     strip_assignment,
     transport_line,
@@ -2235,8 +2236,6 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         },
     )
     lines = [f"status={report.status.value}; {report.message}"]
-    extra_lines, reason = input_lines(report.status.value, report.reading, report.diagnostic)
-    lines.extend(extra_lines)
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
     quoted: list[tuple[str, str]] = []
     roles: dict[str, str] = {}
@@ -2290,7 +2289,6 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         quoted_latex=quoted,
         formula_roles=roles,
         variables=tuple(report.coordinates),
-        reason_code=reason,
     )
 
 
@@ -4083,6 +4081,12 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     output.error_category = category.value if category else None
     _classify_known(name, output)
     _add_hints(name, arguments, output)
+    reading, diagnostic = input_record(output.card.data)
+    lines, code = input_lines(output.status, reading, diagnostic)
+    if lines:
+        output.for_model = "\n".join([output.for_model, *lines])
+    if code and output.reason_code is None:
+        output.reason_code = code
     if ctx.input_notes:
         line = transport_line(ctx.input_notes)
         if line is not None:

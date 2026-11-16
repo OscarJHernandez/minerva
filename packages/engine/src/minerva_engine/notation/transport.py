@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Callable
 
 from .models import Normalization, NormalizationKind
 
@@ -204,11 +205,12 @@ def localize_symbols(source: str, format: str) -> tuple[str, tuple[Normalization
 # Each damages a string the way a transport does, and is the exact inverse of one row of `clean_transport`.
 # They live here so that a row cannot be added without its inverse (a test pairs them); the corruption
 # harness (`agent/evaluation/corruption.py`) applies them to every reference call of the benchmark.
-DAMAGE: dict[str, object] = {}
+Damage = Callable[[str], str]
+DAMAGE: dict[str, Damage] = {}
 
 
-def _damage(name: str):  # type: ignore[no-untyped-def]
-    def register(function):  # type: ignore[no-untyped-def]
+def _damage(name: str) -> Callable[[Damage], Damage]:
+    def register(function: Damage) -> Damage:
         DAMAGE[name] = function
         return function
 
