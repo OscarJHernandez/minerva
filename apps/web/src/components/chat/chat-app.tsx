@@ -65,6 +65,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<StoredMessage[]>([]);
+  const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
@@ -75,15 +76,25 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   );
   // "Edit in chat" on a formula in a reply puts it in the message box (a formula, not a reference).
   const [insertRequest, setInsertRequest] = useState<{ id: number; latex: string } | null>(null);
+  const requestCounter = useRef(0); // ids for requests to the composer (insert, replace)
   const formulaActions = useMemo(
-    () => ({ editInChat: (latex: string) => setInsertRequest({ id: Date.now(), latex }) }),
-    [],
+    () => ({
+      editInChat: (latex: string) => setInsertRequest({ id: ++requestCounter.current, latex }),
+      openInWorkbench: (cardId: string) => {
+        if (activeId)
+          router.push(
+            `/workbench?conversation=${encodeURIComponent(activeId)}&card=${encodeURIComponent(cardId)}`,
+          );
+      },
+    }),
+    [activeId, router],
   );
   const [replaceRequest, setReplaceRequest] = useState<{ id: number; text: string } | null>(null);
   const [editing, setEditing] = useState(false); // the box holds the last message, being changed
   const [lastError, setLastError] = useState<LastError | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const cloudConfirmed = useRef<Set<string>>(new Set());
+  const loadRef = useRef<AbortController | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Each navigation owns its asynchronous work. A late response may finish, but cannot paint
   // into a different conversation.
@@ -92,7 +103,6 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
   const pendingRef = useRef<Pending | null>(null);
-  const requestCounter = useRef(0); // ids for requests to the composer (insert, replace)
   const stickRef = useRef(true); // the reader is at the end, so new text scrolls into view
   const [atEnd, setAtEnd] = useState(true);
 
@@ -154,14 +164,41 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     if (window.location.pathname !== target) window.history.replaceState(null, "", target);
   }, [activeId]);
 
-  useEffect(() => {
-    if (initialId) void open(initialId); // load the conversation named in the address
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only once, for the address the page was opened at
-  }, [initialId]);
+  useEffect(
+    () => () => {
+      ++viewGeneration.current;
+      loadRef.current?.abort();
+      loadRef.current = null;
+      abortRef.current?.abort();
+    },
+    [],
+  );
+
+  function clearComposerRequests() {
+    setInsertRequest(null);
+    setReferenceRequest(null);
+    setReplaceRequest(null);
+    setEditing(false);
+  }
+
+  async function rename(id: string, title: string) {
+    try {
+      const updated = await chatApi.rename(id, title);
+      setConversations((items) => items.map((item) => (item.id === id ? updated : item)));
+    } catch (error) {
+      fail(error);
+    }
+  }
 
   async function open(id: string, options: { keepError?: boolean } = {}) {
     const generation = ++viewGeneration.current;
+    if (!options.keepError) clearComposerRequests();
+    loadRef.current?.abort();
     abortRef.current?.abort();
+    abortRef.current = null;
+    const controller = new AbortController();
+    loadRef.current = controller;
+    setLoading(true);
     activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
@@ -173,7 +210,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     }
     setListOpen(false);
     try {
-      const detail = await chatApi.get(id);
+      const detail = await chatApi.get(id, controller.signal);
       if (viewGeneration.current !== generation) return;
       setMessages(detail.messages);
       setPending(null);
@@ -188,12 +225,30 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         return;
       }
       fail(e);
+    } finally {
+      if (loadRef.current === controller) {
+        loadRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
+  useEffect(() => {
+    if (!initialId) return;
+    const timer = setTimeout(() => void open(initialId), 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only once, for the address the page was opened at
+  }, [initialId]);
+
   function startNew() {
+    clearComposerRequests();
+    pendingRef.current = null;
     ++viewGeneration.current;
+    loadRef.current?.abort();
+    loadRef.current = null;
+    setLoading(false);
     abortRef.current?.abort();
+    abortRef.current = null;
     activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
@@ -207,7 +262,15 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
     try {
       await chatApi.remove(id);
-      if (id === activeId) startNew();
+      if (id === activeIdRef.current) startNew();
+      if (accountId) {
+        try {
+          sessionStorage.removeItem(`minerva:draft:${accountId}:${id}`);
+          sessionStorage.removeItem(`minerva:draft:${accountId}:${id}:formula`);
+        } catch {
+          // Storage availability does not affect deletion.
+        }
+      }
       await refreshList();
     } catch (e) {
       fail(e);
@@ -240,19 +303,24 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
    */
   async function send(text: string, mode: SendMode = "new"): Promise<boolean> {
     const generation = viewGeneration.current;
-    if (pendingRef.current) return false;
+    if (loadRef.current || abortRef.current) return false;
     pendingRef.current = { items: [], tools: [], cards: 0, startedAt: Date.now() };
     setPending(pendingRef.current);
     setError(null);
     setLastError(null);
-    let id = activeId;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let id = activeIdRef.current;
     let bubble = false; // the message was added to the screen
     let started = false; // the server answered and the reply began
     let finished = false; // a reply or an error event arrived
     try {
       if (!id) {
         const created = await chatApi.create();
-        if (generation !== viewGeneration.current) return false;
+        if (generation !== viewGeneration.current || controller.signal.aborted) {
+          void refreshList();
+          return false;
+        }
         id = created.id;
         activeIdRef.current = id;
         setActiveId(id);
@@ -273,8 +341,6 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         setMessages((m) => untilLastUser(m, mode === "edit" ? text : undefined));
       }
       stickRef.current = true; // sending jumps to the end
-      const controller = new AbortController();
-      abortRef.current = controller;
       await sendMessage(
         id,
         text,
@@ -356,7 +422,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (id) await open(id, { keepError: true });
       return true;
     } finally {
-      if (generation === viewGeneration.current) {
+      if (generation === viewGeneration.current && abortRef.current === controller) {
         abortRef.current = null;
         pendingRef.current = null;
         setPending(null);
@@ -368,9 +434,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runMotion = useCallback(
     async (request: MotionRequest) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.integrateMotion(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -384,9 +452,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runPerturbation = useCallback(
     async (request: PerturbationRequest) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.perturbationSolve(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -400,9 +470,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runDistribution = useCallback(
     async (request: DistributionAnswer) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.distribution(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -416,9 +488,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runStatMech = useCallback(
     async (request: StatToolArgs & StatAnswers) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.statmech(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -432,9 +506,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runGeometry = useCallback(
     async (request: GeometryRequest) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.geometry(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -449,9 +525,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     () => ({
       symbolic: async (request: OdeInput | OdeSolveInput) => {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        const generation = viewGeneration.current;
         try {
           const message = await chatApi.odeSolveSymbolic(activeId, request);
-          if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+          if (generation === viewGeneration.current && activeIdRef.current === activeId)
+            setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -460,9 +538,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       },
       qualitative: async (request: OdeAnalyzeInput) => {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        const generation = viewGeneration.current;
         try {
           const message = await chatApi.odeQualitative(activeId, request);
-          if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+          if (generation === viewGeneration.current && activeIdRef.current === activeId)
+            setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -471,9 +551,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       },
       numeric: async (request: OdeNumericInput) => {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
+        const generation = viewGeneration.current;
         try {
           const message = await chatApi.odeSolveNumerical(activeId, request);
-          if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+          if (generation === viewGeneration.current && activeIdRef.current === activeId)
+            setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -488,9 +570,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runVariation = useCallback(
     async (request: VariationRequest) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.variationDirectly(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -504,9 +588,11 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const runApproximation = useCallback(
     async (request: ApproximationToolArgs) => {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
+      const generation = viewGeneration.current;
       try {
         const message = await chatApi.approximationDirectly(activeId, request);
-        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
+        if (generation === viewGeneration.current && activeIdRef.current === activeId)
+          setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -591,6 +677,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                 onOpen={open}
                 onNew={startNew}
                 onDelete={remove}
+                onRename={rename}
               />
             </aside>
 
@@ -616,6 +703,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                     onOpen={open}
                     onNew={startNew}
                     onDelete={remove}
+                    onRename={rename}
                   />
                 </div>
               )}
@@ -639,7 +727,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                 aria-live="off"
               >
                 {messages.length === 0 && !pending ? (
-                  <EmptyState onPick={(t) => void send(t)} disabled={busy || !status} />
+                  <EmptyState onPick={(t) => void send(t)} disabled={busy || loading || !status} />
                 ) : (
                   <div className="mx-auto max-w-3xl space-y-6">
                     {messages.map((m, i) => (
@@ -718,7 +806,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                   draftKey={
                     accountId ? `minerva:draft:${accountId}:${activeId ?? "new"}` : undefined
                   }
-                  disabled={!status}
+                  disabled={loading || !status}
                   imagesEnabled={status?.images === true}
                   beforeSend={confirmCloud}
                   toolbar={

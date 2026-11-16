@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormDraft } from "@/lib/use-form-draft";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import {
@@ -34,15 +35,18 @@ interface Run {
  */
 export function GeometryWorkbench({
   restore,
+  draftKey,
   onUnauthorized,
   onSaved,
 }: {
   /** A saved problem to load into the form (the nonce lets the same one be loaded again). */
+  draftKey?: string;
   restore: { request: GeometryRequest; nonce: number } | null;
   onUnauthorized: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<GeometryForm>(() => blankForm(2));
+  useFormDraft(form, setForm, draftKey, restore !== null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

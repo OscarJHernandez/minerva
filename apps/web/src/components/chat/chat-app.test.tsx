@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatApp } from "./chat-app";
 
 const sendMessage = vi.fn();
 const get = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const router = { push: vi.fn() };
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
   api: { me: async () => ({ id: "user-1", email: "u@example.test" }) },
@@ -21,8 +22,10 @@ vi.mock("@/lib/chat-api", () => ({
   },
 }));
 vi.mock("./composer", () => ({
-  Composer: ({ onSend }: { onSend: (text: string) => void }) => (
-    <button onClick={() => onSend("Question")}>Send mock</button>
+  Composer: ({ onSend, disabled }: { onSend: (text: string) => void; disabled: boolean }) => (
+    <button disabled={disabled} onClick={() => onSend("Question")}>
+      Send mock
+    </button>
   ),
 }));
 vi.mock("./message-view", () => ({
@@ -37,6 +40,28 @@ describe("ChatApp conversation isolation", () => {
     sendMessage.mockReset();
     get.mockReset();
   });
+  it("keeps the newest conversation when an earlier load resolves last", async () => {
+    let finishOld!: () => void;
+    const old = new Promise<void>((resolve) => {
+      finishOld = resolve;
+    });
+    get.mockImplementation(async (id: string) => {
+      if (id === "a") await old;
+      return { id, messages: [{ id, role: "user", content: { text: id + " saved" } }] };
+    });
+    render(<ChatApp />);
+    fireEvent.click((await screen.findByText("First")).closest("button")!);
+    expect(screen.getByText("Send mock")).toBeDisabled();
+    fireEvent.click(screen.getByText("Second").closest("button")!);
+    expect(await screen.findByText("b saved")).toBeInTheDocument();
+    await act(async () => {
+      finishOld();
+      await old;
+    });
+    expect(screen.queryByText("a saved")).not.toBeInTheDocument();
+    expect(screen.getByText("Send mock")).toBeEnabled();
+  });
+
   it("ignores a late streamed message after switching conversations", async () => {
     let onEvent: ((event: unknown) => void) | undefined;
     let finish: (() => void) | undefined;
@@ -61,7 +86,7 @@ describe("ChatApp conversation isolation", () => {
     render(<ChatApp />);
     fireEvent.click((await screen.findByText("First")).closest("button")!);
     expect(await screen.findByText("a saved")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Send mock" }));
+    fireEvent.click(screen.getByText("Send mock"));
     await waitFor(() => expect(sendMessage).toHaveBeenCalled());
     fireEvent.click(screen.getByText("Second").closest("button")!);
     expect(await screen.findByText("b saved")).toBeInTheDocument();

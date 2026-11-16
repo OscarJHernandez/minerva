@@ -109,6 +109,11 @@ class RuleCondition(BaseModel):
         return value
 
 
+class UnmetCondition(RuleCondition):
+    bound_latex: str | None = None
+    symbol: str | None = None
+
+
 class Rule(BaseModel):
     """A rewrite rule `lhs -> rhs` (text syntax) over declared pattern variables."""
 
@@ -140,7 +145,7 @@ class RuleApplication(BaseModel):
     rewritten_latex: str | None = None
     # Text form of the rewrite (re-readable by the text parser); set only when applicable.
     rewritten_text: str | None = None
-    unmet_conditions: list[RuleCondition] = Field(default_factory=list)
+    unmet_conditions: list[UnmetCondition] = Field(default_factory=list)
     verification: Verification | None = None
     restrictions_latex: list[str] = Field(default_factory=list)
     restrictions_complete: bool = True
@@ -183,7 +188,7 @@ class BlockedMove(BaseModel):
     rule_id: str
     direction: Literal["forward", "reverse"]
     matched_latex: str
-    unmet_conditions: list[RuleCondition]
+    unmet_conditions: list[UnmetCondition]
 
 
 class TransformResult(BaseModel):
@@ -204,6 +209,15 @@ class TransformResult(BaseModel):
     restrictions_complete: bool = True
     message: str = ""
     duration_ms: int = 0
+
+
+class ExpressionInspection(BaseModel):
+    """A parser reading, with an optional structurally equivalent representation."""
+
+    status: Status
+    message: str = ""
+    read_as: str | None = None
+    converted: str | None = None
 
 
 class FormulaReading(BaseModel):
@@ -407,7 +421,7 @@ class StepResult(BaseModel):
     restrictions_latex: list[str] = Field(default_factory=list)
     restrictions_complete: bool = True
     conditions_latex: list[str] = Field(default_factory=list)
-    unmet_conditions: list[RuleCondition] = Field(
+    unmet_conditions: list[UnmetCondition] = Field(
         default_factory=list
     )  # a rule that was not applied
     reason: Reason | None = None

@@ -1,11 +1,15 @@
 "use client";
 
 import { CopyMath as Math } from "@/components/copyable-math";
-import type { IdentitiesResult, IdentityMatch } from "@/lib/types";
+import { useId } from "react";
+import type { Assumptions, IdentitiesResult, IdentityMatch } from "@/lib/types";
+import { AssumptionReview } from "./assumption-review";
 import { EntryCard } from "./entry-card";
 import { Restrictions, StatusPill } from "./result-panel";
 
 interface Apply {
+  assumptions?: Assumptions;
+  onApprove?: (next: Assumptions) => Promise<string | null>;
   /** Rule id being applied right now, if any. */
   busy: string | null;
   onApply: (match: IdentityMatch) => void;
@@ -102,11 +106,21 @@ function Detail({ match, apply }: { match: IdentityMatch; apply?: Apply }) {
         <ul className="mt-1 list-disc pl-5">
           {a.unmet_conditions.map((c) => (
             <li key={`${c.variable}-${c.assumption}`}>
-              <code>{c.variable}</code> must be {c.assumption} (the pattern variable bound to the
-              matched part)
+              {c.bound_latex ? <Math latex={c.bound_latex} /> : <code>{c.variable}</code>}
+              {" must be "}
+              {c.assumption}
             </li>
           ))}
         </ul>
+        {apply?.onApprove && (
+          <AssumptionReview
+            conditions={a.unmet_conditions}
+            assumptions={apply.assumptions ?? {}}
+            onApprove={apply.onApprove}
+            disabled={apply.busy !== null}
+            action="Approve and search again"
+          />
+        )}
       </div>
     );
   }
@@ -124,6 +138,7 @@ export function IdentitiesPanel({
   /** When given, applicable matches get an Apply button (the Workbench). Others never do. */
   apply?: Apply;
 }) {
+  const heading = useId();
   const by = (kind: string) => result.matches.filter((m) => m.application.applicability === kind);
   const related = by("no_match");
   const applicable = by("applicable");
@@ -132,12 +147,9 @@ export function IdentitiesPanel({
   const none = result.status === "ok" && applicable.length + conditional.length === 0;
 
   return (
-    <section
-      aria-labelledby="identities-heading"
-      className="rounded-lg border border-rule bg-raised p-5"
-    >
+    <section aria-labelledby={heading} className="rounded-lg border border-rule bg-raised p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="identities-heading" className="font-serif text-xl">
+        <h2 id={heading} className="font-serif text-xl">
           Identities
         </h2>
         {result.status !== "ok" && <StatusPill status={result.status} />}
@@ -161,6 +173,7 @@ export function IdentitiesPanel({
         title="Needs assumptions"
         hint="The pattern matches but validity conditions are not met. Add assumptions to unlock."
         items={conditional}
+        apply={apply}
       />
       <Group title="Matched but not verified" hint="Not shown as results." items={unverified} />
       <Group

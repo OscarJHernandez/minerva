@@ -1,4 +1,8 @@
+"use client";
+
 import { Math } from "@minerva/ui/math";
+import { useFormulaActions } from "./formula-actions";
+import { ResultActions } from "../result-actions";
 import { EquationNumber } from "./equation-number";
 import type { Card } from "@/lib/chat-types";
 import { DerivativePanel } from "../derivative-panel";
@@ -30,14 +34,43 @@ import { IsolatePanel, StepResultPanel } from "../step-result-panel";
 import type { Status } from "@/lib/types";
 
 /** Renders a tool result. The content comes from Minerva's own computation, never from the model. */
-export function CardView({ card }: { card: Card }) {
-  if (card.number == null) return <CardContent card={card} />;
+export function CardView({ card, streaming = false }: { card: Card; streaming?: boolean }) {
+  const { openInWorkbench } = useFormulaActions();
+  const data = card.data as {
+    status?: string;
+    original_request?: unknown;
+    result_text?: string;
+    result_latex?: string;
+  };
+  const scalar =
+    ["simplify", "differentiate", "integrate", "series"].includes(card.type) &&
+    (data.status === "ok" || data.status === "unchanged") &&
+    data.result_text;
+  const actions = scalar && (
+    <ResultActions
+      text={data.result_text!}
+      latex={data.result_latex}
+      onOpen={
+        !streaming && data.original_request && openInWorkbench
+          ? () => openInWorkbench(card.id)
+          : undefined
+      }
+    />
+  );
+  if (card.number == null)
+    return (
+      <>
+        <CardContent card={card} />
+        {actions}
+      </>
+    );
   return (
     <div>
       <div className="flex justify-end">
         <EquationNumber n={card.number} />
       </div>
       <CardContent card={card} />
+      {actions}
     </div>
   );
 }

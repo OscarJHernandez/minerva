@@ -839,3 +839,36 @@ def test_a_turn_that_fails_outside_the_loop_leaves_a_stored_message(
     assert stored["stop_reason"] == "internal_error" and stored["truncated"] is True
     assert "internal error" in stored["text"]
     assert "simulated" not in json.dumps(stored)  # the cause never reaches the user or the record
+
+
+def test_rename_and_import_a_stored_result(chat_client: tuple[TestClient, str]) -> None:
+    client, conversation = chat_client
+    path = f"/v1/chat/conversations/{conversation}"
+    assert client.patch(path, json={"title": " "}).status_code == 422
+    assert client.patch(path, json={"title": "x" * 121}).status_code == 422
+    assert (
+        client.patch(path, json={"title": "  Algebra notes  "}).json()["title"] == "Algebra notes"
+    )
+    events = sse(client, conversation, r"Simplify $\frac{x^2-1}{x-1}$")
+    card = next(data for event, data in events if event == "card" and data["type"] == "simplify")
+    source = {"conversation_id": conversation, "card_id": card["id"]}
+    assert client.get(path).json()["title"] == "Algebra notes"
+    result = client.post("/v1/compute/chat-result", json=source).json()
+    assert result["original_request"]["assumptions"] == {}
+    assert result["restrictions_latex"]
+    derivative = client.post(
+        "/v1/compute/differentiate",
+        json={
+            "input": result["result_text"],
+            "format": "text",
+            "chat_source": source,
+            "variables": [{"name": "x", "order": 1}],
+        },
+    )
+    assert derivative.json()["status"] == "ok"
+    assert client.get("/v1/history").json()[0]["result"]["chat_source"] == source
+
+    with TestClient(client.app) as other:
+        register(other, "another-user@example.com")
+        assert other.patch(path, json={"title": "Other"}).status_code == 404
+        assert other.post("/v1/compute/chat-result", json=source).status_code == 404

@@ -451,3 +451,28 @@ export function instanceWording(v: {
       : "checked on explicit instances";
   return `${where} (explicit expansion; ${v.instances_agreed}/${v.instances_checked} agree), not proved for every size`;
 }
+
+/** Restrictions inherited from the source are separate from the evidence for the latest operation. */
+export function inheritedDomain(item: HistoryItem, which = 0) {
+  const result = item.result as {
+    restrictions_latex?: string[];
+    conditions_latex?: string[];
+    restrictions_complete?: boolean;
+    inherited_domain?: { restrictions_latex: string[]; restrictions_complete: boolean };
+  };
+  return {
+    exclusions: [
+      ...new Set([
+        ...(result.inherited_domain?.restrictions_latex ?? []),
+        ...(result.restrictions_latex ?? []),
+        ...(result.conditions_latex ?? []),
+        ...(item.operation === "isolate"
+          ? ((item.result as unknown as IsolateResult).solutions?.[which]?.conditions_latex ?? [])
+          : []),
+      ]),
+    ],
+    incomplete:
+      result.restrictions_complete === false ||
+      result.inherited_domain?.restrictions_complete === false,
+  };
+}

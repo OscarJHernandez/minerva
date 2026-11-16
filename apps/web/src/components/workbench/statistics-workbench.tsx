@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormDraft } from "@/lib/use-form-draft";
 import { useEffect, useId, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import {
@@ -34,14 +35,17 @@ interface Run {
  */
 export function StatisticsWorkbench({
   restore,
+  draftKey,
   onUnauthorized,
   onSaved,
 }: {
+  draftKey?: string;
   restore: { form: StatForm; nonce: number } | null;
   onUnauthorized: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<StatForm>(() => blankStatForm());
+  useFormDraft(form, setForm, draftKey, restore !== null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Math } from "@minerva/ui/math";
 import type { DerivationSummary, HistoryItem } from "@/lib/types";
 import { HistoryList } from "../history-list";
@@ -27,8 +28,24 @@ export function SavedPanel({
   onDeleteEarlier,
   onClearEarlier,
 }: Props) {
+  const [search, setSearch] = useState("");
+  const matches = (...parts: (string | null)[]) =>
+    parts.some((part) => part?.toLowerCase().includes(search.trim().toLowerCase()));
+  const listedDerivations = derivations.filter((d) => matches(d.first_input));
+  const listedCalculations = earlier.filter((item) =>
+    matches(item.input, item.operation, JSON.stringify(item.assumptions)),
+  );
   return (
     <div className="space-y-5">
+      <label className="block text-xs text-muted">
+        Search recent calculations and derivations
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mt-1 w-full rounded border border-rule bg-raised px-2 py-1 text-sm"
+        />
+      </label>
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-medium">Derivations</h3>
@@ -40,7 +57,7 @@ export function SavedPanel({
           <p className="text-sm text-muted">Derivations you build are saved here, privately.</p>
         ) : (
           <ul className="space-y-1.5">
-            {derivations.map((d) => (
+            {listedDerivations.map((d) => (
               <li
                 key={d.id}
                 className={`group flex items-start gap-2 rounded border px-2.5 py-2 ${
@@ -70,7 +87,7 @@ export function SavedPanel({
                   type="button"
                   onClick={() => onDelete(d.id)}
                   aria-label="Delete this derivation"
-                  className="text-xs text-muted opacity-0 hover:text-bad focus:opacity-100 group-hover:opacity-100"
+                  className="px-2 py-1 text-xs text-muted hover:text-bad"
                 >
                   ✕
                 </button>
@@ -82,7 +99,7 @@ export function SavedPanel({
       {earlier.length > 0 && (
         <div>
           <HistoryList
-            items={earlier}
+            items={listedCalculations}
             activeId={null}
             onOpen={onOpenEarlier}
             onDelete={onDeleteEarlier}

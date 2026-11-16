@@ -75,9 +75,18 @@ export function HistoryList({
               >
                 <div className="flex items-center gap-1.5 text-xs text-muted">
                   <span className={`h-1.5 w-1.5 rounded-full ${DOT[item.status] ?? "bg-warn"}`} />
-                  {OPERATION_LABEL[item.operation] ?? "Identities"}
+                  {OPERATION_LABEL[item.operation] ?? item.operation.replaceAll("_", " ")}
+                  {" · "}
+                  {new Date(item.created_at).toLocaleDateString()}
                 </div>
-                <div className="overflow-hidden text-sm">
+                {Object.keys(item.assumptions).length > 0 && (
+                  <div className="break-words text-xs text-muted">
+                    {Object.entries(item.assumptions)
+                      .map(([symbol, conditions]) => symbol + " " + conditions.join(", "))
+                      .join("; ")}
+                  </div>
+                )}
+                <div className="overflow-x-auto text-sm">
                   {item.format === "latex" ? (
                     <Math latex={item.input} />
                   ) : (
@@ -89,7 +98,7 @@ export function HistoryList({
                 type="button"
                 onClick={() => onDelete(item)}
                 aria-label="Delete this calculation"
-                className="text-xs text-muted opacity-0 hover:text-bad focus:opacity-100 group-hover:opacity-100"
+                className="text-xs text-muted px-2 py-1 hover:text-bad"
               >
                 ✕
               </button>

@@ -76,10 +76,6 @@ export function Composer({
     }
   });
   const sendingText = useRef<string | null>(null);
-  const currentText = useRef(text);
-  useEffect(() => {
-    currentText.current = text;
-  }, [text]);
   useEffect(() => {
     if (!draftKey) return;
     try {
@@ -117,7 +113,10 @@ export function Composer({
       setText((t) => t.slice(0, start) + snippet + t.slice(end));
       setFormula(false);
       setImage(null);
-      requestAnimationFrame(() => el?.focus());
+      requestAnimationFrame(() => {
+        el?.focus();
+        el?.setSelectionRange(start + snippet.length, start + snippet.length);
+      });
     },
     [text.length],
   );
@@ -186,8 +185,7 @@ export function Composer({
         if (ok === false) setText((t) => (t === "" ? value : t));
         else if (draftKey) {
           try {
-            if (currentText.current) sessionStorage.setItem(draftKey, currentText.current);
-            else sessionStorage.removeItem(draftKey);
+            if (sessionStorage.getItem(draftKey) === value) sessionStorage.removeItem(draftKey);
           } catch {
             // The send succeeded even if storage is unavailable.
           }
@@ -202,7 +200,13 @@ export function Composer({
     <div className="border-t border-rule bg-paper pb-4 pt-3">
       {panel}
       {legend && <MarksLegend onClose={() => setLegend(false)} />}
-      {formula && <FormulaPopover onInsert={insert} onClose={close} />}
+      {formula && (
+        <FormulaPopover
+          onInsert={insert}
+          onClose={close}
+          draftKey={draftKey ? draftKey + ":formula" : undefined}
+        />
+      )}
       {image && <ImageFormulasPanel file={image} onInsert={insertMany} onClose={closeImage} />}
       {imageError && (
         <p role="alert" className="mb-2 rounded bg-bad-soft px-3 py-2 text-sm text-bad">

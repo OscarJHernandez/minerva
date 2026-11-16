@@ -40,12 +40,18 @@ class UserOut(BaseModel):
     email: str
 
 
+class ChatResultSource(BaseModel):
+    conversation_id: uuid.UUID
+    card_id: str = Field(min_length=1, max_length=80)
+
+
 class Links(BaseModel):
     """Whether and where a result is saved as a step of a Workbench derivation."""
 
     save: bool = True
     derivation_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
+    chat_source: ChatResultSource | None = None
 
 
 class Linked(ExpressionInput, Links):

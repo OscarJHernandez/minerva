@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { MAX_DERIVATIVE_ORDER, MAX_SERIES_ORDER } from "@/lib/types";
 import type { Settings, StepOperation } from "@/lib/derivation";
 
@@ -62,6 +62,7 @@ export function OperationBar({
   empty,
   busy,
 }: Props) {
+  const [query, setQuery] = useState("");
   const bar = useRef<HTMLDivElement | null>(null);
   const set = (patch: Partial<Settings>) => onSettings({ ...settings, ...patch });
   const disabled = empty || busy !== null;
@@ -78,6 +79,15 @@ export function OperationBar({
 
   return (
     <div>
+      <label className="mb-2 block text-xs text-muted">
+        Search expression operations
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          className="mt-1 rounded border border-rule bg-raised px-2 py-1 text-sm"
+        />
+      </label>
       <div
         ref={bar}
         role="toolbar"
@@ -85,32 +95,34 @@ export function OperationBar({
         onKeyDown={arrows}
         className="flex flex-wrap gap-1.5"
       >
-        {OPERATIONS.map((op) => {
-          const open = selected === op.id;
-          return (
-            <button
-              key={op.id}
-              type="button"
-              disabled={disabled}
-              aria-pressed={op.needsSettings ? open : undefined}
-              aria-expanded={op.needsSettings ? open : undefined}
-              onClick={() => {
-                if (op.id === "identities") onFind();
-                else if (op.needsSettings) onSelect(open ? null : (op.id as StepOperation));
-                else onRun(op.id as StepOperation);
-              }}
-              className={`rounded border px-3.5 py-1.5 text-sm font-medium disabled:opacity-50 ${
-                open
-                  ? "border-accent bg-accent-soft text-accent"
-                  : op.id === "simplify"
-                    ? "border-accent bg-accent text-accent-ink"
-                    : "border-rule text-ink hover:bg-sunk"
-              }`}
-            >
-              {busy === op.id ? "Working…" : op.label}
-            </button>
-          );
-        })}
+        {OPERATIONS.filter((op) => op.label.toLowerCase().includes(query.trim().toLowerCase())).map(
+          (op) => {
+            const open = selected === op.id;
+            return (
+              <button
+                key={op.id}
+                type="button"
+                disabled={disabled}
+                aria-pressed={op.needsSettings ? open : undefined}
+                aria-expanded={op.needsSettings ? open : undefined}
+                onClick={() => {
+                  if (op.id === "identities") onFind();
+                  else if (op.needsSettings) onSelect(open ? null : (op.id as StepOperation));
+                  else onRun(op.id as StepOperation);
+                }}
+                className={`rounded border px-3.5 py-1.5 text-sm font-medium disabled:opacity-50 ${
+                  open
+                    ? "border-accent bg-accent-soft text-accent"
+                    : op.id === "simplify"
+                      ? "border-accent bg-accent text-accent-ink"
+                      : "border-rule text-ink hover:bg-sunk"
+                }`}
+              >
+                {busy === op.id ? "Working…" : op.label}
+              </button>
+            );
+          },
+        )}
         <button
           type="button"
           disabled={disabled}

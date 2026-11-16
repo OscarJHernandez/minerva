@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormDraft } from "@/lib/use-form-draft";
 import { useEffect, useId, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import {
@@ -51,11 +52,13 @@ type NewRun =
  */
 export function OdeWorkbench({
   restore,
+  draftKey,
   onUnauthorized,
   onSaved,
   onUseExpression,
 }: {
   /** A saved problem to load into the form (the nonce lets the same one be loaded again). */
+  draftKey?: string;
   restore: { request: OdeInput; nonce: number } | null;
   onUnauthorized: () => void;
   onSaved: () => void;
@@ -63,6 +66,7 @@ export function OdeWorkbench({
   onUseExpression?: (text: string, equationLatex: string) => void;
 }) {
   const [form, setForm] = useState<OdeForm>(BLANK_ODE_FORM);
+  useFormDraft(form, setForm, draftKey, restore !== null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

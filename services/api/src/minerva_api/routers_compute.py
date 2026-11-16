@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from minerva_engine import (
@@ -30,7 +30,6 @@ from minerva_engine import (
     OdeNumericReport,
     OdeSolution,
     OdeSolveInput,
-    RuleCondition,
     SeriesResult,
     StatMechInput,
     StatMechResult,
@@ -51,6 +50,7 @@ from minerva_engine import (
     Verification,
     trace_scope,
 )
+from minerva_engine.models import ExpressionInspection, UnmetCondition
 from minerva_engine.vector import Premise
 from minerva_knowledge.identities import (
     EntrySummary,
@@ -63,9 +63,10 @@ from minerva_knowledge.identities import (
     vector_identity_rules,
 )
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from .approximation_log import log_approximation
-from .db import Calculation, Derivation, utcnow
+from .db import Calculation, ChatMessage, Conversation, Derivation, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep
 from .diagnostics import log_distribution, log_statmech
 from .geometry_log import log_geometry
@@ -74,6 +75,7 @@ from .ode_log import log_ode
 from .schemas import (
     ApplyIdentityRequest,
     ApproximationRequest,
+    ChatResultSource,
     ConservedRequest,
     DifferentiateRequest,
     DistributionRequest,
@@ -185,8 +187,55 @@ def _expr(body: ExpressionInput) -> ExpressionInput:
     return ExpressionInput(input=body.input, format=body.format, assumptions=body.assumptions)
 
 
+def _chat_result(db: DbDep, user: UserDep, source: ChatResultSource) -> dict[str, Any]:
+    conversation = db.get(Conversation, source.conversation_id)
+    if conversation is None or conversation.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Result not found.")
+    messages = db.scalars(
+        select(ChatMessage).where(
+            ChatMessage.conversation_id == conversation.id,
+            ChatMessage.role == "assistant",
+        )
+    )
+    for message in messages:
+        for block in message.content.get("blocks", []):
+            card = block.get("card") or {}
+            if card.get("id") != source.card_id or card.get("type") not in {
+                "simplify",
+                "differentiate",
+                "series",
+                "integrate",
+            }:
+                continue
+            data = card.get("data") or {}
+            if (
+                data.get("status") in {"ok", "unchanged"}
+                and data.get("result_text")
+                and "assumptions" in (data.get("original_request") or {})
+            ):
+                return {**data, "operation": card["type"]}
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Result not found.")
+
+
+@router.post("/chat-result")
+def read_chat_result(source: ChatResultSource, user: UserDep, db: DbDep) -> dict[str, Any]:
+    return _chat_result(db, user, source)
+
+
 def _check_links(db: DbDep, user: UserDep, body: Links) -> None:
     """A step may only join the user's own derivation and continue one of its own steps."""
+    if body.chat_source is not None:
+        result = _chat_result(db, user, body.chat_source)
+        if (
+            body.parent_id is not None
+            or not isinstance(body, ExpressionInput)
+            or body.format != "text"
+            or body.input != result["result_text"]
+            or body.assumptions != result["original_request"]["assumptions"]
+        ):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "Chat result context changed."
+            )
     if not body.save:
         return
     if body.derivation_id is None:
@@ -207,6 +256,60 @@ def _check_links(db: DbDep, user: UserDep, body: Links) -> None:
             )
 
 
+class ContinuationDomain(BaseModel):
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
+
+
+def _parent_domain(db: DbDep, user: UserDep, links: Links) -> ContinuationDomain:
+    if links.chat_source is not None:
+        data = _chat_result(db, user, links.chat_source)
+        return ContinuationDomain(
+            restrictions_latex=(data.get("restrictions_latex") or [])
+            + (data.get("conditions_latex") or []),
+            restrictions_complete=data.get("restrictions_complete", True),
+        )
+    if not links.save or links.parent_id is None:
+        return ContinuationDomain()
+    parent = db.get(Calculation, links.parent_id)
+    if parent is None or parent.user_id != user.id or parent.derivation_id != links.derivation_id:
+        return ContinuationDomain()
+    prior = ContinuationDomain.model_validate(parent.result.get("inherited_domain") or {})
+    solution_conditions: list[str] = []
+    if parent.operation == "isolate":
+        solutions = parent.result.get("solutions") or []
+        selected = [
+            solution
+            for solution in solutions
+            if isinstance(links, ExpressionInput)
+            and links.format == "text"
+            and links.input == solution.get("text")
+        ]
+        for solution in selected or solutions:
+            solution_conditions.extend(solution.get("conditions_latex") or [])
+    return ContinuationDomain(
+        restrictions_latex=list(
+            dict.fromkeys(
+                prior.restrictions_latex
+                + (parent.result.get("restrictions_latex") or [])
+                + (parent.result.get("conditions_latex") or [])
+                + solution_conditions
+            )
+        ),
+        restrictions_complete=prior.restrictions_complete
+        and parent.result.get("restrictions_complete", True),
+    )
+
+
+def _guard_continuation_domain(db: DbDep, user: UserDep, links: Links) -> None:
+    domain = _parent_domain(db, user, links)
+    if domain.restrictions_latex or not domain.restrictions_complete:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "This operation cannot enforce the source result's domain restrictions.",
+        )
+
+
 def _save(
     db: DbDep,
     user: UserDep,
@@ -216,7 +319,20 @@ def _save(
     result: dict[str, Any],
 ) -> uuid.UUID:
     return _save_row(
-        db, user, operation, req.input, req.format, req.assumptions, req, status_value, result
+        db,
+        user,
+        operation,
+        req.input,
+        req.format,
+        req.assumptions,
+        req,
+        status_value,
+        {
+            **result,
+            "original_request": req.model_dump(
+                mode="json", exclude={"save", "derivation_id", "parent_id", "chat_source"}
+            ),
+        },
     )
 
 
@@ -238,7 +354,17 @@ def _save_row(
         input_format=input_format,
         assumptions=assumptions,
         status=status_value,
-        result=result,
+        result={
+            **result,
+            "inherited_domain": _parent_domain(db, user, links).model_dump(mode="json"),
+            **(
+                {"chat_source": links.chat_source.model_dump(mode="json")}
+                if links.chat_source
+                else {}
+            ),
+        }
+        if links.parent_id or links.chat_source
+        else result,
         derivation_id=links.derivation_id,
         parent_id=links.parent_id,
     )
@@ -249,6 +375,25 @@ def _save_row(
             derivation.updated_at = utcnow()
     db.commit()
     return row.id
+
+
+class InspectRequest(ExpressionInput):
+    target: Literal["latex", "text"] | None = None
+
+
+@router.post("/inspect", response_model=ExpressionInspection)
+def inspect_expression(
+    body: InspectRequest,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> ExpressionInspection:
+    if len(body.input) > settings.max_input_chars:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Input is too long.")
+    if not limiter.allow(f"inspect:{user.id}", settings.compute_rate_per_minute):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many requests; slow down.")
+    return engine.inspect_expression(_expr(body), body.target)
 
 
 @router.post("/simplify", response_model=SimplifyResponse)
@@ -318,6 +463,7 @@ def series(
 ) -> SeriesResponse:
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
+    _guard_continuation_domain(db, user, body)
     expression = _expr(body)
     result = engine.series(expression, body.variable, body.point, body.order)
     log.info(
@@ -347,6 +493,7 @@ def integrate(
 ) -> IntegrateResponse:
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
+    _guard_continuation_domain(db, user, body)
     expression = _expr(body)
     result = engine.integrate(expression, body.variable, body.lower, body.upper, body.strategy)
     log.info(
@@ -738,6 +885,7 @@ def distribution(
 ) -> DistributionResponse:
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
+    _guard_continuation_domain(db, user, body)
     request = DistributionInput(
         expression=_expr(body),
         action=body.action,
@@ -789,6 +937,7 @@ def sums(
 ) -> SumsResponse:
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
+    _guard_continuation_domain(db, user, body)
     request = SumsInput(
         expression=_expr(body), action=body.action, variable=body.variable, candidate=body.candidate
     )
@@ -813,6 +962,7 @@ def expectation(
 ) -> ExpectationResponse:
     _guard(user, limiter, settings, len(body.input))
     _check_links(db, user, body)
+    _guard_continuation_domain(db, user, body)
     request = ExpectationInput(
         expression=_expr(body),
         random=body.random,
@@ -841,7 +991,9 @@ def statistics(
 ) -> StatisticsResponse:
     _guard(user, limiter, settings, _model_length(body))
     _check_links(db, user, body)
-    request = StatModelInput(**body.model_dump(exclude={"save", "derivation_id", "parent_id"}))
+    request = StatModelInput(
+        **body.model_dump(exclude={"save", "derivation_id", "parent_id", "chat_source"})
+    )
     result = engine.statistical_model(request)
     _log("statistical_model", result, user)
     out = StatisticsResponse(**result.model_dump())
@@ -903,7 +1055,7 @@ class ApplyIdentityResponse(BaseModel):
     matched_subexpression_latex: str | None = None
     result_latex: str | None = None
     result_text: str | None = None
-    unmet_conditions: list[RuleCondition] = Field(default_factory=list)
+    unmet_conditions: list[UnmetCondition] = Field(default_factory=list)
     verification: Verification | None = None
     # Points the rewrite excludes that the input, as written, did not (`x \neq 1`).
     restrictions_latex: list[str] = Field(default_factory=list)
@@ -1103,8 +1255,15 @@ def substitute(
     that depends on them is conditional, and says so."""
     _guard_total(user, limiter, settings, body.input, *body.relations)
     _check_links(db, user, body)
+    domain = _parent_domain(db, user, body)
+    if not domain.restrictions_complete:
+        _guard_continuation_domain(db, user, body)
     result = engine.substitute(
-        _expr(body), body.relations, order=body.order, debug=settings.debug_compute
+        _expr(body),
+        body.relations,
+        order=body.order,
+        debug=settings.debug_compute,
+        inherited_restrictions=domain.restrictions_latex,
     )
     _log_step("substitute", user, result.status.value, result)
     out = StepResponse(**result.model_dump())
@@ -1128,6 +1287,7 @@ def isolate(
     """Solve an equation for one variable, listing every solution and the conditions it needs."""
     _guard_total(user, limiter, settings, body.input, body.variable)
     _check_links(db, user, body)
+    _guard_continuation_domain(db, user, body)
     result = engine.isolate(_expr(body), body.variable, debug=settings.debug_compute)
     _log_step("isolate", user, result.status.value, result)
     out = IsolateResponse(**result.model_dump())

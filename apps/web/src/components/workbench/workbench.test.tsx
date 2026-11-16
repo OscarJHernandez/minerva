@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { HistoryItem } from "@/lib/types";
 import { identities, match, step } from "@/test/fixtures";
@@ -64,6 +64,7 @@ vi.mock("@/lib/api", async () => {
   return {
     ...actual,
     api: {
+      inspect: vi.fn(async () => ({ status: "ok", message: "", read_as: null, converted: null })),
       createDerivation: vi.fn(async () => ({ id: "d1", updated_at: "", steps: [] })),
       derivation: vi.fn(async () => ({ id: "d1", updated_at: "", steps: [...stored] })),
       derivations: vi.fn(async () => []),
@@ -137,6 +138,45 @@ beforeEach(() => {
 });
 
 describe("Workbench derivation", () => {
+  it("keeps the source when format conversion is refused", async () => {
+    vi.mocked(api.inspect).mockResolvedValueOnce({
+      status: "ok",
+      message: "Keep the original syntax.",
+      read_as: "1",
+      converted: null,
+    });
+    render(<Workbench />);
+    const input = String.raw`\frac{x-1}{x-1}`;
+    type(input);
+    fireEvent.click(screen.getByRole("button", { name: "Edit as plain text" }));
+    expect(await screen.findByText("Keep the original syntax.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mathematical expression")).toHaveValue(input);
+    expect(screen.queryByLabelText("Expression (text syntax)")).not.toBeInTheDocument();
+  });
+
+  it("keeps newer edits when an earlier request completes", async () => {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(api.simplify).mockImplementationOnce(async (request) => {
+      await pending;
+      const saved = await fakes.simplify(request as never);
+      return saved as unknown as Awaited<ReturnType<typeof api.simplify>>;
+    });
+    render(<Workbench />);
+    type("x + 1");
+    fireEvent.click(screen.getByRole("button", { name: "Simplify" }));
+    await waitFor(() => expect(api.simplify).toHaveBeenCalledOnce());
+    type("y + 2");
+    await act(async () => {
+      release();
+      await pending;
+    });
+    expect(screen.getByLabelText("Mathematical expression")).toHaveValue("y + 2");
+    expect(screen.queryByRole("listitem", { name: /Step 1: Simplify/ })).not.toBeInTheDocument();
+  });
+
   it("adds a step, then continues from its text form with the step as parent", async () => {
     render(<Workbench />);
     type("\\sin^2 x + \\cos^2 x + x");
@@ -190,6 +230,24 @@ describe("Workbench derivation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Series" }));
     expect(screen.getByLabelText("Point to expand about")).toBeInTheDocument();
     expect(screen.queryByLabelText("Lower bound (optional)")).not.toBeInTheDocument();
+  });
+
+  it("requires the bounds missing from an older saved definite integral", async () => {
+    vi.mocked(api.history).mockResolvedValueOnce([
+      step(
+        "old-integral",
+        "integrate",
+        "x",
+        { definite: true, variable: "x" },
+        { derivation_id: null },
+      ),
+    ]);
+    render(<Workbench />);
+    fireEvent.click(screen.getByRole("button", { name: "Saved" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open integrate: x" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/both bounds/);
+    expect(api.integrate).not.toHaveBeenCalled();
   });
 
   it("does not run an operation with bad settings", () => {

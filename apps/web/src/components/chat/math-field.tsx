@@ -42,6 +42,7 @@ export function MathField({ initial = "", label, onChange, onEnter, onEscape }: 
     el.focus();
     const onInput = () => handlers.current.onChange(el.value);
     const onKey = (event: KeyboardEvent) => {
+      if (event.isComposing) return;
       if (event.key === "Enter") {
         event.preventDefault();
         if (el.value.trim()) handlers.current.onEnter?.(el.value);

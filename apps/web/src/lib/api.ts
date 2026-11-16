@@ -81,7 +81,23 @@ export function extractDetail(body: unknown, status: number): string {
   return `Request failed (${status})`;
 }
 
+export interface ChatResultSource {
+  conversation_id: string;
+  card_id: string;
+}
+
+export interface ChatResult {
+  operation: "simplify" | "differentiate" | "series" | "integrate";
+  result_text: string;
+  result_latex: string | null;
+  original_request: { assumptions: Assumptions };
+  restrictions_latex?: string[];
+  conditions_latex?: string[];
+  restrictions_complete?: boolean;
+}
+
 export interface ComputeInput {
+  chat_source?: ChatResultSource;
   input: string;
   assumptions: Assumptions;
   /** Defaults to LaTeX. The Workbench continues a step from its text form, which re-reads exactly. */
@@ -131,6 +147,16 @@ export interface RewriteBody {
 }
 
 export const api = {
+  chatResult: (source: ChatResultSource) =>
+    request<ChatResult>("/v1/compute/chat-result", {
+      method: "POST",
+      body: JSON.stringify(source),
+    }),
+  inspect: (c: ComputeInput, signal: AbortSignal, target?: "latex" | "text") =>
+    request<{ status: string; message: string; read_as: string | null; converted: string | null }>(
+      "/v1/compute/inspect",
+      { method: "POST", body: JSON.stringify({ ...c, target }), signal },
+    ),
   me: () => request<User>("/v1/auth/me"),
   login: (email: string, password: string) =>
     request<User>("/v1/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),

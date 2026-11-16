@@ -155,6 +155,15 @@ class NewConversation(BaseModel):
     title: str | None = Field(default=None, max_length=120)
 
 
+class RenameConversation(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def trim_title(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
+
+
 class SendMessage(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
     provider: ProviderChoice | None = None  # absent: the server's default provider
@@ -387,6 +396,16 @@ def get_conversation(conversation_id: uuid.UUID, user: UserDep, db: DbDep) -> Co
             for m in messages
         ],
     )
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
+def rename_conversation(
+    conversation_id: uuid.UUID, body: RenameConversation, user: UserDep, db: DbDep
+) -> ConversationOut:
+    row = _owned(db, conversation_id, user.id)
+    row.title = body.title
+    db.commit()
+    return ConversationOut(id=row.id, title=row.title, updated_at=row.updated_at)
 
 
 @router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -1241,7 +1260,7 @@ async def send_message(
             "content": history[-1]["content"] + "\n\n" + reference_note_text,
         }
 
-    if not previous:
+    if not previous and conversation.title == "New conversation":
         conversation.title = _title(text) or conversation.title
     user_content: dict[str, Any] = {"text": text}
     if user_equations:

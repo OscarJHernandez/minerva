@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import sympy as sp
+from pydantic import ValidationError
 
 from .build import NotationLog
 from .claims import check_claims, split_equation
@@ -24,16 +25,17 @@ from .latexprint import to_latex
 from .models import (
     Applicability,
     ExpressionInput,
+    ExpressionInspection,
     FormulaReading,
     IdentitiesResult,
     Limits,
     Rule,
     RuleApplication,
-    RuleCondition,
     SimplifyResult,
     Status,
     TensorInput,
     TensorResult,
+    UnmetCondition,
     Verification,
 )
 from .restrictions import domain_restrictions
@@ -103,6 +105,38 @@ def _failure(exc: MinervaMathError) -> tuple[Status, str]:
     if isinstance(exc, UnsupportedInput):
         return Status.UNSUPPORTED, str(exc)
     return Status.PARSE_ERROR, str(exc)
+
+
+def op_inspect(payload: dict[str, Any]) -> dict[str, Any]:
+    data = ExpressionInput.model_validate(payload["expression"])
+    limits = Limits(**payload["limits"])
+    denominators: list[sp.Expr] = []
+    try:
+        expr = parse_expression(data, limits, denominators)
+    except MinervaMathError as exc:
+        status, message = _failure(exc)
+        return ExpressionInspection(status=status, message=message).model_dump(mode="json")
+    latex = to_latex(expr)
+    result = ExpressionInspection(status=Status.OK, read_as=latex)
+    target = payload.get("target")
+    if target is not None:
+        candidate = (
+            data.input if target == data.format else latex if target == "latex" else str(expr)
+        )
+        recorded: list[sp.Expr] = []
+        try:
+            alternate = parse_expression(
+                ExpressionInput(input=candidate, format=target, assumptions=data.assumptions),
+                limits,
+                recorded,
+            )
+            if alternate == expr and set(recorded) == set(denominators):
+                result.converted = candidate
+        except (MinervaMathError, ValidationError):
+            pass
+        if result.converted is None:
+            result.message = "This expression cannot be safely converted. Keep its original syntax."
+    return result.model_dump(mode="json")
 
 
 def _restriction_note(restrictions: list[str], complete: bool) -> str:
@@ -554,12 +588,19 @@ def _pattern_parts(rule: Rule) -> tuple[sp.Expr, sp.Expr, dict[str, sp.Wild]]:
 
 def _unmet(
     rule: Rule, bindings: dict[sp.Basic, sp.Basic], wilds: dict[str, sp.Wild]
-) -> list[RuleCondition]:
-    unmet: list[RuleCondition] = []
+) -> list[UnmetCondition]:
+    unmet: list[UnmetCondition] = []
     for cond in rule.conditions:
         value = bindings.get(wilds[cond.variable])
         if value is None or getattr(value, f"is_{cond.assumption}", None) is not True:
-            unmet.append(cond)
+            unmet.append(
+                UnmetCondition(
+                    variable=cond.variable,
+                    assumption=cond.assumption,
+                    bound_latex=to_latex(value) if isinstance(value, sp.Expr) else None,
+                    symbol=value.name if isinstance(value, sp.Symbol) else None,
+                )
+            )
     return unmet
 
 
@@ -625,7 +666,7 @@ class Rewrite:
 
     node: sp.Expr
     rewritten: sp.Expr
-    unmet: list[RuleCondition]
+    unmet: list[UnmetCondition]
     # Operations in what the pattern variables were bound to: when two rules give the same result,
     # the one that needed no negation or other work in its bindings is the one to cite.
     binding_cost: int = 0
@@ -881,6 +922,7 @@ def op_isolate(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
+    "inspect": op_inspect,
     "simplify": op_simplify,
     "sums": op_sums,
     "expectation": op_expectation,
