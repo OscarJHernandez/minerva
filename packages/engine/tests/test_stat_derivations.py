@@ -16,8 +16,12 @@ DATA = {
 
 @pytest.fixture(scope="module")
 def engine() -> Engine:
-    # the default limits of the product (10 s sandbox timeout): a derivation must not need more
-    return Engine(Limits(max_concurrency=2))
+    # These tests check the answers, not the latency. The product's sandbox limit is 10 s and the slowest
+    # derivation here takes about 4 s on a developer machine, but a CI runner is several times slower and
+    # shares its CPUs between three workers, so a 10 s limit turned a correct answer into `resource_limit`
+    # (the same test failed on CI three times while passing in 4 s locally). The time a derivation needs is
+    # measured by `python -m minerva_knowledge stat-benchmark`, not here.
+    return Engine(Limits(max_concurrency=2, timeout_seconds=40))
 
 
 def mle(engine, family, estimate, parameters=None, parametrization=None, assumptions=None, **kw):
