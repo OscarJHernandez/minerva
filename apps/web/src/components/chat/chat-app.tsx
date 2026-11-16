@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import type { ApproximationToolArgs } from "@/lib/approximation-types";
 import { chatApi, sendMessage } from "@/lib/chat-api";
 import { buildDebugReport, buildTurnReport, type LastError } from "@/lib/debug-report";
@@ -61,6 +61,7 @@ const EXAMPLES = [
 export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const router = useRouter();
   const [status, setStatus] = useState<ChatStatus | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<StoredMessage[]>([]);
@@ -84,6 +85,10 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const [modelOpen, setModelOpen] = useState(false);
   const cloudConfirmed = useRef<Set<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
+  // Each navigation owns its asynchronous work. A late response may finish, but cannot paint
+  // into a different conversation.
+  const viewGeneration = useRef(0);
+  const activeIdRef = useRef<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const logRef = useRef<HTMLDivElement | null>(null);
   const pendingRef = useRef<Pending | null>(null);
@@ -113,6 +118,10 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
 
   useEffect(() => {
     chatApi.status().then(setStatus).catch(fail);
+    api
+      .me()
+      .then((user) => setAccountId(user.id))
+      .catch(fail);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load
     void refreshList();
   }, [fail, refreshList]);
@@ -151,6 +160,13 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   }, [initialId]);
 
   async function open(id: string, options: { keepError?: boolean } = {}) {
+    const generation = ++viewGeneration.current;
+    abortRef.current?.abort();
+    activeIdRef.current = id;
+    setActiveId(id);
+    setMessages([]);
+    pendingRef.current = null;
+    setPending(null);
     if (!options.keepError) {
       setError(null);
       setLastError(null);
@@ -158,13 +174,15 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     setListOpen(false);
     try {
       const detail = await chatApi.get(id);
-      setActiveId(id);
+      if (viewGeneration.current !== generation) return;
       setMessages(detail.messages);
       setPending(null);
     } catch (e) {
+      if (viewGeneration.current !== generation) return;
       if (e instanceof ApiError && e.status === 404) {
         // An address for a conversation that is gone (deleted, or someone else's): start fresh.
         setActiveId(null);
+        activeIdRef.current = null;
         setMessages([]);
         setError("That conversation was not found.");
         return;
@@ -174,7 +192,9 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   }
 
   function startNew() {
+    ++viewGeneration.current;
     abortRef.current?.abort();
+    activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
     setPending(null);
@@ -219,6 +239,10 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
    * the composer then gives the text back, and the message is not left in the conversation.
    */
   async function send(text: string, mode: SendMode = "new"): Promise<boolean> {
+    const generation = viewGeneration.current;
+    if (pendingRef.current) return false;
+    pendingRef.current = { items: [], tools: [], cards: 0, startedAt: Date.now() };
+    setPending(pendingRef.current);
     setError(null);
     setLastError(null);
     let id = activeId;
@@ -228,7 +252,9 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     try {
       if (!id) {
         const created = await chatApi.create();
+        if (generation !== viewGeneration.current) return false;
         id = created.id;
+        activeIdRef.current = id;
         setActiveId(id);
       }
       if (mode === "new") {
@@ -247,14 +273,13 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         setMessages((m) => untilLastUser(m, mode === "edit" ? text : undefined));
       }
       stickRef.current = true; // sending jumps to the end
-      pendingRef.current = { items: [], tools: [], cards: 0, startedAt: Date.now() };
-      setPending(pendingRef.current);
       const controller = new AbortController();
       abortRef.current = controller;
       await sendMessage(
         id,
         text,
         (event: StreamEvent) => {
+          if (generation !== viewGeneration.current || activeIdRef.current !== id) return;
           started = true;
           if (event.event === "text") {
             patchPending((p) => appendText(p, event.data.delta));
@@ -298,6 +323,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         debugOn && Object.keys(paramOverrides).length > 0 ? paramOverrides : undefined,
         mode === "new" ? undefined : mode,
       );
+      if (generation !== viewGeneration.current) return true;
       if (!finished && id) {
         // The stream ended without a reply (a dropped connection): show what the server kept.
         setError("The connection ended before the reply was complete. Showing what was saved.");
@@ -306,6 +332,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       await refreshList();
       return true;
     } catch (e) {
+      if (generation !== viewGeneration.current) return true;
       if (e instanceof DOMException && e.name === "AbortError") {
         const partial = pendingRef.current;
         if (partial && partial.items.length > 0) {
@@ -318,15 +345,22 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         if (bubble) setMessages((m) => m.slice(0, -1));
         fail(e);
         if (mode !== "new" && id) await open(id, { keepError: true }); // what the server still has
+        if (mode === "new" && id && activeIdRef.current === id) {
+          // Creating the conversation remounted the composer. Restore into the new one.
+          setReplaceRequest({ id: ++requestCounter.current, text });
+          return true;
+        }
         return false;
       }
       fail(e);
       if (id) await open(id, { keepError: true });
       return true;
     } finally {
-      abortRef.current = null;
-      pendingRef.current = null;
-      setPending(null);
+      if (generation === viewGeneration.current) {
+        abortRef.current = null;
+        pendingRef.current = null;
+        setPending(null);
+      }
     }
   }
 
@@ -336,7 +370,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.integrateMotion(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -352,7 +386,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.perturbationSolve(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -368,7 +402,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.distribution(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -384,7 +418,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.statmech(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -400,7 +434,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.geometry(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -417,7 +451,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
         try {
           const message = await chatApi.odeSolveSymbolic(activeId, request);
-          setMessages((m) => [...m, message]);
+          if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -428,7 +462,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
         try {
           const message = await chatApi.odeQualitative(activeId, request);
-          setMessages((m) => [...m, message]);
+          if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -439,7 +473,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
         if (!activeId) throw new ApiError(400, "Open a conversation first.");
         try {
           const message = await chatApi.odeSolveNumerical(activeId, request);
-          setMessages((m) => [...m, message]);
+          if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
           await refreshList();
         } catch (e) {
           if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -456,7 +490,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.variationDirectly(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -472,7 +506,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
       if (!activeId) throw new ApiError(400, "Open a conversation first.");
       try {
         const message = await chatApi.approximationDirectly(activeId, request);
-        setMessages((m) => [...m, message]);
+        if (activeIdRef.current === activeId) setMessages((m) => [...m, message]);
         await refreshList();
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) router.push("/login");
@@ -680,6 +714,10 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                   </p>
                 )}
                 <Composer
+                  key={`${accountId ?? "loading"}:${activeId ?? "new"}`}
+                  draftKey={
+                    accountId ? `minerva:draft:${accountId}:${activeId ?? "new"}` : undefined
+                  }
                   disabled={!status}
                   imagesEnabled={status?.images === true}
                   beforeSend={confirmCloud}

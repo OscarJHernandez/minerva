@@ -366,6 +366,10 @@ and explains; it never computes and never decides correctness.
   in `docs/model-evaluation.md`.
 - **Transport:** `POST /v1/chat/conversations/{id}/messages` streams server-sent events (`text`, `tool_call`, `card`,
   `message`, `error`, `done`).
+- **Browser continuity:** chat loads and streamed events are bound to the conversation view that started them; a
+  late response cannot update a newly opened conversation. Unsent text drafts live in browser `sessionStorage`,
+  separated by account and conversation, and are cleared at logout. Image uploads stay in memory. In the workbench,
+  LaTeX and text syntax remain separate drafts; changing formats does not convert an expression.
 - **Add image** (`vision.py`, `POST /v1/chat/formula-image`): the composer can read formulas from a picture. The
   browser shrinks and re-encodes it (dropping EXIF); the API checks size and magic bytes, and a vision model
   (`MINERVA_LLM_VISION_MODEL`, same Ollama host; empty hides the button) **transcribes** it to LaTeX and nothing

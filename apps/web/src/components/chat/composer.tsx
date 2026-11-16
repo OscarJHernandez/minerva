@@ -26,6 +26,8 @@ interface Props {
   referenceRequest?: { id: number; text: string } | null;
   /** Replaces what is in the box (editing the last message); a new `id` replaces again. */
   replaceRequest?: { id: number; text: string } | null;
+  /** Account and conversation scoped key for an unsent message in this browser tab. */
+  draftKey?: string;
 }
 
 const MAX_HEIGHT_VH = 0.4;
@@ -64,8 +66,30 @@ export function Composer({
   insertRequest,
   referenceRequest,
   replaceRequest,
+  draftKey,
 }: Props) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(() => {
+    try {
+      return draftKey ? (sessionStorage.getItem(draftKey) ?? "") : "";
+    } catch {
+      return "";
+    }
+  });
+  const sendingText = useRef<string | null>(null);
+  const currentText = useRef(text);
+  useEffect(() => {
+    currentText.current = text;
+  }, [text]);
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const retained = text || sendingText.current;
+      if (retained) sessionStorage.setItem(draftKey, retained);
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // Private browsing and storage quotas must not prevent composing.
+    }
+  }, [draftKey, text]);
   const [formula, setFormula] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -151,14 +175,26 @@ export function Composer({
     if (!value || disabled || busy) return;
     if (beforeSend && !beforeSend()) return;
     if (value.length > MAX_MESSAGE_CHARS) return;
+    sendingText.current = value;
     const sent = onSend(value);
     setText("");
     if (areaRef.current) areaRef.current.style.height = "";
     // A failed send must not cost the user their message: it goes back unless they started a new one.
     if (sent instanceof Promise) {
       void sent.then((ok) => {
+        sendingText.current = null;
         if (ok === false) setText((t) => (t === "" ? value : t));
+        else if (draftKey) {
+          try {
+            if (currentText.current) sessionStorage.setItem(draftKey, currentText.current);
+            else sessionStorage.removeItem(draftKey);
+          } catch {
+            // The send succeeded even if storage is unavailable.
+          }
+        }
       });
+    } else {
+      sendingText.current = null;
     }
   }
 
