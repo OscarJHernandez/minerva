@@ -32,6 +32,7 @@ from .errors import LimitError, MinervaMathError, UnsupportedInput
 from .indexed.guard import contains_indexed
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
+from .notation.models import InputAware
 from .verify import MIN_VALID_POINTS, REL_TOL, SAMPLE_ATTEMPTS, _sample, verify_equal
 
 MAX_ORDER = 10
@@ -64,7 +65,7 @@ class DerivativeVerification(BaseModel):
     note: str = ""
 
 
-class DifferentiateResult(BaseModel):
+class DifferentiateResult(InputAware):
     status: Status
     input_latex: str | None = None
     variables: list[DiffVariable] = Field(default_factory=list)

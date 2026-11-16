@@ -25,10 +25,22 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel, Field
 
-from .errors import MinervaMathError
+from .errors import MinervaMathError, ParseError
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
+from .notation.derivatives import (
+    join_spaced_keywords,
+    refuse_latex_letter_runs,
+    resolve_derivatives,
+)
+from .notation.models import (
+    InputAware,
+    InputCode,
+    InputDiagnostic,
+    InputReading,
+    Normalization,
+)
 from .restrictions import determinant_conditions
 from .textparse import parse_text
 from .verify import euler_lagrange_check, numeric_check
@@ -56,7 +68,7 @@ class ConservedQuantity(BaseModel):
     verification: Verification | None = None
 
 
-class LagrangianReport(BaseModel):
+class LagrangianReport(InputAware):
     status: Status
     lagrangian_latex: str | None = None
     coordinates: list[str] = Field(default_factory=list)
@@ -79,17 +91,22 @@ class LagrangianReport(BaseModel):
     duration_ms: int = 0
 
 
-def _fail(status: Status, message: str) -> LagrangianReport:
-    return LagrangianReport(status=status, message=message)
+def _fail(
+    status: Status, message: str, diagnostic: InputDiagnostic | None = None
+) -> LagrangianReport:
+    return LagrangianReport(status=status, message=message, diagnostic=diagnostic)
 
 
 class DerivationError(Exception):
     """The input cannot be analysed; carries the explicit status to report."""
 
-    def __init__(self, status: Status, message: str) -> None:
+    def __init__(
+        self, status: Status, message: str, diagnostic: InputDiagnostic | None = None
+    ) -> None:
         super().__init__(message)
         self.status = status
         self.message = message
+        self.diagnostic = diagnostic
 
 
 @dataclass
@@ -110,6 +127,10 @@ class Derivation:
     solution: dict[sp.Symbol, sp.Expr] = field(default_factory=dict)  # qdd_i -> expression
     names: dict[sp.Symbol, str] = field(default_factory=dict)
     mass_determinant: sp.Expr | None = None  # divided by when solving for the accelerations
+    format: Literal["latex", "text"] = "latex"  # the syntax the source was read in
+    normalizations: list[Normalization] = field(
+        default_factory=list
+    )  # spellings that were read as others
     stages: dict[str, int] = field(default_factory=dict)  # milliseconds per stage
 
     @property
@@ -137,18 +158,29 @@ def derive(
 ) -> Derivation:
     """`latex` is the Lagrangian as typed, in the syntax `format` names (the argument keeps its old name).
 
-    In text a velocity is written `q_dot` (LaTeX: `\\dot{q}`, which the parser turns into the same symbol).
+    In text a velocity is written `q_dot` (LaTeX: `\\dot{q}`, which the parser turns into the same symbol);
+    other spellings of a velocity of a declared coordinate (`qdot`, `dq_dt`, `q dot`) are read as that
+    symbol by `notation.derivatives` and reported in `Derivation.normalizations`.
     """
     _check_coordinates(coordinates)
     reject_equation(latex, "Lagrangian")
     started = time_module.perf_counter()
+    notes: list[Normalization] = []
     try:
         if format == "text":
+            latex, joined = join_spaced_keywords(latex, coordinates)
+            notes.extend(joined)
             L = parse_text(latex, assumptions, limits)
         else:
+            refuse_latex_letter_runs(latex, coordinates)
             L = parse_latex(latex, assumptions, limits)
+        resolved = resolve_derivatives(L, coordinates, time, assumptions)
+    except ParseError as exc:
+        raise DerivationError(Status.PARSE_ERROR, str(exc), exc.diagnostic("lagrangian")) from exc
     except MinervaMathError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
+    L = resolved.expr
+    notes.extend(resolved.normalizations)
     parse_ms = round((time_module.perf_counter() - started) * 1000)
     names = {sym.name for sym in L.free_symbols}
     absent = [n for n in coordinates if not names & {n, f"{n}_dot", f"{n}_ddot"}]
@@ -158,9 +190,18 @@ def derive(
             f"The declared coordinate(s) {', '.join(absent)} appear in neither the position nor the "
             f"velocity form in the Lagrangian as read (symbols: {', '.join(sorted(names)) or 'none'}). "
             "Check the spelling: velocities are \\dot{q} in LaTeX and q_dot in text.",
+            InputDiagnostic(
+                code=InputCode.DECLARED_NAME_ABSENT,
+                field="lagrangian",
+                symbols=list(absent),
+                suggestions=[f"{n}_dot" for n in absent],
+                recoverable=True,
+            ),
         )
     derivation = derive_expr(L, coordinates, time)
     derivation.stages = {"parse": parse_ms, **derivation.stages}
+    derivation.format = format
+    derivation.normalizations = notes
     return derivation
 
 
@@ -171,6 +212,12 @@ def reject_equation(source: str, what: str) -> None:
             Status.PARSE_ERROR,
             f"Send only the {what} as an expression, not an equation: for `L = T = ...` give "
             "the part after the last `=`.",
+            InputDiagnostic(
+                code=InputCode.EQUATION_NOT_EXPRESSION,
+                field=what.lower(),
+                suggestions=["the part after the last `=`"],
+                recoverable=True,
+            ),
         )
 
 
@@ -213,6 +260,9 @@ def derive_expr(
         raise DerivationError(
             Status.UNSUPPORTED,
             "Lagrangians with accelerations (higher derivatives) are not supported.",
+            InputDiagnostic(
+                code=InputCode.ACCELERATION_IN_INPUT, field="lagrangian", recoverable=False
+            ),
         )
     if not any(v in L.free_symbols for v in qd):
         raise DerivationError(
@@ -397,7 +447,7 @@ def analyze_lagrangian(
     try:
         d = derive(latex, coordinates, time, assumptions, limits, format)
     except DerivationError as exc:
-        return _fail(exc.status, exc.message)
+        return _fail(exc.status, exc.message, exc.diagnostic)
     q, qdd, p, n, show = d.q, d.qdd, d.momenta, d.n, d.show
 
     started = time_module.perf_counter()
@@ -419,6 +469,7 @@ def analyze_lagrangian(
 
     report = LagrangianReport(
         status=Status.OK,
+        reading=InputReading(format=d.format, normalizations=list(d.normalizations)),
         lagrangian_latex=show(d.lagrangian),
         coordinates=coordinates,
         parameters=[s.name for s in d.params],

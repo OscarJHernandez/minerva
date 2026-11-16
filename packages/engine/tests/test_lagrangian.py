@@ -169,9 +169,9 @@ def analyze_text(lag: str, coords: list[str]):  # type: ignore[no-untyped-def]
 
 
 def _same_report(a, b) -> None:  # type: ignore[no-untyped-def]
-    """Two reports agree in everything but the timing."""
+    """Two reports agree in everything but the timing and how the input was read."""
     da, db = a.model_dump(mode="json"), b.model_dump(mode="json")
-    for key in ("duration_ms", "stages"):
+    for key in ("duration_ms", "stages", "reading"):
         da.pop(key, None)
         db.pop(key, None)
     assert da == db
