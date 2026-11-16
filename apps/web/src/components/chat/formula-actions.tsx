@@ -5,6 +5,7 @@ import { createContext, useContext, useState } from "react";
 /** What a formula in a reply can do besides being read. Provided by the chat app. */
 export interface FormulaActions {
   /** Put the formula in the message box, as `$...$`, ready to edit. Absent outside a conversation. */
+  openInWorkbench?: (cardId: string) => void;
   editInChat?: (latex: string) => void;
 }
 

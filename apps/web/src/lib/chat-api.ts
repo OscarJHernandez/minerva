@@ -102,6 +102,11 @@ export const chatApi = {
       method: "POST",
       body: JSON.stringify({ api_key: apiKey || undefined, model }),
     }),
+  rename: (id: string, title: string) =>
+    json<ConversationSummary>(`/v1/chat/conversations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    }),
   remove: (id: string) => json<void>(`/v1/chat/conversations/${id}`, { method: "DELETE" }),
 };
 
