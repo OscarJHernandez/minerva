@@ -4169,7 +4169,7 @@ def check_arguments(name: str, arguments: dict[str, Any]) -> bool:
     if tool is None:
         return False
     try:
-        tool.args_model(**arguments)
+        tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except (ValidationError, TypeError):
         return False
     return True

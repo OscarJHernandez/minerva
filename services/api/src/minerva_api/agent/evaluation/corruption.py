@@ -27,14 +27,17 @@ verification: the clean reference calls are the benchmark's ground truth, and no
 from __future__ import annotations
 
 import copy
+import json
 import re
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from minerva_engine.notation.models import Normalization
 from minerva_engine.notation.transport import DAMAGE
 
+from ..arguments import repair_arguments
 from ..mathinput import MATH_FIELDS, MATH_LIST_FIELDS, prepare_arguments
 from ..tools import ToolContext, ToolOutput, execute
 from .cases import load_suite
@@ -126,9 +129,88 @@ def _latex_dot_as_letters(tool: str, arguments: Arguments) -> Arguments | None:
     return _map_fields(arguments, lambda _key, text: spell(text))
 
 
+def _shaped(
+    tool: str, arguments: Arguments, change: Callable[[str, Any, Any], Any]
+) -> Arguments | None:
+    """Apply `change(field, annotation, value)` to each argument of a known tool; None if nothing changed."""
+    from ..tools import TOOLS
+
+    known = TOOLS.get(tool)
+    if known is None:
+        return None
+    out = copy.deepcopy(arguments)
+    changed = False
+    for key, value in arguments.items():
+        info = known.args_model.model_fields.get(key)
+        if info is None:
+            continue
+        new = change(key, info.annotation, value)
+        if new is not None:
+            out[key], changed = new, True
+    return out if changed else None
+
+
+def _list_as_string(tool: str, arguments: Arguments) -> Arguments | None:
+    def change(key: str, annotation: Any, value: Any) -> Any:
+        names = isinstance(value, list) and value and all(isinstance(v, str) for v in value)
+        if (
+            names
+            and key not in MATH_LIST_FIELDS
+            and all(re.fullmatch(r"[A-Za-z]\w*", v) for v in value)
+        ):
+            return ", ".join(value)
+        return None
+
+    return _shaped(tool, arguments, change)
+
+
+def _json_as_string(tool: str, arguments: Arguments) -> Arguments | None:
+    def change(key: str, annotation: Any, value: Any) -> Any:
+        if isinstance(value, dict | list) and value and key not in MATH_LIST_FIELDS:
+            return json.dumps(value)
+        return None
+
+    return _shaped(tool, arguments, change)
+
+
+def _number_as_string(tool: str, arguments: Arguments) -> Arguments | None:
+    def change(key: str, annotation: Any, value: Any) -> Any:
+        if (
+            isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and annotation in (int, float)
+        ):
+            return str(value)
+        return None
+
+    return _shaped(tool, arguments, change)
+
+
+def _formula_alias(tool: str, arguments: Arguments) -> Arguments | None:
+    from ..tools import TOOLS
+
+    known = TOOLS.get(tool)
+    if known is None:
+        return None
+    formula = [f for f in known.args_model.model_fields if f in MATH_FIELDS]
+    if (
+        len(formula) != 1
+        or formula[0] not in arguments
+        or "expression" in known.args_model.model_fields
+    ):
+        return None
+    out = dict(arguments)
+    out["expression"] = out.pop(formula[0])
+    return out
+
+
 OPERATORS: dict[str, Operator] = {
     **{f"transport:{name}": _damage(name) for name in sorted(DAMAGE)},
     "shape:assignment_prefix": _assignment,
+    "shape:list_as_string": _list_as_string,
+    "shape:json_as_string": _json_as_string,
+    "shape:number_as_string": _number_as_string,
+    "shape:formula_alias": _formula_alias,
     "derivative:joined": _velocity(lambda m: f"{m.group(1)}dot"),
     "derivative:leibniz": _velocity(lambda m: f"d{m.group(1)}_dt"),
     "derivative:spaced": _velocity(lambda m: f"{m.group(1)} dot"),
@@ -163,6 +245,20 @@ def references() -> list[Reference]:
     return sorted(out, key=lambda r: (r.tool, r.case))
 
 
+def pipeline_arguments(
+    tool: str, arguments: Arguments
+) -> tuple[Arguments, tuple[Normalization, ...]]:
+    """The arguments after what the loop does to them before a call is keyed: shape repair, then cleaning."""
+    from ..tools import TOOLS
+
+    known = TOOLS.get(tool)
+    shaped, shape_notes = (
+        repair_arguments(known.args_model, arguments) if known is not None else (arguments, ())
+    )
+    cleaned, notes = prepare_arguments(tool, shaped)
+    return cleaned, (*shape_notes, *notes)
+
+
 def run_call(
     tool: str, arguments: Arguments, ctx: ToolContext, *, clean: bool = True
 ) -> ToolOutput:
@@ -170,7 +266,7 @@ def run_call(
 
     `clean=False` skips `prepare_arguments` (the engine still reads what it reads): the measurement of what
     the cleaning layer adds."""
-    cleaned, notes = prepare_arguments(tool, arguments) if clean else (arguments, ())
+    cleaned, notes = pipeline_arguments(tool, arguments) if clean else (arguments, ())
     ctx.input_notes = notes
     try:
         return execute(tool, cleaned, ctx)
@@ -229,8 +325,8 @@ def run_corruptions(
             if damaged is None:
                 skipped[name] += 1
                 continue
-            cleaned_clean, _ = prepare_arguments(ref.tool, ref.arguments)
-            cleaned_damaged, _ = prepare_arguments(ref.tool, damaged)
+            cleaned_clean, _ = pipeline_arguments(ref.tool, ref.arguments)
+            cleaned_damaged, _ = pipeline_arguments(ref.tool, damaged)
             outcome: str
             if clean and cleaned_damaged == cleaned_clean and not full:
                 outcome = SAME_AFTER_CLEANING

@@ -10,11 +10,9 @@ import json
 import pytest
 from minerva_api.agent.routing import plan_route
 from minerva_api.agent.tools import (
-    AnalyzeLagrangianArgs,
     ToolContext,
     execute,
     resolve_syntax,
-    run_lagrangian,
 )
 from minerva_api.agent.tracing import REASON_CODES
 from minerva_engine import Engine, Limits
@@ -35,8 +33,8 @@ def ctx() -> ToolContext:
 
 
 def _lagrangian(ctx: ToolContext, source: str, **extra: str):  # type: ignore[no-untyped-def]
-    return run_lagrangian(
-        AnalyzeLagrangianArgs(lagrangian=source, coordinates=["X", "Y", "s"], **extra), ctx
+    return execute(
+        "analyze_lagrangian", {"lagrangian": source, "coordinates": ["X", "Y", "s"], **extra}, ctx
     )
 
 

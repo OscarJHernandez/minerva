@@ -23,6 +23,7 @@ from minerva_engine import ClaimEvidence, trace_scope
 from minerva_engine.notation.models import Normalization
 
 from ..logging import error_fields
+from .arguments import repair_arguments
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .choice import delegation_active, names_a_method, numbers_in
 from .declarations import declared_matrices, declared_vectors
@@ -868,7 +869,14 @@ async def _run_turn(
                         unverified_inputs = resolution.unverified
                         # Transport damage (markdown escapes, a `$` wrapper, `L =`) is removed before the
                         # call is keyed, so a retry that differs only by it is the same call.
-                        arguments, input_notes = prepare_arguments(call.name, arguments)
+                        known_tool = TOOLS.get(call.name)
+                        shape_notes: tuple[Normalization, ...] = ()
+                        if known_tool is not None:
+                            arguments, shape_notes = repair_arguments(
+                                known_tool.args_model, arguments
+                            )
+                        arguments, clean_notes = prepare_arguments(call.name, arguments)
+                        input_notes = (*shape_notes, *clean_notes)
                 if (
                     refusal is None
                     and call.name in ODE_SOLVERS

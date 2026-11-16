@@ -2,12 +2,16 @@
 
 Every known model mistake applied to every reference call of the benchmark, through the same pipeline a model's call takes. Each corrupted call must give the clean call's result or fail with a typed reason; anything else is a defect.
 
-156 corrupted calls over 130 reference calls (33 tools), mode `pr (without the cleaning layer)`: **0 different verified results**, 131 untyped failures; 17 recovered without a model call (10.9%), 8 diagnosed.
+218 corrupted calls over 130 reference calls (33 tools), mode `pr (without the cleaning layer)`: **0 different verified results**, 131 untyped failures; 22 recovered without a model call (10.1%), 65 diagnosed.
 
 | Operator | Applied | Same | Same after cleaning | Diagnosed | Untyped | Different |
 | --- | --- | --- | --- | --- | --- | --- |
 | derivative:latex_letter_run | 4 | 0 | 0 | 4 | 0 | 0 |
 | shape:assignment_prefix | 5 | 1 | 0 | 4 | 0 | 0 |
+| shape:formula_alias | 20 | 0 | 0 | 20 | 0 | 0 |
+| shape:json_as_string | 25 | 0 | 0 | 25 | 0 | 0 |
+| shape:list_as_string | 12 | 0 | 0 | 12 | 0 | 0 |
+| shape:number_as_string | 5 | 5 | 0 | 0 | 0 | 0 |
 | transport:code_fence | 27 | 1 | 0 | 0 | 26 | 0 |
 | transport:dollar_wrapper | 27 | 1 | 0 | 0 | 26 | 0 |
 | transport:doubled_backslash | 21 | 1 | 0 | 0 | 20 | 0 |

@@ -1,5 +1,5 @@
 {
-  "applied": 156,
+  "applied": 218,
   "by_operator": {
     "derivative:latex_letter_run": {
       "diagnosed": 4,
@@ -12,6 +12,34 @@
       "diagnosed": 4,
       "different_verified_result": 0,
       "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:formula_alias": {
+      "diagnosed": 20,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:json_as_string": {
+      "diagnosed": 25,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:list_as_string": {
+      "diagnosed": 12,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:number_as_string": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 5,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
@@ -60,98 +88,112 @@
   },
   "by_tool": {
     "analyze_lagrangian": {
-      "diagnosed": 1,
+      "diagnosed": 4,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "approximation": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "check_units": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 2,
       "same_after_cleaning": 0,
       "untyped_failure": 2
     },
     "creative_telescoping": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "differentiate": {
-      "diagnosed": 0,
-      "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 0,
-      "untyped_failure": 6
-    },
-    "distribution": {
-      "diagnosed": 0,
-      "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 0,
-      "untyped_failure": 6
-    },
-    "expand_motion": {
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
+    "dimensional_analysis": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "distribution": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
+    "electromagnetism": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "expand_motion": {
+      "diagnosed": 5,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 6
+    },
     "expectation": {
-      "diagnosed": 0,
+      "diagnosed": 3,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 4
     },
     "find_conserved_quantities": {
-      "diagnosed": 1,
+      "diagnosed": 3,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "find_identities": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "integrate": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "integrate_motion": {
-      "diagnosed": 2,
+      "diagnosed": 5,
       "different_verified_result": 0,
-      "same": 0,
+      "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "isolate_variable": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "matrix_calculus": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
@@ -165,84 +207,98 @@
       "untyped_failure": 4
     },
     "ode_solve_numerical": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 3
     },
     "ode_solve_symbolic": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 2,
       "same_after_cleaning": 0,
       "untyped_failure": 4
     },
     "perturbation_solve": {
-      "diagnosed": 2,
+      "diagnosed": 5,
       "different_verified_result": 0,
-      "same": 0,
+      "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "rewrite_part": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 5,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "series": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 2,
       "same_after_cleaning": 0,
       "untyped_failure": 4
     },
     "simplify": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "solve_polynomial": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
+    "statistical_mechanics": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "statistical_model": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
     "substitute": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "tensor_canonicalize": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
     "time_derivative": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "variation": {
-      "diagnosed": 0,
+      "diagnosed": 3,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
     "vector_calculus": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
@@ -1046,6 +1102,10 @@
     "derivative:spaced": 130,
     "derivative:upper": 130,
     "shape:assignment_prefix": 122,
+    "shape:formula_alias": 44,
+    "shape:json_as_string": 55,
+    "shape:list_as_string": 106,
+    "shape:number_as_string": 123,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
     "transport:doubled_backslash": 55,
@@ -1053,14 +1113,14 @@
     "transport:trailing_period": 42,
     "transport:unicode_look_alikes": 47
   },
-  "recovered_without_a_model_call": 17,
-  "recovery_rate": 0.109,
+  "recovered_without_a_model_call": 22,
+  "recovery_rate": 0.1009,
   "references": 130,
   "tools_covered": 33,
   "totals": {
-    "diagnosed": 8,
+    "diagnosed": 65,
     "different_verified_result": 0,
-    "same": 17,
+    "same": 22,
     "same_after_cleaning": 0,
     "untyped_failure": 131
   }

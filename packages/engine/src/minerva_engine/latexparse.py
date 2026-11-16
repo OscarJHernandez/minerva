@@ -25,6 +25,7 @@ import sympy as sp
 from .build import FUNCTIONS, Builder, JetBinding, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
+from .notation.models import InputCode
 
 _GREEK = {
     "alpha", "beta", "gamma", "delta", "epsilon", "varepsilon", "zeta", "eta", "theta",
@@ -798,19 +799,31 @@ def reject_text_syntax(source: str) -> None:
         raise ParseError(
             f"a subscript of several letters is ambiguous in LaTeX (`_{word}` reads as the subscript "
             f"`{word[0]}` times `{word[1:]}`): write `_{{{word}}}`, `\\dot{{x}}` for a time derivative, "
-            "or use format text for names such as theta_dot"
+            "or use format text for names such as theta_dot",
+            code=InputCode.TEXT_SYNTAX_IN_LATEX,
+            symbols=[f"_{word}"],
+            suggestions=[f"_{{{word}}}", "format text"],
+            recoverable=True,
         )
     if match := _BARE_FUNCTION.search(text):
         name = match.group(1)
         raise ParseError(
             f"`{name}(` without a backslash is read as a product of letters in LaTeX: write "
-            f"`\\{name}(…)`, or use format text"
+            f"`\\{name}(…)`, or use format text",
+            code=InputCode.TEXT_SYNTAX_IN_LATEX,
+            symbols=[f"{name}("],
+            suggestions=[f"\\{name}(…)", "format text"],
+            recoverable=True,
         )
     if match := _BARE_GREEK.search(text):
         name = match.group(1)
         raise ParseError(
             f"the letters `{name}` without a backslash are read as a product of one-letter symbols: "
-            f"write `\\{name}`, or use format text"
+            f"write `\\{name}`, or use format text",
+            code=InputCode.TEXT_SYNTAX_IN_LATEX,
+            symbols=[name],
+            suggestions=[f"\\{name}", "format text"],
+            recoverable=True,
         )
 
 

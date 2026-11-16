@@ -1,5 +1,5 @@
 {
-  "applied": 530,
+  "applied": 710,
   "by_operator": {
     "derivative:latex_letter_run": {
       "diagnosed": 4,
@@ -13,6 +13,34 @@
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 8,
+      "untyped_failure": 0
+    },
+    "shape:formula_alias": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 86,
+      "untyped_failure": 0
+    },
+    "shape:json_as_string": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 65,
+      "untyped_failure": 0
+    },
+    "shape:list_as_string": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 21,
+      "untyped_failure": 0
+    },
+    "shape:number_as_string": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 5,
+      "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "transport:code_fence": {
@@ -63,98 +91,112 @@
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 19,
+      "same_after_cleaning": 28,
       "untyped_failure": 0
     },
     "approximation": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 30,
+      "same_after_cleaning": 37,
       "untyped_failure": 0
     },
     "check_units": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 8,
+      "same_after_cleaning": 12,
       "untyped_failure": 0
     },
     "creative_telescoping": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 16,
+      "same_after_cleaning": 22,
       "untyped_failure": 0
     },
     "differentiate": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 44,
+      "same_after_cleaning": 64,
+      "untyped_failure": 0
+    },
+    "dimensional_analysis": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 2,
       "untyped_failure": 0
     },
     "distribution": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 11,
+      "same_after_cleaning": 15,
+      "untyped_failure": 0
+    },
+    "electromagnetism": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 1,
       "untyped_failure": 0
     },
     "expand_motion": {
       "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 14,
+      "same": 1,
+      "same_after_cleaning": 20,
       "untyped_failure": 0
     },
     "expectation": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 4,
+      "same_after_cleaning": 7,
       "untyped_failure": 0
     },
     "find_conserved_quantities": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 7,
+      "same_after_cleaning": 9,
       "untyped_failure": 0
     },
     "find_identities": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 22,
+      "same_after_cleaning": 27,
       "untyped_failure": 0
     },
     "integrate": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 58,
+      "same_after_cleaning": 70,
       "untyped_failure": 0
     },
     "integrate_motion": {
       "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 6,
+      "same": 1,
+      "same_after_cleaning": 9,
       "untyped_failure": 0
     },
     "isolate_variable": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 14,
+      "same_after_cleaning": 17,
       "untyped_failure": 0
     },
     "matrix_calculus": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 26,
+      "same_after_cleaning": 38,
       "untyped_failure": 0
     },
     "ode_analyze": {
@@ -168,84 +210,98 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 10,
+      "same_after_cleaning": 14,
       "untyped_failure": 0
     },
     "ode_solve_symbolic": {
       "diagnosed": 0,
       "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 16,
+      "same": 1,
+      "same_after_cleaning": 18,
       "untyped_failure": 0
     },
     "perturbation_solve": {
       "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 6,
+      "same": 1,
+      "same_after_cleaning": 9,
       "untyped_failure": 0
     },
     "rewrite_part": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 5,
+      "same_after_cleaning": 6,
       "untyped_failure": 0
     },
     "series": {
       "diagnosed": 0,
       "different_verified_result": 0,
-      "same": 0,
-      "same_after_cleaning": 8,
+      "same": 1,
+      "same_after_cleaning": 10,
       "untyped_failure": 0
     },
     "simplify": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 96,
+      "same_after_cleaning": 117,
       "untyped_failure": 0
     },
     "solve_polynomial": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 13,
+      "same_after_cleaning": 16,
+      "untyped_failure": 0
+    },
+    "statistical_mechanics": {
+      "diagnosed": 2,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 3,
+      "untyped_failure": 0
+    },
+    "statistical_model": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 4,
       "untyped_failure": 0
     },
     "substitute": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 14,
+      "same_after_cleaning": 20,
       "untyped_failure": 0
     },
     "tensor_canonicalize": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 9,
+      "same_after_cleaning": 11,
       "untyped_failure": 0
     },
     "time_derivative": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 12,
+      "same_after_cleaning": 16,
       "untyped_failure": 0
     },
     "variation": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 18,
+      "same_after_cleaning": 27,
       "untyped_failure": 0
     },
     "vector_calculus": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 32,
+      "same_after_cleaning": 41,
       "untyped_failure": 0
     }
   },
@@ -259,6 +315,10 @@
     "derivative:spaced": 130,
     "derivative:upper": 130,
     "shape:assignment_prefix": 122,
+    "shape:formula_alias": 44,
+    "shape:json_as_string": 55,
+    "shape:list_as_string": 106,
+    "shape:number_as_string": 123,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
     "transport:doubled_backslash": 55,
@@ -266,15 +326,15 @@
     "transport:trailing_period": 42,
     "transport:unicode_look_alikes": 47
   },
-  "recovered_without_a_model_call": 526,
-  "recovery_rate": 0.9925,
+  "recovered_without_a_model_call": 703,
+  "recovery_rate": 0.9901,
   "references": 130,
   "tools_covered": 33,
   "totals": {
-    "diagnosed": 4,
+    "diagnosed": 7,
     "different_verified_result": 0,
-    "same": 0,
-    "same_after_cleaning": 526,
+    "same": 5,
+    "same_after_cleaning": 698,
     "untyped_failure": 0
   }
 }

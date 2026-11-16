@@ -20,6 +20,7 @@ import sympy as sp
 from .build import CONSTANTS, FUNCTIONS, TEXT_FUNCTION_ALIASES, Builder, JetBinding, NotationLog
 from .errors import LimitError, ParseError
 from .models import Limits
+from .notation.models import InputCode
 
 _MAX_AST_DEPTH = 100
 
@@ -60,6 +61,14 @@ def parse_text(
     try:
         tree = ast.parse(source, mode="eval")
     except (SyntaxError, ValueError, RecursionError, MemoryError) as exc:
+        if "\\" in source:
+            raise ParseError(
+                "this looks like LaTeX (a backslash command): text syntax uses `*` for products and "
+                "`sin(x)`, `theta_dot`; set format latex to write LaTeX",
+                code=InputCode.LATEX_IN_TEXT,
+                suggestions=["format latex"],
+                recoverable=True,
+            ) from exc
         raise ParseError("could not parse the expression") from exc
     expr = _convert(tree.body, builder, 0)
     builder.check_tree(expr)
