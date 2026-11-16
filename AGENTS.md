@@ -39,6 +39,13 @@ Request flow for identities: API -> `engine.features` (sandbox) -> `knowledge.ca
 (FTS5 + structural features) -> `engine.apply_rules` (sandbox: match, check conditions, rewrite,
 verify). Retrieval only proposes; the engine decides.
 
+Text search of the handbook (`Fts5Retriever`, `search_handbook`, the handbook page) never answers with entries that
+share only a filler word: a query word whose stem is in more than 25% of the entries is ignored (measured on the
+index, no stop-word list; a query of only such words returns nothing), and an entry must match enough of the
+remaining words (one word: one; two: both, or one in the title, keywords or tags; three or more: half). Entries that
+matched on structural features are exempt (identity retrieval). "No entry matched" is a real answer: the handbook
+may not cover the question, and the model says so instead of retrying with synonyms.
+
 ## Commands
 
 `make help` lists shortcuts: `make setup`, `make check` (everything CI runs), `make check-py`,

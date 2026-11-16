@@ -676,3 +676,12 @@ def test_a_length_limit_with_a_tool_call_is_not_an_output_limit(ctx: ToolContext
     ]
     msg = final(play(ReplayLLM([first, say("It is $x + 1$.")]), ctx))
     assert msg["stop_reason"] == "completed"
+
+
+def test_a_handbook_search_for_something_it_does_not_cover_says_so(ctx: ToolContext) -> None:
+    out = execute("search_handbook", {"query": "curve of fastest descent"}, ctx)
+    assert out.status == "no_results" and out.card.data["entries"] == []
+    assert "may simply not cover it" in out.for_model and out.known_latex == []
+    # a query that the handbook does cover still returns its entries
+    found = execute("search_handbook", {"query": "Euler Lagrange equations"}, ctx)
+    assert found.status == "ok" and "method.mech.euler_lagrange" in found.for_model

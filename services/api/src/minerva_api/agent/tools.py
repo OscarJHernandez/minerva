@@ -2995,7 +2995,13 @@ def run_search(args: SearchArgs, ctx: ToolContext) -> ToolOutput:
         data={"query": args.query, "entries": entries},
     )
     if not entries:
-        return ToolOutput(card, "no handbook entries matched; try other words", [], "no_results")
+        return ToolOutput(
+            card,
+            "no handbook entry matched this query. The handbook may simply not cover it: say so. "
+            "Try different words at most once; never describe an entry that was not returned.",
+            [],
+            "no_results",
+        )
     lines = [
         f"- {e['id']} ({e['title']}; verification={e['verification']}): ${e['statement_latex']}$"
         + (f" Valid: {e['validity']}" if e["validity"] else "")

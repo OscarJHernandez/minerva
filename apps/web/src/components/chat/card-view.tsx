@@ -102,19 +102,25 @@ function CardContent({ card }: { card: Card }) {
         <StepResultPanel result={card.data.result} />
       );
     case "entries":
+      if (card.data.entries.length === 0) {
+        return (
+          <p
+            className="rounded-lg border border-rule bg-raised px-4 py-2 text-sm text-muted"
+            aria-label={card.title}
+          >
+            Handbook search “{card.data.query}”: no entry matched. The handbook may not cover this.
+          </p>
+        );
+      }
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>
           <h3 className="font-serif text-lg">Handbook</h3>
           <p className="mb-3 text-xs text-muted">Search: “{card.data.query}”</p>
-          {card.data.entries.length === 0 ? (
-            <p className="text-sm text-muted">No entries matched.</p>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {card.data.entries.map((e) => (
-                <EntryCard key={e.id} entry={e} />
-              ))}
-            </div>
-          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            {card.data.entries.map((e) => (
+              <EntryCard key={e.id} entry={e} />
+            ))}
+          </div>
         </section>
       );
     case "entry":
