@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 
 from .build import Builder
 from .distributions.guard import contains_distribution
-from .errors import LimitError, MinervaMathError, UnsupportedInput
+from .errors import LimitError, MinervaMathError, UnsupportedInput, diagnostic_of
 from .indexed.guard import contains_indexed
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
@@ -225,7 +225,13 @@ def differentiate(
     except UnsupportedInput as exc:
         return _fail(Status.UNSUPPORTED, str(exc), variables=variables, total_order=total)
     except MinervaMathError as exc:
-        return _fail(Status.PARSE_ERROR, str(exc), variables=variables, total_order=total)
+        return _fail(
+            Status.PARSE_ERROR,
+            str(exc),
+            variables=variables,
+            total_order=total,
+            diagnostic=diagnostic_of(exc),
+        )
 
     input_latex = to_latex(expr)
     base = {"input_latex": input_latex, "variables": variables, "total_order": total}

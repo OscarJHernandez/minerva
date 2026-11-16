@@ -42,11 +42,12 @@ from .differentiate import (
     _nodes,
     check_derivative,
 )
-from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput
+from .errors import LimitError, MinervaMathError, ParseError, UnsupportedInput, diagnostic_of
 from .indexed.guard import contains_indexed
 from .integration_strategy.models import StrategyReport
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
+from .notation.models import InputAware
 from .verify import MIN_VALID_POINTS, SAMPLE_ATTEMPTS, _sample
 
 SPECIAL_FUNCTIONS: tuple[type[sp.Basic], ...] = (
@@ -89,7 +90,7 @@ class QuadratureVerification(BaseModel):
     note: str = ""
 
 
-class IntegrateResult(BaseModel):
+class IntegrateResult(InputAware):
     status: Status
     input_latex: str | None = None
     variable: str | None = None
@@ -432,7 +433,7 @@ def _integrate_direct(
     except UnsupportedInput as exc:
         return _fail(Status.UNSUPPORTED, str(exc), variable=variable)
     except MinervaMathError as exc:
-        return _fail(Status.PARSE_ERROR, str(exc), variable=variable)
+        return _fail(Status.PARSE_ERROR, str(exc), variable=variable, diagnostic=diagnostic_of(exc))
 
     base: dict[str, object] = {"input_latex": to_latex(f), "variable": variable}
     if symbol.is_integer or symbol.is_rational:

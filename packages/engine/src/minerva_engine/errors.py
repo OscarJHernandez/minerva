@@ -47,6 +47,11 @@ class ParseError(MinervaMathError):
         )
 
 
+def diagnostic_of(exc: Exception, field: str = "latex") -> InputDiagnostic | None:
+    """The typed reason carried by a parse error (None for any other exception or an uncoded one)."""
+    return exc.diagnostic(field) if isinstance(exc, ParseError) else None
+
+
 class LimitError(MinervaMathError):
     """The input exceeds a static safety limit (size, depth, magnitude)."""
 

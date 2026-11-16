@@ -10,6 +10,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .notation.models import InputAware
+
 ALLOWED_ASSUMPTIONS: frozenset[str] = frozenset(
     {
         "real",
@@ -82,7 +84,7 @@ class Verification(BaseModel):
     note: str = ""
 
 
-class SimplifyResult(BaseModel):
+class SimplifyResult(InputAware):
     status: Status
     input_latex: str | None = None
     result_latex: str | None = None
@@ -152,7 +154,7 @@ class RuleApplication(BaseModel):
     message: str = ""
 
 
-class IdentitiesResult(BaseModel):
+class IdentitiesResult(InputAware):
     status: Status
     input_latex: str | None = None
     applications: list[RuleApplication] = Field(default_factory=list)
@@ -191,7 +193,7 @@ class BlockedMove(BaseModel):
     unmet_conditions: list[UnmetCondition]
 
 
-class TransformResult(BaseModel):
+class TransformResult(InputAware):
     status: Status
     goal: TransformGoal = "simplify"
     input_latex: str | None = None

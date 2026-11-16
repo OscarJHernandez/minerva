@@ -29,9 +29,10 @@ import sympy as sp
 from pydantic import BaseModel, Field
 
 from .build import Builder
-from .errors import LimitError, MinervaMathError, UnsupportedInput
+from .errors import LimitError, MinervaMathError, UnsupportedInput, diagnostic_of
 from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status
+from .notation.models import InputAware
 from .verify import MIN_VALID_POINTS, _sample
 
 MAX_ORDER = 12
@@ -88,7 +89,7 @@ class MeasuredError(BaseModel):
     relative_error: str | None = None
 
 
-class SeriesResult(BaseModel):
+class SeriesResult(InputAware):
     status: Status
     input_latex: str | None = None
     variable: str | None = None
@@ -385,7 +386,7 @@ def series(
     except UnsupportedInput as exc:
         return _fail(Status.UNSUPPORTED, str(exc))
     except MinervaMathError as exc:
-        return _fail(Status.PARSE_ERROR, str(exc))
+        return _fail(Status.PARSE_ERROR, str(exc), diagnostic=diagnostic_of(exc))
 
     base: dict[str, Any] = {
         "input_latex": to_latex(expr),
