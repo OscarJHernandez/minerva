@@ -1,0 +1,18 @@
+{
+  "_comment": "Seconds of work per whole-module test file (benchmark corpora and the capability record), read from the --durations output of CI run 43817353609. Only used to deal those files over the shards (conftest.py assign_shards); a file not listed counts as 60. Refresh with the largest 'setup' and 'call' times of a recent green run, then check `uv run pytest scripts/tests/test_sharding.py`.",
+  "packages/engine/tests/test_approx_benchmark.py": 10,
+  "packages/engine/tests/test_creative_telescoping_benchmark.py": 81,
+  "packages/engine/tests/test_geometry_benchmark.py": 69,
+  "packages/engine/tests/test_integration_strategy_benchmark.py": 87,
+  "packages/engine/tests/test_ode_benchmark.py": 10,
+  "packages/engine/tests/test_reference_benchmark.py": 90,
+  "packages/engine/tests/test_statmech_benchmark.py": 104,
+  "packages/engine/tests/test_variational_benchmark.py": 35,
+  "packages/engine/tests/test_vector_benchmark.py": 142,
+  "packages/knowledge/tests/test_benchmark.py": 240,
+  "packages/knowledge/tests/test_distribution_benchmark.py": 63,
+  "packages/knowledge/tests/test_matrix_benchmark.py": 10,
+  "packages/knowledge/tests/test_stat_benchmark.py": 184,
+  "packages/knowledge/tests/test_step_benchmark.py": 100,
+  "scripts/tests/test_capabilities.py": 270
+}

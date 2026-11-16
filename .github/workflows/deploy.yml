@@ -20,15 +20,41 @@ env:
   REGISTRY: ghcr.io/oscarjhernandez
 
 jobs:
+  # A push to main whose tree is exactly the tree a passing pull-request run of this repository tested does not
+  # need the same CI again (see scripts/ci_tested_tree.py). Anything unclear, and every manual dispatch, runs it.
+  # Read-only, on a GitHub-hosted runner: it needs no cluster access.
+  gate:
+    name: Was this tree already tested?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    outputs:
+      tested: ${{ steps.decide.outputs.tested }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TREE=$(git rev-parse 'HEAD^{tree}') python3 scripts/ci_tested_tree.py
+
   ci:
+    needs: gate
+    if: ${{ needs.gate.outputs.tested != 'true' }}
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
 
   publish:
     name: Build and publish ${{ matrix.name }}
-    needs: ci
-    if: vars.DEPLOY_ENABLED == 'true'
+    needs: [gate, ci]
+    # `ci` is skipped only when the gate found the same tree already tested; a failed or cancelled `ci` never publishes.
+    if: ${{ !cancelled() && vars.DEPLOY_ENABLED == 'true' && needs.gate.result == 'success' && (needs.ci.result == 'success' || (needs.ci.result == 'skipped' && needs.gate.outputs.tested == 'true')) }}
     runs-on: minerva-runners
     timeout-minutes: 30
     permissions:

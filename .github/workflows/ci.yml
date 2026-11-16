@@ -29,6 +29,10 @@ jobs:
       chart: ${{ steps.paths.outputs.chart }}
       images: ${{ steps.paths.outputs.images }}
       workflows: ${{ steps.paths.outputs.workflows }}
+      deps: ${{ steps.paths.outputs.deps }}
+      # The git tree this run checked out (on a pull request: the merge of its head into the base). `ci-ok`
+      # records it, and the Deploy workflow skips its own CI run when main's tree is exactly this one.
+      tree: ${{ steps.paths.outputs.tree }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,11 +50,18 @@ jobs:
           fi
           match() { [ "$all" = true ] || printf '%s\n' "$files" | grep -Eq "$1"; }
           out() { if match "$2"; then echo "$1=true"; else echo "$1=false"; fi; }
+          # Python and web tests run together or not at all: a pull-request run that attests "this tree was tested"
+          # (see `ci-ok`) must have run both suites, whichever side the change was on.
+          code='^(packages/|services/|scripts/|pyproject\.toml$|uv\.lock$|AGENTS\.md$|CLAUDE\.md$|\.agents/|\.claude/|\.github/|apps/|package\.json$|pnpm-|\.prettier)'
           {
-            out python '^(packages/|services/|scripts/|pyproject\.toml$|uv\.lock$|AGENTS\.md$|CLAUDE\.md$|\.agents/|\.claude/|\.github/)'
-            out web '^(apps/|packages/ui/|package\.json$|pnpm-|\.prettier|\.github/)'
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            out python "$code"
+            out web "$code"
             out chart '^(deploy/|scripts/|\.github/)'
-            out images '^(deploy/|apps/|packages/|services/|scripts/|pnpm-|uv\.lock$|pyproject\.toml$|\.github/)'
+            # A pull request builds the images only when what goes into them changes shape: the Dockerfiles and
+            # chart, the build script, the dependency manifests. Deploy builds and publishes them from main anyway.
+            out images '^(deploy/|scripts/build-image\.sh$|pnpm-lock\.yaml$|uv\.lock$|(.*/)?(pyproject\.toml|package\.json)$|\.github/)'
+            out deps '^(pnpm-lock\.yaml$|uv\.lock$|(.*/)?(pyproject\.toml|package\.json)$|\.github/)'
             out workflows '^\.github/'
           } | tee -a "$GITHUB_OUTPUT"
 
@@ -103,9 +114,9 @@ jobs:
 
   # The tests are spread over runner pods with MINERVA_TEST_SHARD=i/n (root `conftest.py`: every test belongs to
   # exactly one shard, an unset variable runs everything). `ci-ok` needs every shard, so a shard that fails or is
-  # cancelled fails the run. Two groups, because the API tests drop and recreate the tables of one shared database
-  # in every test (`services/api/tests/conftest.py`) and so cannot run in parallel inside one pod; each pod has its
-  # own PostgreSQL sidecar, so separate pods do not interfere. `--durations` shows which tests to speed up next.
+  # cancelled fails the run. The API tests are one more pod (`tests-api`): they drop and recreate the tables of their
+  # database in every test, so each xdist worker there has a database of its own (`services/api/tests/conftest.py`).
+  # `--durations` shows which tests to speed up next.
   tests:
     name: Tests (engine, handbook, scripts) ${{ matrix.shard }}/5
     needs: changes
@@ -132,7 +143,7 @@ jobs:
         run: uv run pytest -n 3 --dist loadfile --durations=15 --ignore=services/api
 
   tests-api:
-    name: Tests (API) ${{ matrix.shard }}/2
+    name: Tests (API)
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
@@ -140,10 +151,6 @@ jobs:
     env:
       # Forks have no PostgreSQL sidecar: the tests then use in-memory SQLite.
       MINERVA_TEST_DATABASE_URL: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && 'sqlite+pysqlite:///:memory:' || 'postgresql+psycopg://postgres@127.0.0.1:5432/postgres' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -152,10 +159,10 @@ jobs:
         with:
           python-version: "3.13"
       - run: uv sync --frozen
-      - name: API tests, shard ${{ matrix.shard }} of 2 (serial because of the shared database)
-        env:
-          MINERVA_TEST_SHARD: ${{ matrix.shard }}/2
-        run: uv run pytest --durations=15 services/api
+      # 3 workers, one PostgreSQL database each (`database_url_for_tests` in services/api/tests/conftest.py, created
+      # on first use); `loadfile` keeps every test file on one worker. Serial, the suite took two pods and 6 to 8 minutes each.
+      - name: API tests
+        run: uv run pytest -n 3 --dist loadfile --durations=15 services/api
 
   web:
     name: Web (lint, types, tests, build)
@@ -288,6 +295,7 @@ jobs:
 
   security:
     name: Dependency audit and secret scan
+    needs: changes
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
     timeout-minutes: 15
     steps:
@@ -295,21 +303,28 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      # The audits (about four minutes of installs) run when a dependency manifest or lockfile changed, and always
+      # on main and in the Deploy workflow; the secret scan below runs on every change.
+      - if: ${{ needs.changes.outputs.deps == 'true' }}
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
       - name: Python dependencies (pip-audit)
+        if: ${{ needs.changes.outputs.deps == 'true' }}
         run: |
           uv export --frozen --no-hashes --no-emit-workspace > "$RUNNER_TEMP/requirements.txt"
           uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
       # Node first: the stock self-hosted runner image has no `node`, and pnpm's installer needs it.
       # No package-manager cache: pods are ephemeral, and setup-node v5 would otherwise look for pnpm before it is installed.
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - if: ${{ needs.changes.outputs.deps == 'true' }}
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           package-manager-cache: false
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: ${{ needs.changes.outputs.deps == 'true' }}
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - name: JavaScript dependencies (high and above)
+        if: ${{ needs.changes.outputs.deps == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts && pnpm audit --audit-level high
       - name: Secret scan
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
@@ -331,3 +346,11 @@ jobs:
           for r in $RESULTS; do
             case "$r" in success|skipped) ;; *) echo "::error::a required job ended as '$r'"; exit 1;; esac
           done
+      # Only a pull request from a branch of this repository, and only when both test suites ran: a docs-only
+      # change is not attested, so Deploy tests it. Read by `scripts/ci_tested_tree.py` (exact message required).
+      - name: Record which tree this run tested
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.python == 'true' && needs.changes.outputs.web == 'true' }}
+        env:
+          TREE: ${{ needs.changes.outputs.tree }}
+        run: |
+          echo "::notice title=Tested tree::tested-tree: ${TREE}"
