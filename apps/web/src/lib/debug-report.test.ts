@@ -437,12 +437,12 @@ describe("the build in a report", () => {
   });
 });
 
-describe("buildDebugReport, format 2", () => {
+describe("buildDebugReport, format 3", () => {
   const report = buildDebugReport({ ...input, messages: [user, traced] });
 
   it("says what it contains and how it is shaped", () => {
-    expect(REPORT_FORMAT).toBe(2);
-    expect(report).toContain("format 2 ·");
+    expect(REPORT_FORMAT).toBe(3);
+    expect(report).toContain("format 3 ·");
     expect(report).toContain(CONTENT_NOTICE);
     expect(CONTENT_NOTICE).toMatch(/conversation content/);
     const json = JSON.parse(
@@ -450,7 +450,7 @@ describe("buildDebugReport, format 2", () => {
         .slice(report.indexOf(JSON_START) + JSON_START.length, report.indexOf(JSON_END))
         .replace(/```json|```/g, ""),
     );
-    expect(json.format).toBe(2);
+    expect(json.format).toBe(3);
     expect(json.contains_conversation_content).toBe(true);
     expect(json.messages[1].debug.events).toHaveLength(5);
     expect(json.messages[1].stop_reason).toBe("repeated_calls");
@@ -500,7 +500,7 @@ describe("buildDebugReport, format 2", () => {
 
   it("still reports messages stored before tracing, with no invented fields", () => {
     const old = buildDebugReport({ ...input, messages: [user, assistant] });
-    expect(old).toContain("format 2");
+    expect(old).toContain("format 3");
     expect(old).not.toContain("stop reason:");
     expect(old).not.toContain("Timeline:");
     expect(old).not.toContain("- evidence:");
@@ -709,5 +709,57 @@ describe("routing, aliases, context sizes and evidence links", () => {
     expect(out).toContain("recovery policy: format_switch");
     expect(out).toContain("| 1 | 2900 | 4600 | 0 | 700 |");
     expect(out).toContain("linked to result r1 by same_left_side, numeric");
+  });
+});
+
+describe("diagnosis and request fingerprints (format 3)", () => {
+  it("are printed with the first failure and whether the turn can be replayed", () => {
+    const failed: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        debug: {
+          ...assistant.content.debug!,
+          diagnosis: {
+            stage: "parser",
+            step: 0,
+            first_failure_code: "parse_error",
+            candidates: ["parser"],
+            replayable: true,
+            replayable_reason: "yes",
+          },
+          llm_calls: [{ ms: 5, text_chars: 0, tool_calls: 1, request_sha: "abc123def456" }],
+        },
+      },
+    };
+    const out = buildDebugReport({ ...input, messages: [user, failed] });
+    expect(out).toContain(
+      "diagnosis: parser (first failure: step 1, parse_error); replayable: yes",
+    );
+    expect(out).toContain("request fingerprints: abc123def456");
+  });
+
+  it("says why a turn cannot be replayed and never names a stage it could not decide", () => {
+    const unclear: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        debug: {
+          ...assistant.content.debug!,
+          diagnosis: {
+            stage: "undetermined",
+            step: 1,
+            first_failure_code: "timeout",
+            candidates: ["infrastructure", "verifier"],
+            replayable: false,
+            replayable_reason: "timing_dependent",
+          },
+        },
+      },
+    };
+    const out = buildDebugReport({ ...input, messages: [user, unclear] });
+    expect(out).toContain("diagnosis: undetermined");
+    expect(out).toContain("candidates: infrastructure, verifier");
+    expect(out).toContain("replayable: no (timing_dependent)");
   });
 });

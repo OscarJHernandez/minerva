@@ -43,7 +43,7 @@ from minerva_knowledge import KnowledgeBase
 
 JSON_START = "<!-- minerva-debug-json -->"
 JSON_END = "<!-- /minerva-debug-json -->"
-SUPPORTED_FORMATS = (1, 2)
+SUPPORTED_FORMATS = (1, 2, 3)
 SUPPORTED_FORMAT = SUPPORTED_FORMATS[-1]
 
 
@@ -267,6 +267,68 @@ def rebuild_replies(
     return replies, failures, notes
 
 
+def _verdict(evidence: dict[str, Any] | None) -> tuple[Any, ...] | None:
+    """The part of an evidence record that says what was established (never its sampled points)."""
+    if not evidence:
+        return None
+    return (evidence.get("check"), evidence.get("accepted"), evidence.get("reason"))
+
+
+FIXTURE_SCHEMA = 1
+
+
+def to_fixture(data: dict[str, Any], turn: int | None = None) -> dict[str, Any]:
+    """A regression fixture from one recorded turn: the executed calls and what the engine said, no prose.
+
+    The arguments are still the user's mathematics: the developer replaces them with a minimal example of
+    their own that shows the same failure before committing (the fixture is written outside the repository
+    and `contains_user_mathematics` stays true until they do).
+    """
+    messages = data.get("messages", [])
+    if turn is None:
+        candidates = [
+            i for i, m in enumerate(messages, 1) if m["role"] == "assistant" and m.get("trace")
+        ]
+        if not candidates:
+            raise ReportError("no assistant turn with tool calls in this report")
+        turn = candidates[-1]
+    if not 1 <= turn <= len(messages) or messages[turn - 1]["role"] != "assistant":
+        raise ReportError(f"message {turn} is not an assistant turn")
+    recorded = messages[turn - 1]
+    debug = recorded.get("debug") or {}
+    calls = []
+    for step in recorded.get("trace") or []:
+        if step.get("status") == "skipped" or step.get("repeated"):
+            continue
+        verdict = _verdict(step.get("evidence"))
+        calls.append(
+            {
+                "name": step["name"],
+                "arguments": step["arguments"],
+                "expect": {
+                    "status": step.get("status"),
+                    "evidence": dict(zip(("check", "accepted", "reason"), verdict, strict=True))
+                    if verdict
+                    else None,
+                },
+            }
+        )
+    return {
+        "schema": FIXTURE_SCHEMA,
+        "id": "replace-me",
+        "provenance": {
+            "origin": "debug-report",
+            "report_format": data.get("format"),
+            "turn": turn,
+            "prompt_sha": debug.get("prompt_sha"),
+            "diagnosis": debug.get("diagnosis") or None,
+            "stop_reason": debug.get("stop_reason"),
+        },
+        "contains_user_mathematics": True,
+        "calls": calls,
+    }
+
+
 def compare_turn(recorded: dict[str, Any], now: dict[str, Any]) -> list[str]:
     """What differs between the recorded turn and the replayed one."""
     out: list[str] = []
@@ -285,6 +347,20 @@ def compare_turn(recorded: dict[str, Any], now: dict[str, Any]) -> list[str]:
         for s in b["segments"]
         if s["type"] != "text"
     ]
+    # What the engine was asked and what it established, not only which tool: a changed argument or a
+    # different verdict is a difference even when the tool names and statuses agree.
+    for index, (old, new) in enumerate(
+        zip(recorded.get("trace") or [], now.get("trace") or [], strict=False), 1
+    ):
+        if old["name"] != new["name"]:
+            continue
+        if old.get("arguments") != new.get("arguments"):
+            out.append(f"step {index} ({old['name']}): the arguments executed differ")
+        if _verdict(old.get("evidence")) != _verdict(new.get("evidence")):
+            out.append(
+                f"step {index} ({old['name']}): evidence recorded {_verdict(old.get('evidence'))}, "
+                f"now {_verdict(new.get('evidence'))}"
+            )
     if recorded.get("formulas") is not None and a_marks != b_marks:
         out.append(f"formula marks: recorded {a_marks}, now {b_marks}")
     if recorded.get("text") != now.get("text"):
@@ -361,6 +437,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llm", action="store_true", help="replay a whole turn with a ReplayLLM")
     parser.add_argument("--turn", type=int, help="with --llm: the message number to replay")
     parser.add_argument(
+        "--to-fixture",
+        metavar="PATH",
+        help="write the executed calls of a turn as a regression fixture (review before committing)",
+    )
+    parser.add_argument(
         "--timeout", type=float, default=30.0, help="seconds each tool may take (default 30)"
     )
     args = parser.parse_args(argv)
@@ -370,6 +451,19 @@ def main(argv: list[str] | None = None) -> int:
     except ReportError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    if args.to_fixture:
+        try:
+            fixture = to_fixture(data, args.turn)
+        except ReportError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        Path(args.to_fixture).write_text(json.dumps(fixture, indent=2) + "\n", "utf-8")
+        print(
+            f"wrote {args.to_fixture} ({len(fixture['calls'])} call(s)). It still holds the user's "
+            "mathematics: replace the arguments with a minimal example of your own, set an id and "
+            "`contains_user_mathematics` to false, then add it to services/api/tests/fixtures/failures/."
+        )
+        return 0
     ctx = ToolContext(
         engine=Engine(Limits(timeout_seconds=args.timeout, max_concurrency=2)),
         kb=KnowledgeBase.load(),

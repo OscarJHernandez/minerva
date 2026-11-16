@@ -237,6 +237,24 @@ export function buildTimeline(
             (num(e.evidence_pct) !== null ? ` (${num(e.evidence_pct)}%)` : ""),
         });
         break;
+      case "tool.failed":
+      case "tool.declined": {
+        const failed = e.event === "tool.failed";
+        rows.push({
+          ...base,
+          kind: "verify",
+          tone: failed ? "bad" : "warn",
+          title: `${str(e.tool)} ${failed ? "failed" : "declined"}`,
+          detail:
+            `${str(e.status)}` +
+            (str(e.reason_code) ? ` · ${str(e.reason_code)}` : "") +
+            (str(e.error_category) ? ` · category ${str(e.error_category)}` : "") +
+            (str(e.error_type)
+              ? ` · ${str(e.error_type)} at ${str(e.error_module)}:${num(e.error_line) ?? "?"}`
+              : ""),
+        });
+        break;
+      }
       default:
         break;
     }

@@ -264,3 +264,24 @@ describe("stageTimings", () => {
     expect(rows[1]).toMatchObject({ kind: "route", tone: "warn" });
   });
 });
+
+describe("failed and declined tool calls", () => {
+  it("appear in the timeline with their reason code, and never with arguments", () => {
+    const rows = buildTimeline(
+      debug([
+        ev("tool.failed", 40, {
+          tool: "simplify",
+          status: "parse_error",
+          reason_code: "syntax",
+          error_category: "parse_error",
+        }),
+        ev("tool.declined", 80, { tool: "integrate", status: "unsupported" }),
+      ]),
+      [],
+    );
+    expect(rows.map((r) => r.title)).toEqual(["simplify failed", "integrate declined"]);
+    expect(rows[0]!.tone).toBe("bad");
+    expect(rows[0]!.detail).toContain("parse_error · syntax");
+    expect(JSON.stringify(rows)).not.toContain("SECRET");
+  });
+});

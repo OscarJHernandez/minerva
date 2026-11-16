@@ -762,6 +762,9 @@ export interface LLMCall {
   est_tools?: number | null;
   est_history?: number | null;
   est_turn?: number | null;
+  /** Fingerprint of the system prompt and tool schemas this call was sent, and the tool groups loaded for it. */
+  request_sha?: string | null;
+  groups?: string[];
 }
 
 /** One content-free trace event (see docs/observability.md); fields vary by `event`. */
@@ -815,6 +818,15 @@ export interface TurnDebug {
   /** The model parameters this turn used, the tool groups it had loaded, and the request against the window. */
   params?: Partial<ModelParams>;
   groups?: string[];
+  /** Which subsystem the first failure points at (agent/diagnosis.py); absent on older messages. */
+  diagnosis?: {
+    stage?: string;
+    step?: number | null;
+    first_failure_code?: string | null;
+    candidates?: string[];
+    replayable?: boolean;
+    replayable_reason?: string;
+  };
   context_window?: number;
   prompt_estimate_tokens?: number;
   /** Messages of earlier turns that were left out so the request fit the window. */
