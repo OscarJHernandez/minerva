@@ -128,9 +128,8 @@ def transport_line(notes: tuple[Normalization, ...]) -> str | None:
 
 
 def input_record(data: dict[str, Any]) -> tuple[InputReading | None, InputDiagnostic | None]:
-    """The `reading` and `diagnostic` an engine report carried into a card (under `report` or `result`)."""
-    for key in ("report", "result"):
-        inner = data.get(key)
+    """The `reading` and `diagnostic` an engine report carried into a card (nested, or the card's own data)."""
+    for inner in (data.get("report"), data.get("result"), data):
         if not isinstance(inner, dict):
             continue
         reading, diagnostic = inner.get("reading"), inner.get("diagnostic")

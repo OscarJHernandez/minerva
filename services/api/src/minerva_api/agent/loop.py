@@ -42,6 +42,15 @@ from .mathinput import MATH_FIELDS, prepare_arguments
 from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
 from .reasoning import ReasoningGate, clean_reply
+from .recovery import (
+    BUDGET_EXHAUSTED,
+    BUDGETED,
+    EQUIVALENT_FAILED,
+    FailureClass,
+    canonical_key,
+    classify,
+    rerun_arguments,
+)
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
 from .routing import plan_route
 from .segments import normalize, split_segments
@@ -102,6 +111,8 @@ class AgentLimits:
     max_seconds: float = 180.0
     max_tool_calls: int = 12  # across the whole turn, whatever the steps
     retry_delay_seconds: float = 0.5  # before the one retry of a model call that failed outright
+    # Failures in a row of one tool before it is not run again this turn.
+    max_failures_per_tool: int = 3
 
 
 @dataclass
@@ -585,6 +596,12 @@ async def _run_turn(
     # A call whose arguments failed validation, with what the model was told: sending the same
     # arguments again is told the same thing, not "its result is above" (there is no result).
     invalid_seen: dict[str, str] = {}
+    # A call that ran and failed (parse error, unsupported...) with what the model was told, so an
+    # equivalent call is not run again; how often each tool failed this turn (its budget); and the
+    # diagnostic codes already seen per tool (a new code means the model is converging).
+    failed_seen: dict[str, str] = {}
+    fail_counts: dict[str, int] = {}
+    codes_seen: set[tuple[str, str]] = set()
     stop = StopReason.COMPLETED
     failure: str | None = None
     failure_kind: str | None = None  # LLMError.kind, or `internal`
@@ -884,21 +901,30 @@ async def _run_turn(
                     and not method_named
                 ):
                     refusal = _error(call.name, NEEDS_CHOICE, ErrorCategory.NEEDS_USER_CHOICE.value)
-                key = _call_key(call.name, arguments)
+                policy: str | None = None
+                if (
+                    refusal is None
+                    and fail_counts.get(call.name, 0) >= limits.max_failures_per_tool
+                ):
+                    refusal = _error(call.name, BUDGET_EXHAUSTED, ErrorCategory.LIMIT_REACHED.value)
+                    policy = "budget_exhausted"
+                key = canonical_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
                     earlier_error = invalid_seen.get(key)
+                    earlier_failure = failed_seen.get(key)
                     repeat_valid = earlier_error is None
                     repeat_category = (
                         ErrorCategory.REPEATED_CALL
                         if repeat_valid
                         else ErrorCategory.INVALID_ARGUMENTS
                     )
-                    repeat_text = (
-                        REPEAT_MESSAGE
-                        if earlier_error is None
-                        else f"{earlier_error}\n{REPEAT_INVALID_MESSAGE}"
-                    )
+                    if earlier_error is not None:
+                        repeat_text = f"{earlier_error}\n{REPEAT_INVALID_MESSAGE}"
+                    elif earlier_failure is not None:
+                        repeat_text = f"{earlier_failure}\n{EQUIVALENT_FAILED}"
+                    else:
+                        repeat_text = REPEAT_MESSAGE
                     trace.append(
                         TraceStep(
                             id=call_id,
@@ -910,6 +936,7 @@ async def _run_turn(
                             repeated=True,
                             arguments_valid=repeat_valid,
                             error_category=repeat_category.value,
+                            policy="refused_equivalent",
                         )
                     )
                     tracer.emit(
@@ -991,6 +1018,24 @@ async def _run_turn(
                             run_in_threadpool(run_tool, call.name, arguments, ctx),
                             timeout=max(remaining(), 1.0),
                         )
+                        # The one deterministic correction, before the model hears about the failure.
+                        alternative = (
+                            rerun_arguments(call.name, arguments, output)
+                            if run_tool is execute and tool_calls_made < limits.max_tool_calls
+                            else None
+                        )
+                        if alternative is not None:
+                            tool_calls_made += 1
+                            retried = await asyncio.wait_for(
+                                run_in_threadpool(run_tool, call.name, alternative[0], ctx),
+                                timeout=max(remaining(), 1.0),
+                            )
+                            if retried.status == "ok":
+                                retried.for_model += (
+                                    "\nrecovered: the first reading failed, so the input was read "
+                                    f"with format {alternative[0]['format']}."
+                                )
+                                output, arguments, policy = retried, alternative[0], alternative[1]
                     except TimeoutError:
                         output = _tool_failure(
                             call.name,
@@ -1012,6 +1057,14 @@ async def _run_turn(
                     seen[key] = call_id
                     if not output.arguments_valid:
                         invalid_seen[key] = output.for_model
+                    failure_class = classify(output)
+                    if failure_class is not None and failure_class is not FailureClass.TIMEOUT:
+                        if output.arguments_valid:
+                            failed_seen[key] = output.for_model
+                        if failure_class in BUDGETED:
+                            fail_counts[call.name] = fail_counts.get(call.name, 0) + 1
+                    elif output.status == "ok":
+                        fail_counts[call.name] = 0  # consecutive failures: a result starts afresh
                 if (
                     call.name == LOAD_TOOLS
                     and refusal is None
@@ -1102,6 +1155,7 @@ async def _run_turn(
                             for r in (output.card.data.get(key) or [])
                             if isinstance(r, str)
                         ],
+                        policy=policy,
                         requested_name=aliases[call.id][0] if call.id in aliases else None,
                         alias_kind=aliases[call.id][1] if call.id in aliases else None,
                         assumptions_dropped=dropped,
@@ -1159,7 +1213,22 @@ async def _run_turn(
                 # satisfied" are what the engine established. Only errors, refused or invalid calls
                 # and unverified candidates count towards the limit.
                 answered = output.status in ANSWER_STATUSES
-                unproductive = 0 if (accepted or answered) else unproductive + 1
+                new_code = bool(output.reason_code) and (
+                    (call.name, output.reason_code or "") not in codes_seen
+                )
+                if output.reason_code:
+                    codes_seen.add((call.name, output.reason_code))
+                # A failure with a diagnostic code not seen before for this tool is the model converging
+                # on a readable input, not a stuck loop; the same code again is.
+                unproductive = (
+                    0
+                    if (accepted or answered)
+                    else (
+                        unproductive
+                        if new_code and unproductive < MAX_UNPRODUCTIVE - 1
+                        else unproductive + 1
+                    )
+                )
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
                 content = output.for_model + (f"\n{store.note_for(result_id)}" if result_id else "")
                 if dropped:

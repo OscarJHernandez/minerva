@@ -252,3 +252,42 @@
   # A reply that reasons in public ("Wait--", "Actually,", "Hmm") shows a conclusion and then retracts it.
   reply_forbids: '(^|[.!?]\s+|\*\*|\n)\s*(wait|actually|hmm|hold on)\b[\s,:;\u2014-]'
   source: "system prompt: write only the final answer, never think aloud in the reply"
+# ----------------------------------------------------------------------------- notation the backend reads
+# What a model writes is not always what the engine reads. These cases ask for ordinary things; the models
+# that write the velocities as `Xdot`, a text form in a LaTeX field or markdown-escaped operators must still
+# get a verified result without a round trip (the loop reads them, see docs/agent-reliability.md). The
+# reference call is the canonical one; the corruption test (`make eval-corruptions`) applies the mistakes.
+
+- id: spelled-velocities-are-read
+  category: physics
+  prompt: 'A block of mass m slides on a wedge of mass M inclined at angle alpha, in a uniform field g. With the wedge at (X, Y) and the block a distance s along the incline, the Lagrangian is $\frac12 (M+m)(\dot{X}^2+\dot{Y}^2) + \frac12 m\dot{s}^2 + m\dot{s}(\dot{X}\cos\alpha + \dot{Y}\sin\alpha) - (M+m) g Y - m g s\sin\alpha$. Find the equations of motion.'
+  expected_tool: analyze_lagrangian
+  args: { includes: { coordinates: [X, Y, s] } }
+  expect_card: { status: ok }
+  reference:
+    tool: analyze_lagrangian
+    arguments:
+      lagrangian: "(M+m)*(X_dot^2 + Y_dot^2)/2 + m*s_dot^2/2 + m*s_dot*(X_dot*cos(alpha) + Y_dot*sin(alpha)) - (M+m)*g*Y - m*g*s*sin(alpha)"
+      coordinates: [X, Y, s]
+      format: text
+  source: "mass matrix [[M+m,0,m cos a],[0,M+m,m sin a],[m cos a,m sin a,m]] has determinant M m (M+m); solving gives X'' = 0, Y'' = -g, s'' = 0 (by hand)"
+
+- id: text-form-in-a-latex-field
+  category: symbolic
+  prompt: 'Simplify $\sin^2 x + \cos^2 x$.'
+  expected_tool: simplify
+  args: { absent: [assumptions] }
+  expect_card: { status: ok, result_text: "1" }
+  reference: { tool: simplify, arguments: { latex: '\sin(x)^2 + \cos(x)^2' } }
+  source: "the Pythagorean identity (DLMF 4.21.1); the answer is 1 whichever way the input is spelled"
+
+- id: escaped-operators-in-a-derivative
+  category: calculus
+  prompt: 'Differentiate $x^2 \sin x$ with respect to x.'
+  expected_tool: differentiate
+  args: { includes: { variables: [{ name: x }] } }
+  expect_card: { status: ok, result_text: "x**2*cos(x) + 2*x*sin(x)" }
+  reference:
+    tool: differentiate
+    arguments: { latex: 'x^{2} \sin(x)', variables: [{ name: x, order: 1 }] }
+  source: "product rule by hand: (x^2 sin x)' = 2x sin x + x^2 cos x"

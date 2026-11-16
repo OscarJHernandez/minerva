@@ -426,6 +426,57 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             ],
         },
     },
+    "spelled-velocities-are-read": {
+        "ideal": [
+            call(
+                "analyze_lagrangian",
+                {
+                    "lagrangian": "(M+m)*(Xdot^2 + Ydot^2)/2 + m*sdot^2/2 + m*sdot*(Xdot*cos(alpha) + Ydot*sin(alpha)) - (M+m)*g*Y - m*g*s*sin(alpha)",
+                    "coordinates": ["X", "Y", "s"],
+                },
+            ),
+            say(
+                r"The wedge and the block decouple: $\ddot{X} = 0$, $\ddot{Y} = -g$ and $\ddot{s} = 0$."
+            ),
+        ],
+        "adversarial": {
+            # the coordinates are missing: the call is refused before anything runs
+            FailureClass.ARGUMENTS: [
+                call("analyze_lagrangian", {"lagrangian": "m*Xdot^2/2"}),
+                say("It moves freely."),
+            ],
+        },
+    },
+    "text-form-in-a-latex-field": {
+        "ideal": [
+            call("simplify", {"latex": "sin(x)^2 + cos(x)^2"}),
+            say(r"The expression equals $1$."),
+        ],
+        "adversarial": {
+            FailureClass.TOOL_SELECTION: [
+                call(
+                    "differentiate",
+                    {"latex": r"\sin(x)^2 + \cos(x)^2", "variables": [{"name": "x"}]},
+                ),
+                say("It is zero."),
+            ],
+        },
+    },
+    "escaped-operators-in-a-derivative": {
+        "ideal": [
+            call(
+                "differentiate",
+                {"latex": "x\\^2\\*sin(x)", "variables": [{"name": "x"}]},
+            ),
+            say(r"The derivative is $x\left(x\cos(x) + 2\sin(x)\right)$."),
+        ],
+        "adversarial": {
+            FailureClass.ARGUMENTS: [
+                call("differentiate", {"latex": r"x^2 \sin(x)"}),
+                say("The derivative is 2 x sin(x) + x^2 cos(x)."),
+            ],
+        },
+    },
 }
 
 IDEAL = [(case_id, s["ideal"]) for case_id, s in SCRIPTS.items()]

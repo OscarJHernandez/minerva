@@ -136,6 +136,95 @@ def _trajectories() -> list[Trajectory]:
             must_back=WEDGE_MUST,
         ),
         Trajectory(
+            "wedge-wrong-format-recovered",
+            "recovery",
+            "format latex is stated for text input: the loop re-reads it as text, no model round trip",
+            wedge_ask,
+            lambda: [
+                call("analyze_lagrangian", {**wedge_plain, "format": "latex"}),
+                say(WEDGE_ANSWER),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=WEDGE_MUST,
+            comparable=False,
+        ),
+        Trajectory(
+            "wedge-shape-errors-repaired",
+            "recovery",
+            "the coordinates as one string and the formula under the name `expression`",
+            wedge_ask,
+            lambda: [
+                call(
+                    "analyze_lagrangian",
+                    {"expression": WEDGE_ESCAPED, "coordinates": "X, Y, s"},
+                ),
+                say(WEDGE_ANSWER),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=WEDGE_MUST,
+            comparable=False,
+        ),
+        Trajectory(
+            "ambiguous-spelling-is-refused-then-fixed",
+            "notation",
+            "xddot could be the acceleration of x or the velocity of xd: refused with both readings",
+            "Equations of motion of two coupled coordinates x and xd.",
+            lambda: [
+                call(
+                    "analyze_lagrangian",
+                    {
+                        "lagrangian": "1/2*m*xddot^2 - 1/2*k*(x^2 + xd^2)",
+                        "coordinates": ["x", "xd"],
+                    },
+                ),
+                call(
+                    "analyze_lagrangian",
+                    {
+                        "lagrangian": "1/2*m*(x_dot^2 + xd_dot^2) - 1/2*k*(x^2 + xd^2)",
+                        "coordinates": ["x", "xd"],
+                    },
+                ),
+                say("Both coordinates oscillate independently."),
+            ],
+            expect_tool="analyze_lagrangian",
+            must_back=[],
+            comparable=False,
+        ),
+        Trajectory(
+            "equivalent-failed-call-is-not-rerun",
+            "recovery",
+            "the same unreadable input again, only wrapped in dollars: refused as equivalent, not run",
+            r"Simplify $\foo{a}$",
+            lambda: [
+                call("simplify", {"latex": r"\foo{a}"}),
+                call("simplify", {"latex": r"$\foo{a}$"}),
+                say("That expression could not be read, so nothing is established."),
+            ],
+            expect_tool=None,
+            must_back=[],
+            comparable=False,
+        ),
+        Trajectory(
+            "unsupported-is-not-retried",
+            "recovery",
+            "a derivative that does not exist is an answer; the same request again is not run",
+            r"Differentiate $|z|$ with respect to $z$.",
+            lambda: [
+                call(
+                    "differentiate",
+                    {"latex": r"\left|z\right|", "variables": [{"name": "z", "order": 1}]},
+                ),
+                call(
+                    "differentiate",
+                    {"latex": r"$\left|z\right|$", "variables": [{"name": "z", "order": 1}]},
+                ),
+                say("The absolute value has no complex derivative, so none is given."),
+            ],
+            expect_tool=None,
+            must_back=[],
+            comparable=False,
+        ),
+        Trajectory(
             "wedge-routed-xdot",
             "notation",
             "the Lagrangian is typed with Xdot, Ydot, sdot: routed, one model call",
@@ -256,6 +345,18 @@ def _trajectories() -> list[Trajectory]:
                 say(r"The expression equals $1$."),
             ],
             expect_tool="simplify",
+        ),
+        Trajectory(
+            "simplify-text-syntax-recovered",
+            "recovery",
+            r"text syntax in a LaTeX field is re-read as text by the loop: one call, no correction round trip",
+            r"Simplify $\sin^2 x+\cos^2 x$",
+            lambda: [
+                call("simplify", {"latex": "sin(x)^2 + cos(x)^2"}),
+                say(r"The expression equals $1$."),
+            ],
+            expect_tool="simplify",
+            comparable=False,
         ),
         Trajectory(
             "unreadable-arguments-then-valid",
@@ -473,6 +574,10 @@ def run_trajectory(trajectory: Trajectory, ctx: ToolContext) -> dict[str, Any]:
         "aliases": sum(1 for s in trace if s.get("alias_kind")),
         "routed": sum(1 for s in trace if s.get("routed")),
         "recovered": recovered,
+        "format_switches": sum(1 for s in trace if s.get("policy") == "format_switch"),
+        "refused_equivalent": sum(1 for s in trace if s.get("policy") == "refused_equivalent"),
+        "budget_exhausted": sum(1 for s in trace if s.get("policy") == "budget_exhausted"),
+        "input_adjusted": sum(1 for s in trace if "input cleaned:" in (s.get("for_model") or "")),
         "est_tokens_in": tokens_in,
         "est_tokens_out": tokens_out,
         "formulas": len(counted),
@@ -519,6 +624,9 @@ def run_suite(ctx: ToolContext, ids: list[str] | None = None) -> dict[str, Any]:
         "est_tokens_out": sum(d["est_tokens_out"] for d in det),
         "unsupported_claims": sum(d["unsupported_claims"] for d in det),
         "unparsed_claims": sum(d["unparsed_claims"] for d in det),
+        "format_switches": sum(d["format_switches"] for d in det),
+        "refused_equivalent": sum(d["refused_equivalent"] for d in det),
+        "input_adjusted": sum(d["input_adjusted"] for d in det),
     }
     return {"format": 1, "summary": summary, "results": results}
 
@@ -566,6 +674,20 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _handled(d: dict[str, Any]) -> str:
+    """What the loop did itself in a trajectory: input adjusted, format switched, equivalent call refused."""
+    parts = [
+        f"{d[key]} {label}"
+        for key, label in (
+            ("input_adjusted", "adjusted"),
+            ("format_switches", "re-read"),
+            ("refused_equivalent", "refused"),
+        )
+        if d.get(key)
+    ]
+    return ", ".join(parts) or "-"
+
+
 def markdown(report: dict[str, Any]) -> str:
     s = report["summary"]
     out = [
@@ -580,15 +702,15 @@ def markdown(report: dict[str, Any]) -> str:
         f"≈{s['est_tokens_in']} tokens in, ≈{s['est_tokens_out']} out · "
         f"{s['unsupported_claims']} unbacked claims",
         "",
-        "| Trajectory | Category | Model calls | Tool calls (ok) | Routed | Tokens in | Evidence | Math ok | Tool ms | Claim ms |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Trajectory | Category | Model calls | Tool calls (ok) | Routed | Without a model call | Tokens in | Evidence | Math ok | Tool ms | Claim ms |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in report["results"]:
         d, t = r["deterministic"], r["timing"]
         evidence = "-" if d["evidence_pct"] is None else f"{d['with_evidence']}/{d['formulas']}"
         out.append(
             f"| {r['id']} | {r['category']} | {d['model_calls']} | {d['tool_calls']} ({d['ok_calls']}) | "
-            f"{d['routed']} | {d['est_tokens_in']} | {evidence} | {'yes' if d['math_ok'] else 'NO'} | "
+            f"{d['routed']} | {_handled(d)} | {d['est_tokens_in']} | {evidence} | {'yes' if d['math_ok'] else 'NO'} | "
             f"{t['tool_ms']} | {t['claim_check_ms'] if t['claim_check_ms'] is not None else '-'} |"
         )
     return "\n".join(out) + "\n"

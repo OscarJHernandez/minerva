@@ -31,6 +31,7 @@ from .agent.equations import (
     EquationTable,
     build_table,
     find_references,
+    handles_note,
     number_stored,
     number_user_text,
     replay_prose,
@@ -1306,10 +1307,11 @@ async def send_message(
         history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
     else:
         history.append({"role": "user", "content": text})
-    if reference_note_text:  # for the model only: the stored message stays as the user typed it
+    notes = [n for n in (reference_note_text, handles_note(user_equations)) if n]
+    if notes:  # for the model only: the stored message stays as the user typed it
         history[-1] = {
             "role": "user",
-            "content": history[-1]["content"] + "\n\n" + reference_note_text,
+            "content": history[-1]["content"] + "\n\n" + "\n".join(notes),
         }
 
     if not previous and conversation.title == "New conversation":

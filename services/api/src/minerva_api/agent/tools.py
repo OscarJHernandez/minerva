@@ -60,6 +60,7 @@ from minerva_knowledge.identities import (
     vector_identity_rules,
 )
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
@@ -165,6 +166,7 @@ class SimplifyArgs(BaseModel):
 
 
 class SimplifyToolArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     goal: Literal["simplify", "expand", "factor", "rewrite"] = Field(
         default="simplify",
         description="What the result should be: simplify (fewest operations), expand, factor, or "
@@ -178,6 +180,7 @@ class SimplifyToolArgs(SimplifyArgs):
 
 
 class DifferentiateArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT, description="The expression to differentiate, in LaTeX, e.g. x^x"
     )
@@ -191,6 +194,7 @@ class DifferentiateArgs(SimplifyArgs):
 
 
 class SeriesArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT,
         description="The expression to expand, in LaTeX, e.g. \\frac{1}{\\sqrt{1-x^2}}",
@@ -687,6 +691,7 @@ class DistributionArgs(SimplifyArgs):
 
 
 class IntegrateArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT, description="The integrand, in LaTeX, e.g. x\\cos x (no \\int or dx)"
     )
@@ -715,6 +720,7 @@ class IntegrateArgs(SimplifyArgs):
 
 
 class IdentitiesArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     query: str = Field(default="", max_length=200, description="Optional extra search words")
 
 
@@ -761,6 +767,7 @@ class AnalyzeLagrangianArgs(LagrangianArgs):
 
 
 class TimeDerivativeArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT,
         description=r"The quantity in LaTeX, using q for coordinates and \dot{q} for velocities, e.g. "
@@ -981,7 +988,13 @@ def _as_read(latex: str | None) -> str:
 
 
 def _expr(args: SimplifyArgs) -> ExpressionInput:
-    return ExpressionInput(input=args.latex, format="latex", assumptions=args.assumptions)
+    """The formula as the tool reads it: LaTeX unless the tool takes a `format` and it says text."""
+    syntax = getattr(args, "format", "latex")
+    return ExpressionInput(
+        input=args.latex,
+        format="text" if syntax == "text" else "latex",
+        assumptions=args.assumptions,
+    )
 
 
 ODE_SOLVERS = frozenset({"ode_solve_symbolic", "ode_solve_numerical"})
