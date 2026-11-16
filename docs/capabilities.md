@@ -2542,6 +2542,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 
 **Limits**
 
+- Derivatives of a declared coordinate may be written `\dot{q}`, `q_dot`, `qdot`, `dq_dt` or `q dot`; the result says how each was read. A name with two readings (`xddot` with coordinates `x` and `xd`), two spellings of one velocity in the same expression, or a velocity of a coordinate that was not declared is refused with the candidates, never guessed.
 - Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search for more constants of motion looks for them in a declared family.
 
 #### Kepler problem in polar coordinates
@@ -2570,6 +2571,21 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - cyclic coordinates: none (every coordinate appears in L)
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
+
+#### Velocities written Xdot, Ydot, sdot are read as the velocities of X, Y, s
+
+- **Lagrangian:** `(M+m)*(Xdot^2 + Ydot^2)/2 + m*sdot^2/2 + m*sdot*(Xdot*cos(alpha) + Ydot*sin(alpha)) - (M+m)*g*Y - m*g*s*sin(alpha)` (plain text), read as $- Y g \left(M + m\right) - g m s \sin{\left(\alpha \right)} + \frac{m \dot{s}^{2}}{2} + m \dot{s} \left(\dot{X} \cos{\left(\alpha \right)} + \dot{Y} \sin{\left(\alpha \right)}\right) + \frac{\left(M + m\right) \left(\dot{X}^{2} + \dot{Y}^{2}\right)}{2}$
+- **Coordinates:** X, Y, s
+- **Status:** `ok`
+- **Equation of motion (X):** $M \ddot{X} + \ddot{X} m + m \ddot{s} \cos{\left(\alpha \right)} = 0$
+- **Equation of motion (Y):** $M \ddot{Y} + M g + \ddot{Y} m + g m + m \ddot{s} \sin{\left(\alpha \right)} = 0$
+- **Equation of motion (s):** $m \left(\ddot{X} \cos{\left(\alpha \right)} + \ddot{Y} \sin{\left(\alpha \right)} + g \sin{\left(\alpha \right)} + \ddot{s}\right) = 0$
+- **Conserved: cyclic:** $p_{X} = \dot{X} \left(M + m\right) + m \dot{s} \cos{\left(\alpha \right)}$ — X is cyclic: L does not depend on it, so dp/dt = dL/dq = 0
+- **Conserved: energy:** $h = \frac{M \dot{X}^{2}}{2} + M Y g + \frac{M \dot{Y}^{2}}{2} + \frac{\dot{X}^{2} m}{2} + \dot{X} m \dot{s} \cos{\left(\alpha \right)} + Y g m + \frac{\dot{Y}^{2} m}{2} + \dot{Y} m \dot{s} \sin{\left(\alpha \right)} + g m s \sin{\left(\alpha \right)} + \frac{m \dot{s}^{2}}{2}$ — L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved
+- **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
+- rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
 - Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
 
 #### Explicit time dependence removes the energy

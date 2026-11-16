@@ -103,10 +103,10 @@ and compare with `--compare`.
   marks and the new evidence note already say which, and the split touches the UI, scoring and the debug report
   for a presentation change. The `basis` is available in the claim debug record.
 * Only Lagrangian requests are routed.
-* `format` exists for `analyze_lagrangian` and `search_invariants`. Other Lagrangian tools
-  (`expand_motion`, `perturbation_solve`, `integrate_motion`, `find_conserved_quantities`, `time_derivative`) take
-  LaTeX only, and now refuse text syntax with the fix instead of misreading it; the engine does not support text
-  for them.
+* `format` exists for `analyze_lagrangian` and `search_invariants` (visible) and, hidden, for the formula tools listed
+  in the audit below. Other Lagrangian tools (`expand_motion`, `perturbation_solve`, `integrate_motion`,
+  `find_conserved_quantities`) take LaTeX only: their engine entry points read LaTeX, so a text Lagrangian is refused
+  with the fix there (see "Second pass").
 
 ## Argument audit
 
@@ -114,10 +114,111 @@ Every main expression field of every tool must state its syntax (a test). Syntax
 
 | Tools | Expression syntax | `format` argument |
 | --- | --- | --- |
-| `simplify`, `differentiate`, `integrate`, `series`, `substitute`, `rewrite_part`, `find_identities`, `isolate_variable`, `solve_polynomial`, `check_units`, `sums`, `expectation`, `distribution`, `creative_telescoping`, `approximation`, `variation` | LaTeX | none (text is refused with the fix) |
-| `analyze_lagrangian`, `search_invariants` | LaTeX or text (`theta_dot`) | `auto` / `latex` / `text` |
-| `expand_motion`, `perturbation_solve`, `integrate_motion`, `find_conserved_quantities`, `time_derivative` | LaTeX | none |
+| `simplify`, `differentiate`, `integrate`, `series`, `time_derivative`, `find_identities` | LaTeX; a text form (`sin(x)`, `x*y`) that LaTeX refuses is re-read as text by the loop | hidden `format` (`latex` default, `text`), switched by the recovery policy |
+| `substitute`, `rewrite_part`, `isolate_variable`, `solve_polynomial`, `check_units`, `sums`, `expectation`, `distribution`, `creative_telescoping`, `approximation`, `variation` | LaTeX | none (text is refused with the fix) |
+| `analyze_lagrangian`, `search_invariants` | LaTeX or text (`theta_dot`, `Xdot`) | `auto` / `latex` / `text` |
+| `expand_motion`, `perturbation_solve`, `integrate_motion`, `find_conserved_quantities` | LaTeX (spelled velocities of a declared coordinate are refused with the fix in LaTeX) | none |
 | `matrix_calculus` | LaTeX; text for the gradient actions | per action |
 | `vector_calculus`, `electromagnetism` | LaTeX (explicit components: text) | none |
 | `ode_*` | the user's notation, `format` `latex` or `text` | `format` |
 | `tensor_canonicalize` | text (`S(a,b)*A(-a,-b)`) | none |
+
+## Second pass: the input layer, typed diagnostics and recovery
+
+The first pass made the tool names and the notation of one tool dependable. The recorded turn that prompted this one
+shows what remained: a model picked `analyze_lagrangian` correctly and wrote the velocities of a block on a wedge as
+`Xdot`, `Ydot`, `sdot`; the engine did not know them (`unsupported`, later `parse_error`); the retry arrived with
+markdown-escaped products (`\*`); the third call repeated the first; 4 model calls, 3 tool calls, 18.6 s, no formula with
+engine evidence. The mathematics was well within the engine's reach (the accelerations are `X'' = 0`, `Y'' = -g`,
+`s'' = 0`, derived by hand in the tests); only the spelling was not.
+
+### Root causes, from the code
+
+| Cause | Where |
+| --- | --- |
+| Derivative spelling was decided in five unrelated places, each with its own closed list (`f"{q}_dot"`, the ODE reader's regexes, the variation jets, the router's regexes, the format marker) | `lagrangian.derive_expr`, `time_derivative`, `ode/reading.py`, `variational/jets.py`, `agent/routing.py`, `tools._TEXT_MARKERS` |
+| A symbol that was not a coordinate or a velocity silently became a parameter, so `Xdot` surfaced later as "no velocity" | `lagrangian.derive_expr` |
+| Transport damage reached the strict parsers: one `\*` made the whole text LaTeX | `resolve_syntax`, the parsers |
+| Failures were prose: the loop could not tell "re-spell this" from "this is unsupported" | `ParseError`, `ops._failure`, the report models |
+| A call that differed from an earlier one only by `\*`, a `$` wrapper, `L =` or a default was a new call | `loop._call_key` (raw JSON) |
+| No budget per tool, no notion of progress between failures | `MAX_UNPRODUCTIVE`, `MAX_REPEATS` only |
+| Three hand-kept lists of which arguments are formulas, none complete | `refs`, `tools`, `loop` |
+| The model was never told the numbers of the formulas it had been given, so it copied them | `routers_chat` |
+
+### What was built
+
+Everything is a closed list with a test and an inverse; nothing rewrites a meaning, and nothing touches verification.
+
+1. **One derivative reader** (`minerva_engine/notation/derivatives.py`). Spellings of the derivative of a *declared*
+   coordinate are generated from parts (`Xdot`, `X_DOT`, `dX_dt`, `dot_X`, `X_prime`, `X dot`...), the keyword is
+   case-insensitive and the stem exact. A name with two readings, two spellings of one derivative in one expression,
+   a name that is itself declared, a name with declared assumptions or a velocity of an undeclared coordinate is
+   refused with a typed code and the candidates. In LaTeX a letter run such as `Xdot` is a product, so it is refused
+   with the fix (`\dot{X}`), never reinterpreted. Used by `analyze_lagrangian`, `time_derivative`, and through them
+   every tool that derives equations of motion; routing finds coordinates with the same generator.
+2. **Transport cleaning** (`notation/transport.py`, `agent/mathinput.py`): markdown escapes, `$` and code-fence
+   wrappers, doubled backslashes, Unicode look-alikes, HTML entities, sentence punctuation, a leading `L =`/`H =`,
+   Greek and dotted letters in the syntax of the tool. Runs on every formula argument after `@rN` references are filled
+   in and before the call is keyed.
+3. **Shape repair** (`agent/arguments.py`): a list sent as a string, one equation where a list is wanted, JSON sent as
+   text, a formula under `expression`, a number where text is wanted.
+4. **Typed diagnostics** (`notation/models.py`): `InputDiagnostic` (closed `code`, `field`, `symbols`, `suggestions`,
+   `recoverable`) on every report that reads a formula; the model sees one JSON line, the log only the code
+   (`reason_code`). `InputReading` says what was changed on an accepted input; the card shows "Read as:" and the model
+   an `input:` line.
+5. **Recovery policy** (`agent/recovery.py`): `FailureClass`; one re-run with the other strict parser when a parse error
+   says the text is of the other syntax (`policy: format_switch`); a canonical call key (schema defaults filled,
+   numbers and text unified, `format: auto` resolved) so an equivalent call that ran or failed is not run again
+   (`refused_equivalent`); a budget of consecutive failures per tool (`budget_exhausted`); a failure with a diagnostic
+   code not seen before for the tool is progress. Unsupported mathematics is an answer and is never retried with
+   equivalent input.
+6. **Handles**: the model is told the handles (`@e4`) of the formulas the user displayed, so it passes the handle and
+   Minerva substitutes the user's exact text. The user's own formula is never marked verified by being used.
+
+### Measurements
+
+All numbers were measured here, offline (a replayed model, the real loop, tools and engine). `docs/benchmarks/`:
+`orchestration-offline-main-421998e.json` is the stage-0 report of the unchanged code, `orchestration-offline.json`
+the current one, `corruption.json` and `corruption-without-cleaning.json` the corruption test.
+
+| The recorded wedge turn | Model calls | Tool calls (ok) | Est. input tokens | Equations backed |
+| --- | --- | --- | --- | --- |
+| Recorded script, unchanged code | 4 | 3 (0) | 57 164 | 0 of 4 |
+| Same script, now (the first call succeeds; the next two are refused as equivalent) | 4 | 3 (1) | 49 393 | 4 of 4 |
+| The model writes `Xdot` and gets the analysis at once | 2 | 1 (1) | 29 170 | 4 of 4 |
+| `format` stated wrongly (`latex`), re-read as text by the loop | 2 | 1 (1) | 29 198 | 4 of 4 |
+| Coordinates as one string, formula under `expression`, `\*` in the text | 2 | 1 (1) | 29 240 | 4 of 4 |
+| The Lagrangian typed with `Xdot` is routed | 1 | 1 (1) | 15 052 | 4 of 4 |
+
+The suite now has 25 trajectories (17 before); all end mathematically correct (16 of 17 of the earlier ones did before
+this pass; the wedge was added as a failing one first). Claims without backing across the suite: 10 → 6, none a wrong
+statement presented as checked. Tokens per trajectory moved by at most +1.3 % (the diagnostics add lines only when
+something was adjusted); no trajectory is flagged by `--compare`.
+
+**Corruption test** (`make eval-corruptions`): every known model mistake applied to the 133 reference calls of the
+benchmark (33 tools), through the model's own pipeline. 737 corrupted calls: **730 recovered without a model call
+(99.1 %)**, 7 refused with a typed reason, **0 different verified results, 0 untyped failures**. Without the cleaning
+layer, on a sample of 222 calls that all go through the engine: 26 recovered (11.7 %), 65 refused with a typed reason,
+131 untyped failures (the velocity spellings are still read there: that reader is in the engine, not in the cleaning). The
+operators are the inverses of the cleaning rules, so this rate says the rules undo what they were written to undo; it is
+not an estimate of how often real models make these mistakes (that is what `scripts/diagnostic_codes.py` on a real log
+tells), and it is not a measure of the model.
+
+### What this cannot show, and what is not done
+
+* **No live model was run.** Whether a small model passes `Xdot`, follows a `suggestions` list, or uses a handle is
+  measurable only with `scripts/eval_models.py` against a host; the targets of the brief (valid arguments, recovery
+  from known notation errors, repeated identical failed calls, incorrect verification claims) are measured here
+  offline only where a replayed model can show them: repeated identical failed calls are 0 by construction
+  (the call key), incorrect verification claims did not change (no check was touched).
+* **Function notation is not read**: `x(t)`, `diff(x(t), t)`, `\frac{d}{dt}x(t)` and differentiating with respect to
+  `x(t)` or `\dot{x}` are not implemented. In text syntax `x(t)` is still an error and in LaTeX it is still the
+  product `x t` unless the tool declares functions.
+* **The ODE and variational readers keep their own derivative spellings**; `ydot` is read only where the Lagrangian
+  reader is used.
+* `expand_motion`, `perturbation_solve`, `integrate_motion`, `find_conserved_quantities` read LaTeX only (a spelled
+  velocity in LaTeX is refused with the fix).
+* Inline formulas have no handle (only displayed ones); distinct verification marks and the per-call prompt size are
+  still open (see "Not done" above).
+* A coordinate named like a derivative spelling (`xdot` with `x`) is kept as declared, but the LaTeX printer shows a
+  symbol named `xdot` as `\dot{x}`: name coordinates so that this cannot happen.

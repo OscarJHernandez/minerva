@@ -668,6 +668,7 @@ describe("routing, aliases, context sizes and evidence links", () => {
             requested_name: "mechanics.analyze_lagrangian",
             alias_kind: "group_prefix",
             routed: true,
+            policy: "format_switch",
           },
         ],
         debug: {
@@ -705,6 +706,7 @@ describe("routing, aliases, context sizes and evidence links", () => {
     expect(out).toContain("routing: routed (lagrangian_equations) → analyze_lagrangian");
     expect(out).toContain('the model wrote "mechanics.analyze_lagrangian" (read as group_prefix)');
     expect(out).toContain("chosen by a rule");
+    expect(out).toContain("recovery policy: format_switch");
     expect(out).toContain("| 1 | 2900 | 4600 | 0 | 700 |");
     expect(out).toContain("linked to result r1 by same_left_side, numeric");
   });

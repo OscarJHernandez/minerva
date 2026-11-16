@@ -334,7 +334,8 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
         (t.requested_name
           ? ` · the model wrote "${t.requested_name}" (read as ${t.alias_kind ?? "alias"})`
           : "") +
-        (t.routed ? " · chosen by a rule, not by the model" : ""),
+        (t.routed ? " · chosen by a rule, not by the model" : "") +
+        (t.policy ? ` · recovery policy: ${t.policy}` : ""),
       `- arguments valid: ${t.arguments_valid ?? "unknown"}${t.error_category ? ` · category: ${t.error_category}` : ""}${t.repeated ? " · repeated call, not run again" : ""}${t.result_id ? ` · result id ${t.result_id}` : ""}${t.engine_ms != null ? ` · ${t.engine_ms} ms in the sandbox` : ""}`,
       ...(ev
         ? [

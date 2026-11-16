@@ -119,8 +119,13 @@ decision. A verified result writes no line. Fields:
   `duration_ms`, `engine_ms`.
 - `arg_fields`: the argument names the model filled that belong to the tool's own schema, sorted. A name the
   schema does not have is dropped, so the model cannot choose what is logged.
-- `reason_code`: a fixed code, today the validation error type (`missing`, `string_type`, `literal_error`, ...)
-  of an `invalid_arguments` failure. It is absent when there is no code, never a copy of the category.
+- `reason_code`: a fixed code: the validation error type (`missing`, `string_type`, `literal_error`, ...) of an
+  `invalid_arguments` failure, or, for a mathematical input that could not be read, one of the engine's
+  `InputCode` values (`unrecognized_derivative`, `ambiguous_derivative`, `mixed_derivative_spellings`,
+  `undeclared_dependent`, `declared_name_absent`, `acceleration_in_input`, `text_syntax_in_latex`, `latex_in_text`,
+  `equation_not_expression`, ...; `minerva_engine.notation.models`). It is absent when there is no code, never a
+  copy of the category. The symbols the code is about and the spellings that would work are the user's names and
+  are in the stored message only (the model sees them in a `diagnostic: {...}` line), never in a log line.
 - `invalid_fields`: the schema paths that failed (`quantities.*.name`), rebuilt level by level from the
   argument model. Only the model's own field names are written; a list index or a dictionary key, which can be
   a symbol the user chose, becomes `*`, and a path that cannot be placed is cut with `*`.
@@ -138,6 +143,17 @@ address or an expression cannot get into these fields even by mistake.
 
 There is no separate cap on these lines: a turn is limited to `MINERVA_AGENT_MAX_TOOL_CALLS` calls (12) and a
 repeated call counts towards it, so one turn writes at most that many.
+
+**Which codes are most common.** `scripts/diagnostic_codes.py api.log` (or `kubectl logs ... | ... -`) counts the
+`tool.failed` and `tool.declined` lines by tool, `reason_code` and `error_category`, most frequent first. It reads
+only those closed fields. The most frequent code in real use says which normalisation (`notation/transport.py`,
+`notation/derivatives.py`), shape repair (`agent/arguments.py`) or schema change to add next.
+
+**What the loop did itself.** A stored trace step carries `policy` when the recovery policy (`agent/recovery.py`)
+acted: `format_switch` (the call failed in one syntax and was re-run once in the other; the result says so),
+`refused_equivalent` (an equivalent call had already run or failed) or `budget_exhausted` (the tool failed
+`max_failures_per_tool` times in a row). `model_arguments` keeps what the model sent when shape repair, cleaning or
+`@rN` references changed it. The debug report prints both.
 
 **From a log line to a fix.** Take the `trace_id`; open the conversation's debug panel (or the stored message's
 `debug.events`) for the arguments and results; copy the debug report and replay it with

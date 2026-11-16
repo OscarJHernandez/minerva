@@ -1,10 +1,38 @@
 {
-  "applied": 218,
+  "applied": 222,
   "by_operator": {
+    "derivative:joined": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
     "derivative:latex_letter_run": {
       "diagnosed": 4,
       "different_verified_result": 0,
       "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:leibniz": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:spaced": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "derivative:upper": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
@@ -90,7 +118,7 @@
     "analyze_lagrangian": {
       "diagnosed": 4,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 5,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
@@ -1096,31 +1124,31 @@
   "format": 1,
   "mode": "pr (without the cleaning layer)",
   "not_applicable": {
-    "derivative:joined": 130,
-    "derivative:latex_letter_run": 124,
-    "derivative:leibniz": 130,
-    "derivative:spaced": 130,
-    "derivative:upper": 130,
-    "shape:assignment_prefix": 122,
+    "derivative:joined": 132,
+    "derivative:latex_letter_run": 127,
+    "derivative:leibniz": 132,
+    "derivative:spaced": 132,
+    "derivative:upper": 132,
+    "shape:assignment_prefix": 124,
     "shape:formula_alias": 44,
-    "shape:json_as_string": 55,
-    "shape:list_as_string": 106,
-    "shape:number_as_string": 123,
+    "shape:json_as_string": 56,
+    "shape:list_as_string": 108,
+    "shape:number_as_string": 126,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
-    "transport:doubled_backslash": 55,
+    "transport:doubled_backslash": 56,
     "transport:markdown_escape": 74,
-    "transport:trailing_period": 42,
+    "transport:trailing_period": 43,
     "transport:unicode_look_alikes": 47
   },
-  "recovered_without_a_model_call": 22,
-  "recovery_rate": 0.1009,
-  "references": 130,
+  "recovered_without_a_model_call": 26,
+  "recovery_rate": 0.1171,
+  "references": 133,
   "tools_covered": 33,
   "totals": {
     "diagnosed": 65,
     "different_verified_result": 0,
-    "same": 22,
+    "same": 26,
     "same_after_cleaning": 0,
     "untyped_failure": 131
   }

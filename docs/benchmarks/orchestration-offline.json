@@ -7,16 +7,20 @@
       "description": "the recorded failure: velocities written Xdot, a retry with markdown-escaped `\\*`, then a repeat",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 49393,
         "est_tokens_out": 234,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 4,
         "ok_calls": 1,
         "recovered": true,
+        "refused_equivalent": 2,
         "routed": 0,
         "stop_reason": "repeated_calls",
         "tool_calls": 3,
@@ -29,9 +33,9 @@
       "id": "wedge-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 415,
-        "tool_ms": 2664,
-        "total_ms": 3097
+        "claim_check_ms": 462,
+        "tool_ms": 2847,
+        "total_ms": 3327
       }
     },
     {
@@ -40,16 +44,20 @@
       "description": "the model writes the velocities as Xdot and gets the analysis at once",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 29170,
         "est_tokens_out": 119,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -62,9 +70,194 @@
       "id": "wedge-xdot-first-call",
       "pending": "",
       "timing": {
-        "claim_check_ms": 411,
-        "tool_ms": 873,
-        "total_ms": 1300
+        "claim_check_ms": 435,
+        "tool_ms": 946,
+        "total_ms": 1399
+      }
+    },
+    {
+      "category": "recovery",
+      "comparable": false,
+      "description": "format latex is stated for text input: the loop re-reads it as text, no model round trip",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 4,
+        "contradicted": 0,
+        "est_tokens_in": 29198,
+        "est_tokens_out": 124,
+        "evidence_pct": 100.0,
+        "format_switches": 1,
+        "formulas": 4,
+        "input_adjusted": 0,
+        "math_ok": true,
+        "model_calls": 2,
+        "ok_calls": 1,
+        "recovered": false,
+        "refused_equivalent": 0,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 1,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 0,
+        "valid_calls": 1,
+        "with_evidence": 4
+      },
+      "id": "wedge-wrong-format-recovered",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": 443,
+        "tool_ms": 1394,
+        "total_ms": 1854
+      }
+    },
+    {
+      "category": "recovery",
+      "comparable": false,
+      "description": "the coordinates as one string and the formula under the name `expression`",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 4,
+        "contradicted": 0,
+        "est_tokens_in": 29240,
+        "est_tokens_out": 124,
+        "evidence_pct": 100.0,
+        "format_switches": 0,
+        "formulas": 4,
+        "input_adjusted": 1,
+        "math_ok": true,
+        "model_calls": 2,
+        "ok_calls": 1,
+        "recovered": false,
+        "refused_equivalent": 0,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 1,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 0,
+        "valid_calls": 1,
+        "with_evidence": 4
+      },
+      "id": "wedge-shape-errors-repaired",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": 442,
+        "tool_ms": 932,
+        "total_ms": 1391
+      }
+    },
+    {
+      "category": "notation",
+      "comparable": false,
+      "description": "xddot could be the acceleration of x or the velocity of xd: refused with both readings",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 0,
+        "contradicted": 0,
+        "est_tokens_in": 43088,
+        "est_tokens_out": 73,
+        "evidence_pct": null,
+        "format_switches": 0,
+        "formulas": 0,
+        "input_adjusted": 0,
+        "math_ok": true,
+        "model_calls": 3,
+        "ok_calls": 1,
+        "recovered": true,
+        "refused_equivalent": 0,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 2,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 0,
+        "valid_calls": 2,
+        "with_evidence": 0
+      },
+      "id": "ambiguous-spelling-is-refused-then-fixed",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": null,
+        "tool_ms": 966,
+        "total_ms": 983
+      }
+    },
+    {
+      "category": "recovery",
+      "comparable": false,
+      "description": "the same unreadable input again, only wrapped in dollars: refused as equivalent, not run",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 0,
+        "contradicted": 0,
+        "est_tokens_in": 25734,
+        "est_tokens_out": 36,
+        "evidence_pct": null,
+        "format_switches": 0,
+        "formulas": 0,
+        "input_adjusted": 0,
+        "math_ok": true,
+        "model_calls": 3,
+        "ok_calls": 0,
+        "recovered": false,
+        "refused_equivalent": 1,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 2,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 0,
+        "valid_calls": 2,
+        "with_evidence": 0
+      },
+      "id": "equivalent-failed-call-is-not-rerun",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": null,
+        "tool_ms": 850,
+        "total_ms": 865
+      }
+    },
+    {
+      "category": "recovery",
+      "comparable": false,
+      "description": "a derivative that does not exist is an answer; the same request again is not run",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 0,
+        "contradicted": 0,
+        "est_tokens_in": 25772,
+        "est_tokens_out": 69,
+        "evidence_pct": null,
+        "format_switches": 0,
+        "formulas": 0,
+        "input_adjusted": 0,
+        "math_ok": true,
+        "model_calls": 3,
+        "ok_calls": 0,
+        "recovered": false,
+        "refused_equivalent": 1,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 2,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 0,
+        "valid_calls": 2,
+        "with_evidence": 0
+      },
+      "id": "unsupported-is-not-retried",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": null,
+        "tool_ms": 480,
+        "total_ms": 496
       }
     },
     {
@@ -73,16 +266,20 @@
       "description": "the Lagrangian is typed with Xdot, Ydot, sdot: routed, one model call",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 15052,
         "est_tokens_out": 65,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 1,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 1,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -95,9 +292,9 @@
       "id": "wedge-routed-xdot",
       "pending": "",
       "timing": {
-        "claim_check_ms": 407,
+        "claim_check_ms": 431,
         "tool_ms": 0,
-        "total_ms": 1294
+        "total_ms": 1367
       }
     },
     {
@@ -106,16 +303,20 @@
       "description": "the recorded failure: a dotted tool name, text syntax sent as LaTeX, a retry in LaTeX, then the answer",
       "deterministic": {
         "aliases": 1,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 59866,
         "est_tokens_out": 219,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 4,
         "ok_calls": 2,
         "recovered": true,
+        "refused_equivalent": 1,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 3,
@@ -128,9 +329,9 @@
       "id": "pendulum-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 967,
-        "tool_ms": 1783,
-        "total_ms": 2769
+        "claim_check_ms": 1031,
+        "tool_ms": 1904,
+        "total_ms": 2954
       }
     },
     {
@@ -139,16 +340,20 @@
       "description": "the request is routed: one rule-chosen tool call, then the model writes the answer",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 14923,
         "est_tokens_out": 92,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 1,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 1,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -161,9 +366,9 @@
       "id": "pendulum-routed-latex",
       "pending": "",
       "timing": {
-        "claim_check_ms": 957,
+        "claim_check_ms": 1011,
         "tool_ms": 0,
-        "total_ms": 1876
+        "total_ms": 1982
       }
     },
     {
@@ -172,16 +377,20 @@
       "description": "the same request with theta_dot / phi_dot written as text",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 14913,
         "est_tokens_out": 92,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 1,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 1,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -194,9 +403,9 @@
       "id": "pendulum-routed-text-velocities",
       "pending": "",
       "timing": {
-        "claim_check_ms": 949,
+        "claim_check_ms": 1016,
         "tool_ms": 0,
-        "total_ms": 1862
+        "total_ms": 1974
       }
     },
     {
@@ -205,16 +414,20 @@
       "description": "no routing: the model sends text syntax straight to analyze_lagrangian",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 28990,
         "est_tokens_out": 131,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -227,9 +440,9 @@
       "id": "pendulum-model-calls-with-text",
       "pending": "",
       "timing": {
-        "claim_check_ms": 953,
-        "tool_ms": 893,
-        "total_ms": 1861
+        "claim_check_ms": 1008,
+        "tool_ms": 935,
+        "total_ms": 1960
       }
     },
     {
@@ -238,16 +451,20 @@
       "description": "the model sends `L = ...` with theta_dot, as a model often does",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 29017,
         "est_tokens_out": 133,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 1,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -260,9 +477,9 @@
       "id": "pendulum-assignment-and-greek",
       "pending": "",
       "timing": {
-        "claim_check_ms": 950,
-        "tool_ms": 893,
-        "total_ms": 1859
+        "claim_check_ms": 1067,
+        "tool_ms": 943,
+        "total_ms": 2027
       }
     },
     {
@@ -271,16 +488,20 @@
       "description": "a correct answer containing one wrong equation: the wrong one must not be backed",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
         "est_tokens_in": 29004,
         "est_tokens_out": 138,
         "evidence_pct": 75.0,
+        "format_switches": 0,
         "formulas": 4,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -293,9 +514,9 @@
       "id": "pendulum-wrong-sign-stays-unbacked",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1521,
-        "tool_ms": 878,
-        "total_ms": 2415
+        "claim_check_ms": 1624,
+        "tool_ms": 957,
+        "total_ms": 2597
       }
     },
     {
@@ -304,16 +525,20 @@
       "description": "a one-dimensional oscillator: energy is conserved",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
         "est_tokens_in": 28672,
         "est_tokens_out": 45,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -326,9 +551,9 @@
       "id": "cyclic-oscillator",
       "pending": "",
       "timing": {
-        "claim_check_ms": 469,
-        "tool_ms": 478,
-        "total_ms": 963
+        "claim_check_ms": 500,
+        "tool_ms": 501,
+        "total_ms": 1020
       }
     },
     {
@@ -337,16 +562,20 @@
       "description": "the model prefixes the tool name with `functions.`",
       "deterministic": {
         "aliases": 1,
+        "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
         "est_tokens_in": 17214,
         "est_tokens_out": 26,
         "evidence_pct": 50.0,
+        "format_switches": 0,
         "formulas": 2,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -359,9 +588,9 @@
       "id": "simplify-with-functions-prefix",
       "pending": "",
       "timing": {
-        "claim_check_ms": 417,
-        "tool_ms": 1012,
-        "total_ms": 1444
+        "claim_check_ms": 433,
+        "tool_ms": 1070,
+        "total_ms": 1519
       }
     },
     {
@@ -370,16 +599,20 @@
       "description": "text syntax in a LaTeX field is refused with the fix; the model corrects it",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 0,
         "contradicted": 0,
-        "est_tokens_in": 25914,
+        "est_tokens_in": 26250,
         "est_tokens_out": 33,
         "evidence_pct": 100.0,
+        "format_switches": 1,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 3,
-        "ok_calls": 1,
-        "recovered": true,
+        "ok_calls": 2,
+        "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 2,
@@ -393,8 +626,45 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 2257,
-        "total_ms": 2272
+        "tool_ms": 4837,
+        "total_ms": 4853
+      }
+    },
+    {
+      "category": "recovery",
+      "comparable": false,
+      "description": "text syntax in a LaTeX field is re-read as text by the loop: one call, no correction round trip",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 0,
+        "contradicted": 0,
+        "est_tokens_in": 17229,
+        "est_tokens_out": 20,
+        "evidence_pct": 100.0,
+        "format_switches": 1,
+        "formulas": 1,
+        "input_adjusted": 0,
+        "math_ok": true,
+        "model_calls": 2,
+        "ok_calls": 1,
+        "recovered": false,
+        "refused_equivalent": 0,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 1,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 0,
+        "valid_calls": 1,
+        "with_evidence": 1
+      },
+      "id": "simplify-text-syntax-recovered",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": null,
+        "tool_ms": 2858,
+        "total_ms": 2874
       }
     },
     {
@@ -403,16 +673,20 @@
       "description": "the host delivers a tool call whose arguments are not JSON; the model is told and sends a valid one",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
         "est_tokens_in": 25791,
         "est_tokens_out": 24,
         "evidence_pct": 50.0,
+        "format_switches": 0,
         "formulas": 2,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 3,
         "ok_calls": 1,
         "recovered": true,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 2,
@@ -425,9 +699,9 @@
       "id": "unreadable-arguments-then-valid",
       "pending": "",
       "timing": {
-        "claim_check_ms": 401,
-        "tool_ms": 1012,
-        "total_ms": 1429
+        "claim_check_ms": 423,
+        "tool_ms": 1061,
+        "total_ms": 1500
       }
     },
     {
@@ -436,16 +710,20 @@
       "description": "the model writes its tool call as text; it is told to send a real call",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 0,
         "contradicted": 0,
         "est_tokens_in": 25698,
         "est_tokens_out": 57,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 3,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -459,8 +737,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 598,
-        "total_ms": 613
+        "tool_ms": 621,
+        "total_ms": 637
       }
     },
     {
@@ -469,16 +747,20 @@
       "description": "a tool that does not exist is refused (never redirected), the model then uses the right one",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 0,
         "contradicted": 0,
         "est_tokens_in": 26042,
         "est_tokens_out": 42,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 3,
         "ok_calls": 1,
         "recovered": true,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 2,
@@ -492,8 +774,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 584,
-        "total_ms": 599
+        "tool_ms": 607,
+        "total_ms": 623
       }
     },
     {
@@ -502,16 +784,20 @@
       "description": "an indefinite integral and its antiderivative",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 0,
         "contradicted": 0,
         "est_tokens_in": 17101,
         "est_tokens_out": 25,
         "evidence_pct": 100.0,
+        "format_switches": 0,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -525,8 +811,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 587,
-        "total_ms": 602
+        "tool_ms": 614,
+        "total_ms": 629
       }
     },
     {
@@ -535,16 +821,20 @@
       "description": "(A+B)^2 for 2x2 matrices keeps the order of products",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
         "est_tokens_in": 21923,
         "est_tokens_out": 57,
         "evidence_pct": 0.0,
+        "format_switches": 0,
         "formulas": 2,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -557,9 +847,9 @@
       "id": "matrix-expansion-noncommuting",
       "pending": "",
       "timing": {
-        "claim_check_ms": 400,
-        "tool_ms": 413,
-        "total_ms": 829
+        "claim_check_ms": 424,
+        "tool_ms": 435,
+        "total_ms": 874
       }
     },
     {
@@ -568,16 +858,20 @@
       "description": "a linear first-order equation solved in closed form",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
         "est_tokens_in": 27037,
         "est_tokens_out": 31,
         "evidence_pct": 0.0,
+        "format_switches": 0,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -590,9 +884,9 @@
       "id": "ode-first-order",
       "pending": "",
       "timing": {
-        "claim_check_ms": 566,
-        "tool_ms": 462,
-        "total_ms": 1044
+        "claim_check_ms": 587,
+        "tool_ms": 492,
+        "total_ms": 1095
       }
     },
     {
@@ -601,16 +895,20 @@
       "description": "the divergence of a scalar times a vector field; vector identities are never sampled",
       "deterministic": {
         "aliases": 0,
+        "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
         "est_tokens_in": 30161,
         "est_tokens_out": 83,
         "evidence_pct": 0.0,
+        "format_switches": 0,
         "formulas": 1,
+        "input_adjusted": 0,
         "math_ok": true,
         "model_calls": 2,
         "ok_calls": 1,
         "recovered": false,
+        "refused_equivalent": 0,
         "routed": 0,
         "stop_reason": "completed",
         "tool_calls": 1,
@@ -623,20 +921,23 @@
       "id": "vector-divergence-product",
       "pending": "",
       "timing": {
-        "claim_check_ms": 401,
-        "tool_ms": 586,
-        "total_ms": 1002
+        "claim_check_ms": 420,
+        "tool_ms": 611,
+        "total_ms": 1048
       }
     }
   ],
   "summary": {
-    "est_tokens_in": 515881,
-    "est_tokens_out": 1646,
+    "est_tokens_in": 686478,
+    "est_tokens_out": 2092,
+    "format_switches": 3,
+    "input_adjusted": 2,
     "invalid_calls": 2,
-    "math_ok": 19,
-    "model_calls": 43,
-    "tool_calls": 26,
-    "trajectories": 19,
+    "math_ok": 25,
+    "model_calls": 58,
+    "refused_equivalent": 5,
+    "tool_calls": 35,
+    "trajectories": 25,
     "unknown_names": 1,
     "unparsed_claims": 0,
     "unsupported_claims": 6

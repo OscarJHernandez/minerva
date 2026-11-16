@@ -86,6 +86,8 @@ MINERVA_TEST_TIER=extended MINERVA_HYPOTHESIS_PROFILE=extended uv run pytest pac
 uv run python scripts/eval_models.py --suite reliability --check-cases   # live multi-turn reliability cases (also `make eval-reliability`; --suite core|reliability|all)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
+uv run python scripts/eval_corruptions.py [--check|--full|--without-cleaning]   # every known model mistake on every benchmark reference call (`make eval-corruptions`; PR tier runs the engine once per operator and tool)
+uv run python scripts/diagnostic_codes.py api.log [--top N --since TS --json]   # most frequent tool failure codes from the API's JSON log: what to normalise next
 uv run python scripts/eval_offline.py [--check|--compare docs/benchmarks/orchestration-offline-baseline.json]   # real loop + tools with a replayed model: tool names, notation, routing, evidence, tokens (`make eval-offline`; regenerate with --json-out/--out after a reviewed change)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --repeat 3 --seed 7 --label NAME \
     --json-out docs/benchmarks/NAME.json --out docs/benchmarks/NAME.md   # real-model run; --compare BASE.json to compare
@@ -144,6 +146,37 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   signals agree (a formula the rule can read as a Lagrangian with unambiguous velocities, and a request for equations of
   motion in the words around it). The call goes through `execute`; if it is not verified it is dropped and the model
   plans. The model writes the answer. Do not route on a keyword alone and do not let a rule compute anything itself.
+- Input layer (`engine notation/`, `agent/mathinput.py`, `agent/arguments.py`; `docs/agent-reliability.md`): what a
+  model sends is read by code before a call is keyed or run, from closed lists, never by guessing. In order: shape
+  repair (`arguments.repair_arguments`: a list of names sent as one string, one equation where a list is wanted, JSON
+  sent as text, a formula under `expression`, a number where text is wanted), transport cleaning
+  (`mathinput.prepare_arguments` over `MATH_FIELDS`, the one list of formula arguments: markdown escapes `\*`, `$`/code
+  fence wrappers, doubled backslashes, Unicode look-alikes, HTML entities, a leading `L =`/`H =`, Greek letters and
+  dotted letters in the syntax of the tool), then the derivative reader (`notation/derivatives.py`: `Xdot`, `X_DOT`,
+  `dX_dt`, `x dot` are the velocity of a *declared* coordinate; the keyword is case-insensitive and the stem exact). A
+  name with two readings, two spellings of one derivative in the same expression, a declared name, or a velocity of an
+  undeclared coordinate is **refused with a typed `InputCode`** and the candidates, never guessed; a LaTeX letter run
+  (`Xdot`) is a product there and is refused with the fix. Every change is a `Normalization` shown to the model
+  (`input cleaned:` / `input:` lines), on the card and in the stored trace (`model_arguments` keeps the raw call). Do not
+  add a rewrite that can change a meaning; add its inverse to `notation/transport.py` `DAMAGE` or the corruption test.
+- Typed diagnostics: a refused input carries `diagnostic` (`InputDiagnostic`: closed `code`, `field`, the user's
+  `symbols`, `suggestions`, `recoverable`) on its report, shown to the model as one `diagnostic: {...}` JSON line, and
+  only the `code` is logged (`reason_code`, vocabulary `tracing.REASON_CODES`). Symbols and suggestions are the user's
+  names: never in a log line. A new refusal gets a code in `notation/models.InputCode` and a test.
+- Recovery (`agent/recovery.py`): a failure is classified (`FailureClass`) and the loop does the one deterministic thing
+  first. A parse error that says the text is of the other syntax (`text_syntax_in_latex`, `unrecognized_derivative`,
+  `latex_in_text`) in a tool with a `format` is run once with the other strict parser (trace `policy: format_switch`; the
+  formula tools take a hidden `format`, default latex). A call equivalent to one that already ran or failed (same tool,
+  same arguments after repair and cleaning, defaults filled, `format: auto` resolved: `recovery.canonical_key`) is not run
+  again (`policy: refused_equivalent`); a tool that fails `AgentLimits.max_failures_per_tool` (3) times in a row is not
+  run again that turn (`policy: budget_exhausted`); a failure with a diagnostic code not seen before for that tool is
+  progress. Unsupported mathematics is an answer, never retried with equivalent input. Nothing here touches verification:
+  a re-run goes through the same checks, and a candidate that was not verified stays withheld.
+- Corruption test (`agent/evaluation/corruption.py`, `scripts/eval_corruptions.py`, `make eval-corruptions`, report
+  `docs/benchmarks/corruption.md`): every known model mistake (the inverses of the cleaning rules, shape errors, velocity
+  spellings) applied to every reference call of the benchmark must give the clean result or a typed refusal. A different
+  verified result or an untyped failure is a defect and both stay at zero. A registered tool needs a reference call or a
+  stated reason in `corruption.EXEMPT`.
 - Turn lifecycle in the chat: `SendMessage.mode` is `new`, `retry` (answer the last user message again) or `edit` (replace its text
   and answer again); the reply after it is deleted and the user message is kept, never stored twice (equation numbers are not
   reused: the counter is a high-water mark, and a reference to a number whose message was replaced is told "no longer exists"). A

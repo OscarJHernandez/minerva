@@ -2007,6 +2007,10 @@ capabilities:
       and finds constants of motion by cyclic coordinates, time translation and rotations of coordinate pairs.
       Each constant is verified: its time derivative is zero on the equations of motion.
     limits:
+      - Derivatives of a declared coordinate may be written `\dot{q}`, `q_dot`, `qdot`, `dq_dt` or `q dot`; the
+        result says how each was read. A name with two readings (`xddot` with coordinates `x` and `xd`), two spellings
+        of one velocity in the same expression, or a velocity of a coordinate that was not declared is refused with
+        the candidates, never guessed.
       - Symmetries that hold only up to a total time derivative (Galilean boosts) are not searched for, and the
         result says so. Hidden symmetries such as the Runge–Lenz vector are not found here; the separate search
         for more constants of motion looks for them in a declared family.
@@ -2022,6 +2026,12 @@ capabilities:
         op: lagrangian
         input: '\frac12 m(\dot{x}^2 + \dot{y}^2) + \frac{k}{\sqrt{x^2+y^2}}'
         coordinates: [x, y]
+      - id: lagrangian-spelled-velocities
+        title: Velocities written Xdot, Ydot, sdot are read as the velocities of X, Y, s
+        op: lagrangian
+        format: text
+        input: "(M+m)*(Xdot^2 + Ydot^2)/2 + m*sdot^2/2 + m*sdot*(Xdot*cos(alpha) + Ydot*sin(alpha)) - (M+m)*g*Y - m*g*s*sin(alpha)"
+        coordinates: [X, Y, s]
       - id: lagrangian-time-dependent
         title: Explicit time dependence removes the energy
         op: lagrangian
