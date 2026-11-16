@@ -63,7 +63,13 @@ numbers.
 ## What is never done
 
 - No initial condition, parameter value, interval or small parameter is invented. The model must ask, and the
-  tool refuses to run without the numbers.
+  tool refuses to run without the numbers. The one exception is a user who tells the assistant to choose the numbers
+  of a *numerical run* ("you choose", "something reasonable"): it may, it lists the values, and the card says "Values
+  chosen by the assistant at your request". Numbers that are in none of the user's messages are labelled too. The small
+  parameter of a perturbation is never delegated.
+- A system written with names such as `y1`, `y2` is sent with `format: "text"`: `y1' = y2`, `diff(y1, t)` or
+  `dy1/dt = y2` (the last only for a name listed in `unknowns`, because otherwise it is a product of letters). In LaTeX
+  a name is one letter with an optional subscript (`y_1`); `y1` there is refused with that advice.
 - A candidate that fails a check is dropped, not shown with a warning. The statuses are the usual ones: `ok`,
   `conditional`, `not_verified`, `unsupported`, `parse_error`, `resource_limit`.
 - Numerical agreement is evidence, not proof; text says "proved" only for a symbolic zero.

@@ -652,6 +652,16 @@
       "outcome": "correct"
     },
     {
+      "id": "ode-named-first-order-system",
+      "category": "ode",
+      "source": "closed form: y1 = cos t, y2 = -sin t (written dy1/dt = y2, dy2/dt = -y1)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
       "id": "ode-lotka-volterra-invariant",
       "category": "ode",
       "source": "Lotka-Volterra: d x - c ln x + b y - a ln y is constant along solutions",

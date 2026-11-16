@@ -197,3 +197,50 @@
       reference:
         tool: ode_solve_symbolic
         arguments: {equations: ["y''(x) = y(x)"], independent: x, method: closed_form}
+
+- id: numbers-handed-over-are-chosen-and-said
+  category: physics
+  prompt: 'The independent variable is t. Solve $\ddot{x} + x = 0$ numerically. You choose the numbers, something reasonable.'
+  expected_tool: ode_solve_numerical
+  also_ok: [ode_analyze]
+  args: {present: [equations, conditions, t_end]}
+  max_calls: 3
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_numerical
+    arguments:
+      equations: ["x'' + x = 0"]
+      independent: t
+      conditions: ["x(0) = 1", "x'(0) = 0"]
+      t_end: 10
+  reply_matches: '\d'
+  source: "AGENTS.md: a user who hands the numbers over lets the assistant choose; the card and the reply name the values"
+
+- id: derivative-of-a-functional-is-refused-not-improvised
+  category: false_claim
+  prompt: 'Take the verified derivative with respect to $y_0$ of $T(y_0) = \int_0^{y_0} \frac{\sqrt{1+(x^\prime)^2}}{\sqrt{2g(y_0-y)}}\,dy$.'
+  expected_tool: ask
+  also_ok: [differentiate, variation]
+  max_calls: 2
+  reply_matches: 'not supported|cannot|can.t|unsupported|could not|variation|functional'
+  reply_forbids: 'the derivative is \$|= \\frac\{d T\}'
+  source: "docs/ode.md and AGENTS.md: a derivative of an integral over an unknown function is outside what Minerva verifies; the assistant says so instead of deriving it"
+
+- id: linearise-about-a-circular-orbit-uses-expand-motion
+  category: multistep
+  prompt: 'For the radial Lagrangian $\frac12 m\dot{r}^2 - \frac{p^2}{2 m r^2} + \frac{G M m}{r}$ (p, G, M and m positive), linearise the equation of motion about the circular orbit r = p^2/(G M m^2).'
+  expected_tool: expand_motion
+  also_ok: [analyze_lagrangian]
+  forbid: [substitute]
+  args: {includes: {coordinates: [r]}}
+  max_calls: 3
+  expect_card: {status: ok}
+  reference:
+    tool: expand_motion
+    arguments:
+      lagrangian: '\frac12 m\dot{r}^2 - \frac{p^2}{2 m r^2} + \frac{G M m}{r}'
+      coordinates: [r]
+      equilibrium: {r: 'p^2/(G*M*m^2)'}
+      order: 1
+      assumptions: {p: [positive], G: [positive], M: [positive], m: [positive]}
+  source: "engine expansion check (omega^2 = G^4 M^4 m^6 / p^6, verified); the linearisation is the tool's, not a hand derivation"

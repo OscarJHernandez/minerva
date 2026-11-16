@@ -260,6 +260,34 @@ def _coupled_linear(e: Engine) -> tuple[str, str]:
     return _verdict("correct", True, agrees, "trajectory vs the matrix exponential")
 
 
+def _named_system(e: Engine) -> tuple[str, str]:
+    """A system written the way a model writes one: `dy1/dt`, names `y1`, `y2`, text format."""
+    r = e.ode_solve_numerical(
+        OdeNumericInput(
+            equations=["dy1/dt = y2", "dy2/dt = -y1"],
+            format="text",
+            independent="t",
+            unknowns=["y1", "y2"],
+            conditions=[
+                {"unknown": "y1", "at": 0, "value": 1},  # type: ignore[list-item]
+                {"unknown": "y2", "at": 0, "value": 0},  # type: ignore[list-item]
+            ],
+            t_end=6,
+            rtol=1e-10,
+            atol=1e-12,
+        )
+    )
+    if r.status.value != "ok" or len(r.series) != 2:
+        return _verdict("correct", False, None, f"status {r.status.value}")
+    # cos t and -sin t solve it with y1(0) = 1, y2(0) = 0 (plain arithmetic, no ODE solver)
+    last = r.t[-1]
+    agrees = (
+        abs(r.series[0].values[-1] - mp.cos(last)) < 1e-7
+        and abs(r.series[1].values[-1] + mp.sin(last)) < 1e-7
+    )
+    return _verdict("correct", True, bool(agrees), "trajectory vs cos t and -sin t")
+
+
 def _lotka_volterra(e: Engine) -> tuple[str, str]:
     """V = d x - c ln x + b y - a ln y is constant along solutions of the Lotka-Volterra equations."""
     a, b, c, d = 1.0, 0.5, 0.75, 0.25
@@ -530,6 +558,13 @@ ODE_PROBLEMS: list[Problem] = [
         "mpmath.expm on the constant matrix of x' = Ax",
         "correct",
         _coupled_linear,
+    ),
+    Problem(
+        "ode-named-first-order-system",
+        "ode-coupled",
+        "closed form: y1 = cos t, y2 = -sin t (written dy1/dt = y2, dy2/dt = -y1)",
+        "correct",
+        _named_system,
     ),
     Problem(
         "ode-lotka-volterra-invariant",
