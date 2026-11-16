@@ -61,6 +61,7 @@ from .toolsets import (
     grow,
     prompt_for,
     requested_groups,
+    resolve_tool_name,
     tool_names,
 )
 from .tracing import (
@@ -203,6 +204,21 @@ def _latest_user_message(history: Sequence[dict[str, Any]]) -> tuple[str, bool]:
 
 def _ms(since: float) -> int:
     return int((time.monotonic() - since) * 1000)
+
+
+def _resolve_calls(calls: Sequence[ToolCall]) -> tuple[list[ToolCall], dict[str, tuple[str, str]]]:
+    """Calls with accepted aliases replaced by the registered name; `{call id: (requested, kind)}`."""
+    resolved: list[ToolCall] = []
+    aliases: dict[str, tuple[str, str]] = {}
+    for call in calls:
+        name, kind = resolve_tool_name(call.name, TOOLS) if call.name else (call.name, None)
+        if kind is not None:
+            aliases[call.id] = (call.name, kind)
+            call = ToolCall(
+                name=name, arguments=call.arguments, id=call.id, malformed=call.malformed
+            )
+        resolved.append(call)
+    return resolved, aliases
 
 
 def _sanitized(name: str) -> str:
@@ -626,7 +642,8 @@ async def _run_turn(
                 tokens_in=usage.prompt_tokens if usage else None,
                 tokens_out=usage.completion_tokens if usage else None,
             )
-            text, calls = result.text, result.calls
+            text = result.text
+            calls, aliases = _resolve_calls(result.calls)
 
             if result.timed_out:
                 stop = StopReason.TIME_LIMIT
@@ -981,6 +998,8 @@ async def _run_turn(
                         engine_ms=engine_ms,
                         result_id=result_id,
                         model_arguments=call.arguments if arguments != call.arguments else None,
+                        requested_name=aliases[call.id][0] if call.id in aliases else None,
+                        alias_kind=aliases[call.id][1] if call.id in aliases else None,
                         assumptions_dropped=dropped,
                         verified_latex=list(output.known_latex),
                         quoted=dict(output.quoted_latex),

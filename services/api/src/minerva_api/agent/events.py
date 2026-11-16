@@ -143,6 +143,10 @@ class TraceStep(BaseModel):
     # kept so later turns mark formulas the same way, instead of guessing from the text.
     verified_latex: list[str] = Field(default_factory=list)
     quoted: dict[str, str] = Field(default_factory=dict)
+    # The name the model wrote when it was an accepted alias of `name` (`mechanics.analyze_lagrangian`),
+    # and how it was recognised (`toolsets.ALIAS_KINDS`). Absent when the name was already exact.
+    requested_name: str | None = None
+    alias_kind: str | None = None
 
 
 class Block(BaseModel):

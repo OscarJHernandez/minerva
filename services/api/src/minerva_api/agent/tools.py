@@ -3060,7 +3060,10 @@ def run_load_tools(args: LoadToolsArgs, ctx: ToolContext) -> ToolOutput:
             arguments_valid=False,
         )
     tools = [t for g in found for t in GROUP_TOOLS[g]]
-    message = f"Loaded {', '.join(found)}: {', '.join(tools)} are available now."
+    message = (
+        f"Loaded the {' and '.join(found)} group(s); the tools are now available. Call them by "
+        f"exactly these names, nothing before or after: {', '.join(tools)}."
+    )
     if unknown:
         message += f" Unknown groups ignored: {', '.join(map(str, unknown))}."
     card = Card(
@@ -3971,7 +3974,8 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     if tool is None:
         return _error(
             name,
-            f"unknown tool {name!r}; available: {', '.join(TOOLS)}",
+            f"unknown tool {name!r}. Call a tool by exactly its name, with no group or namespace "
+            f"in front of it. Tools: {', '.join(TOOLS)}.",
             "unknown_tool",
             arguments_valid=False,
         )

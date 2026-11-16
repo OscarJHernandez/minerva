@@ -50,7 +50,7 @@ def test_the_tools_are_three_and_say_who_chooses_the_numbers() -> None:
 def test_the_prompt_tells_the_model_to_analyse_first_and_not_to_pick_numbers() -> None:
     # Rules are numbered when the prompt is assembled, so find this one by its text.
     rule = SYSTEM_PROMPT[SYSTEM_PROMPT.index("For an ordinary differential equation") :]
-    rule = re.split(r"\n\d+\. |\nTools: ", rule)[0]
+    rule = re.split(r"\n\d+\. |\n[A-Z][a-z]+ tools \(call", rule)[0]
     for fragment in (
         "`ode_analyze` first",
         "Minerva's, not yours",
