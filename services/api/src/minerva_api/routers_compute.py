@@ -1210,6 +1210,7 @@ def rewrite(
         settings,
         body.input,
         body.part or "",
+        body.target or "",
         *body.by,
         body.selection.expected_latex if body.selection else "",
     )
@@ -1230,6 +1231,7 @@ def rewrite(
         rule=rule,
         reverse=body.reverse,
         by=body.by,
+        target=body.target,
         debug=settings.debug_compute,
     )
     _log_step("rewrite", user, result.status.value, result)
@@ -1244,6 +1246,7 @@ def rewrite(
             "part": body.part,
             "occurrence": body.occurrence,
             "by": body.by,
+            "target": body.target,
             "selection": body.selection.model_dump() if body.selection else None,
         }
         out.calculation_id = _save(

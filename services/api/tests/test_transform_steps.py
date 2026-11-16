@@ -284,6 +284,122 @@ def test_nothing_is_saved_when_not_asked_and_other_users_cannot_join(client: Tes
     post(other, "isolate", 404, input="x = 1", variable="x", derivation_id=d)
 
 
+# --- "rewrite as": a form the user types, verified against the whole expression --------------------------
+def rewrite_as(c: TestClient, text: str, target: str, expect: int = 200, **more: object) -> dict:  # type: ignore[type-arg]
+    return post(
+        c, "rewrite", expect, input=text, format="text", action="replace", target=target, **more
+    )
+
+
+def test_rewrite_as_accepts_a_true_form_and_refuses_a_false_one(authed: TestClient) -> None:
+    ok = rewrite_as(authed, "x**4 + y**4", "(x**2 + y**2)**2 - 2*x**2*y**2")
+    assert ok["status"] == "ok" and ok["verification"]["passed"]
+    assert ok["steps"][0]["action"] == "replace" and ok["steps"][0]["name"] == "rewrite as"
+    # (x+y)^2 differs from x^2 + y^2 by 2xy: not an identity, so nothing is shown
+    bad = rewrite_as(authed, "x**2 + y**2", "(x + y)**2")
+    assert bad["status"] == "not_verified" and bad["result_text"] is None
+    assert bad["calculation_id"] is not None  # recorded as a refused step, never as a result
+
+
+def test_rewrite_as_a_part_and_with_bad_input(authed: TestClient) -> None:
+    part = rewrite_as(
+        authed, "(x**2 + y**2)**2 - 2*x**2*y**2", "(x + y)**2 - 2*x*y", part="x**2 + y**2"
+    )
+    assert part["status"] == "ok"
+    assert parse_text(part["result_text"]) == parse_text("((x + y)**2 - 2*x*y)**2 - 2*x**2*y**2")
+    assert rewrite_as(authed, "x + y", "x +* y")["status"] == "parse_error"
+    # a target is required for `replace` and refused for the others
+    post(authed, "rewrite", 422, input="x", format="text", action="replace")
+    post(authed, "rewrite", 422, input="x", format="text", action="expand", target="x")
+
+
+def test_rewrite_as_keeps_the_restriction_of_a_cancelled_denominator(authed: TestClient) -> None:
+    cancelled = post(
+        authed, "rewrite", input="(x**3 - y**3)/(x - y)", format="text", action="cancel"
+    )
+    assert cancelled["status"] == "ok" and cancelled["restrictions_latex"] == [r"x - y \neq 0"]
+
+
+def chain(c: TestClient, d: str, first: str, moves: list[tuple[str, dict[str, object]]]) -> dict:  # type: ignore[type-arg]
+    """Run `moves` one after another, each continuing the result of the last."""
+    text, parent, out = first, None, {}
+    for path, body in moves:
+        extra = {"parent_id": parent} if parent else {}
+        out = post(c, path, input=text, format="text", derivation_id=d, **body, **extra)
+        assert out["status"] == "ok", out
+        text, parent = out["result_text"], out["calculation_id"]
+    return out
+
+
+PREMISES = ["x + y = 5", "x*y = 6"]
+
+
+def test_part_a_x4_plus_y4_is_97_by_existing_steps(authed: TestClient) -> None:
+    d = new_derivation(authed)
+    last = chain(
+        authed,
+        d,
+        "x**4 + y**4",
+        [
+            ("rewrite", {"action": "replace", "target": "(x**2 + y**2)**2 - 2*x**2*y**2"}),
+            (
+                "rewrite",
+                {"action": "replace", "part": "x**2 + y**2", "target": "(x + y)**2 - 2*x*y"},
+            ),
+            ("substitute", {"relations": PREMISES}),
+        ],
+    )
+    assert last["result_text"] == "97" and last["evidence"] == "conditional"
+    assert [p["text"] for p in last["given"]] == ["x + y = 5", "x*y = 6"]
+    assert len(authed.get(f"/v1/derivations/{d}").json()["steps"]) == 3
+
+
+def test_part_b_is_19_and_keeps_x_minus_y_nonzero(authed: TestClient) -> None:
+    d = new_derivation(authed)
+    last = chain(
+        authed,
+        d,
+        "(x**3 - y**3)/(x - y)",
+        [
+            ("rewrite", {"action": "cancel"}),
+            ("rewrite", {"action": "replace", "target": "(x + y)**2 - x*y"}),
+            ("substitute", {"relations": PREMISES}),
+        ],
+    )
+    assert last["result_text"] == "19" and last["evidence"] == "conditional"
+    stored = authed.get(f"/v1/derivations/{d}").json()["steps"][-1]
+    assert stored["result"]["inherited_domain"]["restrictions_latex"] == [r"x - y \neq 0"]
+    assert "Still required" in last["message"]
+
+
+def test_the_two_parts_branch_from_one_derivation_without_mixing(authed: TestClient) -> None:
+    d = new_derivation(authed)
+    a = post(
+        authed,
+        "rewrite",
+        input="x**4 + y**4",
+        format="text",
+        action="replace",
+        target="(x**2 + y**2)**2 - 2*x**2*y**2",
+        derivation_id=d,
+    )
+    # an unrelated line starts a new root; a branch continues from the first step again
+    b = post(authed, "simplify", input="(x**3 - y**3)/(x - y)", format="text", derivation_id=d)
+    c = post(
+        authed,
+        "rewrite",
+        input="x**4 + y**4",
+        format="text",
+        action="expand",
+        derivation_id=d,
+        parent_id=a["calculation_id"],
+    )
+    steps = {s["id"]: s for s in authed.get(f"/v1/derivations/{d}").json()["steps"]}
+    assert steps[a["calculation_id"]]["parent_id"] is None
+    assert steps[b["calculation_id"]]["parent_id"] is None
+    assert steps[c["calculation_id"]]["parent_id"] == a["calculation_id"]
+
+
 # --- privacy and debug --------------------------------------------------------------------------------------
 def test_logs_carry_counters_and_codes_never_expressions(capsys) -> None:  # type: ignore[no-untyped-def]
     marker = "zzMARKERzz"

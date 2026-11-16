@@ -59,7 +59,7 @@
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]
 #   substitute   input, relations [LaTeX `left = right`], order (given | simultaneous), assumptions
-#   rewrite      input, action (simplify | expand | factor | cancel | collect | rule), part, occurrence, rule, by, assumptions
+#   rewrite      input, action (simplify | expand | factor | cancel | collect | rule | replace), part, occurrence, rule, by, target [the form `replace` rewrites the part as], assumptions
 #   isolate      input (an equation), variable, assumptions
 #   ode_analyze  equations [`left = right`], independent, conditions [`y(0) = 1`], assumptions, detail (structure |
 #                qualitative), parameters {name: number}, window [x_min, x_max, y_min, y_max]
@@ -1660,6 +1660,9 @@ capabilities:
     limits:
       - A part is chosen for one exact expression; if the expression has changed, the choice is refused as stale and
         never applied somewhere else.
+      - Rewrite as takes the form you type and verifies the whole expression against the original (numerically,
+        and symbolically where SymPy finds a zero); a form that is not equal is refused. It is not available for
+        noncommuting symbols.
       - An identity is matched against the chosen part alone, with the same filters as everywhere else (no invented
         roots, reciprocals or the imaginary unit).
       - Collect works on symbols and parts of the expression, at most four, and by commuting ones for noncommuting
@@ -1691,6 +1694,24 @@ capabilities:
         occurrence: 2
         action: rule
         rule: trig.double_sin
+      - id: rewrite-as-typed-form
+        title: Rewrite as a form you type
+        note: >-
+          Nothing is matched or proposed: the part becomes the form you typed, and the whole expression is verified
+          against the original. This is how the x + y = 5, xy = 6 problem starts: x^4 + y^4 first becomes
+          (x^2 + y^2)^2 - 2 x^2 y^2, then x^2 + y^2 becomes (x + y)^2 - 2xy, and a substitution gives 97.
+        op: rewrite
+        input: "x^4 + y^4"
+        format: text
+        action: replace
+        target: "(x^2 + y^2)^2 - 2*x^2*y^2"
+      - id: rewrite-as-wrong-form
+        title: A form that is not equal is refused
+        op: rewrite
+        input: "x^2 + y^2"
+        format: text
+        action: replace
+        target: "(x + y)^2"
       - id: rewrite-collect
         title: Collect terms
         op: rewrite

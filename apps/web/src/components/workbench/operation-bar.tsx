@@ -29,6 +29,7 @@ const OPERATIONS: { id: StepOperation | "identities"; label: string; needsSettin
   { id: "series", label: "Series", needsSettings: true },
   { id: "substitute", label: "Substitute", needsSettings: true },
   { id: "collect", label: "Collect", needsSettings: true },
+  { id: "rewriteAs", label: "Rewrite as", needsSettings: true },
   { id: "isolate", label: "Solve for", needsSettings: true },
   { id: "distribution", label: "Deltas", needsSettings: true },
   { id: "sums", label: "Sums", needsSettings: true },
@@ -188,6 +189,18 @@ export function OperationBar({
                 placeholder="x, y"
                 maxLength={200}
                 className={`${FIELD} w-40 font-mono`}
+              />
+            </Field>
+          )}
+          {selected === "rewriteAs" && (
+            <Field label="rewrite the chosen part (or all of it) as">
+              <input
+                value={settings.rewriteAs}
+                onChange={(e) => set({ rewriteAs: e.target.value })}
+                aria-label="Rewrite as"
+                placeholder="(x+y)^2 - 2xy"
+                maxLength={2000}
+                className={`${FIELD} w-64 font-mono`}
               />
             </Field>
           )}

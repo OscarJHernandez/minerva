@@ -187,6 +187,26 @@ describe("Substitute", () => {
   });
 });
 
+describe("Rewrite as", () => {
+  it("sends the typed form, refuses an empty one, and labels the step", async () => {
+    render(<Workbench />);
+    type("x^4 + y^4");
+    fireEvent.click(screen.getByRole("button", { name: "Rewrite as" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Type the form to rewrite it as");
+    expect(api.rewrite).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Rewrite as"), {
+      target: { value: "(x^2 + y^2)^2 - 2 x^2 y^2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    await screen.findByRole("listitem", { name: /Step 1: Rewrite as/ });
+    expect(vi.mocked(api.rewrite).mock.calls[0]?.[1]).toMatchObject({
+      action: "replace",
+      target: "(x^2 + y^2)^2 - 2 x^2 y^2",
+    });
+  });
+});
+
 describe("Collect and Solve for", () => {
   it("collects by the listed things", async () => {
     render(<Workbench />);
@@ -269,6 +289,20 @@ describe("Part", () => {
     fireEvent.click(screen.getByRole("button", { name: "List parts" }));
     await screen.findByLabelText("Parts");
     expect(vi.mocked(api.subterms).mock.calls[0]?.[1]).toEqual({ find: "x^2 - 1" });
+  });
+
+  it("rewrites the chosen part only", async () => {
+    render(<Workbench />);
+    type("(x+1)^2 (y+1)^2");
+    await chooseSecond();
+    fireEvent.click(screen.getByRole("button", { name: "Rewrite as" }));
+    fireEvent.change(screen.getByLabelText("Rewrite as"), { target: { value: "x + 1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    await screen.findByRole("listitem", { name: /Step 1/ });
+    expect(vi.mocked(api.rewrite).mock.calls[0]?.[1]).toMatchObject({
+      action: "replace",
+      selection: { path: [1], expected_latex: "x + 1" },
+    });
   });
 
   it("drops the choice when the expression changes, because the path no longer means the same", async () => {

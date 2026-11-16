@@ -1222,12 +1222,17 @@ def run_rewrite(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict
         entry = kb.get(spec["rule"])
         rule = entry.rule if entry is not None else None
     r = engine.rewrite_at(
-        ExpressionInput(input=spec["input"], assumptions=spec.get("assumptions") or {}),
+        ExpressionInput(
+            input=spec["input"],
+            format=_syntax(spec),  # type: ignore[arg-type]
+            assumptions=spec.get("assumptions") or {},
+        ),
         spec["action"],
         part=spec.get("part"),
         occurrence=spec.get("occurrence"),
         rule=rule,
         by=spec.get("by") or [],
+        target=spec.get("target"),
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []

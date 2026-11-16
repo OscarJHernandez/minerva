@@ -113,7 +113,10 @@ class RewriteRequest(Linked):
     """Apply one move to one part. The part is a `selection` from `subterms`, or typed (`part`, with
     `occurrence` if it appears more than once); neither means the whole expression."""
 
-    action: Literal["simplify", "expand", "factor", "cancel", "collect", "rule"]
+    action: Literal["simplify", "expand", "factor", "cancel", "collect", "rule", "replace"]
+    # `replace` ("rewrite as"): the form the user wants the part to become. It is verified against the
+    # whole expression, never trusted.
+    target: str | None = Field(default=None, min_length=1, max_length=2000)
     rule_id: str | None = Field(default=None, min_length=1, max_length=128)
     reverse: bool = False
     selection: Selection | None = None
@@ -127,6 +130,10 @@ class RewriteRequest(Linked):
     def _consistent(self) -> RewriteRequest:
         if (self.action == "rule") != (self.rule_id is not None):
             raise ValueError("name the identity (rule_id) exactly when the action is `rule`")
+        if (self.action == "replace") != (self.target is not None):
+            raise ValueError(
+                "give the form to rewrite as (target) exactly when the action is `replace`"
+            )
         if self.selection is not None and self.part is not None:
             raise ValueError("choose the part with `selection` or `part`, not both")
         if self.action == "collect" and not self.by:

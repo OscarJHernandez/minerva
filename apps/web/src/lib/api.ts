@@ -137,7 +137,9 @@ export interface PartSelection {
 }
 
 export interface RewriteBody {
-  action: "simplify" | "expand" | "factor" | "cancel" | "collect" | "rule";
+  action: "simplify" | "expand" | "factor" | "cancel" | "collect" | "rule" | "replace";
+  /** `replace` ("rewrite as"): the form the part should become; the server verifies it. */
+  target?: string;
   rule_id?: string;
   reverse?: boolean;
   selection?: PartSelection;

@@ -578,6 +578,10 @@ export function Workbench() {
       void addStep(operation, (c) =>
         api.rewrite(c, { action: "collect", by: collectTargets(settings.collectBy), selection }),
       );
+    else if (operation === "rewriteAs")
+      void addStep(operation, (c) =>
+        api.rewrite(c, { action: "replace", target: settings.rewriteAs.trim(), selection }),
+      );
     else if (operation === "isolate")
       void addStep(operation, (c) => api.isolate(c, settings.solveFor));
     else if (operation === "differentiate")

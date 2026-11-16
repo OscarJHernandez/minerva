@@ -561,7 +561,7 @@ export interface Premise {
 }
 
 export interface StepRecord {
-  action: "substitute" | "builtin" | "rule" | "collect" | "peel" | "polynomial";
+  action: "substitute" | "builtin" | "rule" | "replace" | "collect" | "peel" | "polynomial";
   name: string;
   direction: "forward" | "reverse" | null;
   matched_latex: string | null;

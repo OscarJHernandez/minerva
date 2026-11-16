@@ -30,6 +30,7 @@ export type StepOperation =
   | "distribution"
   | "substitute"
   | "collect"
+  | "rewriteAs"
   | "isolate"
   | "sums"
   | "expectation";
@@ -47,6 +48,8 @@ export interface Settings {
   relationOrder: "" | "given" | "simultaneous";
   /** What to collect by, separated by commas. */
   collectBy: string;
+  /** "Rewrite as": the form the chosen part (or the whole expression) is to become, written like it. */
+  rewriteAs: string;
   /** The unknown to solve for. */
   solveFor: string;
   /** Distribution step: what to do with the deltas and steps. */
@@ -73,6 +76,7 @@ export const DEFAULT_SETTINGS: Settings = {
   relations: "",
   relationOrder: "",
   collectBy: "x",
+  rewriteAs: "",
   solveFor: "x",
   distAction: "simplify",
   endpoint: "",
@@ -161,6 +165,9 @@ export function validateSettings(operation: StepOperation, s: Settings): string 
       return `Collect by at most ${MAX_COLLECT_TARGETS} things.`;
     }
     return null;
+  }
+  if (operation === "rewriteAs") {
+    return s.rewriteAs.trim() ? null : "Type the form to rewrite it as, for example (x+y)^2 - 2xy.";
   }
   if (operation === "isolate") {
     return VARIABLE_PATTERN.test(s.solveFor)
@@ -385,6 +392,7 @@ export function stepLabel(item: HistoryItem): string {
         cancel: "Cancel",
         simplify: "Simplify",
         collect: "Collect terms",
+        replace: "Rewrite as",
       };
       return `${names[action] ?? "Rewrite"}${part}`;
     }

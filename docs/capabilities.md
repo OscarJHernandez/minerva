@@ -1371,7 +1371,7 @@ Replaces the left side of a relation you supply by its right side, one relation 
 - **Expression:** `x + 1`
 - **Relation 1:** `z = 2`
 - **Status:** `unchanged`
-- The left side of no relation occurs in the expression (as SymPy reads it), so nothing was replaced.
+- The left side of no relation occurs in the expression (as SymPy reads it), so nothing was replaced. z does not occur as written, so that relation was not used. Rewrite the expression into a form that contains it (Rewrite as), then substitute.
 
 #### Noncommuting symbols keep their order
 
@@ -1394,6 +1394,7 @@ Applies one move to one part of an expression and leaves the rest alone: expand,
 **Limits**
 
 - A part is chosen for one exact expression; if the expression has changed, the choice is refused as stale and never applied somewhere else.
+- Rewrite as takes the form you type and verifies the whole expression against the original (numerically, and symbolically where SymPy finds a zero); a form that is not equal is refused. It is not available for noncommuting symbols.
 - An identity is matched against the chosen part alone, with the same filters as everywhere else (no invented roots, reciprocals or the imaginary unit).
 - Collect works on symbols and parts of the expression, at most four, and by commuting ones for noncommuting expressions. For noncommuting symbols only expand and collect are supported, on polynomial expressions; every other operation reports that it does not support them.
 - Verification is numerical, and symbolic where SymPy finds a zero; for noncommuting symbols random matrices sized from the degree are used.
@@ -1428,6 +1429,23 @@ Applies one move to one part of an expression and leaves the rest alone: expand,
 - **Result:** $y \sin{\left(2 x \right)} + 2 \sin{\left(x \right)} \cos{\left(x \right)}$
 - **Check:** whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points
 - The same part occurs twice; only the chosen occurrence changes.
+
+#### Rewrite as a form you type
+
+- **Expression:** `x^4 + y^4`
+- **Move:** `replace`
+- **Status:** `ok`
+- **Applied rewrite as to the part:** $x^{4} + y^{4}$
+- **Result:** $- 2 x^{2} y^{2} + \left(x^{2} + y^{2}\right)^{2}$
+- **Check:** whole expression: symbolic zero test passed; numeric check agreed at 20 of 20 points
+- Nothing is matched or proposed: the part becomes the form you typed, and the whole expression is verified against the original. This is how the x + y = 5, xy = 6 problem starts: x^4 + y^4 first becomes (x^2 + y^2)^2 - 2 x^2 y^2, then x^2 + y^2 becomes (x + y)^2 - 2xy, and a substitution gives 97.
+
+#### A form that is not equal is refused
+
+- **Expression:** `x^2 + y^2`
+- **Move:** `replace`
+- **Status:** `not_verified`
+- The part was rewritten but the whole expression could not be verified, so the result is not shown. numeric check found a disagreement
 
 #### Collect terms
 
