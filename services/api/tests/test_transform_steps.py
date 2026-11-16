@@ -245,7 +245,9 @@ def test_a_solution_can_be_continued_with_its_value(authed: TestClient) -> None:
     assert nxt["status"] == "ok" and nxt["result_text"] == "b/a"
     saved = authed.get(f"/v1/derivations/{d}").json()["steps"][-1]
     assert saved["result"]["inherited_domain"]["restrictions_latex"] == [r"a \neq 0"]
-    unsafe = post(
+    # A premise that rewrites a restricted symbol no longer blocks the step (it used to): the
+    # restriction is carried on as it was, and the result stays conditional on the premise.
+    carried = post(
         authed,
         "substitute",
         input=value,
@@ -254,8 +256,22 @@ def test_a_solution_can_be_continued_with_its_value(authed: TestClient) -> None:
         derivation_id=d,
         parent_id=iso["calculation_id"],
     )
-    assert unsafe["status"] == "unsupported"
-    assert unsafe["result_text"] is None
+    assert carried["status"] == "ok" and carried["evidence"] == "conditional"
+    assert "Still required" in carried["message"]
+    stored = authed.get(f"/v1/derivations/{d}").json()["steps"][-1]
+    assert stored["result"]["inherited_domain"]["restrictions_latex"] == [r"a \neq 0"]
+    # ...but premises that say the excluded thing (a = 0 after a != 0) are refused outright
+    contradicted = post(
+        authed,
+        "substitute",
+        input=value,
+        format="text",
+        relations=["a = 0"],
+        derivation_id=d,
+        parent_id=iso["calculation_id"],
+    )
+    assert contradicted["status"] == "unsupported" and contradicted["result_text"] is None
+    assert "contradict" in contradicted["message"]
 
 
 def test_nothing_is_saved_when_not_asked_and_other_users_cannot_join(client: TestClient) -> None:

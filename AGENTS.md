@@ -448,6 +448,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (a log or exponential gives a family in an integer `k_1`); assumptions on the unknown are not used to choose among them. Do not
   weaken `back_substitute`, `forward_probe` or `count_roots`: their tests include a dropped root, an extraneous root, a missing
   branch, a missing integer family and a wrong formula.
+- Substitution and restrictions of earlier steps (`substitute._carry_restrictions`): a continued `substitute` receives the
+  restrictions of its parent chain (e.g. `x - y \neq 0` after cancelling `(x^3-y^3)/(x-y)`). The user's premises never remove
+  one (no "discharge": Minerva does not check them), so each is carried on unchanged and named in the message. A premise
+  that makes the excluded quantity exactly zero (`x = y` after `x - y \neq 0`) is refused, and a restriction that cannot be
+  read is refused rather than dropped. A relation whose left side is not found *as written* says so and points to
+  "Rewrite as" (`x + y` is not found in `x^2 + y^2`; substitution matches syntactic occurrences only).
 - Noncommuting symbols: declared `noncommutative`, allowed only for polynomial expressions in substitute, rewrite (expand, collect by
   commuting targets) and subterms. `Engine._run` refuses them everywhere else, `Builder` refuses them unless asked, and identities are
   checked on random matrices of size `max(3, degree // 2 + 1)` (smaller matrices accept false identities).

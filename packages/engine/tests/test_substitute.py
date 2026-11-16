@@ -77,6 +77,59 @@ def test_a_domain_restriction_is_kept(engine: Engine) -> None:
     assert result.restrictions_latex == [r"x \neq 0"]
 
 
+# --- restrictions of earlier steps are carried, never dropped or removed by premises -------------------------
+PREMISES = ["x + y = 5", "x*y = 6"]
+
+
+def test_part_b_keeps_the_restriction_the_cancellation_introduced(engine: Engine) -> None:
+    """(x+y)^2 - xy comes from cancelling (x^3-y^3)/(x-y): x != y still stands, and the premises are named."""
+    result = engine.substitute(
+        expr("(x+y)^2 - x*y", fmt="text"), PREMISES, inherited_restrictions=[r"x - y \neq 0"]
+    )
+    assert result.status is Status.OK and result.result_text == "19"
+    assert result.evidence == "conditional"
+    assert [p.text for p in result.given] == ["x + y = 5", "x*y = 6"]
+    assert r"x - y \neq 0" in result.message and "Still required" in result.message
+
+
+def test_part_a_reaches_97_from_the_rewritten_form(engine: Engine) -> None:
+    result = engine.substitute(expr("((x+y)^2 - 2*x*y)^2 - 2*x^2*y^2", fmt="text"), PREMISES)
+    assert result.status is Status.OK and result.result_text == "97"
+    assert result.evidence == "conditional"
+
+
+def test_premises_that_contradict_a_restriction_are_refused(engine: Engine) -> None:
+    for relation, restriction in (("x = y", r"x - y \neq 0"), ("x = 1", r"x - 1 \neq 0")):
+        result = engine.substitute(
+            expr("x + y", fmt="text"), [relation], inherited_restrictions=[restriction]
+        )
+        assert result.status is Status.UNSUPPORTED and result.result_text is None
+        assert "contradict" in result.message
+
+
+def test_a_premise_never_removes_a_restriction(engine: Engine) -> None:
+    """x = 2 makes x - 1 equal to 1, but the premise is unchecked: the restriction stays."""
+    result = engine.substitute(
+        expr("x + y", fmt="text"), ["x = 2"], inherited_restrictions=[r"x - 1 \neq 0"]
+    )
+    assert result.status is Status.OK and result.result_text == "y + 2"
+    assert r"x - 1 \neq 0" in result.message and "Still required" in result.message
+
+
+def test_an_unreadable_restriction_is_refused_not_dropped(engine: Engine) -> None:
+    result = engine.substitute(
+        expr("x + y", fmt="text"), ["x = 2"], inherited_restrictions=[r"x \neq"]
+    )
+    assert result.status is Status.UNSUPPORTED
+
+
+def test_a_left_side_that_is_not_there_as_written_points_to_rewrite_as(engine: Engine) -> None:
+    result = engine.substitute(expr("x^2 + y^2", fmt="text"), ["x + y = 5"])
+    assert result.status is Status.UNCHANGED and result.reason is Reason.PATTERN_NOT_FOUND
+    assert "does not occur as written" in result.message and "Rewrite as" in result.message
+    assert "x + y" in result.message
+
+
 # --- several relations: the order is part of the answer ---------------------------------------------------------
 def test_relations_that_do_not_interact_need_no_order(engine: Engine) -> None:
     result = engine.substitute(expr("a b + c"), ["a = 2 c", "b = 3"])
