@@ -30,7 +30,13 @@ describe("untilLastUser", () => {
 
 describe("retryLabel", () => {
   it("says Retry for a reply that ended early and Regenerate for a finished one", () => {
-    for (const reason of ["model_error", "time_limit", "stopped", "malformed_output"]) {
+    for (const reason of [
+      "model_error",
+      "time_limit",
+      "stopped",
+      "malformed_output",
+      "output_limit",
+    ]) {
       expect(retryLabel(reason)).toBe("Retry");
     }
     expect(retryLabel("completed")).toBe("Regenerate");

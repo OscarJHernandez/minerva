@@ -37,6 +37,7 @@ from .events import (
 from .llm import LLMClient, LLMError, ToolCall, Usage
 from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
+from .reasoning import ReasoningGate, clean_reply
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
 from .segments import normalize, split_segments
 from .tools import (
@@ -109,6 +110,10 @@ STOP_SENTENCES: dict[StopReason, str] = {
     StopReason.TOOL_CALL_LIMIT: "I stopped here because I reached the limit on tool calls for one answer.",
     StopReason.TIME_LIMIT: "I stopped here because I reached the time limit for one answer.",
     StopReason.REPEATED_CALLS: "I stopped here because further tool calls were not producing new results.",
+    StopReason.OUTPUT_LIMIT: (
+        "I stopped here because my reply reached the model's length limit before it was finished. "
+        "Ask me to continue, or to answer more briefly."
+    ),
     StopReason.MODEL_ERROR: "I stopped here because the model host stopped answering.",
     StopReason.MALFORMED_OUTPUT: "I stopped here because the model's tool calls could not be used.",
     StopReason.INTERNAL_ERROR: "I stopped here because of an internal error.",
@@ -263,12 +268,28 @@ async def _model_step(
 ) -> AsyncIterator[dict[str, Any]]:
     """Stream one model call: yields text events, then a final `_step` record (not for the client)."""
     step = _Step()
-    parts: list[str] = []
+    parts: list[str] = []  # the raw text of the call
+    gate = ReasoningGate()  # what may be shown while it streams: no leaked reasoning
+    shown: list[str] = []
     started = time.monotonic()
     # Text that starts like JSON or a code fence may be a tool call written as prose: it is held back until
     # the call ends, and shown only if it turns out to be prose. (The stored reply never contained it; the
     # live view used to show it and then lose it.) Once the text starts like anything else it streams as usual.
     holding = True
+
+    def visible(delta: str) -> list[dict[str, Any]]:
+        nonlocal holding
+        if not delta:
+            return []
+        shown.append(delta)
+        if holding:
+            so_far = "".join(shown).lstrip()
+            if not so_far or so_far.startswith(("{", "`")):
+                return []
+            holding = False
+            return [{"event": "text", "data": {"delta": "".join(shown)}}]
+        return [{"event": "text", "data": {"delta": delta}}]
+
     try:
         # The model host's own timeout is per read: a stream that keeps trickling is cut here.
         async with asyncio.timeout(seconds):
@@ -277,13 +298,8 @@ async def _model_step(
                     if step.first_token_ms is None:
                         step.first_token_ms = _ms(started)
                     parts.append(chunk.text)
-                    if holding:
-                        so_far = "".join(parts).lstrip()
-                        if so_far and not so_far.startswith(("{", "`")):
-                            holding = False
-                            yield {"event": "text", "data": {"delta": "".join(parts)}}
-                    else:
-                        yield {"event": "text", "data": {"delta": chunk.text}}
+                    for event in visible(gate.feed(chunk.text)):
+                        yield event
                 step.calls.extend(chunk.tool_calls)
                 if chunk.usage is not None:
                     step.usage = chunk.usage
@@ -291,9 +307,12 @@ async def _model_step(
         step.timed_out = True
     except LLMError as exc:
         step.error = exc
-    step.text = "".join(parts)
+    for event in visible(gate.finish()):
+        yield event
+    # What is stored is the raw text without leaked reasoning, wherever in it the reasoning sits.
+    step.text = clean_reply("".join(parts))
     if holding and step.text.strip() and not looks_like_tool_call(step.text):
-        yield {"event": "text", "data": {"delta": step.text}}
+        yield {"event": "text", "data": {"delta": "".join(shown) or step.text}}
     step.latency_ms = _ms(started)
     yield {"event": "_step", "data": step}
 
@@ -591,6 +610,10 @@ async def _run_turn(
                 full_text.append(text)
                 order.append(text)
             if not calls:
+                if _finish(result) == "length":
+                    # Cut off by the model's own length limit, mid-sentence or mid-reasoning: not an
+                    # answer. Said plainly, so the user (and the next turn) know what happened.
+                    stop = StopReason.OUTPUT_LIMIT
                 break  # an answer without more tool calls: the turn is complete
 
             messages.append(

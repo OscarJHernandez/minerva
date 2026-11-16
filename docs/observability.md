@@ -37,7 +37,8 @@ turn started, from a monotonic clock) and `step` (the model call it belongs to).
 | `agent.stopped` | stop reason, steps, tool calls |
 | `agent.completed` | total latency, model, tool, sandbox and claim-check time, tokens, tool calls and errors, repeated calls, formulas with engine evidence |
 
-Stop reasons: `completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
+Stop reasons: `completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`
+(the last model call hit its length limit with no tool call; the reply is cut off and says so), `model_error`,
 `malformed_output`, `internal_error`. Error categories: `invalid_arguments`, `unknown_tool`,
 `parse_error`, `conditions_not_satisfied`, `unsupported`, `not_verified`, `timeout`, `resource_limit`,
 `sandbox_killed`, `busy`, `tool_failure`, `model_host`, `malformed_model_output`, `repeated_call`,

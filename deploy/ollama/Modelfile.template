@@ -14,4 +14,6 @@ PARAMETER top_p 0.9
 # including the conversation and most of the tool definitions.
 PARAMETER num_ctx 32768
 # Cap the length of one model call. Answers should be short; the interface shows results as cards.
-PARAMETER num_predict 1200
+# Reasoning a model writes into its reply counts against the cap, so it is not tight: a call that
+# reaches it ends the turn as `output_limit` ("my reply reached the model's length limit").
+PARAMETER num_predict 2048

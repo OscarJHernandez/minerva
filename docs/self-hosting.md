@@ -212,3 +212,12 @@ Your data is in the `pgdata` Docker volume. Back it up with
 `docker compose exec postgres pg_dump -U minerva minerva > minerva-backup.sql`.
 Registration is open by default; the Helm chart can close it (`api.allowRegistration: false`) for a
 private instance.
+
+### Reasoning in the reply and the length limit
+
+Some models write their reasoning into the reply (`thought`, then a closing `<channel|>`) even with thinking
+switched off. Minerva drops it from what is shown and stored (`agent/reasoning.py`; it needs no setting and a
+normal reply is held back for a few characters at most). Reasoning that has not reached its closing marker when
+the call ends is dropped too. It counts against the model's length cap (`num_predict` in
+`deploy/ollama/Modelfile.template`, 2048): a call that reaches the cap without a tool call ends the turn as
+`output_limit` and says so. Rebuild the model (`scripts/create-ollama-model.sh`) to change the cap on a host.

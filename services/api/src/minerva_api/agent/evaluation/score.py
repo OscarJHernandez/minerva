@@ -415,7 +415,11 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         notes.append("reply says what it should not")
     if case.max_unchecked is not None and result.unchecked > case.max_unchecked:
         notes.append(f"{result.unchecked} unchecked formula(s) in the reply")
-    if re.search(r"</?think>|^\s*(okay|alright),? (let'?s|so)", text, re.IGNORECASE):
+    if re.search(
+        r"</?think>|<\|?channel\|?>|(?:^|\n)[ \t]*thought[ \t]*\n|^\s*(okay|alright),? (let'?s|so)",
+        text,
+        re.IGNORECASE,
+    ):
         notes.append("reasoning leaked into the reply")
     if len(text.split()) > MAX_REPLY_WORDS:
         notes.append(f"reply too long ({len(text.split())} words)")

@@ -19,6 +19,7 @@ const INCOMPLETE = new Set([
   "step_limit",
   "tool_call_limit",
   "repeated_calls",
+  "output_limit",
   "stopped",
 ]);
 

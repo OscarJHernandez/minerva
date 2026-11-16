@@ -629,3 +629,50 @@ def test_numbers_in_the_users_message_are_theirs(ctx: ToolContext) -> None:
     llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
     text = "Solve y'' + y = 0 numerically with y(0) = 1, y'(0) = 0 up to t = 3"
     assert cards(final(play(llm, ctx, text=text)))[0]["data"]["values_chosen_by"] == "user"
+
+
+# --------------------------------------------------------------------- leaked reasoning, length limit
+def _length_cut(text: str) -> list[Chunk]:
+    return [Chunk(text=text), Chunk(usage=Usage(completion_tokens=1200, finish_reason="length"))]
+
+
+def test_leaked_reasoning_is_not_shown_streamed_or_stored(ctx: ToolContext) -> None:
+    leak = "thought\nWait, I should call simplify first.\n<channel|>It is $x + 1$."
+    llm = ReplayLLM([call("simplify", SIMPLIFY), [Chunk(text=leak)]])
+    events = play(llm, ctx)
+    streamed = "".join(e["data"]["delta"] for e in events if e["event"] == "text")
+    msg = final(events)
+    assert "thought" not in streamed and "channel" not in streamed and "Wait" not in streamed
+    assert "thought" not in msg["text"] and "Wait" not in msg["text"]
+    assert "$x + 1$" in msg["text"] and msg["stop_reason"] == "completed"
+
+
+def test_a_call_that_ends_inside_leaked_reasoning_is_an_output_limit_not_a_completed_answer(
+    ctx: ToolContext,
+) -> None:
+    cut = _length_cut("thought\nI should now substitute r_0 into the derivative. Wait, rule 1 says")
+    llm = ReplayLLM([call("simplify", SIMPLIFY), cut])
+    msg = final(play(llm, ctx))
+    assert msg["stop_reason"] == "output_limit" and msg["truncated"] is True
+    assert "length limit" in msg["text"] and "substitute r_0" not in msg["text"]
+    assert msg["debug"]["llm_calls"][-1]["finish_reason"] == "length"
+
+
+def test_a_reply_cut_off_by_the_length_limit_keeps_what_arrived_and_says_so(
+    ctx: ToolContext,
+) -> None:
+    llm = ReplayLLM([_length_cut("The first three steps are clear and the fourth is")])
+    msg = final(play(llm, ctx))
+    assert msg["stop_reason"] == "output_limit"
+    assert msg["text"].startswith("The first three steps are clear")
+    assert "length limit" in msg["text"]
+
+
+def test_a_length_limit_with_a_tool_call_is_not_an_output_limit(ctx: ToolContext) -> None:
+    first = [
+        Chunk(text="Let me check. "),
+        Chunk(tool_calls=[ToolCall("simplify", SIMPLIFY)]),
+        Chunk(usage=Usage(finish_reason="length")),
+    ]
+    msg = final(play(ReplayLLM([first, say("It is $x + 1$.")]), ctx))
+    assert msg["stop_reason"] == "completed"
