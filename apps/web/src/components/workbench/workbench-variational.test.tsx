@@ -45,6 +45,7 @@ vi.mock("@/lib/api", async () => {
   return {
     ...actual,
     api: {
+      inspect: vi.fn(async () => ({ status: "ok", message: "", read_as: null, converted: null })),
       createDerivation: vi.fn(),
       derivation: vi.fn(async () => ({ id: "dv", updated_at: "", steps })),
       derivations: vi.fn(async () => [

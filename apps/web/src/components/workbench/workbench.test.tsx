@@ -64,6 +64,7 @@ vi.mock("@/lib/api", async () => {
   return {
     ...actual,
     api: {
+      inspect: vi.fn(async () => ({ status: "ok", message: "", read_as: null, converted: null })),
       createDerivation: vi.fn(async () => ({ id: "d1", updated_at: "", steps: [] })),
       derivation: vi.fn(async () => ({ id: "d1", updated_at: "", steps: [...stored] })),
       derivations: vi.fn(async () => []),
@@ -137,6 +138,22 @@ beforeEach(() => {
 });
 
 describe("Workbench derivation", () => {
+  it("keeps the source when format conversion is refused", async () => {
+    vi.mocked(api.inspect).mockResolvedValueOnce({
+      status: "ok",
+      message: "Keep the original syntax.",
+      read_as: "1",
+      converted: null,
+    });
+    render(<Workbench />);
+    const input = String.raw`\frac{x-1}{x-1}`;
+    type(input);
+    fireEvent.click(screen.getByRole("button", { name: "Edit as plain text" }));
+    expect(await screen.findByText("Keep the original syntax.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Mathematical expression")).toHaveValue(input);
+    expect(screen.queryByLabelText("Expression (text syntax)")).not.toBeInTheDocument();
+  });
+
   it("keeps newer edits when an earlier request completes", async () => {
     let release!: () => void;
     const pending = new Promise<void>((resolve) => {
