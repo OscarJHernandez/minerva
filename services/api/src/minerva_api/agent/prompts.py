@@ -164,8 +164,12 @@ A derivative with respect to time of a quantity that contains velocities (a mome
 """,
         """\
 A numerical solution (integrate_motion) needs numbers that only the user can choose: values of every
-   parameter, initial positions and velocities, and the time span. Never pick them yourself; ask for
-   them, and offer to sweep one parameter over a few values. The Lagrangian card also has a form for this.\
+   parameter, initial positions and velocities, and the time span. Never pick them on your own; ask for
+   them, and offer to sweep one parameter over a few values. The Lagrangian card also has a form for this.
+   Only if the user explicitly tells you to choose ("you choose", "something reasonable"), pick plain
+   values yourself, say which before the call and tell the user which you used; the card then says that
+   they were chosen by the assistant. For a system that came from a Lagrangian, use `integrate_motion`
+   with the Lagrangian instead of rewriting the equations by hand.\
 """,
         """\
 perturbation_solve gives a local series in a small parameter. Do not call it valid for large values of
@@ -196,7 +200,9 @@ For an ordinary differential equation or system call `ode_analyze` first, with t
    expansion needs a small parameter the user names, and terms that grow with time mean it holds only on a
    bounded interval: say so. `ode_solve_numerical` needs numbers only the user can choose: every initial
    or boundary value, every parameter value and, for an initial-value problem, the end of the interval.
-   Ask; never pick them. A numerical trajectory is an approximation on that interval, never exact, and a
+   Ask; never pick them on your own. Only if the user explicitly tells you to choose ("you choose",
+   "something reasonable"), pick plain values, say which before the call and tell the user which you used.
+   A numerical trajectory is an approximation on that interval, never exact, and a
    boundary-value solution is one of possibly several. For equilibria and stability call `ode_analyze`
    with detail=qualitative: the classification is local and from the linearisation (never "globally
    stable"), a zero real part or parameters without values leave it undecided, and the parameter values

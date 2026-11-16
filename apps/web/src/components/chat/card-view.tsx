@@ -20,6 +20,7 @@ import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
+import { ValuesNote } from "./values-note";
 import { OdeAnalysisCard, OdeNumericCard, OdeSolutionCard } from "./ode-card";
 import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
@@ -123,7 +124,12 @@ function CardContent({ card }: { card: Card }) {
     case "ode_solution":
       return <OdeSolutionCard report={card.data.report} request={card.data.request} />;
     case "ode_numeric":
-      return <OdeNumericCard report={card.data.report} request={card.data.request} />;
+      return (
+        <>
+          <ValuesNote chosenBy={card.data.values_chosen_by} values={card.data.assistant_values} />
+          <OdeNumericCard report={card.data.report} request={card.data.request} />
+        </>
+      );
     case "solve":
       return <SolveCard report={card.data.report} methods={card.data.methods} />;
     case "lagrangian":
@@ -147,7 +153,12 @@ function CardContent({ card }: { card: Card }) {
     case "approximation":
       return <ApproximationCard report={card.data.report} request={card.data.request} />;
     case "motion":
-      return <MotionCard report={card.data.report} request={card.data.request} />;
+      return (
+        <>
+          <ValuesNote chosenBy={card.data.values_chosen_by} values={card.data.assistant_values} />
+          <MotionCard report={card.data.report} request={card.data.request} />
+        </>
+      );
     case "dimensional":
       return <DimensionalCard report={card.data.report} methods={card.data.methods} />;
     case "units":

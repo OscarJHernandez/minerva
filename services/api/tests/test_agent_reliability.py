@@ -598,3 +598,34 @@ def test_a_resource_limit_in_the_sandbox_gets_a_specific_category() -> None:
     verification = [e for e in msg["debug"]["events"] if e["event"] == "verification.completed"]
     assert verification and verification[0]["accepted"] is False
     assert verification[0]["reason"] == "resource_limit"
+
+
+# ----------------------------------------------------------------- who chose the numbers of a run
+RUN = {
+    "equations": ["y'' + y = 0"],
+    "independent": "t",
+    "conditions": ["y(0) = 1", "y'(0) = 0"],
+    "t_end": 3,
+}
+
+
+def test_a_user_who_says_you_choose_gets_a_labelled_run(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
+    msg = final(play(llm, ctx, text="Solve it numerically, just choose something reasonable"))
+    card = cards(msg)[0]
+    assert card["data"]["values_chosen_by"] == "assistant_delegated"
+    assert ctx.user_numbers is None and ctx.numbers_delegated is False  # not left on the context
+
+
+def test_the_same_run_without_a_hand_over_is_labelled_as_the_assistants(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
+    msg = final(play(llm, ctx, text="Solve y'' + y = 0 numerically"))
+    data = cards(msg)[0]["data"]
+    assert data["values_chosen_by"] == "assistant"
+    assert "t_end = 3" in data["assistant_values"]
+
+
+def test_numbers_in_the_users_message_are_theirs(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
+    text = "Solve y'' + y = 0 numerically with y(0) = 1, y'(0) = 0 up to t = 3"
+    assert cards(final(play(llm, ctx, text=text)))[0]["data"]["values_chosen_by"] == "user"

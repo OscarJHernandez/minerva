@@ -22,7 +22,7 @@ from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
-from .choice import names_a_method
+from .choice import delegation_active, names_a_method, numbers_in
 from .declarations import declared_matrices, declared_vectors
 from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
@@ -439,6 +439,15 @@ async def _run_turn(
     # none, a solver call is refused and the model asks which one (`needs_user_choice`).
     user_text, replying = _latest_user_message(history)
     method_named = names_a_method(user_text, replying=replying)
+    # The user's messages of the whole conversation (the route passes them; the history window may have
+    # dropped old ones): did they hand the numbers over, and which numbers did they write?
+    user_messages = (
+        list(ctx.user_messages)
+        if ctx.user_messages is not None
+        else [str(m.get("content") or "") for m in history if m.get("role") == "user"]
+    )
+    numbers_delegated = delegation_active(user_messages)
+    user_numbers = frozenset(x for text in user_messages for x in numbers_in(text))
     offered: tuple[str, ...] = ()
     host_retried = False
     step = 0
@@ -749,6 +758,7 @@ async def _run_turn(
                         | frozenset(gate)
                     )
                     ctx.matrix_sources = dict(declared_for_tools or {})
+                    ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -766,6 +776,8 @@ async def _run_turn(
                         output = _tool_failure(
                             call.name, "it failed unexpectedly", ErrorCategory.TOOL_FAILURE
                         )
+                    finally:  # only this call is the model's: the context is not left marked
+                        ctx.numbers_delegated, ctx.user_numbers = False, None
                     seen[key] = call_id
                     if not output.arguments_valid:
                         invalid_seen[key] = output.for_model

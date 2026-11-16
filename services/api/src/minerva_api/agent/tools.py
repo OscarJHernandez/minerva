@@ -11,7 +11,7 @@ import contextlib
 import json
 import re
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -65,6 +65,7 @@ from ..ode_log import log_ode
 from ..search_log import log_search_events
 from ..variation_log import log_variation
 from ..vector_log import log_vector
+from .choice import numbers_in
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .prompts import GROUP_SUMMARY, GROUP_TOOLS
@@ -95,6 +96,14 @@ class ToolContext:
     # What the USER answered or chose for statistical mechanics (phase-space cell, indistinguishable
     # copies, numbers, sweep). Only the direct-post route fills it; the model cannot make these choices.
     statmech_answers: dict[str, Any] = field(default_factory=dict)
+    # The USER's messages of this conversation, oldest first (set by the chat route; None: not a chat
+    # turn). The loop reads them to decide whether the user handed the choice of numbers to the assistant.
+    user_messages: Sequence[str] | None = None
+    # Set by the loop for the model's own calls only, never by the model and never by the card form
+    # (which posts the user's numbers): whether the user handed the numbers over, and every number the
+    # user wrote. `user_numbers is None` means the numbers came from the user.
+    numbers_delegated: bool = False
+    user_numbers: frozenset[float] | None = None
 
 
 @dataclass
@@ -2188,7 +2197,8 @@ def run_lagrangian(args: LagrangianArgs, ctx: ToolContext) -> ToolOutput:
         lines.append(
             "next step: integrate_motion solves these numerically and verifies the run. Ask the user for "
             f"values of the parameters ({needed}), the initial positions and velocities and the time span; "
-            "do not choose them. One parameter may be swept over 2-6 values. The card has a form for this."
+            "do not choose them unless the user tells you to. One parameter may be swept over 2-6 values. "
+            "The card has a form for this."
         )
     if method_data:
         lines.append(
@@ -2487,16 +2497,87 @@ def _motion_summary(report: Any) -> list[str]:
     return lines
 
 
+def _user_wrote(value: float, written: frozenset[float]) -> bool:
+    return any(abs(value - w) <= 1e-12 * max(1.0, abs(value)) for w in written)
+
+
+def values_provenance(texts: list[str], ctx: ToolContext) -> tuple[str, list[str]]:
+    """Who chose the numbers of a numerical run: `user` (typed by them, or on the card form),
+    `assistant_delegated` (they told the assistant to choose) or `assistant` (the model supplied numbers
+    that are in none of the user's messages). The listed values are the ones the user did not write. A
+    label, never a refusal: a number the user wrote another way (`10^3` for 1000) is listed too."""
+    if ctx.user_numbers is None:
+        return "user", []
+    if ctx.numbers_delegated:
+        return "assistant_delegated", texts
+    mine = [
+        t for t in texts if not all(_user_wrote(x, ctx.user_numbers) for x in numbers_in(t))
+    ]
+    return ("assistant" if mine else "user"), mine
+
+
+def _provenance_note(who: str, values: list[str]) -> str | None:
+    shown = ", ".join(values[:12]) + (" ..." if len(values) > 12 else "")
+    if who == "assistant_delegated":
+        return (
+            "values chosen by the assistant because the user asked it to choose: "
+            f"{shown}. Tell the user exactly these values."
+        )
+    if who == "assistant":
+        return (
+            "values the user did not write: "
+            f"{shown}. The card says so. Tell the user these were not theirs and ask them to confirm "
+            "or change them."
+        )
+    return None
+
+
+def _ode_value_texts(args: OdeNumericArgs) -> list[str]:
+    texts: list[str] = []
+    for item in args.conditions:
+        if isinstance(item, str):
+            texts.append(item)
+        else:
+            prime = "'" * item.order
+            texts.append(f"{item.unknown}{prime}({item.at}) = {item.value}")
+    texts.extend(f"{k} = {v:g}" for k, v in args.parameters.items())
+    if args.t_end is not None:
+        texts.append(f"t_end = {args.t_end:g}")
+    return texts
+
+
+def _motion_value_texts(args: MotionArgs) -> list[str]:
+    texts = [f"{k} = {v:g}" for k, v in args.parameters.items()]
+    for name, q, v in zip(args.coordinates, args.initial_positions, args.initial_velocities):
+        texts.append(f"{name}(t_start) = {q:g}")
+        texts.append(f"d{name}/dt(t_start) = {v:g}")
+    if args.t_start != 0:
+        texts.append(f"t_start = {args.t_start:g}")
+    texts.append(f"t_end = {args.t_end:g}")
+    if args.sweep is not None:
+        texts.append(f"{args.sweep.name} in " + ", ".join(f"{v:g}" for v in args.sweep.values))
+    return texts
+
+
 def run_motion(args: MotionArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.integrate_motion(args)
+    who, mine = values_provenance(_motion_value_texts(args), ctx)
     card = Card(
         id=uuid.uuid4().hex[:8],
         tool="integrate_motion",
         type="motion",
         title="Numerical solution",
-        data={"report": report.model_dump(mode="json"), "request": args.model_dump(mode="json")},
+        data={
+            "report": report.model_dump(mode="json"),
+            "request": args.model_dump(mode="json"),
+            "values_chosen_by": who,
+            "assistant_values": mine,
+        },
     )
     lines = [f"status={report.status.value}; {report.message}"]
+    note = _provenance_note(who, mine)
+    if note:
+        lines.append(note)
     known: list[str] = []
     if report.lagrangian_latex:
         lines.append(f"Lagrangian: ${report.lagrangian_latex}$")
@@ -2624,7 +2705,8 @@ def run_ode_analyze(args: OdeAnalyzeArgs, ctx: ToolContext) -> ToolOutput:
         lines.append(
             "Offer only the applicable methods, in this order, in these words. 'Applicable' means Minerva "
             "will try and check it, not that it will succeed. For a numerical solution the USER must give "
-            "every initial value, parameter value and the end of the interval: ask; the card has a form."
+            "every initial value, parameter value and the end of the interval: ask; the card has a form "
+            "(only if the user tells you to choose them may you pick them, and say which)."
         )
     return ToolOutput(
         card,
@@ -2726,7 +2808,13 @@ def run_ode_numeric(args: OdeNumericArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.ode_solve_numerical(request)
     log_ode("ode_solve_numerical", _ode_status(report), report.diagnostics, report.duration_ms)
     card = _ode_card("ode_solve_numerical", "ode_numeric", "Numerical solution", report, request)
+    who, mine = values_provenance(_ode_value_texts(args), ctx)
+    card.data["values_chosen_by"] = who
+    card.data["assistant_values"] = mine
     lines = [f"status={report.status.value}; {report.message}".rstrip("; ")]
+    note = _provenance_note(who, mine)
+    if note:
+        lines.append(note)
     reading, quoted = _ode_reading(report)
     lines.extend(reading)
     known: list[str] = []
@@ -2745,7 +2833,11 @@ def run_ode_numeric(args: OdeNumericArgs, ctx: ToolContext) -> ToolOutput:
                 if report.parameters
                 else ""
             )
-            + " (all supplied by the user)"
+            + (
+                " (all supplied by the user)"
+                if who == "user"
+                else " (not all supplied by the user: see above)"
+            )
         )
         lines.extend(_series_summary(report))
     if report.verification is not None:
@@ -3451,7 +3543,8 @@ TOOLS: dict[str, Tool] = {
             "Solve the equations of motion of a Lagrangian numerically for given parameter values, initial "
             "conditions and time span, optionally sweeping one parameter over 2-6 values. Every run is "
             "verified (second method, time reversal, constants of motion) and shown only if it passes. "
-            "Never choose the numbers yourself: ask the user.",
+            "The numbers come from the USER: ask. Choose them yourself only if the user explicitly told "
+            "you to choose; then say which values you used.",
             MotionArgs,
             run_motion,
         ),
@@ -3497,7 +3590,8 @@ TOOLS: dict[str, Tool] = {
             "integrator or shooting, refinement, the equation's residual, boundary values, a verified "
             "conserved quantity). It is an approximation on the interval given; a boundary-value "
             "solution is one of possibly several. Every number (conditions, parameter values, the end "
-            "of the interval for ivp) comes from the USER: never choose them yourself, ask.",
+            "of the interval for ivp) comes from the USER: ask. Choose them yourself only if the user "
+            "explicitly told you to choose; then say which values you used.",
             OdeNumericArgs,
             run_ode_numeric,
         ),

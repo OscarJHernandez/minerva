@@ -1258,6 +1258,7 @@ async def send_message(
     user_id, conv_id = user.id, conversation.id
     session_factory = request.app.state.session_factory
     ctx = ToolContext(engine=engine, kb=kb)
+    ctx.user_messages = [t for role, t in _declaration_inputs(previous, text)[1] if role == "user"]
     limits = AgentLimits(
         max_steps=settings.agent_max_steps,
         max_seconds=settings.agent_max_seconds,

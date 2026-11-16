@@ -459,7 +459,8 @@ class OdeNumericInput(OdeInput):
     parameters: dict[str, float] = Field(
         default_factory=dict,
         max_length=MAX_PARAMETERS,
-        description="The numerical value of every parameter. Ask the user: never choose them.",
+        description="The numerical value of every parameter. Ask the user; choose them only if the "
+        "user told you to choose.",
     )
     kind: Literal["ivp", "bvp"] = Field(
         default="ivp",
@@ -476,7 +477,8 @@ class OdeNumericInput(OdeInput):
     t_end: float | None = Field(
         default=None,
         description="ivp: where the interval ends (it starts at the point of the initial values). Ask "
-        "the user: never choose it. bvp: not used, the two points of the conditions are the ends.",
+        "the user; choose it only if the user told you to choose. bvp: not used, the two points of "
+        "the conditions are the ends.",
     )
     method: NumericMethod = Field(
         default="auto",

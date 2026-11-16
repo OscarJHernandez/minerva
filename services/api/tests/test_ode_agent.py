@@ -33,7 +33,8 @@ def test_the_tools_are_three_and_say_who_chooses_the_numbers() -> None:
     names = [n for n in TOOLS if n.startswith("ode_")]
     assert names == ["ode_analyze", "ode_solve_symbolic", "ode_solve_numerical"]
     numeric = TOOLS["ode_solve_numerical"]
-    assert "never choose them yourself" in numeric.description
+    assert "comes from the USER: ask" in numeric.description
+    assert "only if the user explicitly told you to choose" in numeric.description
     schema = numeric.schema()["function"]["parameters"]
     assert "equations" in schema["required"]
     assert "Ask the" in schema["properties"]["t_end"]["description"]
@@ -548,3 +549,64 @@ def test_the_loop_refuses_a_solver_until_the_user_chooses(ctx: ToolContext) -> N
     assert "list the applicable methods" in refused["data"]["data"]["message"]
     named = asyncio.run(turn("Find the closed form of y''(x) = y(x)."))
     assert solver_cards(named) == ["ode_solution"]  # the user named a method: it runs
+
+
+# --- who chose the numbers ----------------------------------------------------------------------
+
+
+def _chat_ctx(ctx: ToolContext, messages: list[str], *, delegated: bool = False) -> ToolContext:
+    """What the loop sets for a model's own call: the numbers the user wrote, and the hand-over."""
+    from minerva_api.agent.choice import numbers_in
+
+    fresh = ToolContext(engine=ctx.engine, kb=ctx.kb)
+    fresh.numbers_delegated = delegated
+    fresh.user_numbers = frozenset(x for m in messages for x in numbers_in(m))
+    return fresh
+
+
+def test_numbers_the_user_wrote_are_labelled_as_theirs(ctx: ToolContext) -> None:
+    chat = _chat_ctx(ctx, ["y(0) = 1 and y'(0) = 0, c = 0.5, run to t = 10"])
+    out = execute("ode_solve_numerical", NUMERIC, chat)
+    assert out.status == "ok"
+    assert out.card.data["values_chosen_by"] == "user" and out.card.data["assistant_values"] == []
+    assert "all supplied by the user" in out.for_model
+
+
+def test_numbers_the_model_supplied_without_being_told_to_are_labelled(ctx: ToolContext) -> None:
+    chat = _chat_ctx(ctx, ["solve y'' + c y' + y = 0 numerically, y(0) = 1, y'(0) = 0"])
+    out = execute("ode_solve_numerical", NUMERIC, chat)  # c = 0.5 and t_end = 10 are not the user's
+    assert out.card.data["values_chosen_by"] == "assistant"
+    assert out.card.data["assistant_values"] == ["c = 0.5", "t_end = 10"]
+    assert "values the user did not write" in out.for_model
+    assert "(all supplied by the user)" not in out.for_model
+
+
+def test_numbers_chosen_at_the_users_request_are_labelled_and_listed(ctx: ToolContext) -> None:
+    chat = _chat_ctx(ctx, ["numerically please, just choose something reasonable"], delegated=True)
+    out = execute("ode_solve_numerical", NUMERIC, chat)
+    assert out.card.data["values_chosen_by"] == "assistant_delegated"
+    assert "y(0) = 1" in out.card.data["assistant_values"]
+    assert "because the user asked it to choose" in out.for_model
+    assert "(all supplied by the user)" not in out.for_model
+
+
+def test_the_card_form_and_direct_calls_are_the_users_numbers(ctx: ToolContext) -> None:
+    out = execute("ode_solve_numerical", NUMERIC, ctx)  # no chat context: typed on the card
+    assert out.card.data["values_chosen_by"] == "user"
+
+
+def test_integrate_motion_labels_numbers_the_same_way(ctx: ToolContext) -> None:
+    arguments = {
+        "lagrangian": r"\frac{1}{2} m \dot{x}^2 - \frac{1}{2} k x^2",
+        "coordinates": ["x"],
+        "parameters": {"m": 1.0, "k": 4.0},
+        "initial_positions": [1.0],
+        "initial_velocities": [0.0],
+        "t_end": 2.0,
+    }
+    chat = _chat_ctx(ctx, ["pick something reasonable"], delegated=True)
+    out = execute("integrate_motion", arguments, chat)
+    assert out.card.data["values_chosen_by"] == "assistant_delegated"
+    assert "m = 1" in out.card.data["assistant_values"]
+    own = _chat_ctx(ctx, ["m = 1, k = 4, x(0) = 1, v(0) = 0, until t = 2"])
+    assert execute("integrate_motion", arguments, own).card.data["values_chosen_by"] == "user"
