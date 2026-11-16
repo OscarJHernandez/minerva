@@ -29,6 +29,7 @@ jobs:
       chart: ${{ steps.paths.outputs.chart }}
       images: ${{ steps.paths.outputs.images }}
       workflows: ${{ steps.paths.outputs.workflows }}
+      deps: ${{ steps.paths.outputs.deps }}
       # The git tree this run checked out (on a pull request: the merge of its head into the base). `ci-ok`
       # records it, and the Deploy workflow skips its own CI run when main's tree is exactly this one.
       tree: ${{ steps.paths.outputs.tree }}
@@ -57,7 +58,10 @@ jobs:
             out python "$code"
             out web "$code"
             out chart '^(deploy/|scripts/|\.github/)'
-            out images '^(deploy/|apps/|packages/|services/|scripts/|pnpm-|uv\.lock$|pyproject\.toml$|\.github/)'
+            # A pull request builds the images only when what goes into them changes shape: the Dockerfiles and
+            # chart, the build script, the dependency manifests. Deploy builds and publishes them from main anyway.
+            out images '^(deploy/|scripts/build-image\.sh$|pnpm-lock\.yaml$|uv\.lock$|(.*/)?(pyproject\.toml|package\.json)$|\.github/)'
+            out deps '^(pnpm-lock\.yaml$|uv\.lock$|(.*/)?(pyproject\.toml|package\.json)$|\.github/)'
             out workflows '^\.github/'
           } | tee -a "$GITHUB_OUTPUT"
 
@@ -295,6 +299,7 @@ jobs:
 
   security:
     name: Dependency audit and secret scan
+    needs: changes
     runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
     timeout-minutes: 15
     steps:
@@ -302,21 +307,28 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      # The audits (about four minutes of installs) run when a dependency manifest or lockfile changed, and always
+      # on main and in the Deploy workflow; the secret scan below runs on every change.
+      - if: ${{ needs.changes.outputs.deps == 'true' }}
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
       - name: Python dependencies (pip-audit)
+        if: ${{ needs.changes.outputs.deps == 'true' }}
         run: |
           uv export --frozen --no-hashes --no-emit-workspace > "$RUNNER_TEMP/requirements.txt"
           uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
       # Node first: the stock self-hosted runner image has no `node`, and pnpm's installer needs it.
       # No package-manager cache: pods are ephemeral, and setup-node v5 would otherwise look for pnpm before it is installed.
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - if: ${{ needs.changes.outputs.deps == 'true' }}
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           package-manager-cache: false
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: ${{ needs.changes.outputs.deps == 'true' }}
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - name: JavaScript dependencies (high and above)
+        if: ${{ needs.changes.outputs.deps == 'true' }}
         run: pnpm install --frozen-lockfile --ignore-scripts && pnpm audit --audit-level high
       - name: Secret scan
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
