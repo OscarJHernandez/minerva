@@ -29,6 +29,9 @@ jobs:
       chart: ${{ steps.paths.outputs.chart }}
       images: ${{ steps.paths.outputs.images }}
       workflows: ${{ steps.paths.outputs.workflows }}
+      # The git tree this run checked out (on a pull request: the merge of its head into the base). `ci-ok`
+      # records it, and the Deploy workflow skips its own CI run when main's tree is exactly this one.
+      tree: ${{ steps.paths.outputs.tree }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,9 +49,13 @@ jobs:
           fi
           match() { [ "$all" = true ] || printf '%s\n' "$files" | grep -Eq "$1"; }
           out() { if match "$2"; then echo "$1=true"; else echo "$1=false"; fi; }
+          # Python and web tests run together or not at all: a pull-request run that attests "this tree was tested"
+          # (see `ci-ok`) must have run both suites, whichever side the change was on.
+          code='^(packages/|services/|scripts/|pyproject\.toml$|uv\.lock$|AGENTS\.md$|CLAUDE\.md$|\.agents/|\.claude/|\.github/|apps/|package\.json$|pnpm-|\.prettier)'
           {
-            out python '^(packages/|services/|scripts/|pyproject\.toml$|uv\.lock$|AGENTS\.md$|CLAUDE\.md$|\.agents/|\.claude/|\.github/)'
-            out web '^(apps/|packages/ui/|package\.json$|pnpm-|\.prettier|\.github/)'
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            out python "$code"
+            out web "$code"
             out chart '^(deploy/|scripts/|\.github/)'
             out images '^(deploy/|apps/|packages/|services/|scripts/|pnpm-|uv\.lock$|pyproject\.toml$|\.github/)'
             out workflows '^\.github/'
@@ -331,3 +338,11 @@ jobs:
           for r in $RESULTS; do
             case "$r" in success|skipped) ;; *) echo "::error::a required job ended as '$r'"; exit 1;; esac
           done
+      # Only a pull request from a branch of this repository, and only when both test suites ran: a docs-only
+      # change is not attested, so Deploy tests it. Read by `scripts/ci_tested_tree.py` (exact message required).
+      - name: Record which tree this run tested
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.python == 'true' && needs.changes.outputs.web == 'true' }}
+        env:
+          TREE: ${{ needs.changes.outputs.tree }}
+        run: |
+          echo "::notice title=Tested tree::tested-tree: ${TREE}"
