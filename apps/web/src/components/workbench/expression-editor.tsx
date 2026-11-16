@@ -53,6 +53,8 @@ export function ExpressionEditor({
   }, [focusSignal]);
 
   const hasValue = (format === "latex" ? latex : text).trim() !== "";
+  const otherFormat = format === "latex" ? "text" : "latex";
+  const otherValue = format === "latex" ? text : latex;
 
   return (
     <section aria-label="Expression">
@@ -99,6 +101,28 @@ export function ExpressionEditor({
           <span>Text syntax: sin(x)**2, sqrt(x), exp(x), pi. E, I, pi and oo are constants.</span>
         )}
       </div>
+
+      {!hasValue && otherValue.trim() && (
+        <div className="mt-2 rounded border border-rule bg-sunk p-3 text-sm" role="status">
+          <p>
+            Your expression is still in {otherFormat === "latex" ? "LaTeX" : "plain text"}. Use the
+            format switch to return to it, or enter this format yourself.
+          </p>
+          <div className="mt-2 overflow-x-auto">
+            {otherFormat === "latex" ? (
+              <Math latex={otherValue} display />
+            ) : (
+              <code>{otherValue}</code>
+            )}
+          </div>
+        </div>
+      )}
+      {hasValue && otherValue.trim() && (
+        <p className="mt-2 text-xs text-muted">
+          LaTeX and plain text are separate drafts. Switching formats restores the expression last
+          entered in that format; it does not convert it.
+        </p>
+      )}
 
       {continuing && (
         <div

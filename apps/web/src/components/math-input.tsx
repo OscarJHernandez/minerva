@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { MathfieldElement } from "mathlive";
+import { Math } from "@minerva/ui/math";
 
 interface Props {
   value: string;
@@ -83,21 +84,31 @@ export function MathInput({ value, onChange, onSubmit }: Props) {
         </button>
       </div>
       {raw ? (
-        <textarea
-          id="expr"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSubmit();
-            }
-          }}
-          rows={2}
-          spellCheck={false}
-          className="w-full rounded border border-rule bg-raised p-3 font-mono text-sm"
-          placeholder="\\sin^2 x + \\cos^2 x"
-        />
+        <>
+          <textarea
+            id="expr"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSubmit();
+              }
+            }}
+            rows={2}
+            spellCheck={false}
+            className="w-full rounded border border-rule bg-raised p-3 font-mono text-sm"
+            placeholder="\\sin^2 x + \\cos^2 x"
+          />
+          {value.trim() && (
+            <div
+              className="mt-2 overflow-x-auto rounded border border-rule bg-sunk p-3"
+              aria-label="LaTeX preview"
+            >
+              <Math latex={value} display />
+            </div>
+          )}
+        </>
       ) : (
         <math-field ref={ref} id="expr" aria-label="Mathematical expression" />
       )}
