@@ -83,3 +83,59 @@ def test_benchmark_modules_are_dealt_evenly_and_ordinary_modules_are_not_grouped
 def test_the_assignment_does_not_depend_on_collection_order() -> None:
     ids = IDS + BENCH
     assert MODULE.assign_shards(ids, 5) == MODULE.assign_shards(list(reversed(ids)), 5)
+
+
+# -- whole modules are dealt by weight, heaviest first ------------------------------------------------
+def _module_ids(names: list[str]) -> list[str]:
+    return [f"packages/x/tests/{name}::test_a" for name in names]
+
+
+def test_whole_modules_are_dealt_heaviest_first_onto_the_lightest_shard() -> None:
+    weights = {
+        "packages/x/tests/test_a_benchmark.py": 100,
+        "packages/x/tests/test_b_benchmark.py": 60,
+        "packages/x/tests/test_c_benchmark.py": 50,
+        "packages/x/tests/test_d_benchmark.py": 40,
+        "packages/x/tests/test_e_benchmark.py": 10,
+    }
+    ids = _module_ids([Path(m).name for m in weights])
+    shards = MODULE.assign_shards(ids, 2, weights)
+    load = {1: 0, 2: 0}
+    for n in ids:
+        load[shards[n]] += weights[MODULE.module_of(n)]
+    # 100 | 60+50 -> 100 | 110, then 40 joins the 100 side, 10 the lighter again: 150 | 110 -> best possible split
+    assert abs(load[1] - load[2]) <= 40
+    assert shards[ids[0]] == 1  # the heaviest goes to the first, empty shard
+
+
+def test_a_module_without_a_weight_counts_as_the_default_and_is_still_assigned() -> None:
+    ids = _module_ids(["test_new_benchmark.py", "test_other_benchmark.py"])
+    shards = MODULE.assign_shards(ids, 2, {})
+    assert sorted(shards.values()) == [1, 2]  # equal default weights: one each
+    assert MODULE.DEFAULT_WEIGHT > 0
+
+
+def test_the_committed_weights_cover_only_existing_files_and_are_positive() -> None:
+    root = Path(__file__).resolve().parents[2]
+    weights = MODULE.load_weights()
+    assert weights
+    for module, seconds in weights.items():
+        assert (root / module).is_file(), f"stale entry in scripts/shard_weights.json: {module}"
+        assert seconds > 0
+        assert MODULE.is_whole_module(module)
+
+
+def test_every_whole_module_in_the_repository_is_balanced_across_five_shards() -> None:
+    root = Path(__file__).resolve().parents[2]
+    ids = [
+        f"{p.relative_to(root).as_posix()}::test_a"
+        for p in root.glob("**/test_*.py")
+        if ".venv" not in p.parts and "node_modules" not in p.parts
+    ]
+    whole = [n for n in ids if MODULE.is_whole_module(n)]
+    shards = MODULE.assign_shards(whole, 5)
+    weights = MODULE.load_weights()
+    load = [0.0] * 5
+    for n in whole:
+        load[shards[n] - 1] += weights.get(MODULE.module_of(n), MODULE.DEFAULT_WEIGHT)
+    assert max(load) < 1.25 * sum(load) / 5

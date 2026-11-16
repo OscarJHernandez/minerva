@@ -7,8 +7,10 @@ runs. A malformed value is an error, never "run nothing" (a silently empty shard
 
 Benchmark modules are the exception (`is_whole_module`): their tests share one module-scoped fixture that runs a
 whole corpus (one to three minutes). Split by test id, that fixture ran again in every shard, and again in every
-xdist worker of a shard. Such a module is kept together: all its tests go to one shard (the modules are dealt
-round-robin in sorted order, so the heavy ones are spread evenly), and CI runs `--dist loadfile`, so one worker
+xdist worker of a shard. Such a module is kept together: all its tests go to one shard. The modules are dealt
+heaviest first onto the lightest shard, by the seconds in `scripts/shard_weights.json` (a module not listed counts
+as `DEFAULT_WEIGHT`); the deal is a function of the collected set and that file only, so every shard and every
+xdist worker computes the same partition. CI runs `--dist loadfile`, so one worker
 owns each file and the corpus runs once per CI run. (`--dist loadgroup` with an `xdist_group` mark would keep the
 other files spread over the workers, but xdist 3.8 sets an attribute that pytest 9 no longer reads, so the mark is
 silently ignored.)
@@ -16,14 +18,19 @@ silently ignored.)
 
 from __future__ import annotations
 
+import json
 import os
 import zlib
+from functools import cache
+from pathlib import Path
 
 import pytest
 
 SHARD_ENV = "MINERVA_TEST_SHARD"
 TIER_ENV = "MINERVA_TEST_TIER"
 TIERS = ("pr", "extended")
+WEIGHTS_FILE = Path(__file__).resolve().parent / "scripts" / "shard_weights.json"
+DEFAULT_WEIGHT = 60.0  # seconds assumed for a whole module that has no entry yet
 
 
 def parse_tier(value: str | None) -> str:
@@ -62,13 +69,32 @@ def is_whole_module(nodeid: str) -> bool:
     return "benchmark" in name or name == "test_capabilities.py"
 
 
-def assign_shards(nodeids: list[str], count: int) -> dict[str, int]:
-    """The 1-based shard of every collected test: whole modules round-robin, the rest by `shard_of`.
+@cache
+def load_weights() -> dict[str, float]:
+    """Seconds per whole-module file from `scripts/shard_weights.json` (keys starting with `_` are comments)."""
+    data = json.loads(WEIGHTS_FILE.read_text(encoding="utf-8"))
+    return {k: float(v) for k, v in data.items() if not k.startswith("_")}
 
-    A function of the collected set only, so every shard and every xdist worker computes the same answer.
+
+def assign_shards(
+    nodeids: list[str], count: int, weights: dict[str, float] | None = None
+) -> dict[str, int]:
+    """The 1-based shard of every collected test: whole modules by weight, the rest by `shard_of`.
+
+    Whole modules go heaviest first (ties by name) onto the shard with the least weight so far (ties: the lowest
+    number). A function of the collected set and the weights only, so every shard and xdist worker agrees.
     """
-    whole = sorted({module_of(n) for n in nodeids if is_whole_module(n)})
-    module_shard = {module: position % count + 1 for position, module in enumerate(whole)}
+    table = load_weights() if weights is None else weights
+    whole = sorted(
+        {module_of(n) for n in nodeids if is_whole_module(n)},
+        key=lambda module: (-table.get(module, DEFAULT_WEIGHT), module),
+    )
+    load = [0.0] * count
+    module_shard: dict[str, int] = {}
+    for module in whole:
+        lightest = load.index(min(load))
+        load[lightest] += table.get(module, DEFAULT_WEIGHT)
+        module_shard[module] = lightest + 1
     return {
         n: module_shard[module_of(n)] if is_whole_module(n) else shard_of(n, count) for n in nodeids
     }
