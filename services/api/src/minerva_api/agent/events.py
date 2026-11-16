@@ -186,6 +186,10 @@ class LLMCallDebug(BaseModel):
     est_tools: int | None = None
     est_history: int | None = None
     est_turn: int | None = None
+    request_sha: str | None = (
+        None  # fingerprint of the system prompt and tool schemas this call sent
+    )
+    groups: list[str] = Field(default_factory=list)  # tool groups loaded for this call
 
 
 class ClaimDebug(BaseModel):

@@ -108,6 +108,7 @@ ALLOWED_FIELDS = frozenset(
         "t_ms",
         "step",
         "prompt_sha",
+        "request_sha",
         "mode",
         "api_version",
         "max_steps",

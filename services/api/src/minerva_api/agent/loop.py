@@ -42,7 +42,7 @@ from .events import (
 from .llm import LLMClient, LLMError, ToolCall, Usage
 from .mathinput import MATH_FIELDS, prepare_arguments
 from .params import EffectiveParams
-from .prompts import SYSTEM_PROMPT
+from .prompts import LOAD_TOOLS_NOTICE, SYSTEM_PROMPT
 from .reasoning import ReasoningGate, clean_reply
 from .recovery import (
     BUDGET_EXHAUSTED,
@@ -184,8 +184,18 @@ MIN_WRAP_UP_SECONDS = 3.0
 
 
 def prompt_sha() -> str:
-    """Short fingerprint of the system prompt and tool schemas: which version produced a turn."""
-    blob = SYSTEM_PROMPT + json.dumps(schemas(), sort_keys=True)
+    """Short fingerprint of the prompt catalogue: the full system prompt, the tool schemas and the fixed notices
+    the loop adds to a conversation. Which version of the text produced a turn; what one call actually sent
+    (a subset of tools, the rule blocks loaded so far) is `request_sha`."""
+    blob = "\0".join(
+        [SYSTEM_PROMPT, LOAD_TOOLS_NOTICE, TEXT_TOOL_NOTICE, WRAP_UP_NOTICE]
+    ) + json.dumps(schemas(), sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()[:12]
+
+
+def request_sha(system: str, tools: Sequence[dict[str, Any]]) -> str:
+    """Fingerprint of the system prompt and the tool schemas one model call was actually sent."""
+    blob = system + "\0" + json.dumps(list(tools), sort_keys=True)
     return hashlib.sha256(blob.encode()).hexdigest()[:12]
 
 
@@ -730,6 +740,7 @@ async def _run_turn(
             }
             debug.prompt_estimate_tokens = max(debug.prompt_estimate_tokens, estimate)
             debug.groups = list(active)
+            sent_sha = request_sha(system_now, tools_now)
             if routed_now is None:
                 tracer.emit(
                     LLMRequest,
@@ -740,6 +751,7 @@ async def _run_turn(
                     window=params.num_ctx if params is not None else 0,
                     dropped_messages=trimmed,
                     groups_loaded=len(active),
+                    request_sha=sent_sha,
                 )
             result = _Step()
             if (
@@ -764,6 +776,8 @@ async def _run_turn(
                         prompt_tokens=usage.prompt_tokens if usage else None,
                         completion_tokens=usage.completion_tokens if usage else None,
                         cost_usd=usage.cost_usd if usage else None,
+                        request_sha=sent_sha,
+                        groups=list(active),
                         **breakdown,
                     )
                 )
