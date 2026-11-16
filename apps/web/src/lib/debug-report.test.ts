@@ -400,6 +400,19 @@ const traced: StoredMessage = {
   },
 };
 
+describe("the build in a report", () => {
+  it("names the build the API reports, shortened in the header and whole in the data", () => {
+    const sha = "0123456789abcdef0123456789abcdef01234567";
+    const report = buildDebugReport({ ...input, status: { ...input.status, build: sha } });
+    expect(report).toContain("· build 0123456789ab\n");
+    expect(report).toContain(`"build": "${sha}"`);
+  });
+
+  it("says the build is unknown when an older server does not report one", () => {
+    expect(buildDebugReport(input)).toContain("· build ?\n");
+  });
+});
+
 describe("buildDebugReport, format 2", () => {
   const report = buildDebugReport({ ...input, messages: [user, traced] });
 

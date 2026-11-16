@@ -1,5 +1,6 @@
 # Defaults are generic. Deployment-specific settings (hostnames, node placement, pull secrets) are
 # supplied at deploy time (--set / extra values file / repository variables), never committed.
+expectedBuild: ""           # the commit `helm test` expects the API to report (deploy workflow sets it; empty skips the check)
 requireDigests: false        # production overlay turns this on: images are deployed by digest
 imagePullSecrets: []         # e.g. [{ name: ghcr-pull }] when the images are private
 existingSecret: minerva-secrets   # keys: postgres-password, session-secret (created by hand)
