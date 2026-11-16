@@ -21,6 +21,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
+from ..logging import error_fields
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .choice import delegation_active, names_a_method, numbers_in
 from .declarations import declared_matrices, declared_vectors
@@ -70,16 +71,20 @@ from .tracing import (
     ErrorCategory,
     LLMRequest,
     LLMResponse,
+    OutcomeKind,
     RetryReason,
     Sink,
     StopReason,
     ToolCompleted,
+    ToolDeclined,
+    ToolFailed,
     ToolStarted,
     Tracer,
     VerificationCompleted,
     activate,
     category_for,
     deactivate,
+    outcome_kind,
     tool_status,
 )
 
@@ -203,6 +208,68 @@ def _ms(since: float) -> int:
 def _sanitized(name: str) -> str:
     """A tool name that is safe to put in an event: one of the registry's, or `unknown`."""
     return name if name in TOOLS else "unknown"
+
+
+Outcomes = list[tuple[str, ErrorCategory | None, OutcomeKind | None]]
+
+
+def _arg_fields(name: str, arguments: Mapping[str, Any]) -> list[str]:
+    """The argument names the model filled that belong to the tool's own schema, sorted. A name the
+    schema does not have is dropped, so what is logged is never chosen by the model."""
+    tool = TOOLS.get(name)
+    if tool is None:
+        return []
+    fields = tool.args_model.model_fields
+    return sorted(k for k in arguments if isinstance(k, str) and k in fields)
+
+
+def _emit_outcome(
+    tracer: Tracer,
+    outcomes: Outcomes,
+    step: int,
+    *,
+    name: str,
+    log_name: str,
+    call_id: str,
+    status: str,
+    category: ErrorCategory | None,
+    arguments: Mapping[str, Any],
+    valid: bool,
+    repeated: bool = False,
+    references: int = 0,
+    duration_ms: int = 0,
+    engine_ms: int | None = None,
+    output: ToolOutput | None = None,
+) -> None:
+    """One line, at the default log setting, for a call that did not deliver a verified result:
+    `tool.failed` for something to fix, `tool.declined` for an honest answer or a call not run."""
+    kind = outcome_kind(status, category)
+    outcomes.append((log_name, category, kind))
+    if kind is None:
+        return
+    extra: dict[str, Any] = {}
+    if output is not None:
+        extra = {
+            "reason_code": output.reason_code,
+            "invalid_fields": list(output.invalid_fields),
+            **output.error_site,
+        }
+    tracer.emit(
+        ToolFailed if kind == "failure" else ToolDeclined,
+        step,
+        tool=log_name,
+        call_id=call_id,
+        status=tool_status(status),
+        error_category=category,
+        outcome_kind=kind,
+        arguments_valid=valid,
+        repeated=repeated,
+        references=references,
+        duration_ms=duration_ms,
+        engine_ms=engine_ms,
+        arg_fields=_arg_fields(name, arguments),
+        **extra,
+    )
 
 
 _TOOL_JSON = re.compile(r"^\s*(```(?:json)?)?\s*(\{.*\})\s*(```)?\s*$", re.DOTALL)
@@ -429,6 +496,7 @@ async def _run_turn(
     outputs: list[ToolOutput] = []
     order: list[str | Card] = []  # prose and cards in the order they happened
     trace: list[TraceStep] = []
+    outcomes: Outcomes = []
     full_text: list[str] = []
     debug = TurnDebug(
         request_id=info.request_id,
@@ -652,6 +720,18 @@ async def _run_turn(
                         status="skipped",
                         error_category=ErrorCategory.LIMIT_REACHED,
                     )
+                    _emit_outcome(
+                        tracer,
+                        outcomes,
+                        step,
+                        name=call.name,
+                        log_name=log_name,
+                        call_id=call_id,
+                        status="skipped",
+                        category=ErrorCategory.LIMIT_REACHED,
+                        arguments=call.arguments,
+                        valid=True,
+                    )
                     messages.append(
                         {
                             "role": "tool",
@@ -742,6 +822,20 @@ async def _run_turn(
                         status="skipped",
                         error_category=repeat_category,
                     )
+                    _emit_outcome(
+                        tracer,
+                        outcomes,
+                        step,
+                        name=call.name,
+                        log_name=log_name,
+                        call_id=call_id,
+                        status="skipped",
+                        category=repeat_category,
+                        arguments=arguments,
+                        valid=repeat_valid,
+                        repeated=True,
+                        references=references,
+                    )
                     messages.append(
                         {
                             "role": "tool",
@@ -795,10 +889,13 @@ async def _run_turn(
                         )
                         timed_out = True
                         stop = StopReason.TIME_LIMIT
-                    except Exception:
+                    except Exception as exc:
                         output = _tool_failure(
                             call.name, "it failed unexpectedly", ErrorCategory.TOOL_FAILURE
                         )
+                        output.error_site = error_fields(
+                            exc
+                        )  # class and location, never the message
                     finally:  # only this call is the model's: the context is not left marked
                         ctx.numbers_delegated, ctx.user_numbers = False, None
                     seen[key] = call_id
@@ -817,6 +914,14 @@ async def _run_turn(
                 sandbox = tracer.sandbox_since(mark)
                 engine_ms = sum(c.ms for c in sandbox) if sandbox else None
                 bad_outcome = next((c.outcome for c in sandbox if c.outcome != "ok"), None)
+                site = next((c for c in sandbox if c.error_type), None)
+                if site is not None and not output.error_site:
+                    # the sandbox child's own exception: class and where our code raised it
+                    output.error_site = {
+                        "error_type": site.error_type,
+                        "error_module": site.error_module,
+                        "error_line": site.error_line,
+                    }
                 category = category_for(output.status, bad_outcome)
                 if timed_out:
                     category = ErrorCategory.TIMEOUT
@@ -891,6 +996,22 @@ async def _run_turn(
                     sandbox_calls=len(sandbox),
                     error_category=ErrorCategory(error_category) if error_category else None,
                     result_id=result_id,
+                )
+                _emit_outcome(
+                    tracer,
+                    outcomes,
+                    step,
+                    name=call.name,
+                    log_name=log_name,
+                    call_id=call_id,
+                    status=output.status,
+                    category=ErrorCategory(error_category) if error_category else None,
+                    arguments=arguments,
+                    valid=output.arguments_valid and valid,
+                    references=references,
+                    duration_ms=duration,
+                    engine_ms=engine_ms,
+                    output=output,
                 )
                 evidence = output.evidence
                 if evidence is not None and refusal is None:
@@ -1070,6 +1191,10 @@ async def _run_turn(
         stop_reason=stop,
         error_category=failure_category,
         events_dropped=tracer.dropped,
+        tools_called=list(dict.fromkeys(name for name, _, _ in outcomes)),
+        failed_tools=list(dict.fromkeys(n for n, _, kind in outcomes if kind == "failure")),
+        declined_tools=list(dict.fromkeys(n for n, _, kind in outcomes if kind == "answer")),
+        first_failure_code=next((c for _, c, kind in outcomes if kind == "failure" and c), None),
     )
     debug.events = list(tracer.events)
     debug.events_dropped = tracer.dropped

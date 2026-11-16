@@ -13,7 +13,8 @@ import re
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from types import UnionType
+from typing import Any, Literal, Union, get_args, get_origin
 
 from minerva_engine import (
     CompareRequest,
@@ -61,6 +62,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError, model_valid
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
+from ..logging import error_fields
 from ..ode_log import log_ode
 from ..search_log import log_search_events
 from ..variation_log import log_variation
@@ -122,6 +124,13 @@ class ToolOutput:
     # The ids of the methods an analysis found applicable, in its order (`ode_analyze`); the loop asks
     # the user which to run when there are several and their message named none.
     choices: tuple[str, ...] = ()
+    # For the log and the trace only (see tracing.ToolOutcome): a fixed code for why the call failed
+    # (a validation error type), the schema paths that failed validation with list indices and
+    # dictionary keys replaced by `*`, and where an unexpected exception was raised. Never a value, a
+    # symbol name or an exception message.
+    reason_code: str | None = None
+    invalid_fields: tuple[str, ...] = ()
+    error_site: dict[str, Any] = field(default_factory=dict)
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -3754,6 +3763,73 @@ def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[s
     return out
 
 
+_REASON_CODE = re.compile(r"[a-z][a-z_]{0,39}")
+_UNION_NOISE = ("function-after", "function-before", "function-wrap", "json-or-python")
+
+
+def _candidates(annotation: Any) -> list[Any]:
+    """The concrete types an annotation allows (the members of a union, without `None`)."""
+    if get_origin(annotation) in (Union, UnionType):
+        return [a for a in get_args(annotation) if a is not type(None)]
+    return [annotation]
+
+
+def _step(candidates: list[Any], segment: Any) -> tuple[str | None, list[Any]] | None:
+    """Follow one segment of a validation error's location through the argument model.
+
+    Returns `(text to log or None, the types at the next level)`, or `None` when the segment cannot be
+    placed in the schema. Only names of the model's own fields are ever logged: an index or a
+    dictionary key (which can be a symbol the user chose) becomes `*`."""
+    for tp in candidates:
+        origin = get_origin(tp)
+        if isinstance(tp, type) and issubclass(tp, BaseModel):
+            if isinstance(segment, str) and segment in tp.model_fields:
+                return segment, _candidates(tp.model_fields[segment].annotation)
+        elif origin in (list, set, frozenset, tuple):
+            if isinstance(segment, int):
+                inner = get_args(tp)
+                return "*", _candidates(inner[0]) if inner else []
+        elif origin is dict:
+            inner = get_args(tp)
+            return "*", _candidates(inner[1]) if len(inner) > 1 else []
+    # a union member's own name (`OdeCondition`, `str`) or a validator wrapper is not a path segment
+    names = {getattr(tp, "__name__", None) for tp in candidates}
+    if isinstance(segment, str) and (segment in names or segment.startswith(_UNION_NOISE)):
+        return None, candidates
+    return None
+
+
+def _safe_path(model: type[BaseModel], loc: tuple[Any, ...]) -> str:
+    """`loc` as a schema path that cannot hold user data, cut with `*` where it cannot be placed."""
+    parts: list[str] = []
+    candidates: list[Any] = [model]
+    for segment in loc:
+        step = _step(candidates, segment)
+        if step is None:
+            parts.append("*")
+            break
+        label, candidates = step
+        if label is not None:
+            parts.append(label)
+    return ".".join(parts) or "*"
+
+
+def _validation_fields(
+    exc: ValidationError, model: type[BaseModel]
+) -> tuple[str | None, tuple[str, ...]]:
+    """A fixed reason code and the schema paths of the failed fields, for the log."""
+    code: str | None = None
+    paths: list[str] = []
+    for err in exc.errors():
+        path = _safe_path(model, tuple(err["loc"]))
+        if path not in paths:
+            paths.append(path)
+        kind = str(err.get("type", ""))
+        if code is None and _REASON_CODE.fullmatch(kind):
+            code = kind
+    return code, tuple(paths[:6])
+
+
 def _validation_message(exc: ValidationError, model: type[BaseModel]) -> str:
     """Every distinct problem (up to three) with the fix for the usual wrong shapes.
 
@@ -3902,12 +3978,14 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     try:
         args = tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except ValidationError as exc:
-        return _error(
+        invalid = _error(
             name,
             _validation_message(exc, tool.args_model),
             "invalid_arguments",
             arguments_valid=False,
         )
+        invalid.reason_code, invalid.invalid_fields = _validation_fields(exc, tool.args_model)
+        return invalid
     except TypeError:
         return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
     refused = _matrix_refusal(name, arguments, ctx)
@@ -3922,8 +4000,12 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
             "invalid_arguments",
             arguments_valid=False,
         )
-    except Exception:  # a bug in one tool must not end the turn; the text is fixed, never the cause
-        return _error(name, "the tool failed unexpectedly")
+    except (
+        Exception
+    ) as exc:  # a bug in one tool must not end the turn; the text is fixed, never the cause
+        failed = _error(name, "the tool failed unexpectedly")
+        failed.error_site = error_fields(exc)  # class and code location only, never the message
+        return failed
     # What the engine established, read from its own result: the model has no say in it.
     with contextlib.suppress(Exception):
         output.evidence = evidence_for(name, output.status, output.card.data)

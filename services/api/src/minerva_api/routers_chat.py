@@ -88,6 +88,11 @@ log = get_logger()
 HISTORY_MESSAGES = 20
 
 
+# What the default setting writes: the turn's summary and one line per tool call that failed or was
+# declined (agent/tracing.py), so a failure can be found without turning every event on.
+SUMMARY_EVENTS = frozenset({"agent.completed", "tool.failed", "tool.declined"})
+
+
 def _event_sink(mode: str) -> Sink | None:
     """Where trace events go as they happen: the server log, which holds no content.
 
@@ -100,7 +105,7 @@ def _event_sink(mode: str) -> Sink | None:
 
     def sink(record: dict[str, Any]) -> None:
         name = str(record["event"])
-        if mode == "summary" and name != "agent.completed":
+        if mode == "summary" and name not in SUMMARY_EVENTS:
             return
         log.info(name, **{k: v for k, v in record.items() if k != "event" and v is not None})
 

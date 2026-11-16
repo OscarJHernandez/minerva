@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import traceback
 from collections.abc import Mapping, MutableMapping
 from typing import Any
 
@@ -174,8 +175,61 @@ ALLOWED_FIELDS = frozenset(
         "checks",
         "checks_passed",
         "warnings",
+        # Tool outcome lines and where an error was raised (agent/tracing.py, `error_fields`): names from
+        # fixed sets (the tool registry, an argument model's own field names, enums), counts and code
+        # locations. Never an argument value, a user's symbol name or an exception message.
+        "outcome_kind",
+        "reason_code",
+        "arg_fields",
+        "invalid_fields",
+        "tools_called",
+        "failed_tools",
+        "declined_tools",
+        "first_failure_code",
+        "error_type",
+        "error_module",
+        "error_line",
     }
 )
+
+
+# Exception classes whose names are fixed by code we ship or depend on; any other class name could be
+# chosen by data (a dynamically created class), so it is reported as `other`.
+_KNOWN_ERROR_ROOTS = frozenset(
+    {
+        "builtins",
+        "sympy",
+        "mpmath",
+        "sqlalchemy",
+        "pydantic",
+        "pydantic_core",
+        "httpx",
+        "asyncio",
+        "json",
+        "concurrent",
+        "multiprocessing",
+    }
+)
+
+
+def error_fields(exc: BaseException) -> dict[str, Any]:
+    """Where an exception came from, for the log: class name, module and line. Never its message.
+
+    The message of an exception can hold an expression, a symbol or an input value; the class and the
+    innermost frame of our own code (`minerva_*`) are fixed by the source and say where to look.
+    """
+    cls = type(exc)
+    root = cls.__module__.split(".")[0]
+    known = root in _KNOWN_ERROR_ROOTS or root.startswith("minerva_")
+    out: dict[str, Any] = {"error_type": cls.__name__ if known else "other"}
+    innermost: tuple[str, int] | None = None
+    for frame, line in traceback.walk_tb(exc.__traceback__):
+        module = str(frame.f_globals.get("__name__", ""))
+        if module.startswith("minerva_"):
+            innermost = (module, line)
+    if innermost is not None:
+        out["error_module"], out["error_line"] = innermost
+    return out
 
 
 def _allow_list(_: Any, __: str, event_dict: MutableMapping[str, Any]) -> Mapping[str, Any]:
