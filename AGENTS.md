@@ -801,8 +801,9 @@ user-visible capability also gets an example in `docs/capabilities.yaml`, then r
 - Dependencies: prefer well-maintained, permissively licensed libraries; check the licence before adding
   (`docs/licensing.md`), pin via lockfiles (`uv.lock`, `pnpm-lock.yaml`), explain the need in the PR.
   No GPL/AGPL runtime dependencies. Run `pip-audit` / `pnpm audit` (CI does).
-- Do not push, publish, or open public releases without the maintainer's explicit approval. Use the
-  `oss-publication-review` skill before any public push.
+- Agents may push their own branches and open pull requests (see "Agent pull requests"). Do not push to
+  `main`, tag or publish releases, images or charts, or change repository settings or visibility without the
+  maintainer's explicit approval. Use the `oss-publication-review` skill before any release or publication.
 - CI runs on self-hosted runners; never let untrusted fork code reach them (see `docs/security-publication.md`).
 
 ## Skills
@@ -824,9 +825,12 @@ skill before changing that area. See `.agents/skills/README.md` before writing a
 
 ## Agent pull requests
 
-- Do not open a pull request, push, or publish without the maintainer's explicit instruction.
-- When asked to open one: state that it was authored by a coding agent at the top of the description,
-  open it as a draft, and fill in the template checklist honestly (unchecked means not done).
+- Agents may push a branch of their own and open a pull request for their work without asking first.
+  Push only that branch: never to `main`, never force-push a branch someone else pushed to, and never
+  publish, tag or release. Run the `verify-change` checks first; everything pushed is public, so the
+  "Security and open-source rules" apply to every commit on the branch.
+- State that the PR was authored by a coding agent at the top of the description, open it as a draft,
+  and fill in the template checklist honestly (unchecked means not done). Merging stays with the maintainer.
 - Never edit or remove a human-authored section of a PR description or an existing human comment.
 - Do not enable auto-merge.
 - Several agents may share one checkout. Before committing, run `git status` and stage only your own
