@@ -171,8 +171,9 @@ def analyze_text(lag: str, coords: list[str]):  # type: ignore[no-untyped-def]
 def _same_report(a, b) -> None:  # type: ignore[no-untyped-def]
     """Two reports agree in everything but the timing."""
     da, db = a.model_dump(mode="json"), b.model_dump(mode="json")
-    da.pop("duration_ms", None)
-    db.pop("duration_ms", None)
+    for key in ("duration_ms", "stages"):
+        da.pop(key, None)
+        db.pop(key, None)
     assert da == db
 
 
@@ -254,3 +255,20 @@ def test_bracketed_kinetic_energy_reads_like_the_parenthesised_one() -> None:
         derive(bracketed, ["theta", "phi"], "t", {}, L).lagrangian
         == derive(plain, ["theta", "phi"], "t", {}, L).lagrangian
     )
+
+
+def test_the_spherical_pendulum_reports_where_the_accelerations_are_undefined() -> None:
+    report = analyze_text(
+        "1/2*m*R^2*(theta_dot^2 + sin(theta)^2*phi_dot^2) - m*g*R*cos(theta)", ["theta", "phi"]
+    )
+    assert report.status.value == "ok"
+    assert report.restrictions_complete
+    joined = " ".join(report.restrictions_latex)
+    assert "\\sin" in joined and "\\theta" in joined and "m \\neq 0" in joined
+    assert set(report.stages) == {"parse", "derive", "solve", "check", "conserved"}
+    assert all(v >= 0 for v in report.stages.values())
+
+
+def test_a_lagrangian_with_a_constant_mass_matrix_has_no_restrictions() -> None:
+    report = analyze_text("x_dot^2/2 - x^2/2", ["x"])
+    assert report.restrictions_latex == []

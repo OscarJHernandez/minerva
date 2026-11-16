@@ -2224,9 +2224,15 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         data={
             "report": report.model_dump(mode="json"),
             "methods": method_data,
-            # What was analysed, so the card's numerical-solution form can resend exactly this.
+            "restrictions_latex": report.restrictions_latex,
+            # What was analysed, so the card's numerical-solution form can resend exactly this. A
+            # Lagrangian given in text goes back as the LaTeX Minerva printed (the form posts LaTeX).
             "request": {
-                "lagrangian": args.lagrangian,
+                "lagrangian": (
+                    args.lagrangian
+                    if resolve_syntax(source, args.format) == "latex"
+                    else report.lagrangian_latex or args.lagrangian
+                ),
                 "coordinates": args.coordinates,
                 "time": args.time,
                 "assumptions": args.assumptions,
@@ -2254,13 +2260,19 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
             quoted.append((c.expression_latex, NOT_VERIFIED))
     lines.extend(f"tested, not found: {t}" for t in report.tested)
     lines.extend(f"note: {n}" for n in report.notes)
-    if report.accelerations:
-        needed = ", ".join(report.parameters) or "none"
+    if report.restrictions_latex:
         lines.append(
-            "next step: integrate_motion solves these numerically and verifies the run. Ask the user for "
-            f"values of the parameters ({needed}), the initial positions and velocities and the time span; "
-            "do not choose them unless the user tells you to. One parameter may be swept over 2-6 values. "
-            "The card has a form for this."
+            "valid only where "
+            + ", ".join(f"${r}$" for r in report.restrictions_latex)
+            + " (the accelerations divide by the mass matrix; at these points the formulas say nothing)"
+        )
+        known.extend(report.restrictions_latex)
+    elif not report.restrictions_complete:
+        lines.append("domain restrictions could not be fully determined")
+    if report.accelerations:
+        lines.append(
+            "Answer what was asked. Numerical integration (integrate_motion) only if the user asks; it "
+            "needs their parameter values, initial conditions and time span, never yours."
         )
     if method_data:
         lines.append(

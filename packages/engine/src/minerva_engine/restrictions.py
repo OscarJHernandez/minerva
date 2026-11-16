@@ -16,6 +16,7 @@ from collections.abc import Iterable
 import sympy as sp
 
 from .indexed.guard import contains_indexed
+from .latexprint import to_latex
 
 _MAX_OPS = 300
 
@@ -72,8 +73,8 @@ def _describe(factor: sp.Expr) -> list[str]:
         roots = sp.roots(sp.Poly(factor, symbol))
         if degree >= 1 and sum(roots.values()) == degree:
             ordered = sorted(roots, key=sp.default_sort_key)
-            return [rf"{sp.latex(symbol)} \neq {sp.latex(r)}" for r in ordered]
-    return [rf"{sp.latex(factor)} \neq 0"]
+            return [rf"{to_latex(symbol)} \neq {to_latex(r)}" for r in ordered]
+    return [rf"{to_latex(factor)} \neq 0"]
 
 
 def domain_restrictions(
@@ -103,6 +104,31 @@ def domain_restrictions(
         introduced = [f for f in _factors(_denominator(after)) if not _still_excluded(f, before)]
         notes: list[str] = []
         for factor in [*lost, *[f for f in introduced if f not in lost]]:
+            if factor.is_zero is False:
+                continue
+            for text in _describe(factor):
+                if text not in notes:
+                    notes.append(text)
+        return notes, True
+    except Exception:
+        return [], False
+
+
+def determinant_conditions(determinant: sp.Expr) -> tuple[list[str], bool]:
+    """Conditions under which a solve that divided by `determinant` is valid, as LaTeX, and whether complete.
+
+    Each distinct non-constant factor of the determinant must be nonzero (a factor the declared
+    assumptions prove nonzero is not reported). Used for the accelerations of a Lagrangian: solving the
+    Euler-Lagrange equations divides by the determinant of the mass matrix, so at its zeros (for the
+    spherical pendulum: the poles) the formulas say nothing.
+    """
+    if contains_indexed(determinant):
+        return [], False
+    try:
+        if sp.count_ops(determinant) > _MAX_OPS:
+            return [], False
+        notes: list[str] = []
+        for factor in _factors(determinant):
             if factor.is_zero is False:
                 continue
             for text in _describe(factor):

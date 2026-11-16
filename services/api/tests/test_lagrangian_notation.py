@@ -82,3 +82,22 @@ def test_every_main_expression_field_says_which_syntax_it_takes() -> None:
         if field in main and not re.search(r"latex|text|syntax", info.description or "", re.I)
     ]
     assert missing == []
+
+
+def test_the_pole_restriction_travels_with_the_result(ctx: ToolContext) -> None:
+    out = _run(ctx, SPELLINGS["text"])
+    restrictions = out.card.data["restrictions_latex"]
+    assert any("sin" in r and "theta" in r for r in restrictions)
+    assert "valid only where" in out.for_model
+    # the next-step offer is conditional on the user asking, not appended to every answer
+    assert "only if the user asks" in out.for_model
+    stages = out.card.data["report"]["stages"]
+    assert set(stages) >= {"parse", "derive", "solve", "check", "conserved"}
+
+
+def test_a_text_lagrangian_goes_back_to_the_card_form_as_latex(ctx: ToolContext) -> None:
+    out = _run(ctx, SPELLINGS["text"])
+    sent = out.card.data["request"]["lagrangian"]
+    assert "\\dot" in sent and "_dot" not in sent
+    again = _run(ctx, sent)
+    assert again.status == "ok"
