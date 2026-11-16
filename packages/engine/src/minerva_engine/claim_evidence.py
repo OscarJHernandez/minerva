@@ -63,10 +63,13 @@ def _dynamic(names: list[str]) -> set[str]:
     return out
 
 
-def _agree(a: sp.Expr, b: sp.Expr) -> tuple[bool, bool]:
-    """(equivalent, symbolic zero) under the verified-equality check; undecided is not equivalent."""
+def _agree(a: sp.Expr, b: sp.Expr, symbolic: bool = False) -> tuple[bool, bool]:
+    """(equivalent, symbolic zero) under the verified-equality check; undecided is not equivalent.
+
+    The symbolic zero test (`sp.simplify`) is run only when it can change the answer given to the user:
+    a link is called symbolic only if the tool's own result was a symbolic zero too."""
     try:
-        v = verify_equal(a, b)
+        v = verify_equal(a, b, symbolic=symbolic)
     except Exception:
         return False, False
     return bool(v.passed and v.numeric_points_checked >= 4), bool(v.symbolic_zero)
@@ -120,7 +123,7 @@ class EvidenceIndex:
     ) -> EvidenceMatch | None:
         if not (a == c or sp.expand(a - c) == 0) or not a.free_symbols:
             return None
-        ok, symbolic = _agree(b, d)
+        ok, symbolic = _agree(b, d, item.basis == "symbolic")
         if not ok:
             return None
         return EvidenceMatch(
@@ -138,7 +141,7 @@ class EvidenceIndex:
             return None
         if a.name.endswith(("_dot", "_ddot")) or a in b.free_symbols:
             return None
-        ok, symbolic = _agree(b, d)
+        ok, symbolic = _agree(b, d, item.basis == "symbolic")
         if not ok:
             return None
         return EvidenceMatch(
@@ -176,7 +179,7 @@ class EvidenceIndex:
             return None
         if ratio.has(sp.zoo, sp.oo, sp.nan):
             return None
-        ok, symbolic = _agree(ra, ratio * rc)
+        ok, symbolic = _agree(ra, ratio * rc, item.basis == "symbolic")
         if not ok:
             return None
         numerator, denominator = sp.fraction(ratio)

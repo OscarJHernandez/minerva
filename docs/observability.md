@@ -34,6 +34,7 @@ turn started, from a monotonic clock) and `step` (the model call it belongs to).
 | `tool.completed` | status, duration, time in the sandbox and number of sandbox calls, error category, result id |
 | `tool.failed` / `tool.declined` | one per tool call that did not deliver a verified result (see "Tool outcomes in the log"): tool, status, error category, `outcome_kind`, a fixed `reason_code`, `arg_fields`, `invalid_fields`, and for an unexpected exception its class and where our code raised it |
 | `verification.completed` | for a tool: the kind of check (`symbolic_zero`, `numeric`, `quadrature`, `series_checks`, `structural`, `dimensional`, `lookup`), sample points agreed, restrictions, whether the result was accepted and why. For the model's own formulas: how many hold, are conditional, contradicted or unchecked |
+| `agent.routed` | a rule chose the first tool without asking the model (`routed`) or its result was not verified so the model plans (`declined`): decision, tool, and a fixed reason (see `docs/agent-reliability.md`) |
 | `agent.retry` | reason, attempt number |
 | `agent.stopped` | stop reason, steps, tool calls |
 | `agent.completed` | total latency, model, tool, sandbox and claim-check time, tokens, tool calls and errors, repeated calls, formulas with engine evidence |
@@ -51,7 +52,13 @@ an engine result. `unchanged`, `not_verified`, `unsupported`, `parse_error` and 
 never accepted, whatever the model says about them.
 
 The share of formulas in the model's prose that have engine evidence is recorded per turn
-(`evidence_pct`): formulas marked as coming from a verified result, or tested by the claim check.
+(`evidence_pct`): formulas marked as coming from a verified result, or tested by the claim check. A lone
+symbol (`\theta`) asserts nothing and is not counted. A model equation that is the same statement as a verified
+result (equivalent right side, proportional residual, or its own name for a verified conserved quantity) is
+marked from the tool and its claim record names the result, the rule and whether the link was symbolic or
+sampled. Each model call also records the estimated tokens of the system prompt, tool schemas, earlier
+conversation and the turn's own messages (`est_system`, `est_tools`, `est_history`, `est_turn`); a trace step
+keeps the tool name the model wrote when it was an accepted alias, and whether a rule chose the call.
 Formulas that are only *quoted* (the user's own input, a handbook entry that is only stated, an identity
 that was not applied) are shown, but not counted as verified.
 

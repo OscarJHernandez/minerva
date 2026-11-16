@@ -79,6 +79,7 @@ MINERVA_TEST_TIER=extended MINERVA_HYPOTHESIS_PROFILE=extended uv run pytest pac
 uv run python scripts/eval_models.py --suite reliability --check-cases   # live multi-turn reliability cases (also `make eval-reliability`; --suite core|reliability|all)
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
+uv run python scripts/eval_offline.py [--check|--compare docs/benchmarks/orchestration-offline-baseline.json]   # real loop + tools with a replayed model: tool names, notation, routing, evidence, tokens (`make eval-offline`; regenerate with --json-out/--out after a reviewed change)
 uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a,b --repeat 3 --seed 7 --label NAME \
     --json-out docs/benchmarks/NAME.json --out docs/benchmarks/NAME.md   # real-model run; --compare BASE.json to compare
 uv run python scripts/replay_trace.py report.md [--llm]   # re-run the tool calls (or a whole turn) of a chat debug report
@@ -119,6 +120,23 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`test_every_tool_is_core_or_in_exactly_one_group`), a new rule goes in the block of its group, and
   `test_the_smallest_request_stays_far_below_a_small_window` fails when the core grows too large. Do not send every tool
   again "to be safe" and do not remove the estimate before a model call.
+- Tool names and notation (`docs/agent-reliability.md`): the prompt never writes a group name next to a tool name with a
+  period; `toolsets.resolve_tool_name` accepts only closed aliases (`<group>.<tool>` when the group holds the tool,
+  `functions.<tool>`, case/space) and every other name stays `unknown_tool` (never redirect). The LaTeX parser refuses
+  plain-text syntax (`theta_dot`, `sin(x)`, spelled Greek names) with the corrected form instead of reading it as a
+  product of letters; `analyze_lagrangian` and `search_invariants` take `format` (`auto`/`latex`/`text`, choosing a
+  strict parser, never rewriting input). A new expression field states its syntax in its description (a test).
+- Evidence for the model's equations (`engine/claim_evidence.py`, `loop.claim_evidence`): a claim is linked to a verified
+  tool equation only by (1) the same left side and an equivalent right side, (2) residuals proportional by a factor free
+  of the system's coordinates/velocities/accelerations (zeros of the factor become conditions) or (3) its own name for a
+  verified conserved quantity or momentum. The result's restrictions travel with the match; it is never "proved" unless
+  both the tool's check and the link were symbolic zeros; matrices, vectors, distributions and sums are never linked;
+  a wrong equation stays unchecked (not contradicted). Lone symbols are not claims. Add a wrong twin to
+  `test_claim_evidence.py` for every new rule.
+- Routing (`agent/routing.py`, `MINERVA_AGENT_ROUTING`): a rule may choose the first tool only when two independent
+  signals agree (a formula the rule can read as a Lagrangian with unambiguous velocities, and a request for equations of
+  motion in the words around it). The call goes through `execute`; if it is not verified it is dropped and the model
+  plans. The model writes the answer. Do not route on a keyword alone and do not let a rule compute anything itself.
 - Turn lifecycle in the chat: `SendMessage.mode` is `new`, `retry` (answer the last user message again) or `edit` (replace its text
   and answer again); the reply after it is deleted and the user message is kept, never stored twice (equation numbers are not
   reused: the counter is a high-water mark, and a reference to a number whose message was replaced is told "no longer exists"). A
