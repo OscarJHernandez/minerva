@@ -90,7 +90,10 @@ describe("VariationalWorkbench", () => {
     );
     expect(onSaved).toHaveBeenCalled();
 
-    await userEvent.type(screen.getByLabelText("Path for x"), "\\sin(t)/\\sin(1)");
+    // Pasted, not typed: sixteen keystrokes re-render the whole workbench sixteen times, which
+    // pushed this test past the default 5 s on a loaded CI runner.
+    await userEvent.click(screen.getByLabelText("Path for x"));
+    await userEvent.paste("\\sin(t)/\\sin(1)");
     await userEvent.click(screen.getByRole("button", { name: "Evaluate the action" }));
     await waitFor(() => expect(variation).toHaveBeenCalledTimes(2));
     expect(createDerivation).toHaveBeenCalledOnce(); // the same derivation
@@ -104,7 +107,7 @@ describe("VariationalWorkbench", () => {
     );
     const steps = screen.getAllByRole("listitem", { name: /^Step/ });
     expect(steps.map((s) => s.getAttribute("aria-label"))).toEqual(["Step 1", "Step 2"]);
-  });
+  }, 20_000);
 
   it("states what is missing instead of sending an incomplete numerical step", async () => {
     mount();
