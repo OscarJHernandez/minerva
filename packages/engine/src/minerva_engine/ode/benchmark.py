@@ -269,8 +269,8 @@ def _named_system(e: Engine) -> tuple[str, str]:
             independent="t",
             unknowns=["y1", "y2"],
             conditions=[
-                {"unknown": "y1", "at": 0, "value": 1},  # type: ignore[list-item]
-                {"unknown": "y2", "at": 0, "value": 0},  # type: ignore[list-item]
+                {"unknown": "y1", "at": 0, "value": 1},
+                {"unknown": "y2", "at": 0, "value": 0},
             ],
             t_end=6,
             rtol=1e-10,
