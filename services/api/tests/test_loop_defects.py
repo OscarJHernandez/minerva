@@ -154,3 +154,27 @@ def test_a_tool_that_times_out_frees_the_sandbox_slot_at_once(
             break
         time.sleep(0.1)
     assert freed
+
+
+# -- D4: each call reads its own copy of the context -------------------------------------------------------
+
+
+def test_a_tool_gets_its_own_context_and_the_shared_one_is_never_marked(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[ToolContext] = []
+    real = loop_module.execute
+
+    def spy(name: str, arguments: dict[str, Any], c: ToolContext) -> Any:
+        seen.append(c)
+        return real(name, arguments, c)
+
+    monkeypatch.setattr(loop_module, "execute", spy)
+    llm = ReplayLLM(
+        [call("simplify", {"latex": "x+x"}), call("simplify", {"latex": "y+y"}), say("Ok.")]
+    )
+    final(play(llm, ctx, text="Let A and B be matrices. Simplify x+x."))
+    assert len(seen) == 2 and seen[0] is not ctx and seen[0] is not seen[1]
+    assert (
+        ctx.matrices == frozenset() and ctx.matrix_sources == {}
+    )  # the shared context is untouched

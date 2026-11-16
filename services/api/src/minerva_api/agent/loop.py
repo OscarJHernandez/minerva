@@ -16,7 +16,7 @@ import threading
 import time
 import uuid
 from collections.abc import AsyncIterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
@@ -1045,14 +1045,20 @@ async def _run_turn(
                     # sentence declares, a user sentence can clear it); `prior_matrices`, the generous
                     # reading, only leaves claims unchecked.
                     gate = prior_matrices if declared_for_tools is None else declared_for_tools
-                    ctx.matrices = (
-                        frozenset(matrix_names(trace))
-                        | frozenset(vector_names(trace))
-                        | frozenset(gate)
+                    # The worker thread gets its own copy: a call that timed out leaves a thread that
+                    # may still be reading it, and the next call must not change what it sees.
+                    call_ctx = replace(
+                        ctx,
+                        matrices=(
+                            frozenset(matrix_names(trace))
+                            | frozenset(vector_names(trace))
+                            | frozenset(gate)
+                        ),
+                        matrix_sources=dict(declared_for_tools or {}),
+                        numbers_delegated=numbers_delegated,
+                        user_numbers=user_numbers,
+                        input_notes=input_notes,
                     )
-                    ctx.matrix_sources = dict(declared_for_tools or {})
-                    ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
-                    ctx.input_notes = input_notes
                     run_tool: Any = execute
                     recovered_key: str | None = None
                     if routed_now is not None and call.id == routed_now.call.id:
@@ -1064,7 +1070,7 @@ async def _run_turn(
                             run_tool,
                             call.name,
                             arguments,
-                            ctx,
+                            call_ctx,
                         )
                         # The one deterministic correction, before the model hears about the failure.
                         alternative = (
@@ -1081,7 +1087,7 @@ async def _run_turn(
                                     run_tool,
                                     call.name,
                                     alternative[0],
-                                    ctx,
+                                    call_ctx,
                                 )
                             except TimeoutError:
                                 retried = None  # keep what the first reading said, not a timeout
@@ -1107,9 +1113,6 @@ async def _run_turn(
                         output.error_site = error_fields(
                             exc
                         )  # class and location, never the message
-                    finally:  # only this call is the model's: the context is not left marked
-                        ctx.numbers_delegated, ctx.user_numbers = False, None
-                        ctx.input_notes = ()
                     if not timed_out:
                         seen[key] = call_id  # a call that never finished has no result to point to
                         if recovered_key is not None:
