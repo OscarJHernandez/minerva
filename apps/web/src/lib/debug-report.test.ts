@@ -223,6 +223,30 @@ describe("buildDebugReport", () => {
     expect(out).toContain("### 2. Assistant");
   });
 
+  it("names where an internal error was raised, never its message", () => {
+    const failed: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        stop_reason: "internal_error",
+        debug: {
+          ...assistant.content.debug!,
+          trace_id: "tr9",
+          error: "The assistant hit an internal error.",
+          error_site: {
+            error_type: "KeyError",
+            error_module: "minerva_engine.ops",
+            error_line: 154,
+          },
+        },
+      },
+    };
+    const out = buildDebugReport({ ...input, messages: [user, failed] });
+    expect(out).toContain("raised: KeyError at minerva_engine.ops:154");
+    const none = buildDebugReport({ ...input, messages: [user, assistant] });
+    expect(none).not.toContain("raised:");
+  });
+
   it("contains no email or host name of the user", () => {
     expect(report).not.toMatch(/@|https?:\/\//);
   });

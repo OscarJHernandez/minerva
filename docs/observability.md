@@ -32,6 +32,7 @@ turn started, from a monotonic clock) and `step` (the model call it belongs to).
 | `llm.response` | latency, time to first output, finish reason, tokens in and out (when the host reports them), number of tool calls, the first proposed tool (a registry name or `unknown`) |
 | `tool.started` | tool, whether the arguments validated, whether it is a repeat, how many `@rN` references were replaced |
 | `tool.completed` | status, duration, time in the sandbox and number of sandbox calls, error category, result id |
+| `tool.failed` / `tool.declined` | one per tool call that did not deliver a verified result (see "Tool outcomes in the log"): tool, status, error category, `outcome_kind`, a fixed `reason_code`, `arg_fields`, `invalid_fields`, and for an unexpected exception its class and where our code raised it |
 | `verification.completed` | for a tool: the kind of check (`symbolic_zero`, `numeric`, `quadrature`, `series_checks`, `structural`, `dimensional`, `lookup`), sample points agreed, restrictions, whether the result was accepted and why. For the model's own formulas: how many hold, are conditional, contradicted or unchecked |
 | `agent.retry` | reason, attempt number |
 | `agent.stopped` | stop reason, steps, tool calls |
@@ -86,12 +87,71 @@ Settings (see `.env.example`):
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `MINERVA_AGENT_EVENTS` | `summary` | `off`: only the request lines. `summary`: one `agent.completed` event per request. `all`: every event |
+| `MINERVA_AGENT_EVENTS` | `summary` | `off`: only the request lines. `summary`: one `agent.completed` event per request, plus a `tool.failed` or `tool.declined` line for every tool call that did not succeed. `all`: every event |
 | `MINERVA_AGENT_MAX_STEPS` | 6 | model calls per answer |
 | `MINERVA_AGENT_MAX_SECONDS` | 180 | wall clock per answer |
 | `MINERVA_AGENT_MAX_TOOL_CALLS` | 12 | tool calls per answer |
 
 The stored trace and its events are kept at every setting; the setting only controls the server log.
+
+## Tool outcomes in the log
+
+At the default setting the log answers three questions about a turn without opening the conversation:
+which tool failed, what kind of call it was, and why. A tool call that did not deliver a verified result
+writes one line, with the turn's `trace_id`:
+
+| Event | `outcome_kind` | Which calls |
+| --- | --- | --- |
+| `tool.failed` | `failure` | Something to fix in Minerva or in how the model called it: `invalid_arguments`, `unknown_tool`, `parse_error`, `not_verified`, `timeout`, `resource_limit`, `sandbox_killed`, `busy`, `tool_failure`, `malformed_model_output` |
+| `tool.declined` | `answer` | What the engine or handbook established, or a call that was not run: no handbook entry, `unchanged`, `unsupported`, `conditions_not_satisfied`, `needs_user_choice`, `limit_reached`, a repeated call |
+
+The mapping is `tracing.OUTCOME_OF_CATEGORY`; a test fails when an error category is added without a
+decision. A verified result writes no line. Fields:
+
+- `tool`, `call_id`, `status`, `error_category`, `outcome_kind`, `arguments_valid`, `repeated`, `references`,
+  `duration_ms`, `engine_ms`.
+- `arg_fields`: the argument names the model filled that belong to the tool's own schema, sorted. A name the
+  schema does not have is dropped, so the model cannot choose what is logged.
+- `reason_code`: a fixed code, today the validation error type (`missing`, `string_type`, `literal_error`, ...)
+  of an `invalid_arguments` failure. It is absent when there is no code, never a copy of the category.
+- `invalid_fields`: the schema paths that failed (`quantities.*.name`), rebuilt level by level from the
+  argument model. Only the model's own field names are written; a list index or a dictionary key, which can be
+  a symbol the user chose, becomes `*`, and a path that cannot be placed is cut with `*`.
+- `error_type`, `error_module`, `error_line`: for an exception nobody expected (a tool that crashed, the sandbox
+  child, the agent loop, the chat stream, an endpoint), the class and the module and line of *our* code that
+  raised it. The class is reported only if it belongs to Minerva or a library we depend on, else `other`. The
+  message is never written. The sandbox child sends the same triple (`SandboxCall`), so an engine error points
+  into `minerva_engine`, not at the sandbox's plumbing.
+- `agent.completed` adds `tools_called`, `failed_tools`, `declined_tools` (registry names in the order first
+  called; a name the model invented is `unknown`) and `first_failure_code`.
+
+Every value is a member of a closed set (the tool registry, the argument models' field names, enums, pydantic's
+error types), and the event models drop anything else (`ToolOutcome` and `ErrorSite` validators), so an e-mail
+address or an expression cannot get into these fields even by mistake.
+
+There is no separate cap on these lines: a turn is limited to `MINERVA_AGENT_MAX_TOOL_CALLS` calls (12) and a
+repeated call counts towards it, so one turn writes at most that many.
+
+**From a log line to a fix.** Take the `trace_id`; open the conversation's debug panel (or the stored message's
+`debug.events`) for the arguments and results; copy the debug report and replay it with
+`scripts/replay_trace.py` (the `chat-trace-triage` skill). What the log does not hold, on purpose: the
+arguments, the results and *why the model chose that tool*. The last is answered by the report and the
+benchmark cases, not by a log.
+
+### One logging path
+
+Everything written to standard output is one JSON line that has passed the allow-list, including what the
+libraries log. Records from uvicorn, SQLAlchemy, httpx, asyncio and the other libraries we run under are
+reduced to `event = foreign:<logger>` (or `foreign_log` for a logger not on the list), the level and, for an
+exception, the class and location as above: their messages, arguments and tracebacks are dropped, because
+a message can hold an expression, an e-mail address or a SQL parameter. The access log is switched off
+(`--no-access-log`; our `request` line replaces it without the client address or query string). An exception
+that escapes an endpoint gets a fixed 500 body (`detail`, `request_id`), an `unhandled_error` line with the
+class and location, and its `request` line with status 500.
+
+One limit: the chat reply is a stream whose 200 status is sent before the turn runs. A failure inside it still
+has a `request` line with 200; `chat_turn_failed` (class and location) and the stored message are the signal,
+and the debug report prints `raised: <class> at <module>:<line>` for it.
 
 ## Reading a trace
 

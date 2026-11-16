@@ -774,6 +774,8 @@ export interface TurnDebug {
     given?: string[];
   }[];
   error: string | null;
+  /** Where an unexpected exception was raised: its class and the module and line of our own code. Never its message. Empty unless the turn ended in an internal error. */
+  error_site?: { error_type?: string; error_module?: string; error_line?: number };
   /** Added with tracing; absent on older messages. */
   trace_id?: string;
   stop_reason?: string | null;

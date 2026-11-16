@@ -235,7 +235,28 @@ _DOTTED = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{0,119}")
 _PATH = re.compile(r"[A-Za-z_*][A-Za-z0-9_.*]{0,119}")
 
 
-class ToolOutcome(TraceEvent):
+class ErrorSite(BaseModel):
+    """Where an unexpected exception was raised: its class, and the module and line of our own code.
+    Never its message, which can hold the user's expression. Whatever is not a name of that kind is
+    dropped by the validators, whoever built the value."""
+
+    error_type: str | None = None
+    error_module: str | None = None
+    error_line: int | None = None
+
+    @field_validator("error_type")
+    @classmethod
+    def _class_name(cls, value: str | None) -> str | None:
+        return value if value is not None and _NAME.fullmatch(value) else None
+
+    @field_validator("error_module")
+    @classmethod
+    def _module_name(cls, value: str | None) -> str | None:
+        ok = value is not None and value.startswith("minerva_") and _DOTTED.fullmatch(value)
+        return value if ok else None
+
+
+class ToolOutcome(TraceEvent, ErrorSite):
     """One line for a tool call that did not deliver a verified result: which tool, what kind of call,
     and the coded reason. `arg_fields` are the argument names the model filled that belong to the
     tool's own schema, `invalid_fields` the schema paths that failed validation (list indices and
@@ -254,9 +275,6 @@ class ToolOutcome(TraceEvent):
     engine_ms: int | None = None
     arg_fields: list[str] = []
     invalid_fields: list[str] = []
-    error_type: str | None = None  # where an unexpected exception was raised: class, module, line
-    error_module: str | None = None
-    error_line: int | None = None
 
     # Second line of defence behind the code that builds these values: whatever does not look like a
     # name from our own code or schema (an e-mail address, an expression) is dropped, never logged.
@@ -264,17 +282,6 @@ class ToolOutcome(TraceEvent):
     @classmethod
     def _known_code(cls, value: str | None) -> str | None:
         return value if value in REASON_CODES else None
-
-    @field_validator("error_type")
-    @classmethod
-    def _class_name(cls, value: str | None) -> str | None:
-        return value if value is not None and _NAME.fullmatch(value) else None
-
-    @field_validator("error_module")
-    @classmethod
-    def _module_name(cls, value: str | None) -> str | None:
-        ok = value is not None and value.startswith("minerva_") and _DOTTED.fullmatch(value)
-        return value if ok else None
 
     @field_validator("arg_fields")
     @classmethod
@@ -322,7 +329,7 @@ class AgentRetry(TraceEvent):
     attempt: int = 1
 
 
-class AgentStopped(TraceEvent):
+class AgentStopped(TraceEvent, ErrorSite):
     event: Literal["agent.stopped"] = "agent.stopped"
     reason: StopReason = StopReason.COMPLETED
     steps: int = 0
@@ -330,7 +337,7 @@ class AgentStopped(TraceEvent):
     error_category: ErrorCategory | None = None
 
 
-class AgentCompleted(TraceEvent):
+class AgentCompleted(TraceEvent, ErrorSite):
     event: Literal["agent.completed"] = "agent.completed"
     status: Literal["ok", "error"] = "ok"
     total_ms: int = 0

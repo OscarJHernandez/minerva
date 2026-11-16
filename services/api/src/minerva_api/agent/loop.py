@@ -520,6 +520,7 @@ async def _run_turn(
     stop = StopReason.COMPLETED
     failure: str | None = None
     failure_kind: str | None = None  # LLMError.kind, or `internal`
+    failure_site: dict[str, Any] = {}  # class and code location of an unexpected exception
     failure_category: ErrorCategory | None = None
     tool_calls_made = repeats = unproductive = malformed_streak = 0
     # Differential equations: when the analysis offers several methods and the user's message named
@@ -1107,11 +1108,12 @@ async def _run_turn(
             if summary.text and not looks_like_tool_call(summary.text):
                 full_text.append(summary.text)
                 order.append(summary.text)
-    except Exception:
+    except Exception as exc:
         stop = StopReason.INTERNAL_ERROR
         failure = "The assistant hit an internal error."
         failure_kind = "internal"
         failure_category = ErrorCategory.TOOL_FAILURE
+        failure_site = error_fields(exc)  # class and location only, never the message
 
     # ---- the end of the turn: one place builds the message, whatever way the turn ended ----------
     raw = strip_equation_tags("\n\n".join(full_text).strip())
@@ -1160,6 +1162,7 @@ async def _run_turn(
     debug.duration_ms = _ms(started)
     debug.error = failure
     debug.error_kind = failure_kind
+    debug.error_site = failure_site
     debug.stop_reason = stop.value
     in_tokens = [c.prompt_tokens for c in debug.llm_calls if c.prompt_tokens is not None]
     out_tokens = [c.completion_tokens for c in debug.llm_calls if c.completion_tokens is not None]
@@ -1169,6 +1172,7 @@ async def _run_turn(
         steps=len(debug.llm_calls),
         tool_calls=len(trace),
         error_category=failure_category,
+        **failure_site,
     )
     tracer.emit(
         AgentCompleted,
@@ -1195,6 +1199,7 @@ async def _run_turn(
         failed_tools=list(dict.fromkeys(n for n, _, kind in outcomes if kind == "failure")),
         declined_tools=list(dict.fromkeys(n for n, _, kind in outcomes if kind == "answer")),
         first_failure_code=next((c for _, c, kind in outcomes if kind == "failure" and c), None),
+        **failure_site,
     )
     debug.events = list(tracer.events)
     debug.events_dropped = tracer.dropped

@@ -70,7 +70,7 @@ from .agent.tracing import (
 from .agent.vision import FormulaReader, clean_candidates
 from .db import ChatMessage, Conversation, User, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep, current_user
-from .logging import get_logger
+from .logging import error_fields, get_logger
 from .providers import (
     OpenRouterTest,
     ProviderChoice,
@@ -1055,7 +1055,13 @@ FAILED_TEXT = (
 )
 
 
-def _store_failed(session_factory: Any, conv_id: uuid.UUID, order: list[str | Card]) -> None:
+def _store_failed(
+    session_factory: Any,
+    conv_id: uuid.UUID,
+    order: list[str | Card],
+    trace_id: str = "",
+    site: dict[str, Any] | None = None,
+) -> None:
     """A turn that failed outside the agent loop leaves a message saying so (with what had arrived),
     so a reload and a debug report show the failure instead of a user message with no reply."""
     blocks = [
@@ -1071,6 +1077,15 @@ def _store_failed(session_factory: Any, conv_id: uuid.UUID, order: list[str | Ca
         trace=[],
         truncated=True,
         stop_reason="internal_error",
+        # What the debug report shows for this turn: the trace id that joins the log line, and where
+        # our code raised the exception (never its message).
+        debug=TurnDebug(
+            trace_id=trace_id,
+            stop_reason="internal_error",
+            error="The assistant hit an internal error.",
+            error_kind="internal",
+            error_site=site or {},
+        ),
     )
     with session_factory() as session:
         session.add(
@@ -1404,11 +1419,12 @@ async def send_message(
             if not replied:
                 _store_stopped(session_factory, conv_id, arrived)
             raise
-        except Exception:
-            log.error("chat_turn_failed", trace_id=trace_id)
+        except Exception as exc:
+            site = error_fields(exc)  # the class and where our code raised it, never the message
+            log.error("chat_turn_failed", trace_id=trace_id, **site)
             if not replied:
                 with contextlib.suppress(Exception):  # never let the record hide the error event
-                    _store_failed(session_factory, conv_id, arrived)
+                    _store_failed(session_factory, conv_id, arrived, trace_id, site)
             yield _sse(
                 "error", {"message": "The assistant hit an internal error.", "trace_id": trace_id}
             )
