@@ -96,7 +96,14 @@ function toLines(segments: Segment[]): Line[] {
   return lines;
 }
 
-/** Inline markup: `**bold**` (which may enclose formulas) and `code`. Block markup is in `RichText`. */
+/**
+ * `*italic*` or `_italic_` inside one run of text. The marker must touch the words it wraps and must not
+ * sit inside a word, so `2 * 3 * 4`, `snake_case_name` and an unmatched `*` stay as typed. It never spans a
+ * formula: a run of text between two formulas is the most it can cover.
+ */
+const EMPHASIS = /((?<![\w*])\*(?=\S)[^*\n]*?\S\*(?![\w*])|(?<!\w)_(?=\S)[^_\n]*?\S_(?!\w))/;
+
+/** Inline markup: `**bold**` (which may enclose formulas), `*italic*` and `code`. Block markup is in `RichText`. */
 function renderNodes(nodes: Node[], prefix: string): ReactNode[] {
   const out: ReactNode[] = [];
   let bold = false;
@@ -115,7 +122,13 @@ function renderNodes(nodes: Node[], prefix: string): ReactNode[] {
           </code>,
         );
       } else if (piece !== "") {
-        out.push(bold ? <strong key={key}>{piece}</strong> : piece);
+        piece.split(EMPHASIS).forEach((part, ei) => {
+          if (part === "") return;
+          const ekey = `${key}-${ei}`;
+          const italic = ei % 2 === 1; // odd entries are the captured emphasis
+          const content = italic ? <em key={ekey}>{part.slice(1, -1)}</em> : part;
+          out.push(bold ? <strong key={ekey}>{content}</strong> : content);
+        });
       }
     });
   });

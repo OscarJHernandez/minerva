@@ -244,3 +244,11 @@
       order: 1
       assumptions: {p: [positive], G: [positive], M: [positive], m: [positive]}
   source: "engine expansion check (omega^2 = G^4 M^4 m^6 / p^6, verified); the linearisation is the tool's, not a hand derivation"
+
+- id: answer-without-thinking-aloud
+  category: ambiguous
+  prompt: 'Whats the tautochrone problem, in two sentences?'
+  expected_tool: none
+  # A reply that reasons in public ("Wait--", "Actually,", "Hmm") shows a conclusion and then retracts it.
+  reply_forbids: '(^|[.!?]\s+|\*\*|\n)\s*(wait|actually|hmm|hold on)\b[\s,:;\u2014-]'
+  source: "system prompt: write only the final answer, never think aloud in the reply"

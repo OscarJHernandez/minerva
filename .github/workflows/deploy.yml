@@ -102,6 +102,10 @@ jobs:
   deploy:
     name: Deploy to the homelab cluster
     needs: publish
+    # `ci` is skipped when the gate found this tree already tested. A job with only `needs:` runs under an
+    # implicit success(), which a skipped ancestor fails, so without this `if` the rollout was skipped
+    # silently (images published, cluster never upgraded) while the run still looked green.
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
     runs-on: minerva-runners
     timeout-minutes: 15
     environment: production
