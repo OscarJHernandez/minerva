@@ -57,7 +57,7 @@ from minerva_knowledge.identities import (
     summarize,
     vector_identity_rules,
 )
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError, model_validator
 
 from ..diagnostics import log_distribution
 from ..geometry_log import log_geometry
@@ -3660,16 +3660,82 @@ def schemas() -> list[dict[str, Any]]:
     return [t.schema() for t in TOOLS.values()]
 
 
-_SHAPE_HINTS = {
-    "assumptions": 'an object mapping each symbol to a list of words, e.g. {"x": ["positive"]}',
-    "quantities": 'a list of objects, e.g. [{"symbol": "F", "unit": "N"}]',
-    "matrices": 'a list of objects, e.g. [{"name": "A", "rows": 2}]',
-    "variables": 'a list of names, e.g. ["x", "y"]',
-    "conditions": (
-        'a list of strings like "y(0) = 1", or objects with the keys unknown, order, at and '
-        'value, e.g. {"unknown": "y", "order": 0, "at": "0", "value": "1"}'
-    ),
+# Examples of the usual wrong shapes. An example is shown only if it validates against the very field
+# that failed (`_shape_hint`): the same field name has different shapes in different tools (`quantities`
+# is a list of objects for the unit tools and a list of names for `geometry`), and a hint that teaches a
+# key the schema does not have makes the model repeat the same wrong call.
+_SHAPE_EXAMPLES: dict[str, Any] = {
+    "assumptions": {"x": ["positive"]},
+    "quantities": [{"name": "F", "unit": "N"}],
+    "matrices": [{"name": "A", "rows": 2}],
+    "variables": ["x", "y"],
+    "conditions": ["y(0) = 1", {"unknown": "y", "order": 0, "at": "0", "value": "1"}],
 }
+_SHAPE_MAX_KEYS = 8
+
+
+def _shape_of(schema: dict[str, Any], defs: dict[str, Any], depth: int = 0) -> str:
+    """The shape a JSON schema asks for, in words, with the schema's own key names."""
+    if "$ref" in schema:
+        schema = defs.get(str(schema["$ref"]).rsplit("/", 1)[-1], {})
+    if "anyOf" in schema:
+        parts = [_shape_of(s, defs, depth) for s in schema["anyOf"] if s.get("type") != "null"]
+        return " or ".join(dict.fromkeys(parts))
+    if "enum" in schema:
+        return "one of " + ", ".join(f'"{v}"' for v in schema["enum"])
+    kind = schema.get("type")
+    if kind == "array":
+        item = _shape_of(schema.get("items", {}), defs, depth)
+        if item.startswith("an object with"):
+            item = "objects, each with" + item[len("an object with") :]
+        return "a list of " + item
+    if kind == "object":
+        props = schema.get("properties")
+        if props and depth < 2:
+            required = [k for k in props if k in set(schema.get("required", []))]
+            others = [k for k in props if k not in required]
+            keys = []
+            for key in (required + others)[:_SHAPE_MAX_KEYS]:
+                tag = ", required" if key in required else ""
+                keys.append(f"{key} ({_shape_of(props[key], defs, depth + 1)}{tag})")
+            more = len(props) - len(keys)
+            tail = f", and {more} more" if more > 0 else ""
+            return "an object with the keys " + ", ".join(keys) + tail
+        extra = schema.get("additionalProperties")
+        if isinstance(extra, dict):
+            return "an object mapping names to " + _shape_of(extra, defs, depth)
+        return "an object"
+    words = {
+        "string": "text",
+        "integer": "an integer",
+        "number": "a number",
+        "boolean": "true or false",
+    }
+    return words.get(str(kind), "a value")
+
+
+def _shape_hint(model: type[BaseModel], field: str) -> str | None:
+    """What `field` of `model` must look like, from the schema itself, plus an example that validates."""
+    info = model.model_fields.get(field)
+    if info is None:
+        return None
+    schema = model.model_json_schema()
+    prop = schema.get("properties", {}).get(field)
+    if prop is None:
+        return None
+    structured = '"$ref"' in json.dumps(prop) or '"properties"' in json.dumps(prop)
+    example = _SHAPE_EXAMPLES.get(field)
+    if example is not None and info.annotation is not None:
+        try:
+            TypeAdapter(info.annotation).validate_python(example)
+        except ValidationError:
+            example = None
+    if example is None and not structured:
+        return None
+    described = _shape_of(prop, schema.get("$defs", {}))
+    if example is None and described in ("a value", "an object"):
+        return None  # nothing the model could act on
+    return f"{described}, e.g. {json.dumps(example)}" if example is not None else described
 
 
 def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[str, Any]:
@@ -3688,7 +3754,7 @@ def _coerce_numbers(model: type[BaseModel], arguments: dict[str, Any]) -> dict[s
     return out
 
 
-def _validation_message(exc: ValidationError) -> str:
+def _validation_message(exc: ValidationError, model: type[BaseModel]) -> str:
     """Every distinct problem (up to three) with the fix for the usual wrong shapes.
 
     A list of four conditions that all lack the same key is one problem, not four, and the error of
@@ -3712,7 +3778,7 @@ def _validation_message(exc: ValidationError) -> str:
         first = ".".join(str(p) for p in err["loc"] if p not in ("OdeCondition", "str"))
         label = first if count == 1 else f"{where} ({count} items, e.g. {first})"
         parts.append(f"{label}: {msg}")
-        hint = _SHAPE_HINTS.get(str(err["loc"][0])) if err["loc"] else None
+        hint = _shape_hint(model, str(err["loc"][0])) if err["loc"] else None
         if hint and hint not in hints:
             hints.append(hint)
     more = len(problems) - len(shown)
@@ -3836,7 +3902,12 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     try:
         args = tool.args_model(**_coerce_numbers(tool.args_model, arguments))
     except ValidationError as exc:
-        return _error(name, _validation_message(exc), "invalid_arguments", arguments_valid=False)
+        return _error(
+            name,
+            _validation_message(exc, tool.args_model),
+            "invalid_arguments",
+            arguments_valid=False,
+        )
     except TypeError:
         return _error(name, "invalid arguments", "invalid_arguments", arguments_valid=False)
     refused = _matrix_refusal(name, arguments, ctx)

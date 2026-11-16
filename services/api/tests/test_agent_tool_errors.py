@@ -1,6 +1,8 @@
 """Failures the benchmark showed models repeating: what the tool says back, and what counts as a stuck loop."""
 
 import asyncio
+import json
+import re
 from typing import Any
 
 import pytest
@@ -179,3 +181,78 @@ def test_differentiating_an_integral_over_an_unknown_curve_says_what_is_not_supp
         "differentiate", {"latex": r"\frac{dx}{dy} + 1", "variables": [{"name": "y"}]}, ctx
     )
     assert "evaluate it with `integrate`" not in plain.for_model
+
+
+# --- argument-shape hints must teach the schema's own names -----------------------------------------
+# A hint once said `{"symbol": "F", "unit": "N"}` while the schema requires `name`: the model obeyed
+# it three times in a row and the turn ended on a repeated failing call (dimension check, eq. 7).
+def test_the_quantity_hint_names_the_key_the_schema_requires(ctx: ToolContext) -> None:
+    wrong = {"symbol": "k", "unit": "N"}
+    for tool, extra in (
+        ("check_units", {"equation": "F = m a"}),
+        ("dimensional_analysis", {"target": "F"}),
+    ):
+        out = execute(tool, {**extra, "quantities": [wrong]}, ctx)
+        assert out.status == "error" and not out.arguments_valid
+        assert '"symbol"' not in out.for_model
+        assert '[{"name": "F", "unit": "N"}]' in out.for_model
+        assert "name (text, required)" in out.for_model
+    # and a call written the way the message says is read
+    ok = execute(
+        "check_units",
+        {"equation": "F = m a", "quantities": [{"name": "F", "unit": "N"}]},
+        ctx,
+    )
+    assert ok.arguments_valid
+
+
+def test_the_same_field_name_gets_the_hint_of_its_own_tool(ctx: ToolContext) -> None:
+    # `quantities` of `geometry` is a list of names, not of objects, and `variables` of `differentiate`
+    # a list of objects, not of names: neither may be told the other's shape.
+    out = execute(
+        "geometry",
+        {"coordinates": ["r"], "metric": [["1"]], "quantities": [{"name": "x"}]},
+        ctx,
+    )
+    assert out.status == "error"
+    assert '"name": "F"' not in out.for_model and "'determinant'" in out.for_model
+    out = execute("differentiate", {"latex": "x^2", "variables": [5]}, ctx)
+    assert out.status == "error"
+    assert '["x", "y"]' not in out.for_model and "order (an integer)" in out.for_model
+
+
+def test_every_hint_example_validates_against_the_field_it_is_shown_for() -> None:
+    from minerva_api.agent.tools import _SHAPE_EXAMPLES, TOOLS, _shape_hint
+    from pydantic import TypeAdapter
+
+    shown = 0
+    for tool in TOOLS.values():
+        for field, info in tool.args_model.model_fields.items():
+            hint = _shape_hint(tool.args_model, field)
+            if hint is None:
+                continue
+            shown += 1
+            example = _SHAPE_EXAMPLES.get(field)
+            if example is not None and f"e.g. {json.dumps(example)}" in hint:
+                TypeAdapter(info.annotation).validate_python(example)  # never raises
+            # every required key of an object the hint describes is named in it
+            schema = tool.args_model.model_json_schema()
+            defs = schema.get("$defs", {})
+            for ref in set(
+                re.findall(r'"\$ref": "#/\$defs/(\w+)"', json.dumps(schema["properties"][field]))
+            ):
+                for key in defs[ref].get("required", [])[:8]:
+                    assert f"{key} (" in hint, (tool.name, field, key)
+    assert shown > 20
+
+
+def test_a_derivative_symbol_without_a_unit_is_refused_by_name(ctx: ToolContext) -> None:
+    # `\dot{u}` and `\ddot{u}` are read as the symbols `u_dot` and `u_ddot`; the unit check must refuse
+    # them with that name (so the model can declare them), never guess a dimension for a derivative.
+    base = [
+        {"name": "u", "unit": "1/m"},
+        {"name": "k", "unit": "N m^2"},
+        {"name": "m", "unit": "kg"},
+    ]
+    out = execute("check_units", {"equation": r"\ddot{u} = - k u^2 / m", "quantities": base}, ctx)
+    assert out.status == "parse_error" and "u_ddot" in out.for_model
