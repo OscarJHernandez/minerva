@@ -41,6 +41,12 @@ spec:
           try wget -q -O- "$web/login" >/dev/null
           try wget -q -O- "$web/api/v1/reference/toc" | grep -q "math.trigonometry"
 
+          {{- if .Values.expectedBuild }}
+          # The pods that answer are the build that was just published, not an older one that kept running.
+          built=$(wget -q -O- "$web/api/v1/version" | grep -o '"build":"[^"]*"' | cut -d'"' -f4)
+          [ "$built" = {{ .Values.expectedBuild | quote }} ] || { echo "running build is '$built', expected {{ .Values.expectedBuild }}"; exit 1; }
+          {{- end }}
+
           # Signed-out requests get 401 from the API through the web proxy, never data.
           [ "$(status $web/api/v1/auth/me)" = 401 ] || { echo "auth/me without a session must be 401"; exit 1; }
           [ "$(status $web/api/v1/history)" = 401 ] || { echo "history without a session must be 401"; exit 1; }

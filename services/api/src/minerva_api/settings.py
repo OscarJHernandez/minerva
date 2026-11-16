@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="MINERVA_", env_file=".env", extra="ignore")
 
     env: str = "development"
+    # The commit this image was built from (a build argument of the image); "unknown" for a local run.
+    build_sha: str = "unknown"
     database_url: str = "sqlite+pysqlite:///:memory:"
     # Placeholder default is rejected outside development (see `validate_for_runtime`).
     session_secret: SecretStr = SecretStr("change-me-generate-a-random-value")

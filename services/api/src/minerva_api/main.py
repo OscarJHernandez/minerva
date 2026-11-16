@@ -133,6 +133,12 @@ def create_app(settings: Settings | None = None, *, create_tables: bool = False)
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/v1/version", tags=["health"])
+    def version() -> dict[str, str]:
+        # Public on purpose: a commit id is not sensitive, and the deploy test and a person can then check
+        # which build is actually serving (`/api/v1/version` through the web app).
+        return {"build": settings.build_sha}
+
     @app.get("/readyz", tags=["health"])
     def readyz(request: Request) -> JSONResponse:
         try:

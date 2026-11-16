@@ -869,6 +869,8 @@ export interface ChatStatus {
   params?: ParamsInfo | null;
   /** False when even the smallest request (system prompt and core tools) does not fit the window. */
   context_ok?: boolean;
+  /** The commit the API was built from (empty from an older server). */
+  build?: string;
 }
 
 export interface ProviderStatus {

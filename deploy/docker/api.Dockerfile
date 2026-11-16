@@ -18,6 +18,9 @@ WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 COPY services/api/alembic.ini services/api/alembic.ini
 COPY services/api/alembic services/api/alembic
+# Last, so a new commit does not invalidate the layers above (the layer cache stays useful).
+ARG GIT_SHA=unknown
+ENV MINERVA_BUILD_SHA=$GIT_SHA
 USER 10001:10001
 EXPOSE 8100
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \

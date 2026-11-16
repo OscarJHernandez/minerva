@@ -24,3 +24,16 @@ def test_search_filters(client: TestClient) -> None:
 def test_health(client: TestClient) -> None:
     assert client.get("/healthz").json() == {"status": "ok"}
     assert client.get("/readyz").status_code == 200
+
+
+def test_version_names_the_build_without_a_session() -> None:
+    from tests.conftest import build_app
+
+    with TestClient(build_app(build_sha="0123abcd")) as c:
+        assert c.get("/v1/version").json() == {"build": "0123abcd"}
+        assert c.get("/v1/version").headers["cache-control"] == "no-store"
+        assert c.get("/v1/chat/status").json()["build"] == "0123abcd"
+
+
+def test_version_is_unknown_for_a_local_run(client: TestClient) -> None:
+    assert client.get("/v1/version").json() == {"build": "unknown"}

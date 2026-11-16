@@ -87,6 +87,9 @@ jobs:
           APP_URL: ${{ vars.APP_URL }}
         run: |
           ARGS=()
+          if [ "${{ matrix.name }}" = minerva-api ]; then
+            ARGS+=(--build-arg "GIT_SHA=${GITHUB_SHA}")
+          fi
           if [ "${{ matrix.name }}" = minerva-site ]; then
             ARGS+=(--build-arg "NEXT_PUBLIC_APP_URL=${APP_URL:?set the APP_URL repository variable}")
             ARGS+=(--build-arg "NEXT_PUBLIC_REPO_URL=https://github.com/${GITHUB_REPOSITORY}")
@@ -151,6 +154,7 @@ jobs:
             --set api.image.digest="$API_DIGEST"
             --set web.image.digest="$WEB_DIGEST"
             --set site.image.digest="$SITE_DIGEST"
+            --set expectedBuild="$GITHUB_SHA"
             --set hosts.app="${APP_HOST:?set the APP_HOST repository variable}"
             --set hosts.site="${SITE_HOST:?set the SITE_HOST repository variable}"
           )
@@ -172,3 +176,23 @@ jobs:
             fi
             exit 1
           fi
+
+  # A green run must mean the cluster runs this commit. `publish` can succeed while `deploy` is skipped
+  # (a skipped ancestor skips a job that has only `needs:`); say so loudly instead of looking successful.
+  deployed:
+    name: Published means deployed
+    needs: [publish, deploy]
+    if: ${{ always() && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Fail unless the rollout ran and succeeded
+        env:
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          if [ "$DEPLOY_RESULT" != success ]; then
+            echo "::error::Images were published but the cluster rollout result is '$DEPLOY_RESULT': the cluster is NOT running this commit."
+            exit 1
+          fi
+          echo "Rollout succeeded; helm test confirmed the API reports build $GITHUB_SHA."

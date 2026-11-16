@@ -117,6 +117,7 @@ class StatusOut(BaseModel):
     # (system prompt + core tools) fits the model's window. Absent when not signed in.
     params: dict[str, Any] | None = None
     context_ok: bool = True
+    build: str = ""  # the commit this API was built from, for the debug report
 
 
 class ImageIn(BaseModel):
@@ -232,6 +233,7 @@ async def chat_status(request: Request, db: DbDep, settings: SettingsDep) -> Sta
         providers=providers,
         params=describe(settings, user.email) if user is not None else None,
         context_ok=_context_ok(settings),
+        build=settings.build_sha,
     )
 
 

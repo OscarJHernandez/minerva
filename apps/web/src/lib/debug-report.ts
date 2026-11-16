@@ -364,7 +364,11 @@ export function reportData(input: ReportInput) {
     contains_conversation_content: true,
     generated_at: (input.now ?? new Date()).toISOString(),
     title: input.title,
-    app: { mode: input.status?.mode ?? null, model: input.status?.model ?? null },
+    app: {
+      mode: input.status?.mode ?? null,
+      model: input.status?.model ?? null,
+      build: input.status?.build || null,
+    },
     messages: input.messages.map((m) => ({
       role: m.role,
       created_at: m.created_at,
@@ -385,7 +389,7 @@ export function buildDebugReport(input: ReportInput): string {
   const data = reportData(input);
   const lines = [
     "# Minerva chat debug report",
-    `format ${REPORT_FORMAT} · ${data.generated_at} · mode ${data.app.mode ?? "?"} · model ${data.app.model ?? "?"}`,
+    `format ${REPORT_FORMAT} · ${data.generated_at} · mode ${data.app.mode ?? "?"} · model ${data.app.model ?? "?"} · build ${data.app.build?.slice(0, 12) ?? "?"}`,
     "",
     `> ${CONTENT_NOTICE}`,
     "",
