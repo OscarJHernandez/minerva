@@ -144,6 +144,7 @@ export function Workbench() {
   const [draftKey, setDraftKey] = useState<string | null>(null);
   const [rewriteGoal, setRewriteGoal] = useState<SimplifyGoal | null>(null);
   const [rewriteTarget, setRewriteTarget] = useState<string[]>([]);
+  const [needsBounds, setNeedsBounds] = useState(false);
   const [savedVariables, setSavedVariables] = useState<DiffVariable[] | null>(null);
   const [format, setFormat] = useState<EditorFormat>("latex");
   const [latex, setLatex] = useState("");
@@ -293,6 +294,10 @@ export function Workbench() {
               fromId: string | null;
               fromWhich: number;
               imported: typeof imported;
+              needsBounds?: boolean;
+              rewriteGoal?: SimplifyGoal | null;
+              rewriteTarget?: string[];
+              savedVariables?: DiffVariable[] | null;
             };
             setFormat(draft.format);
             setLatex(draft.latex);
@@ -305,6 +310,10 @@ export function Workbench() {
             setFromId(draft.fromId);
             setFromWhich(draft.fromWhich);
             setImported(draft.imported ?? null);
+            setNeedsBounds(draft.needsBounds ?? false);
+            setRewriteGoal(draft.rewriteGoal ?? null);
+            setRewriteTarget(draft.rewriteTarget ?? []);
+            setSavedVariables(draft.savedVariables ?? null);
           }
         } catch {
           // The workbench remains usable without browser storage.
@@ -337,6 +346,10 @@ export function Workbench() {
             fromId,
             fromWhich,
             imported,
+            needsBounds,
+            rewriteGoal,
+            rewriteTarget,
+            savedVariables,
           }),
         );
       }
@@ -356,6 +369,10 @@ export function Workbench() {
     fromId,
     fromWhich,
     imported,
+    needsBounds,
+    rewriteGoal,
+    rewriteTarget,
+    savedVariables,
   ]);
 
   useEffect(() => {
@@ -484,6 +501,20 @@ export function Workbench() {
   }
 
   function run(operation: StepOperation) {
+    if (
+      operation === "integrate" &&
+      needsBounds &&
+      (!settings.lower.trim() || !settings.upper.trim())
+    ) {
+      setError("Enter both bounds to rerun this saved definite integral.");
+      return;
+    }
+    if (operation === "simplify" && rewriteGoal === "rewrite" && !rewriteTarget.length) {
+      setError(
+        "The saved rewrite does not include its target functions. Choose Simplify to start a new operation.",
+      );
+      return;
+    }
     const problem = validateSettings(operation, settings);
     if (problem) {
       setError(problem);
@@ -627,6 +658,7 @@ export function Workbench() {
     setRewriteGoal(null);
     setRewriteTarget([]);
     setSavedVariables(null);
+    setNeedsBounds(false);
     setSelected(null);
     setSettings(DEFAULT_SETTINGS);
     setParts(null);
@@ -666,6 +698,10 @@ export function Workbench() {
       setSteps(derivation.steps);
       const last = [...derivation.steps].reverse().find((s) => continuation(s) !== null);
       if (last) continueFrom(last, false);
+      else {
+        const input = derivation.steps.at(-1);
+        if (input) restoreExpression(input);
+      }
     } catch (e) {
       if (generation.current === request) handleError(e);
     }
@@ -683,10 +719,14 @@ export function Workbench() {
   }
 
   async function deleteStep(item: HistoryItem) {
+    const request = generation.current;
     try {
       await api.deleteHistoryItem(item.id);
-      if (derivationId) setSteps((await api.derivation(derivationId)).steps);
-      if (item.id === fromId) setFromId(null);
+      if (derivationId) {
+        const derivation = await api.derivation(derivationId);
+        if (request === generation.current) setSteps(derivation.steps);
+      }
+      if (request === generation.current && item.id === fromId) setFromId(null);
       await refreshSaved();
     } catch (e) {
       handleError(e);
@@ -778,6 +818,10 @@ export function Workbench() {
     }
     setMode("expression");
     reset();
+    restoreExpression(item);
+  }
+
+  function restoreExpression(item: HistoryItem) {
     setFormat(item.format);
     if (item.format === "latex") setLatex(item.input);
     else setText(item.input);
@@ -811,6 +855,7 @@ export function Workbench() {
           typeof request.order === "number" ? request.order : DEFAULT_SETTINGS.seriesOrder,
       });
       if (item.operation === "integrate" && request.definite && !result.original_request) {
+        setNeedsBounds(true);
         setError(
           "This saved integral does not include its original bounds. Enter both bounds before rerunning it.",
         );
@@ -1218,6 +1263,7 @@ export function Workbench() {
               continueFrom(item, true);
               setSettings(DEFAULT_SETTINGS);
               setSavedVariables(null);
+              setNeedsBounds(false);
               setRewriteGoal(operation === "expand" || operation === "factor" ? operation : null);
               setSelected(
                 operation === "identities"

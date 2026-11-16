@@ -34,7 +34,7 @@ import { IsolatePanel, StepResultPanel } from "../step-result-panel";
 import type { Status } from "@/lib/types";
 
 /** Renders a tool result. The content comes from Minerva's own computation, never from the model. */
-export function CardView({ card }: { card: Card }) {
+export function CardView({ card, streaming = false }: { card: Card; streaming?: boolean }) {
   const { openInWorkbench } = useFormulaActions();
   const data = card.data as {
     status?: string;
@@ -50,7 +50,11 @@ export function CardView({ card }: { card: Card }) {
     <ResultActions
       text={data.result_text!}
       latex={data.result_latex}
-      onOpen={data.original_request && openInWorkbench ? () => openInWorkbench(card.id) : undefined}
+      onOpen={
+        !streaming && data.original_request && openInWorkbench
+          ? () => openInWorkbench(card.id)
+          : undefined
+      }
     />
   );
   if (card.number == null)

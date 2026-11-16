@@ -57,7 +57,7 @@ export function PendingView({ pending }: { pending: Pending }) {
             <RichText segments={splitMath(item.text)} />
           </div>
         ) : (
-          <CardView key={item.card.id} card={item.card} />
+          <CardView key={item.card.id} card={item.card} streaming />
         ),
       )}
       <p className="text-sm text-muted" role="status" data-testid="pending-status">

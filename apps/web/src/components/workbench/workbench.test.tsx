@@ -215,6 +215,24 @@ describe("Workbench derivation", () => {
     expect(screen.queryByLabelText("Lower bound (optional)")).not.toBeInTheDocument();
   });
 
+  it("requires the bounds missing from an older saved definite integral", async () => {
+    vi.mocked(api.history).mockResolvedValueOnce([
+      step(
+        "old-integral",
+        "integrate",
+        "x",
+        { definite: true, variable: "x" },
+        { derivation_id: null },
+      ),
+    ]);
+    render(<Workbench />);
+    fireEvent.click(screen.getByRole("button", { name: "Saved" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open integrate: x" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/both bounds/);
+    expect(api.integrate).not.toHaveBeenCalled();
+  });
+
   it("does not run an operation with bad settings", () => {
     render(<Workbench />);
     type("x");
