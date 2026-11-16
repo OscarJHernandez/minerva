@@ -28,6 +28,8 @@ export const STOP_EXPLANATION: Record<string, string> = {
   time_limit: "the time limit for one answer was reached",
   repeated_calls:
     "the model kept repeating calls or making calls that established nothing, so the turn was wrapped up",
+  output_limit:
+    "the last model call reached the model's length limit before it finished, so the reply was cut off",
   model_error: "the model host failed (a failed call is retried once before this)",
   malformed_output: "the model's tool calls could not be used, even after one correction",
   internal_error: "an internal error; the server log has the trace id and counters only",

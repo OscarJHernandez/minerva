@@ -201,3 +201,32 @@ def test_square_and_curly_brackets_group_like_parentheses(bracketed: str, plain:
 def test_ambiguous_or_mismatched_brackets_are_refused(source: str) -> None:
     with pytest.raises(ParseError):
         parse_latex(source)
+
+
+# --- unreadable notation is named, not just refused -------------------------------------------------
+def test_a_prime_is_said_to_be_derivative_notation_read_elsewhere() -> None:
+    with pytest.raises(ParseError, match=r"derivative notation.*variation.*differential equations"):
+        parse_latex(r"f'(r) + 1")
+
+
+def test_an_evaluation_bar_and_an_integral_are_named() -> None:
+    with pytest.raises(ParseError, match="evaluation bar"):
+        parse_latex(r"\left. x^2 \right|_{x=1}")
+    with pytest.raises(ParseError, match=r"integral \(\\int\) is read only by"):
+        parse_latex(r"\int_0^1 x \, dx")
+
+
+def test_the_derivative_message_does_not_send_the_user_back_to_the_failing_tool_alone() -> None:
+    with pytest.raises(ParseError) as caught:
+        parse_latex(r"\frac{dx}{dy} + 1")
+    text = str(caught.value)
+    assert (
+        "`variation`" in text
+        and "differential equation tools" in text
+        and "time_derivative" in text
+    )
+
+
+def test_ell_is_an_ordinary_letter() -> None:
+    ell = sp.Symbol("ell")
+    assert parse_latex(r"\ell^2 + \ell") == ell**2 + ell

@@ -22,7 +22,7 @@ from fastapi.concurrency import run_in_threadpool
 from minerva_engine import trace_scope
 
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
-from .choice import names_a_method
+from .choice import delegation_active, names_a_method, numbers_in
 from .declarations import declared_matrices, declared_vectors
 from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
@@ -37,6 +37,7 @@ from .events import (
 from .llm import LLMClient, LLMError, ToolCall, Usage
 from .params import EffectiveParams
 from .prompts import SYSTEM_PROMPT
+from .reasoning import ReasoningGate, clean_reply
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
 from .segments import normalize, split_segments
 from .tools import (
@@ -109,6 +110,10 @@ STOP_SENTENCES: dict[StopReason, str] = {
     StopReason.TOOL_CALL_LIMIT: "I stopped here because I reached the limit on tool calls for one answer.",
     StopReason.TIME_LIMIT: "I stopped here because I reached the time limit for one answer.",
     StopReason.REPEATED_CALLS: "I stopped here because further tool calls were not producing new results.",
+    StopReason.OUTPUT_LIMIT: (
+        "I stopped here because my reply reached the model's length limit before it was finished. "
+        "Ask me to continue, or to answer more briefly."
+    ),
     StopReason.MODEL_ERROR: "I stopped here because the model host stopped answering.",
     StopReason.MALFORMED_OUTPUT: "I stopped here because the model's tool calls could not be used.",
     StopReason.INTERNAL_ERROR: "I stopped here because of an internal error.",
@@ -116,6 +121,10 @@ STOP_SENTENCES: dict[StopReason, str] = {
 REPEAT_MESSAGE = (
     "error: this exact call already ran in this turn; its result is above. Do not repeat it: use that "
     "result, or tell the user what could not be established."
+)
+REPEAT_INVALID_MESSAGE = (
+    "These are the same arguments as the call above, which was refused before anything ran: change "
+    "the arguments as described, or tell the user what could not be established."
 )
 CAP_MESSAGE = "error: not run, the limit on tool calls or time for one answer was reached"
 NOTICE_PREFIX = "[notice from Minerva, not from the user] "
@@ -259,12 +268,28 @@ async def _model_step(
 ) -> AsyncIterator[dict[str, Any]]:
     """Stream one model call: yields text events, then a final `_step` record (not for the client)."""
     step = _Step()
-    parts: list[str] = []
+    parts: list[str] = []  # the raw text of the call
+    gate = ReasoningGate()  # what may be shown while it streams: no leaked reasoning
+    shown: list[str] = []
     started = time.monotonic()
     # Text that starts like JSON or a code fence may be a tool call written as prose: it is held back until
     # the call ends, and shown only if it turns out to be prose. (The stored reply never contained it; the
     # live view used to show it and then lose it.) Once the text starts like anything else it streams as usual.
     holding = True
+
+    def visible(delta: str) -> list[dict[str, Any]]:
+        nonlocal holding
+        if not delta:
+            return []
+        shown.append(delta)
+        if holding:
+            so_far = "".join(shown).lstrip()
+            if not so_far or so_far.startswith(("{", "`")):
+                return []
+            holding = False
+            return [{"event": "text", "data": {"delta": "".join(shown)}}]
+        return [{"event": "text", "data": {"delta": delta}}]
+
     try:
         # The model host's own timeout is per read: a stream that keeps trickling is cut here.
         async with asyncio.timeout(seconds):
@@ -273,13 +298,8 @@ async def _model_step(
                     if step.first_token_ms is None:
                         step.first_token_ms = _ms(started)
                     parts.append(chunk.text)
-                    if holding:
-                        so_far = "".join(parts).lstrip()
-                        if so_far and not so_far.startswith(("{", "`")):
-                            holding = False
-                            yield {"event": "text", "data": {"delta": "".join(parts)}}
-                    else:
-                        yield {"event": "text", "data": {"delta": chunk.text}}
+                    for event in visible(gate.feed(chunk.text)):
+                        yield event
                 step.calls.extend(chunk.tool_calls)
                 if chunk.usage is not None:
                     step.usage = chunk.usage
@@ -287,9 +307,12 @@ async def _model_step(
         step.timed_out = True
     except LLMError as exc:
         step.error = exc
-    step.text = "".join(parts)
+    for event in visible(gate.finish()):
+        yield event
+    # What is stored is the raw text without leaked reasoning, wherever in it the reasoning sits.
+    step.text = clean_reply("".join(parts))
     if holding and step.text.strip() and not looks_like_tool_call(step.text):
-        yield {"event": "text", "data": {"delta": step.text}}
+        yield {"event": "text", "data": {"delta": "".join(shown) or step.text}}
     step.latency_ms = _ms(started)
     yield {"event": "_step", "data": step}
 
@@ -423,6 +446,9 @@ async def _run_turn(
     )
     declared: dict[str, list[str]] = dict(prior_assumptions or {})
     seen: dict[str, str] = {}
+    # A call whose arguments failed validation, with what the model was told: sending the same
+    # arguments again is told the same thing, not "its result is above" (there is no result).
+    invalid_seen: dict[str, str] = {}
     stop = StopReason.COMPLETED
     failure: str | None = None
     failure_kind: str | None = None  # LLMError.kind, or `internal`
@@ -432,6 +458,15 @@ async def _run_turn(
     # none, a solver call is refused and the model asks which one (`needs_user_choice`).
     user_text, replying = _latest_user_message(history)
     method_named = names_a_method(user_text, replying=replying)
+    # The user's messages of the whole conversation (the route passes them; the history window may have
+    # dropped old ones): did they hand the numbers over, and which numbers did they write?
+    user_messages = (
+        list(ctx.user_messages)
+        if ctx.user_messages is not None
+        else [str(m.get("content") or "") for m in history if m.get("role") == "user"]
+    )
+    numbers_delegated = delegation_active(user_messages)
+    user_numbers = frozenset(x for text in user_messages for x in numbers_in(text))
     offered: tuple[str, ...] = ()
     host_retried = False
     step = 0
@@ -575,6 +610,10 @@ async def _run_turn(
                 full_text.append(text)
                 order.append(text)
             if not calls:
+                if _finish(result) == "length":
+                    # Cut off by the model's own length limit, mid-sentence or mid-reasoning: not an
+                    # answer. Said plainly, so the user (and the next turn) know what happened.
+                    stop = StopReason.OUTPUT_LIMIT
                 break  # an answer without more tool calls: the turn is complete
 
             messages.append(
@@ -662,17 +701,29 @@ async def _run_turn(
                 key = _call_key(call.name, arguments)
                 if refusal is None and key in seen:
                     repeats += 1
+                    earlier_error = invalid_seen.get(key)
+                    repeat_valid = earlier_error is None
+                    repeat_category = (
+                        ErrorCategory.REPEATED_CALL
+                        if repeat_valid
+                        else ErrorCategory.INVALID_ARGUMENTS
+                    )
+                    repeat_text = (
+                        REPEAT_MESSAGE
+                        if earlier_error is None
+                        else f"{earlier_error}\n{REPEAT_INVALID_MESSAGE}"
+                    )
                     trace.append(
                         TraceStep(
                             id=call_id,
                             call_id=call.id,
                             name=call.name,
                             arguments=arguments,
-                            for_model=REPEAT_MESSAGE,
+                            for_model=repeat_text,
                             status="skipped",
                             repeated=True,
-                            arguments_valid=True,
-                            error_category=ErrorCategory.REPEATED_CALL.value,
+                            arguments_valid=repeat_valid,
+                            error_category=repeat_category.value,
                         )
                     )
                     tracer.emit(
@@ -680,7 +731,7 @@ async def _run_turn(
                         step,
                         tool=log_name,
                         call_id=call_id,
-                        arguments_valid=True,
+                        arguments_valid=repeat_valid,
                         repeated=True,
                     )
                     tracer.emit(
@@ -689,14 +740,14 @@ async def _run_turn(
                         tool=log_name,
                         call_id=call_id,
                         status="skipped",
-                        error_category=ErrorCategory.REPEATED_CALL,
+                        error_category=repeat_category,
                     )
                     messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": call.id,
                             "name": call.name,
-                            "content": REPEAT_MESSAGE,
+                            "content": repeat_text,
                         }
                     )
                     continue
@@ -730,6 +781,7 @@ async def _run_turn(
                         | frozenset(gate)
                     )
                     ctx.matrix_sources = dict(declared_for_tools or {})
+                    ctx.numbers_delegated, ctx.user_numbers = numbers_delegated, user_numbers
                     try:
                         output = await asyncio.wait_for(
                             run_in_threadpool(execute, call.name, arguments, ctx),
@@ -747,7 +799,11 @@ async def _run_turn(
                         output = _tool_failure(
                             call.name, "it failed unexpectedly", ErrorCategory.TOOL_FAILURE
                         )
+                    finally:  # only this call is the model's: the context is not left marked
+                        ctx.numbers_delegated, ctx.user_numbers = False, None
                     seen[key] = call_id
+                    if not output.arguments_valid:
+                        invalid_seen[key] = output.for_model
                 if (
                     call.name == LOAD_TOOLS
                     and refusal is None

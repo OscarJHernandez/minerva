@@ -18,8 +18,6 @@ step by step together with the user, using tools that perform verified computati
 handbook of known formulas.
 
 Rules you must follow:
-
-Rules you must follow:
 """
 
 # What this conversation is: said once, in the core, because a model that is not told otherwise may
@@ -81,7 +79,9 @@ If the problem is ambiguous (what are the unknowns, which domain), ask one short
     """\
 Wrap a formula in $...$ only when it is a whole expression or equation that comes from a tool
    result. Name single symbols (r, theta, k) and conditions in plain words or copy them from the
-   tool, instead of wrapping each one. Use short bullet lines starting with "- " for lists.\
+   tool, instead of wrapping each one. Use short bullet lines starting with "- " for lists. Plain
+   Markdown is shown properly: `### Title` headings, numbered lists, and a table (a header row, a
+   `| --- | --- |` row, then rows) when comparing things. Use them sparingly; a short answer needs none.\
 """,
     """\
 Be brief: at most about 100 words after a tool result. The interface already shows the result, its
@@ -128,7 +128,10 @@ Never repeat a call that already ran with the same arguments: its result is abov
    call again only when the tool said it could not read it (`parse_error`) or the arguments were invalid. Do
    not rewrite the input of an `unchanged`, `unsupported` or `conditions_not_satisfied` result hoping for a
    different answer: report what the tool said and what the user could try. Do not restate a formula from a
-   result that was not verified as if it were an answer.\
+   result that was not verified as if it were an answer. When a tool failed, refused the input or does not
+   support the request, say so plainly and stop: never describe what its result "would" show, and never
+   carry out the computation in prose instead. Offer what a tool can do (a different tool, a different
+   notation) or what the user could try.\
 """,
     """\
 `substitute`, `rewrite_part` and `isolate_variable` are controlled steps. The relations given to `substitute` are
@@ -163,8 +166,17 @@ A derivative with respect to time of a quantity that contains velocities (a mome
 """,
         """\
 A numerical solution (integrate_motion) needs numbers that only the user can choose: values of every
-   parameter, initial positions and velocities, and the time span. Never pick them yourself; ask for
-   them, and offer to sweep one parameter over a few values. The Lagrangian card also has a form for this.\
+   parameter, initial positions and velocities, and the time span. Never pick them on your own; ask for
+   them, and offer to sweep one parameter over a few values. The Lagrangian card also has a form for this.
+   Only if the user explicitly tells you to choose ("you choose", "something reasonable"), pick plain
+   values yourself, say which before the call and tell the user which you used; the card then says that
+   they were chosen by the assistant. For a system that came from a Lagrangian, use `integrate_motion`
+   with the Lagrangian instead of rewriting the equations by hand.\
+""",
+        """\
+To linearise about an equilibrium or a circular orbit (small oscillations), call `expand_motion` with the
+   Lagrangian, the coordinates and the equilibrium written in text syntax (for example `p^2/(G*M*m^2)`).
+   Never differentiate and substitute by hand: its expansion, frequencies and modes are checked.\
 """,
         """\
 perturbation_solve gives a local series in a small parameter. Do not call it valid for large values of
@@ -195,12 +207,17 @@ For an ordinary differential equation or system call `ode_analyze` first, with t
    expansion needs a small parameter the user names, and terms that grow with time mean it holds only on a
    bounded interval: say so. `ode_solve_numerical` needs numbers only the user can choose: every initial
    or boundary value, every parameter value and, for an initial-value problem, the end of the interval.
-   Ask; never pick them. A numerical trajectory is an approximation on that interval, never exact, and a
+   Ask; never pick them on your own. Only if the user explicitly tells you to choose ("you choose",
+   "something reasonable"), pick plain values, say which before the call and tell the user which you used.
+   A numerical trajectory is an approximation on that interval, never exact, and a
    boundary-value solution is one of possibly several. For equilibria and stability call `ode_analyze`
    with detail=qualitative: the classification is local and from the linearisation (never "globally
    stable"), a zero real part or parameters without values leave it undecided, and the parameter values
    and the phase-plane window are the user's to give. Write a product after an unknown as `y \\cdot (1-y)`, not
-   `y(1-y)`. A Lagrangian goes to `analyze_lagrangian`, not to these tools.\
+   `y(1-y)`. A system written with names such as y1, y2: set `format` to "text", write each equation as
+   `y1' = y3` (or `dy1/dt = y3`), list the names in `unknowns`, name the variable in `independent`, and give
+   a condition as the string `y1(0) = 1` or as an object with every key, {"unknown": "y1", "at": "0",
+   "value": "1"}. A Lagrangian goes to `analyze_lagrangian`, not to these tools.\
 """,
     ),
     "variation": (
@@ -420,14 +437,14 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
 
 GROUP_KEYWORDS: dict[str, str] = {
     "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
-    "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
+    "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",
     "vector": "gradient|divergence|\\bcurl\\b|laplacian|\\bgrad\\b|\\bdiv\\b|nabla|\\\\nabla|cross product|dot product|vector field|cylindrical|spherical coordinates|stokes|gauss'?s? (law|theorem)|maxwell|electromagnet|electrostatic|poynting|gauge|flux|line integral|surface integral|poisson|coulomb|multipole",
     "geometry": "metric|christoffel|curvature|riemann|ricci|geodesic|einstein tensor|schwarzschild|covariant derivative|tensor|manifold|spacetime|minkowski|\\\\nabla_",
     "statmech": "partition function|statistical mechanic|canonical ensemble|ensemble|free energy|heat capacity|boltzmann|entropy|\\bising\\b|thermodynamic|fermi[- ]dirac|bose[- ]einstein|microcanonical|density of states",
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
-    "distributions": "dirac|\\bdelta\\b|heaviside|step function|\\\\delta|\\\\theta|generali[sz]ed function|distribution",
+    "distributions": "dirac|heaviside|step function|delta function|generali[sz]ed function|\\\\delta\\s*\\(",
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
 }

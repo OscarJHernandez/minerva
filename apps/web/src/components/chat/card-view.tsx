@@ -24,6 +24,7 @@ import { ExpansionCard } from "./expansion-card";
 import { InvariantsCard } from "./invariants-card";
 import { LagrangianCard } from "./lagrangian-card";
 import { MotionCard } from "./motion-card";
+import { ValuesNote } from "./values-note";
 import { OdeAnalysisCard, OdeNumericCard, OdeSolutionCard } from "./ode-card";
 import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
@@ -134,19 +135,25 @@ function CardContent({ card }: { card: Card }) {
         <StepResultPanel result={card.data.result} />
       );
     case "entries":
+      if (card.data.entries.length === 0) {
+        return (
+          <p
+            className="rounded-lg border border-rule bg-raised px-4 py-2 text-sm text-muted"
+            aria-label={card.title}
+          >
+            Handbook search “{card.data.query}”: no entry matched. The handbook may not cover this.
+          </p>
+        );
+      }
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>
           <h3 className="font-serif text-lg">Handbook</h3>
           <p className="mb-3 text-xs text-muted">Search: “{card.data.query}”</p>
-          {card.data.entries.length === 0 ? (
-            <p className="text-sm text-muted">No entries matched.</p>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {card.data.entries.map((e) => (
-                <EntryCard key={e.id} entry={e} />
-              ))}
-            </div>
-          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            {card.data.entries.map((e) => (
+              <EntryCard key={e.id} entry={e} />
+            ))}
+          </div>
         </section>
       );
     case "entry":
@@ -156,7 +163,12 @@ function CardContent({ card }: { card: Card }) {
     case "ode_solution":
       return <OdeSolutionCard report={card.data.report} request={card.data.request} />;
     case "ode_numeric":
-      return <OdeNumericCard report={card.data.report} request={card.data.request} />;
+      return (
+        <>
+          <ValuesNote chosenBy={card.data.values_chosen_by} values={card.data.assistant_values} />
+          <OdeNumericCard report={card.data.report} request={card.data.request} />
+        </>
+      );
     case "solve":
       return <SolveCard report={card.data.report} methods={card.data.methods} />;
     case "lagrangian":
@@ -180,7 +192,12 @@ function CardContent({ card }: { card: Card }) {
     case "approximation":
       return <ApproximationCard report={card.data.report} request={card.data.request} />;
     case "motion":
-      return <MotionCard report={card.data.report} request={card.data.request} />;
+      return (
+        <>
+          <ValuesNote chosenBy={card.data.values_chosen_by} values={card.data.assistant_values} />
+          <MotionCard report={card.data.report} request={card.data.request} />
+        </>
+      );
     case "dimensional":
       return <DimensionalCard report={card.data.report} methods={card.data.methods} />;
     case "units":

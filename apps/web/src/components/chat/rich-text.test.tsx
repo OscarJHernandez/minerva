@@ -101,7 +101,7 @@ describe("RichText", () => {
     expect(container.querySelectorAll("p")).toHaveLength(2);
   });
 
-  it("renders bold and code but no other markup, and never raw HTML", () => {
+  it("renders bold and code inline, and never raw HTML", () => {
     const { container } = render(
       <RichText segments={[seg("text", "**Bold** and `code` <img src=x onerror=alert(1)>")]} />,
     );
@@ -132,6 +132,132 @@ describe("RichText", () => {
     expect(inline?.getAttribute("title")).toContain("your input as read by Minerva");
     expect(inline?.getAttribute("title")).toContain("It is not marked as checked");
     expect(container.querySelectorAll('[data-status="from_tool"]')).toHaveLength(1);
+  });
+});
+
+describe("RichText, block markup", () => {
+  it("renders headings of any level, also straight after a list or a formula", () => {
+    const { container } = render(
+      <RichText
+        segments={[
+          seg(
+            "text",
+            "Intro\n### 1. The Geometric Connection\n- item\n## **Bold** title\n#### Small\n",
+          ),
+          seg("display_math", "a = b", "unchecked"),
+          seg("text", "\n### After the formula\n#hashtag and ####### seven"),
+        ]}
+      />,
+    );
+    const headings = [...container.querySelectorAll("h3, h4")];
+    expect(headings.map((h) => h.textContent)).toEqual([
+      "1. The Geometric Connection",
+      "Bold title",
+      "Small",
+      "After the formula",
+    ]);
+    expect(headings.map((h) => h.tagName)).toEqual(["H3", "H3", "H4", "H3"]);
+    expect(headings[1]?.querySelector("strong")?.textContent).toBe("Bold");
+    expect(container.querySelectorAll("li")).toHaveLength(1); // the heading closed the list
+    expect(container.textContent).not.toMatch(/#{2,6} (1\.|After|\*\*|Bold|Small)/);
+    expect(container.textContent).toContain("#hashtag and ####### seven"); // not a heading
+  });
+
+  it("renders numbered lists, starting where the model started and apart from bullets", () => {
+    const { container } = render(
+      <RichText segments={[seg("text", "3. third\n4. fourth\n- bullet\n1) one\n")]} />,
+    );
+    const lists = [...container.querySelectorAll("ol, ul")];
+    expect(lists.map((l) => l.tagName)).toEqual(["OL", "UL", "OL"]);
+    expect(lists[0]?.getAttribute("start")).toBe("3");
+    expect(lists[0]?.querySelectorAll("li")).toHaveLength(2);
+    expect(container.textContent).not.toContain("3.");
+  });
+
+  it("renders a table with bold and formulas in its cells, and a bar inside a formula is not a cell", () => {
+    const { container } = render(
+      <RichText
+        segments={[
+          seg("text", "Before\n| Feature | Time |\n| :--- | ---: |\n| **Goal** | Minimize "),
+          seg("math", "T", "unchecked"),
+          seg("text", " |\n| Size | "),
+          seg("math", "|x|", "unchecked"),
+          seg("text", " |\nAfter"),
+        ]}
+      />,
+    );
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    expect([...table!.querySelectorAll("th")].map((c) => c.textContent)).toEqual([
+      "Feature",
+      "Time",
+    ]);
+    const rows = [...table!.querySelectorAll("tbody tr")];
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.querySelectorAll("td")).toHaveLength(2);
+    expect(rows[0]?.querySelector("strong")?.textContent).toBe("Goal");
+    expect(rows[1]?.querySelectorAll("td")).toHaveLength(2); // `|x|` stayed inside its cell
+    expect(table!.querySelectorAll("th")[1]?.className).toContain("text-right");
+    expect(table!.querySelectorAll("th")[0]?.className).toContain("text-left");
+    expect(container.textContent).not.toContain("| Feature");
+    expect(container.textContent).toContain("Before");
+    expect(container.textContent).toContain("After");
+    expect(container.parentElement?.querySelector(".overflow-x-auto")).not.toBeNull();
+  });
+
+  it("leaves lines that start with a bar but have no separator row as plain text", () => {
+    const { container } = render(
+      <RichText segments={[seg("text", "| not | a table |\n| really | no |\n")]} />,
+    );
+    expect(container.querySelector("table")).toBeNull();
+    expect(container.querySelectorAll("p")).toHaveLength(2);
+  });
+});
+
+describe("RichText, formula buttons", () => {
+  it("offers copy and edit for any inline formula but not for a lone symbol, out of the line", () => {
+    const { container } = render(
+      <RichText
+        segments={[
+          seg("text", "We have "),
+          seg("math", "f'(r_0)", "unchecked"),
+          seg("text", " and "),
+          seg("math", "r_0", "unchecked"),
+          seg("text", " and "),
+          seg("math", "\\theta", "unchecked"),
+        ]}
+      />,
+    );
+    const bars = container.querySelectorAll('[data-testid="formula-actions"]');
+    expect(bars).toHaveLength(1);
+    // positioned out of the flow, so it takes no room beside the formula
+    expect(bars[0]?.className).toContain("absolute");
+    expect(screen.getAllByRole("button", { name: "Copy LaTeX" })).toHaveLength(1);
+  });
+
+  it("opens the bar on a tap on the formula and closes it on a tap elsewhere", () => {
+    const { container } = render(
+      <div>
+        <RichText segments={[seg("math", "y(x)", "unchecked")]} />
+        <p data-testid="elsewhere">elsewhere</p>
+      </div>,
+    );
+    const bar = container.querySelector('[data-testid="formula-actions"]')!;
+    expect(bar.className).toContain("opacity-0");
+    fireEvent.click(container.querySelector("[data-status]")!);
+    expect(bar.className).toContain("opacity-100");
+    expect(bar.className).not.toContain("opacity-0");
+    fireEvent.pointerDown(screen.getByTestId("elsewhere"));
+    expect(bar.className).toContain("opacity-0");
+  });
+
+  it("does not open the bar when the mark's explanation is opened", () => {
+    const { container } = render(<RichText segments={[seg("math", "a = b", "unchecked")]} />);
+    fireEvent.click(screen.getByRole("button", { name: /what this mark means/ }));
+    expect(screen.getByTestId("mark-explanation")).toBeInTheDocument();
+    expect(container.querySelector('[data-testid="formula-actions"]')?.className).toContain(
+      "opacity-0",
+    );
   });
 });
 

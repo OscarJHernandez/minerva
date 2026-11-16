@@ -48,3 +48,63 @@ def test_a_pick_by_position_counts_only_as_a_reply_to_a_list(text: str) -> None:
 
 def test_a_number_inside_a_sentence_is_not_a_pick() -> None:
     assert not names_a_method("y(0)=2 and y'(0)=1", replying=True)
+
+
+# --- numbers: the user hands the choice to the assistant --------------------------------------
+from minerva_api.agent.choice import delegates_numbers, delegation_active, numbers_in  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Yes just choose something reasonable here",
+        "you choose",
+        "Pick reasonable values please",
+        "use your example",
+        "use those values",
+        "whatever you like",
+        "I don't mind, up to you",
+        "choose some sensible numbers",
+        "Go with your suggested values",
+    ],
+)
+def test_a_user_who_hands_the_numbers_over_is_recognised(text: str) -> None:
+    assert delegates_numbers(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Which values are reasonable?",
+        "What numbers should I choose?",
+        "how do I pick values for a pendulum?",
+        "I want to solve this numerically",
+        "choose the first method",
+        "G=1, M=1, m=1",
+        "Yes",
+        "try again",
+    ],
+)
+def test_a_question_or_a_plain_message_is_not_a_hand_over(text: str) -> None:
+    assert not delegates_numbers(text)
+
+
+def test_numbers_in_a_text_skip_digits_inside_names() -> None:
+    assert numbers_in("y1(0)=1, r_0 = 0.5, k=1e-3, 3/4, x^2, -2") == [
+        0.0,
+        1.0,
+        0.5,
+        0.001,
+        0.75,
+        -2.0,
+    ]
+
+
+def test_a_hand_over_lasts_two_more_messages_and_ends_when_the_user_gives_numbers() -> None:
+    assert delegation_active(["choose something reasonable"])
+    assert delegation_active(["choose something reasonable", "try again"])
+    assert delegation_active(["choose something reasonable", "try again", "go on"])
+    assert not delegation_active(["choose something reasonable", "a", "b", "c"])
+    assert not delegation_active(["choose something reasonable", "ok", "k = 2"])
+    assert not delegation_active(["ok", "x"])
+    assert not delegation_active([])

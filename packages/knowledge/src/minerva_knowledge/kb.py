@@ -17,6 +17,13 @@ from .models import Chapter, Entry
 from .render import feature_token, rhs_features, rule_features, search_text, statement_latex
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
+# A query word whose stem is in more than this share of the entries says nothing about which entry is
+# meant ("of" is in more than half): it is ignored, unless that would leave no word at all. The share is
+# measured on the index itself (no list of stop words), and only on a handbook large enough to measure.
+COMMON_SHARE = 0.25
+COMMON_MIN_ENTRIES = 40
+NO_QUERY_SHARE = 0.4
+STRONG_COLUMNS = "{title keywords tags}"
 
 
 class Hit(BaseModel):
@@ -49,9 +56,22 @@ class Retriever(Protocol):
     def search(self, query: SearchQuery) -> list[Hit]: ...
 
 
+def enough_words(count: int, matched: int, in_strong_column: bool) -> bool:
+    """Whether an entry that matched `matched` of the `count` content words of a text query is a hit.
+
+    One word: a match. Two words: both, or one that is in the title, keywords or tags (a match only in
+    the body of the entry is too weak). Three or more: at least half of them."""
+    if count <= 1:
+        return matched >= 1
+    if count == 2:
+        return matched >= 2 or (matched == 1 and in_strong_column)
+    return matched >= (count + 1) // 2
+
+
 class Fts5Retriever:
     def __init__(self, entries: Iterable[Entry]) -> None:
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self._words: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
         self._db = sqlite3.connect(":memory:", check_same_thread=False)
         self._db.executescript(
             """
@@ -86,11 +106,43 @@ class Fts5Retriever:
                 ),
             )
         self._db.commit()
+        self._count = len(self._db.execute("SELECT id FROM entries").fetchall())
+
+    # -- the words of a text query ---------------------------------------------------------------
+    def _word_ids(self, word: str) -> tuple[frozenset[str], frozenset[str]]:
+        """The entries a word (stemmed like the index) occurs in, and those where it is in the title,
+        keywords or tags. `word` holds letters and digits only."""
+        key = word.lower()
+        cached = self._words.get(key)
+        if cached is None:
+            with self._lock:
+                every = self._db.execute(
+                    "SELECT id FROM entries_fts WHERE entries_fts MATCH ?", [f'"{key}"']
+                ).fetchall()
+                strong = self._db.execute(
+                    "SELECT id FROM entries_fts WHERE entries_fts MATCH ?",
+                    [f'{STRONG_COLUMNS} : "{key}"'],
+                ).fetchall()
+            cached = (frozenset(r[0] for r in every), frozenset(r[0] for r in strong))
+            self._words[key] = cached
+        return cached
+
+    def _content_words(self, text: str) -> list[str]:
+        """The words of a query that can tell entries apart, without repeats, at most 12."""
+        words = list(dict.fromkeys(w.lower() for w in _TOKEN_RE.findall(text)))[:12]
+        if self._count < COMMON_MIN_ENTRIES or len(words) < 2:
+            return words
+        rare = [w for w in words if len(self._word_ids(w)[0]) <= COMMON_SHARE * self._count]
+        if rare:
+            return rare
+        # Every word is common ("derivative of the"): keep the rarest, unless even that is in nearly
+        # half of the entries ("of the"), which is no query at all.
+        rarest = min(words, key=lambda w: len(self._word_ids(w)[0]))
+        return [rarest] if len(self._word_ids(rarest)[0]) <= NO_QUERY_SHARE * self._count else []
 
     @staticmethod
-    def _match_expression(query: SearchQuery) -> str | None:
+    def _match_expression(words: list[str], query: SearchQuery) -> str | None:
         clauses: list[str] = []
-        words = _TOKEN_RE.findall(query.text)[:12]
         if words:
             clauses.append("(" + " OR ".join(f'"{w}"' for w in words) + ")")
         feats = [feature_token(f) for f in sorted(set(query.features))][:24]
@@ -99,8 +151,21 @@ class Fts5Retriever:
             clauses.append(columns + " : (" + " OR ".join(f'"{t}"' for t in feats) + ")")
         return " OR ".join(clauses) if clauses else None
 
+    def _feature_ids(self, query: SearchQuery) -> frozenset[str]:
+        match = self._match_expression([], query)
+        if match is None:
+            return frozenset()
+        with self._lock:
+            rows = self._db.execute(
+                "SELECT id FROM entries_fts WHERE entries_fts MATCH ?", [match]
+            ).fetchall()
+        return frozenset(r[0] for r in rows)
+
     def search(self, query: SearchQuery) -> list[Hit]:
-        match = self._match_expression(query)
+        words = self._content_words(query.text)
+        if query.text.strip() and not words and not query.features:
+            return []  # something was asked, but nothing in it can be searched for
+        match = self._match_expression(words, query)
         limit = max(1, min(query.limit, 200))
         where, args = [], []
         if query.kind:
@@ -126,9 +191,25 @@ class Fts5Retriever:
                     "SELECT f.id, bm25(entries_fts, 0.0, 6.0, 4.0, 2.0, 1.0, 3.0, 1.0) AS score "
                     "FROM entries_fts f JOIN entries e ON e.id = f.id "
                     "WHERE entries_fts MATCH ?" + extra + " ORDER BY score, f.id LIMIT ?",
-                    [match, *args, limit],
+                    [match, *args, 200 if words else limit],
                 ).fetchall()
-        return [Hit(entry_id=r[0], score=float(r[1])) for r in rows]
+        hits = [Hit(entry_id=r[0], score=float(r[1])) for r in rows]
+        if not words or match is None:
+            return hits
+        # Entries that matched on structure are hits as they are; the others matched on words alone and
+        # must match enough of them.
+        structural = self._feature_ids(query)
+        found = [h for h in hits if h.entry_id in structural or self._covers(h.entry_id, words)]
+        return found[:limit]
+
+    def _covers(self, entry_id: str, words: list[str]) -> bool:
+        matched, strong = 0, False
+        for word in words:
+            every, in_strong = self._word_ids(word)
+            if entry_id in every:
+                matched += 1
+                strong = strong or entry_id in in_strong
+        return enough_words(len(words), matched, strong)
 
 
 class KnowledgeBase:

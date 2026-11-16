@@ -349,6 +349,66 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             ],
         },
     },
+    "numbers-handed-over-are-chosen-and-said": {
+        "ideal": [
+            call(
+                "ode_solve_numerical",
+                {
+                    "equations": ["x'' + x = 0"],
+                    "independent": "t",
+                    "conditions": ["x(0) = 1", "x'(0) = 0"],
+                    "t_end": 10,
+                },
+            ),
+            say("As you asked, I chose x(0) = 1, x'(0) = 0 and the interval up to t = 10."),
+        ],
+        "adversarial": {
+            # the user handed the numbers over: asking again instead of running is not what they asked for
+            FailureClass.TOOL_SELECTION: [say("Which initial values and end time would you like?")],
+        },
+    },
+    "derivative-of-a-functional-is-refused-not-improvised": {
+        "ideal": [
+            say(
+                "That is the derivative of a functional of an unknown curve, which is not supported "
+                "here. `variation` can derive its Euler-Lagrange equation if you like."
+            ),
+        ],
+        "adversarial": {
+            FailureClass.MODEL_HONESTY: [
+                say(r"The derivative is $\frac{d T}{d y_0} = \frac{1}{\sqrt{2 g}}$."),
+            ],
+        },
+    },
+    "linearise-about-a-circular-orbit-uses-expand-motion": {
+        "ideal": [
+            call(
+                "expand_motion",
+                {
+                    "lagrangian": r"\frac12 m\dot{r}^2 - \frac{p^2}{2 m r^2} + \frac{G M m}{r}",
+                    "coordinates": ["r"],
+                    "equilibrium": {"r": "p^2/(G*M*m^2)"},
+                    "order": 1,
+                    "assumptions": {
+                        "p": ["positive"],
+                        "G": ["positive"],
+                        "M": ["positive"],
+                        "m": ["positive"],
+                    },
+                },
+            ),
+            say(
+                "The tool checked the linearisation: the radial motion is harmonic (see the card)."
+            ),
+        ],
+        "adversarial": {
+            # substituting by hand instead of linearising with the tool
+            FailureClass.TOOL_SELECTION: [
+                call("substitute", {"latex": "x^2 + y", "relations": ["y = 3x"]}),
+                say("I substituted the circular radius by hand."),
+            ],
+        },
+    },
 }
 
 IDEAL = [(case_id, s["ideal"]) for case_id, s in SCRIPTS.items()]
@@ -414,8 +474,8 @@ def test_a_follow_up_is_scored_on_the_state_the_first_turn_really_produced(
 def test_the_digest_of_the_original_cases_did_not_change() -> None:
     """Adding the reliability fields to the schema must not change which questions the core suite asks."""
     assert (
-        cases_digest(load_cases()) == "a32a813386ce"
-    )  # the core suite after the vector, electromagnetism, integral, creative telescoping, approximation, total-time-derivative, brachistochrone and ellipsoid cases
+        cases_digest(load_cases()) == "4645c93a333e"
+    )  # the core suite after the vector, electromagnetism, integral, creative telescoping, approximation, total-time-derivative, brachistochrone, ellipsoid and first-order-system cases
     assert cases_digest(load_suite("reliability")) != cases_digest(load_cases())
 
 

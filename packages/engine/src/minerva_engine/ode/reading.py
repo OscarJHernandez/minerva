@@ -298,6 +298,32 @@ def _heads(source: str, fmt: str) -> Iterator[Head]:
     return _heads_latex(source) if fmt == "latex" else _heads_text(source)
 
 
+# Text syntax only: `dy1/dt`, `d y1 / d t`, `d^2y/dt^2`. Without the declaration it is also a product of
+# letters, so it is read as a derivative only for a name the caller listed in `unknowns`.
+_LEIBNIZ_TEXT = re.compile(
+    r"(?<![A-Za-z0-9_])d(?:\^(\d+))?\s*([A-Za-z][A-Za-z0-9_]*)\s*/\s*d\s*"
+    r"([A-Za-z][A-Za-z0-9_]*?)(?:\^(\d+))?(?![A-Za-z0-9_(])"
+)
+_LATEX_NAME = re.compile(
+    rf"(?:[A-Za-z]|{'|'.join(sorted(set(_GREEK) | set(_GREEK_NAME.values()), key=len, reverse=True))})"
+    r"(?:_[A-Za-z0-9]+)?"
+)
+
+
+def _leibniz_text(source: str, unknowns: list[str]) -> str:
+    """`dy1/dt` -> `diff(y1, t)` for a declared unknown; any other fraction is left as it is."""
+
+    def replace(m: re.Match[str]) -> str:
+        name, variable = m.group(2), m.group(3)
+        top, bottom = m.group(1), m.group(4)
+        if name not in unknowns or (top or "1") != (bottom or "1"):
+            return m.group(0)
+        order = int(top or 1)
+        return f"diff({name}, {variable}" + (f", {order})" if order > 1 else ")")
+
+    return _LEIBNIZ_TEXT.sub(replace, source)
+
+
 def _survey(sources: list[str], fmt: str, declared: list[str]) -> _Survey:
     """Pass 1: which names are differentiated (those are the unknowns), and with respect to what."""
     unknowns: dict[str, int] = dict.fromkeys(declared, 0)
@@ -385,11 +411,24 @@ def read_ode(data: OdeInput, limits: Limits) -> OdeProblem:
                 "names of the form Q_a1 are reserved by the differential-equation reader"
             )
     declared = [_valid_name(_tidy(name, fmt)) for name in data.unknowns]
-    survey = _survey(data.equations, fmt, declared)
+    if fmt == "latex":
+        for name in declared:
+            if not _LATEX_NAME.fullmatch(name):
+                raise ParseError(
+                    f"in LaTeX an unknown is one letter with an optional subscript: write {name} "
+                    f"as y_1 (or set format to text, where names such as {name} are read)"
+                )
+    equations = (
+        [_leibniz_text(item, declared) for item in data.equations]
+        if fmt == "text"
+        else list(data.equations)
+    )
+    survey = _survey(equations, fmt, declared)
     if not survey.unknowns:
         raise ParseError(
             "no unknown function found: differentiate the unknown (y', \\dot y, \\frac{dy}{dt}) "
-            "or list it in `unknowns`"
+            "or list it in `unknowns`; in text format dy/dt is read only for a name listed in "
+            "`unknowns`, and in LaTeX a name is one letter with a subscript (y_1)"
         )
     if len(survey.unknowns) > 8:
         raise UnsupportedInput("at most 8 unknown functions are supported")
@@ -416,7 +455,7 @@ def read_ode(data: OdeInput, limits: Limits) -> OdeProblem:
         raise ParseError("the independent variable cannot also be an unknown")
 
     orders: dict[str, int] = dict.fromkeys(unknowns, 0)
-    rewritten = [_rewrite(item, fmt, unknowns, variable, orders) for item in data.equations]
+    rewritten = [_rewrite(item, fmt, unknowns, variable, orders) for item in equations]
     for name in unknowns:
         if orders[name] > MAX_ORDER:
             raise UnsupportedInput(f"derivatives above order {MAX_ORDER} are not supported")

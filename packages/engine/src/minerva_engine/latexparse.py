@@ -59,13 +59,26 @@ class Token:
     text: str
 
 
+def _unreadable(source: str, pos: int) -> str:
+    """Why a character cannot be read, naming the notation it belongs to when that is clear."""
+    char = source[pos]
+    if char == "'":
+        return (
+            "a prime (as in f') is derivative notation for an unknown function; it is read only by the "
+            "tools for functionals (variation) and for differential equations, not here"
+        )
+    if char == "." and source[:pos].rstrip().endswith("\\left"):
+        return "an evaluation bar (\\left. ... \\right|_{...}) is not read; substitute the value instead"
+    return f"unexpected character {char!r}"
+
+
 def _tokenize(source: str) -> list[Token]:
     tokens: list[Token] = []
     pos = 0
     while pos < len(source):
         m = _TOKEN_RE.match(source, pos)
         if not m:
-            raise ParseError(f"unexpected character {source[pos]!r}")
+            raise ParseError(_unreadable(source, pos))
         pos = m.end()
         kind = m.lastgroup or ""
         text = m.group()
@@ -540,8 +553,10 @@ class _Parser:
             )
         raise ParseError(
             "derivative notation (\\frac{dx}{dy}, \\frac{d}{dx}) is not read here: as letters the d's "
-            "would cancel and give a different expression. Use `differentiate`, the differential "
-            "equation tools or `time_derivative`; to use d as an ordinary symbol, declare it"
+            "would cancel and give a different expression. A derivative of an expression is the job of "
+            "`differentiate` (give the variable), of an unknown function in an equation the differential "
+            "equation tools, in a functional `variation`, along a motion `time_derivative`; to use d as "
+            "an ordinary symbol, declare it"
         )
 
     def _frac_argument(self) -> sp.Expr:
@@ -578,6 +593,8 @@ class _Parser:
             return self._symbol_with_subscript_name(_GREEK_NAME.get(name, name))
         if name == "Gamma":
             return self._apply("gamma", None)
+        if name == "ell":  # a letter, as in the semi-latus rectum l = h^2 / (G M)
+            return self._symbol_with_subscript_name("ell")
         if name == "frac" or name in {"dfrac", "tfrac"}:
             leibniz = self._leibniz()
             if leibniz is not None:
@@ -599,7 +616,13 @@ class _Parser:
             return self._big_operator(name)
         if name == "mathbb" and self.b.random:
             return self._moment("E")
-        if name in {"int", "sum", "prod", "lim", "partial", "nabla", "infty", "frac"}:
+        if name == "int":
+            raise ParseError(
+                "an integral (\\int) is read only by the tools that take an integral as their input "
+                "(`integrate` for an explicit integrand, `variation` for a functional of an unknown "
+                "function), not inside this operation"
+            )
+        if name in {"sum", "prod", "lim", "partial", "nabla", "infty", "frac"}:
             raise ParseError(f"\\{name} is not supported in this operation")
         raise ParseError(f"unsupported LaTeX command \\{name}")
 

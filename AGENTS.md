@@ -39,6 +39,13 @@ Request flow for identities: API -> `engine.features` (sandbox) -> `knowledge.ca
 (FTS5 + structural features) -> `engine.apply_rules` (sandbox: match, check conditions, rewrite,
 verify). Retrieval only proposes; the engine decides.
 
+Text search of the handbook (`Fts5Retriever`, `search_handbook`, the handbook page) never answers with entries that
+share only a filler word: a query word whose stem is in more than 25% of the entries is ignored (measured on the
+index, no stop-word list; a query of only such words returns nothing), and an entry must match enough of the
+remaining words (one word: one; two: both, or one in the title, keywords or tags; three or more: half). Entries that
+matched on structural features are exempt (identity retrieval). "No entry matched" is a real answer: the handbook
+may not cover the question, and the model says so instead of retrying with synonyms.
+
 ## Commands
 
 `make help` lists shortcuts: `make setup`, `make check` (everything CI runs), `make check-py`,
@@ -117,7 +124,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   reused: the counter is a high-water mark, and a reference to a number whose message was replaced is told "no longer exists"). A
   client that leaves mid-reply (Stop, a closed tab) gets what had arrived stored as a `stop_reason: "stopped"` message
   (`_store_stopped`; nothing arrived: nothing stored), a `phase` event tells the client when the formulas are being checked, and text
-  that starts like JSON or a code fence is held back until the model call ends so a tool call written as prose is never shown. A
+  that starts like JSON or a code fence is held back until the model call ends so a tool call written as prose is never shown.
+  Reasoning a model writes into its reply (`thought`, then a closing `<channel|>`; `agent/reasoning.py`) is dropped from what
+  is streamed, stored and replayed, wherever in the reply it sits; a call that ends inside it shows nothing. A
   message sent after a reply that was never stored is merged with the unreplied one (the model never sees two user messages in a row).
   The composer gives the text back when a send failed before anything was sent; the address `/c/<id>` names the open conversation.
 - The reply is a server-sent stream and must reach the browser as it is written. Through the web app's proxy Next.js gzips it
@@ -142,6 +151,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   parameter**: a test pins the field list. Do not add a verification tolerance, a limit or the claim check to it.
 - After each turn, formulas in the model's prose are compared with formulas present in this conversation's tool results;
   anything else is shown as "unchecked" (`agent/segments.py`). Do not remove or weaken this.
+- Chat prose is a small Markdown subset drawn by `apps/web/src/components/chat/rich-text.tsx` (no Markdown library):
+  `**bold**`, `` `code` ``, `-` and numbered lists, `#` to `######` headings, pipe tables (a header row, a `---` separator
+  row, rows; only text is split on `|`, so `$|x|$` stays in its cell) and formulas; raw HTML is shown as text. The prompt
+  allows headings and tables, and `segments._bare_equations` skips table rows (their bars are not math). An inline formula
+  that is more than a lone symbol has a copy/edit bar that floats above it (hover, focus or a tap) and takes no room in the line.
 - `ScriptedLLM` (`MINERVA_LLM_MODE=scripted`, development only) is a deterministic stand-in used by tests and for UI work.
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on a fixed benchmark through the real loop (`agent/evaluation/`: cases are data in
@@ -158,8 +172,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Restrictions travel with a verified result (`ResultStore.restrictions`): when a later call reuses `@rN`, its card gets
   `inherited_restrictions_latex` and its tool message names them ("Inherited from @r1"); they are rebuilt from stored cards
   for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `routers_chat._history` (V-015).
-- A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
-  `malformed_output`, `internal_error`). An identical call in a turn is not run twice; a model call that failed before any
+- A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`, `model_error`,
+  `malformed_output`, `internal_error`). A last model call that reaches the model's length limit with no tool call is
+  `output_limit` (stored as cut off, with a plain sentence), never `completed`. An identical call in a turn is not run twice; a model call that failed before any
   output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
   A turn that fails outside the loop stores an assistant message with `stop_reason: "internal_error"` and fixed text (never
   the cause), so a reload and a debug report show it; the report also says when it was copied mid-reply or when the last
@@ -181,7 +196,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   worded as the value of the integral. `integrate` takes an optional `strategy` (`auto` or a technique name) and reports
   the technique, steps and verification; the model may only pick a technique the result suggested.
 - `integrate_motion` (numerical solution of a Lagrangian system) needs numbers only the user may choose: the model must ask,
-  never pick them. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
+  never pick them on its own. The one exception is a user who says so in words ("you choose", "something reasonable";
+  `agent/choice.py: delegates_numbers`, for that message and the next two unless they give numbers, user messages only):
+  the card then says "Values chosen by the assistant at your request" and lists them, and a call whose numbers are in
+  none of the user's messages is labelled the same way without a hand-over (`values_provenance`; a label, not a refusal).
+  Numbers typed on a card's form are the user's. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
 - Conversations are user data: private per account, never logged.
 - "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
@@ -569,7 +588,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   residual to fall at the claimed order (`_check_residual`-style: do not loosen it; tests include a 0.1% wrong top
   coefficient). Equilibria and stability are local, from the linearisation; non-hyperbolic means "the linearisation
   does not decide"; nothing says globally stable. Never invent initial conditions, parameters, intervals or the small
-  parameter: the model asks. Multiple scales, Frobenius series, delay, partial and differential-algebraic equations
+  parameter: the model asks (a user who hands the numbers of a numerical run over, as for `integrate_motion`, lets it choose;
+  the small parameter is never delegated). A system written with names such as `y1` is `format: "text"` (`y1' = y2` or
+  `dy1/dt = y2` for a name listed in `unknowns`); in LaTeX a name is one letter with a subscript. Multiple scales, Frobenius series, delay, partial and differential-algebraic equations
   are not implemented and must be refused, not approximated. The reference problems (`ode/benchmark.py`, run by
   `python -m minerva_engine.reference_benchmark`) take their answers from outside the solvers; add one for every new
   method. Diagnostics and `ode`/`ode_stage` events carry counters and fixed vocabulary only.

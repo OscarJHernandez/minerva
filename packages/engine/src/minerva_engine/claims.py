@@ -225,9 +225,22 @@ def _definition(parsed: list[sp.Expr]) -> tuple[sp.Symbol, sp.Expr] | None:
 
 _DISTRIBUTION_NOTATION = re.compile(r"\\(?:delta|theta|Theta|vartheta)\s*(?:\\left)?\s*\(")
 _DISTRIBUTION_DETAIL = (
-    "could not check: this may denote a Dirac delta or step function, which cannot be tested "
-    "by sampling (use the distribution operation)"
+    "could not check: `\\delta(...)` or `\\theta(...)` may be a Dirac delta or step function, or "
+    "only a function of its argument; it is never tested by sampling (the distribution tool reads a "
+    "delta only for a reading the user confirmed)"
 )
+_IMPLICATION = re.compile(
+    r"\\(?:implies|Rightarrow|Longrightarrow|iff|Leftrightarrow|Longleftrightarrow)\b"
+)
+_IMPLICATION_DETAIL = "an implication between statements is not tested as an equation; each side may be checked on its own"
+# E and I are Euler's number and the imaginary unit in Minerva's input: `E = ...` as a definition of an
+# energy cannot be read, and is not a claim about the constant.
+_RESERVED_LONE = re.compile(r"(?:E|I)")
+_RESERVED_DETAIL = (
+    "a definition of a quantity named E or I; Minerva reads those letters as Euler's number and the "
+    "imaginary unit, so it is not tested (a name such as E_0 or W would be)"
+)
+_SPACES = re.compile(r"\s+")
 _INDEXED_DETAIL = (
     "could not check: sums, indexed data and expectations cannot be tested by sampling numbers "
     "(use the sums or expectation operation)"
@@ -349,6 +362,10 @@ class ClaimChecker:
             return ClaimCheck(status="unverified", kind="relation", detail=_TRANSPOSE_DETAIL)
         if _LEIBNIZ.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_LEIBNIZ_DETAIL)
+        if _IMPLICATION.search(latex):
+            return ClaimCheck(status="unverified", kind="relation", detail=_IMPLICATION_DETAIL)
+        if any(_RESERVED_LONE.fullmatch(side.strip()) for side in sides):
+            return ClaimCheck(status="unverified", kind="relation", detail=_RESERVED_DETAIL)
         if _DISTRIBUTION_NOTATION.search(latex):
             # \delta(x) and \theta(x) read as products here, which would make a true statement about
             # a delta or step function look false; a delta cannot be sampled at all.
@@ -399,7 +416,7 @@ class ClaimChecker:
         if kind is None and len({frozenset(p.free_symbols) for p in parsed}) > 1:
             kind = "a relation between quantities"
         if kind is not None:
-            return self._check_relation(parsed, kind)
+            return self._check_relation(parsed, kind, latex)
         # A claim that is false for complex symbols may be the usual real-variable statement whose
         # condition is written in the prose, not in the formula. Try the weakest natural assumptions.
         conditional = _relaxed(sides, self.assumptions, self.limits)
@@ -411,7 +428,7 @@ class ClaimChecker:
             kind="identity",
         )
 
-    def _check_relation(self, parsed: list[sp.Expr], kind: str) -> ClaimCheck:
+    def _check_relation(self, parsed: list[sp.Expr], kind: str, latex: str = "") -> ClaimCheck:
         """Not an identity, so sampling the symbols independently proves nothing. Use the definitions
         stated earlier; without them there is nothing to test."""
         unchecked = ClaimCheck(
@@ -421,6 +438,13 @@ class ClaimChecker:
         if not used:
             return unchecked
         given = self._given(used)
+        if latex and _SPACES.sub("", _text(latex)) in {_SPACES.sub("", g) for g in given}:
+            # The claim is one of the definitions it would be "given": a statement cannot justify itself.
+            return ClaimCheck(
+                status="unverified",
+                detail="a definition stated earlier in the conversation; not verified by Minerva",
+                kind="relation",
+            )
         sets = [frozenset(p.free_symbols) for p in substituted]
         if any(s != sets[0] for s in sets[1:]):
             return unchecked

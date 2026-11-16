@@ -6,6 +6,7 @@ word: never an equation, a name or a value.
 
 from __future__ import annotations
 
+import math
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -20,10 +21,37 @@ MAX_CONDITIONS = 40
 class OdeCondition(BaseModel):
     """`unknown^(order)(at) = value`. `at` and `value` are written in the format of the input."""
 
-    unknown: str = Field(min_length=1, max_length=SYMBOL_NAME_MAX)
-    order: int = Field(default=0, ge=0, le=MAX_ORDER)
-    at: str = Field(min_length=1, max_length=200)
-    value: str = Field(min_length=1, max_length=200)
+    unknown: str = Field(
+        min_length=1,
+        max_length=SYMBOL_NAME_MAX,
+        description="Name of the unknown function the condition is about, e.g. y or y1.",
+    )
+    order: int = Field(
+        default=0,
+        ge=0,
+        le=MAX_ORDER,
+        description="Derivative order: 0 for the value itself, 1 for the first derivative.",
+    )
+    at: str = Field(
+        min_length=1,
+        max_length=200,
+        description="The point where it holds, e.g. 0 (a number or text such as pi).",
+    )
+    value: str = Field(
+        min_length=1,
+        max_length=200,
+        description="The value there, e.g. 1 (a number or text such as 1/2).",
+    )
+
+    @field_validator("at", "value", mode="before")
+    @classmethod
+    def _number_as_text(cls, value: object) -> object:
+        """`at: 0` is the text `0` written differently. A boolean, NaN and inf are not numbers here."""
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            if isinstance(value, float) and not math.isfinite(value):
+                raise ValueError("a condition needs a finite number")
+            return str(value)
+        return value
 
 
 class OdeInput(BaseModel):
@@ -42,7 +70,12 @@ class OdeInput(BaseModel):
         "Derivatives: y', y'', \\dot y, \\frac{d^2 y}{d t^2}, y^{(3)}. Write a product with \\cdot "
         "when a parenthesis follows an unknown: y \\cdot (1 - y), never y(1 - y).",
     )
-    format: Literal["latex", "text"] = "latex"
+    format: Literal["latex", "text"] = Field(
+        default="latex",
+        description='"latex" (default): names are one letter with an optional subscript, y_1, '
+        'and derivatives are y\', \\dot y, \\frac{d y}{d t}. "text": names may be longer, y1, and '
+        "derivatives are y1', diff(y1, t) or dy1/dt; use it for a system written with y1, y2, ...",
+    )
     unknowns: list[str] = Field(
         default_factory=list,
         max_length=MAX_EQUATIONS,
@@ -61,8 +94,9 @@ class OdeInput(BaseModel):
     conditions: list[OdeCondition | str] = Field(
         default_factory=list,
         max_length=MAX_CONDITIONS,
-        description="Initial or boundary conditions the user stated, written like `y(0) = 1`, "
-        "`y'(0) = 0`. Never invent them.",
+        description="Initial or boundary conditions the user stated: strings like `y(0) = 1`, "
+        '`y\'(0) = 0`, or objects {"unknown": "y", "order": 0, "at": "0", "value": "1"} '
+        "(every key is needed except order). Never invent them.",
     )
 
     @field_validator("equations")
@@ -425,7 +459,8 @@ class OdeNumericInput(OdeInput):
     parameters: dict[str, float] = Field(
         default_factory=dict,
         max_length=MAX_PARAMETERS,
-        description="The numerical value of every parameter. Ask the user: never choose them.",
+        description="The numerical value of every parameter. Ask the user; choose them only if the "
+        "user told you to choose.",
     )
     kind: Literal["ivp", "bvp"] = Field(
         default="ivp",
@@ -442,7 +477,8 @@ class OdeNumericInput(OdeInput):
     t_end: float | None = Field(
         default=None,
         description="ivp: where the interval ends (it starts at the point of the initial values). Ask "
-        "the user: never choose it. bvp: not used, the two points of the conditions are the ends.",
+        "the user; choose it only if the user told you to choose. bvp: not used, the two points of "
+        "the conditions are the ends.",
     )
     method: NumericMethod = Field(
         default="auto",

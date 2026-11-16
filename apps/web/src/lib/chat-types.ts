@@ -26,6 +26,9 @@ import type { StatAnswers, StatMechResult, StatToolArgs } from "./statmech-types
 import type { ApproximationReport, ApproximationToolArgs } from "./approximation-types";
 import type { TelescopingResult } from "./telescoping-types";
 
+/** Who chose the numbers of a numerical run (`motion`, `ode_numeric`). */
+export type ValuesChosenBy = "user" | "assistant_delegated" | "assistant";
+
 export interface ExpansionReport {
   status: Status;
   lagrangian_latex: string | null;
@@ -615,7 +618,12 @@ type CardBody =
       tool: string;
       type: "motion";
       title: string;
-      data: { report: MotionReport; request: MotionRequest };
+      data: {
+        report: MotionReport;
+        request: MotionRequest;
+        values_chosen_by?: ValuesChosenBy;
+        assistant_values?: string[];
+      };
     }
   | {
       id: string;
@@ -636,7 +644,12 @@ type CardBody =
       tool: string;
       type: "ode_numeric";
       title: string;
-      data: { report: OdeNumericReport; request: OdeInput };
+      data: {
+        report: OdeNumericReport;
+        request: OdeInput;
+        values_chosen_by?: ValuesChosenBy;
+        assistant_values?: string[];
+      };
     }
   | {
       id: string;

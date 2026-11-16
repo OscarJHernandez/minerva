@@ -58,6 +58,7 @@ class StopReason(StrEnum):
     TOOL_CALL_LIMIT = "tool_call_limit"
     TIME_LIMIT = "time_limit"
     REPEATED_CALLS = "repeated_calls"  # the model kept making calls that could not help
+    OUTPUT_LIMIT = "output_limit"  # the last model call hit its length limit with no tool call
     MODEL_ERROR = "model_error"  # the model host failed
     MALFORMED_OUTPUT = "malformed_output"  # the model kept producing unusable tool calls
     INTERNAL_ERROR = "internal_error"

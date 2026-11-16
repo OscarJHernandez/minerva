@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from .events import Block
+from .reasoning import clean_reply
 from .segments import normalize, split_segments
 
 Source = Literal["from_tool", "written_by_model", "yours"]
@@ -228,7 +229,8 @@ def replay_prose(content: dict[str, Any]) -> str:
     The numbers are what the user sees. They are put into the replayed text so that "(3)" in the user's next
     message means something to the model; it is told not to write numbers itself.
     """
-    raw = str(content.get("text", ""))
+    # Reasoning that leaked into a reply stored earlier is not replayed to the model.
+    raw = clean_reply(str(content.get("text", "")))
     numbered = [
         (str(s.get("value", "")), s["number"])
         for b in content.get("blocks", []) or []

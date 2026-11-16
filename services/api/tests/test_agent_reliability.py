@@ -101,6 +101,21 @@ def test_an_identical_call_is_not_run_again(
     assert msg["stop_reason"] == "completed"  # one repeat is tolerated
 
 
+def test_repeating_a_call_that_was_refused_says_so_not_that_a_result_is_above(
+    ctx: ToolContext,
+) -> None:
+    bad = {"latex": r"x+x", "assumptions": ["x", "positive"]}  # the shape is wrong: refused
+    llm = ReplayLLM([call("simplify", bad), call("simplify", bad), say("Could not run it.")])
+    msg = final(play(llm, ctx))
+    first, second = msg["trace"]
+    assert first["arguments_valid"] is False and first["status"] == "error"
+    assert second["repeated"] is True and second["arguments_valid"] is False
+    assert second["error_category"] == "invalid_arguments"
+    told = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"]
+    assert "its result is above" not in told[-1]
+    assert "refused before anything ran" in told[-1] and "invalid arguments" in told[-1]
+
+
 def test_the_same_call_with_different_arguments_is_not_a_repeat(ctx: ToolContext) -> None:
     llm = ReplayLLM(
         [
@@ -583,3 +598,90 @@ def test_a_resource_limit_in_the_sandbox_gets_a_specific_category() -> None:
     verification = [e for e in msg["debug"]["events"] if e["event"] == "verification.completed"]
     assert verification and verification[0]["accepted"] is False
     assert verification[0]["reason"] == "resource_limit"
+
+
+# ----------------------------------------------------------------- who chose the numbers of a run
+RUN = {
+    "equations": ["y'' + y = 0"],
+    "independent": "t",
+    "conditions": ["y(0) = 1", "y'(0) = 0"],
+    "t_end": 3,
+}
+
+
+def test_a_user_who_says_you_choose_gets_a_labelled_run(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
+    msg = final(play(llm, ctx, text="Solve it numerically, just choose something reasonable"))
+    card = cards(msg)[0]
+    assert card["data"]["values_chosen_by"] == "assistant_delegated"
+    assert ctx.user_numbers is None and ctx.numbers_delegated is False  # not left on the context
+
+
+def test_the_same_run_without_a_hand_over_is_labelled_as_the_assistants(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
+    msg = final(play(llm, ctx, text="Solve y'' + y = 0 numerically"))
+    data = cards(msg)[0]["data"]
+    assert data["values_chosen_by"] == "assistant"
+    assert "t_end = 3" in data["assistant_values"]
+
+
+def test_numbers_in_the_users_message_are_theirs(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("ode_solve_numerical", RUN), say("Done.")])
+    text = "Solve y'' + y = 0 numerically with y(0) = 1, y'(0) = 0 up to t = 3"
+    assert cards(final(play(llm, ctx, text=text)))[0]["data"]["values_chosen_by"] == "user"
+
+
+# --------------------------------------------------------------------- leaked reasoning, length limit
+def _length_cut(text: str) -> list[Chunk]:
+    return [Chunk(text=text), Chunk(usage=Usage(completion_tokens=1200, finish_reason="length"))]
+
+
+def test_leaked_reasoning_is_not_shown_streamed_or_stored(ctx: ToolContext) -> None:
+    leak = "thought\nWait, I should call simplify first.\n<channel|>It is $x + 1$."
+    llm = ReplayLLM([call("simplify", SIMPLIFY), [Chunk(text=leak)]])
+    events = play(llm, ctx)
+    streamed = "".join(e["data"]["delta"] for e in events if e["event"] == "text")
+    msg = final(events)
+    assert "thought" not in streamed and "channel" not in streamed and "Wait" not in streamed
+    assert "thought" not in msg["text"] and "Wait" not in msg["text"]
+    assert "$x + 1$" in msg["text"] and msg["stop_reason"] == "completed"
+
+
+def test_a_call_that_ends_inside_leaked_reasoning_is_an_output_limit_not_a_completed_answer(
+    ctx: ToolContext,
+) -> None:
+    cut = _length_cut("thought\nI should now substitute r_0 into the derivative. Wait, rule 1 says")
+    llm = ReplayLLM([call("simplify", SIMPLIFY), cut])
+    msg = final(play(llm, ctx))
+    assert msg["stop_reason"] == "output_limit" and msg["truncated"] is True
+    assert "length limit" in msg["text"] and "substitute r_0" not in msg["text"]
+    assert msg["debug"]["llm_calls"][-1]["finish_reason"] == "length"
+
+
+def test_a_reply_cut_off_by_the_length_limit_keeps_what_arrived_and_says_so(
+    ctx: ToolContext,
+) -> None:
+    llm = ReplayLLM([_length_cut("The first three steps are clear and the fourth is")])
+    msg = final(play(llm, ctx))
+    assert msg["stop_reason"] == "output_limit"
+    assert msg["text"].startswith("The first three steps are clear")
+    assert "length limit" in msg["text"]
+
+
+def test_a_length_limit_with_a_tool_call_is_not_an_output_limit(ctx: ToolContext) -> None:
+    first = [
+        Chunk(text="Let me check. "),
+        Chunk(tool_calls=[ToolCall("simplify", SIMPLIFY)]),
+        Chunk(usage=Usage(finish_reason="length")),
+    ]
+    msg = final(play(ReplayLLM([first, say("It is $x + 1$.")]), ctx))
+    assert msg["stop_reason"] == "completed"
+
+
+def test_a_handbook_search_for_something_it_does_not_cover_says_so(ctx: ToolContext) -> None:
+    out = execute("search_handbook", {"query": "curve of fastest descent"}, ctx)
+    assert out.status == "no_results" and out.card.data["entries"] == []
+    assert "may simply not cover it" in out.for_model and out.known_latex == []
+    # a query that the handbook does cover still returns its entries
+    found = execute("search_handbook", {"query": "Euler Lagrange equations"}, ctx)
+    assert found.status == "ok" and "method.mech.euler_lagrange" in found.for_model

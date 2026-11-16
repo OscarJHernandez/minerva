@@ -189,6 +189,8 @@ class OpenRouterClient:
             payload["top_p"] = self._top_p
         partial: dict[int, _Partial] = {}
         finished = False
+        last_usage: Usage | None = None
+        finish_reason: str | None = None
         try:
             async with (
                 httpx.AsyncClient(
@@ -240,10 +242,11 @@ class OpenRouterClient:
                                 slot.args += str(fn["arguments"])
                         if choice.get("finish_reason"):
                             finished = True
+                            finish_reason = str(choice["finish_reason"])
                         if text:
                             yield Chunk(text=text)
                     if usage is not None:
-                        yield Chunk(usage=usage)
+                        last_usage = usage
                 if not (done or finished):
                     raise _error("unavailable")
         except httpx.TimeoutException as exc:
@@ -257,6 +260,14 @@ class OpenRouterClient:
         ]
         if calls:
             yield Chunk(tool_calls=calls)
+        if last_usage is not None or finish_reason is not None:
+            # One usage record at the end, with the finish reason: a reply that stopped at the model's
+            # length limit is not a finished answer (the loop says so).
+            merged = last_usage or Usage()
+            merged.finish_reason = (
+                "length" if finish_reason == "length" else "stop" if finish_reason else None
+            )
+            yield Chunk(usage=merged)
 
 
 @dataclass

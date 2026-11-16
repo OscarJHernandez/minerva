@@ -53,6 +53,38 @@ def test_wrong_shaped_arguments_get_every_error_and_the_right_shape(ctx: ToolCon
     assert out.for_model.count(":") >= 3
 
 
+SYSTEM = {
+    "equations": ["dy1/dt = y2", "dy2/dt = -y1"],
+    "format": "text",
+    "independent": "t",
+    "unknowns": ["y1", "y2"],
+    "kind": "ivp",
+    "t_end": 1,
+}
+
+
+def test_ode_conditions_may_give_the_point_and_value_as_numbers(ctx: ToolContext) -> None:
+    conditions = [
+        {"unknown": "y1", "at": 0, "value": 1},
+        {"unknown": "y2", "at": 0, "value": 0},
+    ]
+    out = execute("ode_solve_numerical", {**SYSTEM, "conditions": conditions}, ctx)
+    assert out.status == "ok" and out.arguments_valid
+    # a boolean or a non-finite number is still not a number in disguise
+    bad = [{"unknown": "y1", "at": True, "value": 1}, conditions[1]]
+    assert execute("ode_solve_numerical", {**SYSTEM, "conditions": bad}, ctx).status == "error"
+
+
+def test_a_wrong_shaped_condition_is_one_clear_problem_not_sixteen(ctx: ToolContext) -> None:
+    conditions = [{"type": f"y{i}(0)=1", "value": 1} for i in range(1, 5)]
+    out = execute("ode_solve_numerical", {**SYSTEM, "conditions": conditions}, ctx)
+    assert out.status == "error" and not out.arguments_valid
+    assert "and 13 more" not in out.for_model and "more)" not in out.for_model
+    assert "conditions" in out.for_model and "unknown" in out.for_model
+    assert '"unknown": "y", "order": 0, "at": "0", "value": "1"' in out.for_model
+    assert out.for_model.count("Field required") <= 3
+
+
 def test_a_bare_e_power_gets_a_hint_but_is_never_reinterpreted(ctx: ToolContext) -> None:
     out = execute("integrate", {"latex": r"e^{-x^2}", "variable": "x"}, ctx)
     assert out.status == "unsupported" and "ordinary symbol" in out.for_model
@@ -131,3 +163,19 @@ def test_a_failed_read_never_prints_none_as_the_input() -> None:
         out = execute(tool, args, ctx)
         assert out.status == "parse_error", tool
         assert "$None$" not in out.for_model, tool
+
+
+def test_differentiating_an_integral_over_an_unknown_curve_says_what_is_not_supported(
+    ctx: ToolContext,
+) -> None:
+    latex = r"T(y_0) = \int_0^{y_0} \frac{\sqrt{1+(x')^2}}{\sqrt{2 g (y_0 - y)}} dy"
+    out = execute("differentiate", {"latex": latex, "variables": [{"name": "y_0"}]}, ctx)
+    assert out.status == "parse_error" and out.known_latex == []
+    assert "prime" in out.for_model and "variation" in out.for_model
+    assert "evaluate it with `integrate`" in out.for_model
+    assert "do not carry out the differentiation yourself" in out.for_model
+    # no hint for an input that has no integral
+    plain = execute(
+        "differentiate", {"latex": r"\frac{dx}{dy} + 1", "variables": [{"name": "y"}]}, ctx
+    )
+    assert "evaluate it with `integrate`" not in plain.for_model

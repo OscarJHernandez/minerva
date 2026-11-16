@@ -483,3 +483,28 @@ def test_ordinary_prose_still_streams_piece_by_piece(ctx: ToolContext) -> None:
     llm = ReplayLLM([[Chunk(text="Hello"), Chunk(text=" there"), Chunk(text=", friend.")]])
     events = play(llm, ctx, [{"role": "user", "content": "hi"}])
     assert streamed_text(events) == ["Hello", " there", ", friend."]
+
+
+def test_a_lagrangian_does_not_load_the_distribution_or_ode_tools() -> None:
+    """The report's message: a Lagrangian with \\theta and \\dot loaded two groups that stayed for the
+    whole conversation (about 6,000 tokens on every later request)."""
+    lagrangian = r"L = \frac{1}{2} m (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{G M m}{r}. Equations of motion?"
+    groups = toolsets.groups_in_text(lagrangian)
+    assert "mechanics" in groups
+    assert "distributions" not in groups and "ode" not in groups
+    # a normal distribution is statistics, not a Dirac delta
+    assert "distributions" not in toolsets.groups_in_text("the normal distribution of the mean")
+
+
+def test_the_words_and_forms_that_do_mean_a_delta_or_an_ode_still_load_their_groups() -> None:
+    for text in (
+        "What is the Dirac delta of 2x?",
+        r"Simplify \delta(x-a) f(x)",
+        "the Heaviside step function",
+        r"\operatorname{DiracDelta}(x)",  # by its name
+    ):
+        assert "distributions" in toolsets.groups_in_text(text), text
+    for text in (r"\dot{x} = -kx", r"\ddot{r} = -\frac{GM}{r^2}", "solve y' = y", r"\dot x = 2x"):
+        assert "ode" in toolsets.groups_in_text(text), text
+    # an angle called theta, a function of delta or a velocity in a Lagrangian is not a hand-over
+    assert "distributions" not in toolsets.groups_in_text(r"r(0) = 1, \theta(0) = 0")
