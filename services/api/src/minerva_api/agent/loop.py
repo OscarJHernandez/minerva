@@ -29,6 +29,7 @@ from .arguments import repair_arguments
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .choice import delegation_active, names_a_method, numbers_in
 from .declarations import declared_matrices, declared_vectors
+from .diagnosis import diagnose
 from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
     AssistantMessage,
@@ -1449,6 +1450,7 @@ async def _run_turn(
     debug.error_kind = failure_kind
     debug.error_site = failure_site
     debug.stop_reason = stop.value
+    debug.diagnosis = diagnose(trace, debug)
     in_tokens = [c.prompt_tokens for c in debug.llm_calls if c.prompt_tokens is not None]
     out_tokens = [c.completion_tokens for c in debug.llm_calls if c.completion_tokens is not None]
     tracer.emit(

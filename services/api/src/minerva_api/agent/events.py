@@ -247,6 +247,8 @@ class TurnDebug(BaseModel):
     # settings produced an answer. Absent on messages stored before they existed.
     params: dict[str, Any] = Field(default_factory=dict)
     groups: list[str] = Field(default_factory=list)
+    # Which subsystem the first failure points at (`diagnosis.diagnose`); empty before it was added.
+    diagnosis: dict[str, Any] = Field(default_factory=dict)
     context_window: int = 0
     prompt_estimate_tokens: int = 0
     history_dropped: int = 0  # messages of earlier turns left out so the request fit
