@@ -366,3 +366,12 @@ def test_ordinary_fractions_with_a_d_are_still_checked() -> None:
     for formula in (r"\frac{d}{2} = \frac{d}{2}", r"\frac{x+1}{d} = \frac{1+x}{d}"):
         [result] = check_claims([formula], {}, [], L)
         assert result.status == "holds"
+
+
+@pytest.mark.parametrize(
+    "latex",
+    [r"\frac{dx}{dy} = \frac{x}{y}", r"\frac{d^2x}{dt^2} = \frac{x}{t^2}"],
+)
+def test_leibniz_equations_are_never_checked_as_ratios_of_letters(latex: str) -> None:
+    # d/dy is an operator: reading it as the letters d, y made this "identity" parse and be tested.
+    assert check_claim(latex, {}, L).status not in {"holds", "fails", "not_identity"}

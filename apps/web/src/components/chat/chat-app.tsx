@@ -716,7 +716,9 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                   {debugOn && (
                     <CopyButton
                       label="Copy debug report"
-                      getText={() => buildDebugReport({ title, messages, status, lastError })}
+                      getText={() =>
+                        buildDebugReport({ title, messages, status, lastError, replying: busy })
+                      }
                     />
                   )}
                 </div>

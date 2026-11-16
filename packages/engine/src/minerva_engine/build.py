@@ -197,6 +197,10 @@ class Builder:
         # Denominators met while reading (SymPy may cancel them at once): see restrictions.py
         self.denominators: list[sp.Expr] = []
 
+    def declares(self, name: str) -> bool:
+        """The caller gave `name` assumptions, so it is a symbol it knows about."""
+        return name in self._assumptions
+
     # -- atoms -------------------------------------------------------------------------
     def integer(self, digits: str) -> sp.Expr:
         if len(digits) > self.limits.max_int_digits:

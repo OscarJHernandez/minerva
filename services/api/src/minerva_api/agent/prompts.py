@@ -155,6 +155,13 @@ Which tool: simplify, expand or factor an expression: `simplify`; identities mat
 GROUP_RULES: dict[str, tuple[str, ...]] = {
     "mechanics": (
         """\
+A derivative with respect to time of a quantity that contains velocities (a momentum, an energy, a
+   candidate constant) is the TOTAL derivative along a motion: call `time_derivative` with the coordinates
+   (and the Lagrangian when the question is whether it is conserved). `differentiate` by t holds the
+   velocities fixed and is refused for such an expression. Say a quantity is zero or constant only as the
+   result states it (on the equations of motion of the Lagrangian given).\
+""",
+        """\
 A numerical solution (integrate_motion) needs numbers that only the user can choose: values of every
    parameter, initial positions and velocities, and the time span. Never pick them yourself; ask for
    them, and offer to sweep one parameter over a few values. The Lagrangian card also has a form for this.\
@@ -179,7 +186,10 @@ To find conserved quantities or hidden symmetries of a Lagrangian or Hamiltonian
 For an ordinary differential equation or system call `ode_analyze` first, with the equations as the user
    wrote them (`left = right`). If the equation does not say which variable is independent, ask. The analysis
    (structure, class, ranked methods) is Minerva's, not yours: offer only the methods it lists as applicable,
-   in its order, and say what each needs and its limits. `ode_solve_symbolic` gives a closed form only if it
+   in its order, and say what each needs and its limits. If the user's message does not name a method
+   (closed form, numerically, series, perturbation, phase plane, equilibria) and several apply, do not run
+   one: list them and ask which; the server refuses a solver call until the user chooses.
+   `ode_solve_symbolic` gives a closed form only if it
    was checked by substituting it back; `unsupported` or `not_verified` means nothing is claimed, never that
    no solution exists. A series is local (about the point of the initial values); a perturbation
    expansion needs a small parameter the user names, and terms that grow with time mean it holds only on a
@@ -359,7 +369,7 @@ Approximations. `approximation` finds a simpler expression that represents a fun
 }
 
 GROUP_ROUTER: dict[str, str] = {
-    "mechanics": "a Lagrangian: `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`.",
+    "mechanics": "a Lagrangian: `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; d/dt of a quantity along a motion: `time_derivative`.",
     "ode": "a differential equation: `ode_analyze`, then `ode_solve_symbolic` or `ode_solve_numerical`.",
     "variation": "an action functional, its variations and boundary terms: `variation`.",
     "matrix": "matrices: `matrix_calculus`.",
@@ -389,6 +399,7 @@ GROUP_SUMMARY: dict[str, str] = {
 GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "mechanics": (
         "analyze_lagrangian",
+        "time_derivative",
         "integrate_motion",
         "expand_motion",
         "perturbation_solve",
@@ -408,7 +419,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
-    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
+    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
     "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",

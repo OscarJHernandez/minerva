@@ -160,3 +160,40 @@
       expected_tool: none
       reply_matches: 'x\^?\{?2\}?\s*-\s*9|x\^2 - 9'
       reply_forbids: "(do not|don't|cannot|can't|no) (have )?access|cannot see|no (preceding|previous) (context|conversation)"
+
+# --- the three conversations that exposed the agent's gaps (see docs/observability.md) -------------------
+- id: kepler-conserved-quantities-then-total-time-derivative
+  category: followup
+  prompt: 'Find the equations of motion and the conserved quantities of $L = \frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}$ with coordinates r and theta.'
+  expected_tool: analyze_lagrangian
+  also_ok: [find_conserved_quantities]
+  args: {includes: {coordinates: [r, theta]}}
+  source: "engine test_lagrangian.py (Kepler: angular momentum and energy are constants of motion)"
+  followups:
+    # The reply names Laplace-Runge-Lenz vectors; that must not make r a vector for the next tool, and d/dt
+    # of a quantity with velocities is the total derivative, never `differentiate` (it answered 0).
+    - prompt: 'Now differentiate $C_1 = \mu r^2 \dot{\theta}$ with respect to t.'
+      expected_tool: time_derivative
+      forbid: [differentiate]
+      args: {present: [latex, coordinates]}
+      expect_card: {status: ok, result_text: "mu*(2*r*r_dot*theta_dot + r**2*theta_ddot)"}
+      reference: {tool: time_derivative, arguments: {latex: '\mu r^2 \dot{\theta}', coordinates: [r, theta]}}
+
+- id: ode-bare-equation-asks-which-method
+  category: ambiguous
+  prompt: "$y''(x) = y(x)$."
+  expected_tool: ode_analyze
+  forbid: [ode_solve_symbolic, ode_solve_numerical]
+  args: {present: [equations]}
+  expect_card: {status: ok}
+  reference: {tool: ode_analyze, arguments: {equations: ["y''(x) = y(x)"], independent: x}}
+  reply_matches: 'which|choose|prefer|would you like|do you want|method'
+  source: "docs/ode.md: the analysis ranks the applicable methods; the user picks, the assistant does not"
+  followups:
+    - prompt: 'Closed form, please.'
+      expected_tool: ode_solve_symbolic
+      args: {present: [equations, independent]}
+      expect_card: {status: ok}
+      reference:
+        tool: ode_solve_symbolic
+        arguments: {equations: ["y''(x) = y(x)"], independent: x, method: closed_form}

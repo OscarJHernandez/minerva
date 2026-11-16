@@ -136,3 +136,68 @@ def test_input_length_and_depth_limits() -> None:
 def test_reserved_names_cannot_be_symbols() -> None:
     with pytest.raises(ParseError):
         parse_text("sin + 1")
+
+
+# -- Leibniz derivative notation is never read as a fraction of letters ---------------------------
+@pytest.mark.parametrize(
+    "source",
+    [
+        r"\frac{dx}{dy}",
+        r"\frac{dy}{dx} + y",
+        r"\frac{d^2x}{dt^2}",
+        r"\frac{d}{dx} x^2",
+        r"\dfrac{dx}{dt}",
+        r"\tfrac{d^{2}y}{dx^{2}}",
+        r"\sqrt{1+\left(\frac{dx}{dy}\right)^2}",
+    ],
+)
+def test_leibniz_notation_is_refused_not_cancelled(source: str) -> None:
+    # `\frac{dx}{dy}` used to be read as x/y: the d's cancelled and a derivative became a ratio.
+    with pytest.raises(ParseError, match="derivative notation"):
+        parse_latex(source)
+
+
+def test_leibniz_shape_with_a_declared_d_is_an_ordinary_fraction() -> None:
+    d, a, b = sp.symbols("d a b")
+    assumed = {"d": ["positive"]}
+    assert parse_latex(r"\frac{da}{db}", assumptions=assumed) == d * a / (d * b)
+    assert parse_latex(r"\frac{d}{d+1}") == sp.Symbol("d") / (sp.Symbol("d") + 1)
+    assert parse_latex(r"\frac{a}{b}") == a / b
+    assert parse_latex(r"\frac{x_d}{d}") == sp.Symbol("x_d") / sp.Symbol("d")
+
+
+# -- square and curly brackets group like parentheses ---------------------------------------------
+_PHI, _TH = sp.symbols("phi theta")
+
+
+@pytest.mark.parametrize(
+    ("bracketed", "plain"),
+    [
+        (r"\frac{1}{2} \left[ a + b \right]^2", r"\frac{1}{2} \left( a + b \right)^2"),
+        (r"\left[ a + b \right] c", r"\left( a + b \right) c"),
+        (r"[a+b]", r"(a+b)"),
+        (r"\sin\left[ a + b \right]", r"\sin\left( a + b \right)"),
+        (r"\frac{1}{2} \left\{ a + b \right\}", r"\frac{1}{2} \left( a + b \right)"),
+        (r"\left\lbrace a + b \right\rbrace", r"(a+b)"),
+        (r"2 - [a - [b + c]]", r"2 - (a - (b + c))"),
+    ],
+)
+def test_square_and_curly_brackets_group_like_parentheses(bracketed: str, plain: str) -> None:
+    assert parse_latex(bracketed) == parse_latex(plain)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        r"[a, b]",  # a commutator or an interval: never guessed
+        r"\left[ a + b \right)",  # mismatched pair
+        r"\left( a + b \right]",
+        r"\{ a + b \right)",
+        r"x[2]",  # would be x*2: indexed data is written x_2
+        r"2[a+b]",
+        r"[a + b",
+    ],
+)
+def test_ambiguous_or_mismatched_brackets_are_refused(source: str) -> None:
+    with pytest.raises(ParseError):
+        parse_latex(source)

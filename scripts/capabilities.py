@@ -201,6 +201,40 @@ def run_differentiate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
     )
 
 
+def run_time_derivative(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.time_derivative(
+        _expr(spec), spec["coordinates"], spec.get("time", "t"), spec.get("lagrangian")
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    if r.status.value == "ok" and r.result_latex and r.notation_latex:
+        outputs.append(
+            {"label": "Total time derivative", "latex": f"{r.notation_latex} = {r.result_latex}"}
+        )
+        if r.on_motion_latex is not None:
+            zero = r.zero_on_motion is True
+            outputs.append(
+                {
+                    "label": "On the equations of motion" + (" (zero)" if zero else ""),
+                    "latex": r.on_motion_latex,
+                }
+            )
+        if r.verification:
+            v = r.verification
+            checks.append(
+                f"central difference of the input along random motions agreed at "
+                f"{v.points_agreed} of {v.points_checked} points"
+            )
+    return _example(
+        spec,
+        r.status.value,
+        [_source_line(spec, "Input", engine, r.input_latex)],
+        outputs,
+        checks,
+        [r.message, *r.notes] if r.message else list(r.notes),
+    )
+
+
 def run_series(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.series(
         _expr(spec),
@@ -424,6 +458,7 @@ def run_variation(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> di
         action=spec.get("action", "first"),
         integrand=spec["input"],
         format=_syntax(spec),  # type: ignore[arg-type]
+        variable=spec.get("variable", "t"),
         functions=spec["functions"],
         given_functions=spec.get("given_functions", []),
         lower=spec.get("lower"),
@@ -1741,6 +1776,7 @@ RUNNERS = {
     "ode_numeric": run_ode_numeric,
     "simplify": run_simplify,
     "differentiate": run_differentiate,
+    "time_derivative": run_time_derivative,
     "series": run_series,
     "approximation": run_approximation,
     "matrix": run_matrix,
@@ -1911,15 +1947,20 @@ def render_json(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
+def stale_outputs(data: dict[str, Any]) -> list[str]:
+    """The generated files that do not match `data` (repository-relative paths)."""
+    outputs = {MARKDOWN: render_markdown(data), JSON_OUT: render_json(data)}
+    return [
+        str(path.relative_to(ROOT))
+        for path, text in outputs.items()
+        if not path.exists() or path.read_text() != text
+    ]
+
+
 def main(argv: list[str]) -> int:
     data = build()
-    outputs = {MARKDOWN: render_markdown(data), JSON_OUT: render_json(data)}
     if "--check" in argv:
-        stale = [
-            str(path.relative_to(ROOT))
-            for path, text in outputs.items()
-            if not path.exists() or path.read_text() != text
-        ]
+        stale = stale_outputs(data)
         if stale:
             print(
                 "out of date: " + ", ".join(stale) + "\nrun: uv run python scripts/capabilities.py",
@@ -1928,7 +1969,7 @@ def main(argv: list[str]) -> int:
             return 1
         print("capabilities are up to date")
         return 0
-    for path, text in outputs.items():
+    for path, text in {MARKDOWN: render_markdown(data), JSON_OUT: render_json(data)}.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
         print(f"wrote {path.relative_to(ROOT)}")

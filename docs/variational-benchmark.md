@@ -5,7 +5,7 @@ expected result from a closed form or a hand derivation, independently of Minerv
 engine is asked. Convention: `EL_i = sum_k (-1)^k D^k dL/du_i^(k)` and
 `dS = integral EL.eta dt + [sum Pi eta^(j)]_a^b`.
 
-**21 of 21 cases pass.**
+**22 of 22 cases pass.**
 
 | case | result | checks |
 | --- | --- | --- |
@@ -29,6 +29,7 @@ engine is asked. Convention: `EL_i = sum_k (-1)^k D^k dL/du_i^(k)` and
 | Arc length: EL and the straight line | pass | 5 |
 | Catenary: two distinct stationary paths | pass | 7 |
 | t x'^2: the Legendre determinant 2t vanishes at an end | pass | 3 |
+| Brachistochrone dx/dy form, no bounds: EL, first integral, singular interval refused | pass | 6 |
 | Trial family c t (1 - t): action c^2/6 - c/6 | pass | 5 |
 
 ## Checks
@@ -214,6 +215,17 @@ engine is asked. Convention: `EL_i = sum_k (-1)^k D^k dL/du_i^(k)` and
 | status | `ok` | `ok` | yes |
 | Legendre determinant | `2 t` | `2 t` | yes |
 | regularity | `conditional` | `conditional` | yes |
+
+### Brachistochrone dx/dy form, no bounds: EL, first integral, singular interval refused
+
+| check | expected | found | agrees |
+| --- | --- | --- | --- |
+| EL[x] | `x_dot/(2*t*sqrt(2*g*t)*sqrt(1+x_dot**2)) - x_ddot/(sqrt(2*g*t)*(1+x_dot**2)**(3/2))` | `x_dot/(2*t*sqrt(2*g*t)*sqrt(1+x_dot**2)) - x_ddot/(sqrt(2*g*t)*(1+x_dot**2)**(3/2))` | yes |
+| x' reads as the same functional | `equal` | `equal` | yes |
+| status | `ok` | `ok` | yes |
+| deciding check without bounds | `passed` | `passed` | yes |
+| status | `not_verified` | `not_verified` | yes |
+| across y = 0: not checked, never ok | `could not be checked` | `The first variation could not be checked` | yes |
 
 ### Trial family c t (1 - t): action c^2/6 - c/6
 

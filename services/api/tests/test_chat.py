@@ -818,3 +818,24 @@ def test_delta_answer_endpoint_is_private_and_needs_no_model() -> None:
         cid = c.post("/v1/chat/conversations", json={}).json()["id"]
         r = c.post(f"/v1/chat/conversations/{cid}/tools/distribution", json=body)
         assert r.status_code == 201
+
+
+def test_a_turn_that_fails_outside_the_loop_leaves_a_stored_message(
+    chat_client: tuple[TestClient, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A user message with no reply and no error used to be all that a reload or a debug report showed.
+    client, cid = chat_client
+
+    async def boom(*args: object, **kwargs: object):  # type: ignore[no-untyped-def]
+        raise RuntimeError("simulated failure outside the agent loop")
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr("minerva_api.routers_chat.run_agent", boom)
+    events = sse(client, cid, "simplify $x + x$")
+    assert [e for e, _ in events][-2:] == ["error", "done"]
+    detail = client.get(f"/v1/chat/conversations/{cid}").json()
+    assert [m["role"] for m in detail["messages"]] == ["user", "assistant"]
+    stored = detail["messages"][-1]["content"]
+    assert stored["stop_reason"] == "internal_error" and stored["truncated"] is True
+    assert "internal error" in stored["text"]
+    assert "simulated" not in json.dumps(stored)  # the cause never reaches the user or the record

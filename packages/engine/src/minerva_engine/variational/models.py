@@ -454,6 +454,9 @@ class VariationReport(BaseModel):
     status: Status
     message: str = ""
     action: Action = "analyze"
+    # The integrand as Minerva read it, on every status once the input was read: a misreading is then
+    # visible even when nothing was verified.
+    input_latex: str | None = None
     analysis: Analysis | None = None
     first: FirstVariation | None = None
     evaluation: Evaluation | None = None

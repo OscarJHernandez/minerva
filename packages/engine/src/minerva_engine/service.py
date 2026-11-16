@@ -569,6 +569,28 @@ class Engine:
         result.duration_ms = ms
         return result
 
+    def time_derivative(
+        self,
+        expression: ExpressionInput,
+        coordinates: list[str],
+        time: str = "t",
+        lagrangian: str | None = None,
+    ) -> DifferentiateResult:
+        """Total time derivative along a motion (chain rule over coordinates, velocities, time)."""
+        payload = {
+            "expression": expression.model_dump(),
+            "coordinates": coordinates,
+            "time": time,
+            "lagrangian": lagrangian,
+        }
+        outcome, ms = self._run("time_derivative", payload)
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return DifferentiateResult(status=status, message=message, duration_ms=ms)
+        result = DifferentiateResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
     def series(
         self, expression: ExpressionInput, variable: str, point: str = "0", order: int = 6
     ) -> SeriesResult:

@@ -161,6 +161,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `model_error`,
   `malformed_output`, `internal_error`). An identical call in a turn is not run twice; a model call that failed before any
   output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
+  A turn that fails outside the loop stores an assistant message with `stop_reason: "internal_error"` and fixed text (never
+  the cause), so a reload and a debug report show it; the report also says when it was copied mid-reply or when the last
+  message has no stored reply. Differential equations: when `ode_analyze` lists two or more applicable methods and the
+  user's message names none (`agent/choice.py`: closed form, numerically, series, perturbation, phase plane, equilibria;
+  a pick by position counts only as a reply to that list), `ode_solve_symbolic` and `ode_solve_numerical` are refused
+  (`needs_user_choice`) and the assistant lists the methods and asks. The server enforces it; the prompt only says it.
 - A formula in the model's prose is marked `from_tool` only if a *verified* result (or a machine-checked handbook entry)
   produced it. The user's own input as read, a `stated` handbook entry, an identity that was not applied and anything from
   a result that was not accepted are `quoted`: shown, never marked verified. Do not widen `known_latex` back to "anything a
@@ -231,6 +237,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a
   symbolic fallback or weaken `check_derivative` (its tests include a deliberately wrong candidate).
+  `differentiate` is a *partial* derivative: by `t` of an expression with velocities (`x_dot`, `x_ddot`) it is `unsupported`
+  (it used to answer a verified 0) and points to `time_derivative` (`time_derivative.py`, mechanics group): the total
+  derivative along a motion (chain rule over coordinates, velocities, time), shown only if a central difference of the
+  *input* along random polynomial motions agrees to 1e-12 (`check_total_derivative`; a 1e-9 error is rejected). With a
+  Lagrangian it is also evaluated on the equations of motion (`derive`, confirmed by `check_equations`) and a zero is
+  decided as for a constant of motion; "zero on the equations of motion of this Lagrangian" is the only wording, the
+  nonzero formula is quoted (never `known_latex`), and accelerations in the input are `unsupported`.
 - Series (`series.py`) are Taylor polynomials about a finite real point, shown only if two checks that do not
   use `sympy.series` both pass: the coefficients against a Cauchy-integral estimate (trapezoid on circles,
   trusted only where the estimates at r and r/2 agree, tolerance per coefficient) and the h^(N+1) decay of the
@@ -362,6 +375,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`simplify`, `differentiate`, `integrate`, `series`, `approximation`, `isolate_variable`, `solve_polynomial`, `find_identities`,
   `distribution`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`), so a scalar result about
   matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
+  Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one (every symbol of a
+  sentence that says "vector") feeds the claim checker, where a wrong name only leaves a claim unchecked. The strict one
+  (`read_declarations(strict=True)`: a bare name or list of names tied to the keyword by "is/are/be", "the vector r" or
+  "do not commute", never `$1/r$` or `$H = T + V$`) feeds `ToolContext.matrices`, because there a wrong name blocks every
+  scalar tool for the rest of the conversation (a reply mentioning "the Runge-Lenz vector, unique to $1/r$ potentials" once
+  made `r` a vector). A refusal quotes the sentence and who wrote it (`ToolContext.matrix_sources`, never logged), and a
+  *user* sentence calling a name a scalar clears it (the model's own text never does). Do not feed the generous reading to a
+  tool refusal.
 - Distributions (`distributions/`, tool and endpoint `distribution`): a Dirac delta is 0 at every point a sampler can
   draw, so pointwise sampling proves nothing about it. Every other operation refuses `DiracDelta` / `Heaviside` input as
   `unsupported`, `verify_equal` never passes it, and the claim checker leaves such statements `unverified` (never
@@ -592,6 +613,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   directions proves nothing, and the sufficient conditions are listed as not established. Do not weaken `fd_table`
   (its tests include a 1e-7 error, an exact quotient and a noise floor), `check_discretisation` or the certification
   of directions. The benchmark corpus is `variational/benchmark.py` (`make bench-variational`; `--check` in tests).
+  The integrand may spell the derivative of an unknown `x` of the independent variable `y` as `\frac{dx}{dy}`,
+  `\frac{d^2x}{dy^2}`, `x'`, `x''`, `\dot{x}`... (only here; see the LaTeX conventions). Every numerical leg takes its
+  sample setting from `verify.regular_numerics`: with symbolic bounds it walks a fixed ladder (sampled, entirely positive,
+  entirely negative, reseeds) until the action's quadrature is at round-off, because an interval across a singularity
+  (`1/sqrt(y)` at 0) makes every finite-difference comparison inconclusive; the user's numeric bounds are never replaced.
+  "Did not pass" is said only for a real disagreement; an inconclusive check is "could not be checked" (still
+  `not_verified`, never shown). `VariationReport.input_latex` (the integrand as read) is on every status after a parse.
 - Finite sums, products and indexed data (`indexed/`, operation `sums`): the parsers refuse `Sum`, `Product`, `x[i]`, `\sum`,
   `\prod` and `E[...]` unless the operation opts in (`Builder(allow_sums=...)`, default off), and every pointwise checker
   (`verify_equal`, `check_derivative`, `check_antiderivative`, `check_definite`, `verify_equal_nc`, the rule matcher,
@@ -695,6 +723,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `\exponentialE` / `\imaginaryI` are input aliases only; KaTeX gets display macros for them. LaTeX that
   KaTeX cannot render is shown as marked source (`data-math-error`), never as a formula. Chat formulas are split by
   `agent/segments.py` (server) and `apps/web/src/lib/inline-math.ts` (client): keep their delimiter rules identical.
+- Derivative notation is never a fraction of letters: `\frac{dx}{dy}`, `\frac{d^2x}{dt^2}` and `\frac{d}{dx}` are a
+  `ParseError` in every operation (read as letters the d's cancelled and `\frac{dx}{dy}` became x/y, a verified answer
+  about another expression); the exceptions are a symbol the caller declared `d` and the `variation` parser, where the
+  derivative of an unknown function with respect to the independent variable is that derivative. Text syntax reads `dx`
+  as one symbol and is unaffected. `\left[ \right]`, `\left\{ \right\}` and a bare `[...]` group like parentheses, except
+  directly after a letter or a number (`x[2]` would silently be `x*2`); `[a, b]` and mismatched pairs are refused. The
+  Lagrangian and Hamiltonian readers refuse an equation (`L = T = ...`) and say to send the part after the last `=`.
 - In text syntax `E`, `I`, `pi`, `oo` are reserved constants: never use `E` as a variable name in
   handbook entries (use `En`, `Ef`, ...).
 

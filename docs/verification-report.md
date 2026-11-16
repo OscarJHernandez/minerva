@@ -48,8 +48,8 @@ Counterexamples found by probe family: boundary 8, branch 1, scale 3, special 5.
 
 ## Agent evaluation
 
-143 core cases and 9 reliability cases (15 live turns). Failure classes a run can report: `arguments`, `claim_checker_false_positive`, `ignored_failed_verification`, `invented_assumption`, `misreported_restriction`, `missing_assumptions`, `model_honesty`, `model_host`, `no_reply`, `parsing`, `resource_limit`, `result_reuse`, `tool_selection`, `unproductive_loop`, `verification`. Model results come from `scripts/eval_models.py` (see `docs/model-evaluation.md`); they depend on a model host and are not part of this report.
+146 core cases and 11 reliability cases (19 live turns). Failure classes a run can report: `arguments`, `claim_checker_false_positive`, `ignored_failed_verification`, `invented_assumption`, `misreported_restriction`, `missing_assumptions`, `model_honesty`, `model_host`, `no_reply`, `parsing`, `resource_limit`, `result_reuse`, `tool_selection`, `unproductive_loop`, `verification`. Model results come from `scripts/eval_models.py` (see `docs/model-evaluation.md`); they depend on a model host and are not part of this report.
 
 ## Measurements (not gated)
 
-Adversarial corpus: 1.22 s in total, median 9.6 ms and maximum 125.0 ms per case. Report wall time 3.29 s; peak memory 174.6 MB.
+Adversarial corpus: 1.23 s in total, median 10.0 ms and maximum 135.7 ms per case. Report wall time 3.45 s; peak memory 175.1 MB.

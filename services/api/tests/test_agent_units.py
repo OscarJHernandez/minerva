@@ -236,6 +236,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "load_tools",  # asks for more tools; computes nothing
         "simplify",
         "differentiate",
+        "time_derivative",
         "series",
         "integrate",
         "matrix_calculus",

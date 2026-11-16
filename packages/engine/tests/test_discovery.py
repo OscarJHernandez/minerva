@@ -294,3 +294,16 @@ def test_events_carry_counters_only_and_cover_the_stages() -> None:
     # the nullspace stage reports matrix shape, rank and nullity
     stage = next(e for e in report.events if e.name.endswith("nullspace_computed"))
     assert {"rows", "cols", "rank", "nullity"} <= set(stage.data)
+
+
+def test_constants_are_named_with_a_subscript_like_the_relation_between_them() -> None:
+    # The model writes C_1 = ...; the tool used to print C1 = ..., so a verified constant was marked
+    # "unchecked" over spelling alone. The id stays C1 (it is a reference), the LaTeX is C_{1}.
+    report = run(KEPLER, ["r", "theta"])
+    assert [c.id for c in report.constants[:2]] == ["C1", "C2"]
+    assert [c.expression_latex.split(" = ")[0] for c in report.constants] == [
+        "C_{1}",
+        "C_{2}",
+        "C_{3}",
+        "C_{4}",
+    ]

@@ -262,6 +262,77 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             ],
         },
     },
+    "kepler-conserved-quantities-then-total-time-derivative": {
+        "ideal": [
+            call(
+                "analyze_lagrangian",
+                {
+                    "lagrangian": r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}",
+                    "coordinates": ["r", "theta"],
+                },
+            ),
+            say(
+                "Angular momentum and energy are conserved, and a third independent constant "
+                "was found (a component of what is called the Laplace-Runge-Lenz vector)."
+            ),
+            call(
+                "time_derivative", {"latex": r"\mu r^2 \dot{\theta}", "coordinates": ["r", "theta"]}
+            ),
+            say(
+                r"Its total time derivative is $\mu (2 r \dot{r} \dot{\theta} + r^{2} \ddot{\theta})$."
+            ),
+        ],
+        "adversarial": {
+            # d/dt with `differentiate` holds the velocities fixed (it used to answer 0)
+            FailureClass.TOOL_SELECTION: [
+                call(
+                    "analyze_lagrangian",
+                    {
+                        "lagrangian": r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}",
+                        "coordinates": ["r", "theta"],
+                    },
+                ),
+                say("Angular momentum, energy and a third independent constant were found."),
+                call(
+                    "differentiate",
+                    {"latex": r"\mu r^2 \dot{\theta}", "variables": [{"name": "t"}]},
+                ),
+                say("The derivative is 0."),
+            ],
+        },
+    },
+    "ode-bare-equation-asks-which-method": {
+        "ideal": [
+            call("ode_analyze", {"equations": ["y''(x) = y(x)"], "independent": "x"}),
+            say(
+                "Several methods apply: a closed form, a numerical solution and a series. "
+                "Which method would you like me to use?"
+            ),
+            call(
+                "ode_solve_symbolic",
+                {"equations": ["y''(x) = y(x)"], "independent": "x", "method": "closed_form"},
+            ),
+            say(r"The general solution is $y(x) = C_{1} \mathrm{e}^{- x} + C_{2} \mathrm{e}^{x}$."),
+        ],
+        "adversarial": {
+            # straight to a solver without asking: the server refuses it, and the attempt is the failure
+            FailureClass.TOOL_SELECTION: [
+                call("ode_analyze", {"equations": ["y''(x) = y(x)"], "independent": "x"}),
+                call(
+                    "ode_solve_symbolic",
+                    {"equations": ["y''(x) = y(x)"], "independent": "x", "method": "closed_form"},
+                ),
+                say("The solution is y = C1 e^x + C2 e^-x."),
+                call(
+                    "ode_solve_symbolic",
+                    {"equations": ["y''(x) = y(x)"], "independent": "x", "method": "closed_form"},
+                ),
+                say(
+                    r"The general solution is $y(x) = C_{1} \mathrm{e}^{- x} + C_{2} \mathrm{e}^{x}$."
+                ),
+            ],
+        },
+    },
     "premise-stays-conditional": {
         "ideal": [
             call("substitute", {"latex": "x^2 + y", "relations": ["y = 3x"]}),
@@ -343,8 +414,8 @@ def test_a_follow_up_is_scored_on_the_state_the_first_turn_really_produced(
 def test_the_digest_of_the_original_cases_did_not_change() -> None:
     """Adding the reliability fields to the schema must not change which questions the core suite asks."""
     assert (
-        cases_digest(load_cases()) == "0a09301eefef"
-    )  # the core suite after the vector, electromagnetism, integral, creative telescoping and approximation cases
+        cases_digest(load_cases()) == "a32a813386ce"
+    )  # the core suite after the vector, electromagnetism, integral, creative telescoping, approximation, total-time-derivative, brachistochrone and ellipsoid cases
     assert cases_digest(load_suite("reliability")) != cases_digest(load_cases())
 
 

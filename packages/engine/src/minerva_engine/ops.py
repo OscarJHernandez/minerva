@@ -199,6 +199,19 @@ def op_differentiate(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_time_derivative(payload: dict[str, Any]) -> dict[str, Any]:
+    from .time_derivative import time_derivative
+
+    result = time_derivative(
+        ExpressionInput(**payload["expression"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("lagrangian"),
+        Limits(**payload["limits"]),
+    )
+    return result.model_dump(mode="json")
+
+
 # --- series ----------------------------------------------------------------------------
 def op_series(payload: dict[str, Any]) -> dict[str, Any]:
     from .series import series
@@ -881,6 +894,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "read_formulas": op_read_formulas,
     "solve": op_solve,
     "differentiate": op_differentiate,
+    "time_derivative": op_time_derivative,
     "series": op_series,
     "integrate": op_integrate,
     "creative_telescoping": op_creative_telescoping,

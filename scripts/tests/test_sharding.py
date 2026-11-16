@@ -52,3 +52,34 @@ def test_tier_defaults_to_pr_and_rejects_unknown_values() -> None:
     assert MODULE.parse_tier("extended") == "extended"
     with pytest.raises(ValueError, match="MINERVA_TEST_TIER"):
         MODULE.parse_tier("nightly")  # a typo must not silently run (or skip) the wrong set
+
+
+# -- benchmark modules stay together ----------------------------------------------------------------
+BENCH = [
+    f"packages/{pkg}/tests/test_{name}_benchmark.py::test_each_case[{i}]"
+    for pkg, name in [("engine", "vector"), ("engine", "geometry"), ("knowledge", "stat")]
+    for i in range(40)
+] + [f"scripts/tests/test_capabilities.py::test_{i}" for i in range(4)]
+
+
+@pytest.mark.parametrize("count", [1, 2, 5, 7])
+def test_the_assignment_is_an_exact_partition_with_whole_benchmark_modules(count: int) -> None:
+    ids = IDS + BENCH
+    shards = MODULE.assign_shards(ids, count)
+    assert set(shards) == set(ids) and all(1 <= s <= count for s in shards.values())
+    for module in {MODULE.module_of(n) for n in BENCH}:
+        assert len({shards[n] for n in BENCH if MODULE.module_of(n) == module}) == 1
+    # ordinary tests keep the hash split
+    assert all(shards[n] == MODULE.shard_of(n, count) for n in IDS)
+
+
+def test_benchmark_modules_are_dealt_evenly_and_ordinary_modules_are_not_grouped() -> None:
+    shards = MODULE.assign_shards(BENCH, 4)
+    assert sorted({shards[n] for n in BENCH}) == [1, 2, 3, 4]  # four modules, four shards
+    assert MODULE.is_whole_module("packages/knowledge/tests/test_benchmark.py::test_x")
+    assert not MODULE.is_whole_module("packages/engine/tests/test_simplify.py::test_benchmarks[1]")
+
+
+def test_the_assignment_does_not_depend_on_collection_order() -> None:
+    ids = IDS + BENCH
+    assert MODULE.assign_shards(ids, 5) == MODULE.assign_shards(list(reversed(ids)), 5)

@@ -64,7 +64,11 @@ class Numerics:
         *,
         values: Mapping[sp.Symbol, Any] | None = None,
         definitions: Mapping[Any, sp.Lambda] | None = None,
+        interval: str = "sampled",
     ):
+        self.interval = (
+            interval  # "sampled" | "positive" | "negative": where symbolic bounds are drawn
+        )
         self.problem = problem
         self.jets: JetSpace = problem.jets
         self.rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
@@ -92,7 +96,12 @@ class Numerics:
             lo = self._number(problem.lower, params)
             hi = self._number(problem.upper, params)
             fixed = given is not None or problem.bounds_numeric
-            if lo < hi and (fixed or (hi - lo >= 0.3 and max(abs(lo), abs(hi)) <= 1.5)):
+            side = (
+                (self.interval == "positive" and lo > 0)
+                or (self.interval == "negative" and hi < 0)
+                or self.interval == "sampled"
+            )
+            if lo < hi and (fixed or (side and hi - lo >= 0.3 and max(abs(lo), abs(hi)) <= 1.5)):
                 self.params, self.lower, self.upper = params, lo, hi
                 return
         raise ParseError("could not choose parameter values with lower bound < upper bound")

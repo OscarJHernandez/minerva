@@ -238,3 +238,19 @@ def test_the_note_names_the_capability_not_a_source_file() -> None:
     r = analyze(r"\frac12 m\dot{x}^2", ["x"])
     note = " ".join(r.notes)
     assert "constants of motion" in note and "invariants.py" not in note
+
+
+@pytest.mark.parametrize("source", [r"L = \frac12 m\dot{x}^2", r"L = T = \frac12 m\dot{x}^2"])
+def test_an_equation_is_refused_with_advice_not_misread(source: str) -> None:
+    r = analyze(source, ["x"])
+    assert r.status == Status.PARSE_ERROR
+    assert "after the last" in r.message
+
+
+def test_bracketed_kinetic_energy_reads_like_the_parenthesised_one() -> None:
+    bracketed = r"\frac12 \left[ I_1 \dot{\theta}^2 + I_2 \dot{\phi}^2 \sin^2\theta \right]"
+    plain = bracketed.replace(r"\left[", r"\left(").replace(r"\right]", r"\right)")
+    assert (
+        derive(bracketed, ["theta", "phi"], "t", {}, L).lagrangian
+        == derive(plain, ["theta", "phi"], "t", {}, L).lagrangian
+    )

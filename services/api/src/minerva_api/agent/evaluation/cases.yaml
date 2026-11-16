@@ -1672,6 +1672,41 @@
       assumptions: {x: [real]}
   source: "AGENTS.md (convergence is decided from declared assumptions only)"
 
+# ----------------------------------------------------------------------------- total time derivative, functionals
+- id: total-time-derivative-of-angular-momentum
+  category: physics
+  prompt: 'Differentiate $\mu r^2 \dot{\theta}$ with respect to t, where r and theta change with time.'
+  expected_tool: time_derivative
+  forbid: [differentiate]
+  args: {present: [latex, coordinates]}
+  expect_card: {status: ok, result_text: "mu*(2*r*r_dot*theta_dot + r**2*theta_ddot)"}
+  reference: {tool: time_derivative, arguments: {latex: '\mu r^2 \dot{\theta}', coordinates: [r, theta]}}
+  source: "product rule by hand: d/dt(mu r^2 thetadot) = mu(2 r rdot thetadot + r^2 thetaddot); engine test_time_derivative.py"
+
+- id: brachistochrone-euler-lagrange-leibniz-form
+  category: physics
+  prompt: 'Apply the Euler-Lagrange equations to the time functional $T = \int \frac{\sqrt{1 + \left(\frac{dx}{dy}\right)^2}}{\sqrt{2 g y}}\,dy$, where x is a function of y.'
+  expected_tool: variation
+  args: {equals: {variable: y, functions: [x]}, present: [integrand]}
+  expect_card: {status: ok}
+  reference:
+    tool: variation
+    arguments:
+      action: first
+      integrand: '\frac{\sqrt{1 + \left(\frac{dx}{dy}\right)^2}}{\sqrt{2 g y}}'
+      variable: y
+      functions: [x]
+  max_unchecked: 4
+  source: "hand derivation: EL = -D[x'/(sqrt(2 g y) sqrt(1 + x'^2))], first integral x'/sqrt(y(1+x'^2)) constant; engine test_variational_brachistochrone.py"
+
+- id: ellipsoid-equations-of-motion-with-square-brackets
+  category: physics
+  informational: true  # pending: the engine's analysis of three Euler angles exceeds the 10 s limit
+  prompt: 'Derive the equations of motion from $L = T = \frac{1}{2} \left[ I_1 (\dot{\theta} \cos\psi + \dot{\phi} \sin\theta \sin\psi)^2 + I_2 (\dot{\theta} \sin\psi - \dot{\phi} \sin\theta \cos\psi)^2 + I_3 (\dot{\phi} \cos\theta + \dot{\psi})^2 \right]$ with coordinates phi, theta, psi.'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [phi, theta, psi]}, present: [lagrangian]}
+  source: "rigid-body kinetic energy in Euler angles (textbook); the input uses square brackets and a leading 'L = T =' that the tool must receive without them"
+
 - id: approximation-relativistic-energy
   category: physics
   prompt: 'Expand the relativistic energy $E=\frac{m c^2}{\sqrt{1-v^2/c^2}}$ for $v/c \ll 1$ up to fourth order in $v/c$. Take m and c positive and v real.'

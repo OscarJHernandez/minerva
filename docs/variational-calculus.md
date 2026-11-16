@@ -18,6 +18,15 @@ The operation is `variation` (engine `packages/engine/src/minerva_engine/variati
 * Notation is strict. Unknown functions are declared; `\dot{x}`, `\ddot{x}`, `\dddot{x}`, `x^{(4)}` (and
   `x_dot`, `x_ddot`, `x_d3` in text) are derivatives only of declared unknowns, and the reading is echoed back.
   A given function such as `V(x)` must be declared; an undeclared `V(x)` is an error, never the product `V·x`.
+* With another independent variable (`y` in the brachistochrone `x(y)`), the derivative of the unknown `x` is
+  `\frac{dx}{dy}`, `\frac{d^2x}{dy^2}` or `x'`, `x''`: the same order above and below, the unknown over the
+  independent variable, nothing else. Any other use of `d` in a fraction is refused (read as letters the d's would
+  cancel, so `\frac{dx}{dy}` would be `x/y`).
+* Without bounds the numerical check draws them. They are drawn again on an interval entirely above or below zero
+  (then reseeded) when the first draw makes the action's quadrature inaccurate, as when it straddles a singularity
+  such as `1/√y` at `y = 0`. If no interval works the answer is `not_verified` and says it could not be checked, which
+  is different from "did not pass" (a real disagreement). Bounds you give are never replaced. Every status carries the
+  integrand as Minerva read it.
 
 ## What a result means
 
