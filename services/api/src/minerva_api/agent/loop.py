@@ -659,6 +659,16 @@ async def _run_turn(
             else:
                 messages[0] = {"role": "system", "content": system_now}
             estimate = estimate_tokens(request_chars(system_now, tools_now, messages[1:]))
+            breakdown = {
+                "est_system": estimate_tokens(len(system_now)),
+                "est_tools": estimate_tokens(len(json.dumps(tools_now))),
+                "est_history": estimate_tokens(
+                    sum(message_chars(m) for m in messages[1 : 1 + kept_history])
+                ),
+                "est_turn": estimate_tokens(
+                    sum(message_chars(m) for m in messages[1 + kept_history :])
+                ),
+            }
             debug.prompt_estimate_tokens = max(debug.prompt_estimate_tokens, estimate)
             debug.groups = list(active)
             if routed_now is None:
@@ -695,6 +705,7 @@ async def _run_turn(
                         prompt_tokens=usage.prompt_tokens if usage else None,
                         completion_tokens=usage.completion_tokens if usage else None,
                         cost_usd=usage.cost_usd if usage else None,
+                        **breakdown,
                     )
                 )
                 tracer.emit(

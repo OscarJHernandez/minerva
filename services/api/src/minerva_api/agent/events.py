@@ -176,6 +176,12 @@ class LLMCallDebug(BaseModel):
     prompt_tokens: int | None = None  # as reported by the provider, when it reports them
     completion_tokens: int | None = None
     cost_usd: float | None = None
+    # Where the request's size came from, in estimated tokens (budget.estimate_tokens, pessimistic):
+    # the system prompt, the tool schemas, the earlier conversation and this turn's own messages.
+    est_system: int | None = None
+    est_tools: int | None = None
+    est_history: int | None = None
+    est_turn: int | None = None
 
 
 class ClaimDebug(BaseModel):

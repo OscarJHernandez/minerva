@@ -297,6 +297,24 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
         `tokens: ${tokens.reduce((n, x) => n + (x.prompt_tokens ?? 0), 0)} in, ${tokens.reduce((n, x) => n + (x.completion_tokens ?? 0), 0)} out (as reported by the model host)`,
       );
     }
+    const sized = d.llm_calls.filter((x) => x.est_system != null);
+    if (sized.length > 0) {
+      lines.push(
+        "",
+        "| Model call | system | tools | history | this turn | (estimated tokens) |",
+        "| --- | --- | --- | --- | --- | --- |",
+        ...sized.map(
+          (x, k) =>
+            `| ${k + 1} | ${x.est_system} | ${x.est_tools} | ${x.est_history} | ${x.est_turn} | |`,
+        ),
+        "",
+      );
+    }
+    if (d.routing?.decision) {
+      lines.push(
+        `routing: ${d.routing.decision} (${d.routing.reason ?? "?"}) → ${d.routing.tool ?? "?"}`,
+      );
+    }
     if (d.evidence_pct != null) {
       lines.push(
         `formulas with engine evidence: ${d.formulas_with_evidence}/${d.formulas} (${d.evidence_pct}%)`,
@@ -312,7 +330,11 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
     const card = (c.blocks ?? []).find((b) => b.kind === "card" && b.card.id === t.id)?.card;
     const ev = t.evidence;
     lines.push(
-      `#### Tool call ${i + 1}: ${t.name} (${t.status ?? "status unknown"}, ${t.duration_ms ?? "?"} ms)`,
+      `#### Tool call ${i + 1}: ${t.name} (${t.status ?? "status unknown"}, ${t.duration_ms ?? "?"} ms)` +
+        (t.requested_name
+          ? ` · the model wrote "${t.requested_name}" (read as ${t.alias_kind ?? "alias"})`
+          : "") +
+        (t.routed ? " · chosen by a rule, not by the model" : ""),
       `- arguments valid: ${t.arguments_valid ?? "unknown"}${t.error_category ? ` · category: ${t.error_category}` : ""}${t.repeated ? " · repeated call, not run again" : ""}${t.result_id ? ` · result id ${t.result_id}` : ""}${t.engine_ms != null ? ` · ${t.engine_ms} ms in the sandbox` : ""}`,
       ...(ev
         ? [
@@ -351,7 +373,7 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
   }
   for (const claim of d?.claims ?? []) {
     lines.push(
-      `- claim check ${claim.status}${claim.kind ? ` [${claim.kind}]` : ""}: \`${claim.value}\`${claim.detail ? ` (${claim.detail})` : ""}${claim.given?.length ? ` given: ${claim.given.join("; ")}` : ""}`,
+      `- claim check ${claim.status}${claim.kind ? ` [${claim.kind}]` : ""}: \`${claim.value}\`${claim.detail ? ` (${claim.detail})` : ""}${claim.given?.length ? ` given: ${claim.given.join("; ")}` : ""}${claim.evidence_rule ? ` · linked to result ${claim.evidence_source || "?"} by ${claim.evidence_rule}, ${claim.evidence_basis ?? "?"}` : ""}`,
     );
   }
   if (c.truncated) {
