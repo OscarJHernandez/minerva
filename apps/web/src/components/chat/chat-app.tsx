@@ -25,6 +25,7 @@ import type {
 } from "@/lib/chat-types";
 import { modelSettings, providerChoice } from "@/lib/model-settings";
 import { Composer } from "./composer";
+import { ContextMeter } from "./context-meter";
 import { ModelPicker } from "./model-picker";
 import { ModelSettingsPanel } from "./model-settings-panel";
 import { CopyButton } from "./debug-panel";
@@ -801,6 +802,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
                     </button>
                   </p>
                 )}
+                {!pending && <ContextMeter messages={messages} />}
                 <Composer
                   key={`${accountId ?? "loading"}:${activeId ?? "new"}`}
                   draftKey={

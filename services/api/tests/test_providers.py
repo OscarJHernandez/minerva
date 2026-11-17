@@ -355,3 +355,64 @@ def test_scripted_mode_refuses_a_model_choice() -> None:
     c = make_client(FakeOpenRouter())
     code, _, _ = turn(c, new_conv(c), "hi", {"kind": "ollama", "model": "qwen3:8b"})
     assert code == 422
+
+
+def _memory_client(*, ps: dict[str, Any] | None, tags_rows: list[dict[str, Any]]) -> TestClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/ps":
+            if ps is None:
+                return httpx.Response(404)
+            return httpx.Response(200, json=ps)
+        return httpx.Response(200, json={"models": tags_rows})
+
+    app = build_app(llm_mode="ollama", llm_base_url="http://ollama.test:1", llm_model="mine:1b")
+    app.state.ollama_probe_transport = httpx.MockTransport(handler)
+    client = TestClient(app)
+    client.__enter__()
+    register(client)
+    return client
+
+
+def test_status_reports_model_sizes_the_host_gave_and_nothing_else() -> None:
+    c = _memory_client(
+        ps={
+            "models": [
+                {
+                    "name": "mine:1b",
+                    "size": 9_000_000_000,
+                    "size_vram": 6_000_000_000,
+                    "digest": "x",
+                }
+            ]
+        },
+        tags_rows=[
+            {"name": "mine:1b", "size": 4_000_000_000, "digest": "abc"},
+            {"name": "other:3b", "size": 2_000_000_000},
+            {"name": "bare:1b"},  # no size reported
+        ],
+    )
+    body = c.get("/v1/chat/status").json()
+    rows = {m["name"]: m for m in body["providers"]["ollama"]["models"]}
+    # Loaded: the size in memory (what it uses now) and how much of it is in GPU memory.
+    assert rows["mine:1b"]["size_bytes"] == 9_000_000_000
+    assert rows["mine:1b"]["size_vram_bytes"] == 6_000_000_000
+    assert rows["mine:1b"]["loaded"] is True
+    # Installed only: the file size, no GPU figure, not loaded.
+    assert rows["other:3b"]["size_bytes"] == 2_000_000_000
+    assert "size_vram_bytes" not in rows["other:3b"] and "loaded" not in rows["other:3b"]
+    # Not reported: absent, never invented.
+    assert "size_bytes" not in rows["bare:1b"]
+    assert "ollama.test" not in json.dumps(body) and "digest" not in json.dumps(body)
+
+
+def test_status_survives_a_host_without_ps_and_ignores_nonsense_sizes() -> None:
+    c = _memory_client(
+        ps=None,
+        tags_rows=[
+            {"name": "mine:1b", "size": -5},
+            {"name": "other:3b", "size": "big"},
+            {"name": "true:1b", "size": True},
+        ],
+    )
+    models = c.get("/v1/chat/status").json()["providers"]["ollama"]["models"]
+    assert all("size_bytes" not in m for m in models)

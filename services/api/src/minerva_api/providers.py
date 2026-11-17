@@ -217,23 +217,88 @@ async def ollama_models(request: Request, settings: Settings) -> list[str] | Non
     return names
 
 
+def _bytes(value: Any) -> int | None:
+    """A size the host reported: a positive whole number of bytes, anything else is "not reported"."""
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+async def ollama_memory(request: Request, settings: Settings) -> dict[str, dict[str, Any]]:
+    """Sizes in bytes the operator's Ollama host reports, by installed model tag.
+
+    `size_bytes` is the file size of an installed model (`/api/tags`), replaced by the size in memory
+    when the model is loaded (`/api/ps`, which also reports `size_vram_bytes`, the part in GPU memory).
+    A number the host did not report is absent, never estimated; an unreachable host gives nothing.
+    Numbers only: the address and the host's other fields never leave the server. Cached like
+    `ollama_models`.
+    """
+    if not settings.ollama_configured:
+        return {}
+    cache: tuple[float, dict[str, dict[str, Any]]] | None = getattr(
+        request.app.state, "ollama_memory", None
+    )
+    now = time.monotonic()
+    if cache and now - cache[0] < PROBE_TTL:
+        return cache[1]
+    found: dict[str, dict[str, Any]] = {}
+    base = settings.llm_base_url.rstrip("/")
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(3.0),
+            follow_redirects=False,
+            transport=getattr(request.app.state, "ollama_probe_transport", None),
+        ) as client:
+            for path, loaded in (("/api/tags", False), ("/api/ps", True)):
+                reply = await client.get(f"{base}{path}")
+                if reply.status_code != 200:
+                    continue
+                try:
+                    rows = reply.json().get("models", [])
+                except ValueError:
+                    continue
+                for row in rows if isinstance(rows, list) else []:
+                    if not isinstance(row, dict):
+                        continue
+                    name = row.get("name")
+                    size = _bytes(row.get("size"))
+                    if not isinstance(name, str) or not LOCAL_MODEL_ID.match(name):
+                        continue
+                    entry = found.setdefault(name, {})
+                    if size is not None:
+                        entry["size_bytes"] = size
+                    vram = _bytes(row.get("size_vram"))
+                    if loaded and vram is not None:
+                        entry["size_vram_bytes"] = vram
+                    if loaded and size is not None:
+                        entry["loaded"] = True
+    except httpx.HTTPError:
+        found = {}
+    request.app.state.ollama_memory = (now, found)
+    return found
+
+
 async def ollama_reachable(request: Request, settings: Settings) -> bool:
     """Is the operator's own Ollama host answering? (Cached; see `ollama_models`.)"""
     return await ollama_models(request, settings) is not None
 
 
-def local_model_choices(installed: list[str], current: str) -> dict[str, Any]:
+def local_model_choices(
+    installed: list[str], current: str, memory: dict[str, dict[str, Any]] | None = None
+) -> dict[str, Any]:
     """What the settings panel shows for the local provider: installed models, recommended first.
 
     `installed` comes from the host itself; nothing here names a model that is not there except
     the family hints in `suggested`, which are plain guidance and are never selectable.
     """
     names = sorted(set(installed) | ({current} if current else set()))
-    rows = [
+    rows: list[dict[str, Any]] = [
         {
             "name": name,
             "recommended": recommended_family(name) is not None,
             "note": dict(RECOMMENDED_LOCAL).get(recommended_family(name) or "", ""),
+            # bytes the host reported (size_bytes, size_vram_bytes, loaded); keys are absent otherwise
+            **(memory or {}).get(name, {}),
         }
         for name in names
     ]
