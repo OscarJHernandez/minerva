@@ -604,3 +604,23 @@
   reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 7, boundary conditions"}
   keywords: [boundary condition, interface, surface current, magnetising field]
   notes: "Recorded as stated."
+
+- id: em.static.gauss_point_charge
+  title: Gauss's law for a point charge (differential form)
+  kind: equation
+  chapter: physics.electromagnetism
+  section: statics
+  verification: distributional
+  statement_latex: '\nabla \cdot \left(\frac{q}{4 \pi \epsilon_{0}} \frac{\mathbf{r}}{r^{3}}\right) = \frac{q \delta^{(3)}\left(\mathbf{r}\right)}{\epsilon_{0}}'
+  validity: "A point charge q at the origin in vacuum, as distributions on R^3: the Coulomb field has zero divergence away from the charge and the charge density is q delta^(3). Equivalent to a flux of q/epsilon_0 through every sphere about the charge. A moved charge moves the delta (see distributions.point_source_translation)."
+  check:
+    kind: point_source
+    expression: '\nabla\cdot\left(\frac{q}{4\pi\epsilon_0}\frac{\mathbf{r}}{r^{3}}\right)'
+    coordinates: spherical
+    constants: [q, epsilon_0]
+    assumptions: {epsilon_0: [positive]}
+    target: '\frac{q}{\epsilon_0}\delta^{(3)}(\mathbf r)'
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 2, divergence of E and the delta function"}
+  keywords: [gauss law, point charge, coulomb field, charge density, dirac delta, electrostatics, divergence of E]
+  applies_to: ["em:statics", "vector:div", "distribution:point_source"]
+  notes: "Derived from the Coulomb field, not adopted as a premise: the engine checks that the divergence of the field of a point charge is rho/epsilon_0 with rho = q delta^(3)."
