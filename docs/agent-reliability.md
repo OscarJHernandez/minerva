@@ -222,3 +222,14 @@ tells), and it is not a measure of the model.
   still open (see "Not done" above).
 * A coordinate named like a derivative spelling (`xdot` with `x`) is kept as declared, but the LaTeX printer shows a
   symbol named `xdot` as `\dot{x}`: name coordinates so that this cannot happen.
+
+## The three-dimensional delta and the model
+
+The model reaches `distributional` only through `vector_calculus` (a keyword group and one rule block); the coefficient,
+the sign, the source and the verdict on a user's statement come from the engine, which has no argument for any of them.
+`known_latex` carries the engine's printed equation, and `segments.normalize` treats `\mathbf r`/`\mathbf{r}` and
+`\delta^3(...)`/`\delta^{(3)}(...)` as one spelling so a correctly written formula is not shown as unchecked for its
+spelling; a `\delta^{(3)}(...)` is never sampled by the claim checker. Vector and distribution formulas are still never
+linked by mathematics (an equation about a delta is marked verified only by an exact match with what the tool printed).
+The offline trajectory `vector-distributional-divergence` and the eight `distributional-*` cases cover this; the first
+real-model measurement is recorded in the homepage evaluation.

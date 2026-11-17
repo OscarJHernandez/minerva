@@ -469,6 +469,34 @@ def _trajectories() -> list[Trajectory]:
                 r"\nabla\cdot(f\mathbf{A}) = f\,\nabla\cdot\mathbf{A} + \mathbf{A}\cdot\nabla f"
             ],
         ),
+        Trajectory(
+            "vector-distributional-divergence",
+            "vector",
+            "the divergence of r/r^3 including the origin: the delta and its coefficient come from the tool, "
+            "and a wrong normalisation written by the model is never backed",
+            r"What is the divergence of $\mathbf{r}/r^3$ in three dimensions, including at the origin?",
+            lambda: [
+                call(
+                    "vector_calculus",
+                    {
+                        "expression": r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)",
+                        "coordinates": "spherical",
+                        "action": "distributional",
+                    },
+                ),
+                say(
+                    "Away from the origin the divergence is zero, but as a distribution\n\n"
+                    r"$$\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$$"
+                    "\n\nand it is not "
+                    r"$\nabla\cdot\frac{\mathbf r}{r^3}=\delta^{(3)}(\mathbf r)$."
+                ),
+            ],
+            expect_tool="vector_calculus",
+            must_back=[
+                r"\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)"
+            ],
+            must_not_back=[r"\nabla\cdot\frac{\mathbf r}{r^3}=\delta^{(3)}(\mathbf r)"],
+        ),
     ]
 
 

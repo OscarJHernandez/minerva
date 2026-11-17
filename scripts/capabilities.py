@@ -890,8 +890,47 @@ def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) 
                 {"label": f"Component along {b}", "latex": c}
                 for b, c in zip(r.basis_latex, r.components_latex, strict=True)
             ]
-        elif r.result_kind in ("scalar", "vector") and r.result_latex and r.integral is None:
+        elif (
+            r.result_kind in ("scalar", "vector")
+            and r.result_latex
+            and r.integral is None
+            and r.singular is None
+        ):
             outputs.append({"label": "Result", "latex": r.result_latex})
+        if r.singular is not None:
+            sg = r.singular
+            outputs.append(
+                {
+                    "label": "Classical result (pointwise, away from the source)",
+                    "latex": rf"{r.input_latex} = {sg.classical_latex}",
+                }
+            )
+            outputs.append(
+                {
+                    "label": "Distributional result (as a distribution on R^3)",
+                    "latex": sg.distributional_latex,
+                }
+            )
+            agreed = sum(w.passed for w in sg.weak_checks)
+            checks.append(
+                f"{sg.proof_status}: the hypotheses of the shrinking-sphere argument are exact "
+                f"({', '.join(d.title.lower() for d in sg.derivation[:3])}); {agreed} of "
+                f"{len(sg.weak_checks)} independent pairings with test functions and "
+                f"{sum(f.passed for f in sg.flux_checks)} of {len(sg.flux_checks)} sphere fluxes agree. "
+                "Derived is not proved; the pairings are supporting evidence"
+            )
+            if sg.regularisation:
+                checks.append(
+                    "regularised field r/(r^2 + eps^2)^(3/2): the pairing error falls as eps shrinks "
+                    "(reported, never deciding)"
+                )
+            notes.append(sg.scope)
+            if sg.claim is not None:
+                notes.append(
+                    f"Statement checked: ${sg.claim.latex}$ "
+                    + ("holds" if sg.claim.holds else f"does not hold ({sg.claim.reason})")
+                    + "."
+                )
         elif r.result_kind == "matrix" and r.result_latex and r.determinant_latex:
             outputs.append({"label": "Jacobian", "latex": r.result_latex})
             outputs.append({"label": "Determinant", "latex": r.determinant_latex})
@@ -961,7 +1000,7 @@ def _vector_example(spec: dict[str, Any], r: Any, inputs: list[dict[str, str]]) 
                 + ". Supplied by the user and not checked: "
                 "not an identity."
             )
-        if r.restrictions_latex:
+        if r.restrictions_latex and r.singular is None:
             notes.append(
                 "Valid only where "
                 + ", ".join(f"${x}$" for x in r.restrictions_latex)

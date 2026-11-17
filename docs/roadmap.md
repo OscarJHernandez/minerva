@@ -47,8 +47,11 @@ Ordering favours correctness infrastructure before breadth.
    polynomial arguments, integration against deltas with an explicit limit convention, derivatives of steps; exact
    conditions plus a test-function pairing, benchmarked in `docs/distribution-benchmark.md`). Next: derivatives of
    the delta and their sifting, deltas of non-polynomial arguments, products of steps, Heaviside-windowed integrals,
-   several variables, Fourier and Laplace transforms of distributions, and a retriever that reads the structure of
-   the argument (recall@1 of the handbook identities is 7 %).
+   Fourier and Laplace transforms of distributions, and a retriever that reads the structure of the argument
+   (recall@1 of the handbook identities is 7 %). Several variables: one family is done, the point source of the Coulomb
+   kernel in three dimensions (`vector_calculus`, action `distributional`: `div(r/r^3) = 4 pi delta`, `lap(1/r) = -4 pi
+   delta`, translation, scaling, Gauss's law for a point charge; `docs/singular-fields.md`). Everything else of several
+   variables (other singular fields, several sources, derivatives and products of the 3D delta) is not supported.
    Later for derivatives: `\frac{d}{dx}` notation and undefined functions `f(x)` in the input, implicit
    differentiation, and mixed partials in the workbench form (the API and chat already take them).
 4. **Statistical mechanics, remaining methods.** Done ([statistical-mechanics.md](statistical-mechanics.md)):

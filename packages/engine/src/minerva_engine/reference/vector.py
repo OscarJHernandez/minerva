@@ -429,7 +429,235 @@ def _field_not_antisymmetric_refused(engine: Engine) -> tuple[str, str]:
     return verdict("refused", result.quantities[0].status.value == "ok", None, "symmetric input")
 
 
+# -- the distributional divergence of a point source: oracles written by hand --------------------------------
+def _engine_strength(result: Any) -> sp.Expr | None:
+    """The coefficient of the delta in the engine's `result_text` (None unless it is a plain number)."""
+    if result.status.value != "ok" or not result.result_text:
+        return None
+    delta = sp.Function("PointDelta")
+    try:
+        expr = sp.sympify(result.result_text, locals={"PointDelta": delta})
+    except (sp.SympifyError, SyntaxError, TypeError):
+        return None
+    strength = expr.replace(lambda e: isinstance(e, sp.Function) and e.func == delta, lambda e: 1)
+    return strength if strength.is_number else None
+
+
+def _dist_regularised_sequence(engine: Engine) -> tuple[str, str]:
+    """div(r/r^3) = 4 pi delta: the engine's coefficient against the limit of the regularised fields
+    r/(r^2 + eps^2)^(3/2), whose divergence 3 eps^2/(r^2 + eps^2)^(5/2) is integrated against a Gaussian by
+    mpmath (a hand-written sequence of smooth functions; no distribution theory is used by the oracle)."""
+    result = engine.vector_calculus(
+        VectorInput(
+            expression=r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)",
+            coordinates="spherical",
+            action="distributional",
+        )
+    )
+    strength = _engine_strength(result)
+    if strength is None:
+        return verdict("correct", False, None, f"status {result.status.value}")
+    eps = mp.mpf("1e-4")
+
+    def phi(rho: Any) -> Any:
+        return mp.exp(-(rho**2) / 2)
+
+    limit = mp.quad(
+        lambda rho: 4 * mp.pi * rho**2 * phi(rho) * 3 * eps**2 / (rho**2 + eps**2) ** mp.mpf("2.5"),
+        [0, eps, 10 * eps, 1000 * eps, 1, 12],
+    )
+    return verdict(
+        "correct",
+        True,
+        abs(limit / phi(0) - mp.mpf(str(strength.evalf(30)))) < mp.mpf("1e-3"),
+        "the regularised sequence tends to the derived coefficient",
+    )
+
+
+def _dist_laplacian_pairing(engine: Engine) -> tuple[str, str]:
+    """lap(1/r) = -4 pi delta: the engine's coefficient against int (1/r) lap(phi) d^3x for a radial Gaussian,
+    computed by mpmath from the radial Laplacian phi'' + 2 phi'/r (plain quadrature)."""
+    result = engine.vector_calculus(
+        VectorInput(
+            expression=r"\nabla^{2}\frac{1}{r}", coordinates="spherical", action="distributional"
+        )
+    )
+    strength = _engine_strength(result)
+    if strength is None:
+        return verdict("correct", False, None, f"status {result.status.value}")
+
+    def phi(rho: Any) -> Any:
+        return mp.exp(-(rho**2) / 2)
+
+    def lap(rho: Any) -> Any:  # phi'' + 2 phi'/rho for exp(-rho^2/2)
+        return phi(rho) * (rho**2 - 3)
+
+    pairing = mp.quad(lambda rho: 4 * mp.pi * rho**2 * (1 / rho) * lap(rho), [0, 1, 10])
+    return verdict(
+        "correct",
+        True,
+        abs(pairing / phi(0) - mp.mpf(str(strength.evalf(30)))) < mp.mpf("1e-10"),
+        "the pairing of 1/r with the Laplacian of a Gaussian is -4 pi phi(0)",
+    )
+
+
+def _dist_translated_flux(engine: Engine) -> tuple[str, str]:
+    """A scaled, translated Coulomb field: the engine's strength and source against the outward flux through a
+    sphere about the source, integrated in mpmath from a hand-written field (plain arithmetic)."""
+    c, a = mp.mpf("-3") / 2, (1, mp.mpf("-1") / 2, 2)
+    parts = [
+        f"(-3/2)*(({v}) - ({ai}))/((x - 1)**2 + (y + 1/2)**2 + (z - 2)**2)**(3/2)"
+        for v, ai in zip("xyz", ("1", "-1/2", "2"), strict=True)
+    ]
+    result = engine.vector_calculus(
+        VectorInput(
+            expression=r"\nabla\cdot F",
+            fields=[_vector_field("F", parts)],
+            action="distributional",
+        )
+    )
+    strength = _engine_strength(result)
+    if strength is None:
+        return verdict("correct", False, None, f"status {result.status.value}")
+    radius = mp.mpf("1.3")
+
+    def integrand(theta: Any, phi: Any) -> Any:
+        n = (mp.sin(theta) * mp.cos(phi), mp.sin(theta) * mp.sin(phi), mp.cos(theta))
+        point = [a[i] + radius * n[i] for i in range(3)]
+        d = [point[i] - a[i] for i in range(3)]
+        norm = mp.sqrt(sum(v * v for v in d))
+        field = [c * d[i] / norm**3 for i in range(3)]
+        return sum(field[i] * n[i] for i in range(3)) * radius**2 * mp.sin(theta)
+
+    flux = mp.quad(integrand, [0, mp.pi], [0, 2 * mp.pi])
+    source_ok = "PointDelta(1, -1/2, 2)" in (result.result_text or "")
+    return verdict(
+        "correct",
+        True,
+        abs(flux - mp.mpf(str(strength.evalf(30)))) < mp.mpf("1e-9") and source_ok,
+        "the flux through a sphere about the source is the coefficient; the source is where the field is singular",
+    )
+
+
+def _dist_wrong_claims_rejected(engine: Engine) -> tuple[str, str]:
+    """The three classic wrong statements are each rejected: lap(1/r) = +4 pi delta, div(r/r^3) = delta and
+    div(r/r^3) = 0 as an identity of distributions (the textbook values are -4 pi, 4 pi and 4 pi)."""
+    rejected = []
+    for expression, target in (
+        (r"\nabla^{2}\frac{1}{r}", r"4\pi\delta^{(3)}(\mathbf r)"),
+        (r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)", r"\delta^{(3)}(\mathbf r)"),
+        (r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)", "0"),
+    ):
+        result = engine.vector_calculus(
+            VectorInput(
+                expression=expression,
+                coordinates="spherical",
+                action="distributional",
+                target=target,
+            )
+        )
+        if result.status.value != "ok" or result.singular is None or result.singular.claim is None:
+            return verdict("correct", False, None, f"status {result.status.value}")
+        # the shifted engine of the benchmark test changes the result text, not the verdict: also require that
+        # the coefficient is the textbook one
+        strength = _engine_strength(result)
+        textbook = (
+            sp.Integer(-4) * sp.pi
+            if "lap" in expression or "nabla^{2}" in expression
+            else 4 * sp.pi
+        )
+        rejected.append(
+            not result.singular.claim.holds
+            and strength is not None
+            and sp.simplify(strength - textbook) == 0
+        )
+    return verdict(
+        "correct",
+        True,
+        all(rejected),
+        "each wrong statement is rejected and the derived coefficient is the textbook one",
+    )
+
+
+def _dist_r_over_r4_refused(engine: Engine) -> tuple[str, str]:
+    """r/r^4 is not a Coulomb kernel (its divergence is not zero away from the origin): no delta is invented."""
+    result = engine.vector_calculus(
+        VectorInput(
+            expression=r"\nabla\cdot F",
+            fields=[_vector_field("F", [f"{v}/(x**2 + y**2 + z**2)**2" for v in "xyz"])],
+            action="distributional",
+        )
+    )
+    return verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
+def _dist_delta_through_pointwise_refused(engine: Engine) -> tuple[str, str]:
+    """A Dirac delta in a field is never put through the pointwise actions (a sampler sees 0 everywhere)."""
+    result = engine.vector_calculus(
+        VectorInput(
+            expression=r"\nabla\cdot F", fields=[_vector_field("F", ["DiracDelta(x)", "0", "0"])]
+        )
+    )
+    return verdict("refused", result.status.value == "ok", None, f"status {result.status.value}")
+
+
 PROBLEMS: list[Problem] = [
+    Problem(
+        "dist-coulomb-regularised-sequence",
+        "distribution",
+        "Griffiths, Introduction to Electrodynamics, chapter 1 (the delta function in three dimensions); "
+        "the regularised field r/(r^2 + eps^2)^(3/2) integrated by mpmath",
+        "correct",
+        _dist_regularised_sequence,
+        oracle="mpmath_quad",
+        evidence="numeric_agreement",
+    ),
+    Problem(
+        "dist-laplacian-one-over-r-pairing",
+        "distribution",
+        "Jackson, Classical Electrodynamics, chapter 1 (Laplacian of 1/r); the pairing with a Gaussian by mpmath",
+        "correct",
+        _dist_laplacian_pairing,
+        oracle="mpmath_quad",
+        evidence="numeric_agreement",
+    ),
+    Problem(
+        "dist-translated-source-flux",
+        "distribution",
+        "Gauss's theorem: the flux through a sphere about a point source is the coefficient; mpmath quadrature",
+        "correct",
+        _dist_translated_flux,
+        oracle="mpmath_quad",
+        evidence="numeric_agreement",
+    ),
+    Problem(
+        "dist-wrong-claims-rejected",
+        "distribution",
+        "the three classic mistakes: +4 pi for the Laplacian of 1/r, a missing 4 pi, and 0 as a distributional "
+        "identity (Griffiths, chapter 1)",
+        "correct",
+        _dist_wrong_claims_rejected,
+        oracle="closed_form",
+        evidence="structural",
+    ),
+    Problem(
+        "dist-r-over-r4-refused",
+        "distribution",
+        "the divergence of r/r^4 is not zero away from the origin, so it is not a point source",
+        "refused",
+        _dist_r_over_r4_refused,
+        oracle="closed_form",
+        evidence="refusal",
+    ),
+    Problem(
+        "dist-delta-through-pointwise-refused",
+        "distribution",
+        "a delta is zero at every point a sampler can draw (docs/verification-testing.md)",
+        "refused",
+        _dist_delta_through_pointwise_refused,
+        oracle="closed_form",
+        evidence="refusal",
+    ),
     Problem(
         "vector-laplacian-across-coordinates",
         "vector",

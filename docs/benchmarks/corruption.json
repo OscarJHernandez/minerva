@@ -1,5 +1,5 @@
 {
-  "applied": 737,
+  "applied": 777,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -54,14 +54,14 @@
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 67,
+      "same_after_cleaning": 70,
       "untyped_failure": 0
     },
     "shape:list_as_string": {
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 22,
+      "same_after_cleaning": 24,
       "untyped_failure": 0
     },
     "shape:number_as_string": {
@@ -75,42 +75,42 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 111,
+      "same_after_cleaning": 118,
       "untyped_failure": 0
     },
     "transport:dollar_wrapper": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 111,
+      "same_after_cleaning": 118,
       "untyped_failure": 0
     },
     "transport:doubled_backslash": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 77,
+      "same_after_cleaning": 84,
       "untyped_failure": 0
     },
     "transport:markdown_escape": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 59,
+      "same_after_cleaning": 64,
       "untyped_failure": 0
     },
     "transport:trailing_period": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 90,
+      "same_after_cleaning": 97,
       "untyped_failure": 0
     },
     "transport:unicode_look_alikes": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 86,
+      "same_after_cleaning": 88,
       "untyped_failure": 0
     }
   },
@@ -329,7 +329,7 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 41,
+      "same_after_cleaning": 81,
       "untyped_failure": 0
     }
   },
@@ -337,32 +337,32 @@
   "format": 1,
   "mode": "pr",
   "not_applicable": {
-    "derivative:joined": 132,
-    "derivative:latex_letter_run": 127,
-    "derivative:leibniz": 132,
-    "derivative:spaced": 132,
-    "derivative:upper": 132,
-    "shape:assignment_prefix": 124,
-    "shape:formula_alias": 44,
-    "shape:json_as_string": 56,
-    "shape:list_as_string": 108,
-    "shape:number_as_string": 126,
+    "derivative:joined": 139,
+    "derivative:latex_letter_run": 134,
+    "derivative:leibniz": 139,
+    "derivative:spaced": 139,
+    "derivative:upper": 139,
+    "shape:assignment_prefix": 131,
+    "shape:formula_alias": 51,
+    "shape:json_as_string": 60,
+    "shape:list_as_string": 113,
+    "shape:number_as_string": 133,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
     "transport:doubled_backslash": 56,
-    "transport:markdown_escape": 74,
+    "transport:markdown_escape": 76,
     "transport:trailing_period": 43,
-    "transport:unicode_look_alikes": 47
+    "transport:unicode_look_alikes": 52
   },
-  "recovered_without_a_model_call": 730,
-  "recovery_rate": 0.9905,
-  "references": 133,
+  "recovered_without_a_model_call": 770,
+  "recovery_rate": 0.991,
+  "references": 140,
   "tools_covered": 33,
   "totals": {
     "diagnosed": 7,
     "different_verified_result": 0,
     "same": 9,
-    "same_after_cleaning": 721,
+    "same_after_cleaning": 761,
     "untyped_failure": 0
   }
 }

@@ -573,13 +573,30 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   result that contains a mixed partial in two orders is `conditions_not_satisfied` with `blocked`
   (`curl grad f`, `div curl A`, swapping `d/dt` and curl). The model never declares smoothness, `components` or time
   dependence itself. The origin and axes are `restrictions_latex` (where the coordinates break down), not statements
-  about the field; a delta at the origin is not represented. Explicit `components` are always text syntax. Conversion
+  about the field; a delta at the origin is not represented by `evaluate` (it answers the classical value and, for a point
+  source, says so: `singular_hint`; the delta is the `distributional` action below). Explicit `components` are always text syntax. Conversion
   between systems (`convert`) is checked through Cartesian coordinates by an independent route and refuses abstract
   fields. `E`, `I` are allowed field names here (the electric field and a current). Diagnostics hold enums and
   counters only (`VectorDiagnostics`; the log allow-list has `coordinate_system`, `vector_action`, `operator_depth`).
   Scalar tools refuse an expression that mentions a declared vector field (`SCALAR_TOOLS`), and claims with `\nabla`,
   bold or arrowed letters, `\partial` or `\times` between non-numerals are `unverified` and never sampled
   (`claims.uses_vector_notation`); a name declared as a vector in words ("let a and b be vectors") is never sampled.
+- Point sources and the 3D delta (`vector/singular_fields.py`, `vector/weak.py`, action `distributional`,
+  `distributions/point_delta.py`, `docs/singular-fields.md`): one family only, `C (r - a)/|r - a|^3` under `div` or
+  `C/|r - a|` under `lap`, with a constant strength and a constant **real** source (an undeclared constant is not
+  assumed real). The delta is the typed head `PointDelta(a1, a2, a3)`, never a `DiracDelta` and never a product of 1D
+  deltas; it is refused by every other operation and by `verify_equal` and the claim checker (`contains_distribution`), and
+  every other vector action refuses a `DiracDelta`/`Heaviside`. The coefficient and the source are **read from the field
+  by `match_kernel`**, never supplied by the model (the tool has no such argument) and never looked up. A result is shown
+  only if the exact hypotheses of the shrinking-sphere argument (div = 0 away from the source, `F . n = C/eps^2`, `|F|`
+  locally integrable) are symbolic zeros **and** the independent pairings of `weak.py` (four test functions with
+  different values at the source, including 0 and one centred away; the flux through two spheres; tolerance `1e-7`) read
+  from the *input* agree; the regularisation table is reported and never decides. `proof_status` is `derived`, never
+  "proved": do not call it proved, do not loosen `PAIRING_TOLERANCE`, do not let the matcher and the pairing share code,
+  and do not add a second family without its hypotheses, a wrong twin and a reference problem. A user's statement
+  (`target`) is compared exactly (`holds`, `no_delta_term`, `different_strength`, `different_source`): `div(r/r^3) = 0`
+  as a distributional identity, `= delta` and `lap(1/r) = +4 pi delta` are all rejected. Not supported: other singular
+  fields, several sources, products, derivatives or compositions of the delta, other dimensions.
 - Vector identities and controlled derivations (`vector/rules.py`, `context.py`, `steps.py`; actions `identities`,
   `apply_identity`, `substitute`, `apply`, `derive` of the same tool and endpoint). Identities are handbook entries
   (`math.vector_calculus`, check kind `vector_identity`, level `symbolic`): the checker evaluates `lhs - rhs` for
