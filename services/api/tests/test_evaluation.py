@@ -21,6 +21,7 @@ from minerva_api.agent.evaluation.cases import (
     ExpectCard,
     cases_digest,
     load_cases,
+    load_suite,
 )
 from minerva_api.agent.evaluation.reference import check_reference, same_expression
 from minerva_api.agent.evaluation.report import (
@@ -128,6 +129,15 @@ def test_ground_truth_agrees_with_the_engine(case: EvalCase, ctx: ToolContext) -
     assert case.expect_card is not None, (
         "a reference call needs an expectation to be checked against"
     )
+    assert check_reference(case, ctx) == []
+
+
+@pytest.mark.parametrize(
+    "case", [c for c in load_suite("reliability") if c.reference], ids=lambda c: c.id
+)
+def test_reliability_ground_truth_agrees_with_the_engine(case: EvalCase, ctx: ToolContext) -> None:
+    """The live multi-turn suite is run by hand; its reference calls are checked on every pull request."""
+    assert case.expect_card is not None
     assert check_reference(case, ctx) == []
 
 
