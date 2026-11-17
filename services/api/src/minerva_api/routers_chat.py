@@ -76,6 +76,7 @@ from .providers import (
     OpenRouterTest,
     ProviderChoice,
     local_model_choices,
+    ollama_memory,
     ollama_models,
     provider_status,
     resolve_llm,
@@ -223,8 +224,9 @@ async def chat_status(request: Request, db: DbDep, settings: SettingsDep) -> Sta
     else:
         installed = await ollama_models(request, settings)
         providers["ollama"]["reachable"] = installed is not None
+        memory = await ollama_memory(request, settings) if installed else {}
         providers["ollama"].update(
-            local_model_choices(installed or [], settings.llm_model if installed else "")
+            local_model_choices(installed or [], settings.llm_model if installed else "", memory)
         )
     default_model = (
         settings.openrouter_model

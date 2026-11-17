@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ApiError } from "@/lib/api";
 import { chatApi } from "@/lib/chat-api";
 import type { ChatStatus, ConnectionResult } from "@/lib/chat-types";
+import { memoryLine } from "@/lib/usage";
 import { isValidModelId, modelSettings, useModelSettings } from "@/lib/model-settings";
 
 const CUSTOM = "__custom__";
@@ -131,6 +132,11 @@ export function ModelSettingsPanel({
             </button>
           </div>
         )}
+        {memoryLine(installed.find((m) => m.name === localChoice)) && (
+          <p className="mt-1 text-xs text-muted" data-testid="model-memory">
+            Memory: {memoryLine(installed.find((m) => m.name === localChoice))}
+          </p>
+        )}
         {installed.find((m) => m.name === localChoice)?.note && (
           <p className="mt-1 text-xs text-muted">
             {installed.find((m) => m.name === localChoice)?.note}
@@ -140,6 +146,15 @@ export function ModelSettingsPanel({
           <p className="mt-1 text-xs text-muted">
             Recommended, not installed here (tool calling is required):{" "}
             {local?.suggested?.map((s) => s.family).join(", ")}. Ask the server owner to pull one.
+          </p>
+        )}
+        {status.params && (
+          <p className="mt-1 text-xs text-muted" data-testid="model-params">
+            Context window {status.params.defaults.num_ctx.toLocaleString("en-US")} tokens ·
+            temperature {status.params.defaults.temperature}
+            {status.params.editable.length === 0
+              ? " · fixed by the server owner"
+              : " · adjustable in debug mode"}
           </p>
         )}
         <p className="mt-1 text-xs text-muted">

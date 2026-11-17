@@ -939,6 +939,11 @@ export interface LocalModel {
   name: string;
   recommended: boolean;
   note: string;
+  /** Bytes as the host reports them; absent when it did not. Loaded: size in memory; else file size. */
+  size_bytes?: number;
+  /** The part of a loaded model that is in GPU memory. */
+  size_vram_bytes?: number;
+  loaded?: boolean;
 }
 
 /** What the browser sends to pick the provider for one turn. */

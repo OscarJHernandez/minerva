@@ -318,3 +318,23 @@ report shows both.
 - `--llm` replay reproduces the loop, not the model, and restores earlier turns only as plain text.
 - A benchmark of a sampling model is a measurement on those runs; use repeats before reading a difference
   of one case into a change.
+
+## Context use and model memory in the chat
+
+The chat always shows a compact meter above the composer (no debug mode needed): the window of the model
+that answered last, what its last request used, a warning near the window (80%) or when earlier messages
+were left out (`context_trimmed`), and, folded, prompt and completion totals for the last reply and the
+conversation. It reads only counts already stored with each reply (`debug.llm_calls[].prompt_tokens` /
+`completion_tokens`, `debug.context_window`, `debug.prompt_estimate_tokens`, `context_trimmed`); there is no
+new field and nothing is logged. A count the provider did not report is left out of the sums; when no call
+reported a prompt count the server's pessimistic estimate is shown and labelled "(estimate)". A hosted
+(OpenRouter) reply has no window figure.
+
+`GET /v1/chat/status` adds optional numbers to each local model in `providers.ollama.models`:
+`size_bytes` (the file size from Ollama's `/api/tags`, replaced by the size in memory from `/api/ps` when
+the model is loaded), `size_vram_bytes` (the part in GPU memory, loaded models only) and `loaded`. Each is
+present only if the host reported a positive integer, so a host that reports nothing shows nothing. Only
+these numbers leave the server (not the address, digests or other fields); they are cached for 30 s with
+the installed-model probe (`providers.ollama_memory`) and never logged. The model settings panel shows
+them, and the server's effective context window and temperature (`status.params.defaults`, read-only here;
+changing them stays in the debug panel under the existing tuning flags).

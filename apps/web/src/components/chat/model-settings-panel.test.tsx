@@ -139,3 +139,40 @@ describe("choosing a local model", () => {
     expect(providerChoice(modelSettings.get())).toEqual({ kind: "ollama" });
   });
 });
+
+describe("model size and parameters", () => {
+  it("shows the size the host reported and the effective parameters", () => {
+    const st = status({
+      ollama: {
+        available: true,
+        model: "minerva",
+        reachable: true,
+        models: [
+          {
+            name: "minerva",
+            recommended: false,
+            note: "",
+            size_bytes: 9e9,
+            size_vram_bytes: 6e9,
+            loaded: true,
+          },
+        ],
+      },
+    });
+    st.params = {
+      defaults: { num_ctx: 32768, temperature: 0.2 } as never,
+      editable: [],
+      num_ctx_max: 65536,
+    };
+    render(<ModelSettingsPanel status={st} onClose={() => undefined} />);
+    expect(screen.getByTestId("model-memory")).toHaveTextContent(
+      "9.0 GB in memory (6.0 GB on the GPU)",
+    );
+    expect(screen.getByTestId("model-params")).toHaveTextContent("32,768 tokens");
+  });
+
+  it("says nothing about memory when the host reported none", () => {
+    render(<ModelSettingsPanel status={status()} onClose={() => undefined} />);
+    expect(screen.queryByTestId("model-memory")).toBeNull();
+  });
+});
