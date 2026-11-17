@@ -1136,10 +1136,12 @@ def test_a_slow_tool_does_not_hold_the_turn_past_its_deadline(
 
     import minerva_api.agent.loop as loop_module
 
-    monkeypatch.setattr(loop_module, "execute", lambda *_: time.sleep(2.5))
+    # The limit must leave time for the tool to start even on a loaded runner (a tool has no floor any more
+    # beyond 0.1 s); the tool outlasts it.
+    monkeypatch.setattr(loop_module, "execute", lambda *_: time.sleep(5))
     llm = FakeLLM([[Chunk(tool_calls=[ToolCall("simplify", {"latex": "x"})])]], repeat_last=True)
     msg = final(
-        collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=0.2))
+        collect(llm, ctx, [{"role": "user", "content": "q"}], limits=AgentLimits(max_seconds=1.5))
     )
     assert msg["truncated"] is True
     assert [c["type"] for c in cards_of(msg)] == ["error"]
