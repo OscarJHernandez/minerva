@@ -28,7 +28,7 @@ packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retr
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
   agent/              LLM clients (Ollama, OpenRouter), tool registry, agent loop, formula marking, scripted test model
 deploy/               Dockerfiles and Helm chart. No secrets, no hostnames
-docs/                 architecture, licensing, roadmap, security/publication notes
+docs/                 architecture, licensing, roadmap, security/publication notes, reliability/ (overview, evaluation matrix, triage playbook)
 .agents/skills/       Project skills, shared by all agents (.claude/skills is a symlink to it)
 ```
 

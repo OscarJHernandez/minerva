@@ -11,6 +11,11 @@
 
 ## Agent benchmark: before and after the reliability changes (2026-11-13)
 
+> Historical. The case counts below (78, then 90) are those of that run. The set has since grown to 147 core
+> cases and 18 reliability cases (`cases.yaml`, `cases_reliability.yaml`); each report states its `cases_digest`, and
+> runs are comparable only on the cases whose ids and digests match. See also
+> [reliability/overview.md](reliability/overview.md).
+
 First reproducible measurement with the benchmark in [observability.md](observability.md): 78 cases in 10
 categories, two models on a local Ollama 0.40.3, 2 repeats, seed 7, temperature 0.2, same limits. *Baseline* is the agent
 as it was before the reliability changes (commit `7b19980`, frozen, with the new benchmark code on top);
