@@ -63,6 +63,7 @@
   sections:
     - {id: delta, title: Dirac delta}
     - {id: step, title: Heaviside step function}
+    - {id: point_sources, title: Point sources in three dimensions}
 - id: math.special_functions
   book: mathematics
   title: Special functions

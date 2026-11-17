@@ -30,6 +30,7 @@ Action = Literal[
     "em_derive",
     "integrate",
     "em_compute",
+    "distributional",
 ]
 STEP_ACTIONS = ("identities", "apply_identity", "substitute", "apply", "derive", "em_derive")
 IntegralKind = Literal[
@@ -66,6 +67,9 @@ Reason = Literal[
     "too_few_points",
     "resource_limit",
     "sandbox_failure",
+    "unsupported_singular_field",
+    "source_not_real",
+    "unsupported_distribution_operation",
 ]
 
 
@@ -312,7 +316,7 @@ class VectorVerification(BaseModel):
 
 
 class VectorStage(BaseModel):
-    name: Literal["parse", "lower", "tidy", "verify", "render", "match", "search"]
+    name: Literal["parse", "lower", "tidy", "verify", "render", "match", "search", "singular"]
     duration_ms: int = 0
 
 
@@ -435,6 +439,87 @@ class Applicable(BaseModel):
     note: str = ""
 
 
+SingularStatus = Literal["established", "checked", "not_established"]
+
+
+class SingularStep(BaseModel):
+    """One step of the shrinking-sphere derivation and what is known about it: `established` (an exact
+    symbolic computation, or true by construction), `checked` (numerical agreement: not a proof) or
+    `not_established`."""
+
+    title: str
+    latex: str
+    status: SingularStatus
+    note: str = ""
+
+
+class WeakPairing(BaseModel):
+    """One independent numerical pairing: the distribution applied to a rapidly decreasing test function,
+    computed by quadrature over R^3 (or the flux through a sphere) from the *input* field, against the
+    value the derived identity predicts. A measurement on sampled constants, never a bound."""
+
+    label: str
+    test_function_latex: str = ""
+    expected: float
+    measured: float
+    error: float
+    passed: bool
+
+
+class Regularisation(BaseModel):
+    """`\\int phi div(F_eps)` for the smoothed field `F_eps = C (r-a)/(|r-a|^2 + eps^2)^{3/2}` at one
+    width: supporting evidence that the limit is the derived coefficient, reported and never deciding."""
+
+    eps: float
+    value: float
+    expected: float
+    error: float
+
+
+class SingularClaim(BaseModel):
+    """A statement the user made about the distribution (`target`), compared exactly with the derived one."""
+
+    latex: str
+    holds: bool
+    reason: Literal[
+        "agrees",
+        "no_delta_term",
+        "different_strength",
+        "different_source",
+        "not_readable",
+    ]
+    note: str = ""
+
+
+class SingularResult(BaseModel):
+    """The distributional divergence (or Laplacian) of a point-source Coulomb kernel, with its evidence.
+
+    The classical result (`classical_latex`, valid away from the source) and the distributional one
+    (`distributional_latex`) are separate on purpose: the classical divergence of `r/r^3` is 0 at every
+    point where it is defined, and as a distribution it is `4 pi delta^(3)(r)`. `proof_status` is
+    `derived` only when every hypothesis of the shrinking-sphere argument is an exact symbolic fact for
+    this input and every independent pairing agreed; nothing here is called proved, and the numerical
+    pairings and the regularisation table are supporting evidence.
+    """
+
+    family: Literal["divergence", "laplacian"]
+    classical_latex: str
+    classical_domain_latex: str
+    distributional_latex: str
+    strength_latex: str
+    source_latex: str
+    support: str = "the single point where the kernel is singular"
+    derivation: list[SingularStep] = Field(default_factory=list)
+    flux_latex: str = ""
+    weak_checks: list[WeakPairing] = Field(default_factory=list)
+    flux_checks: list[WeakPairing] = Field(default_factory=list)
+    regularisation: list[Regularisation] = Field(default_factory=list)
+    proof_status: Literal["derived", "not_established"] = "not_established"
+    scope: str = ""
+    unresolved: list[str] = Field(default_factory=list)
+    claim: SingularClaim | None = None
+
+
 class VectorResult(BaseModel):
     status: Status
     message: str = ""
@@ -469,5 +554,7 @@ class VectorResult(BaseModel):
     derivation: str | None = None
     integral: IntegralResult | None = None
     em: EMComputation | None = None
+    singular: SingularResult | None = None
+    singular_hint: Literal["point_source"] | None = None
     diagnostics: VectorDiagnostics = Field(default_factory=VectorDiagnostics)
     duration_ms: int = 0

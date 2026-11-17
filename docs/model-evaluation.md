@@ -264,3 +264,14 @@ been made yet. To measure it against a baseline with the same models and setting
 [verification-testing.md](verification-testing.md); the model-eval workflow (`model-eval.yml`) runs the same commands when
 `MINERVA_EVAL_BASE_URL` is configured as a repository variable. The case-set digest of the core suite is unchanged, so the
 earlier runs above remain comparable for it.
+
+## Point-source cases (three-dimensional delta; not yet measured with a model)
+
+`cases.yaml` gained eight cases for `vector_calculus` with `action: distributional` (the Coulomb-field divergence, the
+Laplacian of 1/r, a translated source, Gauss's law for a point charge, the classical-versus-distributional explanation, a
+wrongly normalised statement, an unsupported field and a follow-up asking how the result was verified). **The case-set digest
+of the core suite changed** (`4645c93a333e` to `f8d6aead9b83`): runs made before this change are not directly comparable
+with runs after it. The deterministic side is covered (the references run against the engine, the offline trajectory
+`vector-distributional-divergence` backs the engine's equation and never backs a wrong one, the corruption report stays at 0
+different results); no real-model run of these cases has been made in this document. See
+[singular-fields.md](singular-fields.md).

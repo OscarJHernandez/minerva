@@ -28,6 +28,7 @@ from .models import (
     EquationCheck,
     IntegralCheck,
     ParamRange,
+    PointSourceCheck,
     RootFormulaCheck,
     SeriesCheck,
     TensorCheck,
@@ -223,6 +224,54 @@ def _check_distribution(entry: Entry, c: DistributionCheck) -> CheckReport:
     )
 
 
+def _check_point_source(entry: Entry, c: PointSourceCheck) -> CheckReport:
+    """Run the instance through the engine's distributional action and require it to confirm the stated right-hand
+    side exactly (same coefficient, same source), with every exact hypothesis established and every independent
+    pairing agreeing. A wrong coefficient or sign in the entry fails here."""
+    from minerva_engine import FieldDecl, Limits, VectorInput
+    from minerva_engine.vector import vector_calculus
+
+    result = vector_calculus(
+        VectorInput(
+            expression=c.expression,
+            coordinates=c.coordinates,
+            fields=[FieldDecl(name=f.name, kind=f.kind, components=f.components) for f in c.fields],
+            constants=c.constants,
+            assumptions=c.assumptions,
+            action="distributional",
+            target=c.target,
+        ),
+        Limits(timeout_seconds=60),
+    )
+    singular = result.singular
+    if result.status.value != "ok" or singular is None:
+        return CheckReport(
+            entry.id, "distributional", False, f"{result.status.value}: {result.message}"
+        )
+    if singular.proof_status != "derived" or not all(
+        s.status == "established" for s in singular.derivation
+    ):
+        return CheckReport(entry.id, "distributional", False, "a hypothesis was not established")
+    if singular.claim is None or not singular.claim.holds:
+        reason = singular.claim.reason if singular.claim else "no claim"
+        return CheckReport(
+            entry.id,
+            "distributional",
+            False,
+            f"the stated right-hand side does not agree with the derived {singular.distributional_latex} "
+            f"({reason})",
+        )
+    pairings = singular.weak_checks + singular.flux_checks
+    agreed = sum(p.passed for p in pairings)
+    return CheckReport(
+        entry.id,
+        "distributional",
+        True,
+        f"derived by the shrinking-sphere argument (hypotheses exact); {agreed}/{len(pairings)} independent "
+        "pairings agree; equal as distributions",
+    )
+
+
 VECTOR_SYSTEMS = ("cartesian", "cylindrical", "spherical")
 _TIME_NAME = re.compile(r"\bdt\(|\bt\b")  # `dt(...)` or the symbol t: the fields depend on time
 
@@ -328,6 +377,8 @@ def run_check(entry: Entry) -> CheckReport:
         return _check_equation(entry, c)
     if isinstance(c, DistributionCheck):
         return _check_distribution(entry, c)
+    if isinstance(c, PointSourceCheck):
+        return _check_point_source(entry, c)
     if isinstance(c, VectorIdentityCheck):
         return _check_vector_identity(entry, c)
     if isinstance(c, VectorEquationCheck):

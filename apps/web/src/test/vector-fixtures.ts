@@ -282,3 +282,114 @@ export const failedCandidate: VectorResult = {
     holds: false,
   },
 };
+
+export const singularRequest: VectorRequest = {
+  expression: "\\nabla\\cdot\\left(\\frac{\\mathbf{r}}{r^{3}}\\right)",
+  coordinates: "spherical",
+  fields: [],
+  constants: [],
+  assumptions: {},
+  action: "distributional",
+  target: "4\\pi\\delta^{(3)}(\\mathbf r)",
+};
+
+/** The distributional divergence of r/r³, as the engine returns it (the values are from a real run). */
+export const singularCoulomb: VectorResult = {
+  ...curl,
+  action: "distributional",
+  coordinates: "spherical",
+  result_kind: "scalar",
+  input_latex: "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{r^{3}}\\right)",
+  result_latex: "4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)",
+  result_text: "4*pi*PointDelta(0, 0, 0)",
+  components_latex: [],
+  components_text: [],
+  basis_latex: [],
+  message: "equal as distributions, not pointwise: the classical value is 0 away from the source",
+  restrictions_latex: ["\\left(x, y, z\\right) \\neq \\left(0, 0, 0\\right)"],
+  verification: {
+    ...curl.verification!,
+    method: "distributional_weak_form",
+    points_checked: 14,
+    points_agreed: 14,
+    checks: [
+      { name: "hypotheses of the shrinking-sphere argument (exact)", passed: true, note: "" },
+      { name: "regularised field (reported, supporting evidence only)", passed: null, note: "" },
+    ],
+  },
+  singular: {
+    family: "divergence",
+    classical_latex: "0",
+    classical_domain_latex: "\\left(x, y, z\\right) \\neq \\left(0, 0, 0\\right)",
+    distributional_latex:
+      "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{r^{3}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)",
+    strength_latex: "4 \\pi",
+    source_latex: "\\left(0, 0, 0\\right)",
+    support: "the single point where the kernel is singular",
+    derivation: [
+      {
+        title: "Classical divergence away from the source",
+        latex: "\\nabla\\cdot\\mathbf F = 0 \\quad (\\mathbf r\\neq\\mathbf a)",
+        status: "established",
+        note: "exact symbolic zero",
+      },
+      {
+        title: "Shrinking the sphere",
+        latex:
+          "\\oint\\varphi\\,\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS \\to 4\\pi\\varphi(\\mathbf a)",
+        status: "established",
+        note: "phi is continuous at the source",
+      },
+    ],
+    flux_latex: "",
+    weak_checks: [
+      {
+        label: "pairing with a test function",
+        test_function_latex: "e^{-|\\mathbf r-\\mathbf a|^2/2.42}",
+        expected: 12.566370614359172,
+        measured: 12.566370614359174,
+        error: 1.8e-15,
+        passed: true,
+      },
+      {
+        label: "pairing with a test function",
+        test_function_latex: "u\\,e^{-|\\mathbf r-\\mathbf a|^2/2}",
+        expected: 0,
+        measured: 1.2e-16,
+        error: 1.2e-16,
+        passed: true,
+      },
+    ],
+    flux_checks: [
+      {
+        label: "outward flux through the sphere of radius 0.7",
+        test_function_latex: "",
+        expected: 12.566370614359172,
+        measured: 12.566370614359172,
+        error: 0,
+        passed: true,
+      },
+    ],
+    regularisation: [
+      { eps: 0.4, value: 31.36, expected: 42.73, error: 11.37 },
+      { eps: 0.1, value: 41.04, expected: 42.73, error: 1.69 },
+    ],
+    proof_status: "derived",
+    scope: "Derived for one point source of the Coulomb kernel only.",
+    unresolved: [],
+    claim: {
+      latex: "4\\pi\\delta^{(3)}(\\mathbf r)",
+      holds: true,
+      reason: "agrees",
+      note: "equal as distributions",
+    },
+  },
+};
+
+export const classicalWithHint: VectorResult = {
+  ...singularCoulomb,
+  action: "evaluate",
+  result_latex: "0",
+  singular: null,
+  singular_hint: "point_source",
+};

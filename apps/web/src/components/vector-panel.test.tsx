@@ -14,6 +14,8 @@ import {
   listed,
   needsPremises,
   waveEquation,
+  singularCoulomb,
+  classicalWithHint,
 } from "@/test/vector-fixtures";
 import { VectorPanel } from "./vector-panel";
 
@@ -135,5 +137,55 @@ describe("VectorPanel", () => {
   it("says when a candidate does not satisfy the requirements", () => {
     render(<VectorPanel result={failedCandidate} />);
     expect(screen.getByRole("note")).toHaveTextContent(/does not satisfy every requirement/);
+  });
+
+  it("shows the classical and the distributional result apart, and calls the status derived, not proved", () => {
+    render(<VectorPanel result={singularCoulomb} />);
+    expect(screen.getByText("Derived, and confirmed by independent pairings")).toBeInTheDocument();
+    expect(screen.queryByText(/Proved/)).not.toBeInTheDocument();
+    const section = screen.getByTestId("singular");
+    expect(section).toHaveTextContent("Classical result (pointwise, away from the source)");
+    expect(section).toHaveTextContent("Distributional result (as a distribution on ℝ³)");
+    expect(screen.getByTestId("singular-status")).toHaveTextContent(/Derived is not proved/);
+    // the formulas are drawn by KaTeX, never as marked source
+    expect(section.querySelector("[data-math-error]")).toBeNull();
+    expect(section.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("lists the derivation steps, the pairings and the regularisation as supporting evidence", () => {
+    render(<VectorPanel result={singularCoulomb} />);
+    expect(screen.getByTestId("singular-derivation").children).toHaveLength(2);
+    expect(screen.getByText(/2 of 2 pairings agree/)).toBeInTheDocument();
+    expect(screen.getByTestId("singular-pairings").children).toHaveLength(3);
+    expect(screen.getByTestId("singular-regularisation")).toHaveTextContent(
+      /Supporting evidence only/,
+    );
+  });
+
+  it("reports whether the user's statement holds, including a wrong one", () => {
+    const wrong = {
+      ...singularCoulomb,
+      singular: {
+        ...singularCoulomb.singular!,
+        claim: {
+          latex: "\\delta^{(3)}(\\mathbf r)",
+          holds: false,
+          reason: "different_strength" as const,
+          note: "",
+        },
+      },
+    };
+    const { rerender } = render(<VectorPanel result={singularCoulomb} />);
+    expect(screen.getByTestId("singular-claim")).toHaveTextContent(
+      /agrees with the derived result/,
+    );
+    rerender(<VectorPanel result={wrong} />);
+    expect(screen.getByTestId("singular-claim")).toHaveTextContent(/different coefficient/);
+  });
+
+  it("says that a classical value of 0 hides a point source", () => {
+    render(<VectorPanel result={classicalWithHint} />);
+    expect(screen.getByTestId("singular-hint")).toHaveTextContent(/classical value/);
+    expect(screen.queryByTestId("singular")).not.toBeInTheDocument();
   });
 });

@@ -26,6 +26,11 @@ export const ACTIONS: { id: VectorAction; label: string; hint: string }[] = [
   },
   { id: "derive", label: "Search for a derivation", hint: "toward a target, within fixed bounds" },
   {
+    id: "distributional",
+    label: "Distributional divergence",
+    hint: "a point source: the delta term of a Coulomb field or of the Laplacian of 1/r",
+  },
+  {
     id: "em_derive",
     label: "Electromagnetic derivation",
     hint: "from field equations you adopt as premises",
@@ -278,6 +283,8 @@ export function buildVectorRequest(form: VectorForm): BuiltVector {
     request.reverse = form.reverse;
   }
   if (form.action === "derive") request.target = form.target.trim();
+  if (form.action === "distributional" && form.target.trim() !== "")
+    request.target = form.target.trim();
   return { ok: true, request };
 }
 

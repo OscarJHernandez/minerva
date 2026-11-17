@@ -782,6 +782,66 @@
       "outcome": "refused_as_expected"
     },
     {
+      "id": "dist-coulomb-regularised-sequence",
+      "category": "distribution",
+      "source": "Griffiths, Introduction to Electrodynamics, chapter 1 (the delta function in three dimensions); the regularised field r/(r^2 + eps^2)^(3/2) integrated by mpmath",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "dist-laplacian-one-over-r-pairing",
+      "category": "distribution",
+      "source": "Jackson, Classical Electrodynamics, chapter 1 (Laplacian of 1/r); the pairing with a Gaussian by mpmath",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "dist-translated-source-flux",
+      "category": "distribution",
+      "source": "Gauss's theorem: the flux through a sphere about a point source is the coefficient; mpmath quadrature",
+      "expected": "correct",
+      "oracle": "mpmath_quad",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "dist-wrong-claims-rejected",
+      "category": "distribution",
+      "source": "the three classic mistakes: +4 pi for the Laplacian of 1/r, a missing 4 pi, and 0 as a distributional identity (Griffiths, chapter 1)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "structural",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "dist-r-over-r4-refused",
+      "category": "distribution",
+      "source": "the divergence of r/r^4 is not zero away from the origin, so it is not a point source",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "dist-delta-through-pointwise-refused",
+      "category": "distribution",
+      "source": "a delta is zero at every point a sampler can draw (docs/verification-testing.md)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
       "id": "vector-laplacian-across-coordinates",
       "category": "vector",
       "source": "Arfken and Weber, Mathematical Methods for Physicists (vector Laplacian; Cartesian components)",

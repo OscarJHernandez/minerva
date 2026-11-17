@@ -145,6 +145,30 @@ class DistributionCheck(BaseModel):
     endpoint: Literal["half", "include", "exclude"] | None = None
 
 
+class PointSourceField(BaseModel):
+    """A field of a point-source check, given explicitly (components in text syntax)."""
+
+    name: str
+    kind: Literal["scalar", "vector"]
+    components: list[str]
+
+
+class PointSourceCheck(BaseModel):
+    """One concrete instance of a point-source identity (`div F = K delta^(3)(r - a)`, `lap f = K delta^(3)`),
+    run through the engine's `distributional` action: the hypotheses of the shrinking-sphere argument are
+    checked exactly, independent test-function pairings must agree, and the engine must confirm `target` (the
+    right-hand side written by hand, LaTeX) with the same coefficient and source. Pointwise sampling is never
+    used: a delta is zero at every point a sampler can draw."""
+
+    kind: Literal["point_source"] = "point_source"
+    expression: str  # LaTeX: \\nabla\\cdot(...) or \\nabla^{2}(...)
+    coordinates: Literal["cartesian", "cylindrical", "spherical"] = "cartesian"
+    fields: list[PointSourceField] = Field(default_factory=list)
+    constants: list[str] = Field(default_factory=list)
+    assumptions: dict[str, list[str]] = Field(default_factory=dict)
+    target: str  # the identity's right-hand side, LaTeX, e.g. 4\\pi\\delta^{(3)}(\\mathbf r)
+
+
 class VectorIdentityCheck(BaseModel):
     """An identity between vector expressions, checked by the engine's vector calculus: the difference
     of the two sides is evaluated for abstract fields in Cartesian, cylindrical and spherical
@@ -185,6 +209,7 @@ Check = Annotated[
     | TensorCheck
     | EquationCheck
     | DistributionCheck
+    | PointSourceCheck
     | VectorIdentityCheck
     | VectorEquationCheck,
     Field(discriminator="kind"),
@@ -252,7 +277,7 @@ class Entry(BaseModel):
             ),
             "structural": ("tensor",),
             "dimensional": ("equation", "vector_equation"),
-            "distributional": ("distribution",),
+            "distributional": ("distribution", "point_source"),
         }[v]
         source = "rule" if self.rule is not None else (self.check.kind if self.check else "")
         if source not in expected:
@@ -285,6 +310,8 @@ __all__ = [
     "EquationCheck",
     "IntegralCheck",
     "ParamRange",
+    "PointSourceCheck",
+    "PointSourceField",
     "Reference",
     "RootFormulaCheck",
     "Rule",

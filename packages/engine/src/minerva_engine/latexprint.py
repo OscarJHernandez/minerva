@@ -68,6 +68,16 @@ class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
             tex = rf"\operatorname{{Heaviside}}\left({self._print(expr.args[0])}\right)"
         return str(self._do_exponent(tex, exp))
 
+    def _print_PointDelta(self, expr: sp.Basic, exp: Any = None) -> str:
+        """`delta^{(3)}(r - a)`: the source is a point of R^3, `(0, 0, 0)` is the origin."""
+        source = expr.args
+        if all(a == 0 for a in source):
+            tex = r"\delta^{(3)}\left(\mathbf{r}\right)"
+        else:
+            parts = ", ".join(str(self._print(a)) for a in source)
+            tex = rf"\delta^{{(3)}}\left(\mathbf{{r}}-\left({parts}\right)\right)"
+        return str(self._do_exponent(tex, exp))
+
     def _print_beta(self, expr: sp.Basic, exp: Any = None) -> str:
         # SymPy prints the arguments of B(a, b) as raw names (alpha, not \\alpha)
         tex = rf"\operatorname{{B}}\left({self._print(expr.args[0])}, {self._print(expr.args[1])}\right)"

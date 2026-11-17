@@ -33,6 +33,10 @@ class VectorLatexPrinter(MinervaLatexPrinter):
     def _print_Derivative(self, expr: sp.Derivative) -> str:
         return str(LatexPrinter._print_Derivative(self, expr))
 
+    def _powered(self, tex: str, exp: Any) -> str:
+        """An operator expression raised to a power (`|r|^3` is `(r . r)^{3/2}`): bracketed, then the exponent."""
+        return tex if exp is None else rf"\left({tex}\right)^{{{exp}}}"
+
     def _wrap(self, e: sp.Basic) -> str:
         text = str(self._print(e))
         if e.is_Atom or isinstance(e, Pos | Unit | Pd | sp.Derivative):
@@ -43,26 +47,29 @@ class VectorLatexPrinter(MinervaLatexPrinter):
             return text  # sin(x), a field: already delimited
         return rf"\left({text}\right)"
 
-    def _print_Grad(self, expr: Grad) -> str:
-        return rf"\nabla {self._wrap(expr.args[0])}"
+    def _print_Grad(self, expr: Grad, exp: Any = None) -> str:
+        return self._powered(rf"\nabla {self._wrap(expr.args[0])}", exp)
 
-    def _print_Div(self, expr: Div) -> str:
-        return rf"\nabla \cdot {self._wrap(expr.args[0])}"
+    def _print_Div(self, expr: Div, exp: Any = None) -> str:
+        return self._powered(rf"\nabla \cdot {self._wrap(expr.args[0])}", exp)
 
-    def _print_Curl(self, expr: Curl) -> str:
-        return rf"\nabla \times {self._wrap(expr.args[0])}"
+    def _print_Curl(self, expr: Curl, exp: Any = None) -> str:
+        return self._powered(rf"\nabla \times {self._wrap(expr.args[0])}", exp)
 
-    def _print_Lap(self, expr: Lap) -> str:
-        return rf"\nabla^{{2}} {self._wrap(expr.args[0])}"
+    def _print_Lap(self, expr: Lap, exp: Any = None) -> str:
+        return self._powered(rf"\nabla^{{2}} {self._wrap(expr.args[0])}", exp)
 
-    def _print_Dot(self, expr: Dot) -> str:
-        return rf"{self._wrap(expr.args[0])} \cdot {self._wrap(expr.args[1])}"
+    def _print_Dot(self, expr: Dot, exp: Any = None) -> str:
+        return self._powered(rf"{self._wrap(expr.args[0])} \cdot {self._wrap(expr.args[1])}", exp)
 
-    def _print_Cross(self, expr: Cross) -> str:
-        return rf"{self._wrap(expr.args[0])} \times {self._wrap(expr.args[1])}"
+    def _print_Cross(self, expr: Cross, exp: Any = None) -> str:
+        return self._powered(rf"{self._wrap(expr.args[0])} \times {self._wrap(expr.args[1])}", exp)
 
-    def _print_Adv(self, expr: Adv) -> str:
-        return rf"\left({self._print(expr.args[0])} \cdot \nabla\right) {self._wrap(expr.args[1])}"
+    def _print_Adv(self, expr: Adv, exp: Any = None) -> str:
+        return self._powered(
+            rf"\left({self._print(expr.args[0])} \cdot \nabla\right) {self._wrap(expr.args[1])}",
+            exp,
+        )
 
     def _print_Pd(self, expr: Pd) -> str:
         # Collect nested derivatives: pd(pd(X, x), y) is d/dy d/dx X.

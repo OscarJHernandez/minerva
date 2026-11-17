@@ -33,9 +33,9 @@
       "id": "wedge-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 462,
-        "tool_ms": 2847,
-        "total_ms": 3327
+        "claim_check_ms": 410,
+        "tool_ms": 2666,
+        "total_ms": 3094
       }
     },
     {
@@ -70,9 +70,9 @@
       "id": "wedge-xdot-first-call",
       "pending": "",
       "timing": {
-        "claim_check_ms": 435,
-        "tool_ms": 946,
-        "total_ms": 1399
+        "claim_check_ms": 412,
+        "tool_ms": 882,
+        "total_ms": 1311
       }
     },
     {
@@ -107,9 +107,9 @@
       "id": "wedge-wrong-format-recovered",
       "pending": "",
       "timing": {
-        "claim_check_ms": 443,
-        "tool_ms": 1394,
-        "total_ms": 1854
+        "claim_check_ms": 421,
+        "tool_ms": 1304,
+        "total_ms": 1743
       }
     },
     {
@@ -144,9 +144,9 @@
       "id": "wedge-shape-errors-repaired",
       "pending": "",
       "timing": {
-        "claim_check_ms": 442,
-        "tool_ms": 932,
-        "total_ms": 1391
+        "claim_check_ms": 447,
+        "tool_ms": 891,
+        "total_ms": 1357
       }
     },
     {
@@ -182,8 +182,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 966,
-        "total_ms": 983
+        "tool_ms": 925,
+        "total_ms": 943
       }
     },
     {
@@ -219,8 +219,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 850,
-        "total_ms": 865
+        "tool_ms": 811,
+        "total_ms": 826
       }
     },
     {
@@ -256,8 +256,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 480,
-        "total_ms": 496
+        "tool_ms": 407,
+        "total_ms": 423
       }
     },
     {
@@ -292,9 +292,9 @@
       "id": "wedge-routed-xdot",
       "pending": "",
       "timing": {
-        "claim_check_ms": 431,
-        "tool_ms": 0,
-        "total_ms": 1367
+        "claim_check_ms": 415,
+        "tool_ms": 879,
+        "total_ms": 1310
       }
     },
     {
@@ -329,9 +329,9 @@
       "id": "pendulum-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1031,
-        "tool_ms": 1904,
-        "total_ms": 2954
+        "claim_check_ms": 948,
+        "tool_ms": 1782,
+        "total_ms": 2748
       }
     },
     {
@@ -366,9 +366,9 @@
       "id": "pendulum-routed-latex",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1011,
-        "tool_ms": 0,
-        "total_ms": 1982
+        "claim_check_ms": 966,
+        "tool_ms": 891,
+        "total_ms": 1874
       }
     },
     {
@@ -403,9 +403,9 @@
       "id": "pendulum-routed-text-velocities",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1016,
-        "tool_ms": 0,
-        "total_ms": 1974
+        "claim_check_ms": 976,
+        "tool_ms": 904,
+        "total_ms": 1896
       }
     },
     {
@@ -440,9 +440,9 @@
       "id": "pendulum-model-calls-with-text",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1008,
-        "tool_ms": 935,
-        "total_ms": 1960
+        "claim_check_ms": 950,
+        "tool_ms": 888,
+        "total_ms": 1855
       }
     },
     {
@@ -477,9 +477,9 @@
       "id": "pendulum-assignment-and-greek",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1067,
-        "tool_ms": 943,
-        "total_ms": 2027
+        "claim_check_ms": 955,
+        "tool_ms": 889,
+        "total_ms": 1861
       }
     },
     {
@@ -514,9 +514,9 @@
       "id": "pendulum-wrong-sign-stays-unbacked",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1624,
-        "tool_ms": 957,
-        "total_ms": 2597
+        "claim_check_ms": 1505,
+        "tool_ms": 905,
+        "total_ms": 2428
       }
     },
     {
@@ -551,9 +551,9 @@
       "id": "cyclic-oscillator",
       "pending": "",
       "timing": {
-        "claim_check_ms": 500,
-        "tool_ms": 501,
-        "total_ms": 1020
+        "claim_check_ms": 471,
+        "tool_ms": 472,
+        "total_ms": 960
       }
     },
     {
@@ -588,9 +588,9 @@
       "id": "simplify-with-functions-prefix",
       "pending": "",
       "timing": {
-        "claim_check_ms": 433,
-        "tool_ms": 1070,
-        "total_ms": 1519
+        "claim_check_ms": 411,
+        "tool_ms": 1035,
+        "total_ms": 1462
       }
     },
     {
@@ -626,8 +626,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 4837,
-        "total_ms": 4853
+        "tool_ms": 4559,
+        "total_ms": 4575
       }
     },
     {
@@ -663,8 +663,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 2858,
-        "total_ms": 2874
+        "tool_ms": 2701,
+        "total_ms": 2717
       }
     },
     {
@@ -699,9 +699,9 @@
       "id": "unreadable-arguments-then-valid",
       "pending": "",
       "timing": {
-        "claim_check_ms": 423,
-        "tool_ms": 1061,
-        "total_ms": 1500
+        "claim_check_ms": 415,
+        "tool_ms": 1021,
+        "total_ms": 1451
       }
     },
     {
@@ -737,8 +737,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 621,
-        "total_ms": 637
+        "tool_ms": 609,
+        "total_ms": 624
       }
     },
     {
@@ -774,8 +774,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 607,
-        "total_ms": 623
+        "tool_ms": 593,
+        "total_ms": 609
       }
     },
     {
@@ -811,8 +811,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 614,
-        "total_ms": 629
+        "tool_ms": 593,
+        "total_ms": 608
       }
     },
     {
@@ -847,9 +847,9 @@
       "id": "matrix-expansion-noncommuting",
       "pending": "",
       "timing": {
-        "claim_check_ms": 424,
-        "tool_ms": 435,
-        "total_ms": 874
+        "claim_check_ms": 430,
+        "tool_ms": 431,
+        "total_ms": 876
       }
     },
     {
@@ -884,9 +884,9 @@
       "id": "ode-first-order",
       "pending": "",
       "timing": {
-        "claim_check_ms": 587,
-        "tool_ms": 492,
-        "total_ms": 1095
+        "claim_check_ms": 563,
+        "tool_ms": 482,
+        "total_ms": 1061
       }
     },
     {
@@ -898,7 +898,7 @@
         "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
-        "est_tokens_in": 30161,
+        "est_tokens_in": 31324,
         "est_tokens_out": 83,
         "evidence_pct": 0.0,
         "format_switches": 0,
@@ -921,25 +921,62 @@
       "id": "vector-divergence-product",
       "pending": "",
       "timing": {
-        "claim_check_ms": 420,
-        "tool_ms": 611,
-        "total_ms": 1048
+        "claim_check_ms": 406,
+        "tool_ms": 589,
+        "total_ms": 1011
+      }
+    },
+    {
+      "category": "vector",
+      "comparable": true,
+      "description": "the divergence of r/r^3 including the origin: the delta and its coefficient come from the tool, and a wrong normalisation written by the model is never backed",
+      "deterministic": {
+        "aliases": 0,
+        "budget_exhausted": 0,
+        "claims": 2,
+        "contradicted": 0,
+        "est_tokens_in": 34316,
+        "est_tokens_out": 110,
+        "evidence_pct": 50.0,
+        "format_switches": 0,
+        "formulas": 2,
+        "input_adjusted": 0,
+        "math_ok": true,
+        "model_calls": 2,
+        "ok_calls": 1,
+        "recovered": false,
+        "refused_equivalent": 0,
+        "routed": 0,
+        "stop_reason": "completed",
+        "tool_calls": 1,
+        "unknown_names": 0,
+        "unparsed_claims": 0,
+        "unsupported_claims": 1,
+        "valid_calls": 1,
+        "with_evidence": 1
+      },
+      "id": "vector-distributional-divergence",
+      "pending": "",
+      "timing": {
+        "claim_check_ms": 427,
+        "tool_ms": 723,
+        "total_ms": 1165
       }
     }
   ],
   "summary": {
-    "est_tokens_in": 686478,
-    "est_tokens_out": 2092,
+    "est_tokens_in": 721957,
+    "est_tokens_out": 2202,
     "format_switches": 3,
     "input_adjusted": 2,
     "invalid_calls": 2,
-    "math_ok": 25,
-    "model_calls": 58,
+    "math_ok": 26,
+    "model_calls": 60,
     "refused_equivalent": 5,
-    "tool_calls": 35,
-    "trajectories": 25,
+    "tool_calls": 36,
+    "trajectories": 26,
     "unknown_names": 1,
     "unparsed_claims": 0,
-    "unsupported_claims": 6
+    "unsupported_claims": 7
   }
 }

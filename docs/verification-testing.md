@@ -93,6 +93,12 @@ Documented, not hidden:
   probe. Sampling cannot find it. The strict-xfail row `precision.bump_at_arbitrary_point` pins it.
 - **Distributions** are never verified by sampling (`verify_equal` refuses them); the distribution operation's exact
   conditions and pairing apply, and its result is "supporting evidence, not a proof".
+- **The three-dimensional point delta** (`vector_calculus`, action `distributional`, [singular-fields.md](singular-fields.md))
+  is established by the shrinking-sphere argument with every hypothesis checked exactly and four independent weak-form
+  pairings (a `1e-6` error in the coefficient is rejected). The result is called **derived**, never proved ("proved" is
+  reserved for a symbolic zero of the whole statement), the regularised-field table is reported and never decides, and the
+  family is one Coulomb kernel with a constant strength and a constant real source. Every other vector action refuses a
+  `DiracDelta` (before, the vector path would lower and "verify" one by sampling a field that is zero at every sample).
 - **Noncommuting symbols** are checked on random matrices of a sufficient size (`ncverify`); this is evidence for a
   polynomial identity, not a proof, and the counterexample search does not search them.
 - **Branch cuts** are probed on the real axis and at large imaginary parts; identities that fail only on a cut that

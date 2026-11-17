@@ -169,3 +169,89 @@
     assumptions: {a: [real]}
   reference: {source: DLMF, locator: "§1.16(ii)", url: "https://dlmf.nist.gov/1.16"}
   keywords: [heaviside, product rule, jump, causal function, green function jump]
+
+# ---------------------------------------------------------------------------- point sources in R^3
+# The three-dimensional point delta is a typed object of its own (`PointDelta`), not a product of
+# one-dimensional deltas. These entries state the Coulomb-kernel family only; they are checked by the
+# engine's `distributional` action: the hypotheses of the shrinking-sphere argument are exact for the
+# instance, and independent pairings with test functions agree. A wrong coefficient or sign fails the check.
+- id: distributions.coulomb_divergence
+  title: Distributional divergence of the Coulomb field
+  kind: identity
+  chapter: math.distributions
+  section: point_sources
+  verification: distributional
+  applies_to: ["vector:div", "distribution:point_source"]
+  validity: "As distributions on R^3 (test functions smooth and rapidly decreasing). Classically the divergence is 0 at every point except the origin, where the field is not defined; the delta term is the whole contribution of the singularity. Supported family: C (r - a)/|r - a|^3 with constant C and constant real a."
+  statement_latex: '\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)'
+  check:
+    kind: point_source
+    expression: '\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)'
+    coordinates: spherical
+    target: '4\pi\delta^{(3)}(\mathbf r)'
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, the Dirac delta function (3D)"}
+  keywords: [divergence, coulomb field, point source, dirac delta, three dimensions, flux, 4 pi, singular field]
+  notes: "Shrinking-sphere derivation: delete a ball of radius eps about the source, apply the divergence theorem on the punctured domain (the inner normal points toward the source), the flux density is C/eps^2, so the boundary term tends to 4 pi C phi(a). Minerva derives it for this kernel; it is not a general theory of multidimensional distributions."
+
+- id: distributions.newtonian_laplacian
+  title: Distributional Laplacian of the Newtonian potential
+  kind: identity
+  chapter: math.distributions
+  section: point_sources
+  verification: distributional
+  applies_to: ["vector:lap", "distribution:point_source"]
+  validity: "As distributions on R^3. 1/r is harmonic away from the origin and locally integrable; its Laplacian is the point mass -4 pi delta^(3). The sign follows from the gradient -r/r^3 and the divergence entry."
+  statement_latex: '\nabla^{2} \frac{1}{r} = - 4 \pi \delta^{(3)}\left(\mathbf{r}\right)'
+  check:
+    kind: point_source
+    expression: '\nabla^{2}\frac{1}{r}'
+    coordinates: spherical
+    target: '-4\pi\delta^{(3)}(\mathbf r)'
+  reference: {source: "Jackson, Classical Electrodynamics", locator: "chapter 1, Poisson and Laplace equations"}
+  keywords: [laplacian, newtonian potential, green function, one over r, fundamental solution, dirac delta, point source]
+  notes: "Derived through the gradient: grad(1/r) = -r/r^3, whose distributional divergence is -4 pi delta^(3)."
+
+- id: distributions.point_source_translation
+  title: Translation of a three-dimensional point source
+  kind: identity
+  chapter: math.distributions
+  section: point_sources
+  verification: distributional
+  applies_to: ["vector:div", "distribution:point_source"]
+  validity: "As distributions on R^3, for a constant real source position a (declared real: an undeclared constant is not assumed real). The delta moves with the field; the coefficient is unchanged."
+  statement_latex: '\nabla \cdot \left(\frac{\mathbf{r}-\mathbf{a}}{\left|\mathbf{r}-\mathbf{a}\right|^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}-\mathbf{a}\right)'
+  check:
+    kind: point_source
+    expression: '\nabla\cdot F'
+    coordinates: cartesian
+    fields:
+      - name: F
+        kind: vector
+        components:
+          - "(x - a_1)/((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2)"
+          - "(y - a_2)/((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2)"
+          - "(z - a_3)/((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2)"
+    constants: [a_1, a_2, a_3]
+    assumptions: {a_1: [real], a_2: [real], a_3: [real]}
+    target: '4\pi\delta^{(3)}(\mathbf r-(a_1,a_2,a_3))'
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, the Dirac delta function (3D)"}
+  keywords: [translation, shifted source, point source, dirac delta, source position, divergence]
+
+- id: distributions.point_source_scaling
+  title: Constant multiple of the Coulomb field
+  kind: identity
+  chapter: math.distributions
+  section: point_sources
+  verification: distributional
+  applies_to: ["vector:div", "distribution:point_source"]
+  validity: "As distributions on R^3, for any constant C (real C is sampled; C = 0 gives the zero distribution). The divergence is linear in the field."
+  statement_latex: '\nabla \cdot \left(C \frac{\mathbf{r}}{r^{3}}\right) = 4 \pi C \delta^{(3)}\left(\mathbf{r}\right)'
+  check:
+    kind: point_source
+    expression: '\nabla\cdot\left(C\frac{\mathbf{r}}{r^{3}}\right)'
+    coordinates: spherical
+    constants: [C]
+    assumptions: {C: [real]}
+    target: '4\pi C\delta^{(3)}(\mathbf r)'
+  reference: {source: "Griffiths, Introduction to Electrodynamics", locator: "chapter 1, the Dirac delta function (3D)"}
+  keywords: [scaling, constant multiple, strength, coulomb field, point source, dirac delta]

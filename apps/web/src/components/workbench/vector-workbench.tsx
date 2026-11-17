@@ -377,6 +377,18 @@ export function VectorWorkbench({
             </label>
           </div>
         )}
+        {form.action === "distributional" && (
+          <label className="block text-xs text-muted">
+            A statement to check (optional): the result you expect, written as a multiple of the
+            delta
+            <input
+              aria-label="Statement to check"
+              className={`${FIELD} mt-0.5 block w-full`}
+              value={form.target}
+              onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
+            />
+          </label>
+        )}
         {form.action === "derive" && (
           <label className="block text-xs text-muted">
             Expression to reach

@@ -1016,7 +1016,8 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - Three orthogonal coordinate systems, physical (orthonormal) components, right-handed frames. No general curvilinear coordinates and no tensor fields (see differential geometry).
 - Numerical agreement is evidence, not proof. An evaluated result carries no symbolic proof, and the wording says so.
 - Every symbol must be a coordinate, t, a declared field or a declared constant; an undeclared symbol is refused, never read as a constant.
-- The axis and origin of curvilinear systems are reported as restrictions. A delta function at the origin (the divergence of r-hat over r squared) is not represented.
+- The axis and origin of curvilinear systems are reported as restrictions. The classical divergence of r-hat over r squared is 0 away from the origin; the `distributional` action derives its delta term for one family only (see below).
+- `distributional` (three-dimensional delta): one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength and a constant real source, as distributions on R^3. The hypotheses of the shrinking-sphere argument are checked exactly and independent pairings with test functions must agree: the result is called derived, never proved. Not supported: other singular fields, several sources, products, derivatives or compositions of the delta, or a general theory of multidimensional distributions.
 - Identities are applied to a chosen part and every rewrite is checked by comparing the whole expressions; `derive` searches within fixed bounds (depth 4) and "not found" is not "does not exist". An identity that needs equal mixed partials is applied only to fields the user declared twice continuously differentiable.
 - A field equation is a premise the user supplies: results that use one are conditional, name it, and are never called an identity or a proof. Minerva does not check that a premise is true.
 - Electromagnetism-specific derivations and integrals over curves, surfaces and volumes are planned (see the roadmap).
@@ -1054,8 +1055,72 @@ Gradient, divergence, curl, the scalar and vector Laplacian, dot, cross and trip
 - **Status:** `ok`
 - **Result:** $0$
 - **Check:** 6 of 6 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
-- Valid only where $r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there).
-- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof
+- Valid only where $r \neq 0$, $\sin{\left(\theta \right)} \neq 0$, $\left(x, y, z\right) \neq \left(0, 0, 0\right)$ (the coordinates break down there).
+- numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof; this is the classical value, valid away from the source only: as a distribution the field has a point source there (use the distributional action)
+
+#### Where did the divergence go? The distributional divergence of r over r cubed
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)` (LaTeX)
+- **Target:** `4\pi\delta^{(3)}(\mathbf r)` (LaTeX)
+- **Status:** `ok`
+- **Classical result (pointwise, away from the source):** $\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 0$
+- **Distributional result (as a distribution on R^3):** $\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$
+- **Derived equation:** $\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$
+- **Check:** derived: the hypotheses of the shrinking-sphere argument are exact (classical divergence away from the source, flux density on a small sphere, local integrability); 4 of 4 independent pairings with test functions and 2 of 2 sphere fluxes agree. Derived is not proved; the pairings are supporting evidence
+- **Check:** regularised field r/(r^2 + eps^2)^(3/2): the pairing error falls as eps shrinks (reported, never deciding)
+- **Check:** 14 of 14 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Derived for one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength C and a constant real source a, against smooth rapidly decreasing test functions. Not covered: any other singular field, several sources, products, derivatives or compositions of the delta.
+- Statement checked: $4\pi\delta^{(3)}(\mathbf r)$ holds.
+- equal as distributions, not pointwise: the classical value is 0 away from the source and the distributional one is a point mass. Derived by the shrinking-sphere argument for this kernel (each hypothesis checked exactly) and confirmed by 4 independent pairings and 2 flux checks; the numerical pairings are supporting evidence, not a proof. Your statement agrees with it.
+
+#### The Laplacian of 1/r is minus four pi times a delta
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla^{2}\frac{1}{r}` (LaTeX)
+- **Target:** `-4\pi\delta^{(3)}(\mathbf r)` (LaTeX)
+- **Status:** `ok`
+- **Classical result (pointwise, away from the source):** $\nabla^{2} \left(\frac{1}{r}\right) = 0$
+- **Distributional result (as a distribution on R^3):** $\nabla^{2} \left(\frac{1}{r}\right) = - 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$
+- **Derived equation:** $\nabla^{2} \left(\frac{1}{r}\right) = - 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$
+- **Check:** derived: the hypotheses of the shrinking-sphere argument are exact (classical divergence away from the source, flux density on a small sphere, local integrability); 4 of 4 independent pairings with test functions and 2 of 2 sphere fluxes agree. Derived is not proved; the pairings are supporting evidence
+- **Check:** regularised field r/(r^2 + eps^2)^(3/2): the pairing error falls as eps shrinks (reported, never deciding)
+- **Check:** 14 of 14 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Derived for one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength C and a constant real source a, against smooth rapidly decreasing test functions. Not covered: any other singular field, several sources, products, derivatives or compositions of the delta.
+- Statement checked: $-4\pi\delta^{(3)}(\mathbf r)$ holds.
+- equal as distributions, not pointwise: the classical value is 0 away from the source and the distributional one is a point mass. Derived by the shrinking-sphere argument for this kernel (each hypothesis checked exactly) and confirmed by 4 independent pairings and 2 flux checks; the numerical pairings are supporting evidence, not a proof. Your statement agrees with it.
+
+#### A delta with coefficient 1 is rejected
+
+- **Coordinates:** `spherical`
+- **Expression:** `\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)` (LaTeX)
+- **Target:** `\delta^{(3)}(\mathbf r)` (LaTeX)
+- **Status:** `ok`
+- **Classical result (pointwise, away from the source):** $\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 0$
+- **Distributional result (as a distribution on R^3):** $\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$
+- **Derived equation:** $\nabla \cdot \left(\frac{\mathbf{r}}{r^{3}}\right) = 4 \pi \delta^{(3)}\left(\mathbf{r}\right)$
+- **Check:** derived: the hypotheses of the shrinking-sphere argument are exact (classical divergence away from the source, flux density on a small sphere, local integrability); 4 of 4 independent pairings with test functions and 2 of 2 sphere fluxes agree. Derived is not proved; the pairings are supporting evidence
+- **Check:** regularised field r/(r^2 + eps^2)^(3/2): the pairing error falls as eps shrinks (reported, never deciding)
+- **Check:** 14 of 14 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Derived for one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength C and a constant real source a, against smooth rapidly decreasing test functions. Not covered: any other singular field, several sources, products, derivatives or compositions of the delta.
+- Statement checked: $\delta^{(3)}(\mathbf r)$ does not hold (different_strength).
+- equal as distributions, not pointwise: the classical value is 0 away from the source and the distributional one is a point mass. Derived by the shrinking-sphere argument for this kernel (each hypothesis checked exactly) and confirmed by 4 independent pairings and 2 flux checks; the numerical pairings are supporting evidence, not a proof. Your statement does not hold (different_strength).
+
+#### A point charge away from the origin
+
+- **Coordinates:** `cartesian`
+- **Expression:** `\nabla\cdot F` (LaTeX)
+- **Field F:** `vector field, components q*(x - a_1)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2)), q*(y - a_2)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2)), q*(z - a_3)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))`
+- **Assumptions:** q real; epsilon_0 positive; a_1 real; a_2 real; a_3 real
+- **Status:** `ok`
+- **Classical result (pointwise, away from the source):** $\nabla \cdot \mathbf{F} = 0$
+- **Distributional result (as a distribution on R^3):** $\nabla \cdot \mathbf{F} = \frac{q \delta^{(3)}\left(\mathbf{r}-\left(a_{1}, a_{2}, a_{3}\right)\right)}{\epsilon_{0}}$
+- **Derived equation:** $\nabla \cdot \mathbf{F} = \frac{q \delta^{(3)}\left(\mathbf{r}-\left(a_{1}, a_{2}, a_{3}\right)\right)}{\epsilon_{0}}$
+- **Check:** derived: the hypotheses of the shrinking-sphere argument are exact (classical divergence away from the source, flux density on a small sphere, local integrability); 4 of 4 independent pairings with test functions and 2 of 2 sphere fluxes agree. Derived is not proved; the pairings are supporting evidence
+- **Check:** regularised field r/(r^2 + eps^2)^(3/2): the pairing error falls as eps shrinks (reported, never deciding)
+- **Check:** 14 of 14 sample points agree with an independent Cartesian finite-difference evaluation; no symbolic proof is claimed
+- Derived for one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength C and a constant real source a, against smooth rapidly decreasing test functions. Not covered: any other singular field, several sources, products, derivatives or compositions of the delta.
+- equal as distributions, not pointwise: the classical value is 0 away from the source and the distributional one is a point mass. Derived by the shrinking-sphere argument for this kernel (each hypothesis checked exactly) and confirmed by 4 independent pairings and 2 flux checks; the numerical pairings are supporting evidence, not a proof.
 
 #### Curl of a gradient vanishes for a twice differentiable field
 

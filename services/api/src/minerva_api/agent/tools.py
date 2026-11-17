@@ -347,7 +347,8 @@ class VectorCalculusArgs(BaseModel):
         description="A scalar or vector expression in LaTeX, e.g. \\nabla\\times(f\\mathbf{A}), "
         "\\nabla\\cdot(\\mathbf{A}\\times\\mathbf{B}), \\nabla^2\\mathbf{A}, "
         "(\\mathbf{A}\\cdot\\nabla)\\mathbf{B}, \\frac{\\partial\\mathbf{E}}{\\partial t}, "
-        "\\mathbf{r}/r^3 (position vector). \\nabla acts on the ONE factor after it: write \\nabla(fg), "
+        "\\mathbf{r}/r^3 (position vector; r is a coordinate only in spherical coordinates, in Cartesian "
+        "write the distance as |\\mathbf{r}|). \\nabla acts on the ONE factor after it: write \\nabla(fg), "
         "never \\nabla f g. \\cdot between two vectors is the dot product, \\times between two "
         "vectors the cross product; the product of two vectors written side by side is refused. "
         "Not needed for action=jacobian.",
@@ -390,6 +391,7 @@ class VectorCalculusArgs(BaseModel):
         "apply",
         "derive",
         "integrate",
+        "distributional",
     ] = Field(
         default="evaluate",
         description="evaluate: compute the expression in the components of the system. jacobian: the "
@@ -400,7 +402,13 @@ class VectorCalculusArgs(BaseModel):
         "after. substitute: replace one side of a premise the USER gave by the other. apply: apply "
         "`operator` to both sides of an equation (`expression` is `lhs = rhs`). derive: search a chain "
         "of identity (and premise) steps to `target`, or to a smaller form without one. integrate: a line, "
-        "flux, volume integral or one of the three theorems, over a domain the USER gives (see `integral`).",
+        "flux, volume integral or one of the three theorems, over a domain the USER gives (see `integral`). "
+        "distributional: the DISTRIBUTIONAL divergence of a point-source Coulomb field C (r-a)/|r-a|^3, or the "
+        "Laplacian of C/|r-a| (`expression` is \\nabla\\cdot(...) or \\nabla^2(...); the field is explicit). The "
+        "engine returns the classical value 0 away from the source AND the delta term at the source with "
+        "its coefficient, derived and checked; use it whenever the user asks about a delta function, a point "
+        "charge or source, or why a divergence that vanishes everywhere has a nonzero flux. Never write the "
+        "coefficient yourself. Put a statement the user made about the result in `target`.",
     )
     to: Literal["cartesian", "cylindrical", "spherical"] | None = Field(
         default=None, description="Target system for convert."
@@ -478,7 +486,9 @@ class VectorCalculusArgs(BaseModel):
     target: str | None = Field(
         default=None,
         max_length=MAX_INPUT,
-        description="derive: the expression to reach (same syntax as `expression`).",
+        description="derive: the expression to reach (same syntax as `expression`). distributional: the "
+        "statement the USER made about the result, written as they wrote it (e.g. 4\\pi\\delta^{(3)}(\\mathbf{r}) "
+        "or 0); the engine compares it exactly and says whether it holds.",
     )
 
 
@@ -1440,6 +1450,46 @@ def run_vector_calculus(args: VectorCalculusArgs, ctx: ToolContext) -> ToolOutpu
     return _vector_output(ctx.engine.vector_calculus(request), request)
 
 
+def _singular_lines(result: VectorResult, lines: list[str], known: list[str]) -> None:
+    """The distributional result: classical and distributional statements apart, with their evidence."""
+    s = result.singular
+    if s is None:
+        return
+    lines.append(
+        f"- CLASSICAL result (pointwise, away from the source): ${result.input_latex} = {s.classical_latex}$ "
+        f"valid where ${s.classical_domain_latex}$"
+    )
+    lines.append(
+        f"- DISTRIBUTIONAL result (as a distribution on R^3, equality as distributions, never pointwise): "
+        f"${s.distributional_latex}$; strength ${s.strength_latex}$, source ${s.source_latex}$"
+    )
+    lines.append(f"- proof status: {s.proof_status} (this is NOT called proved); scope: {s.scope}")
+    for step in s.derivation:
+        lines.append(f"  - {step.status}: {step.title}: ${step.latex}$ ({step.note})")
+        if step.status == "established":
+            known.append(step.latex)
+    agreed = sum(w.passed for w in s.weak_checks)
+    lines.append(
+        f"- independent pairings with test functions: {agreed}/{len(s.weak_checks)} agree (values at the "
+        f"source differ, including 0); flux through {len(s.flux_checks)} spheres agrees. These are supporting "
+        "evidence, not a proof: say so"
+    )
+    if s.regularisation:
+        shown = ", ".join(f"eps={r.eps:g}: error {r.error:.3g}" for r in s.regularisation)
+        lines.append(
+            f"- regularised field r/(r^2+eps^2)^(3/2): pairing error shrinks as eps does ({shown}); "
+            "supporting evidence only"
+        )
+    if s.claim is not None:
+        verdict = "HOLDS" if s.claim.holds else f"does NOT hold ({s.claim.reason})"
+        lines.append(
+            f"- the user's statement ${s.claim.latex}$ {verdict}: {s.claim.note}. State this plainly"
+        )
+    known.extend(
+        [s.distributional_latex, s.strength_latex, f"{result.input_latex} = {s.classical_latex}"]
+    )
+
+
 def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
     log_vector(result)  # status, reason, counters: never a field name or an expression
     card = Card(
@@ -1549,6 +1599,14 @@ def _vector_output(result: VectorResult, request: VectorInput) -> ToolOutput:
                 )
             if em.holds is False:
                 lines.append("- the candidate does NOT satisfy every requirement: say which")
+        if result.singular is not None:
+            _singular_lines(result, lines, known)
+        if result.singular_hint:
+            lines.append(
+                "- this is the CLASSICAL value, valid away from the source only. The field has a point "
+                "source: as a distribution its divergence is a delta term. Call vector_calculus with "
+                "action=distributional to get it (never state its coefficient yourself)"
+            )
         for a in result.applicable:
             suffix = f" BLOCKED: {a.note}" if a.blocked else ""
             lines.append(

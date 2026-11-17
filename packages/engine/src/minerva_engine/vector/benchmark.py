@@ -50,6 +50,7 @@ GROUPS = (
     "electromagnetism",
     "integrals",
     "electrostatics",
+    "distributional",
 )
 
 # Symbols of the references (the engine's text output is read back with these).
@@ -1338,8 +1339,221 @@ def _integral_cases() -> list[Case]:
     ]
 
 
+def _distributional_cases() -> list[Case]:
+    """The distributional divergence and Laplacian of a point-source Coulomb kernel. The expected strengths and
+    sources are the textbook values typed here (div r/r^3 = 4 pi delta, lap 1/r = -4 pi delta), not produced by
+    the code under test; wrong claims and unsupported fields are cases too."""
+    from ..distributions.point_delta import PointDelta
+
+    a1, a2, a3, big_c, q, e0 = sp.symbols("a_1 a_2 a_3 C q epsilon_0", real=True)
+
+    def delta(strength: sp.Expr, source: tuple[Any, Any, Any] = (0, 0, 0)) -> Any:
+        want = strength * PointDelta(*source)
+        local = {"PointDelta": PointDelta, **{s.name: s for s in (a1, a2, a3, big_c, q, e0)}}
+
+        def check(result: VectorResult) -> bool:
+            sing = result.singular
+            if sing is None or sing.proof_status != "derived" or result.result_text is None:
+                return False
+            if not all(w.passed for w in sing.weak_checks + sing.flux_checks):
+                return False
+            if not all(step.status == "established" for step in sing.derivation):
+                return False
+            got = sp.sympify(result.result_text, locals=local)
+            return bool(sp.simplify(got - want) == 0)
+
+        return check
+
+    def kernel(strength: str, source: tuple[str, str, str], power: str = "3") -> FieldDecl:
+        q2 = " + ".join(f"({v} - {a})**2" for v, a in zip("xyz", source, strict=True))
+        return vector(
+            "F",
+            *[
+                f"{strength}*({v} - {a})/({q2})**({power}/2)"
+                for v, a in zip("xyz", source, strict=True)
+            ],
+        )
+
+    real = {"a_1": ["real"], "a_2": ["real"], "a_3": ["real"], "C": ["real"]}
+    cases: list[Case] = []
+
+    def add(
+        case_id: str, title: str, request: VectorInput, status: Status = Status.OK, **kw: Any
+    ) -> None:
+        cases.append(
+            Case(
+                case_id,
+                title,
+                "distributional",
+                request.model_copy(update={"action": "distributional"}),
+                status,
+                **kw,
+            )
+        )
+
+    div = r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)"
+    add(
+        "dist-coulomb",
+        "div of r/r^3 is 4 pi delta (spherical)",
+        make(div, "spherical"),
+        check=delta(4 * sp.pi),
+    )
+    add(
+        "dist-rhat",
+        "div of rhat/r^2 is 4 pi delta (spherical)",
+        make(r"\nabla\cdot\left(\frac{\hat{r}}{r^{2}}\right)", "spherical"),
+        check=delta(4 * sp.pi),
+    )
+    add(
+        "dist-cartesian-norm",
+        "div of r/|r|^3 is 4 pi delta (Cartesian)",
+        make(r"\nabla\cdot\left(\frac{\mathbf{r}}{|\mathbf{r}|^{3}}\right)"),
+        check=delta(4 * sp.pi),
+    )
+    add(
+        "dist-cartesian-components",
+        "(x,y,z)/(x^2+y^2+z^2)^(3/2) (explicit components)",
+        make(r"\nabla\cdot F", fields=(kernel("1", ("0", "0", "0")),)),
+        check=delta(4 * sp.pi),
+    )
+    add(
+        "dist-cylindrical",
+        "the Coulomb field in cylindrical components",
+        make(
+            r"\nabla\cdot F",
+            "cylindrical",
+            (vector("F", "rho/(rho**2 + z**2)**(3/2)", "0", "z/(rho**2 + z**2)**(3/2)"),),
+        ),
+        check=delta(4 * sp.pi),
+    )
+    add(
+        "dist-laplacian",
+        "Laplacian of 1/r is -4 pi delta",
+        make(r"\nabla^{2}\frac{1}{r}", "spherical"),
+        check=delta(-4 * sp.pi),
+    )
+    add(
+        "dist-laplacian-cartesian",
+        "div grad of 1/|r| is -4 pi delta (Cartesian)",
+        make(r"\nabla\cdot\left(\nabla\frac{1}{|\mathbf{r}|}\right)"),
+        check=delta(-4 * sp.pi),
+    )
+    add(
+        "dist-translated",
+        "translated and scaled source: 4 pi C delta(r - a)",
+        make(
+            r"\nabla\cdot F",
+            fields=(kernel("C", ("a_1", "a_2", "a_3")),),
+            constants=["C", "a_1", "a_2", "a_3"],
+            assumptions=real,
+        ),
+        check=delta(4 * sp.pi * big_c, (a1, a2, a3)),
+    )
+    add(
+        "dist-negative-strength",
+        "negative strength: -8 pi delta(r - (1, 0, 1/2))",
+        make(r"\nabla\cdot F", fields=(kernel("-2", ("1", "0", "1/2")),)),
+        check=delta(-8 * sp.pi, (1, 0, sp.Rational(1, 2))),
+    )
+    add(
+        "dist-zero-strength",
+        "zero strength gives the zero distribution",
+        make(r"\nabla\cdot F", fields=(kernel("0", ("0", "0", "0")),)),
+        check=lambda r: r.singular is not None and r.result_latex == "0",
+    )
+    add(
+        "dist-point-charge",
+        "Gauss's law for a point charge: q/epsilon_0 delta",
+        make(
+            r"\nabla\cdot\left(\frac{q}{4\pi\epsilon_0}\frac{\mathbf{r}}{r^{3}}\right)",
+            "spherical",
+            constants=["q", "epsilon_0"],
+            assumptions={"epsilon_0": ["positive"]},
+        ),
+        check=delta(q / e0),
+    )
+    add(
+        "dist-claim-sign",
+        "the +4 pi claim for the Laplacian of 1/r is rejected",
+        make(r"\nabla^{2}\frac{1}{r}", "spherical", target=r"4\pi\delta^{(3)}(\mathbf r)"),
+        check=lambda r: (
+            r.singular is not None
+            and r.singular.claim is not None
+            and not r.singular.claim.holds
+            and r.singular.claim.reason == "different_strength"
+        ),
+    )
+    add(
+        "dist-claim-normalisation",
+        "the claim div(r/r^3) = delta (not 4 pi delta) is rejected",
+        make(div, "spherical", target=r"\delta^{(3)}(\mathbf r)"),
+        check=lambda r: (
+            r.singular is not None and r.singular.claim is not None and not r.singular.claim.holds
+        ),
+    )
+    add(
+        "dist-claim-pointwise",
+        "the claim div(r/r^3) = 0 as a distributional identity is rejected",
+        make(div, "spherical", target="0"),
+        check=lambda r: (
+            r.singular is not None
+            and r.singular.claim is not None
+            and r.singular.claim.reason == "no_delta_term"
+        ),
+    )
+    add(
+        "dist-r-over-r4",
+        "r/r^4 is not the Coulomb kernel",
+        make(r"\nabla\cdot F", fields=(kernel("1", ("0", "0", "0"), "4"),)),
+        Status.UNSUPPORTED,
+    )
+    add(
+        "dist-two-sources",
+        "two point sources are not supported",
+        make(
+            r"\nabla\cdot (F + G)",
+            fields=(
+                kernel("1", ("0", "0", "0")),
+                kernel("1", ("1", "0", "0")).model_copy(update={"name": "G"}),
+            ),
+        ),
+        Status.UNSUPPORTED,
+    )
+    add(
+        "dist-abstract-field",
+        "an abstract field has no source",
+        make(r"\nabla\cdot F", fields=(FieldDecl(name="F", kind="vector"),)),
+        Status.UNSUPPORTED,
+    )
+    add(
+        "dist-source-not-real",
+        "an undeclared source position is not assumed real",
+        make(
+            r"\nabla\cdot F",
+            fields=(kernel("1", ("a_1", "a_2", "a_3")),),
+            constants=["a_1", "a_2", "a_3"],
+        ),
+        Status.UNSUPPORTED,
+    )
+    add(
+        "dist-no-delta-through-evaluate",
+        "a Dirac delta in a component is refused by the pointwise actions",
+        VectorInput(expression=r"\nabla\cdot F", fields=[vector("F", "DiracDelta(x)", "0", "0")]),
+        Status.UNSUPPORTED,
+        check=lambda r: r.diagnostics.reason == "unsupported_distribution_operation",
+    )
+    return cases
+
+
 def _all_cases() -> list[Case]:
-    return [*_cases(), *_step_cases(), *_em_cases(), *_integral_cases(), *_estat_cases()]
+    return [
+        *_cases(),
+        *_step_cases(),
+        *_em_cases(),
+        *_integral_cases(),
+        *_estat_cases(),
+        *_distributional_cases(),
+    ]
 
 
 CASES = _all_cases()
@@ -1464,8 +1678,9 @@ def render_report(data: dict[str, Any]) -> str:
         "no symbolic proof is claimed for an evaluated result.",
         "- A result that needs mixed partial derivatives to commute is withheld unless the field's "
         "smoothness is declared.",
-        "- The axis and origin of curvilinear systems are reported as restrictions; distributions "
-        "(a delta at the origin) are not represented.",
+        "- The axis and origin of curvilinear systems are reported as restrictions. A delta at a point is "
+        "represented only as the result of the `distributional` action for the Coulomb-kernel family "
+        "(one point source, constant strength); every other distribution of several variables is refused.",
         "- At most four nested operators; three coordinate systems; no tensor fields, no integrals "
         "(later phases).",
         "",

@@ -60,7 +60,8 @@ def _scripted_geometry(lower: str) -> dict[str, Any]:
 
 def _scripted_vector(latex: str, lower: str) -> dict[str, Any]:
     """Development stand-in: bold letters are vector fields, other single letters scalar fields."""
-    vectors = sorted(set(re.findall(r"\\mathbf\{([A-Za-z])\}", latex)))
+    # `\mathbf{r}` is the position vector, never a declared field
+    vectors = sorted(set(re.findall(r"\\mathbf\{([A-Za-z])\}", latex)) - {"r"})
     bare = re.sub(r"\\[A-Za-z]+|\{[^}]*\}", " ", latex)
     scalars = sorted(set(re.findall(r"(?<![A-Za-z])([a-z])(?![A-Za-z])", bare)) - set(vectors))
     if "spherical" in lower:
@@ -72,7 +73,12 @@ def _scripted_vector(latex: str, lower: str) -> dict[str, Any]:
     scalars = [n for n in scalars if n not in coordinates and n != "t"]
     fields = [{"name": n, "kind": "vector"} for n in vectors]
     fields += [{"name": n, "kind": "scalar"} for n in scalars]
-    return {"expression": latex, "coordinates": system, "fields": fields}
+    args: dict[str, Any] = {"expression": latex, "coordinates": system, "fields": fields}
+    if "distribution" in lower or "delta" in lower or "point charge" in lower:
+        args["action"] = (
+            "distributional"  # a point source: the delta term, not only the classical 0
+        )
+    return args
 
 
 _APPROXIMATION = re.compile(
@@ -915,7 +921,14 @@ class ScriptedLLM:
             found = re.search(r"status=(\w+)", content)
             status = found.group(1) if found else "failed"
             result = re.search(r"result=\$([^$]*)\$", content)
-            if status == "ok" and result:
+            if status == "ok" and result and "proof status: derived" in content:
+                text = (
+                    f"**Result:** $${result.group(1)}$$\n\n"
+                    "This is an equality as distributions, not pointwise: the classical value is 0 away from "
+                    "the source and the delta carries the flux. It is derived (not proved); the card lists the "
+                    "classical and the distributional result, the derivation and the independent pairings."
+                )
+            elif status == "ok" and result:
                 text = (
                     f"**Result:** $${result.group(1)}$$\n\n"
                     "It is numerically checked against an independent Cartesian evaluation (evidence, "
