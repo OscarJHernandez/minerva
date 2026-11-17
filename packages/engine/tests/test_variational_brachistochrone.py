@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import sympy as sp
 from minerva_engine import Engine
-from minerva_engine.models import Limits, Status
+from minerva_engine.models import Status
+from minerva_engine.testing import budget_limits
 from minerva_engine.variational import VariationInput
 from minerva_engine.variational.firstvar import first_variation
 from minerva_engine.variational.setup import read_problem
@@ -31,7 +32,7 @@ def make(integrand: str, **kw: object):  # type: ignore[no-untyped-def]
         functions=["x"],
         **kw,  # type: ignore[arg-type]
     )
-    return read_problem(data, Limits())
+    return read_problem(data, budget_limits())
 
 
 def test_the_leibniz_spelling_is_the_derivative_not_a_ratio() -> None:

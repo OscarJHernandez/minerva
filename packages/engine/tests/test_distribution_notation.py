@@ -14,18 +14,18 @@ from minerva_engine import (
     DistributionResult,
     Engine,
     ExpressionInput,
-    Limits,
     Status,
     parse_latex,
     parse_text,
 )
 from minerva_engine.build import NotationLog
+from minerva_engine.testing import budget_limits
 from pydantic import ValidationError
 
 
 @pytest.fixture(scope="module")
 def engine() -> Engine:
-    return Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    return Engine(budget_limits(max_concurrency=2))
 
 
 def run(

@@ -15,7 +15,8 @@ from minerva_api.agent.refs import ResultStore, inherited_note
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import ToolContext
 from minerva_api.routers_chat import _history
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 FAST = AgentLimits(retry_delay_seconds=0)
@@ -24,9 +25,7 @@ RESTRICTION = r"x \neq 1"
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def play(llm: Any, ctx: ToolContext, **kw: Any) -> dict[str, Any]:

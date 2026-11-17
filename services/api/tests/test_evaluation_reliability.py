@@ -22,7 +22,8 @@ from minerva_api.agent.llm import LLMError
 from minerva_api.agent.loop import AgentLimits
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import ToolContext
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 FAST = AgentLimits(retry_delay_seconds=0)
@@ -33,9 +34,7 @@ X_NEQ_1 = r"x \neq 1"
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def run(case_id: str, script: list[Any], ctx: ToolContext) -> CaseResult:

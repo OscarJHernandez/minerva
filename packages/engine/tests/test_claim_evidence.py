@@ -7,9 +7,9 @@ unmatched: a match is "the same statement a verified result made", never a new v
 """
 
 import pytest
-from minerva_engine import Limits
 from minerva_engine.claim_evidence import ClaimEvidence
 from minerva_engine.claims import check_claims
+from minerva_engine.testing import budget_limits
 
 V = ["theta", "phi"]
 THETA = (
@@ -42,7 +42,7 @@ EVIDENCE = [
 
 
 def run(claims: list[str], evidence: list[ClaimEvidence] = EVIDENCE):  # type: ignore[no-untyped-def]
-    return check_claims(claims, {}, [], Limits(), evidence=evidence)
+    return check_claims(claims, {}, [], budget_limits(), evidence=evidence)
 
 
 @pytest.mark.parametrize(
@@ -138,5 +138,7 @@ def test_without_evidence_nothing_changes() -> None:
 
 def test_matrices_distributions_and_sums_are_never_linked() -> None:
     evidence = [ClaimEvidence(latex=r"h = m g", source="r1", role="conserved")]
-    (result,) = check_claims([r"W = m g"], {}, [], Limits(), matrices=["m"], evidence=evidence)
+    (result,) = check_claims(
+        [r"W = m g"], {}, [], budget_limits(), matrices=["m"], evidence=evidence
+    )
     assert result.status == "unverified"

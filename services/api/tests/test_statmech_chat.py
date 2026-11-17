@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from minerva_api.agent.tools import TOOLS, ToolContext, execute
 from minerva_engine import Engine, Limits
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 from .test_chat import cards_of, chat_client, sse  # noqa: F401
@@ -56,7 +57,7 @@ def test_the_users_choices_are_not_arguments_of_the_tool() -> None:
     refused = execute(
         "statistical_mechanics",
         {**CLASSICAL, "phase_space_cell": "h"},
-        ToolContext(engine=Engine(Limits(timeout_seconds=30)), kb=KnowledgeBase.load()),
+        ToolContext(engine=Engine(budget_limits()), kb=KnowledgeBase.load()),
     )
     assert refused.status != "ok"  # unknown fields inside the system are rejected, not honoured
 

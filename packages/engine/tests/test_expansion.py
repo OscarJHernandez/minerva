@@ -5,6 +5,7 @@ import sympy as sp
 from minerva_engine import Engine, Status
 from minerva_engine.expansion import _zero_check
 from minerva_engine.series import check_series
+from minerva_engine.testing import budget_limits
 
 POSITIVE = {name: ["positive"] for name in ("m", "g", "l", "k", "c")}
 PENDULUM = r"\frac12 m l^2 \dot{\theta}^2 + m g l \cos\theta"
@@ -90,11 +91,11 @@ def test_double_pendulum_modes_match_the_known_values(engine: Engine) -> None:
     assert report.status is Status.OK, report.message
     assert len(report.modes) == 2 and all(m.verified for m in report.modes)
     # With m1 = m2 = l1 = l2 = g = 1 the two squared frequencies are 2 -/+ sqrt(2).
-    from minerva_engine import Limits, parse_latex
+    from minerva_engine import parse_latex
 
     values = sorted(
         float(
-            parse_latex(m.omega_squared_latex.split("=", 1)[1], assumptions, Limits()).subs(
+            parse_latex(m.omega_squared_latex.split("=", 1)[1], assumptions, budget_limits()).subs(
                 {sp.Symbol(n, positive=True): 1 for n in ("m_1", "m_2", "g", "l_1", "l_2")}
             )
         )

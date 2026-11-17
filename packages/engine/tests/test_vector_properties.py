@@ -7,10 +7,11 @@ import sympy as sp
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from minerva_engine import FieldDecl, VectorInput
-from minerva_engine.models import Limits, Status
+from minerva_engine.models import Status
+from minerva_engine.testing import budget_limits
 from minerva_engine.vector import vector_calculus
 
-L = Limits()
+L = budget_limits()
 SETTINGS = settings(max_examples=6, deadline=None, derandomize=True)
 SYSTEMS = {
     "cartesian": ("x", "y", "z"),

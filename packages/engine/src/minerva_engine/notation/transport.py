@@ -163,6 +163,9 @@ def clean_transport(source: str) -> tuple[str, tuple[Normalization, ...]]:
     if stripped and stripped[-1] in ".,;" and len(stripped) > 1 and not stripped[-2].isdigit():
         text = stripped[:-1].rstrip()
         notes.append(_note(stripped[-1], "", "sentence punctuation after the formula"))
+        # A period outside a wrapper (`$x^2$.`, a closing code fence followed by `.`) hid the wrapper from
+        # the first pass; with the period gone it is the outermost layer.
+        text = _unwrap(text, notes)
     return text.strip(), tuple(notes)
 
 

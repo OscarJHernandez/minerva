@@ -16,13 +16,14 @@ from minerva_engine import (
     Status,
 )
 from minerva_engine.distributions.pairing import verify_pairing
+from minerva_engine.testing import budget_limits
 
 X = sp.Symbol("x", real=True)
 
 
 @pytest.fixture(scope="module")
 def engine() -> Engine:
-    return Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    return Engine(budget_limits(max_concurrency=2))
 
 
 def run(

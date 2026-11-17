@@ -9,14 +9,15 @@ from typing import Any
 import mpmath as mp
 import pytest
 import sympy as sp
-from minerva_engine import Engine, Limits, OdeSolveInput, Status
+from minerva_engine import Engine, OdeSolveInput, Status
 from minerva_engine.ode import OdeSolution
 from minerva_engine.ode.approximation import _check_series, solve_series
 from minerva_engine.ode.models import OdeNumericInput
 from minerva_engine.ode.numerical import solve_numerical
 from minerva_engine.ode.reading import read_ode
+from minerva_engine.testing import budget_limits
 
-L = Limits(timeout_seconds=30)
+L = budget_limits()
 
 
 def series(*equations: str, order: int = 6, fmt: str = "latex", **kw: Any) -> OdeSolution:

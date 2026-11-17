@@ -6,7 +6,7 @@ single backslash made the whole text count as LaTeX. Every damage the cleaner re
 """
 
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 from minerva_engine.notation.models import NormalizationKind
 from minerva_engine.notation.transport import (
@@ -81,10 +81,19 @@ def test_html_entities_and_wrappers_combine() -> None:
     assert cleaned == "a < b" and len(notes) == 2
 
 
+@pytest.mark.parametrize("damaged", ["$x^2 + y$.", "```latex\nx^2 + y\n```.", "`x^2 + y`,"])
+def test_a_wrapper_followed_by_sentence_punctuation_is_still_peeled(damaged: str) -> None:
+    # Found by the nightly randomized run (a fenced formula followed by a period was left wrapped).
+    assert clean_transport(damaged)[0] == "x^2 + y"
+
+
 def test_nested_wrappers_are_peeled() -> None:
     assert clean_transport("```\n$x^2$\n```")[0] == "x^2"
 
 
+# Found by the nightly run: a period after a wrapper.
+@example("code_fence", "a*b - c/d", "trailing_period")
+@example("dollar_wrapper", "a*b - c/d", "trailing_period")
 @given(st.sampled_from(sorted(DAMAGE)), st.sampled_from(CLEAN), st.sampled_from(sorted(DAMAGE)))
 def test_two_damages_compose(first: str, source: str, second: str) -> None:
     damaged = DAMAGE[second](DAMAGE[first](source))

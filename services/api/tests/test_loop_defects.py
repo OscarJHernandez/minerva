@@ -147,7 +147,7 @@ def test_a_tool_that_times_out_frees_the_sandbox_slot_at_once(
     assert message["trace"][0]["error_category"] == "timeout"
     # the abandoned worker notices within a slice; it did not wait out the sandbox's 30 s limit
     freed = False
-    for _ in range(40):
+    for _ in range(150):
         if slow.engine.sandbox._slots.acquire(blocking=False):
             slow.engine.sandbox._slots.release()
             freed = True

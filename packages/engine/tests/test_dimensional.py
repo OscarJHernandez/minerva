@@ -7,7 +7,6 @@ import sympy as sp
 from minerva_engine import (
     ConstantCandidate,
     Engine,
-    Limits,
     MinervaMathError,
     ParseError,
     QuantitySpec,
@@ -26,8 +25,9 @@ from minerva_engine.dimensions import (
     read_unit,
 )
 from minerva_engine.pi_groups import analyze_dimensions, check_units
+from minerva_engine.testing import budget_limits
 
-L = Limits()
+L = budget_limits()
 CONSTANTS = [
     ConstantCandidate(id="const.c", latex="c", unit="m/s"),
     ConstantCandidate(id="const.G", latex="G", unit="m^3/(kg s^2)"),

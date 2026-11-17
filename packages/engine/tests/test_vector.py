@@ -7,11 +7,12 @@ engine's output on explicit test fields."""
 import pytest
 import sympy as sp
 from minerva_engine import Engine, FieldDecl, VectorInput
-from minerva_engine.models import Limits, Status
+from minerva_engine.models import Status
+from minerva_engine.testing import budget_limits
 from minerva_engine.vector import vector_calculus
 from minerva_engine.vector.coordinates import System
 
-L = Limits()
+L = budget_limits()
 
 
 def run(expression: str, system: str = "cartesian", fields=(), **kw):

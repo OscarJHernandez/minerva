@@ -12,11 +12,12 @@ from minerva_engine import (
     trace_scope,
 )
 from minerva_engine.sandbox import Sandbox
+from minerva_engine.testing import budget_limits
 
 
 @pytest.fixture(scope="module")
 def engine() -> Engine:
-    return Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    return Engine(budget_limits(max_concurrency=2))
 
 
 def test_every_sandbox_call_is_reported_with_the_bound_trace_id(engine: Engine) -> None:

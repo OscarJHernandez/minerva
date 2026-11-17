@@ -1,5 +1,6 @@
 import pytest
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 
@@ -10,4 +11,4 @@ def kb() -> KnowledgeBase:
 
 @pytest.fixture(scope="session")
 def engine() -> Engine:
-    return Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    return Engine(budget_limits(max_concurrency=2))

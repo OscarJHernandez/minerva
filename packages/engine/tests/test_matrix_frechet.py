@@ -357,7 +357,12 @@ def _sym(name: str, deriv: int = 0):  # type: ignore[no-untyped-def]
 
 
 # -- randomized small matrices ------------------------------------------------------------------
-@pytest.mark.parametrize("seed", range(6))
+# The 2x2 seeds (0, 2, 4) take a few seconds and stay in the pull-request tier; the 3x3 seeds took 20 s and more on a
+# loaded runner (a third of the budget) and run in the nightly extended tier, where the same property is checked.
+@pytest.mark.parametrize(
+    "seed",
+    [s if s % 2 == 0 else pytest.param(s, marks=pytest.mark.extended) for s in range(6)],
+)
 def test_random_integer_matrices_agree_with_an_independent_derivative(
     engine: Engine, seed: int
 ) -> None:

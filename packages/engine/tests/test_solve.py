@@ -1,10 +1,11 @@
 """Polynomial solving: closed forms, solvability by radicals, honest limits, verification."""
 
 import pytest
-from minerva_engine import Engine, Limits, Status
+from minerva_engine import Engine, Status
 from minerva_engine.solve import solve_polynomial
+from minerva_engine.testing import budget_limits
 
-L = Limits()
+L = budget_limits()
 
 
 def solve(eq: str, var: str | None = None, **assumptions: list[str]):  # type: ignore[no-untyped-def]
@@ -139,7 +140,7 @@ def test_choosing_the_unknown_resolves_ambiguity() -> None:
 
 
 def test_engine_runs_solve_in_the_sandbox() -> None:
-    engine = Engine(Limits(timeout_seconds=30))
+    engine = Engine(budget_limits())
     r = engine.solve("x^4+x+1=0")
     assert r.status is Status.OK and len(r.roots) == 4 and r.duration_ms >= 0
     assert engine.solve("x^2-1=0", "z").status is Status.PARSE_ERROR

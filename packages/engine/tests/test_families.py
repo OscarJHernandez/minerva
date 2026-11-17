@@ -6,12 +6,13 @@ import random
 import mpmath as mp
 import pytest
 import sympy as sp
-from minerva_engine import Engine, Limits, StatModelInput, Status
+from minerva_engine import Engine, StatModelInput, Status
 from minerva_engine.stats import moments as mom
 from minerva_engine.stats.domain import decide
 from minerva_engine.stats.families import FAMILIES, x
 from minerva_engine.stats.numeric import Numeric, sample_parameters
 from minerva_engine.stats.statmodel import stat_model
+from minerva_engine.testing import budget_limits
 
 A = {
     "mu": ["real"],
@@ -109,7 +110,7 @@ def test_symbolic_moments_come_from_integration_and_summation() -> None:
 
 @pytest.fixture(scope="module")
 def engine() -> Engine:
-    return Engine(Limits(timeout_seconds=30, max_concurrency=2))
+    return Engine(budget_limits(max_concurrency=2))
 
 
 def test_the_normal_family_in_both_parametrisations(engine) -> None:
@@ -211,7 +212,7 @@ def test_a_wrong_density_is_caught_by_the_normalisation_check(monkeypatch) -> No
         density=lambda s, t: sp.exp(-((t - s["mu"]) ** 2) / (2 * s["sigma"] ** 2)) / s["sigma"],
     )
     monkeypatch.setitem(FAMILIES, "normal", broken)
-    r = stat_model(model("normal", {"mu": "mu", "sigma": "sigma"}), Limits(timeout_seconds=30))
+    r = stat_model(model("normal", {"mu": "mu", "sigma": "sigma"}), budget_limits())
     assert r.status is Status.NOT_VERIFIED and r.reason == "verification_failed"
     assert not r.moments
 
