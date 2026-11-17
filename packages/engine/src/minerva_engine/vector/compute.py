@@ -13,6 +13,7 @@ import time
 
 import sympy as sp
 
+from ..distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
 from ..errors import LimitError, MinervaMathError, ParseError
 from ..models import Limits, Status
 from .algebra import exact_zero, regularise
@@ -170,6 +171,16 @@ def _run(
         run_integral(ctx, result, diag)
         return
 
+    if inp.action == "distributional":
+        from .singular_fields import run_distributional
+
+        ctx = build_context(inp, limits, started)
+        diag.abstract_fields = sum(1 for d in ctx.low.declared.values() if d.explicit is None)
+        diag.explicit_fields = sum(1 for d in ctx.low.declared.values() if d.explicit is not None)
+        result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
+        run_distributional(ctx, result, diag)
+        return
+
     if inp.action in STEP_ACTIONS:
         from .steps import run_step
 
@@ -204,6 +215,10 @@ def _run(
             assumptions=assumptions,
             limits=limits,
             denominators=denominators,
+        )
+    if contains_distribution(expr):
+        raise _Refused(
+            Status.UNSUPPORTED, DISTRIBUTION_REFUSAL, "unsupported_distribution_operation"
         )
     kind = kind_of(expr)
     unknown = low.unknown_symbols(expr)
@@ -266,6 +281,29 @@ def _run(
         return
 
     _present(inp, low, system, kind, comps, expr, denominators, result, diag)
+    _point_source_note(low, system, expr, kind, result)
+
+
+def _point_source_note(
+    low: Lowering, system: System, expr: sp.Expr, kind: str, result: VectorResult
+) -> None:
+    """A classical divergence or Laplacian of a point-source Coulomb kernel is 0 where it is defined and says
+    nothing about the source: say that, and where the source is. The result itself is unchanged."""
+    if kind != "scalar" or result.status is not Status.OK:
+        return
+    from .singular_fields import point_source_kernel, source_domain_latex
+
+    kernel = point_source_kernel(low, system, expr)
+    if kernel is None:
+        return
+    domain = source_domain_latex(kernel.source)
+    if domain not in result.restrictions_latex:
+        result.restrictions_latex.append(domain)
+    result.singular_hint = "point_source"
+    result.message += (
+        "; this is the classical value, valid away from the source only: as a distribution the field has "
+        "a point source there (use the distributional action)"
+    )
 
 
 def _present(

@@ -15,6 +15,7 @@ from typing import Literal
 
 import sympy as sp
 
+from ..distributions.guard import DISTRIBUTION_REFUSAL, contains_distribution
 from ..errors import MinervaMathError
 from ..models import ALLOWED_ASSUMPTIONS, Limits, Status
 from ..textparse import parse_text
@@ -106,6 +107,10 @@ class Context:
                 assumptions=self.assumptions,
                 limits=self.limits,
                 denominators=sink,
+            )
+        if contains_distribution(expr):
+            raise Refused(
+                Status.UNSUPPORTED, DISTRIBUTION_REFUSAL, "unsupported_distribution_operation"
             )
         unknown = self.low.unknown_symbols(expr)
         if unknown:
@@ -242,6 +247,12 @@ def build_context(inp: VectorInput, limits: Limits, started: float) -> Context:
                     f"{decl.name}: components may use only the coordinates, t and declared "
                     f"constants (found {', '.join(bad)})",
                     "bad_declaration",
+                )
+            if contains_distribution(parsed):
+                raise Refused(
+                    Status.UNSUPPORTED,
+                    DISTRIBUTION_REFUSAL,
+                    "unsupported_distribution_operation",
                 )
             parts.append(parsed)
         d.explicit = tuple(low._scalar(p) for p in parts)

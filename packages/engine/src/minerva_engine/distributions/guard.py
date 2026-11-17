@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import sympy as sp
 
+from .point_delta import PointDelta
+
 DISTRIBUTION_REFUSAL = (
     "This expression contains a Dirac delta or Heaviside function. These are distributions, not "
     "ordinary functions, so this operation cannot check results involving them by sampling. "
@@ -18,5 +20,5 @@ DISTRIBUTION_REFUSAL = (
 
 
 def contains_distribution(expr: sp.Basic) -> bool:
-    """True if ``expr`` contains ``DiracDelta`` or ``Heaviside`` anywhere."""
-    return bool(expr.has(sp.DiracDelta, sp.Heaviside))
+    """True if ``expr`` contains ``DiracDelta``, ``Heaviside`` or a three-dimensional ``PointDelta``."""
+    return bool(expr.has(sp.DiracDelta, sp.Heaviside, PointDelta))

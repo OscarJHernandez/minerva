@@ -240,7 +240,9 @@ def _definition(parsed: list[sp.Expr]) -> tuple[sp.Symbol, sp.Expr] | None:
     return None
 
 
-_DISTRIBUTION_NOTATION = re.compile(r"\\(?:delta|theta|Theta|vartheta)\s*(?:\\left)?\s*\(")
+_DISTRIBUTION_NOTATION = re.compile(
+    r"\\(?:delta(?:\s*\^\s*(?:\{\s*(?:\(\s*3\s*\)|3)\s*\}|3))?|theta|Theta|vartheta)\s*(?:\\left)?\s*\("
+)
 _DISTRIBUTION_DETAIL = (
     "could not check: `\\delta(...)` or `\\theta(...)` may be a Dirac delta or step function, or "
     "only a function of its argument; it is never tested by sampling (the distribution tool reads a "
