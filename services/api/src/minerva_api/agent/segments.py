@@ -32,6 +32,15 @@ _SPACING = re.compile(
 _ALIASES = (
     (re.compile(r"\\exponentialE(?![A-Za-z])"), r"\\mathrm{e}"),
     (re.compile(r"\\imaginaryI(?![A-Za-z])"), r"\\mathrm{i}"),
+    # A bold or hatted single letter: `\\mathbf{r}` and `\\mathbf r` are one vector (the braces around a
+    # single token are otherwise dropped below, which glued the command to its letter).
+    (re.compile(r"(\\(?:mathbf|boldsymbol|bm|vec|hat|overrightarrow))\{([A-Za-z])\}"), r"\1 \2"),
+    # The three-dimensional delta: `\\delta^3(...)` and `\\delta^{(3)}(...)` are one spelling (only before a
+    # parenthesis; `\\delta^3` alone is a power of a symbol and is left alone).
+    (
+        re.compile(r"\\delta\s*\^\s*(?:\{\s*(?:\(\s*3\s*\)|3)\s*\}|3)(?=\s*(?:\\left)?\s*\()"),
+        r"\\delta^{(3)}",
+    ),
 )
 _COMMAND_GAP = re.compile(r"(\\[A-Za-z]+)\s+(?=[A-Za-z])")
 # A function applied to one argument is written `\\sin x`, `\\sin(x)` or `\\sin{\\left(x \\right)}` (the

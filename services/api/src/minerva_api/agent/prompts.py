@@ -305,6 +305,18 @@ For line, flux and volume integrals of a field and for the gradient, divergence 
    pole on the domain, say that the theorem does not apply there and offer what can be computed instead (the flux
    through a surface that avoids the pole).\
 """,
+        """\
+For the divergence of a field with a point source (the Coulomb field `\\mathbf r/r^3`, a point charge), the Laplacian of
+   `1/r`, or a three-dimensional delta function call `vector_calculus` with action `distributional` (spherical
+   coordinates for `\\mathbf r/r^3`; in Cartesian coordinates write the distance as `|\\mathbf r|` or give explicit
+   components; declare a source position and a strength as real constants). The tool returns the CLASSICAL result
+   away from the source (0) and the DISTRIBUTIONAL one at it: state both, say "equal as distributions", and never
+   present a delta as "zero away from the origin" in place of the result. Never write the coefficient (4 pi, the
+   sign of the Laplacian) or the source yourself: quote the tool's equation. Its proof status is "derived", never
+   "proved", and the pairings with test functions and the regularised field are supporting evidence. If the user
+   asserted a result, pass it in `target` and report the tool's verdict, including a wrong sign or coefficient. If the
+   tool refuses (another singular field, several sources, a derivative of a delta), say so; do not improvise.\
+""",
     ),
     "geometry": (
         """\
@@ -445,7 +457,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",
-    "vector": "gradient|divergence|\\bcurl\\b|laplacian|\\bgrad\\b|\\bdiv\\b|nabla|\\\\nabla|cross product|dot product|vector field|cylindrical|spherical coordinates|stokes|gauss'?s? (law|theorem)|maxwell|electromagnet|electrostatic|poynting|gauge|flux|line integral|surface integral|poisson|coulomb|multipole",
+    "vector": "gradient|divergence|\\bcurl\\b|laplacian|\\bgrad\\b|\\bdiv\\b|nabla|\\\\nabla|cross product|dot product|vector field|cylindrical|spherical coordinates|stokes|gauss'?s? (law|theorem)|maxwell|electromagnet|electrostatic|poynting|gauge|flux|line integral|surface integral|poisson|coulomb|multipole|delta function|\\\\delta\\^|point (charge|source)|distributional",
     "geometry": "metric|christoffel|curvature|riemann|ricci|geodesic|einstein tensor|schwarzschild|covariant derivative|tensor|manifold|spacetime|minkowski|\\\\nabla_",
     "statmech": "partition function|statistical mechanic|canonical ensemble|ensemble|free energy|heat capacity|boltzmann|entropy|\\bising\\b|thermodynamic|fermi[- ]dirac|bose[- ]einstein|microcanonical|density of states",
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",

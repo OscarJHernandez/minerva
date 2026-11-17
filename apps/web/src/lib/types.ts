@@ -851,7 +851,8 @@ export type VectorAction =
   | "derive"
   | "em_derive"
   | "em_compute"
-  | "integrate";
+  | "integrate"
+  | "distributional";
 
 export interface VectorFieldDecl {
   name: string;
@@ -1020,6 +1021,58 @@ export interface VectorEMComputation {
   holds: boolean | null;
 }
 
+export interface VectorSingularStep {
+  title: string;
+  latex: string;
+  /** established: an exact computation or a theorem applied; checked: numerical agreement (not a proof). */
+  status: "established" | "checked" | "not_established";
+  note: string;
+}
+
+export interface VectorWeakPairing {
+  label: string;
+  test_function_latex: string;
+  expected: number;
+  measured: number;
+  error: number;
+  passed: boolean;
+}
+
+export interface VectorRegularisation {
+  eps: number;
+  value: number;
+  expected: number;
+  error: number;
+}
+
+export interface VectorSingularClaim {
+  latex: string;
+  holds: boolean;
+  reason: "agrees" | "no_delta_term" | "different_strength" | "different_source" | "not_readable";
+  note: string;
+}
+
+/** The distributional divergence or Laplacian of a point-source Coulomb kernel, with its evidence. */
+export interface VectorSingular {
+  family: "divergence" | "laplacian";
+  classical_latex: string;
+  classical_domain_latex: string;
+  distributional_latex: string;
+  strength_latex: string;
+  source_latex: string;
+  support: string;
+  derivation: VectorSingularStep[];
+  flux_latex: string;
+  weak_checks: VectorWeakPairing[];
+  flux_checks: VectorWeakPairing[];
+  regularisation: VectorRegularisation[];
+  /** `derived` is not `proved`: every hypothesis exact and every independent pairing agreed. */
+  proof_status: "derived" | "not_established";
+  scope: string;
+  unresolved: string[];
+  claim: VectorSingularClaim | null;
+}
+
 export interface VectorResult {
   status: Status;
   message: string;
@@ -1053,6 +1106,9 @@ export interface VectorResult {
   derivation?: string | null;
   integral?: VectorIntegralResult | null;
   em?: VectorEMComputation | null;
+  singular?: VectorSingular | null;
+  /** The classical value hides a point source: use the distributional action. */
+  singular_hint?: "point_source" | null;
   duration_ms: number;
   calculation_id?: string | null;
 }

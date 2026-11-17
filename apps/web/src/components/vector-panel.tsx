@@ -4,6 +4,7 @@ import { Math } from "@minerva/ui/math";
 import { useId } from "react";
 import type { VectorRequest, VectorResult } from "@/lib/types";
 import { StatusPill } from "./result-panel";
+import { SingularSection } from "./vector-singular";
 
 /**
  * Vector calculus: what was read, the result by component along the unit vectors, where the
@@ -21,15 +22,17 @@ export function VectorPanel({
   const shown = result.status === "ok";
   const v = result.verification;
   const label =
-    result.evidence === "conditional"
-      ? "Holds given the premises you supplied"
-      : result.evidence === "identity" && result.steps.length > 0
-        ? "Each step checked"
-        : v
-          ? v.symbolic_zero === true
-            ? "Proved by a symbolic zero test, and numerically checked"
-            : "Numerically checked; no symbolic proof"
-          : "Verified";
+    result.singular?.proof_status === "derived"
+      ? "Derived, and confirmed by independent pairings"
+      : result.evidence === "conditional"
+        ? "Holds given the premises you supplied"
+        : result.evidence === "identity" && result.steps.length > 0
+          ? "Each step checked"
+          : v
+            ? v.symbolic_zero === true
+              ? "Proved by a symbolic zero test, and numerically checked"
+              : "Numerically checked; no symbolic proof"
+            : "Verified";
   return (
     <section
       aria-labelledby={headingId}
@@ -82,14 +85,32 @@ export function VectorPanel({
         </div>
       )}
 
-      {shown && !result.integral && result.result_kind === "scalar" && result.result_latex && (
-        <div className="mt-3">
-          <div className="text-xs uppercase tracking-wide text-muted">Result</div>
-          <div className="overflow-x-auto">
-            <Math latex={result.result_latex} display className="text-xl" label="Result" />
-          </div>
-        </div>
+      {shown && result.singular && <SingularSection result={result} singular={result.singular} />}
+
+      {shown && result.singular_hint === "point_source" && (
+        <p
+          role="note"
+          className="mt-3 rounded bg-warn-soft p-3 text-sm text-warn"
+          data-testid="singular-hint"
+        >
+          This is the classical value, valid away from the source only. The field has a point
+          source: as a distribution its divergence is a delta term (use the distributional action to
+          derive it).
+        </p>
       )}
+
+      {shown &&
+        !result.integral &&
+        !result.singular &&
+        result.result_kind === "scalar" &&
+        result.result_latex && (
+          <div className="mt-3">
+            <div className="text-xs uppercase tracking-wide text-muted">Result</div>
+            <div className="overflow-x-auto">
+              <Math latex={result.result_latex} display className="text-xl" label="Result" />
+            </div>
+          </div>
+        )}
 
       {shown && result.result_kind === "vector" && (
         <div className="mt-3">
@@ -336,7 +357,7 @@ export function VectorPanel({
 
       {result.message && !shown && <p className="mt-3 text-sm text-muted">{result.message}</p>}
 
-      {shown && result.restrictions_latex.length > 0 && (
+      {shown && !result.singular && result.restrictions_latex.length > 0 && (
         <div className="mt-3 rounded bg-warn-soft p-3 text-sm text-warn" data-testid="restrictions">
           <div>Valid only where</div>
           <ul className="mt-1">
