@@ -7,6 +7,7 @@ from typing import Any
 import mpmath as mp
 import pytest
 from minerva_engine.models import Limits, Status
+from minerva_engine.testing import budget_limits
 from minerva_engine.variational import VariationInput, variation
 from minerva_engine.variational.classify import ALL_FACTS, SecondEvidence, classify
 from minerva_engine.variational.secondvar import (
@@ -34,7 +35,7 @@ def problem(integrand: str, **kw: Any):  # type: ignore[no-untyped-def]
     kw.setdefault("functions", ["x"])
     kw.setdefault("lower", "0")
     kw.setdefault("upper", "1")
-    return read_problem(VariationInput(action="second", integrand=integrand, **kw), Limits())
+    return read_problem(VariationInput(action="second", integrand=integrand, **kw), budget_limits())
 
 
 # -- the symbolic form --------------------------------------------------------------------------

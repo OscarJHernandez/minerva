@@ -29,6 +29,13 @@ git status --short && git diff --stat
 `make check` is the same set as the CI jobs `python`, `tests`, `tests-api` and `web`. CI splits the pytest run over
 runner pods with `MINERVA_TEST_SHARD=i/n` (engine, handbook and scripts in 5 shards, API tests in one pod, `-n 3`); unset runs everything.
 
+Before every push, also run the files you touched under contention, because CI runs five shards and the API pod
+side by side on runners without CPU limits: `uv run pytest -n 8 --dist loadfile --durations=15 <files>`. A test that
+takes more than a quarter of its limit there will fail on a loaded runner; give it the shared budget
+(`minerva_engine.testing.budget_limits`), a smaller instance, or the `extended` marker. Merge `main` first, and read the
+CI result after the push before pushing again. Generated files (`scripts/capabilities.py`, benchmark reports) are
+regenerated and committed in the same push.
+
 ## 3. Definition of done (`AGENTS.md`)
 
 1. Behaviour is real computation; unsupported cases return an explicit status.

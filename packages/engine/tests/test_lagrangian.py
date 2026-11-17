@@ -4,8 +4,9 @@ import pytest
 import sympy as sp
 from minerva_engine import Engine, Limits, Status
 from minerva_engine.lagrangian import analyze_lagrangian, derive
+from minerva_engine.testing import budget_limits
 
-L = Limits()
+L = budget_limits()
 
 
 def analyze(lag: str, coords: list[str]):  # type: ignore[no-untyped-def]
@@ -155,7 +156,7 @@ def test_derive_expr_takes_explicit_symbols_and_matches_the_latex_route() -> Non
     assert sp.simplify(d.solution[d.qdd[0]] - r * thd**2) == 0
     assert sp.simplify(d.solution[d.qdd[1]] + 2 * rd * thd / r) == 0
     via_latex = derive(
-        r"\frac{1}{2}(\dot{r}^2 + r^2\dot{\theta}^2)", ["r", "theta"], "t", {}, Limits()
+        r"\frac{1}{2}(\dot{r}^2 + r^2\dot{\theta}^2)", ["r", "theta"], "t", {}, budget_limits()
     )
     # Same formulas; the symbols differ only in their assumptions, so compare the printed form.
     assert [str(sp.simplify(via_latex.solution[a])) for a in via_latex.qdd] == [

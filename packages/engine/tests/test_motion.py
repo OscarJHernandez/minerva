@@ -5,6 +5,7 @@ import math
 import pytest
 from minerva_engine import Engine, Limits, MotionReport, MotionRequest, Status, Sweep
 from minerva_engine.motion import integrate_motion, parse_request
+from minerva_engine.testing import budget_limits
 
 OSC = r"\frac12 m\dot{x}^2 - \frac12 k x^2"
 KEPLER = r"\frac12 m(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{k}{r}"
@@ -13,7 +14,7 @@ PENDULUM = (
     r"+ m_2 l_1 l_2 \dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) "
     r"+ (m_1+m_2) g l_1\cos\theta_1 + m_2 g l_2\cos\theta_2"
 )
-LIMITS = Limits(timeout_seconds=20)
+LIMITS = budget_limits()
 
 
 def solve(**kw) -> MotionReport:  # type: ignore[no-untyped-def]

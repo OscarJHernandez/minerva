@@ -13,15 +13,14 @@ from minerva_api.agent.loop import run_agent
 from minerva_api.agent.prompts import GROUP_TOOLS, assemble
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import TOOLS, LoadToolsArgs, ToolContext, run_load_tools
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def play(llm: ReplayLLM, ctx: ToolContext, text: str) -> list[dict[str, Any]]:

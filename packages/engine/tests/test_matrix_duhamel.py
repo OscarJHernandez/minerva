@@ -19,6 +19,7 @@ from minerva_engine.matrix import (
 from minerva_engine.matrix import methods as methods_module
 from minerva_engine.matrix.expressions import Exp, Sym, Term, to_terms
 from minerva_engine.matrix.verify import Evaluator, Setup, check_integral, close
+from minerva_engine.testing import budget_limits
 
 t = sp.Symbol("t")
 DUHAMEL = r"\exp((t-s)A) B \exp(sA)"
@@ -213,12 +214,12 @@ def test_numeric_value_when_no_closed_form_is_found(monkeypatch: pytest.MonkeyPa
         upper="1",
     )
     # t is a free symbol here, so there is no numeric value: the representation is kept
-    r = matrix_calculus(request, Limits(timeout_seconds=30))
+    r = matrix_calculus(request, budget_limits())
     assert r.result_kind == "representation" and not r.evaluated
     numbers = request.model_copy(
         update={"expression": ExpressionInput(input=r"\exp((1-s)A) B \exp(sA)")}
     )
-    r = matrix_calculus(numbers, Limits(timeout_seconds=30))
+    r = matrix_calculus(numbers, budget_limits())
     assert r.status is Status.OK and r.result_kind == "numeric" and not r.evaluated
     assert r.result_entries is not None
     want = reference(a, b, 1.0)

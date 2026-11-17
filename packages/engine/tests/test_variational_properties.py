@@ -5,7 +5,7 @@ from __future__ import annotations
 import sympy as sp
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-from minerva_engine.models import Limits
+from minerva_engine.testing import budget_limits
 from minerva_engine.variational import VariationInput
 from minerva_engine.variational.firstvar import first_variation
 from minerva_engine.variational.jets import JetSpace
@@ -41,7 +41,7 @@ def build(source: str, upper: str = "1") -> Problem:
     data = VariationInput(
         integrand=source, format="text", functions=["x"], lower="0", upper=upper, action="first"
     )
-    return read_problem(data, Limits())
+    return read_problem(data, budget_limits())
 
 
 @SETTINGS

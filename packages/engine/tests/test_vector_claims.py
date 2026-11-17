@@ -4,10 +4,11 @@ The strict parser reads `\\times` and `\\cdot` as scalar products, so `a \\times
 (false for vectors) used to come out as "holds", and `(a \\cdot b) c = a (b \\cdot c)` as well."""
 
 import pytest
-from minerva_engine import Limits, check_claim, check_claims
+from minerva_engine import check_claim, check_claims
 from minerva_engine.claims import uses_vector_notation
+from minerva_engine.testing import budget_limits
 
-L = Limits()
+L = budget_limits()
 
 
 @pytest.mark.parametrize(

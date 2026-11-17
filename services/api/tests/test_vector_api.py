@@ -6,7 +6,8 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 from minerva_api.agent.tools import SCALAR_TOOLS, TOOLS, ToolContext, execute
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 from .conftest import build_app, register
@@ -21,7 +22,7 @@ CURL_A = {
 
 @pytest.fixture(scope="module")
 def shared() -> tuple[Engine, KnowledgeBase]:
-    return Engine(Limits(timeout_seconds=30, max_concurrency=2)), KnowledgeBase.load()
+    return Engine(budget_limits(max_concurrency=2)), KnowledgeBase.load()
 
 
 @pytest.fixture

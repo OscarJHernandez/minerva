@@ -16,6 +16,7 @@ from minerva_engine import (
     parse_latex,
 )
 from minerva_engine.ops import can_reverse, rule_rewrites
+from minerva_engine.testing import budget_limits
 from minerva_engine.transform import MAX_DEPTH, MAX_VERIFY_PER_STATE, MAX_WIDTH
 
 
@@ -121,7 +122,9 @@ def test_two_separate_places_are_both_rewritten(engine: Engine) -> None:
 
 
 def test_rule_rewrites_yields_every_place_a_rule_matches() -> None:
-    expr = parse_latex(r"\sin(\sin^2 x + \cos^2 x) + \cos(\sin^2 y + \cos^2 y)", {}, Limits())
+    expr = parse_latex(
+        r"\sin(\sin^2 x + \cos^2 x) + \cos(\sin^2 y + \cos^2 y)", {}, budget_limits()
+    )
     places = list(rule_rewrites(expr, PYTH, strict=True))
     assert len(places) == 2
     assert all(not p.unmet for p in places)

@@ -55,6 +55,17 @@ def _slot_is_free(engine: Engine, wait: float = 4.0) -> bool:
     return False
 
 
+async def _wait_until_the_tool_runs(engine: Engine, wait: float = 30.0) -> None:
+    """Returns once the child holds the only sandbox slot: the event itself, not a guess at how long it takes."""
+    end = time.monotonic() + wait
+    while time.monotonic() < end:
+        if not engine.sandbox._slots.acquire(blocking=False):
+            return
+        engine.sandbox._slots.release()
+        await asyncio.sleep(0.05)
+    raise AssertionError("the tool never started")
+
+
 def _context(timeout: float = 30) -> ToolContext:
     return ToolContext(
         engine=Engine(Limits(timeout_seconds=timeout, max_concurrency=1)), kb=KnowledgeBase.load()
@@ -159,7 +170,7 @@ def test_a_client_that_leaves_during_a_tool_leaves_no_child_and_no_slot_held(
                 pass
 
         task = asyncio.create_task(consume())
-        await asyncio.sleep(1.5)  # the tool is running in its child
+        await _wait_until_the_tool_runs(ctx.engine)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task

@@ -18,6 +18,7 @@ from minerva_engine.lagrangian import analyze_lagrangian
 from minerva_engine.latexparse import parse_latex
 from minerva_engine.matrix import MatrixCalculusInput, MatrixDecl
 from minerva_engine.ncverify import verify_equal_nc
+from minerva_engine.testing import budget_limits
 from minerva_engine.textparse import parse_text
 from minerva_engine.verify import verify_equal
 from strategies.algebra import X, cancelled_rationals, polynomials
@@ -169,7 +170,7 @@ def test_the_accelerations_match_the_legendre_transformation_done_by_hand(
     momentum = sp.diff(L, v)
     H = sp.simplify((p * v - L).subs(v, sp.solve(sp.Eq(p, momentum), v)[0]))
     acceleration = (-sp.diff(H, x)).subs(p, m * v) / m  # xddot = pdot / m
-    report = analyze_lagrangian(latex, ["x"], "t", {}, Limits())
+    report = analyze_lagrangian(latex, ["x"], "t", {}, budget_limits())
     assert report.status is Status.OK
     rhs = report.accelerations[0].latex.split("=", 1)[1]
     assert verify_equal(parse_latex(rhs), acceleration, symbolic=False).passed

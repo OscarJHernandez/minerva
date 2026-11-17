@@ -32,7 +32,8 @@ from minerva_api.agent.tracing import (
     event_field_names,
 )
 from minerva_api.db import ChatMessage
-from minerva_engine import Engine, Limits, SandboxCall
+from minerva_engine import Engine, SandboxCall
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 from sqlalchemy import func, select
 
@@ -58,9 +59,7 @@ EVENTS = {
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def run(llm: Any, ctx: ToolContext, **kw: Any) -> dict[str, Any]:
@@ -287,7 +286,7 @@ def test_the_sink_sees_every_event_as_it_happens() -> None:
 
 
 def test_sandbox_calls_reach_only_the_tracer_with_their_trace_id() -> None:
-    engine = Engine(Limits(timeout_seconds=30))
+    engine = Engine(budget_limits())
     a, b = Tracer("trace-a"), Tracer("trace-b")
     activate(a, engine)
     activate(b, engine)

@@ -841,6 +841,13 @@ user-visible capability also gets an example in `docs/capabilities.yaml`, then r
 - Logging: structlog JSON with an allow-list of fields (`logging.py`). Never log expressions, emails,
   passwords, tokens, cookies or request bodies. A test enforces this.
 - Small, reviewable commits. Tests with every behaviour change. No placeholder implementations.
+- Test time limits (CI runners are shared and 2-3x slower than a workstation): a test that expects a result builds its
+  limits with `minerva_engine.testing.budget_limits(...)` (60 s, `MINERVA_TEST_TIMEOUT_SECONDS` overrides), never with the
+  default `Limits()` (10 s) or a literal of its own; only a test that expects `resource_limit` writes a short limit.
+  Do not assert wall-clock durations in a correctness test (a correct answer that arrives late is not a failure) and do
+  not wait with a fixed `sleep` for something to start: wait for the event itself. A test above a quarter of its limit
+  under load (`uv run pytest -n 8 --dist loadfile --durations=15`) gets a smaller instance of the same property or the
+  `extended` marker with a fast twin.
 - Verification tests: add a false identity (and its true twin) to `packages/engine/tests/adversarial/corpus.py`, a
   problem with a hand-written oracle and source locator to `minerva_engine/reference/`, a generator to
   `packages/engine/tests/strategies/`. A known unfixed defect is a strict `xfail`/`pending` row with an id in

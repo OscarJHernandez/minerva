@@ -50,7 +50,7 @@ def test_a_cancelled_call_kills_its_child_and_frees_its_slot(slow: sandbox.Sandb
     started = time.monotonic()
     event.set()
     thread.join(timeout=5)
-    assert not thread.is_alive() and time.monotonic() - started < 2  # not the 20 s limit
+    assert not thread.is_alive() and time.monotonic() - started < 10  # not the 20 s limit
     assert out[0].outcome is sandbox.Outcome.KILLED
     # the slot is free again: another caller gets it at once
     assert slow._slots.acquire(blocking=False)

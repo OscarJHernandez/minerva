@@ -11,7 +11,8 @@ from typing import Any
 import pytest
 import sympy as sp
 from minerva_engine import Engine
-from minerva_engine.models import Limits, Status
+from minerva_engine.models import Status
+from minerva_engine.testing import budget_limits
 from minerva_engine.variational import VariationInput
 from minerva_engine.variational.firstvar import (
     FirstVariationData,
@@ -32,7 +33,7 @@ def problem(integrand: str, **kw: Any) -> Problem:
     kw.setdefault("functions", ["x"])
     kw.setdefault("lower", "0")
     kw.setdefault("upper", "1")
-    return read_problem(VariationInput(integrand=integrand, action="first", **kw), Limits())
+    return read_problem(VariationInput(integrand=integrand, action="first", **kw), budget_limits())
 
 
 def same(a: sp.Expr, b: sp.Expr) -> bool:

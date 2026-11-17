@@ -1,5 +1,6 @@
 import pytest
-from minerva_engine import Engine, Limits, check_claim, check_claims, split_equation
+from minerva_engine import Engine, check_claim, check_claims, split_equation
+from minerva_engine.testing import budget_limits
 
 
 @pytest.mark.parametrize(
@@ -21,7 +22,7 @@ def test_no_equation(latex: str) -> None:
     assert split_equation(latex) is None
 
 
-L = Limits()
+L = budget_limits()
 
 
 def test_true_equation_holds_and_false_one_fails() -> None:
@@ -51,7 +52,7 @@ def test_undecidable_inputs_are_reported_not_guessed() -> None:
 
 
 def test_engine_batch_runs_in_the_sandbox() -> None:
-    engine = Engine(Limits(timeout_seconds=30))
+    engine = Engine(budget_limits())
     results = engine.check_claims([r"x+x = 2x", r"x+x = 3x", "y"], {})
     assert [r.status for r in results] == ["holds", "not_identity", "not_an_equation"]
     assert engine.check_claims([]) == []
@@ -222,7 +223,7 @@ def test_unrelated_definitions_leave_relations_unchecked() -> None:
 
 
 def test_engine_batch_passes_relations_through_the_sandbox() -> None:
-    engine = Engine(Limits(timeout_seconds=30))
+    engine = Engine(budget_limits())
     results = engine.check_claims(
         [
             r"\cos\theta = \cos\phi\cos(\omega t) - \sin\phi\sin(\omega t)",

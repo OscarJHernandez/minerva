@@ -27,7 +27,8 @@ from minerva_api.agent.tracing import (
     ToolFailed,
     outcome_kind,
 )
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 SECRET = "secret@example.com"
@@ -35,9 +36,7 @@ SECRET = "secret@example.com"
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def play(replies: list[Any], ctx: ToolContext) -> tuple[dict[str, Any], list[dict[str, Any]]]:

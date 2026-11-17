@@ -1,10 +1,11 @@
 """Reading formulas transcribed from an image: the parser reports how it understood them."""
 
-from minerva_engine import Engine, Limits, Status
+from minerva_engine import Engine, Status
+from minerva_engine.testing import budget_limits
 
 
 def read(*formulas: str):  # type: ignore[no-untyped-def]
-    return Engine(Limits(timeout_seconds=30)).read_formulas(list(formulas))
+    return Engine(budget_limits()).read_formulas(list(formulas))
 
 
 def test_expression_is_rendered_as_parsed_without_simplifying() -> None:

@@ -3,9 +3,10 @@
 import sympy as sp
 from minerva_engine.invariants import InvariantReport, search_invariants
 from minerva_engine.latexparse import parse_latex
-from minerva_engine.models import Limits, Status
+from minerva_engine.models import Status
+from minerva_engine.testing import budget_limits
 
-LIMITS = Limits()
+LIMITS = budget_limits()
 KEPLER = r"\frac{1}{2}m(\dot{r}^2+r^2\dot{\theta}^2)+\frac{k}{r}"
 KEPLER_CARTESIAN = r"\frac{1}{2}m(\dot{x}^2+\dot{y}^2)+\frac{k}{\sqrt{x^2+y^2}}"
 OSCILLATOR = r"\frac{1}{2}m(\dot{x}^2+\dot{y}^2)-\frac{1}{2}k(x^2+y^2)"

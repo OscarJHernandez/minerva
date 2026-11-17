@@ -6,10 +6,11 @@ import json
 from typing import Any
 
 import pytest
-from minerva_engine import Engine, Limits, OdeAnalysis, OdeInput, Status
+from minerva_engine import Engine, OdeAnalysis, OdeInput, Status
 from minerva_engine.ode import analyze
+from minerva_engine.testing import budget_limits
 
-L = Limits()
+L = budget_limits()
 
 
 def run(*equations: str, fmt: str = "latex", **kw: Any) -> OdeAnalysis:

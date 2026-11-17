@@ -7,6 +7,7 @@ from typing import Any
 import mpmath as mp
 import pytest
 from minerva_engine.models import Limits, Status
+from minerva_engine.testing import budget_limits
 from minerva_engine.variational import VariationInput, variation
 from minerva_engine.variational import hermite as H
 from minerva_engine.variational.numeric_setup import prepare
@@ -199,7 +200,7 @@ def build_mesh(elements: int = 6) -> tuple[H.Mesh, list[float]]:
         action="solve", integrand=r"\frac12\ddot{x}^2+\frac12\dot{x}^2-\sin(x)", functions=["x"],
         lower="0", upper="1",
     )  # fmt: skip
-    problem = read_problem(data, Limits())
+    problem = read_problem(data, budget_limits())
     num = prepare(problem, data, 1)
     mesh = H.Mesh(H.discretise(num), elements)
     z = [0.1 * ((i * 7) % 5) - 0.2 for i in range(mesh.size)]

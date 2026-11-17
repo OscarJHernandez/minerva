@@ -2,8 +2,9 @@
 
 import pytest
 import sympy as sp
-from minerva_engine import Engine, Limits, StatModelInput, Status, parse_text
+from minerva_engine import Engine, StatModelInput, Status, parse_text
 from minerva_engine.indexed.instantiate import verify_equal_indexed
+from minerva_engine.testing import budget_limits
 
 DATA = {
     "n": ["integer", "positive"],
@@ -21,7 +22,7 @@ def engine() -> Engine:
     # shares its CPUs between three workers, so a 10 s limit turned a correct answer into `resource_limit`
     # (the same test failed on CI three times while passing in 4 s locally). The time a derivation needs is
     # measured by `python -m minerva_knowledge stat-benchmark`, not here.
-    return Engine(Limits(max_concurrency=2, timeout_seconds=40))
+    return Engine(budget_limits(max_concurrency=2))
 
 
 def mle(engine, family, estimate, parameters=None, parametrization=None, assumptions=None, **kw):

@@ -10,7 +10,8 @@ from minerva_api.agent.loop import ANSWER_STATUSES, AgentLimits, run_agent
 from minerva_api.agent.prompts import SYSTEM_PROMPT
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import ToolContext, execute
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 FAST = AgentLimits(retry_delay_seconds=0)
@@ -18,9 +19,7 @@ FAST = AgentLimits(retry_delay_seconds=0)
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def play(llm: ReplayLLM, ctx: ToolContext, **kw: Any) -> dict[str, Any]:
@@ -150,12 +149,10 @@ def test_the_prompt_numbers_its_rules_once_and_names_the_tools() -> None:
 
 def test_a_failed_read_never_prints_none_as_the_input() -> None:
     from minerva_api.agent.tools import ToolContext, execute
-    from minerva_engine import Engine, Limits
+    from minerva_engine import Engine
     from minerva_knowledge import KnowledgeBase
 
-    ctx = ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    ctx = ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
     for tool, args in (
         ("differentiate", {"latex": r"x'", "variables": [{"name": "x"}]}),
         ("simplify", {"latex": r"x'"}),

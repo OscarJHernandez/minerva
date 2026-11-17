@@ -10,7 +10,8 @@ import pytest
 from fastapi.testclient import TestClient
 from minerva_api.agent.prompts import SYSTEM_PROMPT
 from minerva_api.agent.tools import TOOLS, ToolContext, execute
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 from .conftest import build_app, register
@@ -21,9 +22,7 @@ DUFFING = r"y'' + 0.2 y' + y + y^3 = 0"
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 # --- what the model sees ----------------------------------------------------------------------

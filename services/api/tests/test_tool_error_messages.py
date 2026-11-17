@@ -8,7 +8,8 @@ import re
 
 import pytest
 from minerva_api.agent.tools import TOOLS, ToolContext, execute
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 NO_LEAKS = re.compile(
@@ -18,9 +19,7 @@ NO_LEAKS = re.compile(
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def _required(name: str) -> list[str]:

@@ -29,15 +29,14 @@ from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import TOOLS, ToolContext
 from minerva_api.routers_chat import _history
 from minerva_api.settings import Settings
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def play(llm: ReplayLLM, ctx: ToolContext, history: list[dict[str, Any]], **kw: Any) -> list[dict]:

@@ -11,7 +11,7 @@ import pytest
 import sympy as sp
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
-from minerva_engine import Engine, Limits, OdeInput, Status
+from minerva_engine import Engine, OdeInput, Status
 from minerva_engine.ode import OdeSolution
 from minerva_engine.ode.reading import read_ode
 from minerva_engine.ode.symbolic import solve_closed_form
@@ -20,8 +20,9 @@ from minerva_engine.ode.verification import (
     independent_constants,
     residual_check,
 )
+from minerva_engine.testing import budget_limits
 
-L = Limits(timeout_seconds=30)
+L = budget_limits()
 
 
 def solve(*equations: str, fmt: str = "latex", **kw: Any) -> OdeSolution:

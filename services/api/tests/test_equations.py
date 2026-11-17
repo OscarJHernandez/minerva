@@ -22,7 +22,8 @@ from minerva_api.agent.loop import run_agent
 from minerva_api.agent.refs import ResultStore
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import ToolContext
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 from .conftest import build_app, register
@@ -255,9 +256,7 @@ def test_what_depends_on_an_unverified_equation_stays_marked_when_reused() -> No
 # --- in the loop -------------------------------------------------------------------------------------------
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def play(llm: ReplayLLM, ctx: ToolContext, text: str, **kw: Any) -> dict[str, Any]:

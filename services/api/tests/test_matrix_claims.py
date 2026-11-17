@@ -7,15 +7,14 @@ from minerva_api.agent.declarations import declared_matrices
 from minerva_api.agent.events import Block, Segment, TraceStep
 from minerva_api.agent.loop import check_model_claims, matrix_names
 from minerva_api.agent.tools import ToolContext, execute
-from minerva_engine import Engine, Limits
+from minerva_engine import Engine
+from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(
-        engine=Engine(Limits(timeout_seconds=30, max_concurrency=2)), kb=KnowledgeBase.load()
-    )
+    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
 
 
 def claim(value: str) -> Block:
