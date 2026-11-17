@@ -201,6 +201,17 @@ a JSON block for scripts. A turn that failed is stored too, so its trace survive
   conversation without declaring it again is flagged (`assumptions_dropped`); Minerva never adds an
   assumption itself.
 
+## Report format 3 and the diagnosis
+
+Format 3 only adds fields (format 2 reports are still read). Each turn's `debug.diagnosis`
+(`agent/diagnosis.py`) names the subsystem that owns the first failure (`model`, `parser`, `orchestrator`,
+`engine`, `verifier`, `infrastructure`), the step and its category, and whether the turn can be replayed.
+Two subsystems among the failures, or a record with dropped events, gives `undetermined` with the candidates
+listed: the stage is never guessed. Each model call stores `request_sha` (a fingerprint of the system
+prompt and tool schemas it was sent, also on `llm.request`) and the tool groups it had loaded; `prompt_sha`
+is the catalogue fingerprint. The timeline shows `tool.failed` and `tool.declined` events with their reason
+code and category.
+
 ## Replaying a report
 
 ```bash
@@ -212,7 +223,17 @@ The first compares what the model read back, the tool's status and the evidence 
 rebuilds the model's replies of one turn from the recorded events and runs the real loop on them: tools,
 references, formula marks, the claim check and stop reasons are real; only the model is replayed. It
 reproduces what the agent did with those replies, not the model. Reports of format 1 (before tracing) can
-be replayed call by call.
+be replayed call by call. `--llm` also compares the arguments that were executed and the evidence verdict
+(check, accepted, reason) of each step, not only tool names and statuses.
+
+```bash
+uv run python scripts/replay_trace.py report.md --to-fixture /tmp/failure.json   # outside the repository
+```
+
+writes the executed calls of the last turn and what the engine said (no prose) as a regression fixture. It
+still holds the user's mathematics: replace the arguments with a minimal example of your own, set an `id`
+(the file name) and `contains_user_mathematics: false`, and commit it under
+`services/api/tests/fixtures/failures/`. `test_failure_fixtures.py` replays every committed fixture.
 
 ## The benchmark
 

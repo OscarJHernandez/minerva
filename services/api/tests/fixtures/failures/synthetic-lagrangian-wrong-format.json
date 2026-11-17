@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "synthetic-lagrangian-wrong-format",
+  "provenance": {
+    "origin": "synthetic",
+    "defect": "D2",
+    "note": "text-syntax Lagrangian sent with format latex: the loop recovers by rereading it as text (docs/agent-reliability.md)"
+  },
+  "contains_user_mathematics": false,
+  "calls": [
+    {
+      "name": "analyze_lagrangian",
+      "arguments": {
+        "lagrangian": "1/2*m*(Xdot^2 + Ydot^2) - m*g*Y",
+        "coordinates": ["X", "Y"],
+        "format": "text"
+      },
+      "expect": {"status": "ok", "evidence": null}
+    }
+  ]
+}

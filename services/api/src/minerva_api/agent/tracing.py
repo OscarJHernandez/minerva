@@ -198,6 +198,7 @@ class LLMRequest(TraceEvent):
     window: int = 0
     dropped_messages: int = 0
     groups_loaded: int = 0
+    request_sha: str = ""  # what this call was actually sent: system prompt and tool schemas
 
 
 class LLMResponse(TraceEvent):
@@ -410,6 +411,7 @@ IDENTIFIER_FIELDS = frozenset(
         "request_id",
         "model",
         "prompt_sha",
+        "request_sha",
         "mode",
         "api_version",
         "tool",

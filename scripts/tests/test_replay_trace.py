@@ -153,7 +153,7 @@ def report2(*turns: dict[str, Any], user: str = "q") -> str:
 
 
 def test_both_report_formats_are_accepted(ctx: ToolContext) -> None:
-    assert MODULE.SUPPORTED_FORMATS == (1, 2)
+    assert MODULE.SUPPORTED_FORMATS == (1, 2, 3)
     turn = recorded_turn(ctx, ReplayLLM([call("simplify", SIMPLIFY), say("It is $x + 1$.")]))
     items = MODULE.replay(MODULE.extract_data(report2(turn)), ctx)
     assert len(items) == 1 and items[0].same and items[0].compare_status
@@ -367,3 +367,83 @@ def test_a_differential_equation_call_whose_result_changed_is_reported(ctx: Tool
     )
     items = MODULE.replay(MODULE.extract_data(report([recorded])), ctx)
     assert not items[0].same and "DIFFERENT" in MODULE.render(items)
+
+
+def test_a_turn_becomes_a_fixture_without_prose() -> None:
+    data = {
+        "format": 3,
+        "messages": [
+            {"role": "user", "text": "q"},
+            {
+                "role": "assistant",
+                "text": "PRIVATE PROSE",
+                "debug": {
+                    "prompt_sha": "abc",
+                    "stop_reason": "completed",
+                    "diagnosis": {"stage": "none"},
+                },
+                "trace": [
+                    {
+                        "name": "simplify",
+                        "arguments": {"latex": "x+x"},
+                        "status": "ok",
+                        "for_model": "PRIVATE RESULT",
+                        "evidence": {
+                            "check": "symbolic_zero",
+                            "accepted": True,
+                            "reason": "verified",
+                            "points_checked": 9,
+                        },
+                    },
+                    {"name": "simplify", "arguments": {}, "status": "skipped", "for_model": "x"},
+                ],
+            },
+        ],
+    }
+    fixture = MODULE.to_fixture(data)
+    assert fixture["contains_user_mathematics"] is True  # until a developer minimises it
+    assert fixture["calls"] == [
+        {
+            "name": "simplify",
+            "arguments": {"latex": "x+x"},
+            "expect": {
+                "status": "ok",
+                "evidence": {"check": "symbolic_zero", "accepted": True, "reason": "verified"},
+            },
+        }
+    ]
+    assert "PRIVATE" not in json.dumps(fixture)
+    assert fixture["provenance"]["report_format"] == 3
+
+
+def test_a_format_3_report_is_read() -> None:
+    assert 3 in MODULE.SUPPORTED_FORMATS
+
+
+def test_a_different_argument_or_verdict_is_a_difference_even_when_names_agree() -> None:
+    recorded = {
+        "trace": [
+            {
+                "name": "simplify",
+                "status": "ok",
+                "arguments": {"latex": "x"},
+                "evidence": {"check": "symbolic_zero", "accepted": True, "reason": "verified"},
+            }
+        ],
+        "stop_reason": "completed",
+    }
+    now = {
+        "trace": [
+            {
+                "name": "simplify",
+                "status": "ok",
+                "arguments": {"latex": "y"},
+                "evidence": {"check": "numeric", "accepted": True, "reason": "verified"},
+            }
+        ],
+        "stop_reason": "completed",
+    }
+    found = MODULE.compare_turn(recorded, now)
+    assert any("arguments executed differ" in d for d in found)
+    assert any("evidence recorded" in d for d in found)
+    assert MODULE.compare_turn(recorded, recorded) == []

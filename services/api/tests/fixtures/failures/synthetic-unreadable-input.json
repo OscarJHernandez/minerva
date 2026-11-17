@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "synthetic-unreadable-input",
+  "provenance": {
+    "origin": "synthetic",
+    "defect": null,
+    "note": "an unreadable expression is refused as parse_error, never read as something else"
+  },
+  "contains_user_mathematics": false,
+  "calls": [
+    {
+      "name": "simplify",
+      "arguments": {"latex": "\\foo{a}"},
+      "expect": {"status": "parse_error", "evidence": null}
+    }
+  ]
+}

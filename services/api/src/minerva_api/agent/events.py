@@ -186,6 +186,10 @@ class LLMCallDebug(BaseModel):
     est_tools: int | None = None
     est_history: int | None = None
     est_turn: int | None = None
+    request_sha: str | None = (
+        None  # fingerprint of the system prompt and tool schemas this call sent
+    )
+    groups: list[str] = Field(default_factory=list)  # tool groups loaded for this call
 
 
 class ClaimDebug(BaseModel):
@@ -206,7 +210,7 @@ class TurnDebug(BaseModel):
     """Everything needed to reproduce a turn, shown only when the user switches debug mode on."""
 
     # Deterministic routing (routing.py): empty when no rule applied, else decision, reason and tool.
-    routing: dict[str, str] = Field(default_factory=dict)
+    routing: dict[str, str | int] = Field(default_factory=dict)
 
     request_id: str = ""
     api_version: str = ""
@@ -243,6 +247,8 @@ class TurnDebug(BaseModel):
     # settings produced an answer. Absent on messages stored before they existed.
     params: dict[str, Any] = Field(default_factory=dict)
     groups: list[str] = Field(default_factory=list)
+    # Which subsystem the first failure points at (`diagnosis.diagnose`); empty before it was added.
+    diagnosis: dict[str, Any] = Field(default_factory=dict)
     context_window: int = 0
     prompt_estimate_tokens: int = 0
     history_dropped: int = 0  # messages of earlier turns left out so the request fit

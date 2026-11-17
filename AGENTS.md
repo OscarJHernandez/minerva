@@ -888,10 +888,13 @@ skill before changing that area. See `.agents/skills/README.md` before writing a
   Push only that branch: never to `main`, never force-push a branch someone else pushed to, and never
   publish, tag or release. Run the `verify-change` checks first; everything pushed is public, so the
   "Security and open-source rules" apply to every commit on the branch.
-- State that the PR was authored by a coding agent at the top of the description, open it as a draft,
-  and fill in the template checklist honestly (unchecked means not done). Merging stays with the maintainer.
+- State that the PR was authored by a coding agent at the top of the description and fill in the template
+  checklist honestly (unchecked means not done). Open it as a draft unless the maintainer has said, for that
+  work, that it may merge on its own; then open it ready for review.
 - Never edit or remove a human-authored section of a PR description or an existing human comment.
-- Do not enable auto-merge.
+- Enable auto-merge only when the maintainer has said so for that work. It merges only after CI passes; never
+  merge by hand, bypass a required check or weaken a check to get there. Without that instruction, merging
+  stays with the maintainer.
 - Several agents may share one checkout. Before committing, run `git status` and stage only your own
   paths by name (never `git add -A`); for larger work use a worktree on its own branch.
 

@@ -12,8 +12,9 @@ import { buildTimeline, stageTimings, STOP_EXPLANATION } from "./trace-timeline"
 /**
  * Bump when the JSON block changes shape, so `scripts/replay_trace.py` can tell.
  * 2: adds trace ids, stop reasons, events, evidence and error categories per step.
+ * 3: adds the diagnosis and per-call request fingerprints (only adds fields; format 2 is still read).
  */
-export const REPORT_FORMAT = 2;
+export const REPORT_FORMAT = 3;
 export const CONTENT_NOTICE =
   "This report contains conversation content (your messages, expressions and tool results). " +
   "Share it only where you would share the conversation. The server log never holds this content.";
@@ -321,6 +322,21 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
       );
     }
     if (d.claim_check && d.claim_check !== "ok") lines.push(`claim check: ${d.claim_check}`);
+    if (d.diagnosis?.stage) {
+      const g = d.diagnosis;
+      lines.push(
+        `diagnosis: ${g.stage}` +
+          (g.step != null
+            ? ` (first failure: step ${g.step + 1}, ${g.first_failure_code ?? "?"})`
+            : "") +
+          (g.candidates && g.candidates.length > 1
+            ? `; candidates: ${g.candidates.join(", ")}`
+            : "") +
+          `; replayable: ${g.replayable ? "yes" : `no (${g.replayable_reason ?? "?"})`}`,
+      );
+    }
+    const shas = d.llm_calls.map((x) => x.request_sha).filter((x): x is string => Boolean(x));
+    if (shas.length > 0) lines.push(`request fingerprints: ${shas.join(", ")}`);
     const timeline = buildTimeline(d, c.trace);
     if (timeline.length > 0) {
       lines.push("Timeline:", ...timeline.map((r) => `- ${r.t_ms} ms · ${r.title}: ${r.detail}`));
