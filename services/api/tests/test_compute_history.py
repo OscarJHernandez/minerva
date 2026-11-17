@@ -609,6 +609,7 @@ def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type:
             json={
                 "function": rf"\frac{{1}}{{2}}m(\dot{{r}}^2+r^2\dot{{\theta}}^2)+\frac{{k_{{{marker}}}}}{{r}}",
                 "coordinates": ["r", "theta"],
+                "budget": "thorough",  # the search's own wall-clock limit must not depend on runner load
             },
         )
         assert r.status_code == 200, r.text

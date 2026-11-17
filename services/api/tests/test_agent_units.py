@@ -447,7 +447,12 @@ def test_discovery_tool_finds_the_kepler_constants_from_the_lagrangian_alone(
 ) -> None:
     out = execute(
         "find_conserved_quantities",
-        {"lagrangian": KEPLER_ARGS["lagrangian"], "coordinates": ["r", "theta"]},
+        # The search has its own wall-clock budget (30 s standard); a loaded CI runner must not decide this test.
+        {
+            "lagrangian": KEPLER_ARGS["lagrangian"],
+            "coordinates": ["r", "theta"],
+            "budget": "thorough",
+        },
         ctx,
     )
     assert out.card.type == "discovery" and out.status == "ok"

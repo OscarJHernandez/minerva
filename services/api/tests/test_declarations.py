@@ -168,6 +168,7 @@ def test_the_model_writing_c_underscore_1_is_marked_from_tool(engine_ctx: ToolCo
         {
             "lagrangian": r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}",
             "coordinates": ["r", "theta"],
+            "budget": "thorough",  # the search's own wall-clock limit must not depend on runner load
         },
         engine_ctx,
     )

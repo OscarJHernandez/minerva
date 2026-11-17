@@ -462,7 +462,8 @@ class ScriptedLLM:
                 tool_calls=[
                     ToolCall(
                         "find_conserved_quantities",
-                        {"lagrangian": latex, "coordinates": names or ["x"]},
+                        # a stand-in on a loaded machine must not lose to the search's 30 s wall clock
+                        {"lagrangian": latex, "coordinates": names or ["x"], "budget": "thorough"},
                     )
                 ]
             )
