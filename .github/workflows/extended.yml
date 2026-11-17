@@ -45,6 +45,9 @@ jobs:
             --hypothesis-seed="$SEED"
       - name: Reference problems, every tier
         run: uv run python -m minerva_engine.reference_benchmark --check --tier extended
+      - name: Corruption sweep, every corruption on every reference call
+        # The pull-request tier runs the engine once per operator and tool; this runs all of them.
+        run: uv run python scripts/eval_corruptions.py --full
       - name: Verification report
         run: |
           uv run python scripts/verification_report.py --check

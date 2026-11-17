@@ -492,6 +492,7 @@ def test_scripted_model_finds_conserved_quantities_without_hints(
     assert set(step["arguments"]) <= {
         "lagrangian",
         "coordinates",
+        "budget",  # the search's time allowance, not a hint about the answer
     }  # no ansatz, no angles, no answer
 
 

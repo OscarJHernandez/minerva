@@ -27,7 +27,7 @@ git status --short && git diff --stat
 | anything | `make check` runs all of the above except Helm and images |
 
 `make check` is the same set as the CI jobs `python`, `tests`, `tests-api` and `web`. CI splits the pytest run over
-runner pods with `MINERVA_TEST_SHARD=i/n` (engine, handbook and scripts in 5 shards, API tests in 2); unset runs everything.
+runner pods with `MINERVA_TEST_SHARD=i/n` (engine, handbook and scripts in 5 shards, API tests in one pod, `-n 3`); unset runs everything.
 
 ## 3. Definition of done (`AGENTS.md`)
 
