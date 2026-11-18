@@ -1,3 +1,11 @@
 packages:
   - "apps/*"
   - "packages/ui"
+
+# Audit exception, reviewed 2026-11-18 (remove when picomatch > 4.0.7 is published and the lockfile uses it):
+# GHSA-fc5q-39xc-vjpf is a ReDoS in picomatch's extglob handling with no patched release yet. picomatch is reached
+# only through lint/build tooling (eslint-config-next -> fast-glob/tinyglobby, never shipped or run on user input),
+# so the exposure is a slow glob in a developer or CI build, not in the deployed apps.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-fc5q-39xc-vjpf
