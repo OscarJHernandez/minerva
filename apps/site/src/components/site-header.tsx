@@ -10,6 +10,9 @@ export function SiteHeader({ wide = false }: { wide?: boolean }) {
         Minerva
       </Link>
       <nav aria-label="Main" className="flex items-center gap-5 text-sm">
+        <Link href="/#why" className="hidden text-muted hover:text-ink md:inline">
+          Why Minerva
+        </Link>
         <Link href="/#examples" className="hidden text-muted hover:text-ink md:inline">
           Examples
         </Link>
