@@ -263,3 +263,28 @@ def test_numbers_stay_numbers_where_the_tool_takes_a_number() -> None:
     assert (
         repair_arguments(DIFFERENTIATE, flags)[0] is flags
     )  # a boolean is not a number to convert
+
+
+# --- a tagged union sent nested under its own tag (statistical_mechanics `system`) ---------------------------
+def test_a_system_nested_under_its_kind_is_unwrapped_and_shown() -> None:
+    from minerva_api.agent.statmech_tools import StatMechArgs
+
+    sent = {"action": "derive", "system": {"level_family": {"energy": "n", "index": "n"}}}
+    fixed, notes = repair_arguments(StatMechArgs, sent)
+    assert fixed["system"] == {"kind": "level_family", "energy": "n", "index": "n"}
+    assert len(notes) == 1 and "system" in notes[0].source and "level_family" in notes[0].source
+    StatMechArgs(**fixed)  # and it validates
+
+
+def test_a_wrapper_that_is_not_exactly_one_known_tag_is_left_alone() -> None:
+    from minerva_api.agent.statmech_tools import StatMechArgs
+
+    for system in (
+        {"level_family": {"energy": "n"}, "extra": 1},  # two keys
+        {"nonsense": {"energy": "n"}},  # not a tag of the union
+        {"level_family": {"kind": "chain", "energy": "n"}},  # tagged differently inside
+        {"level_family": "n"},  # not an object
+        {"kind": "levels", "levels": [{"energy": "0"}]},  # already right
+    ):
+        fixed, notes = repair_arguments(StatMechArgs, {"system": system})
+        assert fixed["system"] == system and not notes, system
