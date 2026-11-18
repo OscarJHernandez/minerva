@@ -4,9 +4,8 @@ The Helm smoke test must not depend on landing-page marketing copy, which can
 change independently of the application's identity.
 """
 
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -20,5 +19,7 @@ def test_helm_site_probe_matches_stable_nextjs_title() -> None:
 
     title_probe = re.search(r'grep -q "(<title>[^"]+)"', helm_test)
     assert title_probe is not None, "Helm must check the site identity in <title>"
-    assert title_probe.group(1) == "<title>Minerva", "Use the stable product identity, not marketing copy"
+    assert title_probe.group(1) == "<title>Minerva", (
+        "Use the stable product identity, not marketing copy"
+    )
     assert f"<title>{metadata_title.group(1)}".startswith(title_probe.group(1))
