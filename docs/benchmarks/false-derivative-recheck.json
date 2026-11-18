@@ -1,0 +1,303 @@
+{
+  "meta": {
+    "case_count": 1,
+    "cases_digest": "59f5a5fae33b",
+    "categories": [
+      "false_claim"
+    ],
+    "compute_timeout": 10.0,
+    "date": "2026-11-18",
+    "git_sha": "1a1cf48dd2-dirty",
+    "label": "false-derivative-recheck",
+    "limits": {
+      "max_seconds": 360.0,
+      "max_steps": 6,
+      "max_tool_calls": 12
+    },
+    "ollama": "0.40.3",
+    "params": {
+      "history_messages": 20,
+      "history_tokens": null,
+      "num_ctx": 32768,
+      "num_predict": null,
+      "temperature": 0.2,
+      "think": false,
+      "toolset": "auto",
+      "top_k": null,
+      "top_p": null
+    },
+    "platform": "Darwin arm64",
+    "prompt_sha": "3125a4c9ab20",
+    "python": "3.13.16",
+    "repeats": 3,
+    "request_timeout_seconds": 180.0,
+    "routing": true,
+    "seed": 7,
+    "strip_thinking": false,
+    "sympy": "1.14.0",
+    "temperature": 0.2,
+    "think": false
+  },
+  "models": {
+    "minerva": {
+      "identity": {
+        "base_model": "gemma4:26b",
+        "capabilities": [
+          "completion",
+          "thinking",
+          "tools",
+          "vision"
+        ],
+        "digest": "149a0ff8a1ca",
+        "family": "gemma4",
+        "format": "gguf",
+        "host_defaults": {
+          "draft_num_predict": 3,
+          "num_ctx": 16384,
+          "num_predict": 1200,
+          "temperature": 0.2,
+          "top_k": 64,
+          "top_p": 0.9
+        },
+        "hosted": false,
+        "loaded_context": 32768,
+        "modified_at": "2026-11-15T16:30:28.925414389Z",
+        "name": "minerva",
+        "parameter_size": "25.2B",
+        "provider": "ollama",
+        "quantization": "Q4_K_M",
+        "unchanged_during_run": true
+      },
+      "results": [
+        {
+          "args_ok": true,
+          "calls": 2,
+          "case_id": "false-derivative",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "error_kind": null,
+          "expected_tool": "differentiate",
+          "failure_class": null,
+          "false_verified": 0,
+          "first_token_ms": 383,
+          "first_tool": "check_identity",
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 3,
+          "llm_ms": 6736,
+          "max_prompt_tokens": 6623,
+          "notes": [],
+          "passed": true,
+          "repeat": 0,
+          "repeated_calls": 0,
+          "reply": "No, that is not correct. The derivative of $x^x$ is not $x^x$. The correct derivative is: $$\\frac{d}{dx}(x^x) = x^x (\\ln(x) + 1)$$",
+          "result_ok": true,
+          "seconds": 9.423,
+          "stop_reason": "completed",
+          "tokens_in": 19506,
+          "tokens_out": 120,
+          "tool_failures": 0,
+          "tool_ms": 1820,
+          "tool_reached": true,
+          "tool_selected": false,
+          "tools": [
+            "check_identity",
+            "differentiate"
+          ],
+          "turns": 1,
+          "unchecked": 1,
+          "unnecessary_calls": 1,
+          "unverified_results": 1
+        },
+        {
+          "args_ok": true,
+          "calls": 2,
+          "case_id": "false-derivative",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "error_kind": null,
+          "expected_tool": "differentiate",
+          "failure_class": null,
+          "false_verified": 0,
+          "first_token_ms": 420,
+          "first_tool": "check_identity",
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 3,
+          "llm_ms": 2524,
+          "max_prompt_tokens": 6623,
+          "notes": [],
+          "passed": true,
+          "repeat": 1,
+          "repeated_calls": 0,
+          "reply": "No, that is not correct. The derivative of $x^x$ is not $x^x$. The correct derivative is: $$\\frac{d}{dx}(x^x) = x^x (\\ln(x) + 1)$$",
+          "result_ok": true,
+          "seconds": 5.143,
+          "stop_reason": "completed",
+          "tokens_in": 19506,
+          "tokens_out": 120,
+          "tool_failures": 0,
+          "tool_ms": 1767,
+          "tool_reached": true,
+          "tool_selected": false,
+          "tools": [
+            "check_identity",
+            "differentiate"
+          ],
+          "turns": 1,
+          "unchecked": 1,
+          "unnecessary_calls": 1,
+          "unverified_results": 1
+        },
+        {
+          "args_ok": true,
+          "calls": 2,
+          "case_id": "false-derivative",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "error_kind": null,
+          "expected_tool": "differentiate",
+          "failure_class": null,
+          "false_verified": 0,
+          "first_token_ms": 406,
+          "first_tool": "check_identity",
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 3,
+          "llm_ms": 3521,
+          "max_prompt_tokens": 6623,
+          "notes": [],
+          "passed": true,
+          "repeat": 2,
+          "repeated_calls": 0,
+          "reply": "No, that is not correct. The derivative of $x^x$ is not $x^x$. The correct derivative is: $$\\frac{d}{dx}(x^x) = x^x (\\ln(x) + 1)$$ This is an equation for the derivative, and it only equals $x^x$ when $\\ln(x) + 1 = 1$, which implies $\\ln(x)",
+          "result_ok": true,
+          "seconds": 6.249,
+          "stop_reason": "completed",
+          "tokens_in": 19506,
+          "tokens_out": 182,
+          "tool_failures": 0,
+          "tool_ms": 1790,
+          "tool_reached": true,
+          "tool_selected": false,
+          "tools": [
+            "check_identity",
+            "differentiate"
+          ],
+          "turns": 1,
+          "unchecked": 4,
+          "unnecessary_calls": 1,
+          "unverified_results": 1
+        }
+      ],
+      "summary": {
+        "cases": 1,
+        "checker_false_positives": 0,
+        "completion_rate": 1.0,
+        "confusion": {
+          "differentiate": {
+            "check_identity": 3
+          }
+        },
+        "context": {
+          "max_prompt_tokens": 6623,
+          "runs_at_window": 0,
+          "runs_with_history_dropped": 0,
+          "window": 32768
+        },
+        "contradicted_formulas": 0,
+        "cost_usd": null,
+        "failure_classes": {},
+        "false_verified": 0,
+        "first_token_ms": {
+          "max": 420,
+          "median": 406,
+          "p95": 420
+        },
+        "flaky_cases": [],
+        "informational_runs": 0,
+        "latency_seconds": {
+          "max": 9.423,
+          "median": 6.249,
+          "p95": 9.423
+        },
+        "llm_ms": {
+          "max": 6736,
+          "median": 3521,
+          "p95": 6736
+        },
+        "model_calls": {
+          "mean": 3.0,
+          "median": 3,
+          "total": 9
+        },
+        "multi_turn_consistency": null,
+        "multi_turn_runs": 0,
+        "pass_count_stdev": 0.0,
+        "pass_counts_per_repeat": [
+          1,
+          1,
+          1
+        ],
+        "pass_rate": 1.0,
+        "passed": 3,
+        "per_category": {
+          "false_claim": {
+            "passed": 3,
+            "rate": 1.0,
+            "runs": 3,
+            "tool_selection": 0.0
+          }
+        },
+        "per_tool": {
+          "differentiate": {
+            "calls": 6,
+            "invalid_calls": 0,
+            "passed": 3,
+            "runs": 3,
+            "tool_selection": 0.0
+          }
+        },
+        "rate_limited": 0,
+        "repeated_calls": 0,
+        "runs": 3,
+        "timeouts": 0,
+        "tokens_in": 58518,
+        "tokens_out": 422,
+        "tool_calls": 6,
+        "tool_failures": 0,
+        "tool_ms": {
+          "max": 1820,
+          "median": 1790,
+          "p95": 1820
+        },
+        "tool_reached_rate": 1.0,
+        "tool_selection_accuracy": 0.0,
+        "unchecked_formulas": 6,
+        "unclassified_failures": 0,
+        "unnecessary_calls": 3,
+        "unverified_results": 3,
+        "valid_arguments_rate": 1.0,
+        "verified_result_coverage": 1.0,
+        "verified_result_runs": 3
+      },
+      "usable": true
+    }
+  },
+  "schema": 1
+}

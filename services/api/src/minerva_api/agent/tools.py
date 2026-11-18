@@ -179,6 +179,14 @@ class SimplifyToolArgs(SimplifyArgs):
     )
 
 
+class CheckIdentityArgs(SimplifyArgs):
+    format: SkipJsonSchema[SyntaxChoice] = "latex"
+    latex: str = Field(
+        max_length=MAX_INPUT,
+        description="One equation `left = right` in LaTeX, as the user wrote it, e.g. \\sqrt{x^2} = x",
+    )
+
+
 class DifferentiateArgs(SimplifyArgs):
     format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
@@ -1138,6 +1146,49 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(
         card, "\n".join([head, *lines]), known, result.status.value, quoted_latex=quoted
     )
+
+
+def run_check_identity(args: CheckIdentityArgs, ctx: ToolContext) -> ToolOutput:
+    """Is the user's one equation an identity? The engine's verdict, with the point where it fails."""
+    result = ctx.engine.check_identity(args.latex, args.assumptions)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="check_identity",
+        type="identity",
+        title="Is it an identity?",
+        data={
+            **result.model_dump(mode="json"),
+            "original_request": args.model_dump(mode="json"),
+        },
+    )
+    parts = [f"status={result.status.value}"]
+    if result.verdict:
+        parts.append(f"verdict={result.verdict}")
+    if result.lhs_latex and result.rhs_latex:
+        parts.append(f"equation as read: ${result.lhs_latex} = {result.rhs_latex}$")
+    known: list[str] = []
+    v = result.verification
+    if result.verdict in ("proved_equal", "numerically_equal"):
+        known.append(f"{result.lhs_latex} = {result.rhs_latex}")
+        if v is not None:
+            parts.append(
+                f"numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
+                f"symbolic_zero={v.symbolic_zero} "
+                f"({'symbolic and numeric evidence' if v.symbolic_zero else 'numeric evidence only, not a proof'})"
+            )
+    if result.condition:
+        parts.append(f"condition: {result.condition}")
+    cx = result.counterexample
+    if cx is not None:
+        point = ", ".join(f"${name} = {value}$" for name, value in cx.substitution.items())
+        parts.append(
+            f"counterexample at {point}: left side ${cx.lhs_value}$, right side ${cx.rhs_value}$ "
+            f"(exact point, confirmed at 60 and 120 digits; found by a {cx.probe} probe)"
+        )
+        known += [f"{name} = {value}" for name, value in cx.substitution.items()]
+        known += [cx.lhs_value, cx.rhs_value]
+    text = "; ".join(parts) + "; " + result.message
+    return ToolOutput(card, text, known, result.status.value)
 
 
 def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
@@ -3492,6 +3543,15 @@ TOOLS: dict[str, Tool] = {
             "then). Reports 'unchanged' if nothing better was found, which does not show that none exists.",
             SimplifyToolArgs,
             run_simplify,
+        ),
+        Tool(
+            "check_identity",
+            'Is ONE equation the user stated an identity? For "is it true that A = B?". Returns proved equal, '
+            "numerically equal (evidence), true only under a stated assumption, or not an identity with the "
+            "point where the sides differ. Refuses definitions, equations of motion, matrix, vector and sum "
+            "statements.",
+            CheckIdentityArgs,
+            run_check_identity,
         ),
         Tool(
             "substitute",

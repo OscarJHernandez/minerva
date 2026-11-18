@@ -16,6 +16,7 @@ from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
 from .expansion import ExpansionReport
 from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
+from .identity_check import IdentityResult
 from .indexed.models import SumsInput, SumsResult
 from .integrate import IntegrateResult
 from .invariants import InvariantReport
@@ -692,6 +693,22 @@ class Engine:
             return status, message, [], None
         v = outcome.value
         return Status(v["status"]), v["message"], list(v["features"]), v["input_latex"]
+
+    def check_identity(
+        self, latex: str, assumptions: dict[str, list[str]] | None = None
+    ) -> IdentityResult:
+        """Is the one stated equation an identity? A verdict with a witness when it is not (see `identity_check.py`)."""
+        clean, noncommutative = clean_assumptions(assumptions or {})
+        outcome, ms = self._run(
+            "check_identity",
+            {"latex": latex, "assumptions": clean, "matrices": sorted(noncommutative)},
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return IdentityResult(status=status, message=message, duration_ms=ms)
+        result = IdentityResult(**outcome.value)
+        result.duration_ms = ms
+        return result
 
     def check_claims(
         self,

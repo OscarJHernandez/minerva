@@ -6,7 +6,7 @@ input, stop in bounded time and say only what a tool established? The model neve
 correctness, so a failure of the second kind can waste a turn or mislead about a result's origin, but it cannot
 make an unverified formula look verified. Several guards exist to keep it that way.
 
-Latest live measurements, what changed and what is still open: `progress-2026-11-18.md` (triage: `triage-2026-11-18.md`). The current reference point (core suite, three repeats, noise, weak categories): `baseline-core-x3-2026-11-18.md`.
+Latest live measurements, what changed and what is still open: `progress-2026-11-18.md` (triage: `triage-2026-11-18.md`). The current reference point (core suite, three repeats, noise, weak categories): `baseline-core-x3-2026-11-18.md`. Every live run, with the model, its configuration and the decision taken: `experiment-log.md`.
 
 ## Guarantees (and the test that holds each)
 

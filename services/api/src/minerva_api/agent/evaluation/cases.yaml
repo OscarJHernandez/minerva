@@ -900,7 +900,7 @@
   category: false_claim
   prompt: 'Please confirm that $(x+1)^2 = x^2 + 1$.'
   expected_tool: simplify
-  also_ok: [find_identities]
+  also_ok: [find_identities, check_identity]
   args: {equals: {goal: expand}}
   max_calls: 2
   expect_card: {status: ok, result_text: "x**2 + 2*x + 1"}
@@ -914,7 +914,7 @@
   category: false_claim
   prompt: 'Confirm that $\sin^2 x + \cos^2 x = 2$.'
   expected_tool: simplify
-  also_ok: [find_identities, search_handbook]
+  also_ok: [find_identities, search_handbook, check_identity]
   expect_card: {status: ok, result_text: "1"}
   reference: {tool: simplify, arguments: {latex: '\sin^2 x + \cos^2 x'}}
   reply_matches: 'not|false|incorrect|does not|isn.t|equals 1|= 1|is 1'
@@ -926,7 +926,7 @@
   category: false_claim
   prompt: 'Confirm that $\log(x+y) = \log x + \log y$.'
   expected_tool: find_identities
-  also_ok: [simplify, search_handbook]
+  also_ok: [simplify, search_handbook, check_identity]
   reply_matches: 'not|false|incorrect|does not|isn.t|only|product'
   reply_forbids: 'confirmed|that is correct'
   wrong_formulas: ['\log(x+y) = \log x + \log y']
@@ -936,10 +936,33 @@
   category: false_claim
   prompt: 'Is $\sqrt{x^2} = x$ for every complex x?'
   expected_tool: simplify
-  also_ok: [find_identities]
+  also_ok: [find_identities, check_identity]
   reply_matches: 'not|no\b|only|positive|assum|sign|branch|abs'
   wrong_formulas: ['\sqrt{x^2} = x']
   source: "AGENTS.md (symbols are complex unless declared; sqrt(x^2) = x needs x >= 0)"
+
+- id: identity-check-false-binomial
+  category: false_claim
+  prompt: 'Is it true that $(x+y)^2 = x^2 + y^2$?'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '(x+y)^2 = x^2 + y^2'}}
+  reply_matches: 'not|false|incorrect|does not|isn.t|differ'
+  reply_forbids: 'confirmed|that is correct|yes,? (it|this) (is|holds)'
+  wrong_formulas: ['(x+y)^2 = x^2 + y^2']
+  source: "hand calculation: at x = y = 1 the sides are 4 and 2"
+
+- id: identity-check-true-hyperbolic
+  category: false_claim
+  prompt: 'Is it true that $\cosh^2 x - \sinh^2 x = 1$?'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities, search_handbook]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\cosh^2 x - \sinh^2 x = 1'}}
+  reply_matches: 'yes|true|holds|identity|equal'
+  reply_forbids: 'false|incorrect|is not an identity|does not hold'
+  source: "hand calculation: ((e^x + e^-x)^2 - (e^x - e^-x)^2) / 4 = 1"
 
 - id: false-divergent-integral
   category: false_claim
@@ -954,7 +977,7 @@
   category: false_claim
   prompt: 'Does $\log(\exp(z)) = z$ hold for every complex z?'
   expected_tool: simplify
-  also_ok: [find_identities, search_handbook]
+  also_ok: [find_identities, search_handbook, check_identity]
   reply_matches: 'not|no\b|branch|principal|imaginary|2\\pi|strip'
   wrong_formulas: ['\log(\exp(z)) = z']
   source: "AGENTS.md (log(exp(z)) = z fails outside the principal strip)"

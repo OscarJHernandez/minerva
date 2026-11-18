@@ -14,6 +14,7 @@ from .events import CheckKind, Evidence, EvidenceReason
 # The kind of check a tool's result rests on, when it carries no more specific sign.
 _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "simplify": "numeric",
+    "check_identity": "numeric",  # sampled points and targeted probes; a symbolic zero is reported as such
     "differentiate": "numeric",
     "time_derivative": "numeric",  # central difference of the input along random polynomial motions
     "integrate": "numeric",
