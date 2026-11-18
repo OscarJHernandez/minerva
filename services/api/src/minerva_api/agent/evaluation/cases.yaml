@@ -52,7 +52,7 @@
   category: symbolic
   prompt: 'Is $\cosh^2 x - \sinh^2 x$ equal to 1?'
   expected_tool: simplify
-  also_ok: [find_identities, search_handbook, check_identity]
+  also_ok: [find_identities, search_handbook]
   expect_card: {status: ok, result_text: "1"}
   reference: {tool: simplify, arguments: {latex: '\cosh^2 x - \sinh^2 x'}}
   source: "engine test_simplify.py"
@@ -914,7 +914,7 @@
   category: false_claim
   prompt: 'Confirm that $\sin^2 x + \cos^2 x = 2$.'
   expected_tool: simplify
-  also_ok: [find_identities, search_handbook]
+  also_ok: [find_identities, search_handbook, check_identity]
   expect_card: {status: ok, result_text: "1"}
   reference: {tool: simplify, arguments: {latex: '\sin^2 x + \cos^2 x'}}
   reply_matches: 'not|false|incorrect|does not|isn.t|equals 1|= 1|is 1'
