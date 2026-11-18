@@ -147,7 +147,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   signals agree: structure it can read (a Lagrangian with unambiguous velocities; the one result the previous turn
   produced; an equation with a derivative of an applied function; matrices the user declared n x n) and words that ask
   for the operation. Rules: `lagrangian_equations`, `followup_reuse` ("differentiate that result", "integrate it from
-  0 to 1" on `@rN`), `ode_analyze` (classification only; solving stays the user's choice), `matrix_simplify`. A rule
+  0 to 1" on `@rN`), `ode_analyze` (classification only; solving stays the user's choice), `matrix_simplify`, `lagrangian_followup`, and
+  `explicit_operation` (last: one imperative sentence about one formula, "Simplify $f$", "Differentiate $f$ with respect to x",
+  "Give the Taylor series of $f$ about 0 up to order 4", "Find an antiderivative of $f$"; it declines on a bare `e`/`i`,
+  an equation, two formulas, any word beyond the plain operation, and any conversation about matrices, vectors or tensors, and
+  keeps `unsupported` (calculus) or `unchanged`/`conditions_not_satisfied` (simplify) as the answer). A rule
   needs every argument from what the user wrote (a variable they named or the result's one plain letter, bounds they
   gave as numbers, sizes in their words) and never fills in an assumption, commutation, invertibility or bound; if one
   is missing it returns None and the model plans. The call goes through reference resolution, shape repair, transport

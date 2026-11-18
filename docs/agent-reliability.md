@@ -54,7 +54,7 @@ The call is executed like any other (validation, sandbox, verification); if it d
 route is dropped and the model plans the turn. The model still writes every word of the answer. Routed steps
 cost no model call, are marked in the trace, timeline and log (`agent.routed`), and
 `MINERVA_AGENT_ROUTING=false` turns every rule off. `routing.RULES` lists them: after the Lagrangian rule came
-`followup_reuse`, `ode_analyze` and `matrix_simplify`, each added because a live trace showed the model not making
+`followup_reuse`, `ode_analyze`, `matrix_simplify` and (2026-11-19) `explicit_operation`, each added because a live trace showed the model not making
 the call (`docs/reliability/triage-2026-11-18.md`). A routed call is resolved (`@rN`), repaired, cleaned and run in the
 per-call tool context exactly like a model call, and a rule names the statuses it keeps as the answer: a non-commuting
 matrix product that comes back `conditions_not_satisfied` is the answer, an ODE the analyser refuses is not.
