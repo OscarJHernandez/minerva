@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Math } from "@minerva/ui/math";
-import { MathLine, StatusBadge } from "@/components/example-view";
+import { StatusBadge } from "@/components/example-view";
 import { Section } from "@/components/section";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { example, inputLatex, inputSource, outputLatex, type Example } from "@/lib/capabilities";
+import { example, inputLatex, outputLatex } from "@/lib/capabilities";
 import {
   APP_URL,
   CONTRIBUTING_URL,
@@ -35,53 +35,6 @@ const BENEFITS = [
     "Apache-2.0 open source. Read it, modify it, report bugs, or contribute what is missing.",
   ],
 ];
-
-type Row = { label: string; node: React.ReactNode };
-
-function Card({
-  title,
-  badge,
-  tone,
-  rows,
-  note,
-}: {
-  title: string;
-  badge: string;
-  tone: string;
-  rows: Row[];
-  note: string;
-}) {
-  return (
-    <article className="min-w-0 rounded-lg border border-rule bg-raised p-5 sm:p-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-serif text-xl">{title}</h3>
-        <StatusBadge status={tone} label={badge} />
-      </div>
-      <dl className="mt-4 space-y-3">
-        {rows.map((r) => (
-          <div key={r.label}>
-            <dt className="text-xs uppercase tracking-wide text-muted">{r.label}</dt>
-            <dd className="mt-0.5">{r.node}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="mt-4 text-sm text-muted">{note}</p>
-    </article>
-  );
-}
-
-const tex = (latex: string) => <MathLine latex={latex} />;
-const typed = (ex: Example) => {
-  const line = ex.input.find((l) => l.source);
-  if (line?.syntax !== "text") return tex(inputLatex(ex));
-  return (
-    <div>
-      <code className="block overflow-x-auto whitespace-pre text-sm">{inputSource(ex)}</code>
-      {tex(inputLatex(ex))}
-    </div>
-  );
-};
-const plain = (text: string) => <span className="text-sm text-muted">{text}</span>;
 
 export default function Home() {
   const keplerSearch = example("invariants-kepler-polar");
@@ -257,28 +210,80 @@ export default function Home() {
               </Link>
             </div>
           </figure>
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <Card
-              title="Simplify, then verify"
-              badge="Verified"
-              tone="ok"
-              rows={[
-                { label: "You type", node: typed(trig) },
-                { label: "Result", node: tex(outputLatex(trig, "Result")) },
-              ]}
-              note="SymPy simplifies; an independent numeric check at random complex points and a symbolic zero test confirm the result before it is shown."
-            />
-            <Card
-              title="Identities state their conditions"
-              badge="Needs x, y > 0"
-              tone="warn"
-              rows={[
-                { label: "You type", node: typed(logBlocked) },
-                { label: "No assumptions", node: plain(logBlocked.outputs[0]?.text ?? "") },
-                { label: "With x, y positive", node: tex(outputLatex(logOk, "Logarithm")) },
-              ]}
-              note="The handbook identity is found either way. It is applied only once its conditions are provable from the assumptions you declare."
-            />
+          <div className="mt-12">
+            <h3 className="font-serif text-2xl">Small calculations. Clear evidence.</h3>
+            <p className="mt-2 max-w-2xl text-muted">
+              Even everyday algebra should show what changed and why it is valid.
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <article className="min-w-0 rounded-lg border border-rule bg-raised p-5 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted">
+                    01 · Verified rewrite
+                  </span>
+                  <StatusBadge status="ok" label="Verified" />
+                </div>
+                <h4 className="mt-3 font-serif text-xl">Simplify. Then prove the rewrite.</h4>
+                <p className="mt-1 text-sm text-muted">
+                  A shorter expression, checked before it is shown.
+                </p>
+                <div className="mt-5 min-w-0 rounded-md border border-rule bg-paper p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted">Start with</p>
+                  <div className="mt-2 overflow-x-auto py-2 text-lg">
+                    <Math latex={inputLatex(trig)} />
+                  </div>
+                  <div className="my-3 flex items-center gap-3" aria-hidden="true">
+                    <span className="font-serif text-xl text-accent">↓</span>
+                    <span className="text-xs text-muted">Simplify and check</span>
+                  </div>
+                  <p className="text-xs uppercase tracking-wide text-muted">Verified result</p>
+                  <div className="mt-2 overflow-x-auto py-2 text-xl">
+                    <Math latex={outputLatex(trig, "Result")} />
+                  </div>
+                </div>
+                <p className="mt-4 text-sm font-medium text-ink">
+                  Symbolic zero test passed · 20/20 numerical checks
+                </p>
+              </article>
+
+              <article className="min-w-0 rounded-lg border border-rule bg-raised p-5 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted">
+                    02 · Assumption-aware identities
+                  </span>
+                  <StatusBadge status="warn" label="Conditional" />
+                </div>
+                <h4 className="mt-3 font-serif text-xl">No assumptions. No shortcuts.</h4>
+                <p className="mt-1 text-sm text-muted">
+                  A matching identity is not permission to use it.
+                </p>
+                <div className="mt-5 min-w-0 rounded-md border border-rule bg-paper p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted">
+                    Without assumptions · Not applied
+                  </p>
+                  <div className="mt-2 overflow-x-auto py-2 text-lg">
+                    <Math latex={inputLatex(logBlocked)} />
+                  </div>
+                  <div className="my-3 flex items-center gap-3 border-t border-rule pt-3">
+                    <span className="font-serif text-xl text-accent" aria-hidden="true">↓</span>
+                    <span className="text-xs text-muted">
+                      You declare x and y positive
+                    </span>
+                  </div>
+                  <p className="text-xs uppercase tracking-wide text-muted">
+                    Conditions satisfied · Identity applied
+                  </p>
+                  <div className="mt-2 overflow-x-auto py-2 text-lg">
+                    <Math
+                      latex={String.raw`\\log(xy) = ` + outputLatex(logOk, "Logarithm")}
+                    />
+                  </div>
+                </div>
+                <p className="mt-4 text-sm font-medium text-ink">
+                  Applied only with x, y positive · 20/20 numerical checks
+                </p>
+              </article>
+            </div>
           </div>
           <p className="mt-6 text-sm text-muted">
             <Link href="/docs" className="underline hover:text-ink">
