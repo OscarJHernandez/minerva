@@ -33,9 +33,9 @@
       "id": "wedge-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 382,
-        "tool_ms": 2392,
-        "total_ms": 2791
+        "claim_check_ms": 234,
+        "tool_ms": 1240,
+        "total_ms": 1492
       }
     },
     {
@@ -70,9 +70,9 @@
       "id": "wedge-xdot-first-call",
       "pending": "",
       "timing": {
-        "claim_check_ms": 373,
-        "tool_ms": 803,
-        "total_ms": 1191
+        "claim_check_ms": 244,
+        "tool_ms": 725,
+        "total_ms": 986
       }
     },
     {
@@ -107,9 +107,9 @@
       "id": "wedge-wrong-format-recovered",
       "pending": "",
       "timing": {
-        "claim_check_ms": 378,
-        "tool_ms": 1156,
-        "total_ms": 1549
+        "claim_check_ms": 237,
+        "tool_ms": 961,
+        "total_ms": 1215
       }
     },
     {
@@ -144,9 +144,9 @@
       "id": "wedge-shape-errors-repaired",
       "pending": "",
       "timing": {
-        "claim_check_ms": 372,
-        "tool_ms": 799,
-        "total_ms": 1185
+        "claim_check_ms": 246,
+        "tool_ms": 722,
+        "total_ms": 985
       }
     },
     {
@@ -182,8 +182,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 805,
-        "total_ms": 819
+        "tool_ms": 591,
+        "total_ms": 607
       }
     },
     {
@@ -219,8 +219,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 731,
-        "total_ms": 745
+        "tool_ms": 468,
+        "total_ms": 484
       }
     },
     {
@@ -256,8 +256,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 362,
-        "total_ms": 376
+        "tool_ms": 229,
+        "total_ms": 244
       }
     },
     {
@@ -292,9 +292,9 @@
       "id": "wedge-routed-xdot",
       "pending": "",
       "timing": {
-        "claim_check_ms": 379,
-        "tool_ms": 800,
-        "total_ms": 1195
+        "claim_check_ms": 246,
+        "tool_ms": 713,
+        "total_ms": 976
       }
     },
     {
@@ -329,9 +329,9 @@
       "id": "pendulum-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 855,
-        "tool_ms": 1614,
-        "total_ms": 2486
+        "claim_check_ms": 789,
+        "tool_ms": 1431,
+        "total_ms": 2237
       }
     },
     {
@@ -366,9 +366,9 @@
       "id": "pendulum-routed-latex",
       "pending": "",
       "timing": {
-        "claim_check_ms": 853,
-        "tool_ms": 816,
-        "total_ms": 1684
+        "claim_check_ms": 784,
+        "tool_ms": 770,
+        "total_ms": 1572
       }
     },
     {
@@ -403,9 +403,9 @@
       "id": "pendulum-routed-text-velocities",
       "pending": "",
       "timing": {
-        "claim_check_ms": 856,
-        "tool_ms": 808,
-        "total_ms": 1679
+        "claim_check_ms": 807,
+        "tool_ms": 765,
+        "total_ms": 1589
       }
     },
     {
@@ -440,9 +440,9 @@
       "id": "pendulum-model-calls-with-text",
       "pending": "",
       "timing": {
-        "claim_check_ms": 885,
-        "tool_ms": 802,
-        "total_ms": 1701
+        "claim_check_ms": 825,
+        "tool_ms": 729,
+        "total_ms": 1571
       }
     },
     {
@@ -477,9 +477,9 @@
       "id": "pendulum-assignment-and-greek",
       "pending": "",
       "timing": {
-        "claim_check_ms": 855,
-        "tool_ms": 805,
-        "total_ms": 1674
+        "claim_check_ms": 819,
+        "tool_ms": 738,
+        "total_ms": 1573
       }
     },
     {
@@ -514,9 +514,9 @@
       "id": "pendulum-wrong-sign-stays-unbacked",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1370,
-        "tool_ms": 819,
-        "total_ms": 2204
+        "claim_check_ms": 1424,
+        "tool_ms": 751,
+        "total_ms": 2193
       }
     },
     {
@@ -551,9 +551,9 @@
       "id": "cyclic-oscillator",
       "pending": "",
       "timing": {
-        "claim_check_ms": 424,
-        "tool_ms": 422,
-        "total_ms": 860
+        "claim_check_ms": 297,
+        "tool_ms": 300,
+        "total_ms": 614
       }
     },
     {
@@ -567,7 +567,7 @@
         "contradicted": 0,
         "est_tokens_in": 17261,
         "est_tokens_out": 26,
-        "evidence_pct": 50.0,
+        "evidence_pct": 100.0,
         "format_switches": 0,
         "formulas": 2,
         "input_adjusted": 0,
@@ -581,16 +581,16 @@
         "tool_calls": 1,
         "unknown_names": 0,
         "unparsed_claims": 0,
-        "unsupported_claims": 1,
+        "unsupported_claims": 0,
         "valid_calls": 1,
-        "with_evidence": 1
+        "with_evidence": 2
       },
       "id": "simplify-with-functions-prefix",
       "pending": "",
       "timing": {
-        "claim_check_ms": 362,
-        "tool_ms": 930,
-        "total_ms": 1305
+        "claim_check_ms": null,
+        "tool_ms": 667,
+        "total_ms": 683
       }
     },
     {
@@ -626,8 +626,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 4136,
-        "total_ms": 4150
+        "tool_ms": 3740,
+        "total_ms": 3757
       }
     },
     {
@@ -663,8 +663,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 2441,
-        "total_ms": 2454
+        "tool_ms": 2033,
+        "total_ms": 2048
       }
     },
     {
@@ -678,7 +678,7 @@
         "contradicted": 0,
         "est_tokens_in": 25861,
         "est_tokens_out": 24,
-        "evidence_pct": 50.0,
+        "evidence_pct": 100.0,
         "format_switches": 0,
         "formulas": 2,
         "input_adjusted": 0,
@@ -692,16 +692,16 @@
         "tool_calls": 2,
         "unknown_names": 0,
         "unparsed_claims": 0,
-        "unsupported_claims": 1,
+        "unsupported_claims": 0,
         "valid_calls": 1,
-        "with_evidence": 1
+        "with_evidence": 2
       },
       "id": "unreadable-arguments-then-valid",
       "pending": "",
       "timing": {
-        "claim_check_ms": 366,
-        "tool_ms": 931,
-        "total_ms": 1311
+        "claim_check_ms": null,
+        "tool_ms": 656,
+        "total_ms": 673
       }
     },
     {
@@ -737,8 +737,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 540,
-        "total_ms": 553
+        "tool_ms": 407,
+        "total_ms": 422
       }
     },
     {
@@ -774,8 +774,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 541,
-        "total_ms": 555
+        "tool_ms": 383,
+        "total_ms": 398
       }
     },
     {
@@ -811,8 +811,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 531,
-        "total_ms": 544
+        "tool_ms": 398,
+        "total_ms": 413
       }
     },
     {
@@ -847,9 +847,9 @@
       "id": "matrix-expansion-noncommuting",
       "pending": "",
       "timing": {
-        "claim_check_ms": 363,
-        "tool_ms": 373,
-        "total_ms": 751
+        "claim_check_ms": 232,
+        "tool_ms": 248,
+        "total_ms": 495
       }
     },
     {
@@ -884,9 +884,9 @@
       "id": "ode-first-order",
       "pending": "",
       "timing": {
-        "claim_check_ms": 506,
-        "tool_ms": 427,
-        "total_ms": 948
+        "claim_check_ms": 389,
+        "tool_ms": 296,
+        "total_ms": 702
       }
     },
     {
@@ -921,9 +921,9 @@
       "id": "vector-divergence-product",
       "pending": "",
       "timing": {
-        "claim_check_ms": 374,
-        "tool_ms": 537,
-        "total_ms": 925
+        "claim_check_ms": 231,
+        "tool_ms": 419,
+        "total_ms": 666
       }
     },
     {
@@ -958,9 +958,9 @@
       "id": "vector-distributional-divergence",
       "pending": "",
       "timing": {
-        "claim_check_ms": 365,
-        "tool_ms": 665,
-        "total_ms": 1045
+        "claim_check_ms": 234,
+        "tool_ms": 585,
+        "total_ms": 836
       }
     }
   ],
@@ -977,6 +977,6 @@
     "trajectories": 26,
     "unknown_names": 1,
     "unparsed_claims": 0,
-    "unsupported_claims": 7
+    "unsupported_claims": 5
   }
 }

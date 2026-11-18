@@ -193,3 +193,26 @@ def test_a_trace_never_reaches_the_report_document(ctx: ToolContext, tmp_path: P
     assert (
         "minerva-debug-json" not in text and '"trace"' not in text and "model_arguments" not in text
     )
+
+
+def _with_formulas(values: list[str]) -> Observation:
+    obs = _observation(["simplify"])
+    obs.final["blocks"] = [
+        {
+            "kind": "text",
+            "segments": [{"type": "math", "value": v, "status": "unchecked"} for v in values],
+        }
+    ]
+    return obs
+
+
+def test_a_lone_symbol_is_not_an_unchecked_formula() -> None:
+    """`$x$` names a variable and asserts nothing; the loop's own counters leave it out, so does scoring."""
+    result = score_case(_simple_case(max_unchecked=0), _with_formulas(["x", r"\theta_1"]))
+    assert result.unchecked == 0 and not any("unchecked" in n for n in result.notes)
+
+
+def test_an_unchecked_relation_still_counts() -> None:
+    result = score_case(_simple_case(max_unchecked=0), _with_formulas(["x", "a = b + 1"]))
+    assert result.unchecked == 1
+    assert any("unchecked" in n for n in result.notes)

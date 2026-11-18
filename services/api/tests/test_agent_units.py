@@ -1623,3 +1623,51 @@ def test_distribution_tool_is_deterministic_for_trace_replay(ctx: ToolContext) -
     first = execute("distribution", args, ctx)
     second = execute("distribution", args, ctx)
     assert first.status == "ok" and first.for_model == second.for_model
+
+
+def _marks(msg: dict[str, Any]) -> dict[str, str]:
+    return {s["value"]: s["status"] for s in segments_of(msg) if s["type"] != "text"}
+
+
+def _turn(ctx: ToolContext, call: ToolCall, reply: str, question: str) -> dict[str, str]:
+    llm = FakeLLM([[Chunk(tool_calls=[call])], [Chunk(text=reply)]])
+    return _marks(final(collect(llm, ctx, [{"role": "user", "content": question}])))
+
+
+def test_a_restriction_the_simplify_tool_reported_is_not_unchecked(ctx: ToolContext) -> None:
+    call = ToolCall("simplify", {"latex": r"\frac{x^2-1}{x-1}"})
+    marks = _turn(
+        ctx, call, r"It is $x + 1$, valid only where $x \neq 1$.", "simplify (x^2-1)/(x-1)"
+    )
+    assert marks[r"x \neq 1"] == "from_tool"
+
+
+def test_a_different_restriction_than_the_one_reported_stays_unchecked(ctx: ToolContext) -> None:
+    call = ToolCall("simplify", {"latex": r"\frac{x^2-1}{x-1}"})
+    marks = _turn(ctx, call, r"It is $x + 1$, valid only where $x \neq 2$.", "simplify")
+    assert marks[r"x \neq 2"] == "unchecked"
+
+
+def test_a_verified_definite_integral_equation_is_from_the_tool(ctx: ToolContext) -> None:
+    call = ToolCall(
+        "integrate", {"latex": r"x\mathrm{e}^{x}", "variable": "x", "lower": "0", "upper": "1"}
+    )
+    marks = _turn(
+        ctx, call, r"So $\int_0^1 x \mathrm{e}^{x}\,dx = 1$.", r"integrate x e^x from 0 to 1"
+    )
+    assert marks[r"\int_0^1 x \mathrm{e}^{x}\,dx = 1"] == "from_tool"
+
+
+def test_the_same_integral_with_another_value_stays_unchecked(ctx: ToolContext) -> None:
+    call = ToolCall(
+        "integrate", {"latex": r"x\mathrm{e}^{x}", "variable": "x", "lower": "0", "upper": "1"}
+    )
+    marks = _turn(
+        ctx, call, r"So $\int_0^1 x \mathrm{e}^{x}\,dx = 2$.", r"integrate x e^x from 0 to 1"
+    )
+    assert marks[r"\int_0^1 x \mathrm{e}^{x}\,dx = 2"] == "unchecked"
+
+
+def test_limits_commands_are_spelling_not_meaning() -> None:
+    assert normalize(r"\int\limits_{0}^{1} x\, dx") == normalize(r"\int_0^1 x\,dx")
+    assert normalize(r"\int_0^1 x\,dx") != normalize(r"\int_0^2 x\,dx")
