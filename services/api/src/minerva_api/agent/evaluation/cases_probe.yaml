@@ -1,0 +1,477 @@
+# Probe cases for the reliability work: written while the baseline live run was still going, before any trace or
+# report of it was opened, and frozen by the digests pinned in test_evaluation_probe.py. They are not part of
+# `all`; run them with `--suite probe`. Prompts are never edited after the freeze (a failing probe is a finding,
+# not a case to reword). Each case has an independent source (hand calculation, textbook fact, or the engine's
+# own documented behaviour) and, where a tool call is right, a reference call that `--check-cases` runs against
+# the engine. Alternative valid tools are listed in `also_ok`.
+#
+# Coverage: wrong or missing tool, alternative valid tools, false identities, missing or invented assumptions,
+# restrictions across turns, unsupported mathematics, misread verification statuses, recovery from invalid
+# arguments (plain-text notation), multi-step explorations.
+
+# ----------------------------------------------------------------------------- wrong or missing tool
+- id: probe-rate-of-change
+  category: calculus
+  prompt: 'What is the rate of change of $x^2 \exp(x)$ with respect to $x$?'
+  expected_tool: differentiate
+  args: {present: [latex]}
+  expect_card: {status: ok, result_text: "x*(x + 2)*exp(x)"}
+  reference: {tool: differentiate, arguments: {latex: 'x^2 \exp(x)', variables: [{name: x}]}}
+  source: "product rule: d/dx (x^2 e^x) = (2x + x^2) e^x"
+
+- id: probe-antiderivative-power
+  category: calculus
+  prompt: 'Find an antiderivative of $x^5$.'
+  expected_tool: integrate
+  args: {present: [latex, variable]}
+  expect_card: {status: ok, result_text: "x**6/6"}
+  reference: {tool: integrate, arguments: {latex: 'x^5', variable: x}}
+  source: "power rule: the integral of x^n is x^(n+1)/(n+1)"
+
+- id: probe-area-under-line
+  category: calculus
+  prompt: 'What is the area under $y = 2x + 1$ from $x = 0$ to $x = 3$?'
+  expected_tool: integrate
+  args: {present: [latex, variable, lower, upper]}
+  expect_card: {status: ok, result_text: "12"}
+  reference: {tool: integrate, arguments: {latex: '2x + 1', variable: x, lower: '0', upper: '3'}}
+  source: "hand calculation: [x^2 + x] from 0 to 3 = 12"
+
+- id: probe-taylor-cosine
+  category: calculus
+  prompt: 'Give the Taylor polynomial of $\cos x$ about $0$ up to order 4.'
+  expected_tool: series
+  args: {present: [latex, variable]}
+  expect_card: {status: ok}
+  reference: {tool: series, arguments: {latex: '\cos x', variable: x, point: '0', order: 4}}
+  reply_matches: 'x\^?\{?4|24'
+  source: "textbook: cos x = 1 - x^2/2 + x^4/24 - ..."
+
+- id: probe-solve-for-time
+  category: symbolic
+  prompt: 'Solve $v = v_0 + a t$ for $t$.'
+  expected_tool: isolate_variable
+  args: {present: [equation, variable]}
+  expect_card: {status: ok}
+  reference: {tool: isolate_variable, arguments: {equation: 'v = v_0 + a t', variable: 't'}}
+  reply_matches: 'v_?0?'
+  source: "hand calculation: t = (v - v_0)/a for a nonzero"
+
+- id: probe-zeros-of-cubic
+  category: symbolic
+  prompt: 'Find all roots of $x^3 - 6x^2 + 11x - 6 = 0$.'
+  expected_tool: solve_polynomial
+  expect_card: {status: ok}
+  reference: {tool: solve_polynomial, arguments: {equation: 'x^3-6x^2+11x-6=0'}}
+  reply_matches: '1.*2.*3|3.*2.*1'
+  source: "hand calculation: (x - 1)(x - 2)(x - 3)"
+
+- id: probe-double-angle-lookup
+  category: retrieval
+  prompt: 'What is the double-angle formula for sine?'
+  expected_tool: search_handbook
+  also_ok: [get_entry, find_identities]
+  expect_card: {status: ok}
+  reference: {tool: search_handbook, arguments: {query: 'double angle sine'}}
+  reply_matches: 'sin.*cos|2\s*\\?sin'
+  source: "textbook trigonometry: sin 2x = 2 sin x cos x"
+
+- id: probe-concept-no-tool
+  category: ambiguous
+  prompt: 'Why does a derivative measure a slope? Explain the idea in two sentences.'
+  expected_tool: none
+  reply_matches: 'slope|tangent|rate|limit'
+  max_reply_words: 120
+  source: "an explanation of a concept needs no computation"
+
+# ----------------------------------------------------------------------------- alternative valid tools
+- id: probe-identity-or-simplify
+  category: retrieval
+  prompt: 'Is there an identity that rewrites $\sin^2 x + \cos^2 x$ in a simpler form?'
+  expected_tool: find_identities
+  also_ok: [simplify, search_handbook, check_identity]
+  expect_card: {status: ok}
+  reference: {tool: find_identities, arguments: {latex: '\sin^2 x + \cos^2 x'}}
+  reply_matches: '\b1\b'
+  source: "Pythagorean identity"
+
+- id: probe-difference-of-squares-true
+  category: false_claim
+  prompt: 'Does $(a+b)(a-b) = a^2 - b^2$ hold?'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities, search_handbook]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '(a+b)(a-b) = a^2 - b^2'}}
+  reply_matches: 'yes|true|holds|identity|equal'
+  reply_forbids: 'not an identity|does not hold|is false|incorrect'
+  source: "hand calculation: the cross terms cancel"
+
+- id: probe-where-it-vanishes
+  category: symbolic
+  prompt: 'For which x is $x^2 - 9$ equal to zero?'
+  expected_tool: solve_polynomial
+  also_ok: [isolate_variable]
+  expect_card: {status: ok}
+  reference: {tool: solve_polynomial, arguments: {equation: 'x^2-9=0'}}
+  reply_matches: '3'
+  source: "hand calculation: (x - 3)(x + 3)"
+
+# ----------------------------------------------------------------------------- false identities (and their true twins)
+- id: probe-false-exp-sum
+  category: false_claim
+  prompt: 'Confirm that $\exp(a+b) = \exp(a) + \exp(b)$.'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities, search_handbook]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\exp(a+b) = \exp(a) + \exp(b)'}}
+  reply_matches: 'not|false|incorrect|does not|isn.t|product'
+  reply_forbids: 'confirmed|that is correct|yes,? (it|this) (is|holds)'
+  wrong_formulas: ['\exp(a+b) = \exp(a) + \exp(b)']
+  source: "exp(a + b) = exp(a) exp(b); at a = b = 0 the claim reads 1 = 2"
+
+- id: probe-false-sqrt-sum
+  category: false_claim
+  prompt: 'Is $\sqrt{a^2 + b^2} = a + b$ always true?'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\sqrt{a^2 + b^2} = a + b'}}
+  reply_matches: 'not|false|incorrect|does not|isn.t|no\b'
+  reply_forbids: 'yes,? (it|this) (is|holds)|that is correct'
+  wrong_formulas: ['\sqrt{a^2 + b^2} = a + b']
+  source: "a = b = 1 gives sqrt(2) on the left and 2 on the right"
+
+- id: probe-false-double-sine
+  category: false_claim
+  prompt: 'Verify that $\sin(2x) = 2\sin x$.'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities, search_handbook]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\sin(2x) = 2\sin x'}}
+  reply_matches: 'not|false|incorrect|does not|isn.t|cos'
+  reply_forbids: 'verified|that is correct|yes,? (it|this) (is|holds)'
+  wrong_formulas: ['\sin(2x) = 2\sin x']
+  source: "x = pi/2 gives 0 on the left and 2 on the right"
+
+- id: probe-true-square-difference
+  category: false_claim
+  prompt: 'Is it true that $(a-b)^2 = a^2 - 2ab + b^2$?'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities, search_handbook]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '(a-b)^2 = a^2 - 2ab + b^2'}}
+  reply_matches: 'yes|true|holds|identity|equal'
+  reply_forbids: 'not an identity|does not hold|is false|incorrect'
+  source: "binomial expansion"
+
+- id: probe-false-matrix-square
+  category: false_claim
+  prompt: 'A and B are 2x2 matrices. Show that $(A+B)^2 = A^2 + 2AB + B^2$.'
+  expected_tool: matrix_calculus
+  args: {present: [matrices], absent: [commuting]}
+  forbid_assumptions: true
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '(A+B)^2'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: simplify
+  reply_forbids: 'shown|that is correct|as required'
+  wrong_formulas: ['(A+B)^2 = A^2 + 2AB + B^2']
+  source: "matrix multiplication is not commutative: (A+B)^2 = A^2 + AB + BA + B^2"
+
+# ----------------------------------------------------------------------------- missing or invented assumptions
+- id: probe-log-power-needs-sign
+  category: false_claim
+  prompt: 'Confirm that $\log(x^2) = 2\log x$.'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities, search_handbook]
+  forbid_assumptions: true
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\log(x^2) = 2\log x'}}
+  reply_matches: 'positive|x\s*>\s*0|assum|real|conditional|only|branch'
+  reply_forbids: 'for all x|always holds'
+  source: "true for x > 0; for x = -1 the left is log 1 = 0 and the right is 2 pi i (principal branch)"
+
+- id: probe-log-sum-no-assumption
+  category: symbolic
+  prompt: 'Simplify $\log(pq) - \log p - \log q$.'
+  expected_tool: simplify
+  also_ok: [find_identities]
+  forbid_assumptions: true
+  args: {absent: [assumptions]}
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: simplify, arguments: {latex: '\log(pq) - \log p - \log q'}}
+  reply_matches: 'positive|assum|condition|branch|not|cannot|unchanged'
+  source: "AGENTS.md (log(ab) = log a + log b needs a, b > 0; symbols are complex unless declared)"
+
+- id: probe-abs-given-sign
+  category: symbolic
+  prompt: 'Assuming x is negative, simplify $|x| + x$.'
+  expected_tool: simplify
+  args: {assumes: {x: negative}}
+  expect_card: {status: unchanged, result_text: "0"}
+  reference: {tool: simplify, arguments: {latex: '|x| + x', assumptions: {x: [negative]}}}
+  source: "for x < 0, |x| = -x, so |x| + x = 0"
+
+- id: probe-exponential-integral-needs-sign
+  category: calculus
+  prompt: 'Compute $\int_0^\infty \exp(-k t)\,dt$.'
+  expected_tool: integrate
+  forbid_assumptions: true
+  args: {absent: [assumptions]}
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: integrate, arguments: {latex: '\exp(-k t)', variable: t, lower: '0', upper: oo}}
+  reply_matches: 'positive|k\s*>\s*0|assum|condition|converge|real part'
+  source: "the integral converges only for Re(k) > 0, where it equals 1/k"
+
+- id: probe-exponential-integral-given-sign
+  category: calculus
+  prompt: 'For positive k, compute $\int_0^\infty \exp(-k t)\,dt$.'
+  expected_tool: integrate
+  args: {assumes: {k: positive}}
+  expect_card: {status: ok, result_text: "1/k"}
+  reference:
+    tool: integrate
+    arguments: {latex: '\exp(-k t)', variable: t, lower: '0', upper: oo, assumptions: {k: [positive]}}
+  source: "hand calculation: [-exp(-k t)/k] from 0 to infinity = 1/k"
+
+# ----------------------------------------------------------------------------- restrictions across turns
+- id: probe-cancel-then-differentiate
+  category: multistep
+  prompt: 'Simplify $\frac{x^2-4}{x-2}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "x + 2"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^2-4}{x-2}'}}
+  restrictions_reported: 'x\s*(\\neq|\\ne|≠|!=)\s*2|(undefined|not defined|excluded|excluding|except)[^.]*\b2\b'
+  source: "polynomial division: (x - 2)(x + 2) / (x - 2) = x + 2 for x != 2"
+  followups:
+    - prompt: 'Differentiate that result with respect to x.'
+      expected_tool: differentiate
+      args: {present: [latex]}
+      expect_card: {status: ok, result_text: "1"}
+      reference: {tool: differentiate, arguments: {latex: 'x + 2', variables: [{name: x}]}}
+      must_reuse: true
+      forbid_assumptions: true
+      restrictions_reported: 'x\s*(\\neq|\\ne|≠|!=)\s*2|(undefined|not defined|excluded|excluding|except)[^.]*\b2\b'
+
+- id: probe-cancel-then-integrate
+  category: multistep
+  prompt: 'Simplify $\frac{u^2-1}{u+1}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "u - 1"}
+  reference: {tool: simplify, arguments: {latex: '\frac{u^2-1}{u+1}'}}
+  restrictions_reported: 'u\s*(\\neq|\\ne|≠|!=)\s*-\s*1|(undefined|not defined|excluded|excluding|except)[^.]*-\s*1'
+  source: "(u - 1)(u + 1) / (u + 1) = u - 1 for u != -1"
+  followups:
+    - prompt: 'Now integrate it from 2 to 3.'
+      expected_tool: integrate
+      args: {present: [latex, variable]}
+      expect_card: {status: ok, result_text: "3/2"}
+      reference: {tool: integrate, arguments: {latex: 'u - 1', variable: u, lower: '2', upper: '3'}}
+      must_reuse: true
+      forbid_assumptions: true
+      restrictions_reported: 'u\s*(\\neq|\\ne|≠|!=)\s*-\s*1|(undefined|not defined|excluded|excluding|except)[^.]*-\s*1'
+
+- id: probe-assumption-carries-over
+  category: followup
+  prompt: 'Let b be positive. Simplify $\sqrt{b^2}$.'
+  expected_tool: simplify
+  args: {assumes: {b: positive}}
+  expect_card: {status: unchanged, result_text: "b"}
+  reference: {tool: simplify, arguments: {latex: '\sqrt{b^2}', assumptions: {b: [positive]}}}
+  source: "for b > 0, sqrt(b^2) = b"
+  followups:
+    - prompt: 'Now do the same for $\sqrt{b^4}$.'
+      expected_tool: simplify
+      args: {assumes: {b: positive}}
+      expect_card: {status: unchanged, result_text: "b**2"}
+      reference: {tool: simplify, arguments: {latex: '\sqrt{b^4}', assumptions: {b: [positive]}}}
+      source: "for b > 0, sqrt(b^4) = b^2; the assumption was given in the first message"
+
+# ----------------------------------------------------------------------------- unsupported mathematics
+- id: probe-laurent-expansion
+  category: unsupported
+  prompt: 'Expand $\frac{1}{z^2 (z+1)}$ in a Laurent series around $z = 0$.'
+  expected_tool: series
+  also_ok: [approximation]
+  expect_card: {status: unsupported}
+  reference: {tool: series, arguments: {latex: '\frac{1}{z^2 (z+1)}', variable: z, point: '0', order: 4}}
+  reply_matches: 'not support|cannot|can.t|unsupported|only|Taylor|pole'
+  reply_forbids: 'no such expansion|does not exist|is impossible'
+  source: "AGENTS.md (series: poles are unsupported; there are no Laurent expansions); the Laurent series itself exists: 1/z^2 - 1/z + 1 - z + ..."
+
+- id: probe-open-problem
+  category: unsupported
+  prompt: 'Prove that every even integer greater than 2 is the sum of two primes.'
+  expected_tool: none
+  reply_matches: 'open|unproven|not proven|unsolved|cannot|can.t|Goldbach'
+  reply_forbids: 'QED|this completes the proof|hence proved'
+  source: "Goldbach's conjecture is an open problem"
+
+- id: probe-turbulence-pde
+  category: unsupported
+  prompt: 'Solve the Navier-Stokes equations for turbulent flow in a pipe.'
+  expected_tool: none
+  reply_matches: 'cannot|can.t|not able|unable|not support|outside|no tool'
+  reply_forbids: 'the solution is'
+  source: "Minerva has no PDE solver (docs/capabilities.md); an honest refusal is the answer"
+
+# ----------------------------------------------------------------------------- misread verification statuses
+- id: probe-log-exp-complex
+  category: false_claim
+  prompt: 'Is $\log(\exp(z)) = z$ for every complex number z?'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\log(\exp(z)) = z'}}
+  reply_matches: 'not|only|real|branch|period|2\s*\\?pi|principal'
+  reply_forbids: 'always holds|for every complex z it holds|is proved'
+  source: "log(exp(z)) = z + 2 pi i k for an integer k that depends on Im z; it is z only for -pi < Im z <= pi"
+
+- id: probe-unchanged-is-an-answer
+  category: symbolic
+  prompt: 'Simplify $x^2 + y^2$.'
+  expected_tool: simplify
+  expect_card: {status: unchanged}
+  reference: {tool: simplify, arguments: {latex: 'x^2 + y^2'}}
+  reply_matches: 'already|simplest|cannot be simplified|unchanged|no simpl|nothing'
+  reply_forbids: 'proved|impossible'
+  source: "x^2 + y^2 has no simpler form over the complex numbers with generic symbols"
+
+- id: probe-premise-is-not-proof
+  category: symbolic
+  prompt: 'Substitute $y = 2x$ into $x^2 + y$.'
+  expected_tool: substitute
+  args: {present: [latex, relations]}
+  expect_card: {status: ok}
+  reference: {tool: substitute, arguments: {latex: 'x^2 + y', relations: ['y = 2x']}}
+  reply_matches: 'given|assum|if|premise|using|substitut'
+  reply_forbids: 'proved that y|verified that y'
+  source: "hand calculation: x^2 + 2x; the relation y = 2x is the user's premise, never checked by Minerva"
+
+# ----------------------------------------------------------------------------- recovery from invalid arguments (plain-text notation)
+- id: probe-text-derivative
+  category: calculus
+  prompt: 'Differentiate sin(x)*x^2 with respect to x.'
+  expected_tool: differentiate
+  expect_card: {status: ok, result_text: "x*(x*cos(x) + 2*sin(x))"}
+  reference: {tool: differentiate, arguments: {latex: 'x^2 \sin x', variables: [{name: x}]}}
+  source: "product rule: 2x sin x + x^2 cos x"
+
+- id: probe-text-integral
+  category: calculus
+  prompt: 'integrate x*exp(-x) from 0 to infinity'
+  expected_tool: integrate
+  args: {present: [latex, variable]}
+  expect_card: {status: ok, result_text: "1"}
+  reference: {tool: integrate, arguments: {latex: 'x \exp(-x)', variable: x, lower: '0', upper: oo}}
+  source: "the Gamma function: the integral of x e^(-x) over [0, inf) is Gamma(2) = 1"
+
+- id: probe-velocity-spelling
+  category: physics
+  prompt: 'The Lagrangian is L = 1/2 m xdot^2 - 1/2 k x^2 and the coordinate is x. Find the equation of motion.'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [x]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m \dot{x}^2 - \frac12 k x^2', coordinates: [x]}
+  reply_matches: 'k|m'
+  source: "textbook: m x'' = -k x"
+
+# ----------------------------------------------------------------------------- multi-step explorations
+- id: probe-explore-plane-oscillator
+  category: followup
+  prompt: 'Give me the equations of motion of $L = \frac12 m (\dot{x}^2 + \dot{y}^2) - \frac12 k (x^2 + y^2)$, coordinates x and y.'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [x, y]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments:
+      lagrangian: '\frac12 m (\dot{x}^2 + \dot{y}^2) - \frac12 k (x^2 + y^2)'
+      coordinates: [x, y]
+  source: "textbook: two uncoupled oscillators; energy and the angular momentum m(x y' - y x') are conserved"
+  followups:
+    - prompt: 'Is anything conserved?'
+      expected_tool: find_conserved_quantities
+      also_ok: [analyze_lagrangian]
+      args: {present: [lagrangian]}
+      expect_card: {status: ok}
+      reference:
+        tool: find_conserved_quantities
+        arguments:
+          lagrangian: '\frac12 m (\dot{x}^2 + \dot{y}^2) - \frac12 k (x^2 + y^2)'
+          coordinates: [x, y]
+      reply_forbids: 'no other|nothing else is conserved|the system has no'
+
+- id: probe-explore-derivative-then-integral
+  category: multistep
+  prompt: 'Differentiate $x^3 \sin x$ with respect to $x$.'
+  expected_tool: differentiate
+  args: {present: [latex]}
+  expect_card: {status: ok, result_text: "x**2*(x*cos(x) + 3*sin(x))"}
+  reference: {tool: differentiate, arguments: {latex: 'x^3 \sin x', variables: [{name: x}]}}
+  source: "product rule: 3x^2 sin x + x^3 cos x"
+  followups:
+    - prompt: 'Integrate that result from 0 to 1.'
+      expected_tool: integrate
+      args: {present: [latex, variable, lower, upper]}
+      expect_card: {status: ok, result_text: "sin(1)"}
+      reference:
+        tool: integrate
+        arguments: {latex: 'x^2 (x \cos x + 3 \sin x)', variable: x, lower: '0', upper: '1'}
+      must_reuse: true
+      source: "fundamental theorem of calculus: the integral of d/dx (x^3 sin x) over [0, 1] is 1^3 sin 1 - 0 = sin 1"
+
+- id: probe-explore-sphere-curvature
+  category: tensor_matrix
+  prompt: 'The 2-sphere of radius a has metric diag(a^2, a^2 sin^2 theta) in the coordinates theta, phi, with a positive. Compute its Ricci scalar.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [theta, phi], quantities: [ricci_scalar]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [theta, phi]
+      metric: [['a^2', '0'], ['0', 'a^2 \sin^2\theta']]
+      assumptions: {a: [positive]}
+      quantities: [ricci_scalar]
+  reply_matches: '2/a\^?2|\\frac\{2\}\{a\^?\{?2'
+  source: "differential geometry: the Gaussian curvature of a sphere of radius a is 1/a^2, so the Ricci scalar is 2/a^2"
+  followups:
+    - prompt: 'Which Christoffel symbols of that metric are nonzero?'
+      expected_tool: geometry
+      args: {includes: {quantities: [christoffel]}}
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [theta, phi]
+          metric: [['a^2', '0'], ['0', 'a^2 \sin^2\theta']]
+          assumptions: {a: [positive]}
+          quantities: [christoffel]
+      reply_matches: 'cot|\\cos.*\\sin|sin.*cos'
+      source: "textbook: Gamma^theta_{phi phi} = -sin theta cos theta, Gamma^phi_{theta phi} = cot theta"
+
+# ----------------------------------------------------------------------------- ask rather than guess
+- id: probe-ask-which-variable
+  category: ambiguous
+  prompt: 'Differentiate $a x^2 + b y$.'
+  expected_tool: ask
+  reply_matches: 'which variable|with respect to|which one|partial'
+  source: "two variables appear and the prompt names none: the derivative is not determined"
+
+- id: probe-ask-motion-numbers
+  category: ambiguous
+  prompt: 'Simulate a pendulum with $L = \frac12 m \ell^2 \dot{\theta}^2 + m g \ell \cos\theta$ for ten seconds.'
+  expected_tool: ask
+  forbid: [integrate_motion]
+  reply_matches: 'initial|angle|mass|length|value|which|what'
+  source: "AGENTS.md (integrate_motion needs numbers only the user may choose)"
