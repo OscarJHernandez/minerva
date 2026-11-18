@@ -749,14 +749,14 @@
   category: ambiguous
   prompt: 'Help me with my integral.'
   expected_tool: none
-  reply_matches: '\?'
+  reply_matches: '\?|\bplease\s+(provide|give|send|share|tell|specify|enter|type|paste)\b|\b(could|can|would) you (provide|give|send|share|tell|specify)\b'
   source: "system prompt rule 5 (ask when the problem is ambiguous)"
 
 - id: ambiguous-simplify
   category: ambiguous
   prompt: 'Simplify it.'
   expected_tool: none
-  reply_matches: '\?'
+  reply_matches: '\?|\bplease\s+(provide|give|send|share|tell|specify|enter|type|paste)\b|\b(could|can|would) you (provide|give|send|share|tell|specify)\b'
   source: "system prompt rule 5"
 
 - id: ambiguous-variable
