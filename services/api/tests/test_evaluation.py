@@ -635,6 +635,7 @@ def test_document_and_markdown() -> None:
         "usable": False,
         "summary": None,
         "results": [],
+        "identity": None,  # not passed: the report says "not recorded"
     }
     json.dumps(doc)  # serialisable
     text = render_markdown(doc)

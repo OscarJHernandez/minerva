@@ -242,6 +242,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   engine; every failure gets one class). Reports are JSON plus Markdown under `docs/benchmarks/`; `docs/model-evaluation.md`
   is hand-written interpretation and is never overwritten. Editing the cases changes the case-set digest: say so when
   comparing runs. The model host name never goes into a report.
+  Every report opens with a "Model under test" table: the weights as the host reports them (base model, family, size,
+  quantisation, digest), the defaults the host applies when a request is silent (a Modelfile's `num_predict` decides
+  how long a reply or its thinking may be), the window actually loaded, what Minerva sends, whether thinking was
+  requested, and whether the model was unchanged from the start to the end of the run. Without that a pass rate says
+  nothing about what was measured: a name such as `minerva` is an alias the operator can re-point. `--compare` says
+  loudly when the weights, host defaults or run configuration differ, or when either side did not record them (reports
+  from before this existed). Never put the host address in any of it.
 - Every agent request has a `trace_id`; the loop records typed events (`agent/tracing.py`) with monotonic timings. **Events
   hold no content**: only identifiers, counts, durations, booleans and fixed vocabulary. Do not add a free-text field to
   an event, an expression, tool argument or result to a log line, or any third-party logging or telemetry service; tests
