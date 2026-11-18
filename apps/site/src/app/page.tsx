@@ -85,6 +85,7 @@ const plain = (text: string) => <span className="text-sm text-muted">{text}</spa
 
 export default function Home() {
   const keplerSearch = example("invariants-kepler-polar");
+  const schwarzschild = example("geometry-schwarzschild");
   const trig = example("simplify-trig-quotients");
   const logBlocked = example("identity-log-blocked");
   const logOk = example("identity-log-applicable");
@@ -203,6 +204,57 @@ export default function Home() {
                   See the verified computation
                 </Link>
               </div>
+            </div>
+          </figure>
+          <figure className="mt-8 rounded-lg border border-rule bg-raised p-5 sm:p-8">
+            <figcaption className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+              Another discovery · General relativity
+            </figcaption>
+            <h3 className="mt-3 font-serif text-2xl sm:text-3xl">
+              How can empty spacetime still be curved?
+            </h3>
+            <p className="mt-2 max-w-2xl text-muted">
+              Give Minerva the Schwarzschild metric and ask it to compute the curvature.
+              The Ricci tensor vanishes, but a different curvature invariant does not.
+            </p>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="min-w-0 rounded border border-rule bg-paper p-4">
+                <p className="text-xs uppercase tracking-wide text-muted">Ricci tensor</p>
+                <div className="mt-3 overflow-x-auto py-3 text-xl sm:text-2xl">
+                  <Math
+                    latex={String.raw`R_{\\mu\\nu}=0`}
+                    label="Every component of the Ricci tensor is zero"
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted">
+                  All components vanish. Symbolically checked.
+                </p>
+              </div>
+              <div className="min-w-0 rounded border border-rule bg-paper p-4">
+                <p className="text-xs uppercase tracking-wide text-muted">
+                  Kretschmann scalar
+                </p>
+                <div className="mt-3 overflow-x-auto py-3 text-xl sm:text-2xl">
+                  <Math
+                    latex={String.raw`R_{\\mu\\nu\\rho\\sigma}R^{\\mu\\nu\\rho\\sigma}=\\frac{48M^2}{r^6}`}
+                    label="The Kretschmann scalar equals 48 M squared divided by r to the sixth power"
+                  />
+                </div>
+                <p className="mt-2 text-sm text-muted">
+                  Curvature survives. Numerically checked.
+                </p>
+              </div>
+            </div>
+            <p className="mt-5 max-w-3xl text-sm text-muted">
+              Both results come from the engine&apos;s Schwarzschild metric example.
+              The Ricci result has a symbolic check; the full curvature contraction
+              has independent numerical checks, not a symbolic proof. Validity
+              excludes coordinate singularities.
+            </p>
+            <div className="mt-4">
+              <Link href="/docs" className="text-sm underline hover:text-ink">
+                Inspect the curvature calculation and assumptions
+              </Link>
             </div>
           </figure>
           <div className="mt-6 grid gap-5 md:grid-cols-2">
