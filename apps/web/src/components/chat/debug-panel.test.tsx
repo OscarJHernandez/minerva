@@ -167,4 +167,65 @@ describe("DebugPanel", () => {
     expect(screen.queryByTestId("trace-timeline")).not.toBeInTheDocument();
     expect(screen.getByText("status=ok")).toBeInTheDocument();
   });
+
+  it("shows the model's reasoning only inside the debug panel, per call, labelled as not part of the reply", () => {
+    render(
+      <DebugPanel
+        getReport={() => ""}
+        content={{
+          text: "The answer.",
+          trace: [],
+          debug: withEvents([], {
+            llm_calls: [
+              {
+                ms: 100,
+                text_chars: 0,
+                tool_calls: 1,
+                thinking: "I should call simplify first.",
+                thinking_chars: 29,
+              },
+              { ms: 50, text_chars: 11, tool_calls: 0 },
+            ],
+          }),
+        }}
+      />,
+    );
+    const blocks = screen.getAllByTestId("model-reasoning");
+    expect(blocks).toHaveLength(1); // only the call that thought
+    expect(blocks[0]).toHaveTextContent("Model reasoning, call 1 · 29 characters");
+    expect(blocks[0]).toHaveTextContent("I should call simplify first.");
+    expect(blocks[0]).toHaveTextContent("never sent back to the model");
+  });
+
+  it("says when the reasoning was cut", () => {
+    render(
+      <DebugPanel
+        getReport={() => ""}
+        content={{
+          text: "",
+          trace: [],
+          debug: withEvents([], {
+            llm_calls: [
+              {
+                ms: 1,
+                text_chars: 0,
+                tool_calls: 0,
+                thinking: "abc",
+                thinking_chars: 50000,
+                thinking_truncated: true,
+              },
+            ],
+          }),
+        }}
+      />,
+    );
+    expect(screen.getByTestId("model-reasoning")).toHaveTextContent("50000 characters (cut)");
+  });
+
+  it("has no reasoning block when the model did not think", () => {
+    render(
+      <DebugPanel getReport={() => ""} content={{ text: "", trace: [], debug: withEvents([]) }} />,
+    );
+    expect(screen.queryByTestId("model-reasoning")).not.toBeInTheDocument();
+  });
 });

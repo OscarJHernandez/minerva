@@ -253,6 +253,34 @@ describe("buildDebugReport", () => {
 });
 
 describe("buildTurnReport", () => {
+  it("includes the model's reasoning, labelled, only for a call that thought", () => {
+    const thinking: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        debug: {
+          ...assistant.content.debug!,
+          llm_calls: [
+            {
+              ms: 5,
+              text_chars: 0,
+              tool_calls: 1,
+              thinking: "plan: use simplify",
+              thinking_chars: 18,
+            },
+            { ms: 6, text_chars: 5, tool_calls: 0 },
+          ],
+        },
+      },
+    };
+    const out = buildTurnReport({ title: "t", status: null, now: NOW }, [user, thinking], 1);
+    expect(out).toContain("model reasoning, call 1 (18 characters; not part of the reply):");
+    expect(out).toContain("plan: use simplify");
+    expect(out).not.toContain("model reasoning, call 2");
+    const plain = buildTurnReport({ title: "t", status: null, now: NOW }, [user, assistant], 1);
+    expect(plain).not.toContain("model reasoning");
+  });
+
   it("pairs an assistant message with the user message before it", () => {
     const out = buildTurnReport({ title: "t", status: null, now: NOW }, [user, assistant], 1);
     expect(out).toContain("### 1. User");

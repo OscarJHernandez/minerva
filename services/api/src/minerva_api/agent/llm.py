@@ -43,6 +43,9 @@ class Chunk:
     text: str = ""
     tool_calls: list[ToolCall] = field(default_factory=list)
     usage: Usage | None = None  # on the last chunk of a reply, when the provider reports it
+    # The model's own reasoning, when the host sends it (Ollama `message.thinking`, only with think=true). It is
+    # trace material: never reply text, never replayed to the model, never checked or numbered.
+    thinking: str = ""
 
 
 class LLMError(Exception):
@@ -190,12 +193,14 @@ class OllamaClient:
                         ) from exc
                     message = data.get("message") or {}
                     calls = [_tool_call(c) for c in message.get("tool_calls") or []]
-                    text = message.get("content") or ""  # "thinking" is deliberately not forwarded
+                    text = message.get("content") or ""
+                    thought = message.get("thinking")
+                    thinking = thought if isinstance(thought, str) else ""
                     if filter_ is not None:
                         text = filter_.feed(text)
                     usage = _usage(data)
-                    if text or calls or usage:
-                        yield Chunk(text=text, tool_calls=calls, usage=usage)
+                    if text or calls or usage or thinking:
+                        yield Chunk(text=text, tool_calls=calls, usage=usage, thinking=thinking)
                 if filter_ is not None and (rest := filter_.flush()):
                     yield Chunk(text=rest)
         except httpx.TimeoutException as exc:

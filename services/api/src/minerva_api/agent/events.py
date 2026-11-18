@@ -170,7 +170,8 @@ class Block(BaseModel):
 
 
 class LLMCallDebug(BaseModel):
-    """One request to the model within a turn. Sizes and timings only, never content."""
+    """One request to the model within a turn: sizes and timings, and (conversation content, stored only in
+    the message) the model's own reasoning when it was requested."""
 
     ms: int
     text_chars: int
@@ -190,6 +191,12 @@ class LLMCallDebug(BaseModel):
         None  # fingerprint of the system prompt and tool schemas this call sent
     )
     groups: list[str] = Field(default_factory=list)  # tool groups loaded for this call
+    # The model's reasoning for this call, when thinking was requested and the host returned it. Conversation
+    # content like the tool arguments next to it: stored only in this assistant message, never logged, never
+    # replayed. `thinking_chars` is the full length; `thinking` is cut at THINKING_CAP.
+    thinking: str | None = None
+    thinking_chars: int = 0
+    thinking_truncated: bool = False
 
 
 class ClaimDebug(BaseModel):
