@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Minerva — an open-source, self-hostable mathematical workbench",
+  title: "Minerva — Explore mathematics. Own the process.",
   description:
-    "Open-source mathematical workbench for verified symbolic computation, identity search with explicit assumptions, and tensor symmetries. Self-host it and connect your own local model.",
+    "Minerva is an open-source mathematical assistant you can run yourself to explore ideas, try different approaches, and verify results on your terms.",
   keywords: [
+    "mathematical assistant",
+    "math exploration",
     "open source",
     "self-hosted",
     "computer algebra",
@@ -17,9 +19,9 @@ export const metadata: Metadata = {
     "local LLM",
   ],
   openGraph: {
-    title: "Minerva — an open-source, self-hostable mathematical workbench",
+    title: "Minerva — Explore mathematics. Own the process.",
     description:
-      "Verified symbolic computation and a citable handbook of mathematics and physics. Run it on your own infrastructure and keep your work under your control.",
+      "Explore mathematics on your own terms. Self-host Minerva, choose what to investigate, and verify the results using open-source tools.",
     type: "website",
   },
 };
