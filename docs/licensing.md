@@ -94,6 +94,8 @@ Unlicense, PSF-2.0, plus:
 | `caniuse-lite` | CC-BY-4.0 | Browser data used at build time |
 | `mathlive`, `katex`, `next`, `react`, `tailwindcss` | MIT | |
 
+**JavaScript (development only):** `@playwright/test` (Apache-2.0) runs the browser tests in `e2e/`; the Chromium build it downloads at test time is not shipped or bundled with any image.
+
 **Infrastructure images:** PostgreSQL (PostgreSQL licence), nginx (BSD-2-Clause), Python (PSF), Node (MIT).
 
 Re-run the collection when dependencies change:

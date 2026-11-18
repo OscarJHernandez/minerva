@@ -1,0 +1,68 @@
+# Exploration cases: the exact prompts that "Explore in Minerva" buttons on the landing page put in the chat composer
+# (packages/ui/fixtures/explorations.json). Not part of `all`; run with `--suite explore`. A button is shown only
+# if its exploration is `approved`, which requires five correct, engine-backed live runs of the exact prompt at the
+# deployed 10 s compute limit (docs/benchmarks/exploration-live.json, checked by test_exploration_registry.py).
+# The reference call is the one the metric in docs/capabilities.yaml (`geometry-schwarzschild`) describes.
+
+- id: explore-schwarzschild-curvature
+  category: tensor_matrix
+  prompt: 'Using the Schwarzschild metric $ds^2 = -(1-2M/r)\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\theta^2 + r^2\sin^2\theta\, d\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Christoffel symbols, the Ricci tensor and the Kretschmann scalar. Verify which curvature quantities vanish and which remain nonzero. Show the intermediate calculations and identify any coordinate restrictions.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [t, r, theta, phi], quantities: [christoffel, ricci, kretschmann]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [t, r, theta, phi]
+      metric:
+        - ['-(1-2M/r)', '0', '0', '0']
+        - ['0', '(1-2M/r)^{-1}', '0', '0']
+        - ['0', '0', 'r^2', '0']
+        - ['0', '0', '0', 'r^2 \sin^2\theta']
+      assumptions: {M: [positive], r: [positive]}
+      quantities: [christoffel, ricci, kretschmann]
+  reply_matches: '(?is)(?=.*(vanish|zero|flat))(?=.*48)'
+  reply_forbids: 'Kretschmann[^.]{0,80}(symbolically (proved|verified|checked)|is proved)|singularit(y|ies) (at|in) the (Ricci|metric) is physical'
+  source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
+
+- id: explore-schwarzschild-ricci
+  category: tensor_matrix
+  prompt: 'For the Schwarzschild metric $ds^2 = -(1-2M/r)\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\theta^2 + r^2\sin^2\theta\, d\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Ricci tensor. Does it vanish? Show the intermediate calculation and identify any coordinate restrictions.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [t, r, theta, phi], quantities: [ricci]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [t, r, theta, phi]
+      metric:
+        - ['-(1-2M/r)', '0', '0', '0']
+        - ['0', '(1-2M/r)^{-1}', '0', '0']
+        - ['0', '0', 'r^2', '0']
+        - ['0', '0', '0', 'r^2 \sin^2\theta']
+      assumptions: {M: [positive], r: [positive]}
+      quantities: [ricci]
+  reply_matches: '(?is)vanish|zero|flat'
+  reply_forbids: 'Kretschmann[^.]{0,80}(symbolically (proved|verified|checked)|is proved)|singularit(y|ies) (at|in) the (Ricci|metric) is physical'
+  source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
+
+- id: explore-schwarzschild-kretschmann
+  category: tensor_matrix
+  prompt: 'For the Schwarzschild metric $ds^2 = -(1-2M/r)\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\theta^2 + r^2\sin^2\theta\, d\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Kretschmann scalar. Does it vanish? Say what was verified and how, and identify any coordinate restrictions.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [t, r, theta, phi], quantities: [kretschmann]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [t, r, theta, phi]
+      metric:
+        - ['-(1-2M/r)', '0', '0', '0']
+        - ['0', '(1-2M/r)^{-1}', '0', '0']
+        - ['0', '0', 'r^2', '0']
+        - ['0', '0', '0', 'r^2 \sin^2\theta']
+      assumptions: {M: [positive], r: [positive]}
+      quantities: [kretschmann]
+  reply_matches: '48'
+  reply_forbids: 'Kretschmann[^.]{0,80}(symbolically (proved|verified|checked)|is proved)|singularit(y|ies) (at|in) the (Ricci|metric) is physical'
+  source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"

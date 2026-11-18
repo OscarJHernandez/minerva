@@ -1,4 +1,9 @@
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+import { explorePath } from "@minerva/ui/explorations";
+
+/** The app's page for one exploration: the prompt of a landing example in the message box, not sent. */
+export const exploreUrl = (id: string) => `${APP_URL}${explorePath(id)}`;
+
 export const REPO_URL =
   process.env.NEXT_PUBLIC_REPO_URL ?? "https://github.com/OscarJHernandez/minerva";
 

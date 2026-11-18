@@ -20,8 +20,9 @@ CASES_FILE = Path(__file__).with_name("cases.yaml")
 RELIABILITY_FILE = Path(__file__).with_name("cases_reliability.yaml")
 HELDOUT_FILE = Path(__file__).with_name("cases_heldout.yaml")
 PROBE_FILE = Path(__file__).with_name("cases_probe.yaml")
+EXPLORE_FILE = Path(__file__).with_name("cases_exploration.yaml")
 # `heldout` and `probe` are not part of `all`: see cases_heldout.yaml and cases_probe.yaml.
-SUITES = ("core", "reliability", "all", "heldout", "probe")
+SUITES = ("core", "reliability", "all", "heldout", "probe", "explore")
 
 Category = Literal[
     "symbolic",  # simple symbolic calculations
@@ -234,7 +235,8 @@ def load_cases(path: Path = CASES_FILE) -> list[EvalCase]:
 def load_suite(suite: str = "core") -> list[EvalCase]:
     """`core` (cases.yaml), `reliability` (cases_reliability.yaml: live multi-turn and assumption checks), both
     (`all`), `heldout` (cases_heldout.yaml: the same workflows in other words, run on their own) or `probe`
-    (cases_probe.yaml: written before the baseline traces were read, frozen by a pinned digest)."""
+    (cases_probe.yaml: written before the baseline traces were read, frozen by a pinned digest) or `explore`
+    (cases_exploration.yaml: the prompts of the landing page's "Explore in Minerva" buttons)."""
     if suite not in SUITES:
         raise ValueError(f"unknown suite {suite!r}; choose from {', '.join(SUITES)}")
     cases: list[EvalCase] = []
@@ -246,6 +248,8 @@ def load_suite(suite: str = "core") -> list[EvalCase]:
         cases += load_cases(HELDOUT_FILE)
     if suite == "probe":
         cases += load_cases(PROBE_FILE)
+    if suite == "explore":
+        cases += load_cases(EXPLORE_FILE)
     ids = [c.id for c in cases]
     if len(set(ids)) != len(ids):
         raise ValueError("duplicate case ids across suites")
