@@ -278,6 +278,16 @@ _LEIBNIZ_DETAIL = (
     "not an identity, and is not tested by sampling (use the ODE tools to analyse or solve it)"
 )
 
+# A bare differential (`dx`, `du`, `d\\theta`) in a relation: after a change of variable (`u = \\pi/2 - x`, so
+# `dx = -du`) it is notation, not the product of a symbol d and a symbol x. Read as that product, a correct
+# relation was "contradicted" by the definition of u. The `d` must not follow a letter or a backslash
+# (`ad`, `\\delta`).
+_DIFFERENTIAL = re.compile(r"(?<![A-Za-z\\])d(?:\\[A-Za-z]+|[A-Za-z])(?![A-Za-z])")
+_DIFFERENTIAL_DETAIL = (
+    "this relates differentials (dx, du, ...); a differential is notation for a change of variable, not "
+    "a product of symbols, so it is not tested by sampling"
+)
+
 
 class ClaimChecker:
     """Checks equations one after another against the definitions stated so far."""
@@ -384,6 +394,10 @@ class ClaimChecker:
             return ClaimCheck(status="unverified", kind="relation", detail=_TRANSPOSE_DETAIL)
         if _LEIBNIZ.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_LEIBNIZ_DETAIL)
+        if (
+            _DIFFERENTIAL.search(latex) and "\\int" not in latex
+        ):  # an integral keeps its own reading
+            return ClaimCheck(status="unverified", kind="relation", detail=_DIFFERENTIAL_DETAIL)
         if _IMPLICATION.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_IMPLICATION_DETAIL)
         if self.evidence is not None and not _DISTRIBUTION_NOTATION.search(latex):
