@@ -84,6 +84,7 @@ uv run python scripts/verification_report.py [--check|--compare docs/benchmarks/
 uv run python -m minerva_engine.reference_benchmark [--check] [--tier pr|extended]   # (extended rewrites the report) expected answers are hand-written in minerva_engine/reference/, never regenerated
 MINERVA_TEST_TIER=extended MINERVA_HYPOTHESIS_PROFILE=extended uv run pytest packages/engine --hypothesis-seed=N   # extended tier: `make test-extended` (nightly workflow runs it)
 uv run python scripts/eval_models.py --suite reliability --check-cases   # live multi-turn reliability cases (also `make eval-reliability`; --suite core|reliability|all)
+uv run python scripts/eval_models.py --base-url http://HOST:11434 --models a --suite reliability --repeat 3 --seed 7 --label NAME --traces-dir eval-traces/NAME   # also writes every failed turn as a debug report (local, git-ignored) for scripts/replay_trace.py; --traces all writes every turn
 uv run python scripts/bench_invariants.py check|run|compare|sweep|promote   # generated-Hamiltonian discovery benchmarks (docs/conserved-quantities.md)
 uv run python scripts/eval_models.py --check-cases    # the agent benchmark's ground truth against the engine (also: make eval-check)
 uv run python scripts/eval_corruptions.py [--check|--full|--without-cleaning]   # every known model mistake on every benchmark reference call (`make eval-corruptions`; PR tier runs the engine once per operator and tool)

@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from collections.abc import Sequence
 from typing import Any
 
-from .cases import CATEGORIES
+from .cases import ASK, CATEGORIES, NO_TOOL
 from .score import CaseResult
 
 SCHEMA = 1
@@ -74,6 +74,19 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
     flaky = sorted(c for c, v in by_case.items() if 0 < sum(v) < len(v))
     repeat_counts = [sum(v) for _, v in sorted(by_repeat.items())]
 
+    multi_turn = [r for r in scored if r.turns > 1]
+    with_card = [r for r in scored if r.result_ok is not None]
+    model_calls = [r.llm_calls for r in scored if r.llm_calls]
+    per_tool: dict[str, dict[str, Any]] = {}
+    for tool in sorted({r.expected_tool for r in scored} - {NO_TOOL, ASK}):
+        rows = [r for r in scored if r.expected_tool == tool]
+        per_tool[tool] = {
+            "runs": len(rows),
+            "passed": sum(r.passed for r in rows),
+            "tool_selection": sum(r.tool_selected for r in rows) / len(rows),
+            "calls": sum(r.calls for r in rows),
+            "invalid_calls": sum(r.invalid_calls for r in rows),
+        }
     tokens_in = [r.tokens_in for r in scored if r.tokens_in is not None]
     tokens_out = [r.tokens_out for r in scored if r.tokens_out is not None]
     costs = [r.cost_usd for r in scored if r.cost_usd is not None]
@@ -108,6 +121,21 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
         "tokens_in": sum(tokens_in) if tokens_in else None,
         "tokens_out": sum(tokens_out) if tokens_out else None,
         "context": _context(scored),
+        # Runs whose expected card (status and result) the agent reached, of the runs that expect one.
+        "verified_result_coverage": _rate(
+            sum(bool(r.result_ok) for r in with_card), len(with_card)
+        ),
+        "verified_result_runs": len(with_card),
+        # Model calls per run (a single-tool question needs two: the call and the answer).
+        "model_calls": {
+            "total": sum(model_calls),
+            "median": statistics.median(model_calls) if model_calls else None,
+            "mean": statistics.fmean(model_calls) if model_calls else None,
+        },
+        # Runs of cases with follow-up turns that passed every turn (reuse, restrictions, assumptions).
+        "multi_turn_runs": len(multi_turn),
+        "multi_turn_consistency": _rate(sum(r.passed for r in multi_turn), len(multi_turn)),
+        "per_tool": per_tool,
         "per_category": per_category,
         "confusion": {k: dict(v) for k, v in sorted(confusion.items())},
         "failure_classes": dict(
@@ -283,6 +311,19 @@ def render_markdown(doc: dict[str, Any]) -> str:
             lines.append(
                 f"| {expected} | " + " | ".join(str(row.get(c, "")) for c in columns) + " |"
             )
+        if s.get("per_tool"):
+            lines += [
+                "",
+                "### By expected tool",
+                "",
+                "| Tool | Passed | Tool selection | Invalid calls |",
+                "| --- | --- | --- | --- |",
+            ]
+            for name, row in s["per_tool"].items():
+                lines.append(
+                    f"| {name} | {row['passed']}/{row['runs']} | {_pct(row['tool_selection'])} "
+                    f"| {row['invalid_calls']} of {row['calls']} |"
+                )
         lat, llm, tool = s["latency_seconds"], s["llm_ms"], s["tool_ms"]
         lines += [
             "",
@@ -299,6 +340,7 @@ def render_markdown(doc: dict[str, Any]) -> str:
             "",
             _extras_line(s),
             _context_line(s),
+            _coverage_line(s),
             "",
             "### Failures by class",
             "",
@@ -397,6 +439,37 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
                 )
             else:
                 lines.append(f"| {label} | {va} | {vb} | {vb - va:+d} |")
+        for label, va, vb in (
+            (
+                "verified-result coverage",
+                a.get("verified_result_coverage"),
+                b.get("verified_result_coverage"),
+            ),
+            (
+                "multi-turn consistency",
+                a.get("multi_turn_consistency"),
+                b.get("multi_turn_consistency"),
+            ),
+        ):
+            if va is None or vb is None:
+                lines.append(f"| {label} | {_pct(va)} | {_pct(vb)} | |")
+            else:
+                lines.append(
+                    f"| {label} | {_pct(va)} | {_pct(vb)} | {100 * (vb - va):+.1f} points |"
+                )
+        ma, mb = a.get("model_calls") or {}, b.get("model_calls") or {}
+        lines.append(
+            f"| model calls per run (median) | {_num(ma.get('median'))} | {_num(mb.get('median'))} | |"
+        )
+        lines.append(
+            f"| model calls (total) | {ma.get('total', 'n/a')} | {mb.get('total', 'n/a')} | |"
+        )
+        lines.append(
+            f"| tokens in (total) | {a.get('tokens_in', 'n/a')} | {b.get('tokens_in', 'n/a')} | |"
+        )
+        lines.append(
+            f"| tokens out (total) | {a.get('tokens_out', 'n/a')} | {b.get('tokens_out', 'n/a')} | |"
+        )
         for key, label in (
             ("latency_seconds", "turn latency (s)"),
             ("llm_ms", "model call (ms)"),
@@ -445,6 +518,17 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
             "model; use repeats before reading a change into them.",
         ]
     return "\n".join(lines) + "\n"
+
+
+def _coverage_line(s: dict[str, Any]) -> str:
+    """Verified-result coverage, model calls and multi-turn consistency (absent in older summaries)."""
+    calls = s.get("model_calls") or {}
+    return (
+        f"Verified-result coverage: {_pct(s.get('verified_result_coverage'))} of "
+        f"{s.get('verified_result_runs', 'n/a')} runs that expect a card · model calls per run: median "
+        f"{_num(calls.get('median'))}, mean {_num(calls.get('mean'))} · multi-turn consistency: "
+        f"{_pct(s.get('multi_turn_consistency'))} of {s.get('multi_turn_runs', 'n/a')} runs."
+    )
 
 
 def _extras_line(s: dict[str, Any]) -> str:

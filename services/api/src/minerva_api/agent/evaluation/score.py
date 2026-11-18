@@ -20,6 +20,7 @@ from .cases import ASK, NO_TOOL, EvalCase
 from .reference import card_meets, card_status
 
 VERIFIED_MARKS = ("from_tool", "checked")
+LOADER = "load_tools"  # widens the toolset; not a choice of mathematical tool
 # Tool statuses that mean "not verified / failed", as opposed to an answer ("unchanged", "unsupported",
 # "conditions_not_satisfied" are what the engine established). After one of these the agent must stop.
 FAILED_STATUSES = frozenset(
@@ -192,18 +193,21 @@ _HOST_ERRORS = ("model host", "not reachable", "unreadable reply")
 def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
     trace = obs.trace
     tools = [name for name, _ in obs.calls]
+    # `load_tools` only widens the toolset; it neither computes nor answers. It is not a choice of
+    # mathematical tool, so it counts as neither the first tool nor an unexpected one (it still counts as a call).
+    chosen = [name for name in tools if name != LOADER]
     acceptable = case.acceptable_tools
-    first = tools[0] if tools else None
+    first = chosen[0] if chosen else None
     forbidden = sorted(set(case.forbid) & set(tools))
 
     if case.expected_tool == NO_TOOL:
-        selected = not tools
-        reached = not tools
+        selected = not chosen
+        reached = not chosen
     elif case.expected_tool == ASK:
         selected = reached = not forbidden
     else:
-        reached = bool(acceptable & set(tools)) or (case.tools_optional and not tools)
-        selected = (first in acceptable) or (case.tools_optional and not tools)
+        reached = bool(acceptable & set(chosen)) or (case.tools_optional and not chosen)
+        selected = (first in acceptable) or (case.tools_optional and not chosen)
         if forbidden:
             selected = reached = False
 
@@ -351,15 +355,17 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
     if tool_limit:
         notes.append("a tool hit a resource limit")
 
-    if case.expected_tool == NO_TOOL and tools:
+    if case.expected_tool == NO_TOOL and chosen:
         flags["tool_selection"] = True
-        notes.append(f"called tools unexpectedly: {sorted(set(tools))}")
+        notes.append(f"called tools unexpectedly: {sorted(set(chosen))}")
     if forbidden:
         flags["tool_selection"] = True
         notes.append(f"called forbidden tool(s) {forbidden}")
     if case.expects_tool and not reached:
         flags["tool_selection"] = True
-        notes.append(f"expected one of {sorted(acceptable)}, called {sorted(set(tools)) or 'none'}")
+        notes.append(
+            f"expected one of {sorted(acceptable)}, called {sorted(set(chosen)) or 'none'}"
+        )
     if case.sequence and not _is_subsequence(case.sequence, tools):
         flags["tool_selection"] = True
         notes.append(f"expected the sequence {case.sequence}, called {tools}")
@@ -524,6 +530,10 @@ def combine(results: list[CaseResult]) -> CaseResult:
         ):
             setattr(first, name, getattr(first, name) + getattr(later, name))
         first.seconds = round(first.seconds + later.seconds, 3)
+        # Tokens of every turn count (None means the host reported none, not zero).
+        for name in ("tokens_in", "tokens_out"):
+            parts = [x for x in (getattr(first, name), getattr(later, name)) if x is not None]
+            setattr(first, name, sum(parts) if parts else None)
         peaks = [x for x in (first.max_prompt_tokens, later.max_prompt_tokens) if x is not None]
         first.max_prompt_tokens = max(peaks) if peaks else None
         first.history_dropped = max(first.history_dropped, later.history_dropped)
