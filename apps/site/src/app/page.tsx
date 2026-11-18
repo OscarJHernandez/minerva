@@ -13,7 +13,14 @@ import {
   outputLatex,
   type Example,
 } from "@/lib/capabilities";
-import { APP_URL, CONTRIBUTING_URL, ISSUES_URL, OPENROUTER_URL, REPO_URL, SELF_HOSTING_URL } from "@/lib/links";
+import {
+  APP_URL,
+  CONTRIBUTING_URL,
+  ISSUES_URL,
+  OPENROUTER_URL,
+  REPO_URL,
+  SELF_HOSTING_URL,
+} from "@/lib/links";
 
 const primary = "rounded bg-accent px-5 py-2.5 font-medium text-accent-ink hover:opacity-90";
 const secondary = "rounded border border-rule px-5 py-2.5 font-medium hover:bg-sunk";
@@ -354,6 +361,7 @@ export default function Home() {
             </a>
           </div>
         </Section>
+
         <Section id="how" title="How Minerva checks the mathematics">
           <ol className="grid gap-8 md:grid-cols-2">
             {STEPS.map(([t, d], i) => (
@@ -377,7 +385,6 @@ export default function Home() {
             on the model.
           </p>
         </Section>
-
       </main>
 
       <SiteFooter />
