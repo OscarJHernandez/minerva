@@ -100,7 +100,7 @@ pnpm install                              # JS workspace
 pnpm lint && pnpm typecheck && pnpm test  # eslint, tsc, vitest
 pnpm --filter @minerva/web dev            # app on :3000 (needs the API on :8100)
 pnpm --filter @minerva/site build         # static landing export
-NEXT_PUBLIC_APP_URL=http://localhost:3131 pnpm --filter @minerva/site build && pnpm --filter @minerva/web build && pnpm --filter @minerva/e2e exec playwright install chromium && pnpm --filter @minerva/e2e e2e   # browser tests (ports 3131/3132/8131; CI job `e2e`)
+NEXT_PUBLIC_APP_URL=http://localhost:3131 pnpm --filter @minerva/site build && pnpm --filter @minerva/web build && pnpm --filter @minerva/e2e exec playwright install chromium && pnpm --filter @minerva/e2e e2e   # browser tests (ports 3131/3132/8131; CI job `e2e`, on a GitHub-hosted runner)
 
 cp .env.example .env && docker compose up --build   # full local stack
 cd services/api && uv run alembic upgrade head      # migrations (MINERVA_DATABASE_URL)

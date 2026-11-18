@@ -191,12 +191,14 @@ jobs:
           MINERVA_API_URL: http://localhost:8100
 
   # Browser tests: the landing page -> app flow against the real API (deterministic scripted model, throwaway SQLite)
-  # and the built site and web app (e2e/). One more pod than the jobs above: when the set is full it waits for a free one.
+  # and the built site and web app (e2e/). On a GitHub-hosted runner, always: Chromium needs system libraries
+  # (`playwright install --with-deps` uses sudo) that the self-hosted runner image does not have and its non-root pods
+  # cannot install. The job has no secrets and runs only what the other jobs already run, so nothing is exposed.
   e2e:
     name: Browser tests (landing page to chat)
     needs: changes
     if: ${{ needs.changes.outputs.web == 'true' }}
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'minerva-runners' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -220,7 +222,7 @@ jobs:
           pnpm --filter @minerva/site build
           pnpm --filter @minerva/web build
       - name: Browser
-        run: pnpm --filter @minerva/e2e exec playwright install chromium
+        run: pnpm --filter @minerva/e2e exec playwright install --with-deps chromium
       - name: Browser tests
         run: pnpm --filter @minerva/e2e e2e
 
