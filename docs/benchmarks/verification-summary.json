@@ -344,8 +344,8 @@
     },
     "agent_suite": {
       "core_cases": 161,
-      "reliability_cases": 18,
-      "reliability_turns": 26,
+      "reliability_cases": 20,
+      "reliability_turns": 31,
       "failure_classes": [
         "arguments",
         "claim_checker_false_positive",
@@ -366,10 +366,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.02,
-    "adversarial_median_ms": 7.8,
-    "adversarial_max_ms": 106.1,
-    "report_wall_s": 2.88,
-    "peak_rss_mb": 177.0
+    "adversarial_total_s": 1.07,
+    "adversarial_median_ms": 8.9,
+    "adversarial_max_ms": 109.2,
+    "report_wall_s": 3.05,
+    "peak_rss_mb": 176.6
   }
 }
