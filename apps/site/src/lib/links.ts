@@ -8,3 +8,5 @@ export const repoFile = (path: string) => `${REPO_URL}/blob/main/${path}`;
 export const SELF_HOSTING_URL = repoFile("docs/self-hosting.md");
 export const OPENROUTER_URL = repoFile("docs/openrouter-setup.md");
 export const CONTRIBUTING_URL = repoFile("CONTRIBUTING.md");
+
+export const ISSUES_URL = `${REPO_URL}/issues`;
