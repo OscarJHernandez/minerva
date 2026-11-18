@@ -146,7 +146,8 @@ explanation.
 
 Optional settings in `.env`: `MINERVA_LLM_TIMEOUT_SECONDS` (default 120; raise it for large models on
 modest hardware), `MINERVA_LLM_THINK=true` (let reasoning models think before replying: sometimes better,
-much slower) and `MINERVA_LLM_STRIP_THINKING=true` (hide reasoning some models write into their reply;
+much slower; the reasoning is stored with the reply for debug mode and never shown otherwise, see
+`docs/observability.md`; it shares the model's `num_predict` with the answer) and `MINERVA_LLM_STRIP_THINKING=true` (hide reasoning some models write into their reply;
 delays streaming).
 
 ### Troubleshooting

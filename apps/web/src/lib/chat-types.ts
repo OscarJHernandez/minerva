@@ -765,6 +765,14 @@ export interface LLMCall {
   /** Fingerprint of the system prompt and tool schemas this call was sent, and the tool groups loaded for it. */
   request_sha?: string | null;
   groups?: string[];
+  /**
+   * The model's own reasoning for this call, when thinking was requested and the host returned it. Debug mode
+   * only: it is conversation content stored with the reply, never part of the reply, never replayed.
+   * `thinking_chars` is the full length; `thinking` may be cut (`thinking_truncated`).
+   */
+  thinking?: string | null;
+  thinking_chars?: number;
+  thinking_truncated?: boolean;
 }
 
 /** One content-free trace event (see docs/observability.md); fields vary by `event`. */

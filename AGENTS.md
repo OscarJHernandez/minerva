@@ -299,7 +299,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 2) to
   paste to an agent; use the `chat-trace-triage` skill on it. The data comes from `AssistantMessage.trace/debug` stored with
   the message (failed turns too). The server log gets counters, `request_id` and `trace_id` only, never content. See
-  `docs/observability.md`.
+  `docs/observability.md`. With thinking requested (`MINERVA_LLM_THINK`, off by default), the model's reasoning is
+  stored per model call in `debug.llm_calls[i].thinking` and shown only in debug mode (collapsed, and in the copied
+  report); it is never reply text, never replayed to the model, never checked, and only its length (`thinking_chars`)
+  reaches a trace event or the log.
 
 ## Mathematical correctness (non-negotiable)
 

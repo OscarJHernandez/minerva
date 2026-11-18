@@ -16,6 +16,7 @@ import structlog
 
 ALLOWED_FIELDS = frozenset(
     {
+        "thinking_chars",
         "event",
         "level",
         "timestamp",

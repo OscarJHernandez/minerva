@@ -218,6 +218,7 @@ class LLMResponse(TraceEvent):
     text_chars: int = 0
     tokens_in: int | None = None
     tokens_out: int | None = None
+    thinking_chars: int = 0  # a count: the reasoning itself is in the stored message only
 
 
 class ToolStarted(TraceEvent):

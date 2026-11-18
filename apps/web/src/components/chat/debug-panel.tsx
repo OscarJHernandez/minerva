@@ -97,6 +97,24 @@ export function DebugPanel({
             {stages.map(([label, ms]) => `${label.trim()} ${ms} ms`).join(" · ")}
           </p>
         )}
+        {(d?.llm_calls ?? []).map(
+          (c, i) =>
+            c.thinking && (
+              <details key={`thinking-${i}`} data-testid="model-reasoning">
+                <summary className="cursor-pointer font-medium">
+                  Model reasoning, call {i + 1} · {c.thinking_chars ?? c.thinking.length} characters
+                  {c.thinking_truncated ? " (cut)" : ""}
+                </summary>
+                <p className="mt-1 text-muted">
+                  What the model wrote while thinking. Not part of the reply and never sent back to
+                  the model; stored only in this conversation.
+                </p>
+                <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words">
+                  {c.thinking}
+                </pre>
+              </details>
+            ),
+        )}
         {trace.length > 0 && (
           <p className="text-muted">
             Arguments and results below are your conversation content: they are stored only in this
