@@ -258,6 +258,18 @@ def latest_result_ids(history: Sequence[dict[str, Any]]) -> tuple[str, ...]:
     return tuple(ids)
 
 
+def previous_calls(history: Sequence[dict[str, Any]]) -> tuple[tuple[str, dict[str, Any]], ...]:
+    """The tool calls the assistant's previous turn made (between the previous user message and the current one)."""
+    users = [i for i, m in enumerate(history) if m.get("role") == "user"]
+    if len(users) < 2:
+        return ()
+    return tuple(
+        (str(c.get("name", "")), dict(c.get("arguments") or {}))
+        for message in history[users[-2] + 1 : users[-1]]
+        for c in message.get("tool_calls") or []
+    )
+
+
 TOOL_MIN_SECONDS = (
     0.1  # a tool is never started with less than this left: the turn's deadline holds
 )
@@ -754,6 +766,7 @@ async def _run_turn(
             user_messages=user_messages,
             results=store.results,
             latest=latest_result_ids(history),
+            previous_calls=previous_calls(history),
         )
         if (
             info.routing

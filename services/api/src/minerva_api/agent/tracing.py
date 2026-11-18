@@ -72,6 +72,7 @@ class RouteReason(StrEnum):
 
     LAGRANGIAN_EQUATIONS = "lagrangian_equations"
     FOLLOWUP_REUSE = "followup_reuse"
+    LAGRANGIAN_FOLLOWUP = "lagrangian_followup"
     ODE_ANALYZE = "ode_analyze"
     MATRIX_SIMPLIFY = "matrix_simplify"
     DECLINED = "not_verified_or_refused"

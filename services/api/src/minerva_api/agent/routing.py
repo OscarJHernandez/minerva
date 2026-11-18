@@ -12,8 +12,8 @@ model plans; no rule fills in a variable, bound, size or assumption the user did
 
 Rules (`RULES`): `lagrangian_equations`; `followup_reuse` ("differentiate that result": `@rN` of the one
 result the previous turn produced); `ode_analyze` (one equation with a derivative of an applied function:
-classification only, solving stays the user's choice); `matrix_simplify` (a formula over matrices the user
-declared as n x n). Each is a pure function of the message and a `RouteContext`.
+classification only, solving stays the user's choice); `lagrangian_followup` ("what is conserved?" after one
+analysed Lagrangian); `matrix_simplify` (a formula over matrices the user declared as n x n). Each is a pure function of the message and a `RouteContext`.
 """
 
 from __future__ import annotations
@@ -66,6 +66,8 @@ class RouteContext:
     user_messages: Sequence[str] = ()  # every user message of the conversation, oldest first
     results: Mapping[str, str] = field(default_factory=dict)  # verified result id -> engine LaTeX
     latest: tuple[str, ...] = ()  # result ids the previous assistant turn produced
+    # The tool calls the previous assistant turn made, as (tool, arguments): what the user can point at.
+    previous_calls: tuple[tuple[str, Mapping[str, object]], ...] = ()
 
 
 NO_CONTEXT = RouteContext()
@@ -372,7 +374,56 @@ def matrix_simplify(text: str, context: RouteContext = NO_CONTEXT) -> Route | No
     )
 
 
-RULES: tuple[Rule, ...] = (lagrangian_equations, followup_reuse, ode_analyze, matrix_simplify)
+# --- lagrangian_followup: "what is conserved?" after the equations of motion of one Lagrangian -----------
+_CONSERVED_ASKS = re.compile(
+    r"\b(?:what|which|any|anything)\b[^.?!]*\bconserved\b|\bconserved quantit(?:y|ies)\b|"
+    r"\bconstants? of (?:the )?motion\b|\bconservation laws?\b",
+    re.IGNORECASE,
+)
+# Wording that asks for more than the default search or something else: the model plans those.
+_CONSERVED_OTHER = re.compile(
+    r"\b(hidden|thorough\w*|deep\w*|beyond|exhaustive|noether|verify|prove|check|numeric\w*|"
+    r"hamilton\w*|compare|solve|integrate|derivative|differentiate)\b",
+    re.IGNORECASE,
+)
+
+
+def lagrangian_followup(text: str, context: RouteContext = NO_CONTEXT) -> Route | None:
+    """`find_conserved_quantities` for the Lagrangian the previous turn analysed.
+
+    Signals: the user asks what is conserved, in words, with no formula of their own (words), and the previous
+    assistant turn analysed exactly one Lagrangian (conversation). The Lagrangian and the coordinates are the
+    ones in that earlier call, unchanged; a Lagrangian that is itself a reference, or a message that names a
+    deeper search, is left to the model.
+    """
+    if _DELIMITED.search(text) or not _CONSERVED_ASKS.search(text) or _CONSERVED_OTHER.search(text):
+        return None
+    analysed = [args for name, args in context.previous_calls if name == "analyze_lagrangian"]
+    if len(analysed) != 1 or len(context.previous_calls) != 1:
+        return None
+    lagrangian, coordinates = analysed[0].get("lagrangian"), analysed[0].get("coordinates")
+    if (
+        not isinstance(lagrangian, str)
+        or "@" in lagrangian
+        or not isinstance(coordinates, list)
+        or not coordinates
+        or not all(isinstance(c, str) for c in coordinates)
+    ):
+        return None
+    return Route(
+        "find_conserved_quantities",
+        {"lagrangian": lagrangian, "coordinates": list(coordinates)},
+        reason="lagrangian_followup",
+    )
+
+
+RULES: tuple[Rule, ...] = (
+    lagrangian_equations,
+    followup_reuse,
+    lagrangian_followup,
+    ode_analyze,
+    matrix_simplify,
+)
 
 
 def plan_route(user_text: str, context: RouteContext = NO_CONTEXT) -> Route | None:

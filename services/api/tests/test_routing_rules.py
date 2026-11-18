@@ -17,6 +17,7 @@ from minerva_api.agent.routing import (
     RouteContext,
     declared_matrix_sizes,
     followup_reuse,
+    lagrangian_followup,
     matrix_simplify,
     ode_analyze,
     plan_route,
@@ -237,6 +238,67 @@ def test_plan_route_tries_the_rules_in_order_and_ignores_unrelated_messages() ->
 
 
 # ------------------------------------------------------------------- the real cases, through the loop
+# ------------------------------------------------------------------------------- lagrangian_followup
+OSC = r"\frac12 m \dot{x}^2 - \frac12 k x^2"
+
+
+def analysed(*calls: tuple[str, dict[str, Any]]) -> RouteContext:
+    return RouteContext(previous_calls=calls)
+
+
+EOM = ("analyze_lagrangian", {"lagrangian": OSC, "coordinates": ["x"]})
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "What is conserved for this Lagrangian?",
+        "Is anything conserved here?",
+        "Which quantities are conserved?",
+        "List the conserved quantities.",
+        "Are there any constants of motion?",
+    ],
+)
+def test_lagrangian_followup_reads_the_question_and_the_earlier_call(message: str) -> None:
+    route = lagrangian_followup(message, analysed(EOM))
+    assert route is not None and route.tool == "find_conserved_quantities"
+    assert route.arguments == {"lagrangian": OSC, "coordinates": ["x"]}
+
+
+@pytest.mark.parametrize(
+    ("message", "context"),
+    [
+        ("What is conserved?", RouteContext()),  # no earlier turn
+        ("What is conserved?", analysed()),
+        ("What is conserved?", analysed(EOM, EOM)),  # two Lagrangians: which one?
+        ("What is conserved?", analysed(("simplify", {"latex": "x"}))),
+        ("What is conserved?", analysed(EOM, ("simplify", {"latex": "x"}))),
+        ("What is conserved for $L = \\frac12 \\dot{y}^2$?", analysed(EOM)),  # a formula of its own
+        ("Is it conserved?", analysed(EOM)),  # asks about one quantity, not what is conserved
+        ("Is the energy conserved?", analysed(EOM)),
+        ("Search thoroughly for hidden conserved quantities.", analysed(EOM)),
+        ("Verify what is conserved.", analysed(EOM)),
+        ("Derive the equations of motion again.", analysed(EOM)),  # no question about conservation
+        (
+            "What is conserved?",
+            analysed(("analyze_lagrangian", {"lagrangian": "@r1", "coordinates": ["x"]})),
+        ),
+        (
+            "What is conserved?",
+            analysed(("analyze_lagrangian", {"lagrangian": OSC})),
+        ),  # no coordinates
+        (
+            "What is conserved?",
+            analysed(("analyze_lagrangian", {"lagrangian": OSC, "coordinates": []})),
+        ),
+    ],
+)
+def test_lagrangian_followup_leaves_everything_else_to_the_model(
+    message: str, context: RouteContext
+) -> None:
+    assert lagrangian_followup(message, context) is None
+
+
 def run(case_id: str, script: list[Any], ctx: ToolContext, routing: bool = True) -> Any:
     async def go() -> Any:
         return await run_case(ReplayLLM(script), ctx, CASES[case_id], FAST, routing=routing)
@@ -341,3 +403,19 @@ def test_a_routed_call_that_does_not_come_back_as_an_accepted_outcome_is_dropped
         message["debug"]["routing"] == {}
     )  # the rule did not apply (not a plain equation): the model planned
     assert message["trace"] == []
+
+
+def test_what_is_conserved_after_the_equations_of_motion_runs_the_search_on_the_same_lagrangian(
+    ctx: ToolContext,
+) -> None:
+    result = run(
+        "oscillator-equations-of-motion-then-conserved-quantity",
+        [  # turn 1 is routed too (equations of motion of one Lagrangian): the model only writes both answers
+            say("The equation of motion follows from the Euler-Lagrange equation."),
+            say("The energy is conserved, within the families that were searched."),
+        ],
+        ctx,
+    )
+    assert result.passed, (result.failure_class, result.notes)
+    assert result.tools == ["analyze_lagrangian", "find_conserved_quantities"]
+    assert result.llm_calls == 2  # no model call chose either tool
