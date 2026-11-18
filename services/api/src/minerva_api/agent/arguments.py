@@ -37,7 +37,7 @@ from pydantic import BaseModel
 from .mathinput import MATH_FIELDS, MATH_LIST_FIELDS
 
 # Names a model uses for "the formula" in a tool whose formula field is called something else.
-FORMULA_ALIASES = ("expression", "expr", "formula", "input", "math")
+FORMULA_ALIASES = ("expression", "expr", "formula", "input", "math", "integrand")
 _NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
@@ -145,8 +145,62 @@ def repair_arguments(
     _theorem_expression(fields, out, notes)
     _item_keys(fields, out, notes)
     _default_assumption(fields, out, notes)
+    _nested_numbers(fields, out, notes)
 
     return (out if notes else arguments), tuple(notes)
+
+
+def _stringify(annotation: Any, value: Any) -> tuple[Any, bool]:
+    """`value` with every number put where the schema wants text (a list of text, a model's text field),
+    and whether anything changed. Numbers stay numbers wherever the schema takes a number."""
+    annotation = _unwrap(annotation)
+    if annotation is str:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value), True
+        return value, False
+    if get_origin(annotation) is list and isinstance(value, list):
+        (inner,) = get_args(annotation)
+        items = [_stringify(inner, item) for item in value]
+        if any(changed for _, changed in items):
+            return [item for item, _ in items], True
+        return value, False
+    if (
+        isinstance(annotation, type)
+        and issubclass(annotation, BaseModel)
+        and isinstance(value, dict)
+    ):
+        out = dict(value)
+        changed = False
+        for key, item in value.items():
+            info = annotation.model_fields.get(key)
+            if info is not None:
+                new, did = _stringify(info.annotation, item)
+                if did:
+                    out[key] = new
+                    changed = True
+        return (out, True) if changed else (value, False)
+    return value, False
+
+
+def _nested_numbers(
+    fields: Mapping[str, Any], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """`components: [1, 0, 0]` inside a list of objects, where the tool takes text: 1 is "1"."""
+    for name, value in list(out.items()):
+        info = fields.get(name)
+        if info is None or not isinstance(value, (list, dict)):
+            continue
+        new, changed = _stringify(info.annotation, value)
+        if changed:
+            out[name] = new
+            notes.append(
+                _note(
+                    name,
+                    "numbers",
+                    "text",
+                    "this field takes text, so each number is written as text",
+                )
+            )
 
 
 # Keys a model was seen to use for a list item's field (2026-11-18 live traces), with the field the tool means.
