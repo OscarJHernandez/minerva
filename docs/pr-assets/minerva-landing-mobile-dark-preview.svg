@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="940" viewBox="0 0 375 940">
+<rect width="375" height="940" fill="#131419"/>
+<text x="20" y="42" font-family="Georgia" font-size="25" fill="#ecebe6" font-style="italic">Minerva</text>
+<text x="160" y="42" font-family="Arial" font-size="13" fill="#a2a4b0" >Docs</text>
+<text x="214" y="42" font-family="Arial" font-size="13" fill="#a2a4b0" >GitHub</text>
+<rect x="275" y="19" width="86" height="34" rx="5" fill="#93a3ff"/>
+<text x="283" y="41" font-family="Arial" font-size="12" fill="#11131c" >Try Minerva</text>
+<text x="20" y="117" font-family="Arial" font-size="11" fill="#a2a4b0" letter-spacing="1">OPEN SOURCE · SELF-HOSTABLE</text>
+<text x="20" y="175" font-family="Georgia" font-size="40" fill="#ecebe6" >For the joy of</text>
+<text x="20" y="220" font-family="Georgia" font-size="40" fill="#ecebe6" >figuring things out.</text>
+<text x="20" y="269" font-family="Georgia" font-size="20" fill="#a2a4b0" >Minerva is your own mathematical</text>
+<text x="20" y="296" font-family="Georgia" font-size="20" fill="#a2a4b0" >assistant, built for curious minds</text>
+<text x="20" y="323" font-family="Georgia" font-size="20" fill="#a2a4b0" >who love exploring ideas, discovering</text>
+<text x="20" y="350" font-family="Georgia" font-size="20" fill="#a2a4b0" >connections, and solving problems.</text>
+<text x="20" y="377" font-family="Georgia" font-size="20" fill="#a2a4b0" >Find useful identities, try different</text>
+<text x="20" y="404" font-family="Georgia" font-size="20" fill="#a2a4b0" >approaches, and check your reasoning</text>
+<text x="20" y="431" font-family="Georgia" font-size="20" fill="#a2a4b0" >without losing the pleasure of figuring</text>
+<text x="20" y="458" font-family="Georgia" font-size="20" fill="#a2a4b0" >things out for yourself.</text>
+<text x="20" y="510" font-family="Arial" font-size="14" fill="#a2a4b0" >Run it on your own hardware, connect</text>
+<text x="20" y="532" font-family="Arial" font-size="14" fill="#a2a4b0" >a language model of your choice, or</text>
+<text x="20" y="554" font-family="Arial" font-size="14" fill="#a2a4b0" >use the symbolic tools without AI.</text>
+<text x="20" y="576" font-family="Arial" font-size="14" fill="#a2a4b0" >Open source, with mathematics you can check.</text>
+<rect x="20" y="624" width="121" height="44" rx="4" fill="#93a3ff"/>
+<text x="34" y="653" font-family="Arial" font-size="15" fill="#11131c" >Try Minerva</text>
+<rect x="154" y="624" width="181" height="44" rx="4" fill="none" stroke="#2b2d36"/>
+<text x="168" y="653" font-family="Arial" font-size="15" fill="#ecebe6" >Explore the source</text>
+<text x="20" y="701" font-family="Arial" font-size="13" fill="#a2a4b0" >Self-hosting guide  ·  Read the docs</text>
+<line x1="20" y1="777" x2="355" y2="777" stroke="#2b2d36"/>
+<text x="20" y="838" font-family="Georgia" font-size="34" fill="#ecebe6" >Why Minerva</text>
+<text x="20" y="898" font-family="Georgia" font-size="24" fill="#ecebe6" >Stay curious</text>
+<text x="20" y="928" font-family="Arial" font-size="13" fill="#a2a4b0" >Mathematics is about more than answers.</text>
+</svg>
