@@ -71,6 +71,9 @@ class RouteReason(StrEnum):
     """Why a rule chose the first call (a fixed vocabulary), or why its result was not used."""
 
     LAGRANGIAN_EQUATIONS = "lagrangian_equations"
+    FOLLOWUP_REUSE = "followup_reuse"
+    ODE_ANALYZE = "ode_analyze"
+    MATRIX_SIMPLIFY = "matrix_simplify"
     DECLINED = "not_verified_or_refused"
 
 

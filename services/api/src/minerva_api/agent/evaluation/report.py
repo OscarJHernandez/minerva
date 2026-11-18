@@ -218,6 +218,15 @@ def _context_line(s: dict[str, Any]) -> str:
     return text + "."
 
 
+def _routing_state(meta: dict[str, Any]) -> str:
+    state = meta.get("routing")
+    return "on" if state is True else "off (the model alone)" if state is False else "not recorded"
+
+
+def _routing_line(meta: dict[str, Any]) -> str:
+    return f"Deterministic routing: {_routing_state(meta)}."
+
+
 def _params_line(meta: dict[str, Any]) -> str:
     params = meta.get("params")
     if not params:
@@ -253,6 +262,7 @@ def render_markdown(doc: dict[str, Any]) -> str:
         f"prompt `{meta.get('prompt_sha', '?')}`. The targets are goals, not results.",
         "",
         _params_line(meta),
+        _routing_line(meta),
         "",
         "## Headline",
         "",
@@ -417,6 +427,12 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
     ]
     if base["meta"].get("cases_digest") != new["meta"].get("cases_digest"):
         lines += ["", "**The case sets differ: only cases present in both are compared per case.**"]
+    if base["meta"].get("routing") != new["meta"].get("routing"):
+        lines += [
+            "",
+            f"**Routing differs: baseline {_routing_state(base['meta'])}, new {_routing_state(new['meta'])}.** "
+            "The change below includes what the routes do.",
+        ]
     lines += _params_diff(base, new)
     if not pairs:
         return "\n".join([*lines, "", "No model appears in both reports."]) + "\n"
