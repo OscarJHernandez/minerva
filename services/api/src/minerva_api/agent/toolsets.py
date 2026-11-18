@@ -30,6 +30,7 @@ CORE_TOOLS: tuple[str, ...] = (
     "search_handbook",
     "get_entry",
     "simplify",
+    "check_identity",
     "find_identities",
     "isolate_variable",
     "solve_polynomial",

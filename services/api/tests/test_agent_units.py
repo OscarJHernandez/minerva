@@ -234,6 +234,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "get_entry",
         "load_tools",  # asks for more tools; computes nothing
         "simplify",
+        "check_identity",  # a verdict on one stated equation; computes nothing of its own
         "differentiate",
         "time_derivative",
         "series",

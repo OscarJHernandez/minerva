@@ -536,6 +536,19 @@ def op_check_claims(payload: dict[str, Any]) -> dict[str, Any]:
     return {"results": [r.model_dump() for r in results]}
 
 
+# --- is a stated equation an identity? ------------------------------------------------
+def op_check_identity(payload: dict[str, Any]) -> dict[str, Any]:
+    from .identity_check import check_identity
+
+    result = check_identity(
+        str(payload["latex"]),
+        payload.get("assumptions", {}),
+        Limits(**payload["limits"]),
+        [str(m) for m in payload.get("matrices", [])],
+    )
+    return result.model_dump(mode="json")
+
+
 # --- formulas transcribed from an image ----------------------------------------------
 def op_read_formulas(payload: dict[str, Any]) -> dict[str, Any]:
     """Parse each transcribed formula strictly and show how it was read. Never simplifies."""
@@ -938,6 +951,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "transform": op_transform,
     "features": op_features,
     "check_claims": op_check_claims,
+    "check_identity": op_check_identity,
     "vector_calculus": op_vector_calculus,
     "read_formulas": op_read_formulas,
     "solve": op_solve,

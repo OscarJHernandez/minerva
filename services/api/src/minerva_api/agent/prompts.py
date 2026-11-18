@@ -77,6 +77,13 @@ If the problem is ambiguous (what are the unknowns, which domain), ask one short
    tool at once instead of asking for more.\
 """,
     """\
+When the user asks whether one equation is true ("is it true that ...", "does ... hold", "confirm that ..."),
+   call `check_identity` with that equation and report its verdict: proved equal, numerically equal (evidence,
+   not a proof), true only under the condition it names, or not an identity with the point it gives. Do not
+   decide it from memory. A definition, an equation of motion or a matrix statement is refused by the tool:
+   say so.\
+""",
+    """\
 Wrap a formula in $...$ only when it is a whole expression or equation that comes from a tool
    result. Name single symbols (r, theta, k) and conditions in plain words or copy them from the
    tool, instead of wrapping each one. Use short bullet lines starting with "- " for lists. Plain

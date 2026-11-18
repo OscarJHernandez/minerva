@@ -449,8 +449,27 @@ export interface Segment {
 /** A tool result card; `number` is its equation number when it has a primary result formula. */
 export type Card = CardBody & { number?: number | null };
 
+/** `check_identity`: a verdict on one stated equation (see `identity_check.py`). */
+export interface IdentityReport {
+  status: Status;
+  verdict: "proved_equal" | "numerically_equal" | "conditional" | "not_identity" | null;
+  input_latex: string | null;
+  lhs_latex: string | null;
+  rhs_latex: string | null;
+  condition: string | null;
+  counterexample: {
+    substitution: Record<string, string>;
+    lhs_value: string;
+    rhs_value: string;
+    residual: string;
+    probe: string;
+  } | null;
+  message: string;
+}
+
 type CardBody =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
+  | { id: string; tool: string; type: "identity"; title: string; data: IdentityReport }
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
   | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
   | { id: string; tool: string; type: "integrate"; title: string; data: IntegrateResult }
