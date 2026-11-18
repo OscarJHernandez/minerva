@@ -362,3 +362,19 @@ def test_a_chain_expression_that_does_not_parse_says_the_syntax() -> None:
     )
     assert result.reason == "parse_error"
     assert "bond = -J*s*t" in result.message and "no subscripts" in result.message
+
+
+def test_an_energy_without_declared_assumptions_names_the_symbols_to_declare() -> None:
+    """The oscillator run sent hbar and omega with no assumptions and the model never found out which to add."""
+    result = run(
+        system={"kind": "level_family", "energy": "hbar*omega*(n + 1/2)", "index": "n"},
+        action="analyze",
+    )
+    assert result.reason == "assumptions_insufficient"
+    assert "hbar, omega" in result.message and '"omega": ["positive"]' in result.message
+    declared = run(
+        system={"kind": "level_family", "energy": "hbar*omega*(n + 1/2)", "index": "n"},
+        assumptions={"hbar": ["positive"], "omega": ["positive"]},
+        action="analyze",
+    )
+    assert declared.reason != "assumptions_insufficient"
