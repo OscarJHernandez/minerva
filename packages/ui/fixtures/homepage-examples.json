@@ -9,7 +9,7 @@
       "prompt": "Consider the vector field F = r/r³ in three-dimensional space. Its classical divergence vanishes everywhere away from the origin, yet its flux through an enclosing sphere is 4π. Derive its distributional divergence and explain the apparent contradiction. Show the mathematical verification.",
       "capability": "vector-calculus",
       "eval_case": "homepage-coulomb-divergence",
-      "approved": true
+      "approved": false
     },
     {
       "id": "delta-two-roots",
@@ -29,7 +29,7 @@
       "prompt": "Verify Stokes' theorem for F = (−yz, xz, xy) on the surface r(u,v) = (u,v,uv), where 0 ≤ u,v ≤ 1. Orient the surface by ∂r/∂u × ∂r/∂v and use the induced boundary orientation. Calculate both integrals independently.",
       "capability": "vector-calculus",
       "eval_case": "homepage-stokes-curved-surface",
-      "approved": true
+      "approved": false
     },
     {
       "id": "heaviside-derivative",
