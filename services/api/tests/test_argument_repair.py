@@ -160,3 +160,56 @@ def test_a_blank_expression_counts_as_missing_and_the_gradient_theorem_takes_a_s
         "fields": [{"name": "f", "kind": "scalar", "components": ["x*y"]}],
     }
     assert repair_arguments(VECTOR, grad)[0]["expression"] == "f"
+
+
+# -- shapes seen in the 2026-11-18 live traces ---------------------------------------------------------------
+MATRIX = TOOLS["matrix_calculus"].args_model
+NUMERIC = TOOLS["ode_solve_numerical"].args_model
+SIMPLIFY = TOOLS["simplify"].args_model
+
+
+def test_a_matrix_keyed_by_symbol_is_named() -> None:
+    given = {
+        "latex": "(A+B)^2",
+        "action": "simplify",
+        "matrices": [{"symbol": "A", "rows": 2, "cols": 2}, {"name": "B", "rows": 2}],
+    }
+    repaired, notes = repair_arguments(MATRIX, given)
+    assert repaired["matrices"] == [{"name": "A", "rows": 2, "cols": 2}, {"name": "B", "rows": 2}]
+    assert notes and check_arguments("matrix_calculus", repaired)
+    both = {"latex": "A", "matrices": [{"symbol": "A", "name": "Z", "rows": 2}]}
+    assert repair_arguments(MATRIX, both)[0] is both  # never overwrites a name the model gave
+
+
+def test_a_condition_without_its_unknown_takes_the_only_unknown() -> None:
+    given = {
+        "equations": ["x'' + x = 0"],
+        "independent": "t",
+        "unknowns": ["x"],
+        "conditions": [{"at": "0", "order": 0, "value": 1}, {"at": "0", "order": 1, "value": 0}],
+        "t_end": 10,
+    }
+    repaired, notes = repair_arguments(NUMERIC, given)
+    assert [c["unknown"] for c in repaired["conditions"]] == ["x", "x"]
+    assert notes
+
+
+def test_a_condition_is_never_assigned_to_one_of_several_unknowns() -> None:
+    given = {
+        "equations": ["x' = y", "y' = -x"],
+        "independent": "t",
+        "unknowns": ["x", "y"],
+        "conditions": [{"at": "0", "order": 0, "value": 1}],
+    }
+    assert repair_arguments(NUMERIC, given)[0] is given  # which unknown? Not decided here
+
+
+def test_the_default_assumption_is_dropped_and_the_others_kept() -> None:
+    given = {"latex": r"\sqrt{x^2}", "assumptions": {"x": ["complex"], "y": ["complex", "real"]}}
+    repaired, notes = repair_arguments(SIMPLIFY, given)
+    assert repaired["assumptions"] == {"y": ["real"]}
+    assert notes and check_arguments("simplify", repaired)
+    only = repair_arguments(SIMPLIFY, {"latex": "x", "assumptions": {"x": ["complex"]}})[0]
+    assert only["assumptions"] == {}
+    untouched = {"latex": "x", "assumptions": {"x": ["positive"]}}
+    assert repair_arguments(SIMPLIFY, untouched)[0] is untouched
