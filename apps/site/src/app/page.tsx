@@ -269,7 +269,7 @@ export default function Home() {
                     Conditions satisfied · Identity applied
                   </p>
                   <div className="mt-2 overflow-x-auto py-2 text-lg">
-                    <Math latex={String.raw`\\log(xy) = ` + outputLatex(logOk, "Logarithm")} />
+                    <Math latex={inputLatex(logOk) + " = " + outputLatex(logOk, "Logarithm")} />
                   </div>
                 </div>
                 <p className="mt-4 text-sm font-medium text-ink">
