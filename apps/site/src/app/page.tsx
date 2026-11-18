@@ -55,12 +55,12 @@ export default function Home() {
             Explore mathematics. Own the process.
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
-            Minerva is an open-source mathematical assistant you can run yourself to explore
-            ideas, try different approaches, and verify results on your terms.
+            Minerva is an open-source mathematical assistant you can run yourself to explore ideas,
+            try different approaches, and verify results on your terms.
           </p>
           <p className="mt-4 max-w-2xl text-base text-muted">
-            You choose what to investigate next. Minerva suggests tools and checks the math,
-            without taking the discovery away from you.
+            You choose what to investigate next. Minerva suggests tools and checks the math, without
+            taking the discovery away from you.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href={APP_URL} className={primary}>
@@ -94,9 +94,9 @@ export default function Home() {
 
         <Section id="examples" title="Find what the obvious symmetries miss">
           <p className="max-w-3xl text-lg text-muted">
-            Give Minerva the Kepler Lagrangian. Beyond the familiar energy and angular momentum,
-            its symbolic search discovers two more conserved expressions: the components of
-            the Laplace–Runge–Lenz vector.
+            Give Minerva the Kepler Lagrangian. Beyond the familiar energy and angular momentum, its
+            symbolic search discovers two more conserved expressions: the components of the
+            Laplace–Runge–Lenz vector.
           </p>
           <figure className="mt-8 overflow-hidden rounded-lg border border-rule bg-raised">
             <div className="border-b border-rule p-5 sm:p-8">
@@ -112,9 +112,7 @@ export default function Home() {
                   label="Kepler Lagrangian in polar coordinates"
                 />
               </div>
-              <p className="mt-3 text-sm text-muted">
-                Coordinates: r, θ · Angular coordinate: θ
-              </p>
+              <p className="mt-3 text-sm text-muted">Coordinates: r, θ · Angular coordinate: θ</p>
             </div>
 
             <div className="p-5 sm:p-8">
@@ -123,8 +121,8 @@ export default function Home() {
                 <StatusBadge status="ok" label="Engine-verified" />
               </div>
               <p className="mt-2 max-w-2xl text-sm text-muted">
-                Discovered by searching candidate expressions, not by looking up the
-                Runge–Lenz vector.
+                Discovered by searching candidate expressions, not by looking up the Runge–Lenz
+                vector.
               </p>
               <div className="mt-6 space-y-5">
                 <div className="rounded border border-rule bg-paper p-4">
@@ -141,13 +139,12 @@ export default function Home() {
                 </div>
               </div>
               <p className="mt-5 text-sm font-medium text-ink">
-                Verified: each time derivative is symbolically zero on the equations
-                of motion, with 20/20 numerical checks.
+                Verified: each time derivative is symbolically zero on the equations of motion, with
+                20/20 numerical checks.
               </p>
               <p className="mt-2 max-w-2xl text-sm text-muted">
-                Energy and angular momentum are excluded as already known.
-                The search covers a finite family of candidate expressions;
-                it does not establish that no others exist.
+                Energy and angular momentum are excluded as already known. The search covers a
+                finite family of candidate expressions; it does not establish that no others exist.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-4">
                 <a href={APP_URL} className={primary}>
@@ -167,8 +164,8 @@ export default function Home() {
               How can empty spacetime still be curved?
             </h3>
             <p className="mt-2 max-w-2xl text-muted">
-              Give Minerva the Schwarzschild metric and ask it to compute the curvature.
-              The Ricci tensor vanishes, but a different curvature invariant does not.
+              Give Minerva the Schwarzschild metric and ask it to compute the curvature. The Ricci
+              tensor vanishes, but a different curvature invariant does not.
             </p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="min-w-0 rounded border border-rule bg-paper p-4">
@@ -184,9 +181,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="min-w-0 rounded border border-rule bg-paper p-4">
-                <p className="text-xs uppercase tracking-wide text-muted">
-                  Kretschmann scalar
-                </p>
+                <p className="text-xs uppercase tracking-wide text-muted">Kretschmann scalar</p>
                 <div className="mt-3 overflow-x-auto py-3 text-xl sm:text-2xl">
                   <Math
                     latex={
@@ -196,16 +191,13 @@ export default function Home() {
                     label="The Kretschmann scalar equals 48 M squared divided by r to the sixth power"
                   />
                 </div>
-                <p className="mt-2 text-sm text-muted">
-                  Curvature survives. Numerically checked.
-                </p>
+                <p className="mt-2 text-sm text-muted">Curvature survives. Numerically checked.</p>
               </div>
             </div>
             <p className="mt-5 max-w-3xl text-sm text-muted">
-              Both results come from the engine&apos;s Schwarzschild metric example.
-              The Ricci result has a symbolic check; the full curvature contraction
-              has independent numerical checks, not a symbolic proof. Validity
-              excludes coordinate singularities.
+              Both results come from the engine&apos;s Schwarzschild metric example. The Ricci
+              result has a symbolic check; the full curvature contraction has independent numerical
+              checks, not a symbolic proof. Validity excludes coordinate singularities.
             </p>
             <div className="mt-4">
               <Link href="/docs" className="text-sm underline hover:text-ink">
@@ -268,18 +260,16 @@ export default function Home() {
                     <Math latex={inputLatex(logBlocked)} />
                   </div>
                   <div className="my-3 flex items-center gap-3 border-t border-rule pt-3">
-                    <span className="font-serif text-xl text-accent" aria-hidden="true">↓</span>
-                    <span className="text-xs text-muted">
-                      You declare x and y positive
+                    <span className="font-serif text-xl text-accent" aria-hidden="true">
+                      ↓
                     </span>
+                    <span className="text-xs text-muted">You declare x and y positive</span>
                   </div>
                   <p className="text-xs uppercase tracking-wide text-muted">
                     Conditions satisfied · Identity applied
                   </p>
                   <div className="mt-2 overflow-x-auto py-2 text-lg">
-                    <Math
-                      latex={String.raw`\\log(xy) = ` + outputLatex(logOk, "Logarithm")}
-                    />
+                    <Math latex={String.raw`\\log(xy) = ` + outputLatex(logOk, "Logarithm")} />
                   </div>
                 </div>
                 <p className="mt-4 text-sm font-medium text-ink">
@@ -311,8 +301,8 @@ export default function Home() {
             <div>
               <h3 className="font-serif text-xl">Open source means you can change it</h3>
               <p className="mt-2 text-muted">
-                Inspect the code, extend the math engine, add a verified identity, or submit
-                an issue or pull request. Minerva is licensed under Apache-2.0.
+                Inspect the code, extend the math engine, add a verified identity, or submit an
+                issue or pull request. Minerva is licensed under Apache-2.0.
               </p>
               <p className="mt-4 text-sm">
                 <a href={REPO_URL} className="underline hover:text-ink">
@@ -330,10 +320,9 @@ export default function Home() {
             </div>
           </div>
           <p className="mt-8 max-w-3xl text-sm text-muted">
-            Your own deployment keeps data in infrastructure you control when connected to
-            a locally hosted model. External providers receive the conversations and tool
-            results sent to them. The hosted demo also processes input on its operator&apos;s
-            server.{" "}
+            Your own deployment keeps data in infrastructure you control when connected to a locally
+            hosted model. External providers receive the conversations and tool results sent to
+            them. The hosted demo also processes input on its operator&apos;s server.{" "}
             <a href={OPENROUTER_URL} className="underline hover:text-ink">
               Model choices and privacy
             </a>
