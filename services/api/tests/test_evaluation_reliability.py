@@ -697,8 +697,8 @@ def test_a_follow_up_is_scored_on_the_state_the_first_turn_really_produced(
 def test_the_digest_of_the_original_cases_did_not_change() -> None:
     """Adding the reliability fields to the schema must not change which questions the core suite asks."""
     assert (
-        cases_digest(load_cases()) == "5ecf22d15a7d"
-    )  # d2d3164e5b44 before the two ask-checks accepted a request for the missing expression; the core suite after the vector, electromagnetism, integral, creative telescoping, approximation, total-time-derivative, brachistochrone, ellipsoid, first-order-system, point-source (three-dimensional delta) and homepage example cases
+        cases_digest(load_cases()) == "28430901ca56"
+    )  # 5ecf22d15a7d before the check_identity cases (two new false-claim cases and five also_ok lists); d2d3164e5b44 before the two ask-checks accepted a request for the missing expression; the core suite after the vector, electromagnetism, integral, creative telescoping, approximation, total-time-derivative, brachistochrone, ellipsoid, first-order-system, point-source (three-dimensional delta) and homepage example cases
     assert cases_digest(load_suite("reliability")) != cases_digest(load_cases())
 
 

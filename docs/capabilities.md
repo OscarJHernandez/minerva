@@ -212,7 +212,7 @@ Decides whether one stated equation holds as an identity under the declared assu
 - **Check:** verdict: not identity
 - Not an identity: the two sides differ at the point shown (exact values, checked at 60 and 120 digits). The equation may still hold for some values; this says it does not hold for all.
 
-#### True only for nonnegative x
+#### True only under an assumption
 
 - **Equation:** `\sqrt{x^2} = x` (LaTeX)
 - **Status:** `ok`

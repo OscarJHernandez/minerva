@@ -345,6 +345,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Claim classification (`claims.py`): `fails` (shown contradicted) only when the sides differ by a nonzero constant.
   A false identity at generic points is `not_identity` (shown unchecked): Minerva cannot tell it from an equation to
   solve, a definition or an equation of motion, which are `unverified`. Do not map `not_identity` to contradicted.
+  The one place a false identity is called false is `check_identity` (`identity_check.py`, tool and `Engine.check_identity`), and only
+  because the USER asked whether one stated equation holds: it reports `proved_equal` (symbolic zero), `numerically_equal`
+  (no disagreement found: evidence, never proof), `conditional` (true once symbols are assumed real or positive, the
+  condition stated) or `not_identity` with an exact point confirmed at 60 and 120 digits (`counterexample.py`), worded "not an
+  identity; it may still hold for some values". It gates on the claim checker, so a relation, matrix, vector, distribution or
+  sum is `unsupported` (never true or false), and a disagreement it cannot confirm is `not_verified`. The claim checker on the
+  model's own prose is unchanged. A `Counterexample` stays out of logs and events; the card shows it to its owner only.
 - Dimensional analysis (`pi_groups.py`) reasons about dimensions only: a group is shown only if rebuilt and found
   dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
   report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.

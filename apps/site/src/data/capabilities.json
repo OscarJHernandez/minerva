@@ -609,7 +609,7 @@
         },
         {
           "id": "identity-sqrt-square",
-          "title": "True only for nonnegative x",
+          "title": "True only under an assumption",
           "op": "identity",
           "status": "ok",
           "input": [
