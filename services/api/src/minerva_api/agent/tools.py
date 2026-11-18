@@ -4092,6 +4092,16 @@ def _validation_fields(
     return code, tuple(paths[:6])
 
 
+# Fixed advice appended when a field of a tool fails validation, for mistakes the benchmark showed repeating.
+# Text only: nothing is rewritten, and no value of the call is quoted.
+_FIELD_HINTS: dict[tuple[str, str], str] = {
+    ("StatMechArgs", "quantities"): (
+        " Heat capacity, pressure and other derivatives are not quantities: put them in `partials`, for "
+        'example heat capacity is {"of": "U", "variable": "T", "held_fixed": [], "label": "C"}.'
+    ),
+}
+
+
 def _validation_message(
     exc: ValidationError, model: type[BaseModel], arguments: dict[str, Any] | None = None
 ) -> str:
@@ -4127,8 +4137,18 @@ def _validation_message(
     more = len(problems) - len(shown)
     text = "; ".join(parts) + (f"; and {more} more" if more > 0 else "")
     unknown = _unknown_key_note(model, arguments) if arguments else ""
+    advice = "".join(
+        dict.fromkeys(
+            _FIELD_HINTS.get((model.__name__, str(err["loc"][0])), "")
+            for _, (err, _) in shown
+            if err["loc"]
+        )
+    )
     return (
-        f"invalid arguments ({text})" + "".join(f" It must be {hint}." for hint in hints) + unknown
+        f"invalid arguments ({text})"
+        + "".join(f" It must be {hint}." for hint in hints)
+        + unknown
+        + advice
     )
 
 

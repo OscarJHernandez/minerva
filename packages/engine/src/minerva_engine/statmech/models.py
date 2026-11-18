@@ -144,9 +144,19 @@ class ChainSystem(BaseModel):
     """
 
     kind: Literal["chain"] = "chain"
-    states: list[str] = Field(min_length=2, max_length=3)
-    bond: str = Field(max_length=200)
-    site: str = Field(default="0", max_length=200)
+    states: list[str] = Field(
+        min_length=2, max_length=3, description='the values a site can take, e.g. ["1", "-1"]'
+    )
+    bond: str = Field(
+        max_length=200,
+        description="energy of two neighbouring sites in text syntax, in the names s and t (their "
+        "values), symmetric in s and t; * for products, no subscripts, e.g. -J*s*t",
+    )
+    site: str = Field(
+        default="0",
+        max_length=200,
+        description="energy of one site in text syntax, in the name s, e.g. -h*s",
+    )
     length: str = Field(max_length=16)
 
 

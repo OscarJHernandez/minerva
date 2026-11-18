@@ -141,9 +141,20 @@ class StatMechArgs(BaseModel):
         "Energies must be provably real; degeneracies provably positive integers.",
     )
     quantities: list[BaseQuantity] = Field(
-        default_factory=list, max_length=6, description="Base quantities to derive."
+        default_factory=list,
+        max_length=6,
+        description="Base quantities to derive: Z, lnZ, F, U, S, Var_E (and for the grand canonical "
+        "ensemble Xi, lnXi, Omega, N, Var_N). Heat capacity, pressure and every other derivative are NOT "
+        "quantities: ask for them in `partials`.",
     )
-    partials: list[Partial] = Field(default_factory=list, max_length=6)
+    partials: list[Partial] = Field(
+        default_factory=list,
+        max_length=6,
+        description="Derivatives of a base quantity with the other state variables held fixed. Heat "
+        'capacity: [{"of": "U", "variable": "T", "held_fixed": [], "label": "C"}]. Pressure of a gas '
+        '(parameters ["V"]): [{"of": "F", "variable": "V", "held_fixed": ["T"], "scale": "-1", '
+        '"label": "p"}].',
+    )
     method: Method | None = Field(
         default=None,
         description="For action approximate: high_temperature (Taylor series of ln Z in beta, "
