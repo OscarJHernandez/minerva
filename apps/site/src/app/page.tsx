@@ -84,7 +84,7 @@ const typed = (ex: Example) => {
 const plain = (text: string) => <span className="text-sm text-muted">{text}</span>;
 
 export default function Home() {
-  const kepler = example("lagrangian-kepler-polar");
+  const keplerSearch = example("invariants-kepler-polar");
   const trig = example("simplify-trig-quotients");
   const logBlocked = example("identity-log-blocked");
   const logOk = example("identity-log-applicable");
@@ -138,37 +138,72 @@ export default function Home() {
           </div>
         </Section>
 
-        <Section id="examples" title="Explore a problem. Check the result.">
-          <p className="max-w-2xl text-muted">
-            Start with a question. Minerva applies mathematical tools and shows what they
-            establish, including their limitations.
+        <Section id="examples" title="Find what the obvious symmetries miss">
+          <p className="max-w-3xl text-lg text-muted">
+            Give Minerva the Kepler Lagrangian. Beyond the familiar energy and angular momentum,
+            its symbolic search discovers two more conserved expressions: the components of
+            the Laplace–Runge–Lenz vector.
           </p>
-          <figure className="mt-10 rounded-lg border border-rule bg-raised px-5 py-7 sm:px-8 sm:py-9">
-            <figcaption className="text-xs uppercase tracking-wide text-muted">
-              A real example: conserved quantities in the Kepler problem
-            </figcaption>
-            <p className="mt-3 text-xs uppercase tracking-wide text-muted">You type</p>
-            <code className="mt-1 block overflow-x-auto whitespace-pre text-sm sm:text-base">
-              {inputSource(kepler)}
-            </code>
-            <div className="mt-3 space-y-1 text-xl sm:text-2xl">
-              <div className="overflow-x-auto overflow-y-hidden">
+          <figure className="mt-8 overflow-hidden rounded-lg border border-rule bg-raised">
+            <div className="border-b border-rule p-5 sm:p-8">
+              <figcaption className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+                The problem
+              </figcaption>
+              <p className="mt-2 text-sm text-muted">
+                Search for conserved quantities in the Kepler system.
+              </p>
+              <div className="mt-4 overflow-x-auto py-2 text-xl sm:text-2xl">
                 <Math
-                  latex={`L = ${inputLatex(kepler)}`}
-                  label="Lagrangian of the Kepler problem in polar coordinates"
+                  latex={`L = ${inputLatex(keplerSearch)}`}
+                  label="Kepler Lagrangian in polar coordinates"
                 />
               </div>
-              <div className="overflow-x-auto overflow-y-hidden">
-                <Math latex={outputLatex(kepler, "Conserved: cyclic")} />
+              <p className="mt-3 text-sm text-muted">
+                Coordinates: r, θ · Angular coordinate: θ
+              </p>
+            </div>
+
+            <div className="p-5 sm:p-8">
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <h3 className="font-serif text-2xl">Two hidden constants of motion</h3>
+                <StatusBadge status="ok" label="Engine-verified" />
               </div>
-              <div className="overflow-x-auto overflow-y-hidden">
-                <Math latex={outputLatex(kepler, "Conserved: energy")} />
+              <p className="mt-2 max-w-2xl text-sm text-muted">
+                Discovered by searching candidate expressions, not by looking up the
+                Runge–Lenz vector.
+              </p>
+              <div className="mt-6 space-y-5">
+                <div className="rounded border border-rule bg-paper p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted">First component</p>
+                  <div className="mt-2 overflow-x-auto py-2 text-lg sm:text-xl">
+                    <Math latex={outputLatex(keplerSearch, "Constant of motion 1")} />
+                  </div>
+                </div>
+                <div className="rounded border border-rule bg-paper p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted">Second component</p>
+                  <div className="mt-2 overflow-x-auto py-2 text-lg sm:text-xl">
+                    <Math latex={outputLatex(keplerSearch, "Constant of motion 2")} />
+                  </div>
+                </div>
+              </div>
+              <p className="mt-5 text-sm font-medium text-ink">
+                Verified: each time derivative is symbolically zero on the equations
+                of motion, with 20/20 numerical checks.
+              </p>
+              <p className="mt-2 max-w-2xl text-sm text-muted">
+                Energy and angular momentum are excluded as already known.
+                The search covers a finite family of candidate expressions;
+                it does not establish that no others exist.
+              </p>
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <a href={APP_URL} className={primary}>
+                  Explore in Minerva
+                </a>
+                <Link href="/docs" className="text-sm underline hover:text-ink">
+                  See the verified computation
+                </Link>
               </div>
             </div>
-            <p className="mt-5 max-w-2xl text-sm text-muted">
-              Minerva checks these conserved quantities against the equations of motion.
-              It also tells you what it has not checked, rather than inventing a proof.
-            </p>
           </figure>
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <Card
