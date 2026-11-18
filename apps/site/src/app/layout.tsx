@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Minerva — For the joy of figuring things out",
+  title: "Minerva — Explore mathematics on your own terms",
   description:
-    "Your own open-source mathematical assistant for exploring ideas, discovering useful identities, and checking results. Self-host Minerva and bring your own model.",
+    "An open-source mathematical assistant you control. Explore ideas, verify computations, and choose your own methods. Self-host Minerva and bring your own AI model.",
   keywords: [
     "mathematical assistant",
     "math exploration",
@@ -19,9 +19,9 @@ export const metadata: Metadata = {
     "local LLM",
   ],
   openGraph: {
-    title: "Minerva — For the joy of figuring things out",
+    title: "Minerva — Explore mathematics on your own terms",
     description:
-      "Explore mathematics for the joy of figuring things out. Open source, self-hostable, and grounded in verifiable symbolic computation.",
+      "An open-source mathematical assistant you run on your own infrastructure. You direct the explorations, choose the model, and verify the mathematics.",
     type: "website",
   },
 };
