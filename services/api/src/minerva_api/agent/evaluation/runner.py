@@ -28,6 +28,8 @@ from .cases import EvalCase
 from .score import CaseResult, FailureClass, Observation, combine, score_case
 
 ProgressFn = Callable[[CaseResult], None]
+# Called with every live turn: case id, repeat, turn number (1-based), the prompt, what happened, whether it passed.
+TurnFn = Callable[[str, int, int, str, Observation, bool], None]
 _CONVERSATION_ENDERS = frozenset({FailureClass.MODEL_HOST, FailureClass.NO_REPLY})
 
 
@@ -122,6 +124,7 @@ async def run_case(
     limits: AgentLimits,
     repeat: int = 0,
     params: EffectiveParams | None = None,
+    on_turn: TurnFn | None = None,
 ) -> CaseResult:
     """One case: its first turn, then each follow-up turn answered live on top of the earlier answers.
 
@@ -129,6 +132,8 @@ async def run_case(
     """
     obs = await observe(llm, case, ctx, limits, params=params)
     results = [score_case(case, obs, repeat)]
+    if on_turn is not None:
+        on_turn(case.id, repeat, 1, case.prompt, obs, results[0].passed)
     stored: list[Any] = []
     previous_prompt, previous = case.prompt, obs
     for number, turn in enumerate(case.followups, start=2):
@@ -141,6 +146,8 @@ async def run_case(
         previous = await observe(llm, turn_case, ctx, limits, stored=stored, params=params)
         previous_prompt = turn_case.prompt
         results.append(score_case(turn_case, previous, repeat))
+        if on_turn is not None:
+            on_turn(case.id, repeat, number, turn_case.prompt, previous, results[-1].passed)
     return combine(results)
 
 
@@ -155,13 +162,14 @@ async def run_suite(
     parallel: int = 1,
     on_result: ProgressFn | None = None,
     params: EffectiveParams | None = None,
+    on_turn: TurnFn | None = None,
 ) -> list[CaseResult]:
     """Every case `repeats` times; results come back in case order, then repeat order."""
     gate = asyncio.Semaphore(max(1, parallel))
 
     async def one(case: EvalCase, repeat: int) -> CaseResult:
         async with gate:
-            result = await run_case(llm, ctx, case, limits, repeat, params)
+            result = await run_case(llm, ctx, case, limits, repeat, params, on_turn)
         if on_result is not None:
             on_result(result)
         return result

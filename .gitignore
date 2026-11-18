@@ -65,3 +65,6 @@ apps/*/AGENTS.md
 
 # Screenshots produced for design review
 review/
+
+# Local evaluation traces (hold prompts and model output; see agent/evaluation/traces.py)
+/eval-traces/

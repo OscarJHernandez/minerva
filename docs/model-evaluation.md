@@ -11,7 +11,7 @@
 
 ## Agent benchmark: before and after the reliability changes (2026-11-13)
 
-> Historical. The case counts below (78, then 90) are those of that run. The set has since grown to 147 core
+> Historical. The case counts below (78, then 90) are those of that run. The set has since grown to 161 core
 > cases and 18 reliability cases (`cases.yaml`, `cases_reliability.yaml`); each report states its `cases_digest`, and
 > runs are comparable only on the cases whose ids and digests match. See also
 > [reliability/overview.md](reliability/overview.md).

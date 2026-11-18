@@ -41,6 +41,7 @@ from .reference import check_reference
 from .report import build_document, compare, render_markdown
 from .runner import describe_limits, filter_cases, run_suite
 from .score import CaseResult
+from .traces import TraceWriter
 
 
 def _git_sha() -> str:
@@ -201,6 +202,9 @@ async def _evaluate_model(
         )
 
     results: list[CaseResult] = []
+    writer = (
+        TraceWriter(args.traces_dir, everything=args.traces == "all") if args.traces_dir else None
+    )
     for repeat in range(args.repeat):
         results += await run_suite(
             client(repeat),
@@ -212,6 +216,7 @@ async def _evaluate_model(
             parallel=args.parallel,
             on_result=progress,
             params=build_params(args),
+            on_turn=writer,
         )
     return model, results
 
@@ -282,6 +287,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--parallel", type=int, default=1, help="cases run at once per model")
     parser.add_argument("--json-out", help="write the machine-readable report here")
     parser.add_argument("--out", help="write the markdown report here")
+    parser.add_argument(
+        "--traces-dir",
+        help="write the trace of every failed turn here as a debug report that scripts/replay_trace.py reads "
+        "(local only: traces hold the prompts and the model's expressions; /eval-traces/ is git-ignored)",
+    )
+    parser.add_argument(
+        "--traces",
+        choices=("failed", "all"),
+        default="failed",
+        help="with --traces-dir: only failed turns (default) or every turn",
+    )
     parser.add_argument("--compare", metavar="BASE.json", help="compare this run with a saved one")
     parser.add_argument(
         "--compare-only", nargs=2, metavar=("BASE.json", "NEW.json"), help="compare two saved runs"

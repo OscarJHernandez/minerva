@@ -291,3 +291,49 @@
     tool: differentiate
     arguments: { latex: 'x^{2} \sin(x)', variables: [{ name: x, order: 1 }] }
   source: "product rule by hand: (x^2 sin x)' = 2x sin x + x^2 cos x"
+
+# --- workflows with no live coverage before (added with the trace export; see docs/reliability/) -----------
+- id: assumption-added-then-dropped-in-followups
+  category: followup
+  prompt: 'Simplify $\sqrt{x^2}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: simplify, arguments: {latex: '\sqrt{x^2}'}}
+  source: "AGENTS.md (symbols are complex unless declared): sqrt(x^2) is |x| only for real x, x only for x >= 0"
+  followups:
+    # The user now states an assumption; it must reach the tool, and with it the result is different.
+    - prompt: 'Now assume x is positive and simplify it again.'
+      expected_tool: simplify
+      args: {assumes: {x: positive}}
+      expect_card: {status: unchanged, result_text: "x"}
+      reference: {tool: simplify, arguments: {latex: '\sqrt{x^2}', assumptions: {x: [positive]}}}
+    # ... and when the user takes it back, it must not linger in the next call.
+    - prompt: 'Forget that: x is an arbitrary complex number again. Simplify it once more.'
+      expected_tool: simplify
+      args: {absent: [assumptions]}
+      forbid_assumptions: true
+      expect_card: {status: conditions_not_satisfied}
+      reference: {tool: simplify, arguments: {latex: '\sqrt{x^2}'}}
+
+- id: oscillator-equations-of-motion-then-conserved-quantity
+  category: followup
+  prompt: 'Derive the equations of motion for $L = \frac12 m \dot{x}^2 - \frac12 k x^2$ with the coordinate x.'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [x]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m \dot{x}^2 - \frac12 k x^2', coordinates: [x]}
+  source: "textbook: m x'' = -k x"
+  followups:
+    - prompt: 'What is conserved for this Lagrangian?'
+      expected_tool: find_conserved_quantities
+      also_ok: [analyze_lagrangian, search_invariants]
+      args: {includes: {coordinates: [x]}}
+      expect_card: {status: ok}
+      reference:
+        tool: find_conserved_quantities
+        arguments: {lagrangian: '\frac12 m \dot{x}^2 - \frac12 k x^2', coordinates: [x]}
+      reply_forbids: 'no other|has no more|completely integrable|fully integrable'

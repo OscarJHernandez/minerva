@@ -18,7 +18,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 CASES_FILE = Path(__file__).with_name("cases.yaml")
 RELIABILITY_FILE = Path(__file__).with_name("cases_reliability.yaml")
-SUITES = ("core", "reliability", "all")
+HELDOUT_FILE = Path(__file__).with_name("cases_heldout.yaml")
+# `heldout` is not part of `all`: see cases_heldout.yaml.
+SUITES = ("core", "reliability", "all", "heldout")
 
 Category = Literal[
     "symbolic",  # simple symbolic calculations
@@ -229,7 +231,8 @@ def load_cases(path: Path = CASES_FILE) -> list[EvalCase]:
 
 
 def load_suite(suite: str = "core") -> list[EvalCase]:
-    """`core` (cases.yaml), `reliability` (cases_reliability.yaml: live multi-turn and assumption checks) or both."""
+    """`core` (cases.yaml), `reliability` (cases_reliability.yaml: live multi-turn and assumption checks), both
+    (`all`) or `heldout` (cases_heldout.yaml: the same workflows in other words, run on their own)."""
     if suite not in SUITES:
         raise ValueError(f"unknown suite {suite!r}; choose from {', '.join(SUITES)}")
     cases: list[EvalCase] = []
@@ -237,6 +240,8 @@ def load_suite(suite: str = "core") -> list[EvalCase]:
         cases += load_cases(CASES_FILE)
     if suite in ("reliability", "all"):
         cases += load_cases(RELIABILITY_FILE)
+    if suite == "heldout":
+        cases += load_cases(HELDOUT_FILE)
     ids = [c.id for c in cases]
     if len(set(ids)) != len(ids):
         raise ValueError("duplicate case ids across suites")

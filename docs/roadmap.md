@@ -178,7 +178,7 @@ tool produced are marked unchecked; `scripts/eval_models.py` and `docs/model-eva
 computes or decides. See `docs/self-hosting.md`.
 
 Open: other model hosts behind the same interface, normalising informal input to LaTeX for the user to
-confirm, and raising the evaluation pass rate (14 of 21 cases for every model tried so far).
+confirm, and raising the evaluation pass rate (the latest live reliability run passed 39 of 54 runs; see `docs/benchmarks/reliability-live-after-pr74.md` and `docs/reliability/overview.md`).
 
 ## Platform
 
