@@ -47,8 +47,18 @@ def fill_chain(problem: Problem, s: ChainSystem) -> set[sp.Symbol]:
             "assumptions_insufficient",
             "the site values must be distinct and provably real (declare their symbols real)",
         )
-    bond = problem.parse(s.bond)
-    site = problem.parse(s.site)
+    try:
+        bond = problem.parse(s.bond)
+        site = problem.parse(s.site)
+    except Refusal as exc:
+        if exc.reason != "parse_error":
+            raise
+        raise Refusal(
+            "parse_error",
+            "the chain's `bond` and `site` are text expressions in the names s and t, the values of the "
+            "two neighbouring sites: use * for products and no subscripts, for example bond = -J*s*t "
+            f"and site = -h*s ({exc})",
+        ) from exc
     if {problem.beta, problem.T, problem.k_B} & (bond.free_symbols | site.free_symbols):
         raise Refusal("unsupported_system", "the energies must not depend on the temperature")
     n = problem.parse(s.length)

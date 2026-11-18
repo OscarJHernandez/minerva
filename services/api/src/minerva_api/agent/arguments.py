@@ -142,12 +142,53 @@ def repair_arguments(
             out[name] = str(value)
             notes.append(_note(name, str(value), repr(str(value)), "this field takes text"))
 
+    _kind_wrapper(fields, out, notes)
     _theorem_expression(fields, out, notes)
     _item_keys(fields, out, notes)
     _default_assumption(fields, out, notes)
     _nested_numbers(fields, out, notes)
 
     return (out if notes else arguments), tuple(notes)
+
+
+def _tags(info: Any) -> dict[str, Any]:
+    """tag -> model class, for a field whose type is a union chosen by a tag (`Field(discriminator="kind")`)."""
+    tag = getattr(info, "discriminator", None)
+    if not isinstance(tag, str):
+        return {}
+    found: dict[str, Any] = {}
+    for member in get_args(info.annotation):
+        member_field = getattr(member, "model_fields", {}).get(tag)
+        if member_field is not None and isinstance(member_field.default, str):
+            found[member_field.default] = member
+    return found
+
+
+def _kind_wrapper(
+    fields: Mapping[str, Any], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """`{"level_family": {...}}` for `{"kind": "level_family", ...}`: the member nested under its own tag.
+
+    Closed rule: the value is an object with exactly one key, that key is one of the union's tags and its value
+    is an object that is not tagged differently. Anything else (two keys, an unknown key) is left to the
+    validation message, never guessed."""
+    for name, value in list(out.items()):
+        info = fields.get(name)
+        tags = _tags(info) if info is not None else {}
+        if not tags or not isinstance(value, dict) or len(value) != 1:
+            continue
+        ((key, inner),) = value.items()
+        if key not in tags or not isinstance(inner, dict) or inner.get("kind", key) != key:
+            continue
+        out[name] = {**inner, "kind": key}
+        notes.append(
+            _note(
+                name,
+                f"{{{key!r}: {{...}}}}",
+                f"{{'kind': {key!r}, ...}}",
+                "the system's type is its `kind` key, not an outer key",
+            )
+        )
 
 
 def _stringify(annotation: Any, value: Any) -> tuple[Any, bool]:

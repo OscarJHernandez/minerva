@@ -122,6 +122,22 @@ def _decide_ratio(limit: sp.Expr | None) -> str:
     return "unknown"
 
 
+def _undeclared(problem: Problem, expr: sp.Expr, *skip: sp.Expr) -> str:
+    """Which symbols of an energy have no declared assumption, for the message to the model (the user's own
+    names; never logged), with the form `assumptions` takes."""
+    names = sorted(
+        str(sym)
+        for sym in expr.free_symbols
+        if str(sym) not in problem.assumptions
+        and sym not in skip
+        and sym not in {problem.beta, problem.T, problem.k_B}
+    )
+    if not names:
+        return ""
+    example = ", ".join(f'"{n}": ["positive"]' for n in names[:4])
+    return f" (no assumption declared for {', '.join(names)}; send them in `assumptions`, e.g. {{{example}}})"
+
+
 def fill_family(problem: Problem, s: FamilySystem) -> set[sp.Symbol]:
     lower_e = _bound(problem, s.lower, allow_infinite=False)
     upper_e = _bound(problem, s.upper, allow_infinite=True)
@@ -142,7 +158,8 @@ def fill_family(problem: Problem, s: FamilySystem) -> set[sp.Symbol]:
     if e.is_real is not True:
         raise Refusal(
             "assumptions_insufficient",
-            "energies must be provably real: declare their symbols real or positive",
+            "energies must be provably real: declare their symbols real or positive"
+            + _undeclared(problem, e, n),
         )
     if g.is_integer is not True or g.is_positive is not True:
         raise Refusal(

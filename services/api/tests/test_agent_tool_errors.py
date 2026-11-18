@@ -307,3 +307,62 @@ def test_a_correct_system_still_runs(ctx: ToolContext) -> None:
         ctx,
     )
     assert out.arguments_valid
+
+
+# --- statistical_mechanics: where a model looks for heat capacity and how it writes a chain ------------------
+def test_a_derivative_name_in_quantities_points_to_partials(ctx: ToolContext) -> None:
+    out = execute(
+        "statistical_mechanics",
+        {
+            "action": "derive",
+            "system": {"kind": "level_family", "energy": "n", "index": "n"},
+            "quantities": ["U", "C_V"],
+        },
+        ctx,
+    )
+    assert out.status == "error" and not out.arguments_valid
+    assert "put them in `partials`" in out.for_model
+    ok = execute(
+        "statistical_mechanics",
+        {
+            "action": "derive",
+            "system": {"kind": "level_family", "energy": "n", "index": "n"},
+            "quantities": ["U"],
+        },
+        ctx,
+    )
+    assert "put them in `partials`" not in ok.for_model  # only a failed quantities field gets it
+
+
+def test_the_worked_partials_in_the_description_are_calls_that_run(ctx: ToolContext) -> None:
+    """The two examples a model reads must be executable: heat capacity of an oscillator, pressure of a gas."""
+    from minerva_api.agent.tools import TOOLS
+
+    schema = TOOLS["statistical_mechanics"].args_model.model_json_schema()
+    described = schema["properties"]["partials"]["description"]
+    assert '"label": "C"' in described and '"label": "p"' in described
+    heat = execute(
+        "statistical_mechanics",
+        {
+            "action": "derive",
+            "system": {"kind": "level_family", "energy": "hbar*omega*(n + 1/2)", "index": "n"},
+            "assumptions": {"hbar": ["positive"], "omega": ["positive"]},
+            "quantities": ["U"],
+            "partials": [{"of": "U", "variable": "T", "held_fixed": [], "label": "C"}],
+        },
+        ctx,
+    )
+    assert heat.arguments_valid and heat.status == "ok", heat.for_model[:300]
+
+
+def test_a_wrapped_system_is_run_after_the_repair(ctx: ToolContext) -> None:
+    from minerva_api.agent.arguments import repair_arguments
+    from minerva_api.agent.tools import TOOLS
+
+    sent = {
+        "action": "partition",
+        "system": {"levels": {"levels": [{"energy": "0"}, {"energy": "epsilon"}]}},
+        "assumptions": {"epsilon": ["positive"]},
+    }
+    fixed, notes = repair_arguments(TOOLS["statistical_mechanics"].args_model, sent)
+    assert notes and execute("statistical_mechanics", fixed, ctx).status == "ok"

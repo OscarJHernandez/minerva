@@ -186,6 +186,18 @@ def _number_as_string(tool: str, arguments: Arguments) -> Arguments | None:
     return _shaped(tool, arguments, change)
 
 
+def _kind_wrapped(tool: str, arguments: Arguments) -> Arguments | None:
+    """`{"kind": "levels", ...}` sent as `{"levels": {...}}`: the member nested under its own tag."""
+
+    def change(key: str, annotation: Any, value: Any) -> Any:
+        if isinstance(value, dict) and isinstance(value.get("kind"), str) and len(value) > 1:
+            inner = {k: v for k, v in value.items() if k != "kind"}
+            return {value["kind"]: inner}
+        return None
+
+    return _shaped(tool, arguments, change)
+
+
 def _formula_alias(tool: str, arguments: Arguments) -> Arguments | None:
     from ..tools import TOOLS
 
@@ -211,6 +223,7 @@ OPERATORS: dict[str, Operator] = {
     "shape:json_as_string": _json_as_string,
     "shape:number_as_string": _number_as_string,
     "shape:formula_alias": _formula_alias,
+    "shape:kind_wrapped": _kind_wrapped,
     "derivative:joined": _velocity(lambda m: f"{m.group(1)}dot"),
     "derivative:leibniz": _velocity(lambda m: f"d{m.group(1)}_dt"),
     "derivative:spaced": _velocity(lambda m: f"{m.group(1)} dot"),
