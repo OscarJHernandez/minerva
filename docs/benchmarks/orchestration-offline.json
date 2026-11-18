@@ -33,9 +33,9 @@
       "id": "wedge-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 368,
-        "tool_ms": 2419,
-        "total_ms": 2803
+        "claim_check_ms": 384,
+        "tool_ms": 2513,
+        "total_ms": 2914
       }
     },
     {
@@ -70,9 +70,9 @@
       "id": "wedge-xdot-first-call",
       "pending": "",
       "timing": {
-        "claim_check_ms": 370,
-        "tool_ms": 809,
-        "total_ms": 1194
+        "claim_check_ms": 383,
+        "tool_ms": 831,
+        "total_ms": 1230
       }
     },
     {
@@ -107,9 +107,9 @@
       "id": "wedge-wrong-format-recovered",
       "pending": "",
       "timing": {
-        "claim_check_ms": 368,
-        "tool_ms": 1162,
-        "total_ms": 1545
+        "claim_check_ms": 388,
+        "tool_ms": 1207,
+        "total_ms": 1610
       }
     },
     {
@@ -144,9 +144,9 @@
       "id": "wedge-shape-errors-repaired",
       "pending": "",
       "timing": {
-        "claim_check_ms": 372,
-        "tool_ms": 792,
-        "total_ms": 1178
+        "claim_check_ms": 386,
+        "tool_ms": 828,
+        "total_ms": 1229
       }
     },
     {
@@ -182,8 +182,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 822,
-        "total_ms": 837
+        "tool_ms": 847,
+        "total_ms": 861
       }
     },
     {
@@ -219,8 +219,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 721,
-        "total_ms": 735
+        "tool_ms": 768,
+        "total_ms": 782
       }
     },
     {
@@ -256,8 +256,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 382,
-        "total_ms": 395
+        "tool_ms": 377,
+        "total_ms": 391
       }
     },
     {
@@ -292,9 +292,9 @@
       "id": "wedge-routed-xdot",
       "pending": "",
       "timing": {
-        "claim_check_ms": 372,
-        "tool_ms": 820,
-        "total_ms": 1209
+        "claim_check_ms": 385,
+        "tool_ms": 845,
+        "total_ms": 1245
       }
     },
     {
@@ -329,9 +329,9 @@
       "id": "pendulum-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 884,
-        "tool_ms": 1650,
-        "total_ms": 2550
+        "claim_check_ms": 920,
+        "tool_ms": 1703,
+        "total_ms": 2640
       }
     },
     {
@@ -366,9 +366,9 @@
       "id": "pendulum-routed-latex",
       "pending": "",
       "timing": {
-        "claim_check_ms": 883,
-        "tool_ms": 821,
-        "total_ms": 1718
+        "claim_check_ms": 910,
+        "tool_ms": 847,
+        "total_ms": 1773
       }
     },
     {
@@ -403,9 +403,9 @@
       "id": "pendulum-routed-text-velocities",
       "pending": "",
       "timing": {
-        "claim_check_ms": 877,
-        "tool_ms": 820,
-        "total_ms": 1711
+        "claim_check_ms": 911,
+        "tool_ms": 849,
+        "total_ms": 1775
       }
     },
     {
@@ -440,9 +440,9 @@
       "id": "pendulum-model-calls-with-text",
       "pending": "",
       "timing": {
-        "claim_check_ms": 873,
-        "tool_ms": 812,
-        "total_ms": 1699
+        "claim_check_ms": 915,
+        "tool_ms": 861,
+        "total_ms": 1791
       }
     },
     {
@@ -477,9 +477,9 @@
       "id": "pendulum-assignment-and-greek",
       "pending": "",
       "timing": {
-        "claim_check_ms": 881,
-        "tool_ms": 816,
-        "total_ms": 1711
+        "claim_check_ms": 919,
+        "tool_ms": 847,
+        "total_ms": 1780
       }
     },
     {
@@ -514,9 +514,9 @@
       "id": "pendulum-wrong-sign-stays-unbacked",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1399,
-        "tool_ms": 858,
-        "total_ms": 2272
+        "claim_check_ms": 1440,
+        "tool_ms": 852,
+        "total_ms": 2308
       }
     },
     {
@@ -551,9 +551,9 @@
       "id": "cyclic-oscillator",
       "pending": "",
       "timing": {
-        "claim_check_ms": 433,
-        "tool_ms": 433,
-        "total_ms": 881
+        "claim_check_ms": 442,
+        "tool_ms": 441,
+        "total_ms": 898
       }
     },
     {
@@ -588,9 +588,9 @@
       "id": "simplify-with-functions-prefix",
       "pending": "",
       "timing": {
-        "claim_check_ms": 380,
-        "tool_ms": 919,
-        "total_ms": 1313
+        "claim_check_ms": 382,
+        "tool_ms": 950,
+        "total_ms": 1347
       }
     },
     {
@@ -626,8 +626,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 4142,
-        "total_ms": 4156
+        "tool_ms": 4344,
+        "total_ms": 4359
       }
     },
     {
@@ -663,8 +663,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 2451,
-        "total_ms": 2464
+        "tool_ms": 2551,
+        "total_ms": 2565
       }
     },
     {
@@ -699,9 +699,9 @@
       "id": "unreadable-arguments-then-valid",
       "pending": "",
       "timing": {
-        "claim_check_ms": 364,
-        "tool_ms": 934,
-        "total_ms": 1313
+        "claim_check_ms": 378,
+        "tool_ms": 953,
+        "total_ms": 1346
       }
     },
     {
@@ -737,8 +737,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 561,
-        "total_ms": 575
+        "tool_ms": 560,
+        "total_ms": 574
       }
     },
     {
@@ -774,8 +774,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 535,
-        "total_ms": 549
+        "tool_ms": 562,
+        "total_ms": 577
       }
     },
     {
@@ -811,8 +811,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 536,
-        "total_ms": 549
+        "tool_ms": 549,
+        "total_ms": 563
       }
     },
     {
@@ -847,9 +847,9 @@
       "id": "matrix-expansion-noncommuting",
       "pending": "",
       "timing": {
-        "claim_check_ms": 365,
-        "tool_ms": 389,
-        "total_ms": 769
+        "claim_check_ms": 374,
+        "tool_ms": 387,
+        "total_ms": 775
       }
     },
     {
@@ -884,9 +884,9 @@
       "id": "ode-first-order",
       "pending": "",
       "timing": {
-        "claim_check_ms": 508,
-        "tool_ms": 435,
-        "total_ms": 958
+        "claim_check_ms": 532,
+        "tool_ms": 442,
+        "total_ms": 989
       }
     },
     {
@@ -898,7 +898,7 @@
         "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
-        "est_tokens_in": 31856,
+        "est_tokens_in": 31545,
         "est_tokens_out": 83,
         "evidence_pct": 0.0,
         "format_switches": 0,
@@ -921,9 +921,9 @@
       "id": "vector-divergence-product",
       "pending": "",
       "timing": {
-        "claim_check_ms": 363,
-        "tool_ms": 534,
-        "total_ms": 912
+        "claim_check_ms": 387,
+        "tool_ms": 554,
+        "total_ms": 956
       }
     },
     {
@@ -935,7 +935,7 @@
         "budget_exhausted": 0,
         "claims": 2,
         "contradicted": 0,
-        "est_tokens_in": 34848,
+        "est_tokens_in": 34536,
         "est_tokens_out": 110,
         "evidence_pct": 50.0,
         "format_switches": 0,
@@ -958,14 +958,14 @@
       "id": "vector-distributional-divergence",
       "pending": "",
       "timing": {
-        "claim_check_ms": 363,
-        "tool_ms": 661,
-        "total_ms": 1039
+        "claim_check_ms": 384,
+        "tool_ms": 682,
+        "total_ms": 1081
       }
     }
   ],
   "summary": {
-    "est_tokens_in": 724313,
+    "est_tokens_in": 723690,
     "est_tokens_out": 2202,
     "format_switches": 3,
     "input_adjusted": 2,

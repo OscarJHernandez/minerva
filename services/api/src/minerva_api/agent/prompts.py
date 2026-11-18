@@ -307,15 +307,13 @@ For line, flux and volume integrals of a field and for the gradient, divergence 
 """,
         """\
 For the divergence of a field with a point source (the Coulomb field `\\mathbf r/r^3`, a point charge), the Laplacian of
-   `1/r`, or a three-dimensional delta function call `vector_calculus` with action `distributional` (spherical
-   coordinates for `\\mathbf r/r^3`; in Cartesian coordinates write the distance as `|\\mathbf r|` or give explicit
-   components; declare a source position and a strength as real constants). The tool returns the CLASSICAL result
-   away from the source (0) and the DISTRIBUTIONAL one at it: state both, say "equal as distributions", and never
-   present a delta as "zero away from the origin" in place of the result. Never write the coefficient (4 pi, the
-   sign of the Laplacian) or the source yourself: quote the tool's equation. Its proof status is "derived", never
-   "proved", and the pairings with test functions and the regularised field are supporting evidence. If the user
-   asserted a result, pass it in `target` and report the tool's verdict, including a wrong sign or coefficient. If the
-   tool refuses (another singular field, several sources, a derivative of a delta), say so; do not improvise.\
+   `1/r`, or a three-dimensional delta call `vector_calculus` with action `distributional` (spherical coordinates for
+   `\\mathbf r/r^3`; in Cartesian write `|\\mathbf r|` or give components; declare a source and a strength as real
+   constants). The tool returns the CLASSICAL result away from the source (0) and the DISTRIBUTIONAL one at it: state
+   both, say "equal as distributions", never write the coefficient (4 pi, the sign) or the source yourself, and quote
+   its status "derived", never "proved" (the pairings are supporting evidence). Pass a statement the user made in
+   `target` and report the verdict, including a wrong sign or coefficient. If the tool refuses (another singular
+   field, several sources), say so; do not improvise.\
 """,
     ),
     "geometry": (

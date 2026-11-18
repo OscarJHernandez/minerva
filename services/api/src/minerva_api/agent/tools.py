@@ -406,13 +406,11 @@ class VectorCalculusArgs(BaseModel):
         "of identity (and premise) steps to `target`, or to a smaller form without one. integrate: a line, "
         "flux, volume integral or one of the three theorems, over a domain the USER gives (see `integral`). "
         "distributional: the DISTRIBUTIONAL divergence of a point-source Coulomb field C (r-a)/|r-a|^3, or the "
-        "Laplacian of C/|r-a| (`expression` MUST contain the operator, \\nabla\\cdot(...) or \\nabla^2(...), e.g. "
-        "\\nabla\\cdot\\left(\\frac{\\mathbf{r}}{r^{3}}\\right) in spherical coordinates, never the field "
-        "alone; in Cartesian coordinates write the distance as |\\mathbf{r}|). The "
-        "engine returns the classical value 0 away from the source AND the delta term at the source with "
-        "its coefficient, derived and checked; use it whenever the user asks about a delta function, a point "
-        "charge or source, or why a divergence that vanishes everywhere has a nonzero flux. Never write the "
-        "coefficient yourself. Put a statement the user made about the result in `target`.",
+        "Laplacian of C/|r-a|. `expression` MUST contain the operator, e.g. "
+        "\\nabla\\cdot\\left(\\frac{\\mathbf{r}}{r^{3}}\\right) in spherical coordinates (Cartesian: write "
+        "|\\mathbf{r}|), never the field alone. The engine returns the classical value 0 away from the source AND "
+        "the delta term with its coefficient: use it for a delta function, a point charge, or a zero divergence "
+        "with a nonzero flux; never write the coefficient yourself; put the user's own statement in `target`.",
     )
     to: Literal["cartesian", "cylindrical", "spherical"] | None = Field(
         default=None, description="Target system for convert."
@@ -458,11 +456,10 @@ class VectorCalculusArgs(BaseModel):
         default=None,
         description="A surface: the three coordinates as text functions of two parameters over a "
         "rectangle. The orientation is the normal d_u r x d_v r: the ORDER of u and v is the orientation, "
-        "so state it and never choose it for the user. The surface is only `q`, `u` and `v`; the FIELD is "
-        "declared in `fields` in the system's own coordinates (x, y, z), never in u and v. Example shape "
-        "(not a problem to copy): F = (y, z, x) over r(u, v) = (u, v, u + v), 0 <= u, v <= 2 is "
-        "integral stokes_theorem, expression F, fields [{name: F, kind: vector, components: [y, z, x]}], "
-        "surface {q: [u, v, u + v], u: {name: u, lower: 0, upper: 2}, v: {name: v, lower: 0, upper: 2}}.",
+        "so state it and never choose it for the user. The surface is only `q`, `u`, `v`; the FIELD goes in "
+        "`fields` in x, y, z, never in u, v. Shape (not a problem to copy): F = (y, z, x) over "
+        "r(u, v) = (u, v, u + v) is integral stokes_theorem, expression F, fields [{name: F, kind: vector, "
+        "components: [y, z, x]}], surface {q: [u, v, u + v], u: {name: u, lower: 0, upper: 2}, v: {...}}.",
     )
     region: Region | None = Field(
         default=None,

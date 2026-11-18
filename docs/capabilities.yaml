@@ -1241,9 +1241,9 @@ capabilities:
           - name: F
             kind: vector
             components:
-              - 'q*(x - a_1)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))'
-              - 'q*(y - a_2)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))'
-              - 'q*(z - a_3)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))'
+              - "q*(x - a_1)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))"
+              - "q*(y - a_2)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))"
+              - "q*(z - a_3)/(4*pi*epsilon_0*((x - a_1)**2 + (y - a_2)**2 + (z - a_3)**2)**(3/2))"
       - id: vector-curl-grad-declared
         title: Curl of a gradient vanishes for a twice differentiable field
         op: vector

@@ -1984,6 +1984,7 @@
   reply_matches: '(?is)derived|shrinking|sphere|pairing|test function'
   reply_forbids: '(?i)\bit is proved\b|rigorous(ly)? proof|mathematically proved'
   source: "the tool result states the proof status (derived, not proved) and that the pairings are supporting evidence; the answer must say so"
+
 # ----------------------------------------------------------------------------- homepage examples
 # The exact prompts of the example cards on the chat home page (packages/ui/fixtures/homepage-examples.json). A card is
 # shown only when its case passes here AND five live runs on the deployed model were all correct and engine-backed
