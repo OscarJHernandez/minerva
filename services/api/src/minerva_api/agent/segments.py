@@ -27,7 +27,7 @@ _MATH = re.compile(
 # Spacing commands carry no meaning; `\\` (line break) is not one and is kept. Anchored so that
 # `\leftarrow` is not read as `\left` + `arrow`.
 _SPACING = re.compile(
-    r"\\(?:left|right|quad|qquad|thinspace|medspace|thickspace)(?![A-Za-z])|\\[,;:>! ]"
+    r"\\(?:left|right|quad|qquad|thinspace|medspace|thickspace|limits|nolimits)(?![A-Za-z])|\\[,;:>! ]"
 )
 _ALIASES = (
     (re.compile(r"\\exponentialE(?![A-Za-z])"), r"\\mathrm{e}"),

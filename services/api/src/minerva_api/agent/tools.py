@@ -1131,6 +1131,10 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
     )
     lines, known_steps, quoted = _chain_lines(result)
     known = [x for x in (result.input_latex, result.result_latex) if x] + known_steps
+    if result.status.value == "ok":
+        # Where the result holds is the engine's own statement, like the restrictions of the other tools:
+        # a reply that repeats it is not an invention.
+        known += result.restrictions_latex
     return ToolOutput(
         card, "\n".join([head, *lines]), known, result.status.value, quoted_latex=quoted
     )
@@ -1306,6 +1310,16 @@ def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:
     known = [
         x for x in (result.input_latex, result.notation_latex, result.result_latex) if x
     ] + result.conditions_latex
+    if (
+        result.status.value == "ok"
+        and result.definite
+        and result.result_kind == "closed_form"
+        and result.notation_latex
+        and result.result_latex
+    ):
+        # The equation the tool verified (quadrature of this integral against this value), written out. The
+        # integral alone is the user's input and stays quoted; the value alone is not a statement about it.
+        known.append(f"{result.notation_latex} = {result.result_latex}")
     strategy = result.strategy
     if strategy is not None and result.status.value == "ok" and strategy.technique != "direct":
         known += [step.latex for step in strategy.steps]  # intermediate forms the engine printed
