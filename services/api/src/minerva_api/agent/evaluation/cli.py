@@ -111,6 +111,7 @@ def _meta(args: argparse.Namespace, cases: list[EvalCase], limits: AgentLimits) 
         "case_count": len(cases),
         "categories": sorted({c.category for c in cases}),
         "repeats": args.repeat,
+        "routing": args.routing,
         "compute_timeout": args.compute_timeout,
         "seed": args.seed,
         "temperature": args.temperature,
@@ -217,6 +218,7 @@ async def _evaluate_model(
             on_result=progress,
             params=build_params(args),
             on_turn=writer,
+            routing=args.routing,
         )
     return model, results
 
@@ -283,6 +285,13 @@ def _parser() -> argparse.ArgumentParser:
         "--toolset",
         choices=("auto", "core", "all"),
         help="which tools are sent: auto (core + groups a conversation needs), core or all",
+    )
+    parser.add_argument(
+        "--routing",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="let the deterministic routes (agent/routing.py) choose a first call, as the server does "
+        "(--no-routing measures the model alone; the report records which)",
     )
     parser.add_argument("--parallel", type=int, default=1, help="cases run at once per model")
     parser.add_argument("--json-out", help="write the machine-readable report here")

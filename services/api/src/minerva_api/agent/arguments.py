@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import re
 import types
+from collections.abc import Mapping
 from typing import Any, Union, get_args, get_origin
 
 from minerva_engine.notation.models import Normalization, NormalizationKind
@@ -36,7 +37,7 @@ from pydantic import BaseModel
 from .mathinput import MATH_FIELDS, MATH_LIST_FIELDS
 
 # Names a model uses for "the formula" in a tool whose formula field is called something else.
-FORMULA_ALIASES = ("expression", "expr", "formula", "input", "math")
+FORMULA_ALIASES = ("expression", "expr", "formula", "input", "math", "integrand")
 _NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
@@ -142,8 +143,149 @@ def repair_arguments(
             notes.append(_note(name, str(value), repr(str(value)), "this field takes text"))
 
     _theorem_expression(fields, out, notes)
+    _item_keys(fields, out, notes)
+    _default_assumption(fields, out, notes)
+    _nested_numbers(fields, out, notes)
 
     return (out if notes else arguments), tuple(notes)
+
+
+def _stringify(annotation: Any, value: Any) -> tuple[Any, bool]:
+    """`value` with every number put where the schema wants text (a list of text, a model's text field),
+    and whether anything changed. Numbers stay numbers wherever the schema takes a number."""
+    annotation = _unwrap(annotation)
+    if annotation is str:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return str(value), True
+        return value, False
+    if get_origin(annotation) is list and isinstance(value, list):
+        (inner,) = get_args(annotation)
+        items = [_stringify(inner, item) for item in value]
+        if any(changed for _, changed in items):
+            return [item for item, _ in items], True
+        return value, False
+    if (
+        isinstance(annotation, type)
+        and issubclass(annotation, BaseModel)
+        and isinstance(value, dict)
+    ):
+        out = dict(value)
+        changed = False
+        for key, item in value.items():
+            info = annotation.model_fields.get(key)
+            if info is not None:
+                new, did = _stringify(info.annotation, item)
+                if did:
+                    out[key] = new
+                    changed = True
+        return (out, True) if changed else (value, False)
+    return value, False
+
+
+def _nested_numbers(
+    fields: Mapping[str, Any], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """`components: [1, 0, 0]` inside a list of objects, where the tool takes text: 1 is "1"."""
+    for name, value in list(out.items()):
+        info = fields.get(name)
+        if info is None or not isinstance(value, (list, dict)):
+            continue
+        new, changed = _stringify(info.annotation, value)
+        if changed:
+            out[name] = new
+            notes.append(
+                _note(
+                    name,
+                    "numbers",
+                    "text",
+                    "this field takes text, so each number is written as text",
+                )
+            )
+
+
+# Keys a model was seen to use for a list item's field (2026-11-18 live traces), with the field the tool means.
+# Closed: a key is renamed only when the item has no field of the right name already.
+_ITEM_KEY_ALIASES: dict[str, dict[str, str]] = {"matrices": {"symbol": "name"}}
+
+
+def _item_keys(fields: Mapping[str, Any], out: dict[str, Any], notes: list[Normalization]) -> None:
+    """`matrices: [{"symbol": "A", ...}]` -> `name`; and a condition without `unknown` when exactly one
+    unknown is listed (`unknowns: ["x"]`), which can only mean that one."""
+    for name, aliases in _ITEM_KEY_ALIASES.items():
+        items = out.get(name)
+        if name not in fields or not isinstance(items, list):
+            continue
+        fixed: list[Any] = []
+        changed = False
+        for item in items:
+            if isinstance(item, dict):
+                for alias, right in aliases.items():
+                    if alias in item and right not in item:
+                        item = {right if k == alias else k: v for k, v in item.items()}
+                        changed = True
+            fixed.append(item)
+        if changed:
+            out[name] = fixed
+            notes.append(
+                _note(
+                    name,
+                    "items keyed by a symbol",
+                    "items keyed by name",
+                    "each item is named by `name`",
+                )
+            )
+    conditions, unknowns = out.get("conditions"), out.get("unknowns")
+    if (
+        "conditions" in fields
+        and "unknowns" in fields
+        and isinstance(conditions, list)
+        and isinstance(unknowns, list)
+        and len(unknowns) == 1
+        and isinstance(unknowns[0], str)
+        and any(isinstance(c, dict) and "unknown" not in c for c in conditions)
+    ):
+        out["conditions"] = [
+            {"unknown": unknowns[0], **c} if isinstance(c, dict) and "unknown" not in c else c
+            for c in conditions
+        ]
+        notes.append(
+            _note(
+                "conditions",
+                "conditions without an unknown",
+                f"unknown {unknowns[0]!r}",
+                "the one listed unknown is the one every condition is about",
+            )
+        )
+
+
+def _default_assumption(
+    fields: Mapping[str, Any], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """`assumptions: {"x": ["complex"]}`: complex is what every symbol is unless declared otherwise, so stating
+    it changes nothing. It is not a declarable assumption (the tool refuses it); drop it, never the others."""
+    assumptions = out.get("assumptions")
+    if "assumptions" not in fields or not isinstance(assumptions, dict):
+        return
+    cleaned: dict[str, Any] = {}
+    changed = False
+    for symbol, items in assumptions.items():
+        if isinstance(items, list) and "complex" in items:
+            changed = True
+            kept = [i for i in items if i != "complex"]
+            if kept:  # a symbol that only said "complex" has nothing left to declare
+                cleaned[symbol] = kept
+        else:
+            cleaned[symbol] = items
+    if changed:
+        out["assumptions"] = cleaned
+        notes.append(
+            _note(
+                "assumptions",
+                "complex",
+                "nothing",
+                "symbols are complex unless declared, so it is already the case",
+            )
+        )
 
 
 _THEOREM_FIELD_KIND = {

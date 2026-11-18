@@ -6,6 +6,8 @@ input, stop in bounded time and say only what a tool established? The model neve
 correctness, so a failure of the second kind can waste a turn or mislead about a result's origin, but it cannot
 make an unverified formula look verified. Several guards exist to keep it that way.
 
+Latest live measurements, what changed and what is still open: `progress-2026-11-18.md` (triage: `triage-2026-11-18.md`).
+
 ## Guarantees (and the test that holds each)
 
 | Guarantee | Held by |

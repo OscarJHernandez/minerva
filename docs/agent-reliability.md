@@ -53,8 +53,14 @@ side nor proportional by a constant factor is not linked, and the evaluation rep
 The call is executed like any other (validation, sandbox, verification); if it does not come back verified the
 route is dropped and the model plans the turn. The model still writes every word of the answer. Routed steps
 cost no model call, are marked in the trace, timeline and log (`agent.routed`), and
-`MINERVA_AGENT_ROUTING=false` turns the rule off. It is one rule on purpose; the list in `routing.RULES` is where
-the next would go.
+`MINERVA_AGENT_ROUTING=false` turns every rule off. `routing.RULES` lists them: after the Lagrangian rule came
+`followup_reuse`, `ode_analyze` and `matrix_simplify`, each added because a live trace showed the model not making
+the call (`docs/reliability/triage-2026-11-18.md`). A routed call is resolved (`@rN`), repaired, cleaned and run in the
+per-call tool context exactly like a model call, and a rule names the statuses it keeps as the answer: a non-commuting
+matrix product that comes back `conditions_not_satisfied` is the answer, an ODE the analyser refuses is not.
+The rules never fill in what the user did not write (variable, bounds, sizes, commutation, invertibility,
+assumptions) and decline when a message is ambiguous (two results in the last turn, two variables named, bounds
+in words, a method named for an ODE).
 
 ## Measurements (offline suite, same trajectories before and after)
 
@@ -102,7 +108,7 @@ and compare with `--compare`.
 * Distinct verification marks (proved / numerically checked / under conditions) were not added: the existing six
   marks and the new evidence note already say which, and the split touches the UI, scoring and the debug report
   for a presentation change. The `basis` is available in the claim debug record.
-* Only Lagrangian requests are routed.
+* Routed: Lagrangian equations of motion, `differentiate`/`integrate` of "that result" (`followup_reuse`), `ode_analyze` of a bare equation and `matrix_simplify` over matrices the user declared n x n. Not routed, deliberately: simplify, differentiate and integrate of a formula in the message (the 2026-11-18 baseline shows the model choosing them correctly), vector calculus and distributions (a coordinate system, declared fields and the delta notation are the user's to state). See `docs/reliability/triage-2026-11-18.md`.
 * `format` exists for `analyze_lagrangian` and `search_invariants` (visible) and, hidden, for the formula tools listed
   in the audit below. Other Lagrangian tools (`expand_motion`, `perturbation_solve`, `integrate_motion`,
   `find_conserved_quantities`) take LaTeX only: their engine entry points read LaTeX, so a text Lagrangian is refused

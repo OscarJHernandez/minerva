@@ -160,3 +160,106 @@ def test_a_blank_expression_counts_as_missing_and_the_gradient_theorem_takes_a_s
         "fields": [{"name": "f", "kind": "scalar", "components": ["x*y"]}],
     }
     assert repair_arguments(VECTOR, grad)[0]["expression"] == "f"
+
+
+# -- shapes seen in the 2026-11-18 live traces ---------------------------------------------------------------
+MATRIX = TOOLS["matrix_calculus"].args_model
+NUMERIC = TOOLS["ode_solve_numerical"].args_model
+SIMPLIFY = TOOLS["simplify"].args_model
+
+
+def test_a_matrix_keyed_by_symbol_is_named() -> None:
+    given = {
+        "latex": "(A+B)^2",
+        "action": "simplify",
+        "matrices": [{"symbol": "A", "rows": 2, "cols": 2}, {"name": "B", "rows": 2}],
+    }
+    repaired, notes = repair_arguments(MATRIX, given)
+    assert repaired["matrices"] == [{"name": "A", "rows": 2, "cols": 2}, {"name": "B", "rows": 2}]
+    assert notes and check_arguments("matrix_calculus", repaired)
+    both = {"latex": "A", "matrices": [{"symbol": "A", "name": "Z", "rows": 2}]}
+    assert repair_arguments(MATRIX, both)[0] is both  # never overwrites a name the model gave
+
+
+def test_a_condition_without_its_unknown_takes_the_only_unknown() -> None:
+    given = {
+        "equations": ["x'' + x = 0"],
+        "independent": "t",
+        "unknowns": ["x"],
+        "conditions": [{"at": "0", "order": 0, "value": 1}, {"at": "0", "order": 1, "value": 0}],
+        "t_end": 10,
+    }
+    repaired, notes = repair_arguments(NUMERIC, given)
+    assert [c["unknown"] for c in repaired["conditions"]] == ["x", "x"]
+    assert notes
+
+
+def test_a_condition_is_never_assigned_to_one_of_several_unknowns() -> None:
+    given = {
+        "equations": ["x' = y", "y' = -x"],
+        "independent": "t",
+        "unknowns": ["x", "y"],
+        "conditions": [{"at": "0", "order": 0, "value": 1}],
+    }
+    assert repair_arguments(NUMERIC, given)[0] is given  # which unknown? Not decided here
+
+
+def test_the_default_assumption_is_dropped_and_the_others_kept() -> None:
+    given = {"latex": r"\sqrt{x^2}", "assumptions": {"x": ["complex"], "y": ["complex", "real"]}}
+    repaired, notes = repair_arguments(SIMPLIFY, given)
+    assert repaired["assumptions"] == {"y": ["real"]}
+    assert notes and check_arguments("simplify", repaired)
+    only = repair_arguments(SIMPLIFY, {"latex": "x", "assumptions": {"x": ["complex"]}})[0]
+    assert only["assumptions"] == {}
+    untouched = {"latex": "x", "assumptions": {"x": ["positive"]}}
+    assert repair_arguments(SIMPLIFY, untouched)[0] is untouched
+
+
+# -- shapes seen in the 2026-11-18 core-suite traces ---------------------------------------------------------
+TELESCOPING = TOOLS["creative_telescoping"].args_model
+VECTOR = TOOLS["vector_calculus"].args_model
+DIFFERENTIATE = TOOLS["differentiate"].args_model
+
+
+def test_an_integrand_sent_to_a_tool_whose_formula_is_latex_is_moved() -> None:
+    given = {
+        "integrand": r"\exp(-a x^2)",
+        "variable": "x",
+        "parameter": "a",
+        "lower": "-oo",
+        "upper": "oo",
+        "assumptions": {"a": ["positive"]},
+    }
+    repaired, notes = repair_arguments(TELESCOPING, given)
+    assert repaired["latex"] == r"\exp(-a x^2)" and "integrand" not in repaired
+    assert notes and check_arguments("creative_telescoping", repaired)
+
+
+def test_the_integrand_alias_never_overrides_a_formula_or_a_real_field() -> None:
+    both = {"latex": "x", "integrand": "y", "variable": "x", "parameter": "a"}
+    assert repair_arguments(TELESCOPING, both)[0] is both  # the formula was given
+    variation = TOOLS["variation"].args_model  # `integrand` is its own field there
+    given = {"integrand": r"\dot{x}^2", "functions": ["x"]}
+    assert repair_arguments(variation, given)[0] is given
+
+
+def test_numbers_in_a_list_of_objects_become_text_where_the_tool_takes_text() -> None:
+    given = {
+        "action": "evaluate",
+        "expression": r"\nabla\cdot F",
+        "coordinates": "spherical",
+        "fields": [{"name": "F", "kind": "vector", "components": [1, 0, 0.5]}],
+    }
+    repaired, notes = repair_arguments(VECTOR, given)
+    assert repaired["fields"][0]["components"] == ["1", "0", "0.5"]
+    assert notes and notes[-1].target == "text"
+    assert given["fields"][0]["components"] == [1, 0, 0.5]  # the model's own call is not mutated
+
+
+def test_numbers_stay_numbers_where_the_tool_takes_a_number() -> None:
+    given = {"latex": "x^3", "variables": [{"name": "x", "order": 2}]}
+    assert repair_arguments(DIFFERENTIATE, given)[0] is given
+    flags = {"latex": "x", "variables": [{"name": "x", "order": True}]}
+    assert (
+        repair_arguments(DIFFERENTIATE, flags)[0] is flags
+    )  # a boolean is not a number to convert

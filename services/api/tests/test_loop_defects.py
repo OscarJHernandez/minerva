@@ -78,8 +78,8 @@ def test_an_unknown_route_reason_cannot_end_the_turn(
 
     real = routing.plan_route
 
-    def odd(text: str) -> Any:
-        route = real(text)
+    def odd(text: str, context: Any = None) -> Any:
+        route = real(text, context) if context is not None else real(text)
         if route is not None:
             object.__setattr__(route, "reason", "not-in-the-vocabulary")
         return route

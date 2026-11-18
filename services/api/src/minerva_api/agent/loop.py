@@ -15,7 +15,7 @@ import re
 import threading
 import time
 import uuid
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -55,7 +55,7 @@ from .recovery import (
     rerun_arguments,
 )
 from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
-from .routing import plan_route
+from .routing import RouteContext, plan_route
 from .segments import normalize, split_segments
 from .tools import (
     NEEDS_CHOICE,
@@ -240,6 +240,36 @@ def _latest_user_message(history: Sequence[dict[str, Any]]) -> tuple[str, bool]:
     return text, replying
 
 
+_RESULT_ID = re.compile(r"\bresult_id=(r\d+)\b")
+
+
+def latest_result_ids(history: Sequence[dict[str, Any]]) -> tuple[str, ...]:
+    """Ids of the verified results the assistant's previous turn produced: the tool messages between the
+    previous user message and the current one (empty when there is no previous turn)."""
+    users = [i for i, m in enumerate(history) if m.get("role") == "user"]
+    if len(users) < 2:
+        return ()
+    ids: list[str] = []
+    for message in history[users[-2] + 1 : users[-1]]:
+        if message.get("role") == "tool":
+            ids += [
+                i for i in _RESULT_ID.findall(str(message.get("content") or "")) if i not in ids
+            ]
+    return tuple(ids)
+
+
+def previous_calls(history: Sequence[dict[str, Any]]) -> tuple[tuple[str, dict[str, Any]], ...]:
+    """The tool calls the assistant's previous turn made (between the previous user message and the current one)."""
+    users = [i for i, m in enumerate(history) if m.get("role") == "user"]
+    if len(users) < 2:
+        return ()
+    return tuple(
+        (str(c.get("name", "")), dict(c.get("arguments") or {}))
+        for message in history[users[-2] + 1 : users[-1]]
+        for c in message.get("tool_calls") or []
+    )
+
+
 TOOL_MIN_SECONDS = (
     0.1  # a tool is never started with less than this left: the turn's deadline holds
 )
@@ -262,29 +292,44 @@ class _Routed:
 
 
 async def _run_route(
-    route: Any, ctx: ToolContext, tracer: Tracer, debug: TurnDebug, remaining: Any
+    route: Any,
+    make_ctx: Callable[[tuple[Normalization, ...]], ToolContext],
+    store: ResultStore,
+    tracer: Tracer,
+    debug: TurnDebug,
+    remaining: Any,
 ) -> _Routed | None:
-    """Run the routed call like any other. Anything but a verified result drops the route, and the model
-    plans the turn as if there had been none (the decision is recorded either way)."""
+    """Run the routed call like any other: references resolved, shape repaired, transport cleaned, the
+    per-call context (declared matrices, numbers) applied. Anything but an outcome the rule accepts drops the
+    route, and the model plans the turn as if there had been none (the decision is recorded either way)."""
     call = ToolCall(route.tool, dict(route.arguments))
     started = time.monotonic()
     mark = tracer.sandbox_mark()
     output: ToolOutput | None
     try:
         reason = RouteReason(route.reason)
+        resolution = store.resolve(dict(route.arguments))
+        if resolution.error:
+            raise ValueError("unresolved reference")
+        arguments = resolution.arguments
+        known_tool = TOOLS.get(route.tool)
+        shape_notes: tuple[Normalization, ...] = ()
+        if known_tool is not None:
+            arguments, shape_notes = repair_arguments(known_tool.args_model, arguments)
+        arguments, clean_notes = prepare_arguments(route.tool, arguments)
         output = await _cancellable(
             max(remaining(), TOOL_MIN_SECONDS),
             run_in_threadpool,
             execute,
             call.name,
-            call.arguments,
-            ctx,
+            arguments,
+            make_ctx((*shape_notes, *clean_notes)),
         )
     except Exception:
         output = None
     duration = _ms(started)
     sandbox = tracer.sandbox_since(mark)
-    if output is None or not output.arguments_valid or output.status != "ok":
+    if output is None or not output.arguments_valid or output.status not in route.answers:
         tracer.emit(AgentRouted, decision="declined", reason=RouteReason.DECLINED, tool=route.tool)
         debug.routing = {
             "decision": "declined",
@@ -686,6 +731,23 @@ async def _run_turn(
     def remaining() -> float:
         return limits.max_seconds - (time.monotonic() - started)
 
+    def make_call_ctx(input_notes: tuple[Normalization, ...]) -> ToolContext:
+        """The context one tool call runs in. What refuses a scalar tool is the strict reading of earlier
+        messages (a name a sentence declares, a user sentence can clear it); `prior_matrices`, the generous
+        reading, only leaves claims unchecked. The worker thread gets its own copy: a call that timed out
+        leaves a thread that may still be reading it, and the next call must not change what it sees."""
+        gate = prior_matrices if declared_for_tools is None else declared_for_tools
+        return replace(
+            ctx,
+            matrices=(
+                frozenset(matrix_names(trace)) | frozenset(vector_names(trace)) | frozenset(gate)
+            ),
+            matrix_sources=dict(declared_for_tools or {}),
+            numbers_delegated=numbers_delegated,
+            user_numbers=user_numbers,
+            input_notes=input_notes,
+        )
+
     tracer.emit(
         AgentStarted,
         request_id=info.request_id,
@@ -700,8 +762,18 @@ async def _run_turn(
     )
     pre: _Routed | None = None
     try:
-        if info.routing and not replying and (route := plan_route(user_text)) is not None:
-            pre = await _run_route(route, ctx, tracer, debug, remaining)
+        route_context = RouteContext(
+            user_messages=user_messages,
+            results=store.results,
+            latest=latest_result_ids(history),
+            previous_calls=previous_calls(history),
+        )
+        if (
+            info.routing
+            and not replying
+            and (route := plan_route(user_text, route_context)) is not None
+        ):
+            pre = await _run_route(route, make_call_ctx, store, tracer, debug, remaining)
             if pre is None:
                 tool_calls_made += 1  # it ran: a declined route is in the budget, not a step
             if pre is not None and toolset == "auto":
@@ -1076,24 +1148,7 @@ async def _run_turn(
                 if refusal is not None:
                     output = refusal
                 else:
-                    # What refuses a scalar tool is the strict reading of earlier messages (a name a
-                    # sentence declares, a user sentence can clear it); `prior_matrices`, the generous
-                    # reading, only leaves claims unchecked.
-                    gate = prior_matrices if declared_for_tools is None else declared_for_tools
-                    # The worker thread gets its own copy: a call that timed out leaves a thread that
-                    # may still be reading it, and the next call must not change what it sees.
-                    call_ctx = replace(
-                        ctx,
-                        matrices=(
-                            frozenset(matrix_names(trace))
-                            | frozenset(vector_names(trace))
-                            | frozenset(gate)
-                        ),
-                        matrix_sources=dict(declared_for_tools or {}),
-                        numbers_delegated=numbers_delegated,
-                        user_numbers=user_numbers,
-                        input_notes=input_notes,
-                    )
+                    call_ctx = make_call_ctx(input_notes)
                     run_tool: Any = execute
                     recovered_key: str | None = None
                     if routed_now is not None and call.id == routed_now.call.id:

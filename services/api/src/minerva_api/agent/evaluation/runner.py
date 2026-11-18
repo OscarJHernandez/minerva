@@ -19,7 +19,7 @@ from ...routers_chat import (
     _prior_matrices,
 )
 from ..llm import LLMClient
-from ..loop import AgentLimits, run_agent
+from ..loop import AgentLimits, TurnInfo, run_agent
 from ..params import EffectiveParams
 from ..segments import split_segments
 from ..tools import ToolContext
@@ -41,6 +41,7 @@ async def observe(
     grace_seconds: float = 30.0,
     stored: Sequence[Any] = (),
     params: EffectiveParams | None = None,
+    routing: bool = False,
 ) -> Observation:
     """Drive one turn and record what happened. Never raises: a crashed turn is an observation too.
 
@@ -83,7 +84,14 @@ async def observe(
 
     async def drive() -> None:
         async for event in run_agent(
-            llm, history, ctx, limits, prior_relations=prior_relations, params=params, **carried
+            llm,
+            history,
+            ctx,
+            limits,
+            prior_relations=prior_relations,
+            params=params,
+            info=TurnInfo(routing=routing),
+            **carried,
         ):
             kind, data = event["event"], event["data"]
             if kind == "tool_call":
@@ -125,12 +133,13 @@ async def run_case(
     repeat: int = 0,
     params: EffectiveParams | None = None,
     on_turn: TurnFn | None = None,
+    routing: bool = False,
 ) -> CaseResult:
     """One case: its first turn, then each follow-up turn answered live on top of the earlier answers.
 
     A conversation that cannot continue (the earlier turn produced no answer) ends there and fails.
     """
-    obs = await observe(llm, case, ctx, limits, params=params)
+    obs = await observe(llm, case, ctx, limits, params=params, routing=routing)
     results = [score_case(case, obs, repeat)]
     if on_turn is not None:
         on_turn(case.id, repeat, 1, case.prompt, obs, results[0].passed)
@@ -143,7 +152,9 @@ async def run_case(
             break
         stored += _stored(previous_prompt, previous.final)
         turn_case = turn.as_case(case, number)
-        previous = await observe(llm, turn_case, ctx, limits, stored=stored, params=params)
+        previous = await observe(
+            llm, turn_case, ctx, limits, stored=stored, params=params, routing=routing
+        )
         previous_prompt = turn_case.prompt
         results.append(score_case(turn_case, previous, repeat))
         if on_turn is not None:
@@ -163,13 +174,14 @@ async def run_suite(
     on_result: ProgressFn | None = None,
     params: EffectiveParams | None = None,
     on_turn: TurnFn | None = None,
+    routing: bool = False,
 ) -> list[CaseResult]:
     """Every case `repeats` times; results come back in case order, then repeat order."""
     gate = asyncio.Semaphore(max(1, parallel))
 
     async def one(case: EvalCase, repeat: int) -> CaseResult:
         async with gate:
-            result = await run_case(llm, ctx, case, limits, repeat, params, on_turn)
+            result = await run_case(llm, ctx, case, limits, repeat, params, on_turn, routing)
         if on_result is not None:
             on_result(result)
         return result
