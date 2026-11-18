@@ -1214,7 +1214,11 @@ def test_normalize_keeps_these_apart(a: str, b: str) -> None:
 
 
 def test_normalize_keeps_tensor_indices() -> None:
-    assert normalize(r"R^{\mu}{}_{\nu\rho\sigma}") == r"R^{\mu}_{\nu\rho\sigma}"
+    # the empty group between the indices is ignored and no index is lost; braces around a lone command in a script
+    # are one spelling (`^{\mu}` and `^\mu`)
+    assert normalize(r"R^{\mu}{}_{\nu\rho\sigma}") == normalize(r"R^\mu_{\nu\rho\sigma}")
+    assert normalize(r"R^{\mu}{}_{\nu\rho\sigma}") == r"R^\mu_{\nu\rho\sigma}"
+    assert normalize(r"R^{\mu}{}_{\nu\rho\sigma}") != normalize(r"R^{\mu}{}_{\nu\rho}")
 
 
 def test_prices_are_text_and_multiline_display_math_is_found() -> None:

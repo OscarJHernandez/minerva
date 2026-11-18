@@ -49,7 +49,12 @@ _COMMAND_GAP = re.compile(r"(\\[A-Za-z]+)\s+(?=[A-Za-z])")
 _FUNCTION = r"\\(?:sin|cos|tan|cot|sec|csc|sinh|cosh|tanh|exp|log|ln|arcsin|arccos|arctan)"
 _PRINTED_CALL = re.compile(rf"({_FUNCTION}(?:\^\w)?)\{{\(([^(){{}}]*)\)\}}")
 _BARE_ARGUMENT = re.compile(rf"({_FUNCTION}(?:\^\w)?)\x01?([A-Za-z0-9])(?![A-Za-z0-9])")
+# `\sin x \, dx`: the argument is the one letter before the space (TeX reads it so; the spacing commands are
+# gone by the time whitespace is removed, and `xdx` would then hide the boundary). Applied before whitespace goes.
+_SPACED_ARGUMENT = re.compile(rf"({_FUNCTION}(?:\^\w)?)[\x01\s]*([A-Za-z0-9])(?=\s)")
 _BRACED = re.compile(r"(?<!\\mathrm)\{(\w)\}")
+# `^{\pi}` and `^\pi`, `_{\theta}` and `_\theta` are one script: braces around a single command after a script mark.
+_BRACED_COMMAND = re.compile(r"(?<=[\^_])\{(\\[A-Za-z]+)\}")
 
 
 def normalize(latex: str) -> str:
@@ -64,7 +69,9 @@ def normalize(latex: str) -> str:
     text = _SPACING.sub(" ", text.replace("\\\\", "\x00")).replace("\x00", "\\\\")
     text = text.replace("{}", "")
     text = _COMMAND_GAP.sub("\\1\x01", text)
+    text = _SPACED_ARGUMENT.sub(r"\1(\2)", text)
     text = re.sub(r"\s+", "", text)
+    text = _BRACED_COMMAND.sub(r"\1", text)
     # Redundant braces around single tokens, e.g. x^{2} versus x^2 (repeated: {{x}} is x)
     while (reduced := _BRACED.sub(r"\1", text)) != text:
         text = reduced
