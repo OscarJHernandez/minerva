@@ -27,20 +27,20 @@ const secondary = "rounded border border-rule px-5 py-2.5 font-medium hover:bg-s
 
 const WHY = [
   [
-    "Stay curious",
-    "Mathematics is about more than finding the right answer. Explore unfamiliar ideas, follow different approaches, and discover connections you might otherwise miss.",
+    "Explore instead of just getting answers",
+    "Follow an idea, search for identities, try another approach, or check a calculation. Minerva helps you investigate the questions that interest you.",
   ],
   [
-    "A tool that helps you think",
-    "Search for useful identities, investigate possible methods, simplify expressions, and check results. Minerva supports your reasoning without deciding which questions you should ask.",
+    "You direct the exploration",
+    "Choose the problem, assumptions, and next step. Decide which results to examine, keep, or build on. Minerva can suggest paths, but you decide where to go.",
   ],
   [
-    "Your hardware. Your models. Your rules.",
-    "Run Minerva on your own computer or server. Connect a model you host, use an external provider, or work with the mathematical tools without AI.",
+    "Run it on your own infrastructure",
+    "Self-host with Docker or Kubernetes, use a local model, and keep your work on systems you control. External models are optional, not required.",
   ],
   [
-    "Make it yours",
-    "Download it, inspect it, break it, and fix it. Report bugs, request features, contribute mathematical identities, or submit a pull request.",
+    "Open source. Yours to change.",
+    "Apache-2.0 licensed and built in the open. Inspect the engine, adapt it to your needs, add an identity, report a bug, or contribute a pull request.",
   ],
 ];
 
@@ -128,40 +128,56 @@ export default function Home() {
       <main id="top">
         <div className="mx-auto max-w-5xl px-5 pb-20 pt-14 sm:px-8 sm:pb-28 sm:pt-20">
           <p className="text-sm uppercase tracking-[0.18em] text-muted">
-            Open source · Self-hostable · Bring your own model
+            Open source · Self-hostable · You lead the exploration
           </p>
           <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-[1.05] tracking-tight sm:text-6xl">
-            For the joy of figuring things out.
+            Explore mathematics on your own terms.
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
-            Minerva is your own mathematical assistant, built for curious minds who love exploring
-            ideas, discovering connections, and solving problems. Find useful identities, try
-            different approaches, and check your reasoning without losing the pleasure of figuring
-            things out for yourself.
+            Minerva is an open-source mathematical assistant you can run on your own hardware.
+            Follow your curiosity, choose the assumptions and approaches worth investigating, and
+            decide what to do with the results. Minerva helps you discover useful methods and
+            verify calculations without taking the exploration away from you.
           </p>
           <p className="mt-4 max-w-2xl text-base text-muted">
-            Run it on your own hardware, connect a language model of your choice, or use the
-            symbolic tools without AI. Open source, with mathematics you can check.
+            Bring your own AI model, connect an external provider, or work without AI. Read the
+            code, change it, break it, fix it, and help build what comes next.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <a href={APP_URL} className={primary}>
               Try Minerva
             </a>
-            <a href={REPO_URL} className={secondary}>
-              Explore the source
+            <a href={SELF_HOSTING_URL} className={secondary}>
+              Run Minerva yourself
             </a>
           </div>
           <p className="mt-4 text-sm text-muted">
-            <a href={SELF_HOSTING_URL} className="underline hover:text-ink">
-              Self-hosting guide
+            <a href={REPO_URL} className="underline hover:text-ink">
+              View the open-source code
+            </a>
+            {" · "}
+            <a href={ISSUES_URL} className="underline hover:text-ink">
+              Suggest a feature
             </a>
             {" · "}
             <Link href="/docs" className="underline hover:text-ink">
               Read the docs
             </Link>
           </p>
-
-
+          <div className="mt-10 grid gap-4 border-t border-rule pt-6 sm:grid-cols-3">
+            <div>
+              <p className="font-medium">Your questions</p>
+              <p className="mt-1 text-sm text-muted">Explore ideas at your own pace.</p>
+            </div>
+            <div>
+              <p className="font-medium">Your infrastructure</p>
+              <p className="mt-1 text-sm text-muted">Run locally, with your choice of model.</p>
+            </div>
+            <div>
+              <p className="font-medium">Your open-source tools</p>
+              <p className="mt-1 text-sm text-muted">Inspect, modify, and contribute.</p>
+            </div>
+          </div>
         </div>
 
         <Section id="why" title="Why Minerva">
@@ -178,17 +194,17 @@ export default function Home() {
         <Section id="explore" title="The answer isn't always the interesting part">
           <div className="max-w-3xl space-y-4 text-lg text-muted">
             <p>
-              Sometimes the interesting question isn&apos;t <em>what&apos;s the solution?</em> but{" "}
-              <em>what happens if I try this instead?</em>
+              What if you try a different substitution? Change an assumption? Look for a
+              symmetry? Sometimes the next question is more interesting than the answer.
             </p>
             <p>
-              Could a different identity simplify the problem? Is there a hidden symmetry? What
-              assumptions am I making? Is there another way to approach it?
+              <span className="font-medium text-ink">You stay in control.</span> Choose what
+              to investigate, ask for another method, and decide which results to revisit or build
+              upon. Minerva suggests possible tools and checks its computations; it doesn&apos;t
+              choose your destination or pretend an unchecked result is proven.
             </p>
             <p>
-              Minerva is built for those questions. It doesn&apos;t replace the pleasure of
-              working something out yourself. It helps you experiment, investigate, and discover
-              something along the way.
+              Built for the joy of figuring things out, not for skipping the thinking.
             </p>
           </div>
           <figure className="mt-10 rounded-lg border border-rule bg-raised px-5 py-7 sm:px-8 sm:py-9">
@@ -219,6 +235,39 @@ export default function Home() {
               Runge–Lenz vector, are not searched for, and the result says so.
             </p>
           </figure>
+        </Section>
+
+        <Section id="own" title="Your mathematics, on your terms">
+          <div className="max-w-3xl space-y-4 text-muted">
+            <p className="text-lg">
+              Minerva is yours to run. Deploy it with Docker or Kubernetes on hardware you
+              control. Use an Ollama model on your own machine, choose a different provider, or
+              use the mathematical engine without any AI model at all.
+            </p>
+            <p>
+              Your expressions, derivations, history, and conversations are stored in the
+              database you operate. You decide where Minerva runs and which services it
+              connects to.
+            </p>
+            <p>
+              You can also connect OpenRouter. When you do, your conversation and tool results are
+              sent to that external provider. A model you host yourself keeps model inference on
+              your infrastructure.{" "}
+              <a href={OPENROUTER_URL} className="underline hover:text-ink">
+                Model setup and privacy
+              </a>
+              .
+            </p>
+            <p className="text-sm">
+              The hosted demo processes your input on its operator&apos;s server. Try it to explore
+              Minerva, but self-host if you need control of your data.
+            </p>
+          </div>
+          <div className="mt-6">
+            <a href={SELF_HOSTING_URL} className={secondary}>
+              Self-host Minerva
+            </a>
+          </div>
         </Section>
 
         <Section id="examples" title="Some examples of what it can do">
@@ -309,44 +358,18 @@ export default function Home() {
           </p>
         </Section>
 
-        <Section id="own" title="Your mathematics, on your terms">
-          <div className="max-w-3xl space-y-4 text-muted">
-            <p className="text-lg">
-              Self-host Minerva with Docker or Kubernetes, connect your own Ollama model, or use
-              the symbolic engine without a language model. You control your deployment and the
-              database that stores your work.
-            </p>
-            <p>
-              You can also connect OpenRouter. When you do, your conversation and tool results are
-              sent to that external provider. A model you host yourself keeps model inference on
-              your infrastructure.{" "}
-              <a href={OPENROUTER_URL} className="underline hover:text-ink">
-                Model setup and privacy
-              </a>
-              .
-            </p>
-            <p className="text-sm">
-              The hosted demo processes your input on its operator&apos;s server. Try it to explore
-              Minerva, but self-host if you need control of your data.
-            </p>
-          </div>
-          <div className="mt-6">
-            <a href={SELF_HOSTING_URL} className={secondary}>
-              Self-host Minerva
-            </a>
-          </div>
-        </Section>
-
         <Section id="open-source" title="Open source">
           <div className="max-w-3xl space-y-4 text-lg text-muted">
             <p>
-              Download it. Break it. Fix it. Minerva is developed in the open under Apache-2.0.
-              Read the code, change the tools, and make it your own.
+              Not just free to use. Free to inspect, modify, extend, and self-host. Minerva is
+              released under Apache-2.0, so you can study how it works and adapt it to your own
+              mathematical workflows.
             </p>
             <p>
-              Found a bug or have an idea for a new feature? Open an issue. Want to build it
-              yourself? Send a pull request. You can even contribute a mathematical identity as
-              a plain YAML entry with a verification test, without writing application code.
+              Download it, break it, fix it. Found a bug or want a feature? Open an issue.
+              Want to help build it? Submit a pull request. You can even add mathematical
+              identities as YAML entries with verification tests, without changing application
+              code.
             </p>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
