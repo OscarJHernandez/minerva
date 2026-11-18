@@ -52,7 +52,7 @@ _ALLOWED_RESERVED = frozenset({"E", "I"})
 
 
 class _VectorBuilder(Builder):
-    def symbol(self, name: str) -> sp.Symbol:
+    def symbol(self, name: str, *, greek: bool = False) -> sp.Symbol:
         if name in _ALLOWED_RESERVED:
             if name not in self.symbols:
                 if name in self.noncommutative:
@@ -60,7 +60,7 @@ class _VectorBuilder(Builder):
                 else:
                     self.symbols[name] = sp.Symbol(name, **self._assumptions.get(name, {}))
             return self.symbols[name]
-        return super().symbol(name)
+        return super().symbol(name, greek=greek)
 
 
 _BOLD = {"mathbf", "vec", "boldsymbol", "bm", "overrightarrow"}

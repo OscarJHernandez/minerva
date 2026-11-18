@@ -104,3 +104,59 @@ def test_a_repaired_call_runs_and_the_repair_is_in_the_trace(ctx: ToolContext) -
     assert step["arguments"]["coordinates"] == ["x"]
     assert "expression" in step["model_arguments"]
     assert "input cleaned:" in step["for_model"] or "shape" in step["for_model"]
+
+
+VECTOR = TOOLS["vector_calculus"].args_model
+SURFACE = {
+    "q": ["u", "v", "u*v"],
+    "u": {"name": "u", "lower": "0", "upper": "1"},
+    "v": {"name": "v", "lower": "0", "upper": "1"},
+}
+
+
+def stokes(**over):  # type: ignore[no-untyped-def]
+    base = {
+        "action": "integrate",
+        "integral": "stokes_theorem",
+        "fields": [{"name": "F", "kind": "vector", "components": ["-y*z", "x*z", "x*y"]}],
+        "surface": SURFACE,
+    }
+    return {**base, **over}
+
+
+def test_a_theorem_without_an_expression_is_about_the_one_declared_field_of_its_kind() -> None:
+    repaired, notes = repair_arguments(VECTOR, stokes())
+    assert repaired["expression"] == "F"
+    assert len(notes) == 1 and notes[0].kind.value == "shape" and "F" in notes[0].note
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        stokes(expression="G"),  # an expression the model gave is never replaced
+        stokes(
+            fields=[
+                {"name": "F", "kind": "vector", "components": ["x", "y", "z"]},
+                {"name": "G", "kind": "vector", "components": ["y", "z", "x"]},
+            ]
+        ),  # two candidates: no single reading
+        stokes(fields=[{"name": "f", "kind": "scalar", "components": ["x"]}]),  # wrong kind
+        stokes(integral="flux"),  # not a theorem
+        stokes(fields=[]),
+    ],
+)
+def test_the_theorem_repair_never_guesses_between_fields_or_replaces_a_given_expression(
+    arguments: dict,
+) -> None:
+    repaired, _ = repair_arguments(VECTOR, arguments)
+    assert repaired.get("expression") == arguments.get("expression")
+
+
+def test_a_blank_expression_counts_as_missing_and_the_gradient_theorem_takes_a_scalar() -> None:
+    assert repair_arguments(VECTOR, stokes(expression="  "))[0]["expression"] == "F"
+    grad = {
+        "action": "integrate",
+        "integral": "gradient_theorem",
+        "fields": [{"name": "f", "kind": "scalar", "components": ["x*y"]}],
+    }
+    assert repair_arguments(VECTOR, grad)[0]["expression"] == "f"

@@ -1,0 +1,65 @@
+{
+  "description": "The example cards on the chat home page. A card is shown only if `approved` is true, and `approved` may be true only if its `eval_case` (services/api/.../evaluation/cases.yaml, same prompt, an engine-checked reference call) exists and five live runs of exactly this prompt on the deployed model were all correct and engine-backed (docs/benchmarks/homepage-live.json). This file holds no expected answer: the oracle is the evaluation case.",
+  "examples": [
+    {
+      "id": "coulomb-divergence",
+      "title": "Where did the divergence go?",
+      "description": "A field with zero divergence away from the origin and a nonzero flux: where the divergence lives.",
+      "latex": "\\nabla\\cdot\\frac{\\mathbf r}{r^3}",
+      "prompt": "Consider the vector field F = r/r³ in three-dimensional space. Its classical divergence vanishes everywhere away from the origin, yet its flux through an enclosing sphere is 4π. Derive its distributional divergence and explain the apparent contradiction. Show the mathematical verification.",
+      "capability": "vector-calculus",
+      "eval_case": "homepage-coulomb-divergence",
+      "approved": false
+    },
+    {
+      "id": "delta-two-roots",
+      "title": "Dirac delta with multiple roots",
+      "description": "A delta of a quadratic: each simple root contributes its own weight.",
+      "latex": "\\int_{-\\infty}^{\\infty}x^2\\,\\delta(x^2-4)\\,dx",
+      "prompt": "Evaluate the integral of x² DiracDelta(x²−4) over the entire real line. Explain how both roots contribute and verify the result.",
+      "capability": "distribution-calculus",
+      "eval_case": "homepage-delta-two-roots",
+      "approved": true
+    },
+    {
+      "id": "stokes-curved-surface",
+      "title": "Verify Stokes' theorem",
+      "description": "Both sides of the theorem on a curved surface, computed separately.",
+      "latex": "\\oint_{\\partial S}\\mathbf F\\cdot d\\mathbf l=\\iint_S(\\nabla\\times\\mathbf F)\\cdot d\\mathbf S",
+      "prompt": "Verify Stokes' theorem for F = (−yz, xz, xy) on the surface r(u,v) = (u,v,uv), where 0 ≤ u,v ≤ 1. Orient the surface by ∂r/∂u × ∂r/∂v and use the induced boundary orientation. Calculate both integrals independently.",
+      "capability": "vector-calculus",
+      "eval_case": "homepage-stokes-curved-surface",
+      "approved": false
+    },
+    {
+      "id": "heaviside-derivative",
+      "title": "An impulse hidden in a derivative",
+      "description": "Differentiate a causal decay: the jump at the origin becomes an impulse.",
+      "latex": "f(t)=e^{-\\gamma t}H(t)",
+      "prompt": "For real t and positive gamma, calculate the distributional derivative of exp(−gamma*t) Heaviside(t). Explain why a Dirac delta appears at t=0 and verify the result.",
+      "capability": "distribution-calculus",
+      "eval_case": "homepage-heaviside-derivative",
+      "approved": true
+    },
+    {
+      "id": "kepler-hidden-symmetries",
+      "title": "Discover hidden symmetries",
+      "description": "Search a Lagrangian for conserved quantities beyond energy and angular momentum.",
+      "latex": "L=\\frac m2(\\dot r^2+r^2\\dot\\theta^2)+\\frac kr",
+      "prompt": "Find the conserved quantities of the Kepler system defined by L = m/2*(r_dot² + r²*theta_dot²) + k/r, with coordinates r and theta. Search for hidden conserved quantities beyond energy and angular momentum. Verify the discovered quantities and determine their functional independence.",
+      "capability": "discovery",
+      "eval_case": "homepage-kepler-hidden-symmetries",
+      "approved": true
+    },
+    {
+      "id": "integral-by-symmetry",
+      "title": "Solve an integral using symmetry",
+      "description": "A reflection of the interval turns a hard integral into one line.",
+      "latex": "\\int_0^{\\pi/2}\\frac{\\sin^n x}{\\sin^n x+\\cos^n x}\\,dx",
+      "prompt": "Evaluate the integral of sin(x)^n / (sin(x)^n + cos(x)^n) from 0 to pi/2, for positive real n. Find an elegant symmetry-based approach and verify the result.",
+      "capability": "integration-strategies",
+      "eval_case": "homepage-integral-by-symmetry",
+      "approved": true
+    }
+  ]
+}

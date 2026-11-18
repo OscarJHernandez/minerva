@@ -99,6 +99,21 @@ def _stage(stages: list[VectorStage], name: str, started: float) -> None:
     stages.append(VectorStage(name=name, duration_ms=int((time.monotonic() - started) * 1000)))
 
 
+def coordinate_hint(names: list[str], coordinates: str) -> str:
+    """When every undeclared name is a coordinate of another system (`r` in Cartesian coordinates, where the
+    expression `\\mathbf{r}/r^3` was meant in spherical ones), say so: it is the usual reason and has one fix."""
+    owners = {n: set(get_system(n).coords) for n in SYSTEMS if n != coordinates}
+    for name, coords in owners.items():
+        if names and set(names) <= coords:
+            shown = ", ".join(names)
+            return (
+                f" {shown} is a coordinate of the {name} system, not of the {coordinates} one: set "
+                f"coordinates to {name}, or in {coordinates} coordinates write the distance as "
+                "|\\mathbf{r}| and use x, y, z."
+            )
+    return ""
+
+
 def vector_calculus(inp: VectorInput, limits: Limits | None = None) -> VectorResult:
     limits = limits or Limits()
     started = time.monotonic()
@@ -115,7 +130,10 @@ def vector_calculus(inp: VectorInput, limits: Limits | None = None) -> VectorRes
     except _Refused as refusal:
         result.status, result.message, diag.reason = refusal.status, refusal.message, refusal.reason
     except Undeclared as exc:
-        result.status, result.message = Status.PARSE_ERROR, str(exc)
+        result.status, result.message = (
+            Status.PARSE_ERROR,
+            str(exc) + coordinate_hint(exc.names, inp.coordinates),
+        )
         result.undeclared = exc.names
         diag.reason = "undeclared_symbol"
     except LimitError as exc:
@@ -147,7 +165,12 @@ def _run(
     system = get_system(inp.coordinates)
     deadline = started + time_budget(limits)
     if inp.action not in ("jacobian", "em_derive", "em_compute") and not inp.expression.strip():
-        raise _Refused(Status.PARSE_ERROR, "an expression is required", "unsupported_expression")
+        raise _Refused(
+            Status.PARSE_ERROR,
+            "an expression is required: for an integral or a theorem, the name of a declared field "
+            "(for example F, with its components in `fields`) or an expression of declared fields",
+            "unsupported_expression",
+        )
     result.conventions = [*system.conventions, *GENERAL_CONVENTIONS]
     if inp.action == "jacobian":
         _jacobian(system, result, diag, deadline)

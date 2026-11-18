@@ -77,6 +77,7 @@ class RouteReason(StrEnum):
 class RetryReason(StrEnum):
     MODEL_HOST = "model_host"
     MALFORMED_MODEL_OUTPUT = "malformed_model_output"
+    EMPTY_REPLY = "empty_reply"
 
 
 FinishReason = Literal["stop", "length", "tool_calls", "other", "error", "timeout"]

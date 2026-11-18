@@ -275,3 +275,17 @@ with runs after it. The deterministic side is covered (the references run agains
 `vector-distributional-divergence` backs the engine's equation and never backs a wrong one, the corruption report stays at 0
 different results); no real-model run of these cases has been made in this document. See
 [singular-fields.md](singular-fields.md).
+
+## Homepage examples (live, five runs per prompt, 2026-11-18)
+
+The six example cards were each run five times on their exact prompts on the deployed `minerva` model, with the tools limited to
+10 s as in the deployed chart. On the final committed code **26 of 30 passed**: four cards (the delta with two roots, the
+Heaviside derivative, the hidden symmetries of the Kepler Lagrangian, the symmetry integral) passed 5/5 with every run
+engine-backed and no false verification claim, and are shown; the Coulomb divergence and Stokes cards passed 3/5 each and are
+**not shown** (`approved: false`). Earlier runs of the same prompts scored 10/30, 19/30, 30/30 and 24/30 as the work went on;
+each failure was fixed at the layer that caused it (tool descriptions, closed shape repairs, a claim-checker false positive on
+differentials, an empty model call, a coordinate hint, the cases' own checks), and shortening a tool description to fit the
+prompt-size guard cost reliability and was partly undone. Identical code scored between 2/5 and 5/5 on the Coulomb card across
+runs, and one failure was a model-host error: this model is not steady on that prompt, and one 5/5 run is weak evidence. The
+per-card table, the history and the reproduction command are in [benchmarks/homepage-live.md](benchmarks/homepage-live.md).
+This is one model at one temperature: it is the release gate for these six prompts, not a general measure of reliability.

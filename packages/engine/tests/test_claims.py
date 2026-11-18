@@ -433,3 +433,25 @@ def test_unreadable_notation_is_named_not_just_refused() -> None:
     assert prime.status == "unparsed" and "derivative notation" in prime.detail  # type: ignore[attr-defined]
     bar = _check(r"\left. \frac{d^2 V}{dr^2} \right|_{r=r_0} = 1")
     assert bar.status in ("unparsed", "unverified")  # type: ignore[attr-defined]
+
+
+def test_a_differential_relation_after_a_change_of_variable_is_not_contradicted() -> None:
+    """`u = pi/2 - x` gives `dx = -du`. Read as products d*x and d*u it disagreed with the definition of u."""
+    sub = [r"u = \frac{\pi}{2} - x"]
+    for relation in (r"dx = -du", r"\mathrm{d}x = -\mathrm{d}u", r"dt = d\theta"):
+        result = check_claims([relation], {}, sub, L)[0]
+        # never "fails": the plain letters are notation; `\\mathrm{d}` is not read at all (unparsed)
+        assert result.status in ("unverified", "unparsed"), relation
+        assert result.status != "unverified" or "differentials" in result.detail, relation
+
+
+def test_the_differential_rule_does_not_hide_a_wrong_relation_or_a_name_that_only_looks_like_one() -> (
+    None
+):
+    sub = [r"u = \frac{\pi}{2} - x"]
+    # a real error in the same substitution is still caught
+    assert check_claims([r"u + x = 1"], {}, sub, L)[0].status == "fails"  # pi/2 is not 1
+    assert check_claim(r"\sin^2 x + \cos^2 x = 2", {}, L).status == "fails"
+    # `ad` (a product of a and d) and `\delta` are not differentials
+    assert check_claim(r"ad + ad = 2ad", {}, L).status == "holds"
+    assert check_claim(r"\delta + \delta = 2\delta", {}, L).status == "holds"

@@ -307,15 +307,13 @@ For line, flux and volume integrals of a field and for the gradient, divergence 
 """,
         """\
 For the divergence of a field with a point source (the Coulomb field `\\mathbf r/r^3`, a point charge), the Laplacian of
-   `1/r`, or a three-dimensional delta function call `vector_calculus` with action `distributional` (spherical
-   coordinates for `\\mathbf r/r^3`; in Cartesian coordinates write the distance as `|\\mathbf r|` or give explicit
-   components; declare a source position and a strength as real constants). The tool returns the CLASSICAL result
-   away from the source (0) and the DISTRIBUTIONAL one at it: state both, say "equal as distributions", and never
-   present a delta as "zero away from the origin" in place of the result. Never write the coefficient (4 pi, the
-   sign of the Laplacian) or the source yourself: quote the tool's equation. Its proof status is "derived", never
-   "proved", and the pairings with test functions and the regularised field are supporting evidence. If the user
-   asserted a result, pass it in `target` and report the tool's verdict, including a wrong sign or coefficient. If the
-   tool refuses (another singular field, several sources, a derivative of a delta), say so; do not improvise.\
+   `1/r`, or a three-dimensional delta call `vector_calculus` with action `distributional` (spherical coordinates for
+   `\\mathbf r/r^3`; in Cartesian write `|\\mathbf r|` or give components; declare a source and a strength as real
+   constants). The tool returns the CLASSICAL result away from the source (0) and the DISTRIBUTIONAL one at it: state
+   both, say "equal as distributions", never write the coefficient (4 pi, the sign) or the source yourself, and quote
+   its status "derived", never "proved" (the pairings are supporting evidence). Pass a statement the user made in
+   `target` and report the verdict, including a wrong sign or coefficient. If the tool refuses (another singular
+   field, several sources), say so; do not improvise.\
 """,
     ),
     "geometry": (
@@ -374,7 +372,8 @@ For Dirac delta and Heaviside functions call `distribution`. Pass `\\delta(...)`
    exactly as the user wrote it: outside this tool they are ordinary symbols, so the tool answers "is that a Dirac
    delta?" with buttons on its card and computes nothing until the USER answers; never answer for them, and
    never rewrite their input with the explicit names unless they said in words that it is a Dirac delta
-   (then \\operatorname{DiracDelta}(...) and \\operatorname{Heaviside}(...) are fine).
+   (then \\operatorname{DiracDelta}(...) and \\operatorname{Heaviside}(...) are fine). A user who writes
+   `DiracDelta(...)` or `Heaviside(...)` by name has said it: send the explicit names, never `\\delta` or `\\theta`.
    Equalities are as distributions, not pointwise: never say a delta "equals 0 away from the origin" as a proof,
    and never call a pairing check a proof. Declare the variable real, but ask the user before declaring a
    parameter nonzero, positive or negative. A delta exactly on an integration limit needs a convention that the

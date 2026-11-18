@@ -421,7 +421,7 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         re.IGNORECASE,
     ):
         notes.append("reasoning leaked into the reply")
-    if len(text.split()) > MAX_REPLY_WORDS:
+    if len(text.split()) > (case.max_reply_words or MAX_REPLY_WORDS):
         notes.append(f"reply too long ({len(text.split())} words)")
 
     notes += _reliability_notes(case, obs, trace, text, flags)

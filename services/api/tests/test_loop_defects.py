@@ -178,3 +178,27 @@ def test_a_tool_gets_its_own_context_and_the_shared_one_is_never_marked(
     assert (
         ctx.matrices == frozenset() and ctx.matrix_sources == {}
     )  # the shared context is untouched
+
+
+# -- an empty model call is asked again once -------------------------------------------------------------
+
+
+def test_a_model_call_with_nothing_visible_is_asked_again_once_and_the_answer_is_kept(
+    ctx: ToolContext,
+) -> None:
+    """Reasoning that never closes, or an empty stop, left the user an empty reply after a tool had run."""
+    llm = ReplayLLM([call("simplify", {"latex": "x+x"}), say(""), say("The result is 2x.")])
+    message = final(play(llm, ctx, limits=AgentLimits(retry_delay_seconds=0)))
+    assert message["text"].strip() == "The result is 2x."
+    retries = events(message, "agent.retry")
+    assert [r["reason"] for r in retries] == ["empty_reply"]
+    assert message["stop_reason"] == "completed"
+    assert len(message["trace"]) == 1  # the tool was not run again
+
+
+def test_a_second_empty_call_ends_the_turn_and_nothing_is_retried_again(ctx: ToolContext) -> None:
+    llm = ReplayLLM([say(""), say(""), say("never reached")])
+    message = final(play(llm, ctx, limits=AgentLimits(retry_delay_seconds=0)))
+    assert message["text"].strip() == ""
+    assert [r["reason"] for r in events(message, "agent.retry")] == ["empty_reply"]
+    assert message["trace"] == []

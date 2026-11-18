@@ -378,3 +378,38 @@ def test_diagnostics_hold_no_content() -> None:
         result.status is Status.PARSE_ERROR
         or "secretfield" not in result.diagnostics.model_dump_json()
     )
+
+
+def test_a_parameter_bound_written_as_a_number_is_read_as_its_text() -> None:
+    """`{"lower": 0, "upper": 1}` (JSON without quotes) is the bound `0` to `1`; a bool or a list is still refused."""
+    import pytest
+    from minerva_engine.vector.models import Param
+    from pydantic import ValidationError
+
+    p = Param(name="u", lower=0, upper=1.5)  # type: ignore[arg-type]
+    assert (p.lower, p.upper) == ("0", "1.5")
+    assert Param(name="u", lower="0", upper="pi").upper == "pi"
+    for bad in (True, [0], None):
+        with pytest.raises(ValidationError):
+            Param(name="u", lower=bad, upper="1")  # type: ignore[arg-type]
+
+
+def test_a_coordinate_triple_sent_as_one_string_is_read_as_three_expressions_and_nothing_else_is_guessed() -> (
+    None
+):
+    import pytest
+    from minerva_engine.vector.models import Curve, Surface
+    from pydantic import ValidationError
+
+    u, v = {"name": "u", "lower": "0", "upper": "1"}, {"name": "v", "lower": "0", "upper": "1"}
+    for sent in (["u,v,u*v"], ["(u, v, u*v)"], "u, v, u*v", ["u", "v", "u*v"]):
+        assert Surface(q=sent, u=u, v=v).q == ["u", "v", "u*v"], sent  # type: ignore[arg-type]
+    assert Surface(q=["f(a, b)", "v", "0"], u=u, v=v).q == [
+        "f(a, b)",
+        "v",
+        "0",
+    ]  # nested commas stay
+    assert Curve(q=["cos(t), sin(t), t"], parameter=u).q == ["cos(t)", "sin(t)", "t"]  # type: ignore[arg-type]
+    for bad in (["u,v"], ["u,v,w,x"], ["u,,v"], [], ["u", "v"]):
+        with pytest.raises(ValidationError):
+            Surface(q=bad, u=u, v=v)  # type: ignore[arg-type]

@@ -482,6 +482,20 @@ def test_reasoning_and_long_replies_are_failures(ctx: ToolContext) -> None:
     assert any("too long" in n for n in long.notes)
 
 
+def test_a_case_may_allow_a_longer_reply_and_the_default_stays_for_the_others(
+    ctx: ToolContext,
+) -> None:
+    """A prompt that asks for a derivation and its verification has its own cap; every other case keeps 220 words."""
+    from minerva_api.agent.evaluation.score import MAX_REPLY_WORDS
+
+    assert BY_ID["chitchat"].max_reply_words is None
+    assert BY_ID["homepage-coulomb-divergence"].max_reply_words is not None
+    assert BY_ID["homepage-coulomb-divergence"].max_reply_words > MAX_REPLY_WORDS
+    assert all(c.max_reply_words is None for c in CASES if not c.id.startswith("homepage-"))
+    reply = "word " * (MAX_REPLY_WORDS + 40)
+    assert any("too long" in n for n in run("chitchat", [say(reply)], ctx).notes)
+
+
 # ------------------------------------------------------------------------------------ the suite
 def test_suite_repeats_and_selection(ctx: ToolContext) -> None:
     chosen = filter_cases(CASES, ids=["chitchat", "ask-when-ambiguous"])
