@@ -4,6 +4,7 @@ If this fails, behaviour changed (or docs/capabilities.yaml did) without regener
 run `uv run python scripts/capabilities.py` and review the diff in docs/capabilities.md.
 """
 
+import difflib
 import importlib.util
 from pathlib import Path
 from typing import Any
@@ -25,8 +26,37 @@ def data() -> dict[str, Any]:
     return built
 
 
+def _stale_report(data: dict[str, Any], stale: list[str]) -> str:
+    """What differs, line by line (first lines only): a failure on a slow runner names the example that changed
+    instead of only the files."""
+    outputs = {
+        str(MODULE.MARKDOWN.relative_to(MODULE.ROOT)): MODULE.render_markdown(data),
+        str(MODULE.JSON_OUT.relative_to(MODULE.ROOT)): MODULE.render_json(data),
+    }
+    parts = []
+    for relative in stale:
+        path = MODULE.ROOT / relative
+        committed = path.read_text().splitlines() if path.exists() else []
+        diff = list(
+            difflib.unified_diff(
+                committed,
+                outputs[relative].splitlines(),
+                "committed",
+                "generated",
+                lineterm="",
+                n=0,
+            )
+        )
+        parts.append(
+            f"{relative}: {len(diff)} differing lines\n"
+            + "\n".join(line[:240] for line in diff[:30])
+        )
+    return "\n".join(parts)
+
+
 def test_generated_files_are_up_to_date(data: dict[str, Any]) -> None:
-    assert MODULE.stale_outputs(data) == [], "run: uv run python scripts/capabilities.py"
+    stale = MODULE.stale_outputs(data)
+    assert stale == [], "run: uv run python scripts/capabilities.py\n" + _stale_report(data, stale)
 
 
 def test_planned_capabilities_have_no_examples_and_refusals_are_recorded(
