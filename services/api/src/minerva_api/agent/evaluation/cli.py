@@ -76,6 +76,102 @@ def _ollama_version(base_url: str) -> str | None:
         return None
 
 
+_HOST_DEFAULT_KEYS = (
+    "num_ctx",
+    "num_predict",
+    "temperature",
+    "top_p",
+    "top_k",
+    "repeat_penalty",
+    "draft_num_predict",
+)
+
+
+def _parse_host_defaults(text: str) -> dict[str, float | int | str]:
+    """The `parameters` of a model as its host stores them (`num_predict 1200`), reduced to known keys."""
+    found: dict[str, float | int | str] = {}
+    for line in text.splitlines():
+        parts = line.split(None, 1)
+        if len(parts) != 2 or parts[0] not in _HOST_DEFAULT_KEYS:
+            continue
+        raw = parts[1].strip()
+        try:
+            found[parts[0]] = int(raw)
+        except ValueError:
+            try:
+                found[parts[0]] = float(raw)
+            except ValueError:
+                found[parts[0]] = raw
+    return found
+
+
+def model_identity(provider: str, model: str, base_url: str | None) -> dict[str, Any] | None:
+    """What is actually being measured, as the model host reports it (never the host's address).
+
+    A name like `minerva` is an alias the operator can re-point: the weights (family, size, quantisation,
+    digest), the defaults the host applies when a request does not say (the Modelfile's `num_predict` once
+    decided how long a reply or its thinking may be) and the window the loaded model really has are what make
+    two reports comparable. `None` means the host did not answer: the report then says "not recorded".
+    """
+    if provider != "ollama":
+        return {
+            "provider": provider,
+            "name": model,
+            "hosted": True,
+            "note": "hosted by the provider: weights, quantisation and serving settings are theirs and can "
+            "change without notice; not recorded",
+        }
+    if not base_url:
+        return None
+    root = base_url.rstrip("/")
+    try:
+        shown = httpx.post(f"{root}/api/show", json={"model": model}, timeout=15.0)
+        tags = httpx.get(f"{root}/api/tags", timeout=15.0)
+        if shown.status_code != 200 or tags.status_code != 200:
+            return None
+        info = shown.json()
+        entry: dict[str, Any] = next(
+            (
+                m
+                for m in tags.json().get("models", [])
+                if m.get("name") in (model, f"{model}:latest")
+            ),
+            {},
+        )
+        details = info.get("details") or {}
+        loaded: int | None = None
+        ps = httpx.get(f"{root}/api/ps", timeout=15.0)
+        if ps.status_code == 200:
+            for item in ps.json().get("models", []):
+                if item.get("name") in (model, f"{model}:latest"):
+                    loaded = item.get("context_length")
+    except (httpx.HTTPError, ValueError):
+        return None
+    return {
+        "provider": "ollama",
+        "name": model,
+        "hosted": False,
+        "digest": str(entry.get("digest", ""))[:12] or None,
+        "modified_at": info.get("modified_at"),
+        "base_model": details.get("parent_model") or None,
+        "family": details.get("family"),
+        "parameter_size": details.get("parameter_size"),
+        "quantization": details.get("quantization_level"),
+        "format": details.get("format"),
+        "capabilities": sorted(info.get("capabilities") or []),
+        "host_defaults": _parse_host_defaults(str(info.get("parameters") or "")),
+        "loaded_context": loaded,
+    }
+
+
+def identity_unchanged(before: dict[str, Any] | None, after: dict[str, Any] | None) -> bool | None:
+    """Did the model host serve the same weights and defaults at the start and at the end of the run?"""
+    if not before or not after or before.get("hosted") or after.get("hosted"):
+        return None
+    keys = ("digest", "modified_at", "host_defaults", "family", "parameter_size", "quantization")
+    return all(before.get(k) == after.get(k) for k in keys)
+
+
 def build_params(args: argparse.Namespace) -> EffectiveParams:
     """The server's defaults with this run's flags applied (validated by the same ranges)."""
     base = defaults(Settings(_env_file=None))
@@ -164,6 +260,16 @@ def make_client(spec: str, args: argparse.Namespace, repeat: int = 0) -> tuple[s
             if args.seed is None
             else args.seed + repeat,  # each repeat samples differently
         ).with_params(build_params(args)),
+    )
+
+
+def _spec_parts(spec: str) -> tuple[str, str]:
+    """`provider:model` -> (provider, model); a bare name is an Ollama model (as in `make_client`)."""
+    provider, _, rest = spec.partition(":")
+    return (
+        ("openrouter", rest)
+        if provider == "openrouter"
+        else ("ollama", rest if provider == "ollama" else spec)
     )
 
 
@@ -389,11 +495,19 @@ def main(argv: list[str] | None = None) -> int:
     ctx = _context(args.compute_timeout)
     meta = _meta(args, cases, limits)
     results: dict[str, list[CaseResult] | None] = {}
+    identities: dict[str, dict[str, Any] | None] = {}
     for spec in specs:
         print(f"== {spec}", flush=True)
+        provider, name = _spec_parts(spec)
+        before = model_identity(provider, name, args.base_url)
         label, outcome = asyncio.run(_evaluate_model(args, spec, ctx, cases, limits))
         results[label] = outcome
-    doc = build_document(meta, results)
+        after = model_identity(provider, name, args.base_url)
+        identity = dict(after) if after else None
+        if identity is not None:
+            identity["unchanged_during_run"] = identity_unchanged(before, after)
+        identities[label] = identity
+    doc = build_document(meta, results, identities)
     text = render_markdown(doc)
     if args.json_out:
         _write(args.json_out, json.dumps(doc, indent=2, sort_keys=True) + "\n")

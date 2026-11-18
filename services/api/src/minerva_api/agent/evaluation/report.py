@@ -173,7 +173,9 @@ def _context(scored: list[CaseResult]) -> dict[str, Any]:
 
 
 def build_document(
-    meta: dict[str, Any], results_by_model: dict[str, list[CaseResult] | None]
+    meta: dict[str, Any],
+    results_by_model: dict[str, list[CaseResult] | None],
+    identities: dict[str, dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     """The JSON record. A model that could not be used maps to None and is listed as unusable."""
     models: dict[str, Any] = {}
@@ -186,6 +188,8 @@ def build_document(
                 "summary": summarise(results),
                 "results": [r.model_dump(mode="json") for r in results],
             }
+    for model, entry in models.items():
+        entry["identity"] = (identities or {}).get(model)
     return {"schema": SCHEMA, "meta": meta, "models": models}
 
 
@@ -235,6 +239,142 @@ def _params_line(meta: dict[str, Any]) -> str:
     return f"Model parameters: {shown}."
 
 
+# ------------------------------------------------------------------------------- model under test
+def _identity_cells(identity: dict[str, Any] | None) -> tuple[str, str, str]:
+    """(weights, host defaults, loaded window) as shown in the report; "not recorded" is said, never hidden."""
+    if not identity:
+        return ("not recorded", "not recorded", "not recorded")
+    if identity.get("hosted"):
+        return ("hosted by the provider (weights not pinned)", "the provider's", "the provider's")
+    base = identity.get("base_model")
+    weights = ", ".join(
+        str(x)
+        for x in (
+            f"based on {base}" if base else None,
+            identity.get("family"),
+            identity.get("parameter_size"),
+            identity.get("quantization"),
+            f"digest {identity['digest']}" if identity.get("digest") else None,
+        )
+        if x
+    )
+    defaults = identity.get("host_defaults") or {}
+    shown = ", ".join(f"{k} {v}" for k, v in defaults.items()) or "none reported"
+    loaded = identity.get("loaded_context")
+    return (weights or "not recorded", shown, str(loaded) if loaded else "not reported")
+
+
+def _model_section(doc: dict[str, Any]) -> list[str]:
+    """Which model, served how, asked how: the first thing a reader of a benchmark needs."""
+    meta = doc["meta"]
+    params = meta.get("params") or {}
+    lines = [
+        "## Model under test",
+        "",
+        "| Model | Weights as the host reports them | Defaults the host applies | Window loaded | "
+        "Minerva sends | Thinking requested | Same weights through the run |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for model, entry in doc["models"].items():
+        identity = entry.get("identity")
+        weights, defaults, loaded = _identity_cells(identity)
+        sent = ", ".join(
+            f"{k} {params[k]}"
+            for k in ("num_ctx", "num_predict", "temperature", "top_p", "top_k")
+            if k in params
+        )
+        if params.get("num_predict") is None and (identity or {}).get("host_defaults", {}).get(
+            "num_predict"
+        ):
+            sent += (
+                f" (num_predict is left to the host: {identity['host_defaults']['num_predict']})"
+            )
+        capable = "thinking" in ((identity or {}).get("capabilities") or [])
+        think = f"{'on' if params.get('think') else 'off'}" + (
+            " (model can think)" if capable else ""
+        )
+        steady = (identity or {}).get("unchanged_during_run")
+        steady_text = (
+            "yes"
+            if steady
+            else "NO: the model changed during the run"
+            if steady is False
+            else "n/a"
+        )
+        lines.append(
+            f"| {model} | {weights} | {defaults} | {loaded} | {sent or 'not recorded'} | {think} | {steady_text} |"
+        )
+    lines += [
+        "",
+        f"Seed {meta.get('seed', 'none')}, {meta.get('repeats', 1)} repeat(s), compute timeout "
+        f"{meta.get('compute_timeout', '?')} s, request timeout {meta.get('request_timeout_seconds', '?')} s; "
+        f"prompt `{meta.get('prompt_sha', '?')}`, code `{meta.get('git_sha', '?')}`; "
+        f"Ollama {meta.get('ollama') or 'not recorded'}.",
+        "",
+    ]
+    return lines
+
+
+def _config_rows(meta: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "git_sha",
+        "prompt_sha",
+        "cases_digest",
+        "routing",
+        "seed",
+        "repeats",
+        "compute_timeout",
+        "think",
+        "strip_thinking",
+        "request_timeout_seconds",
+        "ollama",
+    )
+    return {k: meta.get(k, "not recorded") for k in keys}
+
+
+def _identity_diff(
+    base: dict[str, Any], new: dict[str, Any], old_name: str, new_name: str
+) -> list[str]:
+    """Different weights or host defaults make a comparison a comparison of two models, not of two changes."""
+    a, b = base["models"][old_name].get("identity"), new["models"][new_name].get("identity")
+    if not a or not b:
+        return [
+            "",
+            f"**Model identity not recorded on {'either side' if not a and not b else 'one side'}** "
+            f"({old_name} / {new_name}): this comparison cannot say the weights were the same.",
+        ]
+    if a.get("hosted") or b.get("hosted"):
+        return []
+    keys = ("digest", "family", "parameter_size", "quantization", "host_defaults", "capabilities")
+    differing = [k for k in keys if a.get(k) != b.get(k)]
+    if not differing:
+        return []
+    rows = [f"| {k} | {a.get(k)} | {b.get(k)} |" for k in differing]
+    return [
+        "",
+        f"**NOT THE SAME MODEL SETUP ({old_name} / {new_name}): the change below includes it.**",
+        "",
+        "| Model property | Baseline | New |",
+        "| --- | --- | --- |",
+        *rows,
+    ]
+
+
+def _config_diff(base: dict[str, Any], new: dict[str, Any]) -> list[str]:
+    a, b = _config_rows(base["meta"]), _config_rows(new["meta"])
+    differing = [k for k in a if a[k] != b[k]]
+    if not differing:
+        return []
+    return [
+        "",
+        "**The run configuration differs:**",
+        "",
+        "| Setting | Baseline | New |",
+        "| --- | --- | --- |",
+        *[f"| {k} | {a[k]} | {b[k]} |" for k in differing],
+    ]
+
+
 def _params_diff(base: dict[str, Any], new: dict[str, Any]) -> list[str]:
     a, b = base["meta"].get("params") or {}, new["meta"].get("params") or {}
     keys = [k for k in dict.fromkeys([*a, *b]) if a.get(k) != b.get(k)]
@@ -264,6 +404,7 @@ def render_markdown(doc: dict[str, Any]) -> str:
         _params_line(meta),
         _routing_line(meta),
         "",
+        *_model_section(doc),
         "## Headline",
         "",
         "| Model | Passed | Tool selection | Valid arguments | Completion | Unsupported shown as verified | Unnecessary calls | Median s | p95 s |",
@@ -434,6 +575,9 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
             "The change below includes what the routes do.",
         ]
     lines += _params_diff(base, new)
+    lines += _config_diff(base, new)
+    for old_name, new_name in pairs:
+        lines += _identity_diff(base, new, old_name, new_name)
     if not pairs:
         return "\n".join([*lines, "", "No model appears in both reports."]) + "\n"
     for old_name, new_name in pairs:
