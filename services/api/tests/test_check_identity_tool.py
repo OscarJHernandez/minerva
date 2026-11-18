@@ -104,6 +104,7 @@ def test_the_tool_is_loaded_by_the_words_that_ask_for_it_and_not_otherwise() -> 
         "Does $\\log(\\exp(z)) = z$ hold for every complex z?",
         "Is $\\sqrt{x^2} = x$ for every complex x?",
         "Is $\\cosh^2 x - \\sinh^2 x$ equal to 1?",
+        "The derivative of $x^x$ is $x^x$, right?",
     ):
         assert "identity" in groups_in_text(asks), asks
     for other in (

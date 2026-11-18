@@ -473,7 +473,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
     "distributions": "dirac|heaviside|step function|delta function|generali[sz]ed function|\\\\delta\\s*\\(",
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
-    "identity": "is (it|that|this) (true|correct|right)|confirm that|does .{1,80}\\bhold\\b|\\bidentit(y|ies)\\b|is .{1,60} equal to|\\bfor (every|all|any)\\b",
+    "identity": "is (it|that|this) (true|correct|right)|confirm that|does .{1,80}\\bhold\\b|\\bidentit(y|ies)\\b|is .{1,60} equal to|\\bfor (every|all|any)\\b|\\b(right|correct|true)\\?",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
 }
 
