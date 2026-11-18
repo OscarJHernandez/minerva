@@ -351,6 +351,8 @@ class VectorCalculusArgs(BaseModel):
         "write the distance as |\\mathbf{r}|). \\nabla acts on the ONE factor after it: write \\nabla(fg), "
         "never \\nabla f g. \\cdot between two vectors is the dot product, \\times between two "
         "vectors the cross product; the product of two vectors written side by side is refused. "
+        "For integrate, the expression is the integrand written with the NAMES of declared fields (F, or "
+        "\\nabla\\times F), never the tuple of components: those go in `fields`. "
         "Not needed for action=jacobian.",
     )
     coordinates: Literal["cartesian", "cylindrical", "spherical"] = Field(
@@ -404,7 +406,9 @@ class VectorCalculusArgs(BaseModel):
         "of identity (and premise) steps to `target`, or to a smaller form without one. integrate: a line, "
         "flux, volume integral or one of the three theorems, over a domain the USER gives (see `integral`). "
         "distributional: the DISTRIBUTIONAL divergence of a point-source Coulomb field C (r-a)/|r-a|^3, or the "
-        "Laplacian of C/|r-a| (`expression` is \\nabla\\cdot(...) or \\nabla^2(...); the field is explicit). The "
+        "Laplacian of C/|r-a| (`expression` MUST contain the operator, \\nabla\\cdot(...) or \\nabla^2(...), e.g. "
+        "\\nabla\\cdot\\left(\\frac{\\mathbf{r}}{r^{3}}\\right) in spherical coordinates, never the field "
+        "alone; in Cartesian coordinates write the distance as |\\mathbf{r}|). The "
         "engine returns the classical value 0 away from the source AND the delta term at the source with "
         "its coefficient, derived and checked; use it whenever the user asks about a delta function, a point "
         "charge or source, or why a divergence that vanishes everywhere has a nonzero flux. Never write the "
@@ -437,7 +441,7 @@ class VectorCalculusArgs(BaseModel):
         | None
     ) = Field(
         default=None,
-        description="integrate: line (the work of a vector field along `curve`), line_scalar, flux "
+        description="integrate: to verify or compare both sides of Stokes' theorem use stokes_theorem, never flux. line (the work of a vector field along `curve`), line_scalar, flux "
         "(through `surface`), volume (of a scalar over `region`), gradient_theorem (scalar f along "
         "`curve`), divergence_theorem (vector F over `region`: the volume integral of div F and the flux "
         "through the box's outward faces, computed separately), stokes_theorem (vector F over `surface`: "
@@ -454,7 +458,11 @@ class VectorCalculusArgs(BaseModel):
         default=None,
         description="A surface: the three coordinates as text functions of two parameters over a "
         "rectangle. The orientation is the normal d_u r x d_v r: the ORDER of u and v is the orientation, "
-        "so state it and never choose it for the user.",
+        "so state it and never choose it for the user. The surface is only `q`, `u` and `v`; the FIELD is "
+        "declared in `fields` in the system's own coordinates (x, y, z), never in u and v. Example shape "
+        "(not a problem to copy): F = (y, z, x) over r(u, v) = (u, v, u + v), 0 <= u, v <= 2 is "
+        "integral stokes_theorem, expression F, fields [{name: F, kind: vector, components: [y, z, x]}], "
+        "surface {q: [u, v, u + v], u: {name: u, lower: 0, upper: 2}, v: {name: v, lower: 0, upper: 2}}.",
     )
     region: Region | None = Field(
         default=None,
@@ -677,7 +685,9 @@ class DistributionArgs(SimplifyArgs):
         max_length=MAX_INPUT,
         description="LaTeX expression with Dirac delta or Heaviside functions, as the user wrote it: "
         "\\delta(x-a), \\theta(x), or the explicit \\operatorname{DiracDelta}(x-a) and "
-        "\\operatorname{Heaviside}(x). \\delta(...) and \\theta(...) are read as distributions only after "
+        "\\operatorname{Heaviside}(x). A user who writes Heaviside(...) or DiracDelta(...) by name has "
+        "said what it is: send \\operatorname{Heaviside}(...) or \\operatorname{DiracDelta}(...), never "
+        "\\theta or \\delta. \\delta(...) and \\theta(...) are read as distributions only after "
         "the USER confirms it on the card; do not rewrite them yourself. For integrate give only the "
         "integrand (no \\int, no dx).",
     )
@@ -711,13 +721,14 @@ class IntegrateArgs(SimplifyArgs):
     lower: str | None = Field(
         default=None,
         max_length=200,
-        description="Lower bound of a definite integral: a real number such as 0 or \\pi, or -oo "
-        "for minus infinity. Give both bounds or neither.",
+        description="Lower bound of a definite integral in LaTeX: a real number such as 0, \\pi or "
+        "\\frac{\\pi}{2} (never pi/2), or -\\infty for minus infinity. Give both bounds or neither.",
     )
     upper: str | None = Field(
         default=None,
         max_length=200,
-        description="Upper bound of a definite integral: a real number, or oo for infinity.",
+        description="Upper bound of a definite integral in LaTeX: a real number such as \\frac{\\pi}{2}, or "
+        "\\infty for infinity.",
     )
     strategy: StrategyName | None = Field(
         default=None,

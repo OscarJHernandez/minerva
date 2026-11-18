@@ -36,28 +36,10 @@ import { FormulaActionsProvider } from "./formula-actions";
 import { ParamsPanel } from "./params-panel";
 import type { Overrides } from "@/lib/model-params";
 import { ConversationList } from "./conversation-list";
+import { ExampleCards } from "./example-cards";
 import { MessageView } from "./message-view";
 import { PendingView, type Pending } from "./pending-view";
 import { MotionRunnerProvider } from "./motion-runner";
-import { RichText } from "./rich-text";
-
-const EXAMPLES = [
-  { title: "Simplify and verify", text: "Simplify $\\frac{x^2-1}{x-1}$" },
-  {
-    title: "Which identities apply?",
-    text: "Which identities apply to $\\log(xy)$ if x and y are positive?",
-  },
-  { title: "Look up a formula", text: "What is the Gaussian integral formula?" },
-  { title: "Be careful with roots", text: "Simplify $\\sqrt{x^2}$" },
-  {
-    title: "Equations of motion",
-    text: "Find the equations of motion and conserved quantities of the Lagrangian $\\frac12 m(\\dot{r}^2 + r^2\\dot{\\theta}^2) + \\frac{k}{r}$",
-  },
-  {
-    title: "Solve an equation",
-    text: "Solve $x^5 - x - 1 = 0$ and tell me if there is a closed formula",
-  },
-];
 
 export function ChatApp({ initialId }: { initialId?: string } = {}) {
   const router = useRouter();
@@ -912,22 +894,7 @@ function EmptyState({ onPick, disabled }: { onPick: (t: string) => void; disable
         Describe a problem. Minerva works through it with verified computation and a handbook of
         known formulas, and says plainly when it cannot verify something.
       </p>
-      <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex.title}
-            type="button"
-            disabled={disabled}
-            onClick={() => onPick(ex.text)}
-            className="rounded-xl border border-rule bg-raised p-4 text-left hover:border-accent disabled:opacity-50"
-          >
-            <div className="text-sm font-medium">{ex.title}</div>
-            <div className="mt-1 text-sm text-muted">
-              <RichText segments={splitMath(ex.text)} />
-            </div>
-          </button>
-        ))}
-      </div>
+      <ExampleCards onPick={onPick} disabled={disabled} />
     </div>
   );
 }

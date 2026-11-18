@@ -159,6 +159,9 @@ class EvalCase(BaseModel):
     # Formulas (LaTeX) that are right here: marking one as contradicted is a checker false positive.
     right_formulas: list[str] = Field(default_factory=list)
     informational: bool = False  # reported, but not counted in the score
+    # Words allowed in the reply (default: score.MAX_REPLY_WORDS). A prompt that asks for a derivation and its
+    # verification needs more than a one-line answer; the cap is there to catch rambling, not explanation.
+    max_reply_words: int | None = None
     source: str = ""  # where the expected outcome comes from (a test or benchmark file)
     # --- reliability checks (cases_reliability.yaml). All off by default, and left out of the case-set digest
     # while off, so the digest of the original cases does not change.
@@ -241,6 +244,7 @@ def load_suite(suite: str = "core") -> list[EvalCase]:
 
 
 _RELIABILITY_FIELDS = (
+    "max_reply_words",
     "must_reuse",
     "restrictions_reported",
     "stops_after_failure",

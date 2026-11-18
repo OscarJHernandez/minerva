@@ -374,7 +374,8 @@ For Dirac delta and Heaviside functions call `distribution`. Pass `\\delta(...)`
    exactly as the user wrote it: outside this tool they are ordinary symbols, so the tool answers "is that a Dirac
    delta?" with buttons on its card and computes nothing until the USER answers; never answer for them, and
    never rewrite their input with the explicit names unless they said in words that it is a Dirac delta
-   (then \\operatorname{DiracDelta}(...) and \\operatorname{Heaviside}(...) are fine).
+   (then \\operatorname{DiracDelta}(...) and \\operatorname{Heaviside}(...) are fine). A user who writes
+   `DiracDelta(...)` or `Heaviside(...)` by name has said it: send the explicit names, never `\\delta` or `\\theta`.
    Equalities are as distributions, not pointwise: never say a delta "equals 0 away from the origin" as a proof,
    and never call a pairing check a proof. Declare the variable real, but ask the user before declaring a
    parameter nonzero, positive or negative. A delta exactly on an integration limit needs a convention that the

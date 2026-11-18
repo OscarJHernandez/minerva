@@ -159,6 +159,17 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`Xdot`) is a product there and is refused with the fix. Every change is a `Normalization` shown to the model
   (`input cleaned:` / `input:` lines), on the card and in the stored trace (`model_arguments` keeps the raw call). Do not
   add a rewrite that can change a meaning; add its inverse to `notation/transport.py` `DAMAGE` or the corruption test.
+- Homepage examples (`packages/ui/fixtures/homepage-examples.json`, `apps/web/src/lib/homepage-examples.ts`,
+  `services/api/tests/test_homepage_examples.py`): one registry; a card shows only if `approved`, and `approved` is allowed only
+  with five correct, engine-backed live runs of that exact prompt in `docs/benchmarks/homepage-live.json` (never the model host's
+  address). Each card has an evaluation case (`homepage-*`, identical prompt, an engine-checked reference call, scored reply)
+  and the registry holds no expected answer. Shape repairs found while making the cards reliable, all closed and visible: a
+  coordinate triple sent as one string (`Curve`/`Surface.q`), a numeric bound as text, a theorem sent without `expression` and
+  with exactly one declared field of its kind (`arguments._theorem_expression`, shown as a normalization), and a hint when an
+  undeclared name is a coordinate of another system (`coordinate_hint`: `r` with Cartesian coordinates). A model call that ends
+  with nothing visible and no tool call (not a length cut) is asked again once (`RetryReason.EMPTY_REPLY`, never repeated).
+  The claim checker leaves relations between differentials (`dx = -du`) unverified: they are notation, not products of symbols.
+  `scripts/eval_models.py --compute-timeout 10` runs the tools with the deployed chart's limit.
 - Typed diagnostics: a refused input carries `diagnostic` (`InputDiagnostic`: closed `code`, `field`, the user's
   `symbols`, `suggestions`, `recoverable`) on its report, shown to the model as one `diagnostic: {...}` JSON line, and
   only the `code` is logged (`reason_code`, vocabulary `tracing.REASON_CODES`). Symbols and suggestions are the user's
@@ -825,7 +836,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `latexparse.py` and `textparse.py`, building SymPy trees through `build.Builder`.
 - All computation runs in the sandbox (`sandbox.py`): child process, wall-clock timeout, rlimits,
   concurrency cap. Add new operations to `ops.OPERATIONS` and call them via `Engine`.
-- LaTeX conventions: `e` and `i` are plain symbols; `\exponentialE` / `\imaginaryI` / `\pi` are
+- LaTeX conventions: `\gamma` is the Greek letter, a plain symbol (a damping rate); the Gamma function is `\Gamma(x)`, and in
+  text syntax `gamma` stays the function (a bare `gamma` there is refused), so a result is re-read from LaTeX, not text.
+  `e` and `i` are plain symbols; `\exponentialE` / `\imaginaryI` / `\pi` are
   constants; `\sin 2x` and `\sin^{-1}` are rejected as ambiguous.
 - LaTeX output has one printer, `minerva_engine.latexprint.to_latex` (never call `sp.latex` directly): constants
   print as `\mathrm{e}` / `\mathrm{i}` (the parser reads them back as the constants), so a bare `e` or `i` in

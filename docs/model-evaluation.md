@@ -275,3 +275,13 @@ with runs after it. The deterministic side is covered (the references run agains
 `vector-distributional-divergence` backs the engine's equation and never backs a wrong one, the corruption report stays at 0
 different results); no real-model run of these cases has been made in this document. See
 [singular-fields.md](singular-fields.md).
+
+## Homepage examples (live, five runs per prompt, 2026-11-18)
+
+The six cards on the chat home page were each run five times, on their exact prompts, on the deployed `minerva` model with the
+tools limited to 10 s as in the deployed chart: **30 of 30 passed**, every run engine-backed, no false verification claim,
+median 17 to 34 s (the Coulomb card is the slowest because its reply explains and verifies at length). The earlier runs failed
+(10/30, then 19/30) and each failure was fixed at the layer that caused it (tool descriptions, a closed shape repair, a claim
+checker false positive on differentials, an empty model call, a coordinate hint, the cases' own reply checks); the full history,
+the per-card table and the reproduction command are in [benchmarks/homepage-live.md](benchmarks/homepage-live.md). This is one
+model at one temperature: it is the release gate for these six prompts, not a general measure of reliability.

@@ -1984,3 +1984,130 @@
   reply_matches: '(?is)derived|shrinking|sphere|pairing|test function'
   reply_forbids: '(?i)\bit is proved\b|rigorous(ly)? proof|mathematically proved'
   source: "the tool result states the proof status (derived, not proved) and that the pairings are supporting evidence; the answer must say so"
+# ----------------------------------------------------------------------------- homepage examples
+# The exact prompts of the example cards on the chat home page (packages/ui/fixtures/homepage-examples.json). A card is
+# shown only when its case passes here AND five live runs on the deployed model were all correct and engine-backed
+# (docs/benchmarks/homepage-live.json). The expected results are the textbook values, never what a model produced.
+- id: homepage-coulomb-divergence
+  category: physics
+  prompt: "Consider the vector field F = r/r³ in three-dimensional space. Its classical divergence vanishes everywhere away from the origin, yet its flux through an enclosing sphere is 4π. Derive its distributional divergence and explain the apparent contradiction. Show the mathematical verification."
+  expected_tool: vector_calculus
+  max_calls: 3
+  max_reply_words: 450
+  args: { equals: { action: distributional } }
+  expect_card: { status: ok }
+  reference:
+    tool: vector_calculus
+    arguments:
+      action: distributional
+      expression: '\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)'
+      coordinates: spherical
+  reply_matches: '(?is)(?=.*(4 ?\\pi|4 ?π))(?=.*(distribution|delta|δ))'
+  reply_forbids: '(?i)(?<!not )(?<!never )\bproved\b|rigorous(ly)? proof|is (identically )?zero everywhere'
+  wrong_formulas:
+    - '\nabla\cdot\frac{\mathbf r}{r^3}=\delta^{(3)}(\mathbf r)'
+    - '\nabla\cdot\frac{\mathbf r}{r^3}=-4\pi\delta^{(3)}(\mathbf r)'
+  source: "Griffiths, Introduction to Electrodynamics, chapter 1: div(r-hat/r^2) = 4 pi delta^(3)(r); the engine derives the coefficient and the source, and says classical and distributional apart"
+
+- id: homepage-delta-two-roots
+  category: calculus
+  prompt: "Evaluate the integral of x² DiracDelta(x²−4) over the entire real line. Explain how both roots contribute and verify the result."
+  expected_tool: distribution
+  max_calls: 3
+  args: { equals: { action: integrate }, assumes: { x: real } }
+  expect_card: { status: ok, result_text: "2" }
+  reference:
+    tool: distribution
+    arguments:
+      {
+        latex: 'x^2\operatorname{DiracDelta}(x^2-4)',
+        action: integrate,
+        variable: x,
+        lower: '-\infty',
+        upper: '\infty',
+        assumptions: { x: [real] },
+      }
+  reply_matches: '(?is)(?=.*(root|\\pm|±|both))(?=.*\b2\b)'
+  reply_forbids: '(?i)(?<!not )(?<!never )\bproved\b|rigorous(ly)? proof'
+  source: "delta(g(x)) = sum delta(x - x_i)/|g'(x_i)| over the simple roots x_i = -2, 2 with |g'| = 4: the integral is (4 + 4)/4 = 2"
+
+- id: homepage-stokes-curved-surface
+  category: calculus
+  prompt: "Verify Stokes' theorem for F = (−yz, xz, xy) on the surface r(u,v) = (u,v,uv), where 0 ≤ u,v ≤ 1. Orient the surface by ∂r/∂u × ∂r/∂v and use the induced boundary orientation. Calculate both integrals independently."
+  expected_tool: vector_calculus
+  max_calls: 3
+  args: { equals: { action: integrate, integral: stokes_theorem } }
+  expect_card: { status: ok }
+  reference:
+    tool: vector_calculus
+    arguments:
+      action: integrate
+      integral: stokes_theorem
+      expression: "F"
+      coordinates: cartesian
+      fields: [{ name: F, kind: vector, components: ["-y*z", "x*z", "x*y"] }]
+      surface:
+        q: ["u", "v", "u*v"]
+        u: { name: u, lower: "0", upper: "1" }
+        v: { name: v, lower: "0", upper: "1" }
+  reply_matches: '(?is)(?=.*= ?1(?!\d))(?=.*(circulation|line integral|boundary))(?=.*(flux|surface integral|curl))'
+  reply_forbids: '(?i)(?<!not )(?<!never )\bproved\b|rigorous(ly)? proof'
+  source: "curl F = (0, -2y, 2z); the normal d_u r x d_v r = (-v, -u, 1) gives the flux density 4uv, whose integral over the unit square is 1, and so is the circulation around the boundary (hand computation; engine benchmark int-stokes-surface, Marsden and Tromba)"
+
+- id: homepage-heaviside-derivative
+  category: calculus
+  prompt: "For real t and positive gamma, calculate the distributional derivative of exp(−gamma*t) Heaviside(t). Explain why a Dirac delta appears at t=0 and verify the result."
+  expected_tool: distribution
+  max_calls: 3
+  args:
+    { equals: { action: differentiate }, assumes: { t: real, gamma: positive } }
+  expect_card: { status: ok }
+  reference:
+    tool: distribution
+    arguments:
+      {
+        latex: '\exp(-\gamma t)\operatorname{Heaviside}(t)',
+        action: differentiate,
+        variable: t,
+        assumptions: { gamma: [positive], t: [real] },
+      }
+  reply_matches: "(?is)(?=.*(jump|discontinu))(?=.*(delta|δ))"
+  reply_forbids: '(?i)(?<!not )(?<!never )\bproved\b|rigorous(ly)? proof'
+  source: "d/dt [f(t) H(t)] = f'(t) H(t) + f(0) delta(t) (DLMF 1.16(ii)): f = exp(-gamma t) gives delta(t) - gamma exp(-gamma t) H(t)"
+
+- id: homepage-kepler-hidden-symmetries
+  category: physics
+  prompt: "Find the conserved quantities of the Kepler system defined by L = m/2*(r_dot² + r²*theta_dot²) + k/r, with coordinates r and theta. Search for hidden conserved quantities beyond energy and angular momentum. Verify the discovered quantities and determine their functional independence."
+  expected_tool: find_conserved_quantities
+  max_calls: 3
+  args: { includes: { coordinates: [r, theta] } }
+  expect_card: { status: ok }
+  reference:
+    tool: find_conserved_quantities
+    arguments:
+      lagrangian: '\frac{m}{2}\left(\dot{r}^2 + r^2\dot{\theta}^2\right) + \frac{k}{r}'
+      coordinates: [r, theta]
+      budget: thorough
+  reply_matches: "(?is)(?=.*(runge|lenz))(?=.*independen)"
+  reply_forbids: '(?i)no other (conserved )?quantit|the system has no|completely integrable|rigorous(ly)? proof'
+  source: "the Kepler problem has the energy, the angular momentum and the two components of the Laplace-Runge-Lenz vector (3 functionally independent of the 4: Goldstein, Classical Mechanics, chapter 3)"
+
+- id: homepage-integral-by-symmetry
+  category: calculus
+  prompt: "Evaluate the integral of sin(x)^n / (sin(x)^n + cos(x)^n) from 0 to pi/2, for positive real n. Find an elegant symmetry-based approach and verify the result."
+  expected_tool: integrate
+  max_calls: 3
+  args: { assumes: { n: positive } }
+  expect_card: { status: ok, result_text: "pi/4" }
+  reference:
+    tool: integrate
+    arguments:
+      latex: '\frac{\sin^{n}(x)}{\sin^{n}(x)+\cos^{n}(x)}'
+      variable: x
+      lower: "0"
+      upper: '\frac{\pi}{2}'
+      assumptions: { n: [positive], x: [real] }
+      strategy: reflection
+  reply_matches: '(?is)(?=.*(symmetr|reflect|substitut|x ?\\to|π/2 ?− ?x|\\frac\{\\pi\}\{2\} ?- ?x))(?=.*(pi ?/ ?4|\\frac\{\\pi\}\{4\}|π ?/ ?4))'
+  reply_forbids: '(?i)(?<!not )(?<!never )\bproved\b|rigorous(ly)? proof'
+  source: "King's property: with x -> pi/2 - x the integrand becomes cos^n/(sin^n + cos^n), the two add to 1, so the integral is (pi/2)/2 = pi/4 for every n > 0 (Gradshteyn and Ryzhik, 3.248-style symmetry; plain arithmetic)"

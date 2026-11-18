@@ -1,5 +1,5 @@
 {
-  "applied": 777,
+  "applied": 818,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -9,7 +9,7 @@
       "untyped_failure": 0
     },
     "derivative:latex_letter_run": {
-      "diagnosed": 4,
+      "diagnosed": 5,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
@@ -40,28 +40,28 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 9,
+      "same_after_cleaning": 10,
       "untyped_failure": 0
     },
     "shape:formula_alias": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 89,
+      "same_after_cleaning": 92,
       "untyped_failure": 0
     },
     "shape:json_as_string": {
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 70,
+      "same_after_cleaning": 75,
       "untyped_failure": 0
     },
     "shape:list_as_string": {
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 24,
+      "same_after_cleaning": 25,
       "untyped_failure": 0
     },
     "shape:number_as_string": {
@@ -75,42 +75,42 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 118,
+      "same_after_cleaning": 124,
       "untyped_failure": 0
     },
     "transport:dollar_wrapper": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 118,
+      "same_after_cleaning": 124,
       "untyped_failure": 0
     },
     "transport:doubled_backslash": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 84,
+      "same_after_cleaning": 89,
       "untyped_failure": 0
     },
     "transport:markdown_escape": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 64,
+      "same_after_cleaning": 68,
       "untyped_failure": 0
     },
     "transport:trailing_period": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 97,
+      "same_after_cleaning": 103,
       "untyped_failure": 0
     },
     "transport:unicode_look_alikes": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 88,
+      "same_after_cleaning": 91,
       "untyped_failure": 0
     }
   },
@@ -161,7 +161,7 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 15,
+      "same_after_cleaning": 30,
       "untyped_failure": 0
     },
     "electromagnetism": {
@@ -186,10 +186,10 @@
       "untyped_failure": 0
     },
     "find_conserved_quantities": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 9,
+      "same_after_cleaning": 18,
       "untyped_failure": 0
     },
     "find_identities": {
@@ -203,7 +203,7 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 70,
+      "same_after_cleaning": 77,
       "untyped_failure": 0
     },
     "integrate_motion": {
@@ -329,7 +329,7 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 81,
+      "same_after_cleaning": 90,
       "untyped_failure": 0
     }
   },
@@ -337,32 +337,32 @@
   "format": 1,
   "mode": "pr",
   "not_applicable": {
-    "derivative:joined": 139,
-    "derivative:latex_letter_run": 134,
-    "derivative:leibniz": 139,
-    "derivative:spaced": 139,
-    "derivative:upper": 139,
-    "shape:assignment_prefix": 131,
-    "shape:formula_alias": 51,
-    "shape:json_as_string": 60,
-    "shape:list_as_string": 113,
-    "shape:number_as_string": 133,
+    "derivative:joined": 145,
+    "derivative:latex_letter_run": 139,
+    "derivative:leibniz": 145,
+    "derivative:spaced": 145,
+    "derivative:upper": 145,
+    "shape:assignment_prefix": 136,
+    "shape:formula_alias": 54,
+    "shape:json_as_string": 61,
+    "shape:list_as_string": 118,
+    "shape:number_as_string": 139,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
-    "transport:doubled_backslash": 56,
-    "transport:markdown_escape": 76,
+    "transport:doubled_backslash": 57,
+    "transport:markdown_escape": 78,
     "transport:trailing_period": 43,
-    "transport:unicode_look_alikes": 52
+    "transport:unicode_look_alikes": 55
   },
-  "recovered_without_a_model_call": 770,
-  "recovery_rate": 0.991,
-  "references": 140,
+  "recovered_without_a_model_call": 810,
+  "recovery_rate": 0.9902,
+  "references": 146,
   "tools_covered": 33,
   "totals": {
-    "diagnosed": 7,
+    "diagnosed": 8,
     "different_verified_result": 0,
     "same": 9,
-    "same_after_cleaning": 761,
+    "same_after_cleaning": 801,
     "untyped_failure": 0
   }
 }

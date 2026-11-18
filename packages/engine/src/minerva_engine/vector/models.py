@@ -123,6 +123,44 @@ class Param(BaseModel):
             raise ValueError("a parameter is a short name other than t (t is time)")
         return value
 
+    @field_validator("lower", "upper", mode="before")
+    @classmethod
+    def _number_as_text(cls, value: object) -> object:
+        """A bound written as a number (`0`, `1`) is the same bound as its text: the model's JSON often omits the
+        quotes, and the meaning is not in doubt (the same rule the tool layer applies to top-level fields)."""
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            return str(value)
+        return value
+
+
+def _split_triple(value: object) -> object:
+    """`["u, v, u*v"]` or `"(u, v, u*v)"` is the three coordinates `["u", "v", "u*v"]`: the same list sent as one
+    string, a shape error with one reading. Anything else (two items, a list of three, a nested comma such as
+    `f(a, b)`) is left for the validator to refuse; nothing is guessed."""
+    text = None
+    if isinstance(value, list) and len(value) == 1 and isinstance(value[0], str):
+        text = value[0]
+    elif isinstance(value, str):
+        text = value
+    if text is None:
+        return value
+    text = text.strip()
+    if text[:1] == "(" and text[-1:] == ")":
+        text = text[1:-1]
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(text):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i].strip())
+            start = i + 1
+    parts.append(text[start:].strip())
+    return parts if len(parts) == 3 and all(parts) else value
+
 
 class Curve(BaseModel):
     """A curve given by the three coordinates of the chosen system as functions of one parameter,
@@ -130,6 +168,11 @@ class Curve(BaseModel):
 
     q: list[str] = Field(min_length=3, max_length=3)
     parameter: Param
+
+    @field_validator("q", mode="before")
+    @classmethod
+    def _q_as_one_string(cls, value: object) -> object:
+        return _split_triple(value)
 
 
 class Surface(BaseModel):
@@ -139,6 +182,11 @@ class Surface(BaseModel):
     q: list[str] = Field(min_length=3, max_length=3)
     u: Param
     v: Param
+
+    @field_validator("q", mode="before")
+    @classmethod
+    def _q_as_one_string(cls, value: object) -> object:
+        return _split_triple(value)
 
 
 class Region(BaseModel):

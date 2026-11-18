@@ -161,6 +161,11 @@ TEXT_TOOL_NOTICE = (
     NOTICE_PREFIX + "Your last message wrote a tool call as text. Call the tool through the tool "
     "interface, or answer in words."
 )
+EMPTY_REPLY_NOTICE = (
+    NOTICE_PREFIX
+    + "Your last message was empty. Call the next tool through the tool interface, or "
+    "answer the user in words."
+)
 WRAP_UP_NOTICE = (
     NOTICE_PREFIX
     + "Stop calling tools. In at most 80 words say which results above were verified, what "
@@ -675,6 +680,7 @@ async def _run_turn(
     user_numbers = frozenset(x for text in user_messages for x in numbers_in(text))
     offered: tuple[str, ...] = ()
     host_retried = False
+    empty_retried = False
     step = 0
 
     def remaining() -> float:
@@ -843,6 +849,20 @@ async def _run_turn(
                     {"role": "assistant", "content": text},
                     {"role": "user", "content": TEXT_TOOL_NOTICE},
                 ]
+                continue
+            if (
+                not calls
+                and not text
+                and not empty_retried
+                and _finish(result) != "length"  # a length cut is an output_limit, reported below
+                and remaining() > 10
+            ):
+                # The model call ended with nothing visible (reasoning that never closed, an empty stop): not
+                # an answer. One re-ask is safe; nothing mathematical is repeated, and a second empty call ends
+                # the turn as before.
+                empty_retried = True
+                tracer.emit(AgentRetry, step, reason=RetryReason.EMPTY_REPLY, attempt=1)
+                messages.append({"role": "user", "content": EMPTY_REPLY_NOTICE})
                 continue
             if text:
                 full_text.append(text)

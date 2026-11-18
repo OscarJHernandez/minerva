@@ -110,6 +110,7 @@ def _meta(args: argparse.Namespace, cases: list[EvalCase], limits: AgentLimits) 
         "case_count": len(cases),
         "categories": sorted({c.category for c in cases}),
         "repeats": args.repeat,
+        "compute_timeout": args.compute_timeout,
         "seed": args.seed,
         "temperature": args.temperature,
         "think": args.think,
@@ -238,6 +239,13 @@ def _parser() -> argparse.ArgumentParser:
         "--case-timeout", type=float, default=0.0, help="seconds per turn (default: 2 x --timeout)"
     )
     parser.add_argument(
+        "--compute-timeout",
+        type=float,
+        default=30.0,
+        help="seconds a tool may run (default 30; the deployed chart gives a tool 10: use 10 to measure "
+        "what a user gets)",
+    )
+    parser.add_argument(
         "--think",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -300,8 +308,10 @@ def _write(path: str, text: str) -> None:
     Path(path).write_text(text, encoding="utf-8")
 
 
-def _context() -> ToolContext:
-    ctx = ToolContext(engine=Engine(Limits(timeout_seconds=30)), kb=KnowledgeBase.load())
+def _context(compute_timeout: float = 30.0) -> ToolContext:
+    ctx = ToolContext(
+        engine=Engine(Limits(timeout_seconds=compute_timeout)), kb=KnowledgeBase.load()
+    )
     ctx.engine.warm_up()
     return ctx
 
@@ -351,7 +361,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.repeat < 1:
         parser.error("--repeat must be at least 1")
     limits = AgentLimits(max_steps=6, max_seconds=args.case_timeout or args.timeout * 2)
-    ctx = _context()
+    ctx = _context(args.compute_timeout)
     meta = _meta(args, cases, limits)
     results: dict[str, list[CaseResult] | None] = {}
     for spec in specs:

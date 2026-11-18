@@ -1,0 +1,501 @@
+{
+  "description": "Five live runs of each homepage prompt on the deployed model, on the code of the commit that adds this file. A card may be approved only if all of its runs passed, were engine-backed and made no false verification claim. Written by scripts/eval_models.py output; contains no model host address.",
+  "model": "minerva",
+  "date": "2026-11-18",
+  "runs_per_prompt": 5,
+  "seed": 7,
+  "temperature": 0.2,
+  "num_ctx": 32768,
+  "tool_time_limit_seconds": 10.0,
+  "max_steps": 6,
+  "cases_digest_of_the_six": "d7395da188cf",
+  "core_cases_digest": "d2d3164e5b44",
+  "prompt_sha": "f36d14ac1cbd",
+  "cards": {
+    "coulomb-divergence": {
+      "eval_case": "homepage-coulomb-divergence",
+      "prompt_sha256": "327dac2779a7bca5bba177da98f8112073d0045a33d50fcb58859bb3c41fc4a9",
+      "runs": [
+        {
+          "repeat": 0,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 15.9,
+          "tools_called": [
+            "vector_calculus",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 16,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 1,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 37.2,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 23,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 2,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 35.4,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 15,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 3,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 33.6,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 9,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 4,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 34.1,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 15,
+          "stop_reason": "completed"
+        }
+      ]
+    },
+    "delta-two-roots": {
+      "eval_case": "homepage-delta-two-roots",
+      "prompt_sha256": "0ac89854f67c92a5d4e7b9ada393f5c6e59faef7f74e65645a9fda3d92336432",
+      "runs": [
+        {
+          "repeat": 0,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 17.2,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 19,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 1,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 16.5,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 10,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 2,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 16.4,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 10,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 3,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 16.8,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 14,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 4,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 17.2,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 10,
+          "stop_reason": "completed"
+        }
+      ]
+    },
+    "stokes-curved-surface": {
+      "eval_case": "homepage-stokes-curved-surface",
+      "prompt_sha256": "86a8f59ad2ace87d910d2599e091a57f966e171fa7714923ef345f52e1c69031",
+      "runs": [
+        {
+          "repeat": 0,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 16.1,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 7,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 1,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 15.8,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 7,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 2,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 20.2,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 7,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 3,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 17.2,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 7,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 4,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 20.1,
+          "tools_called": [
+            "load_tools",
+            "vector_calculus"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 7,
+          "stop_reason": "completed"
+        }
+      ]
+    },
+    "heaviside-derivative": {
+      "eval_case": "homepage-heaviside-derivative",
+      "prompt_sha256": "e1fdaee8f5d45ba8730afede5cdaf0e841a42b2004502f43fd81f399ad75dd9f",
+      "runs": [
+        {
+          "repeat": 0,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 19.9,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 9,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 1,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 21.7,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 12,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 2,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 21.0,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 7,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 3,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 21.2,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 10,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 4,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 20.5,
+          "tools_called": [
+            "distribution",
+            "distribution"
+          ],
+          "tool_results_not_verified": 1,
+          "unchecked_formulas": 8,
+          "stop_reason": "completed"
+        }
+      ]
+    },
+    "kepler-hidden-symmetries": {
+      "eval_case": "homepage-kepler-hidden-symmetries",
+      "prompt_sha256": "b903473572b183af63c2f2be96b2badd3f99a08d958c5f08a08db564752bd22a",
+      "runs": [
+        {
+          "repeat": 0,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 23.1,
+          "tools_called": [
+            "load_tools",
+            "find_conserved_quantities"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 13,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 1,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 23.4,
+          "tools_called": [
+            "load_tools",
+            "find_conserved_quantities"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 15,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 2,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 23.5,
+          "tools_called": [
+            "load_tools",
+            "find_conserved_quantities"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 14,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 3,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 23.0,
+          "tools_called": [
+            "load_tools",
+            "find_conserved_quantities"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 13,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 4,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 23.5,
+          "tools_called": [
+            "load_tools",
+            "find_conserved_quantities"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 16,
+          "stop_reason": "completed"
+        }
+      ]
+    },
+    "integral-by-symmetry": {
+      "eval_case": "homepage-integral-by-symmetry",
+      "prompt_sha256": "d0a1258c47d0c999ffd85decbfe17c39c8ed7c41f0edffba1514b3fd84b638d4",
+      "runs": [
+        {
+          "repeat": 0,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 19.0,
+          "tools_called": [
+            "integrate"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 13,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 1,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 18.4,
+          "tools_called": [
+            "integrate"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 11,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 2,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 17.4,
+          "tools_called": [
+            "integrate"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 12,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 3,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 17.6,
+          "tools_called": [
+            "integrate"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 12,
+          "stop_reason": "completed"
+        },
+        {
+          "repeat": 4,
+          "passed": true,
+          "failure_class": null,
+          "engine_backed": true,
+          "false_verification_claims": 0,
+          "seconds": 17.5,
+          "tools_called": [
+            "integrate"
+          ],
+          "tool_results_not_verified": 0,
+          "unchecked_formulas": 12,
+          "stop_reason": "completed"
+        }
+      ]
+    }
+  }
+}

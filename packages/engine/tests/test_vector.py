@@ -490,3 +490,16 @@ def test_nothing_that_needs_no_smoothness_is_withheld() -> None:
             r"(\mathbf{A}\cdot\nabla)\mathbf{B}",
         ):
             assert run(expression, system, [a, b, f]).status is Status.OK, (system, expression)
+
+
+def test_an_undeclared_name_that_is_a_coordinate_of_another_system_says_so() -> None:
+    """`\\mathbf{r}/r^3` sent with the default Cartesian coordinates: r is the radius of the spherical system."""
+    result = run(r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)", "cartesian")
+    assert result.status is Status.PARSE_ERROR and result.undeclared == ["r"]
+    assert "coordinate of the spherical system" in result.message
+    assert "coordinates to spherical" in result.message
+    # a name that is no coordinate anywhere gets no hint
+    other = run(r"\nabla\cdot\left(q\,\mathbf{r}\right)", "cartesian")
+    assert other.undeclared == ["q"] and "coordinate of the" not in other.message
+    # and the right system works
+    assert run(r"\nabla\cdot\left(\frac{\mathbf{r}}{r^{3}}\right)", "spherical").status is Status.OK

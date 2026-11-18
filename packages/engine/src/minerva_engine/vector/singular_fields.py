@@ -587,7 +587,9 @@ def run_distributional(ctx: Context, result: VectorResult, diag: VectorDiagnosti
     if split is None:
         raise _unsupported(
             "the distributional action takes the divergence of a vector field or the Laplacian of a scalar "
-            "field (optionally times a constant)"
+            "field (optionally times a constant): write the operator in the expression, for example "
+            "\\nabla\\cdot\\left(\\frac{\\mathbf{r}}{r^{3}}\\right) in spherical coordinates or "
+            "\\nabla^{2}\\frac{1}{r}, not the field alone"
         )
     prefactor, _operator, family, inner = split
     if (

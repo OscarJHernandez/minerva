@@ -16,6 +16,9 @@ Repairs, in this order, each only when the schema decides the target:
 * a JSON string given where an object or list is wanted is parsed;
 * a number given where text is wanted becomes its text (`_coerce_numbers`, the same rule `execute` applies, so
   that validity, the trace and the call key agree).
+* a theorem (`gradient_theorem`, `divergence_theorem`, `stokes_theorem`) sent with no `expression` and exactly one
+  declared field of the kind the theorem takes (a scalar for the gradient theorem, a vector for the others)
+  gets that field's name as its expression: the theorem is about that field and there is no other reading.
 
 Anything else stays an `invalid_arguments` refusal with the per-field message.
 """
@@ -138,4 +141,43 @@ def repair_arguments(
             out[name] = str(value)
             notes.append(_note(name, str(value), repr(str(value)), "this field takes text"))
 
+    _theorem_expression(fields, out, notes)
+
     return (out if notes else arguments), tuple(notes)
+
+
+_THEOREM_FIELD_KIND = {
+    "gradient_theorem": "scalar",
+    "divergence_theorem": "vector",
+    "stokes_theorem": "vector",
+}
+
+
+def _theorem_expression(
+    fields: dict[str, Any], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """A theorem about the one declared field of its kind, sent without an expression, is about that field."""
+    wanted = _THEOREM_FIELD_KIND.get(str(out.get("integral")))
+    declared = out.get("fields")
+    if (
+        wanted is None
+        or not {"expression", "fields", "integral"} <= set(fields)
+        or str(out.get("expression") or "").strip()
+        or not isinstance(declared, list)
+    ):
+        return
+    candidates = [
+        f["name"]
+        for f in declared
+        if isinstance(f, dict) and f.get("kind") == wanted and isinstance(f.get("name"), str)
+    ]
+    if len(declared) == 1 and len(candidates) == 1:
+        out["expression"] = candidates[0]
+        notes.append(
+            _note(
+                "expression",
+                "(missing)",
+                candidates[0],
+                f"the theorem is about the one declared {wanted} field {candidates[0]}",
+            )
+        )
