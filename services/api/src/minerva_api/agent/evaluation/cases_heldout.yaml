@@ -1,0 +1,97 @@
+# Held-out reliability cases: the same workflows as cases_reliability.yaml in other words and with other
+# expressions. They are written before any live trace is read, are not part of `all`, and run only with
+# `--suite heldout`, so a rule or prompt fixed against the visible cases is measured here on cases it was
+# never tuned on. Do not read a failing held-out trace to fix one case: pin the cause with a fresh case in
+# cases_reliability.yaml instead. Every reference call is run against the engine by `--check-cases`.
+
+- id: heldout-reuse-and-restriction
+  category: multistep
+  prompt: 'Please simplify $\frac{t^2-25}{t-5}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "t + 5"}
+  reference: {tool: simplify, arguments: {latex: '\frac{t^2-25}{t-5}'}}
+  restrictions_reported: 't\s*(\\neq|\\ne|≠|!=)\s*5|(undefined|not defined|excluded|excluding|except)[^.]*\b5\b'
+  source: "polynomial division: (t - 5)(t + 5) / (t - 5) = t + 5 for t != 5"
+  followups:
+    - prompt: 'Take what you got and integrate it over t from 0 to 2.'
+      expected_tool: integrate
+      args: {present: [latex, variable]}
+      expect_card: {status: ok, result_text: "12"}
+      reference: {tool: integrate, arguments: {latex: 't + 5', variable: t, lower: '0', upper: '2'}}
+      must_reuse: true
+      forbid_assumptions: true
+
+- id: heldout-ode-classify
+  category: ambiguous
+  prompt: "What kind of equation is $u'(t) = 3u(t)$, and how could it be solved?"
+  expected_tool: ode_analyze
+  forbid: [ode_solve_symbolic, ode_solve_numerical]
+  args: {present: [equations]}
+  expect_card: {status: ok}
+  reference: {tool: ode_analyze, arguments: {equations: ["u'(t) = 3u(t)"], independent: t}}
+  reply_matches: 'method|closed|numeric|linear|separable|which'
+  source: "docs/ode.md: the analysis lists the applicable methods; solving needs the user's choice"
+
+- id: heldout-matrix-expansion
+  category: tensor_matrix
+  prompt: 'P and Q are 3x3 matrices. Expand $(P-Q)^2$.'
+  expected_tool: matrix_calculus
+  args: {present: [matrices], absent: [commuting]}
+  forbid_assumptions: true
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '(P-Q)^2'
+      matrices: [{name: P, rows: 3}, {name: Q, rows: 3}]
+      action: simplify
+  wrong_formulas: ['(P-Q)^2 = P^2 - 2PQ + Q^2']
+  source: "matrix multiplication is not commutative: (P-Q)^2 = P^2 - PQ - QP + Q^2"
+
+- id: heldout-assumption-change
+  category: followup
+  prompt: 'Simplify $\sqrt{y^2}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: simplify, arguments: {latex: '\sqrt{y^2}'}}
+  source: "AGENTS.md (symbols are complex unless declared)"
+  followups:
+    - prompt: 'Suppose y > 0. Do it again.'
+      expected_tool: simplify
+      args: {assumes: {y: positive}}
+      expect_card: {status: unchanged, result_text: "y"}
+      reference: {tool: simplify, arguments: {latex: '\sqrt{y^2}', assumptions: {y: [positive]}}}
+
+- id: heldout-pendulum-conserved
+  category: followup
+  prompt: 'Give me the equations of motion of $L = \frac12 m \ell^2 \dot{\theta}^2 + m g \ell \cos\theta$, coordinate theta.'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [theta]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac12 m \ell^2 \dot{\theta}^2 + m g \ell \cos\theta', coordinates: [theta]}
+  source: "textbook: the pendulum equation of motion (no explicit time dependence, so the energy is conserved)"
+  followups:
+    - prompt: 'Is any quantity conserved?'
+      expected_tool: find_conserved_quantities
+      also_ok: [analyze_lagrangian, search_invariants]
+      args: {includes: {coordinates: [theta]}}
+      expect_card: {status: ok}
+      reference:
+        tool: find_conserved_quantities
+        arguments: {lagrangian: '\frac12 m \ell^2 \dot{\theta}^2 + m g \ell \cos\theta', coordinates: [theta]}
+      reply_forbids: 'no other|has no more|completely integrable|fully integrable'
+
+- id: heldout-series-exponential-cosine
+  category: calculus
+  prompt: 'Expand $e^{x}\cos x$ in a Taylor series about 0 up to order 4.'
+  expected_tool: series
+  args: {equals: {variable: x}}
+  expect_card: {status: ok}
+  reference: {tool: series, arguments: {latex: '\exp(x) \cos x', variable: x, point: '0', order: 4}}
+  source: "engine test_series.py (product of Taylor series: 1 + x - x^3/3 - x^4/6 + O(x^5))"

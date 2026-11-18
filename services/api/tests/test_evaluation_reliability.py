@@ -27,7 +27,7 @@ from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
 FAST = AgentLimits(retry_delay_seconds=0)
-CASES = {c.id: c for c in load_suite("reliability")}
+CASES = {c.id: c for c in [*load_suite("reliability"), *load_suite("heldout")]}
 MATRICES = [{"name": "A", "rows": 2}, {"name": "B", "rows": 2}]
 X_NEQ_1 = r"x \neq 1"
 
@@ -477,6 +477,162 @@ SCRIPTS: dict[str, dict[str, Any]] = {
         },
     },
 }
+
+OSC = r"\frac12 m \dot{x}^2 - \frac12 k x^2"
+PEND = r"\frac12 m \ell^2 \dot{\theta}^2 + m g \ell \cos\theta"
+SQRT_X = r"\sqrt{x^2}"
+SQRT_Y = r"\sqrt{y^2}"
+PQ = [{"name": "P", "rows": 3}, {"name": "Q", "rows": 3}]
+UNCHANGED_NOTE = "With x complex the root does not simplify without a sign assumption."
+EXTRA_SCRIPTS: dict[str, dict[str, Any]] = {
+    "assumption-added-then-dropped-in-followups": {
+        "ideal": [
+            call("simplify", {"latex": SQRT_X}),
+            say(UNCHANGED_NOTE),
+            call("simplify", {"latex": SQRT_X, "assumptions": {"x": ["positive"]}}),
+            say("With x positive the root is unchanged: it is x."),
+            call("simplify", {"latex": SQRT_X}),
+            say(UNCHANGED_NOTE),
+        ],
+        "adversarial": {
+            # the user's assumption never reaches the tool
+            FailureClass.MISSING_ASSUMPTIONS: [
+                call("simplify", {"latex": SQRT_X}),
+                say(UNCHANGED_NOTE),
+                call("simplify", {"latex": SQRT_X}),
+                say("It is unchanged."),
+                call("simplify", {"latex": SQRT_X}),
+                say(UNCHANGED_NOTE),
+            ],
+            # ... and an assumption the user took back is still passed
+            FailureClass.INVENTED_ASSUMPTION: [
+                call("simplify", {"latex": SQRT_X}),
+                say(UNCHANGED_NOTE),
+                call("simplify", {"latex": SQRT_X, "assumptions": {"x": ["positive"]}}),
+                say("With x positive the root is unchanged: it is x."),
+                call("simplify", {"latex": SQRT_X, "assumptions": {"x": ["positive"]}}),
+                say("It is unchanged."),
+            ],
+        },
+    },
+    "oscillator-equations-of-motion-then-conserved-quantity": {
+        "ideal": [
+            call("analyze_lagrangian", {"lagrangian": OSC, "coordinates": ["x"]}),
+            say("The equation of motion follows from the Euler-Lagrange equation."),
+            call("find_conserved_quantities", {"lagrangian": OSC, "coordinates": ["x"]}),
+            say("The energy is conserved, within the families that were searched."),
+        ],
+        "adversarial": {
+            FailureClass.TOOL_SELECTION: [
+                call("analyze_lagrangian", {"lagrangian": OSC, "coordinates": ["x"]}),
+                say("The equation of motion follows from the Euler-Lagrange equation."),
+                say("The energy is conserved."),
+            ],
+        },
+    },
+    "heldout-reuse-and-restriction": {
+        "ideal": [
+            call("simplify", {"latex": r"\frac{t^2-25}{t-5}"}),
+            say(r"The result is $t + 5$, valid for $t \neq 5$ (the original is undefined at 5)."),
+            call("integrate", {"latex": "@r1", "variable": "t", "lower": "0", "upper": "2"}),
+            say("The integral from 0 to 2 is 12, using the simplified form from before."),
+        ],
+        "adversarial": {
+            FailureClass.RESULT_REUSE: [
+                call("simplify", {"latex": r"\frac{t^2-25}{t-5}"}),
+                say(r"The result is $t + 5$, valid for $t \neq 5$."),
+                call("integrate", {"latex": "t + 5", "variable": "t", "lower": "0", "upper": "2"}),
+                say("The integral from 0 to 2 is 12."),
+            ],
+        },
+    },
+    "heldout-ode-classify": {
+        "ideal": [
+            call("ode_analyze", {"equations": ["u'(t) = 3u(t)"], "independent": "t"}),
+            say(
+                "It is a first-order linear equation. A closed form, a numerical run or a series would work: which method do you want?"
+            ),
+        ],
+        "adversarial": {
+            FailureClass.TOOL_SELECTION: [
+                say(
+                    "It is a first-order linear equation; a closed form or a numerical method would work."
+                ),
+            ],
+        },
+    },
+    "heldout-matrix-expansion": {
+        "ideal": [
+            call(
+                "matrix_calculus",
+                {"latex": "(P-Q)^2", "matrices": PQ, "action": "simplify"},
+            ),
+            say(
+                "The square expands with both cross terms kept in order, because matrices need not commute."
+            ),
+        ],
+        "adversarial": {
+            FailureClass.INVENTED_ASSUMPTION: [
+                call(
+                    "matrix_calculus",
+                    {
+                        "latex": "(P-Q)^2",
+                        "matrices": PQ,
+                        "action": "simplify",
+                        "commuting": [["P", "Q"]],
+                    },
+                ),
+                say("Taking P and Q to commute, the cross terms combine."),
+            ],
+        },
+    },
+    "heldout-assumption-change": {
+        "ideal": [
+            call("simplify", {"latex": SQRT_Y}),
+            say("With y complex the root does not simplify without a sign assumption."),
+            call("simplify", {"latex": SQRT_Y, "assumptions": {"y": ["positive"]}}),
+            say("With y positive the root is unchanged: it is y."),
+        ],
+        "adversarial": {
+            FailureClass.MISSING_ASSUMPTIONS: [
+                call("simplify", {"latex": SQRT_Y}),
+                say("With y complex the root does not simplify without a sign assumption."),
+                call("simplify", {"latex": SQRT_Y}),
+                say("It is unchanged."),
+            ],
+        },
+    },
+    "heldout-pendulum-conserved": {
+        "ideal": [
+            call("analyze_lagrangian", {"lagrangian": PEND, "coordinates": ["theta"]}),
+            say("The equation of motion follows from the Euler-Lagrange equation."),
+            call("find_conserved_quantities", {"lagrangian": PEND, "coordinates": ["theta"]}),
+            say("The energy is conserved, within the families that were searched."),
+        ],
+        "adversarial": {
+            FailureClass.TOOL_SELECTION: [
+                say("The equation of motion follows from the Euler-Lagrange equation."),
+                say("The energy is conserved."),
+            ],
+        },
+    },
+    "heldout-series-exponential-cosine": {
+        "ideal": [
+            call("series", {"latex": r"\exp(x) \cos x", "variable": "x", "point": "0", "order": 4}),
+            say("The expansion is given up to order 4."),
+        ],
+        "adversarial": {
+            FailureClass.ARGUMENTS: [
+                call(
+                    "series",
+                    {"latex": r"\exp(x) \cos x", "variable": "t", "point": "0", "order": 4},
+                ),
+                say("The expansion is given up to order 4."),
+            ],
+        },
+    },
+}
+SCRIPTS.update(EXTRA_SCRIPTS)
 
 IDEAL = [(case_id, s["ideal"]) for case_id, s in SCRIPTS.items()]
 ADVERSARIAL = [
