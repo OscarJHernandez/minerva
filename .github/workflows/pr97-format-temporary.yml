@@ -13,6 +13,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: 24
+          package-manager-cache: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
       - run: pnpm install --frozen-lockfile
       - name: Generate precise Prettier result for PR 97
