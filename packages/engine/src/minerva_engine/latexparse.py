@@ -376,7 +376,7 @@ class _Parser:
             return value
         raise ParseError("unexpected end of input")
 
-    def _symbol_with_subscript(self, name: str) -> sp.Expr:
+    def _symbol_with_subscript(self, name: str, *, greek: bool = False) -> sp.Expr:
         if self.accept_op("_"):
             if name in self._indexed_bases:
                 return self.b.indexed(name, self._index_script())
@@ -404,7 +404,7 @@ class _Parser:
                 f"{name}(…) is ambiguous: declare {name} as a function, "
                 f"or write {name}\\cdot(…) for a product"
             )
-        return self.b.symbol(name)
+        return self.b.symbol(name, greek=greek)
 
     def _variable_call(self, name: str) -> None:
         """Consume `(t)` after a dependent function: it must be exactly the independent variable."""
@@ -692,7 +692,7 @@ class _Parser:
         return self.b.symbol(f"{base}_{'dot' if name == 'dot' else 'ddot'}")
 
     def _symbol_with_subscript_name(self, name: str) -> sp.Expr:
-        return self._symbol_with_subscript(name)
+        return self._symbol_with_subscript(name, greek=True)
 
     def _mathrm(self, cmd: str) -> sp.Expr:
         self.expect_op("{")

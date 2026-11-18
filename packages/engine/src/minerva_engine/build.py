@@ -72,6 +72,10 @@ RESERVED_NAMES = (
     }
 )
 
+# Greek letters that are also text-syntax function names: `\gamma` in LaTeX is the letter (the damping rate
+# of an oscillator), the Gamma function is `\Gamma`. In text syntax `gamma` stays the function.
+GREEK_OVER_FUNCTION = frozenset({"gamma"})
+
 MAX_FUNCTION_ARGS = 4
 MAX_SUM_DEPTH = 2  # nested sums and products
 MAX_NUMERIC_RANGE = 64  # explicit numeric bounds, so that instance checks stay small
@@ -242,7 +246,10 @@ class Builder:
             )
         return sp.Function(name, real=True)(*expected)
 
-    def symbol(self, name: str) -> sp.Symbol:
+    def symbol(self, name: str, *, greek: bool = False) -> sp.Symbol:
+        # `greek`: the name was written as the Greek letter command `\gamma` in LaTeX, where the Gamma
+        # function is `\Gamma`; a symbol named like a function is refused only when it is ambiguous.
+        function_like = name in GREEK_OVER_FUNCTION and greek
         if self.jets is not None:
             known = self.jets.symbols.get(name)
             if known is not None:
@@ -262,7 +269,7 @@ class Builder:
             raise ParseError(f"{name!r} is indexed data here; write {name}[…] for an element")
         if len(name) > SYMBOL_NAME_MAX or not _SYMBOL_RE.match(name) or "__" in name:
             raise ParseError(f"invalid symbol name {name!r}")
-        if name in RESERVED_NAMES:
+        if name in RESERVED_NAMES and not function_like:
             raise ParseError(f"{name!r} is a reserved function or constant name")
         if name in self.functions:
             args = ", ".join(self.functions[name])
