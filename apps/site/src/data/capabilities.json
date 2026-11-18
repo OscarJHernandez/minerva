@@ -527,6 +527,174 @@
       ]
     },
     {
+      "id": "identity-check",
+      "title": "Is this equation an identity?",
+      "status": "available",
+      "group": "math",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Decides whether one stated equation holds as an identity under the declared assumptions. A true one is reported as proved (the symbolic zero test also found zero) or as numerically checked (no disagreement at random points or at targeted probes: evidence, not proof). A false one is reported with an exact point where the two sides differ, confirmed at 60 and 120 digits. One that is false only because the symbols are complex says which assumption makes it true.",
+      "limits": [
+        "Only a statement the user asked about is judged. In the chat, equations the model writes itself are still never called false (they stay unchecked).",
+        "A definition, an equation of motion, a statement about matrices, vectors, distributions or sums is refused, never called true or false; sampling numbers cannot settle it.",
+        "Not an identity does not mean no solutions. `x^2 = 4x` is not an identity and has two solutions."
+      ],
+      "examples": [
+        {
+          "id": "identity-pythagoras",
+          "title": "A true identity",
+          "op": "identity",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\sin^2 x + \\cos^2 x = 1",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Equation as read",
+              "latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} = 1"
+            }
+          ],
+          "checks": [
+            "verdict: proved equal",
+            "sampled points 20/20; symbolic zero found"
+          ],
+          "notes": [
+            "The symbolic zero test found zero and the sampled points agree."
+          ]
+        },
+        {
+          "id": "identity-binomial",
+          "title": "A false one, with the point where it fails",
+          "op": "identity",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "(x+y)^2 = x^2 + y^2",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Equation as read",
+              "latex": "\\left(x + y\\right)^{2} = x^{2} + y^{2}"
+            },
+            {
+              "label": "A point where the sides differ",
+              "latex": "x = 1, \\; y = 1"
+            },
+            {
+              "label": "Left side there",
+              "latex": "4.0"
+            },
+            {
+              "label": "Right side there",
+              "latex": "2.0"
+            }
+          ],
+          "checks": [
+            "verdict: not identity"
+          ],
+          "notes": [
+            "Not an identity: the two sides differ at the point shown (exact values, checked at 60 and 120 digits). The equation may still hold for some values; this says it does not hold for all."
+          ]
+        },
+        {
+          "id": "identity-sqrt-square",
+          "title": "True only under an assumption",
+          "op": "identity",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\sqrt{x^2} = x",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Equation as read",
+              "latex": "\\sqrt{x^{2}} = x"
+            },
+            {
+              "label": "A point where the sides differ",
+              "latex": "x = -1"
+            },
+            {
+              "label": "Left side there",
+              "latex": "1.0"
+            },
+            {
+              "label": "Right side there",
+              "latex": "-1.0"
+            }
+          ],
+          "checks": [
+            "verdict: conditional",
+            "false in general, but holds if x is positive"
+          ],
+          "notes": [
+            "Not an identity for the assumptions given; it holds if x is positive. The counterexample is a point the stated assumptions allow."
+          ]
+        },
+        {
+          "id": "identity-sqrt-square-positive",
+          "title": "The same equation with x declared positive",
+          "op": "identity",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "\\sqrt{x^2} = x",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "x positive",
+          "outputs": [
+            {
+              "label": "Equation as read",
+              "latex": "x = x"
+            }
+          ],
+          "checks": [
+            "verdict: proved equal",
+            "sampled points 20/20; symbolic zero found"
+          ],
+          "notes": [
+            "The symbolic zero test found zero and the sampled points agree."
+          ]
+        },
+        {
+          "id": "identity-relation",
+          "title": "A definition is not judged",
+          "op": "identity",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "F = ma",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Not decided: a definition or a value for one symbol; not tested as an identity. This is not called true or false: sampling numbers cannot settle it."
+          ]
+        }
+      ]
+    },
+    {
       "id": "differentiate",
       "title": "Verified differentiation",
       "status": "available",

@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "case_count": 1,
+    "cases_digest": "9bcba6dec07f",
+    "categories": [
+      "false_claim"
+    ],
+    "compute_timeout": 10.0,
+    "date": "2026-11-18",
+    "git_sha": "b0912daa8f-dirty",
+    "label": "false-pythagoras-recheck",
+    "limits": {
+      "max_seconds": 360.0,
+      "max_steps": 6,
+      "max_tool_calls": 12
+    },
+    "ollama": "0.40.3",
+    "params": {
+      "history_messages": 20,
+      "history_tokens": null,
+      "num_ctx": 32768,
+      "num_predict": null,
+      "temperature": 0.2,
+      "think": false,
+      "toolset": "auto",
+      "top_k": null,
+      "top_p": null
+    },
+    "platform": "Darwin arm64",
+    "prompt_sha": "9e5310bd4e64",
+    "python": "3.13.16",
+    "repeats": 3,
+    "request_timeout_seconds": 180.0,
+    "routing": true,
+    "seed": 7,
+    "strip_thinking": false,
+    "sympy": "1.14.0",
+    "temperature": 0.2,
+    "think": false
+  },
+  "models": {
+    "minerva": {
+      "identity": {
+        "base_model": "gemma4:26b",
+        "capabilities": [
+          "completion",
+          "thinking",
+          "tools",
+          "vision"
+        ],
+        "digest": "149a0ff8a1ca",
+        "family": "gemma4",
+        "format": "gguf",
+        "host_defaults": {
+          "draft_num_predict": 3,
+          "num_ctx": 16384,
+          "num_predict": 1200,
+          "temperature": 0.2,
+          "top_k": 64,
+          "top_p": 0.9
+        },
+        "hosted": false,
+        "loaded_context": 32768,
+        "modified_at": "2026-11-15T16:30:28.925414389Z",
+        "name": "minerva",
+        "parameter_size": "25.2B",
+        "provider": "ollama",
+        "quantization": "Q4_K_M",
+        "unchanged_during_run": true
+      },
+      "results": [
+        {
+          "args_ok": null,
+          "calls": 1,
+          "case_id": "false-pythagoras",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "error_kind": null,
+          "expected_tool": "simplify",
+          "failure_class": null,
+          "false_verified": 0,
+          "first_token_ms": 433,
+          "first_tool": "check_identity",
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 2,
+          "llm_ms": 2116,
+          "max_prompt_tokens": 6590,
+          "notes": [],
+          "passed": true,
+          "repeat": 0,
+          "repeated_calls": 0,
+          "reply": "The equation $\\sin^2 x + \\cos^2 x = 2$ is not an identity. The tool found a counterexample at $x = 0$, where the left side is $1$ and the right side is $2$. The correct Pythagorean identity is $\\sin^2 x + \\cos^2 x = 1$.",
+          "result_ok": null,
+          "seconds": 4.08,
+          "stop_reason": "completed",
+          "tokens_in": 13012,
+          "tokens_out": 106,
+          "tool_failures": 0,
+          "tool_ms": 954,
+          "tool_reached": true,
+          "tool_selected": true,
+          "tools": [
+            "check_identity"
+          ],
+          "turns": 1,
+          "unchecked": 2,
+          "unnecessary_calls": 0,
+          "unverified_results": 0
+        },
+        {
+          "args_ok": null,
+          "calls": 1,
+          "case_id": "false-pythagoras",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "error_kind": null,
+          "expected_tool": "simplify",
+          "failure_class": null,
+          "false_verified": 0,
+          "first_token_ms": 475,
+          "first_tool": "check_identity",
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 2,
+          "llm_ms": 2016,
+          "max_prompt_tokens": 6590,
+          "notes": [],
+          "passed": true,
+          "repeat": 1,
+          "repeated_calls": 0,
+          "reply": "The equation $\\sin^2 x + \\cos^2 x = 2$ is not an identity. The tool found that the two sides differ at $x = 0$, where the left side is $1$ and the right side is $2$. The correct Pythagorean identity is $\\sin^2 x + \\cos^2 x = 1$.",
+          "result_ok": null,
+          "seconds": 4.006,
+          "stop_reason": "completed",
+          "tokens_in": 13012,
+          "tokens_out": 108,
+          "tool_failures": 0,
+          "tool_ms": 993,
+          "tool_reached": true,
+          "tool_selected": true,
+          "tools": [
+            "check_identity"
+          ],
+          "turns": 1,
+          "unchecked": 2,
+          "unnecessary_calls": 0,
+          "unverified_results": 0
+        },
+        {
+          "args_ok": null,
+          "calls": 1,
+          "case_id": "false-pythagoras",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "error_kind": null,
+          "expected_tool": "simplify",
+          "failure_class": null,
+          "false_verified": 0,
+          "first_token_ms": 417,
+          "first_tool": "check_identity",
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 2,
+          "llm_ms": 1873,
+          "max_prompt_tokens": 6590,
+          "notes": [],
+          "passed": true,
+          "repeat": 2,
+          "repeated_calls": 0,
+          "reply": "The equation $\\sin^2 x + \\cos^2 x = 2$ is not an identity. The tool found a counterexample at $x = 0$, where the left side is $1$ and the right side is $2$. The correct Pythagorean identity is $\\sin^2 x + \\cos^2 x = 1$.",
+          "result_ok": null,
+          "seconds": 3.876,
+          "stop_reason": "completed",
+          "tokens_in": 13012,
+          "tokens_out": 106,
+          "tool_failures": 0,
+          "tool_ms": 957,
+          "tool_reached": true,
+          "tool_selected": true,
+          "tools": [
+            "check_identity"
+          ],
+          "turns": 1,
+          "unchecked": 2,
+          "unnecessary_calls": 0,
+          "unverified_results": 0
+        }
+      ],
+      "summary": {
+        "cases": 1,
+        "checker_false_positives": 0,
+        "completion_rate": 1.0,
+        "confusion": {
+          "simplify": {
+            "check_identity": 3
+          }
+        },
+        "context": {
+          "max_prompt_tokens": 6590,
+          "runs_at_window": 0,
+          "runs_with_history_dropped": 0,
+          "window": 32768
+        },
+        "contradicted_formulas": 0,
+        "cost_usd": null,
+        "failure_classes": {},
+        "false_verified": 0,
+        "first_token_ms": {
+          "max": 475,
+          "median": 433,
+          "p95": 475
+        },
+        "flaky_cases": [],
+        "informational_runs": 0,
+        "latency_seconds": {
+          "max": 4.08,
+          "median": 4.006,
+          "p95": 4.08
+        },
+        "llm_ms": {
+          "max": 2116,
+          "median": 2016,
+          "p95": 2116
+        },
+        "model_calls": {
+          "mean": 2.0,
+          "median": 2,
+          "total": 6
+        },
+        "multi_turn_consistency": null,
+        "multi_turn_runs": 0,
+        "pass_count_stdev": 0.0,
+        "pass_counts_per_repeat": [
+          1,
+          1,
+          1
+        ],
+        "pass_rate": 1.0,
+        "passed": 3,
+        "per_category": {
+          "false_claim": {
+            "passed": 3,
+            "rate": 1.0,
+            "runs": 3,
+            "tool_selection": 1.0
+          }
+        },
+        "per_tool": {
+          "simplify": {
+            "calls": 3,
+            "invalid_calls": 0,
+            "passed": 3,
+            "runs": 3,
+            "tool_selection": 1.0
+          }
+        },
+        "rate_limited": 0,
+        "repeated_calls": 0,
+        "runs": 3,
+        "timeouts": 0,
+        "tokens_in": 39036,
+        "tokens_out": 320,
+        "tool_calls": 3,
+        "tool_failures": 0,
+        "tool_ms": {
+          "max": 993,
+          "median": 957,
+          "p95": 993
+        },
+        "tool_reached_rate": 1.0,
+        "tool_selection_accuracy": 1.0,
+        "unchecked_formulas": 6,
+        "unclassified_failures": 0,
+        "unnecessary_calls": 0,
+        "unverified_results": 0,
+        "valid_arguments_rate": 1.0,
+        "verified_result_coverage": null,
+        "verified_result_runs": 0
+      },
+      "usable": true
+    }
+  },
+  "schema": 1
+}

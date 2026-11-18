@@ -345,3 +345,36 @@ def test_the_transfer_matrix_matches_enumeration_for_random_couplings(
     mp.mp.dps = 30
     b = 0.55
     assert value(r, "Z", beta=b, J=j, h=h) == pytest.approx(ising_z(n, b, j, h), rel=1e-9)
+
+
+def test_a_chain_expression_that_does_not_parse_says_the_syntax() -> None:
+    """Live runs sent `-J s_i s_{i+1}` and read only 'could not parse the expression'."""
+    result = run(
+        system={
+            "kind": "chain",
+            "states": ["1", "-1"],
+            "bond": "-J s_i s_{i+1}",
+            "site": "-h*s",
+            "length": "N",
+        },
+        assumptions={"J": ["real"], "h": ["real"], "N": ["integer", "positive"]},
+        action="analyze",
+    )
+    assert result.reason == "parse_error"
+    assert "bond = -J*s*t" in result.message and "no subscripts" in result.message
+
+
+def test_an_energy_without_declared_assumptions_names_the_symbols_to_declare() -> None:
+    """The oscillator run sent hbar and omega with no assumptions and the model never found out which to add."""
+    result = run(
+        system={"kind": "level_family", "energy": "hbar*omega*(n + 1/2)", "index": "n"},
+        action="analyze",
+    )
+    assert result.reason == "assumptions_insufficient"
+    assert "hbar, omega" in result.message and '"omega": ["positive"]' in result.message
+    declared = run(
+        system={"kind": "level_family", "energy": "hbar*omega*(n + 1/2)", "index": "n"},
+        assumptions={"hbar": ["positive"], "omega": ["positive"]},
+        action="analyze",
+    )
+    assert declared.reason != "assumptions_insufficient"

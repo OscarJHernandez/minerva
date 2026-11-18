@@ -635,6 +635,7 @@ def test_document_and_markdown() -> None:
         "usable": False,
         "summary": None,
         "results": [],
+        "identity": None,  # not passed: the report says "not recorded"
     }
     json.dumps(doc)  # serialisable
     text = render_markdown(doc)
@@ -836,3 +837,24 @@ def test_the_geometry_and_distribution_cases_are_part_of_the_benchmark() -> None
     assert (
         history[1]["tool_calls"][0]["id"] == history[2]["tool_call_id"]
     )  # the neutral message shape
+
+
+def test_a_request_for_the_missing_expression_counts_as_asking_and_a_guess_does_not() -> None:
+    """Three live runs of each of two cases answered "Please provide the expression ..." (a correct clarification)
+    and failed a check that wanted a literal question mark. A reply that does not ask must still fail."""
+    import re
+
+    cases = {c.id: c for c in load_suite("core")}
+    for case_id in ("ambiguous-simplify", "ask-when-ambiguous"):
+        pattern = re.compile(str(cases[case_id].reply_matches), re.IGNORECASE)
+        for asks in (
+            "Please provide the expression you would like me to simplify.",
+            "I would be happy to help. Could you share the integral?",
+            "Which expression do you mean?",
+        ):
+            assert pattern.search(asks), asks
+        for guesses in (
+            "The simplified result is $x + 1$.",
+            "I simplified it for you: the answer is 4.",
+        ):
+            assert not pattern.search(guesses), guesses

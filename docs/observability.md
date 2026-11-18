@@ -82,8 +82,13 @@ The rule is simple: **the server log and the events hold no content.**
   account (another account gets 404), deleted when the conversation is deleted, and covered by any
   retention or export feature added to conversations later, because it has no table, file or endpoint of
   its own. Do not add one; keep it that way.
-- Raw model responses and the model's reasoning are not recorded. `thinking` output is dropped by the
-  client.
+- Raw model responses are not recorded. The model's reasoning (Ollama's `message.thinking`, returned only when
+  thinking is requested: `MINERVA_LLM_THINK`, the debug panel's per-turn override, `eval_models.py --think`) is
+  conversation content like the tool arguments: it is kept, cut at 20,000 characters per model call, in the stored
+  assistant message only (`debug.llm_calls[i].thinking`, with `thinking_chars` and `thinking_truncated`), under that
+  conversation's access, deletion and export rules and in the local evaluation trace files. It is never reply text,
+  never replayed to the model, never checked or numbered. The log and the trace events carry its length only
+  (`thinking_chars`). The UI shows it only in debug mode, collapsed per call, and the copied report includes it.
 - The debug panel and the copied report say that arguments and results are conversation content. The
   report is copied by the user in their own browser; share it only where you would share the
   conversation.

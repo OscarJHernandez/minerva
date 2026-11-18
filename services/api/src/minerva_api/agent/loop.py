@@ -503,6 +503,8 @@ class _Step:
     first_token_ms: int | None = None
     timed_out: bool = False
     error: LLMError | None = None
+    thinking: str = ""  # the model's reasoning, cut at THINKING_CAP; trace only
+    thinking_chars: int = 0  # its full length
 
 
 async def _model_step(
@@ -514,6 +516,10 @@ async def _model_step(
     """Stream one model call: yields text events, then a final `_step` record (not for the client)."""
     step = _Step()
     parts: list[str] = []  # the raw text of the call
+    thoughts: list[
+        str
+    ] = []  # the model's reasoning (trace only), kept up to THINKING_CAP characters
+    thought_chars = 0
     gate = ReasoningGate()  # what may be shown while it streams: no leaked reasoning
     shown: list[str] = []
     started = time.monotonic()
@@ -545,6 +551,10 @@ async def _model_step(
                     parts.append(chunk.text)
                     for event in visible(gate.feed(chunk.text)):
                         yield event
+                if chunk.thinking:
+                    if thought_chars < THINKING_CAP:
+                        thoughts.append(chunk.thinking)
+                    thought_chars += len(chunk.thinking)
                 step.calls.extend(chunk.tool_calls)
                 if chunk.usage is not None:
                     step.usage = chunk.usage
@@ -556,10 +566,26 @@ async def _model_step(
         yield event
     # What is stored is the raw text without leaked reasoning, wherever in it the reasoning sits.
     step.text = clean_reply("".join(parts))
+    step.thinking = "".join(thoughts)[:THINKING_CAP]
+    step.thinking_chars = thought_chars
     if holding and step.text.strip() and not looks_like_tool_call(step.text):
         yield {"event": "text", "data": {"delta": "".join(shown) or step.text}}
     step.latency_ms = _ms(started)
     yield {"event": "_step", "data": step}
+
+
+THINKING_CAP = 20_000  # characters of one call's reasoning kept in the stored debug
+
+
+def _thinking_fields(step: _Step) -> dict[str, Any]:
+    """The reasoning of one model call as `LLMCallDebug` fields (nothing when the model did not think)."""
+    if not step.thinking_chars:
+        return {}
+    return {
+        "thinking": step.thinking,
+        "thinking_chars": step.thinking_chars,
+        "thinking_truncated": step.thinking_chars > len(step.thinking),
+    }
 
 
 def _finish(step: _Step) -> str:
@@ -857,6 +883,7 @@ async def _run_turn(
                         cost_usd=usage.cost_usd if usage else None,
                         request_sha=sent_sha,
                         groups=list(active),
+                        **_thinking_fields(result),
                         **breakdown,
                     )
                 )
@@ -871,6 +898,7 @@ async def _run_turn(
                     text_chars=len(result.text),
                     tokens_in=usage.prompt_tokens if usage else None,
                     tokens_out=usage.completion_tokens if usage else None,
+                    thinking_chars=result.thinking_chars,
                 )
             text = result.text
             calls, aliases = _resolve_calls(result.calls)
@@ -1439,6 +1467,7 @@ async def _run_turn(
                     prompt_tokens=summary.usage.prompt_tokens if summary.usage else None,
                     completion_tokens=summary.usage.completion_tokens if summary.usage else None,
                     cost_usd=summary.usage.cost_usd if summary.usage else None,
+                    **_thinking_fields(summary),
                 )
             )
             tracer.emit(

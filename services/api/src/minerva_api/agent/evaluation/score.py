@@ -15,6 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ..loop import is_lone_symbol
 from ..segments import normalize
 from .cases import ASK, NO_TOOL, EvalCase
 from .reference import card_meets, card_status
@@ -303,7 +304,12 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
     text = str(final.get("text", ""))
     segments = _segments(final)
     marks = [s.get("status") for s in segments]
-    result.unchecked = marks.count("unchecked")
+    # A lone symbol (`$x$`) names something and asserts nothing: the loop's own counters leave it out, so do we.
+    result.unchecked = sum(
+        1
+        for s in segments
+        if s.get("status") == "unchecked" and not is_lone_symbol(str(s.get("value", "")))
+    )
     result.false_verified = sum(
         1
         for s in segments

@@ -242,6 +242,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   engine; every failure gets one class). Reports are JSON plus Markdown under `docs/benchmarks/`; `docs/model-evaluation.md`
   is hand-written interpretation and is never overwritten. Editing the cases changes the case-set digest: say so when
   comparing runs. The model host name never goes into a report.
+  Every report opens with a "Model under test" table: the weights as the host reports them (base model, family, size,
+  quantisation, digest), the defaults the host applies when a request is silent (a Modelfile's `num_predict` decides
+  how long a reply or its thinking may be), the window actually loaded, what Minerva sends, whether thinking was
+  requested, and whether the model was unchanged from the start to the end of the run. Without that a pass rate says
+  nothing about what was measured: a name such as `minerva` is an alias the operator can re-point. `--compare` says
+  loudly when the weights, host defaults or run configuration differ, or when either side did not record them (reports
+  from before this existed). Never put the host address in any of it.
 - Every agent request has a `trace_id`; the loop records typed events (`agent/tracing.py`) with monotonic timings. **Events
   hold no content**: only identifiers, counts, durations, booleans and fixed vocabulary. Do not add a free-text field to
   an event, an expression, tool argument or result to a log line, or any third-party logging or telemetry service; tests
@@ -299,7 +306,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 2) to
   paste to an agent; use the `chat-trace-triage` skill on it. The data comes from `AssistantMessage.trace/debug` stored with
   the message (failed turns too). The server log gets counters, `request_id` and `trace_id` only, never content. See
-  `docs/observability.md`.
+  `docs/observability.md`. With thinking requested (`MINERVA_LLM_THINK`, off by default), the model's reasoning is
+  stored per model call in `debug.llm_calls[i].thinking` and shown only in debug mode (collapsed, and in the copied
+  report); it is never reply text, never replayed to the model, never checked, and only its length (`thinking_chars`)
+  reaches a trace event or the log.
 
 ## Mathematical correctness (non-negotiable)
 
@@ -335,6 +345,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Claim classification (`claims.py`): `fails` (shown contradicted) only when the sides differ by a nonzero constant.
   A false identity at generic points is `not_identity` (shown unchecked): Minerva cannot tell it from an equation to
   solve, a definition or an equation of motion, which are `unverified`. Do not map `not_identity` to contradicted.
+  The one place a false identity is called false is `check_identity` (`identity_check.py`, tool and `Engine.check_identity`), and only
+  because the USER asked whether one stated equation holds: it reports `proved_equal` (symbolic zero), `numerically_equal`
+  (no disagreement found: evidence, never proof), `conditional` (true once symbols are assumed real or positive, the
+  condition stated) or `not_identity` with an exact point confirmed at 60 and 120 digits (`counterexample.py`), worded "not an
+  identity; it may still hold for some values". It gates on the claim checker, so a relation, matrix, vector, distribution or
+  sum is `unsupported` (never true or false), and a disagreement it cannot confirm is `not_verified`. The claim checker on the
+  model's own prose is unchanged. A `Counterexample` stays out of logs and events; the card shows it to its owner only.
 - Dimensional analysis (`pi_groups.py`) reasons about dimensions only: a group is shown only if rebuilt and found
   dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
   report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.

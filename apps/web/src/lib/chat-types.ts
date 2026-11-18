@@ -449,8 +449,27 @@ export interface Segment {
 /** A tool result card; `number` is its equation number when it has a primary result formula. */
 export type Card = CardBody & { number?: number | null };
 
+/** `check_identity`: a verdict on one stated equation (see `identity_check.py`). */
+export interface IdentityReport {
+  status: Status;
+  verdict: "proved_equal" | "numerically_equal" | "conditional" | "not_identity" | null;
+  input_latex: string | null;
+  lhs_latex: string | null;
+  rhs_latex: string | null;
+  condition: string | null;
+  counterexample: {
+    substitution: Record<string, string>;
+    lhs_value: string;
+    rhs_value: string;
+    residual: string;
+    probe: string;
+  } | null;
+  message: string;
+}
+
 type CardBody =
   | { id: string; tool: string; type: "simplify"; title: string; data: SimplifyResult }
+  | { id: string; tool: string; type: "identity"; title: string; data: IdentityReport }
   | { id: string; tool: string; type: "differentiate"; title: string; data: DifferentiateResult }
   | { id: string; tool: string; type: "series"; title: string; data: SeriesResult }
   | { id: string; tool: string; type: "integrate"; title: string; data: IntegrateResult }
@@ -765,6 +784,14 @@ export interface LLMCall {
   /** Fingerprint of the system prompt and tool schemas this call was sent, and the tool groups loaded for it. */
   request_sha?: string | null;
   groups?: string[];
+  /**
+   * The model's own reasoning for this call, when thinking was requested and the host returned it. Debug mode
+   * only: it is conversation content stored with the reply, never part of the reply, never replayed.
+   * `thinking_chars` is the full length; `thinking` may be cut (`thinking_truncated`).
+   */
+  thinking?: string | null;
+  thinking_chars?: number;
+  thinking_truncated?: boolean;
 }
 
 /** One content-free trace event (see docs/observability.md); fields vary by `event`. */

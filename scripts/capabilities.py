@@ -201,6 +201,38 @@ def run_differentiate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -
     )
 
 
+def run_identity(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.check_identity(spec["input"], spec.get("assumptions") or {})
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    if r.lhs_latex and r.rhs_latex:
+        outputs.append({"label": "Equation as read", "latex": f"{r.lhs_latex} = {r.rhs_latex}"})
+    if r.verdict:
+        checks.append(f"verdict: {r.verdict.replace('_', ' ')}")
+    if r.verification:
+        v = r.verification
+        checks.append(
+            f"sampled points {v.numeric_points_agreed}/{v.numeric_points_checked}"
+            + ("; symbolic zero found" if v.symbolic_zero else "")
+        )
+    cx = r.counterexample
+    if cx is not None:
+        point = ", \\; ".join(f"{k} = {v}" for k, v in cx.substitution.items())
+        outputs.append({"label": "A point where the sides differ", "latex": point})
+        outputs.append({"label": "Left side there", "latex": cx.lhs_value})
+        outputs.append({"label": "Right side there", "latex": cx.rhs_value})
+    if r.condition:
+        checks.append(r.condition)
+    return _example(
+        spec,
+        r.status.value,
+        [_source_line(spec, "Equation", engine)],
+        outputs,
+        checks,
+        [r.message] if r.message else [],
+    )
+
+
 def run_time_derivative(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.time_derivative(
         _expr(spec), spec["coordinates"], spec.get("time", "t"), spec.get("lagrangian")
@@ -1819,6 +1851,7 @@ RUNNERS = {
     "ode_solve": run_ode_solve,
     "ode_numeric": run_ode_numeric,
     "simplify": run_simplify,
+    "identity": run_identity,
     "differentiate": run_differentiate,
     "time_derivative": run_time_derivative,
     "series": run_series,

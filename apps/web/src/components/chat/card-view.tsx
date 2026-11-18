@@ -28,6 +28,7 @@ import { ValuesNote } from "./values-note";
 import { OdeAnalysisCard, OdeNumericCard, OdeSolutionCard } from "./ode-card";
 import { PerturbationCard } from "./perturbation-card";
 import { SolveCard } from "./solve-card";
+import { IdentityCard } from "./identity-card";
 import { UnitsCard } from "./units-card";
 import { VariationCard } from "./variation-card";
 import { ResultPanel, StatusPill } from "../result-panel";
@@ -80,6 +81,8 @@ function CardContent({ card }: { card: Card }) {
   switch (card.type) {
     case "simplify":
       return <ResultPanel result={card.data} />;
+    case "identity":
+      return <IdentityCard report={card.data} />;
     case "differentiate":
       return <DerivativePanel result={card.data} />;
     case "series":

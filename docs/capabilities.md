@@ -180,6 +180,66 @@ Searches a short chain of rewrites toward a goal (simplify, expand, factor, or r
 - **Status:** `parse_error`
 - ambiguous argument of \sin: use parentheses
 
+### Is this equation an identity?
+
+*Available in:* chat.
+
+Decides whether one stated equation holds as an identity under the declared assumptions. A true one is reported as proved (the symbolic zero test also found zero) or as numerically checked (no disagreement at random points or at targeted probes: evidence, not proof). A false one is reported with an exact point where the two sides differ, confirmed at 60 and 120 digits. One that is false only because the symbols are complex says which assumption makes it true.
+
+**Limits**
+
+- Only a statement the user asked about is judged. In the chat, equations the model writes itself are still never called false (they stay unchecked).
+- A definition, an equation of motion, a statement about matrices, vectors, distributions or sums is refused, never called true or false; sampling numbers cannot settle it.
+- Not an identity does not mean no solutions. `x^2 = 4x` is not an identity and has two solutions.
+
+#### A true identity
+
+- **Equation:** `\sin^2 x + \cos^2 x = 1` (LaTeX)
+- **Status:** `ok`
+- **Equation as read:** $\sin^{2}{\left(x \right)} + \cos^{2}{\left(x \right)} = 1$
+- **Check:** verdict: proved equal
+- **Check:** sampled points 20/20; symbolic zero found
+- The symbolic zero test found zero and the sampled points agree.
+
+#### A false one, with the point where it fails
+
+- **Equation:** `(x+y)^2 = x^2 + y^2` (LaTeX)
+- **Status:** `ok`
+- **Equation as read:** $\left(x + y\right)^{2} = x^{2} + y^{2}$
+- **A point where the sides differ:** $x = 1, \; y = 1$
+- **Left side there:** $4.0$
+- **Right side there:** $2.0$
+- **Check:** verdict: not identity
+- Not an identity: the two sides differ at the point shown (exact values, checked at 60 and 120 digits). The equation may still hold for some values; this says it does not hold for all.
+
+#### True only under an assumption
+
+- **Equation:** `\sqrt{x^2} = x` (LaTeX)
+- **Status:** `ok`
+- **Equation as read:** $\sqrt{x^{2}} = x$
+- **A point where the sides differ:** $x = -1$
+- **Left side there:** $1.0$
+- **Right side there:** $-1.0$
+- **Check:** verdict: conditional
+- **Check:** false in general, but holds if x is positive
+- Not an identity for the assumptions given; it holds if x is positive. The counterexample is a point the stated assumptions allow.
+
+#### The same equation with x declared positive
+
+- **Equation:** `\sqrt{x^2} = x` (LaTeX)
+- **Assumptions:** x positive
+- **Status:** `ok`
+- **Equation as read:** $x = x$
+- **Check:** verdict: proved equal
+- **Check:** sampled points 20/20; symbolic zero found
+- The symbolic zero test found zero and the sampled points agree.
+
+#### A definition is not judged
+
+- **Equation:** `F = ma` (LaTeX)
+- **Status:** `unsupported`
+- Not decided: a definition or a value for one symbol; not tested as an identity. This is not called true or false: sampling numbers cannot settle it.
+
 ### Verified differentiation
 
 *Available in:* workbench, chat, HTTP API.

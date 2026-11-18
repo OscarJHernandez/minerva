@@ -290,6 +290,14 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
         "",
       );
     }
+    d.llm_calls.forEach((call, i) => {
+      if (call.thinking)
+        lines.push(
+          "",
+          `model reasoning, call ${i + 1} (${call.thinking_chars ?? call.thinking.length} characters${call.thinking_truncated ? ", cut" : ""}; not part of the reply):`,
+          fence(call.thinking),
+        );
+    });
     const tokens = d.llm_calls.filter(
       (x) => x.prompt_tokens != null || x.completion_tokens != null,
     );
