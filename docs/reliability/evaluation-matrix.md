@@ -27,7 +27,7 @@ engine. "Oracle" is the independent check named in `AGENTS.md`.
 | Tool | Group | Cases / refs | Oracle | Limits | Regression rule |
 | --- | --- | --- | --- | --- | --- |
 | `simplify` | core | 22 / 19 | numeric sampling plus symbolic zero, targeted probes | sampling is evidence, not proof | adversarial corpus row (false identity and true twin) |
-| `check_identity` | core | 2 / 2 | the claim checker's gates, then sampled points plus targeted probes and a symbolic zero; a witness is confirmed at 60 and 120 digits | a disagreement is shown only with its exact point; a relation, matrix, vector, distribution or sum is never called true or false | adversarial pairs in `test_identity_check.py` |
+| `check_identity` | identity (keyword group) | 2 / 2 | the claim checker's gates, then sampled points plus targeted probes and a symbolic zero; a witness is confirmed at 60 and 120 digits | a disagreement is shown only with its exact point; a relation, matrix, vector, distribution or sum is never called true or false | adversarial pairs in `test_identity_check.py` |
 | `find_identities` | core | 6 / 4 | rule application re-verified by the engine | retrieval only proposes | benchmark case |
 | `isolate_variable` | core | 3 / 3 | back-substitution and root count | no systems, no periodic inverses | reference case |
 | `solve_polynomial` | core | 3 / 3 | substitution and numerical roots | degree 3+ symbolic is unsupported | reference case |

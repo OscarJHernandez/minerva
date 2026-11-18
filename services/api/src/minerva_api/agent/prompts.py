@@ -77,13 +77,6 @@ If the problem is ambiguous (what are the unknowns, which domain), ask one short
    tool at once instead of asking for more.\
 """,
     """\
-When the user asks whether one equation is true ("is it true that ...", "does ... hold", "confirm that ..."),
-   call `check_identity` with that equation and report its verdict: proved equal, numerically equal (evidence,
-   not a proof), true only under the condition it names, or not an identity with the point it gives. Do not
-   decide it from memory. A definition, an equation of motion or a matrix statement is refused by the tool:
-   say so.\
-""",
-    """\
 Wrap a formula in $...$ only when it is a whole expression or equation that comes from a tool
    result. Name single symbols (r, theta, k) and conditions in plain words or copy them from the
    tool, instead of wrapping each one. Use short bullet lines starting with "- " for lists. Plain
@@ -406,6 +399,14 @@ Approximations. `approximation` finds a simpler expression that represents a fun
 """,
     ),
     "units": (),
+    "identity": (
+        """\
+Whether a stated equation is true. `check_identity` judges ONE equation the user wrote ("is it true that
+   ...", "does ... hold", "confirm that ..."): call it with that equation and report its verdict (proved equal,
+   numerically equal, true only under the condition it names, or not an identity with the point it gives);
+   never decide it from memory. A definition, an equation of motion, or a matrix statement is refused: say so.\
+""",
+    ),
 }
 
 GROUP_ROUTER: dict[str, str] = {
@@ -420,6 +421,7 @@ GROUP_ROUTER: dict[str, str] = {
     "distributions": "delta or step functions: `distribution`.",
     "approximation": "approximating an expression (Pade, Chebyshev, Fourier, Laurent, large x, small parameter, large sums, a number by fractions): `approximation`.",
     "units": "units of an equation: `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
+    "identity": "`check_identity`: is A = B true?",
 }
 
 GROUP_SUMMARY: dict[str, str] = {
@@ -432,6 +434,7 @@ GROUP_SUMMARY: dict[str, str] = {
     "statmech": "statistical mechanics: partition functions, free energy, heat capacity, ensembles, approximations",
     "statistics": "finite sums and products, expectation/variance/covariance, likelihood, estimators, posteriors",
     "distributions": "Dirac delta and Heaviside functions",
+    "identity": "is an equation an identity",
     "units": "units and dimensions: dimensional consistency and dimensionless groups",
     "approximation": "approximations: Pade, Chebyshev, Fourier, Laurent, asymptotic and perturbation expansions, large sums, accuracy targets",
 }
@@ -456,6 +459,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "distributions": ("distribution",),
     "units": ("check_units", "dimensional_analysis"),
     "approximation": ("approximation",),
+    "identity": ("check_identity",),
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
@@ -469,6 +473,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
     "distributions": "dirac|heaviside|step function|delta function|generali[sz]ed function|\\\\delta\\s*\\(",
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
+    "identity": "is (it|that|this) (true|correct|right)|confirm that|does .{1,80}\\bhold\\b|\\bidentit(y|ies)\\b|is .{1,60} equal to|\\bfor (every|all|any)\\b",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
 }
 

@@ -183,8 +183,7 @@ class CheckIdentityArgs(SimplifyArgs):
     format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
         max_length=MAX_INPUT,
-        description="ONE equation `left = right` in LaTeX that the user asks about, e.g. "
-        "\\sqrt{x^2} = x. Exactly the statement the user wrote.",
+        description="One equation `left = right` in LaTeX, as the user wrote it, e.g. \\sqrt{x^2} = x",
     )
 
 
@@ -3547,12 +3546,10 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "check_identity",
-            "Decide whether ONE equation the user stated is an identity (true for all values of its "
-            'symbols under the declared assumptions): use it for "is it true that A = B?". The result '
-            "is a verdict: proved equal (symbolic zero), numerically equal (no disagreement found: "
-            "evidence, not a proof), conditional (false in general, true under a stated assumption) or "
-            "not an identity, with the exact point where the sides differ. A relation (a definition, an "
-            "equation of motion), a matrix or vector statement or a sum is refused, never called false.",
+            'Is ONE equation the user stated an identity? For "is it true that A = B?". Returns proved equal, '
+            "numerically equal (evidence), true only under a stated assumption, or not an identity with the "
+            "point where the sides differ. Refuses definitions, equations of motion, matrix, vector and sum "
+            "statements.",
             CheckIdentityArgs,
             run_check_identity,
         ),

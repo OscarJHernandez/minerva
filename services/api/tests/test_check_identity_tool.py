@@ -92,11 +92,26 @@ def test_bad_input_is_a_typed_refusal(ctx: ToolContext) -> None:
     assert out.status == "error" and not out.arguments_valid
 
 
-def test_the_tool_is_in_the_core_set_and_its_formula_field_states_its_syntax() -> None:
+def test_the_tool_is_loaded_by_the_words_that_ask_for_it_and_not_otherwise() -> None:
+    """A group, not a core tool: the offline token budget has no room for another core schema."""
     from minerva_api.agent.tools import TOOLS
-    from minerva_api.agent.toolsets import CORE_TOOLS
+    from minerva_api.agent.toolsets import CORE_TOOLS, group_of, groups_in_text
 
-    assert "check_identity" in CORE_TOOLS
+    assert "check_identity" not in CORE_TOOLS and group_of("check_identity") == "identity"
+    for asks in (
+        "Is it true that $(x+y)^2 = x^2 + y^2$?",
+        "Confirm that $\\sin^2 x + \\cos^2 x = 2$.",
+        "Does $\\log(\\exp(z)) = z$ hold for every complex z?",
+        "Is $\\sqrt{x^2} = x$ for every complex x?",
+        "Is $\\cosh^2 x - \\sinh^2 x$ equal to 1?",
+    ):
+        assert "identity" in groups_in_text(asks), asks
+    for other in (
+        "Simplify $\\frac{x^2-1}{x-1}$.",
+        "Differentiate $x^x$.",
+        "Integrate $x e^x$ from 0 to 1.",
+    ):
+        assert "identity" not in groups_in_text(other), other
     description = TOOLS["check_identity"].args_model.model_json_schema()["properties"]["latex"][
         "description"
     ]
