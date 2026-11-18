@@ -189,7 +189,10 @@ export default function Home() {
                 </p>
                 <div className="mt-3 overflow-x-auto py-3 text-xl sm:text-2xl">
                   <Math
-                    latex={String.raw`R_{\mu\nu\rho\sigma}R^{\mu\nu\rho\sigma} = ` + outputLatex(schwarzschild, "Kretschmann scalar")}
+                    latex={
+                      String.raw`R_{\mu\nu\rho\sigma}R^{\mu\nu\rho\sigma} = ` +
+                      outputLatex(schwarzschild, "Kretschmann scalar")
+                    }
                     label="The Kretschmann scalar equals 48 M squared divided by r to the sixth power"
                   />
                 </div>
