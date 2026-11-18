@@ -144,9 +144,18 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   a wrong equation stays unchecked (not contradicted). Lone symbols are not claims. Add a wrong twin to
   `test_claim_evidence.py` for every new rule.
 - Routing (`agent/routing.py`, `MINERVA_AGENT_ROUTING`): a rule may choose the first tool only when two independent
-  signals agree (a formula the rule can read as a Lagrangian with unambiguous velocities, and a request for equations of
-  motion in the words around it). The call goes through `execute`; if it is not verified it is dropped and the model
-  plans. The model writes the answer. Do not route on a keyword alone and do not let a rule compute anything itself.
+  signals agree: structure it can read (a Lagrangian with unambiguous velocities; the one result the previous turn
+  produced; an equation with a derivative of an applied function; matrices the user declared n x n) and words that ask
+  for the operation. Rules: `lagrangian_equations`, `followup_reuse` ("differentiate that result", "integrate it from
+  0 to 1" on `@rN`), `ode_analyze` (classification only; solving stays the user's choice), `matrix_simplify`. A rule
+  needs every argument from what the user wrote (a variable they named or the result's one plain letter, bounds they
+  gave as numbers, sizes in their words) and never fills in an assumption, commutation, invertibility or bound; if one
+  is missing it returns None and the model plans. The call goes through reference resolution, shape repair, transport
+  cleaning and the per-call tool context like a model call. A rule lists the statuses it keeps as an answer
+  (`Route.answers`: `ok`, and `conditions_not_satisfied` for a non-commuting matrix product); any other outcome drops
+  the route and the model plans. The model writes the answer. Do not route on a keyword alone and do not let a rule
+  compute anything itself. `scripts/eval_models.py --routing/--no-routing` (default on, as the server) measures with and
+  without; the report records which.
 - Input layer (`engine notation/`, `agent/mathinput.py`, `agent/arguments.py`; `docs/agent-reliability.md`): what a
   model sends is read by code before a call is keyed or run, from closed lists, never by guessing. In order: shape
   repair (`arguments.repair_arguments`: a list of names sent as one string, one equation where a list is wanted, JSON
