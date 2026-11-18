@@ -239,7 +239,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `MINERVA_LLM_MODE=ollama` + `MINERVA_LLM_BASE_URL` + `MINERVA_LLM_MODEL` use your own model host. The host name never goes into the repo.
 - `scripts/eval_models.py` scores a model on a fixed benchmark through the real loop (`agent/evaluation/`: cases are data in
   `cases.yaml`, each with an independent source and, where possible, a reference call that the test suite runs against the
-  engine; every failure gets one class). Reports are JSON plus Markdown under `docs/benchmarks/`; `docs/model-evaluation.md`
+  engine; every failure gets one class; every failure gets one class; each run also carries separate dimensions (operation, mathematics, evidence, efficiency, multi-turn consistency; see `docs/reliability/evaluation-matrix.md`), `accept:` lists other tools that answer correctly with their own checks, and `--compare` says whether a change is within the run-to-run noise). Reports are JSON plus Markdown under `docs/benchmarks/`; `docs/model-evaluation.md`
   is hand-written interpretation and is never overwritten. Editing the cases changes the case-set digest: say so when
   comparing runs. The model host name never goes into a report.
   Every report opens with a "Model under test" table: the weights as the host reports them (base model, family, size,

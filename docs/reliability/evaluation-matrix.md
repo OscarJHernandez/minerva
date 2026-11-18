@@ -19,6 +19,31 @@ Layers, from cheapest to dearest:
 
 A scripted or replayed run is not evidence about a real model, and a live run is not evidence about the engine.
 
+## What a live run is scored on
+
+`passed` is the conjunction of every check of a case and stays the headline number. Next to it each run carries five
+dimensions that say *what* went wrong (`CaseResult` in `agent/evaluation/score.py`, summarised per run set in the report
+as "Dimensions"; completion has always been its own metric):
+
+| Dimension | True when | Not the same as |
+| --- | --- | --- |
+| operation_ok | an accepted tool was used with arguments that say what the user asked (no tool-selection, argument or parse failure) | `tool_selected` (only the *first* call) |
+| math_ok | no false or contradicted statement, no correct statement marked contradicted, and the card is the expected one where the case states one | the reply being well worded |
+| evidence_ok | nothing false shown as verified; the restriction, the stop after a failed verification and the reuse of a result were respected | `math_ok`: a right answer can still lack its evidence |
+| efficient | no call beyond what the case needs and no repeated call | failing: waste never fails a case by itself |
+| consistent | every turn of a multi-turn case passed (None for one turn) | |
+
+`accept:` lists other tools that answer correctly, each with its own `args`, `expect_card` and `reference`
+(checked against the engine by `--check-cases`). Unlike `also_ok` (acceptable, never looked at), an alternative is
+checked like the expected tool, and a run passes if any accepted tool met its own checks; a correct answer through
+an accepted alternative is no longer a tool-selection failure. A case without `accept` scores exactly as before, and
+the field is left out of the case digest while empty.
+
+`--compare` states, for every change in passes, whether it is within the run-to-run noise: the spread (population
+standard deviation) of the passes per repeat on each side, a limit of twice the larger spread and at least one case. With
+one repeat on a side the noise cannot be measured and nothing is called larger than it. Cases that are unstable across
+repeats are marked in the lists of improved and worse cases.
+
 ## Per tool
 
 Cases: benchmark cases that expect the tool; refs: those with a reference call that the PR tests run against the
