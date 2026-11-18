@@ -1,0 +1,24 @@
+name: Temporary PR 97 formatting diagnostic
+on:
+  push:
+    branches:
+      - docs/landing-value-proposition-20261118
+jobs:
+  format-page:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
+      - run: pnpm install --frozen-lockfile
+      - name: Generate precise Prettier result for PR 97
+        run: |
+          pnpm exec prettier --write apps/site/src/app/page.tsx
+          echo MINERVA_FORMAT_START
+          base64 -w0 apps/site/src/app/page.tsx
+          echo
+          echo MINERVA_FORMAT_END
