@@ -456,10 +456,11 @@ class VectorCalculusArgs(BaseModel):
         default=None,
         description="A surface: the three coordinates as text functions of two parameters over a "
         "rectangle. The orientation is the normal d_u r x d_v r: the ORDER of u and v is the orientation, "
-        "so state it and never choose it for the user. The surface is only `q`, `u`, `v`; the FIELD goes in "
-        "`fields` in x, y, z, never in u, v. Shape (not a problem to copy): F = (y, z, x) over "
-        "r(u, v) = (u, v, u + v) is integral stokes_theorem, expression F, fields [{name: F, kind: vector, "
-        "components: [y, z, x]}], surface {q: [u, v, u + v], u: {name: u, lower: 0, upper: 2}, v: {...}}.",
+        "so state it and never choose it for the user. The surface is only `q`, `u` and `v`; the FIELD is "
+        "declared in `fields` in the system's own coordinates (x, y, z), never in u and v. Example shape "
+        "(not a problem to copy): F = (y, z, x) over r(u, v) = (u, v, u + v), 0 <= u, v <= 2 is "
+        "integral stokes_theorem, expression F, fields [{name: F, kind: vector, components: [y, z, x]}], "
+        "surface {q: [u, v, u + v], u: {name: u, lower: 0, upper: 2}, v: {name: v, lower: 0, upper: 2}}.",
     )
     region: Region | None = Field(
         default=None,
