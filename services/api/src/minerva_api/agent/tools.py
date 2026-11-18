@@ -3840,6 +3840,11 @@ _SHAPE_EXAMPLES: dict[str, Any] = {
     "matrices": [{"name": "A", "rows": 2}],
     "variables": ["x", "y"],
     "conditions": ["y(0) = 1", {"unknown": "y", "order": 0, "at": "0", "value": "1"}],
+    # `statistical_mechanics`: a system is an object with a `kind`, then that kind's own keys
+    "system": {
+        "kind": "levels",
+        "levels": [{"energy": "0"}, {"energy": "epsilon", "degeneracy": "2"}],
+    },
 }
 _SHAPE_MAX_KEYS = 8
 
@@ -3853,6 +3858,8 @@ def _shape_of(schema: dict[str, Any], defs: dict[str, Any], depth: int = 0) -> s
         return " or ".join(dict.fromkeys(parts))
     if "enum" in schema:
         return "one of " + ", ".join(f'"{v}"' for v in schema["enum"])
+    if "oneOf" in schema and isinstance(schema.get("discriminator"), dict):
+        return _tagged_shape(schema, defs, depth)
     kind = schema.get("type")
     if kind == "array":
         item = _shape_of(schema.get("items", {}), defs, depth)
@@ -3882,6 +3889,100 @@ def _shape_of(schema: dict[str, Any], defs: dict[str, Any], depth: int = 0) -> s
         "boolean": "true or false",
     }
     return words.get(str(kind), "a value")
+
+
+def _tagged_shape(schema: dict[str, Any], defs: dict[str, Any], depth: int) -> str:
+    """A union chosen by a tag (`kind`): each tag with the keys that member needs, so a model that sent the
+    wrong tag, or keys of another member, can see what each one is made of."""
+    disc = schema["discriminator"]
+    tag = str(disc.get("propertyName", "kind"))
+    members = []
+    for name, ref in (disc.get("mapping") or {}).items():
+        member = defs.get(str(ref).rsplit("/", 1)[-1], {})
+        props = member.get("properties") or {}
+        required = [k for k in props if k in set(member.get("required", [])) and k != tag]
+        optional = [k for k in props if k not in required and k != tag]
+        keys = ", ".join(
+            [f"{k} ({_shape_of(props[k], defs, depth + 1)}, required)" for k in required]
+            + [f"{k} ({_shape_of(props[k], defs, depth + 1)})" for k in optional[:3]]
+        )
+        members.append(f'"{name}": {keys or "no other keys"}')
+    return f'an object whose "{tag}" is one of these, each with its own keys: ' + "; ".join(members)
+
+
+def _model_of(candidates: list[Any], value: dict[str, Any]) -> type[BaseModel] | None:
+    """The model a dict is meant to be: the only candidate, or the one whose `kind` default or const matches."""
+    models = [c for c in candidates if isinstance(c, type) and issubclass(c, BaseModel)]
+    if len(models) == 1:
+        return models[0]
+    for tp in models:
+        info = tp.model_fields.get("kind")
+        if info is not None and value.get("kind") == info.default:
+            return tp
+    return None
+
+
+def _unknown_keys(
+    candidates: list[Any], value: Any, path: str, found: list[tuple[str, list[str], list[str]]]
+) -> None:
+    """Keys the model sent that the schema does not have, with the keys it does have (names from the
+    schema; the unknown ones are the model's own and are shown back to it only)."""
+    if isinstance(value, list):
+        item_types = [
+            a for c in candidates if get_origin(c) in (list, tuple) for a in get_args(c)[:1]
+        ]
+        for item in value[:3]:
+            _unknown_keys(
+                [t for it in item_types for t in _candidates(it)], item, path + "[]", found
+            )
+        return
+    if not isinstance(value, dict):
+        return
+    tp = _model_of(candidates, value)
+    if tp is None:
+        return
+    valid = [k for k in tp.model_fields if k != "kind"]
+    extra = [str(k) for k in value if k not in tp.model_fields and k != "kind"]
+    if extra:
+        found.append((path or "(top level)", extra[:6], valid[:10]))
+    for key, sub in value.items():
+        info = tp.model_fields.get(str(key))
+        if info is not None:
+            _unknown_keys(
+                _candidates(info.annotation), sub, f"{path}.{key}" if path else key, found
+            )
+
+
+def _unknown_key_note(model: type[BaseModel], arguments: dict[str, Any]) -> str:
+    found: list[tuple[str, list[str], list[str]]] = []
+    _unknown_keys([model], arguments, "", found)
+    return "".join(
+        f" Unknown key{'s' if len(extra) > 1 else ''} in {where}: {', '.join(f'`{k}`' for k in extra)}"
+        f" (ignored; the keys there are {', '.join(f'`{k}`' for k in valid)})."
+        for where, extra, valid in found[:2]
+    )
+
+
+def _focused_hint(model: type[BaseModel], field: str, value: Any) -> str | None:
+    """For a tagged union whose tag the model got right: only that member's keys, not every member's."""
+    if not isinstance(value, dict):
+        return None
+    schema = model.model_json_schema()
+    prop = schema.get("properties", {}).get(field) or {}
+    disc = prop.get("discriminator")
+    if "oneOf" not in prop or not isinstance(disc, dict):
+        return None
+    tag = str(disc.get("propertyName", "kind"))
+    ref = (disc.get("mapping") or {}).get(str(value.get(tag)))
+    if ref is None:
+        return None
+    member = schema.get("$defs", {}).get(str(ref).rsplit("/", 1)[-1], {})
+    props = {k: v for k, v in (member.get("properties") or {}).items() if k != tag}
+    keys = ", ".join(
+        f"{k} ({_shape_of(v, schema.get('$defs', {}), 1)}{', required' if k in member.get('required', []) else ''})"
+        for k, v in props.items()
+    )
+    return f'an object with "{tag}": "{value[tag]}" and the keys {keys}'
 
 
 def _shape_hint(model: type[BaseModel], field: str) -> str | None:
@@ -3991,7 +4092,9 @@ def _validation_fields(
     return code, tuple(paths[:6])
 
 
-def _validation_message(exc: ValidationError, model: type[BaseModel]) -> str:
+def _validation_message(
+    exc: ValidationError, model: type[BaseModel], arguments: dict[str, Any] | None = None
+) -> str:
     """Every distinct problem (up to three) with the fix for the usual wrong shapes.
 
     A list of four conditions that all lack the same key is one problem, not four, and the error of
@@ -4015,12 +4118,18 @@ def _validation_message(exc: ValidationError, model: type[BaseModel]) -> str:
         first = ".".join(str(p) for p in err["loc"] if p not in ("OdeCondition", "str"))
         label = first if count == 1 else f"{where} ({count} items, e.g. {first})"
         parts.append(f"{label}: {msg}")
-        hint = _shape_hint(model, str(err["loc"][0])) if err["loc"] else None
+        top = str(err["loc"][0]) if err["loc"] else None
+        hint = (
+            _focused_hint(model, top, (arguments or {}).get(top)) if top and arguments else None
+        ) or (_shape_hint(model, top) if top else None)
         if hint and hint not in hints:
             hints.append(hint)
     more = len(problems) - len(shown)
     text = "; ".join(parts) + (f"; and {more} more" if more > 0 else "")
-    return f"invalid arguments ({text})" + "".join(f" It must be {hint}." for hint in hints)
+    unknown = _unknown_key_note(model, arguments) if arguments else ""
+    return (
+        f"invalid arguments ({text})" + "".join(f" It must be {hint}." for hint in hints) + unknown
+    )
 
 
 _BARE_E_POWER = re.compile(r"(?<![A-Za-z\\])e\s*\^")
@@ -4142,7 +4251,7 @@ def execute(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutpu
     except ValidationError as exc:
         invalid = _error(
             name,
-            _validation_message(exc, tool.args_model),
+            _validation_message(exc, tool.args_model, arguments),
             "invalid_arguments",
             arguments_valid=False,
         )
