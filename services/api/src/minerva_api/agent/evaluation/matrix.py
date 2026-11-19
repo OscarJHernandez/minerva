@@ -269,8 +269,8 @@ def matrix_report(docs: list[dict[str, Any]]) -> str:
             "another. Run every configuration on the same cases."
         )
         return "\n".join(lines) + "\n"
-    for title, quick in (("At any speed", False), ("Within the chat ceiling", True)):
-        best, tied = decide(rows, quick=quick)
+    for title, only_quick in (("At any speed", False), ("Within the chat ceiling", True)):
+        best, tied = decide(rows, quick=only_quick)
         if best is None:
             lines.append(
                 f"- **{title}**: no configuration qualifies; the reasons are in the table above."
@@ -290,6 +290,15 @@ def matrix_report(docs: list[dict[str, Any]]) -> str:
                 + "."
             )
         lines.append(text)
+    eligible = [r for r in rows if r.eligible]
+    if eligible:
+        top = max(eligible, key=lambda r: r.mean_passes)
+        lines.append(
+            f"- Highest pass rate: {top.name}, digest {top.digest or 'not recorded'}, {top.passed}/{top.runs} "
+            f"({_p(top.rate)}), median {_s(top.median_s)} s. The result above names the fastest of the "
+            "configurations that cannot be told apart from the most accurate, so a slower one that is no worse "
+            "never loses to a faster one that is merely tied."
+        )
     unmeasured = [r.name for r in rows if r.eligible and len(r.repeats) < 2]
     if unmeasured:
         lines.append(
