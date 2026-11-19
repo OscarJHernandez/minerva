@@ -20,7 +20,7 @@ correctness" below, say so and propose an alternative instead of complying silen
 ## Architecture
 
 ```
-apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
+apps/site/            Landing page and /benchmarks, /docs. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad plus matrix, geometry and vector modes, no LLM), handbook, login. Next.js 16 + Tailwind 4
 packages/ui/          Shared theme tokens, the KaTeX <Math> component and the registry of "Explore in Minerva" entry points (`fixtures/explorations.json`)
 e2e/                  Playwright browser tests: landing page -> login -> chat -> run -> continue, against the built site and web app and a real API with the scripted model
@@ -81,6 +81,7 @@ uv run python -m minerva_engine.approx.benchmark [--check]       # 20 cases with
 uv run python -m minerva_engine.creative_telescoping.benchmark [--check]  # 29 problems vs. independent references; docs/creative-telescoping-benchmark.md + docs/benchmarks/creative_telescoping.json (`make bench-telescoping`)
 uv run python -m minerva_engine.integration_strategy.benchmark [--check]  # techniques vs. quadrature, default call vs. requested strategy; docs/integration-strategies-benchmark.md + docs/benchmarks/integration_strategies.json
 uv run python scripts/capabilities.py [--check]       # regenerate docs/capabilities.md + site data from docs/capabilities.yaml (CI runs --check)
+uv run python scripts/benchmarks_site.py [--check]   # regenerate apps/site/src/data/benchmarks.json from docs/benchmarks/*.json for the site's /benchmarks page (every count read from a committed report; it refuses a failing case, a lost refusal, counts that do not add up or a chat report without the model's identity); `test_benchmarks_site.py` runs --check
 uv run python scripts/verification_report.py [--check|--compare docs/benchmarks/verification-summary-baseline.json]   # false accepts/rejects, counterexamples, evidence kinds by domain; CI runs --check (docs/verification-testing.md)
 uv run python -m minerva_engine.reference_benchmark [--check] [--tier pr|extended]   # (extended rewrites the report) expected answers are hand-written in minerva_engine/reference/, never regenerated
 MINERVA_TEST_TIER=extended MINERVA_HYPOTHESIS_PROFILE=extended uv run pytest packages/engine --hypothesis-seed=N   # extended tier: `make test-extended` (nightly workflow runs it)

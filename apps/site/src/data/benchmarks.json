@@ -1,0 +1,339 @@
+{
+  "suites": [
+    {
+      "id": "statistics",
+      "title": "Statistical derivations",
+      "what": "Sums and products, expectations, moments of probability families, maximum-likelihood estimators, Fisher information, Bayesian posteriors and matrix gradients, against hand-written references.",
+      "total": 108,
+      "correct": 51,
+      "refused": 28,
+      "rejected": 29,
+      "pending": 0,
+      "sources": [
+        "statistics.json"
+      ],
+      "command": "uv run python -m minerva_knowledge stat-benchmark",
+      "doc": "docs/statistics-benchmark.md"
+    },
+    {
+      "id": "vector",
+      "title": "Vector calculus",
+      "what": "Gradient, divergence, curl and Laplacian in Cartesian, cylindrical and spherical coordinates, identities, derivations, integral theorems and point sources, with textbook references and refusals.",
+      "total": 125,
+      "correct": 87,
+      "refused": 38,
+      "rejected": 0,
+      "pending": 0,
+      "sources": [
+        "vector.json"
+      ],
+      "command": "uv run python -m minerva_engine.vector.benchmark --check",
+      "doc": "docs/vector-benchmark.md"
+    },
+    {
+      "id": "geometry",
+      "title": "Differential geometry",
+      "what": "Christoffel symbols, curvature and geodesics of explicit metrics, compared with closed forms and with an independent numerical recomputation, plus malformed metrics that must be refused.",
+      "total": 20,
+      "correct": 12,
+      "refused": 8,
+      "rejected": 0,
+      "pending": 0,
+      "sources": [
+        "geometry.json"
+      ],
+      "command": "uv run python -m minerva_engine.geometry.benchmark --check",
+      "doc": "docs/geometry-benchmark.md"
+    },
+    {
+      "id": "reference",
+      "title": "Problems answered from outside Minerva",
+      "what": "Differential equations, distributions, calculus and matrices whose expected answers come from other tools (mpmath, quadrature, plain arithmetic), written by hand and never regenerated from the code.",
+      "total": 102,
+      "correct": 70,
+      "refused": 31,
+      "rejected": 0,
+      "pending": 1,
+      "sources": [
+        "reference.json"
+      ],
+      "command": "uv run python -m minerva_engine.reference_benchmark --check",
+      "doc": "docs/reference-benchmark.md"
+    },
+    {
+      "id": "statmech",
+      "title": "Statistical mechanics",
+      "what": "Partition functions and the quantities derived from them against closed forms, with refusals that must carry a named reason (a divergent sum, a substituted ensemble).",
+      "total": 49,
+      "correct": 27,
+      "refused": 22,
+      "rejected": 0,
+      "pending": 0,
+      "sources": [
+        "statmech.json"
+      ],
+      "command": "uv run python -m minerva_engine.statmech.benchmark --check",
+      "doc": "docs/statmech-benchmark.md"
+    },
+    {
+      "id": "telescoping",
+      "title": "Parameterised integrals",
+      "what": "Integrals with a parameter, where a certificate is verified exactly, forged certificates must be rejected and problems beyond the searched class must be declined.",
+      "total": 29,
+      "correct": 15,
+      "refused": 8,
+      "rejected": 6,
+      "pending": 0,
+      "sources": [
+        "creative_telescoping.json"
+      ],
+      "command": "uv run python -m minerva_engine.creative_telescoping.benchmark --check",
+      "doc": "docs/creative-telescoping-benchmark.md"
+    },
+    {
+      "id": "integration",
+      "title": "Integration strategies",
+      "what": "Named techniques (symmetry, Frullani, Schwinger and others) checked against quadrature, with techniques whose conditions are not established reported as blocked.",
+      "total": 21,
+      "correct": 17,
+      "refused": 4,
+      "rejected": 0,
+      "pending": 0,
+      "sources": [
+        "integration_strategies.json"
+      ],
+      "command": "uv run python -m minerva_engine.integration_strategy.benchmark --check",
+      "doc": "docs/integration-strategies-benchmark.md"
+    },
+    {
+      "id": "distributions",
+      "title": "Dirac delta and Heaviside",
+      "what": "Distributions as distributions: roots, scaling and jumps, with a test-function pairing as separate evidence, and wrong transformations that must be rejected.",
+      "total": 54,
+      "correct": 29,
+      "refused": 15,
+      "rejected": 10,
+      "pending": 0,
+      "sources": [
+        "distributions.json"
+      ],
+      "command": "uv run python -m minerva_knowledge benchmark --only distributions",
+      "doc": "docs/distribution-benchmark.md"
+    },
+    {
+      "id": "variational",
+      "title": "Variational calculus",
+      "what": "Euler-Lagrange equations, boundary terms and stationary paths of explicit actions, against closed forms.",
+      "total": 22,
+      "correct": 22,
+      "refused": 0,
+      "rejected": 0,
+      "pending": 0,
+      "sources": [
+        "variational.json"
+      ],
+      "command": "uv run python -m minerva_engine.variational.benchmark --check",
+      "doc": "docs/variational-benchmark.md"
+    },
+    {
+      "id": "approximation",
+      "title": "Approximations",
+      "what": "Taylor, Pade, Chebyshev, Fourier, asymptotic and Euler-Maclaurin results, with answers from outside Minerva (Bessel and Hurwitz functions, OEIS, Stirling).",
+      "total": 20,
+      "correct": 20,
+      "refused": 0,
+      "rejected": 0,
+      "pending": 0,
+      "sources": [
+        "approximation.json"
+      ],
+      "command": "uv run python -m minerva_engine.approx.benchmark --check",
+      "doc": "docs/approximation-benchmark.md"
+    }
+  ],
+  "verification": {
+    "problems": 228,
+    "correct": 129,
+    "refused": 97,
+    "false_accepts": 0,
+    "false_rejects": 0,
+    "counterexamples_found": 17,
+    "pending": 1,
+    "known_open": 1,
+    "evidence": {
+      "symbolic_proof": 5,
+      "numeric_agreement": 53,
+      "structural": 9,
+      "conditional": 3,
+      "refusal": 31,
+      "unrecorded": 0
+    },
+    "source": "verification-summary.json",
+    "doc": "docs/verification-testing.md",
+    "command": "uv run python scripts/verification_report.py --check"
+  },
+  "chat": {
+    "rows": [
+      {
+        "id": "all",
+        "title": "Core and reliability cases",
+        "report": "baseline-2026-11-19-all.json",
+        "date": "2026-11-18",
+        "model": {
+          "alias": "minerva",
+          "base_model": "gemma4:26b",
+          "family": "gemma4",
+          "parameter_size": "25.2B",
+          "quantization": "Q4_K_M",
+          "digest": "149a0ff8a1ca",
+          "thinking_requested": false,
+          "reply_limit": 1200,
+          "reply_limit_is_host_default": true
+        },
+        "run": {
+          "runs": 510,
+          "cases": 170,
+          "repeats": 3,
+          "seed": 7,
+          "compute_limit_seconds": 10.0,
+          "cases_digest": "091eb4bf23e4",
+          "code": "c7f00a3e95"
+        },
+        "passed": 363,
+        "per_repeat": [
+          123,
+          122,
+          118
+        ],
+        "measured": {
+          "pass_rate": 0.711764705882353,
+          "tool_selection": 0.8607843137254902,
+          "valid_arguments": 0.8796992481203008,
+          "completion": 0.9372549019607843,
+          "false_verified": 0
+        },
+        "median_seconds": 7.0,
+        "p95_seconds": 20.2
+      },
+      {
+        "id": "probe",
+        "title": "Probe suite (written before the traces were read)",
+        "report": "baseline-2026-11-19-probe.json",
+        "date": "2026-11-19",
+        "model": {
+          "alias": "minerva",
+          "base_model": "gemma4:26b",
+          "family": "gemma4",
+          "parameter_size": "25.2B",
+          "quantization": "Q4_K_M",
+          "digest": "149a0ff8a1ca",
+          "thinking_requested": false,
+          "reply_limit": 1200,
+          "reply_limit_is_host_default": true
+        },
+        "run": {
+          "runs": 114,
+          "cases": 38,
+          "repeats": 3,
+          "seed": 7,
+          "compute_limit_seconds": 10.0,
+          "cases_digest": "6c095266ac4c",
+          "code": "5a3def49e0"
+        },
+        "passed": 98,
+        "per_repeat": [
+          32,
+          33,
+          33
+        ],
+        "measured": {
+          "pass_rate": 0.8596491228070176,
+          "tool_selection": 0.9473684210526315,
+          "valid_arguments": 1.0,
+          "completion": 1.0,
+          "false_verified": 0
+        },
+        "median_seconds": 4.2,
+        "p95_seconds": 12.6
+      },
+      {
+        "id": "heldout",
+        "title": "Held-out workflows in other words",
+        "report": "baseline-2026-11-19-heldout.json",
+        "date": "2026-11-19",
+        "model": {
+          "alias": "minerva",
+          "base_model": "gemma4:26b",
+          "family": "gemma4",
+          "parameter_size": "25.2B",
+          "quantization": "Q4_K_M",
+          "digest": "149a0ff8a1ca",
+          "thinking_requested": false,
+          "reply_limit": 1200,
+          "reply_limit_is_host_default": true
+        },
+        "run": {
+          "runs": 18,
+          "cases": 6,
+          "repeats": 3,
+          "seed": 7,
+          "compute_limit_seconds": 10.0,
+          "cases_digest": "aa9c5446ddfd",
+          "code": "c7f00a3e95"
+        },
+        "passed": 17,
+        "per_repeat": [
+          6,
+          6,
+          5
+        ],
+        "measured": {
+          "pass_rate": 0.9444444444444444,
+          "tool_selection": 1.0,
+          "valid_arguments": 1.0,
+          "completion": 1.0,
+          "false_verified": 0
+        },
+        "median_seconds": 6.2,
+        "p95_seconds": 11.6
+      }
+    ],
+    "targets": [
+      {
+        "id": "pass_rate",
+        "label": "Pass rate",
+        "target": 0.85,
+        "measured": 0.711764705882353,
+        "met": false
+      },
+      {
+        "id": "tool_selection",
+        "label": "Tool selection",
+        "target": 0.95,
+        "measured": 0.8607843137254902,
+        "met": false
+      },
+      {
+        "id": "valid_arguments",
+        "label": "Valid arguments",
+        "target": 0.99,
+        "measured": 0.8796992481203008,
+        "met": false
+      },
+      {
+        "id": "completion",
+        "label": "Completion",
+        "target": 0.95,
+        "measured": 0.9372549019607843,
+        "met": false
+      },
+      {
+        "id": "false_verified",
+        "label": "Results wrongly shown as verified",
+        "target": 0,
+        "measured": 0,
+        "met": true
+      }
+    ]
+  }
+}
