@@ -106,6 +106,45 @@ def test_an_explicit_wrong_format_is_switched_once() -> None:
     )
 
 
+# The metric the deployed model sent in the landing-page trial (2026-11-19), with an explicit `format: latex`: the
+# first cell parsed (`^(-1)`) used to fail with an uncoded error, so nothing told the loop to read it as text.
+TRIAL_METRIC = {
+    "coordinates": ["t", "r", "theta", "phi"],
+    "metric": [
+        ["-(1-2*M/r)", "0", "0", "0"],
+        ["0", "(1-2*M/r)^(-1)", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", "r^2*sin(theta)^2"],
+    ],
+    "quantities": ["ricci"],
+    "format": "latex",
+}
+
+
+def test_a_text_metric_sent_as_latex_is_read_as_text_once(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("geometry", TRIAL_METRIC), say("The Ricci tensor vanishes.")])
+    message = final(play(llm, ctx))
+    (step,) = message["trace"]
+    assert step["status"] == "ok" and step["policy"] == "format_switch"
+    assert len(message["debug"]["llm_calls"]) == 2  # no retry round trip through the model
+    (card,) = cards(message)
+    assert card["data"]["request"]["format"] == "text"
+    ricci = card["data"]["result"]["quantities"][0]
+    assert ricci["kind"] == "ricci" and ricci["all_zero"] is True
+
+
+def test_a_latex_metric_with_a_real_error_is_not_switched(ctx: ToolContext) -> None:
+    # `\frac{1}{` is broken LaTeX, not text syntax: refused once, never re-read as text
+    broken = {
+        **TRIAL_METRIC,
+        "metric": [["\\frac{1}{", "0"], ["0", "1"]],
+        "coordinates": ["x", "y"],
+    }
+    out = execute("geometry", broken, ctx)
+    assert out.status == "parse_error"
+    assert rerun_arguments("geometry", broken, out) is None
+
+
 def test_no_switch_without_a_matching_code_or_a_format_field() -> None:
     latex = {**ARGS, "format": "latex"}
     assert rerun_arguments("analyze_lagrangian", latex, _parse_failure("syntax")) is None

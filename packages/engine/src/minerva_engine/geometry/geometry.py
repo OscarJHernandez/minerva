@@ -20,6 +20,7 @@ import sympy as sp
 from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..latexprint import to_latex
 from ..models import Limits, Status
+from ..notation.models import InputDiagnostic
 from . import field
 from .compute import CONVENTIONS, Workspace
 from .domain import restrictions, signature
@@ -72,7 +73,7 @@ def geometry(
     try:
         geo = _timed(diagnostics, "setup", lambda: build_geometry(data, limits, max_dimension))
     except GeometryError as exc:
-        return _fail(diagnostics, exc.status, exc.message)
+        return _fail(diagnostics, exc.status, exc.message, diagnostic=exc.diagnostic)
     except MinervaMathError as exc:
         if isinstance(exc, LimitError):
             status = Status.RESOURCE_LIMIT
@@ -411,10 +412,12 @@ def _fail(
     status: Status,
     message: str,
     base: GeometryResult | None = None,
+    diagnostic: InputDiagnostic | None = None,
 ) -> GeometryResult:
     result = base or GeometryResult(status=status)
     result.status = status
     result.message = message
+    result.diagnostic = diagnostic
     result.diagnostics = diagnostics
     result.peak_memory_mb = _peak_memory_mb()
     return result

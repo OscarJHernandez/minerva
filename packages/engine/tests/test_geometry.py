@@ -506,6 +506,41 @@ def test_correct_results_report_every_numeric_leg_passed() -> None:
         )
 
 
+# --- a metric written in text syntax ------------------------------------------------------------------------
+TEXT_METRIC = [
+    ["-(1-2*M/r)", "0", "0", "0"],
+    ["0", "(1-2*M/r)^(-1)", "0", "0"],
+    ["0", "0", "r^2", "0"],
+    ["0", "0", "0", "r^2*sin(theta)^2"],
+]
+
+
+def test_a_text_metric_read_as_latex_is_refused_with_the_typed_reason() -> None:
+    # `^(-1)` in the second cell would fail first with a generic error; every cell is checked for text syntax
+    # first, so the refusal says what is wrong and carries the code the chat uses to re-read it as text
+    r = run(["t", "r", "theta", "phi"], TEXT_METRIC, ["ricci"])
+    assert r.status is Status.PARSE_ERROR
+    assert r.diagnostic is not None and r.diagnostic.code.value == "text_syntax_in_latex"
+    assert r.diagnostic.field == "metric" and r.diagnostic.recoverable
+
+
+def test_the_same_metric_read_as_text_is_schwarzschild() -> None:
+    r = run(["t", "r", "theta", "phi"], TEXT_METRIC, ["ricci", "kretschmann"], format="text")
+    assert r.status is Status.OK and r.diagnostic is None
+    assert quantity(r, "ricci").all_zero
+    assert quantity(r, "kretschmann").scalar_text == "48*M**2/r**6"
+
+
+def test_a_latex_metric_is_unaffected_by_the_text_check() -> None:
+    r = run(
+        ["t", "r", "theta", "phi"],
+        SCHWARZSCHILD,
+        ["ricci"],
+        assumptions={"M": ["positive"], "r": ["positive"]},
+    )
+    assert r.status is Status.OK and r.diagnostic is None
+
+
 # --- the Kretschmann scalar has an independent symbolic leg --------------------------------------------
 def kretschmann_checks(v):  # type: ignore[no-untyped-def]
     return next(c for c in v.checks if c.kind == "symbolic")
