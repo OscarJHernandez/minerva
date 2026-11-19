@@ -59,3 +59,21 @@ def test_noncommuting_polynomial_identities_in_both_directions() -> None:
     assert not verify_equal_nc(A * B, B * A).passed
     assert verify_equal_nc(A * (B + A), A * B + A**2).passed
     assert not verify_equal_nc((A + B) * (A - B), A**2 - B**2).passed  # cross terms do not cancel
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="V-017: a probe search the clock cut short returns `exhausted`, which nothing reads, so the pass says nothing",
+)
+def test_a_search_the_clock_cut_short_does_not_pass_silently() -> None:
+    import minerva_engine.verify as verify_module
+
+    case = next(c for c in CASES if c.id == "branch.log_reciprocal_cut")
+    saved = verify_module.PROBE_SECONDS
+    verify_module.PROBE_SECONDS = 0.0  # the clock ends the search before its first point
+    try:
+        verification = verify_equal(case.a, case.b, symbolic=False)
+    finally:
+        verify_module.PROBE_SECONDS = saved
+    # Either it does not claim agreement, or it says that probes were skipped.
+    assert (not verification.passed) or "probe" in verification.note.lower()
