@@ -2,11 +2,15 @@
 
 The rule is fixed before the runs and written in docs/reliability/model-comparison.md; this module only applies it:
 
-1. a configuration with a false verified result, or not fully on the GPU, or over the chat latency ceiling, is
-   not eligible as the default (it is still listed, with the reason);
+1. a configuration with a false verified result, or not fully on the GPU (its latency would measure the spill), is
+   not eligible (it is still listed, with the reason);
 2. among the eligible, a higher pass rate counts only when the gap is larger than the run-to-run noise of both
    (`max(1, 2 x the larger std)` passes per repeat, the rule of `--compare`);
 3. a tie goes to the lower p95.
+
+Speed is reported twice and never decides alone: the best configuration **at any speed**, and the best **within
+the chat latency ceiling**. A chat may be slow when it is accurate (the maintainer's call, 2026-11-19), so a slow
+configuration stays in the screen and in the result; the ceiling only says which ones also answer quickly.
 
 Every row names the model, its digest, whether thinking was requested and the reply budget, so a number cannot be
 quoted without them. The host's address is never in a report.
@@ -49,11 +53,20 @@ class Row:
     median_s: float | None
     p95_s: float | None
     tokens_out: int | None
-    reasons: list[str] = field(default_factory=list)
+    reasons: list[str] = field(default_factory=list)  # keeps a row out of every result
+    slow: list[str] = field(
+        default_factory=list
+    )  # over the chat latency ceiling: only out of the quick result
 
     @property
     def eligible(self) -> bool:
+        """Eligible at any speed."""
         return not self.reasons
+
+    @property
+    def quick(self) -> bool:
+        """Eligible and within the chat latency ceiling."""
+        return self.eligible and not self.slow
 
     @property
     def rate(self) -> float:
@@ -136,13 +149,15 @@ def rows_of(docs: list[dict[str, Any]]) -> list[Row]:
                 p95_s=latency.get("p95"),
                 tokens_out=summary.get("tokens_out"),
             )
-            row.reasons = _reasons(row)
+            row.reasons, row.slow = _reasons(row)
             rows.append(row)
     return rows
 
 
-def _reasons(row: Row) -> list[str]:
+def _reasons(row: Row) -> tuple[list[str], list[str]]:
+    """(what keeps a row out of every result, what only keeps it out of the quick result)."""
     out: list[str] = []
+    slow: list[str] = []
     if row.false_verified:
         out.append(f"{row.false_verified} false verified result(s)")
     if row.gpu_share is None:
@@ -153,12 +168,12 @@ def _reasons(row: Row) -> list[str]:
         out.append("latency not recorded")
     else:
         if row.median_s > MEDIAN_CEILING_SECONDS:
-            out.append(
+            slow.append(
                 f"median {row.median_s:.1f} s is over the {MEDIAN_CEILING_SECONDS:.0f} s ceiling"
             )
         if row.p95_s > P95_CEILING_SECONDS:
-            out.append(f"p95 {row.p95_s:.1f} s is over the {P95_CEILING_SECONDS:.0f} s ceiling")
-    return out
+            slow.append(f"p95 {row.p95_s:.1f} s is over the {P95_CEILING_SECONDS:.0f} s ceiling")
+    return out, slow
 
 
 def noise_limit(a: Row, b: Row) -> float:
@@ -189,12 +204,13 @@ def screen(rows: list[Row], keep: int = 3) -> list[Row]:
     ]
 
 
-def decide(rows: list[Row]) -> tuple[Row | None, list[Row]]:
+def decide(rows: list[Row], *, quick: bool = False) -> tuple[Row | None, list[Row]]:
     """(the best eligible row, the eligible rows that cannot be told apart from it).
 
     Ties inside the noise go to the lower p95, so the first element is the answer under the written rule.
+    `quick=True` considers only rows within the chat latency ceiling; the default is any speed.
     """
-    eligible = [r for r in rows if r.eligible]
+    eligible = [r for r in rows if (r.quick if quick else r.eligible)]
     if not eligible:
         return None, []
     top = max(eligible, key=lambda r: r.mean_passes)
@@ -222,29 +238,30 @@ def matrix_report(docs: list[dict[str, Any]]) -> str:
         "",
         f"{len(rows)} configuration(s) from {len(docs)} report(s). Case sets {', '.join(case_sets)}"
         f" (a row is comparable with another only on the same case set); seeds {', '.join(seeds)}. "
-        f"Decision rule: no false verified result, fully on the GPU, median <= {MEDIAN_CEILING_SECONDS:.0f} s and p95 <= "
-        f"{P95_CEILING_SECONDS:.0f} s per turn on this host; then pass rate where the gap exceeds the run-to-run noise; "
-        "ties go to the lower p95.",
+        "Decision rule: no false verified result and fully on the GPU; then pass rate where the gap exceeds the "
+        "run-to-run noise; ties go to the lower p95. Speed is reported apart: the best at any speed, and the best "
+        f"within the chat ceiling (median <= {MEDIAN_CEILING_SECONDS:.0f} s, p95 <= {P95_CEILING_SECONDS:.0f} s per turn "
+        "on this host).",
         "",
         "## Configurations",
         "",
         "| Report | Model | Weights as the host reports them | Digest | Thinking | Reply budget | On GPU | "
         "Runs | Passed | Per repeat | Tool selection | Valid arguments | Completion | False verified | "
-        "No tool called | Cut off | Median s | p95 s | Tokens out | Eligible as default |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "No tool called | Cut off | Median s | p95 s | Tokens out | Eligible | Within chat ceiling |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
         think = {True: "on", False: "off", None: "not recorded"}[r.thinking]
         gpu = "not recorded" if r.gpu_share is None else f"{100 * r.gpu_share:.0f}%"
         verdict = "yes" if r.eligible else "no: " + "; ".join(r.reasons)
+        quick = "yes" if r.quick else ("no: " + "; ".join(r.slow) if r.eligible else "n/a")
         lines.append(
             f"| {r.source} | {r.model} | {r.weights} | {r.digest or 'not recorded'} | {think} | "
             f"{r.reply_budget} | {gpu} | {r.runs} | {r.passed} ({_p(r.rate)}) | {r.repeats} | "
             f"{_p(r.tool_selection)} | {_p(r.valid_arguments)} | {_p(r.completion)} | {r.false_verified} | "
             f"{r.no_tool_runs} | {r.cut_off} | {_s(r.median_s)} | {_s(r.p95_s)} | "
-            f"{'n/a' if r.tokens_out is None else r.tokens_out} | {verdict} |"
+            f"{'n/a' if r.tokens_out is None else r.tokens_out} | {verdict} | {quick} |"
         )
-    best, tied = decide(rows)
     lines += ["", "## Result under the rule", ""]
     if len(case_sets) > 1:
         lines.append(
@@ -252,31 +269,38 @@ def matrix_report(docs: list[dict[str, Any]]) -> str:
             "another. Run every configuration on the same cases."
         )
         return "\n".join(lines) + "\n"
-    if best is None:
-        lines.append(
-            "No configuration is eligible as the default; the reasons are in the last column above."
-        )
-    else:
-        lines.append(
-            f"Best eligible: **{best.name}**, digest {best.digest or 'not recorded'}, reply budget {best.reply_budget}."
+    for title, quick in (("At any speed", False), ("Within the chat ceiling", True)):
+        best, tied = decide(rows, quick=quick)
+        if best is None:
+            lines.append(
+                f"- **{title}**: no configuration qualifies; the reasons are in the table above."
+            )
+            continue
+        text = (
+            f"- **{title}**: {best.name}, digest {best.digest or 'not recorded'}, reply budget {best.reply_budget}, "
+            f"median {_s(best.median_s)} s, p95 {_s(best.p95_s)} s."
         )
         if tied:
-            lines.append(
-                "Not distinguishable from it within the run-to-run noise: "
-                + ", ".join(f"{t.name} (digest {t.digest or 'not recorded'})" for t in tied)
+            text += (
+                " Not distinguishable from it within the run-to-run noise: "
+                + ", ".join(
+                    f"{t.name} (digest {t.digest or 'not recorded'}, median {_s(t.median_s)} s)"
+                    for t in tied
+                )
                 + "."
             )
-        unmeasured = [r.name for r in rows if r.eligible and len(r.repeats) < 2]
-        if unmeasured:
-            lines.append(
-                "Noise could not be measured (fewer than two repeats) for: "
-                + ", ".join(unmeasured)
-                + "."
-            )
+        lines.append(text)
+    unmeasured = [r.name for r in rows if r.eligible and len(r.repeats) < 2]
+    if unmeasured:
+        lines.append(
+            "- Noise could not be measured (fewer than two repeats) for: "
+            + ", ".join(unmeasured)
+            + "."
+        )
     kept = screen(rows)
     lines += [
         "",
-        "Stage-1 cut (every eligible configuration within noise of third place): "
+        "Stage-1 cut (every eligible configuration within noise of third place, at any speed): "
         + (", ".join(r.name for r in kept) or "none")
         + ".",
         "",
