@@ -82,21 +82,38 @@ def test_a_false_verified_result_is_never_eligible_however_well_it_scores() -> N
     assert "false verified" in " ".join(rows[0].reasons)
 
 
-def test_over_the_latency_ceiling_or_off_the_gpu_is_not_eligible() -> None:
+def test_off_the_gpu_is_never_eligible_but_a_slow_model_is() -> None:
     rows = rows_of(
         [
             doc(
                 {
                     "slow": entry([90, 90, 90], p95=60.0),
-                    "spill": entry([90, 90, 90], gpu=0.6),
+                    "spill": entry([95, 95, 95], gpu=0.6),
                     "ok": entry([70, 70, 70]),
                 }
             )
         ]
     )
+    # at any speed the most accurate eligible model wins, however slow: a chat may be slow when it is accurate
     best, _ = decide(rows)
+    assert best is not None and best.model == "slow"
+    assert [r.eligible for r in rows] == [
+        True,
+        False,
+        True,
+    ]  # a spill measures the spill, not the model
+    assert [r.quick for r in rows] == [False, False, True]
+
+
+def test_the_quick_result_only_considers_models_within_the_chat_ceiling() -> None:
+    rows = rows_of([doc({"slow": entry([90, 90, 90], median=30.0), "ok": entry([70, 70, 70])})])
+    best, _ = decide(rows, quick=True)
     assert best is not None and best.model == "ok"
-    assert [r.eligible for r in rows] == [False, False, True]
+    text = matrix_report(
+        [doc({"slow": entry([90, 90, 90], median=30.0), "ok": entry([70, 70, 70])})]
+    )
+    assert "**At any speed**: slow" in text and "**Within the chat ceiling**: ok" in text
+    assert "over the 15 s ceiling" in text
 
 
 def test_a_gap_inside_the_noise_is_a_tie_and_the_lower_p95_wins() -> None:
@@ -128,7 +145,7 @@ def test_different_case_sets_are_not_ranked() -> None:
     text = matrix_report(
         [doc({"a": entry([70, 70, 70])}, cases="c1"), doc({"b": entry([60, 60, 60])}, cases="c2")]
     )
-    assert "Not decided" in text and "Best eligible" not in text
+    assert "Not decided" in text and "At any speed" not in text
 
 
 def test_an_unrecorded_gpu_share_is_said_not_assumed() -> None:

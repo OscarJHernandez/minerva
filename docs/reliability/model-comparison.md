@@ -30,19 +30,22 @@ three times the latency, and needs a reply budget larger than the host default t
 - **Reply budget**: `--num-predict 4096`, in both arms and for every model. The `minerva` thinking-off reference at
   4096 is **re-measured**, not taken from the 2026-11-19 baseline (which ran at the host default of 1200); the old
   baseline is quoted beside it as the effect of the budget alone.
-- **Chat latency ceiling** (whole turn on this host): median <= 15 s and p95 <= 40 s, about twice the 2026-11-19
-  baseline (7.0 s, 20.2 s). A configuration above either is reported and cannot be recommended as the default; it may
-  be recommended as an opt-in thorough mode. The numbers are the maintainer's to change here before Stage 1 starts.
+- **Speed is reported, never the deciding factor** (amended 2026-11-19 on the maintainer's instruction, after the first
+  Stage 1 results; the original text made a latency ceiling a condition for being the default): this is a bench of a
+  math tool, a chat may be slow when it is accurate. Every result is given twice, **at any speed** (the main result) and
+  **within the chat ceiling** (median <= 15 s and p95 <= 40 s per turn, about twice the 2026-11-19 baseline of 7.0 s and
+  20.2 s), so a slow configuration is never hidden and the cost of choosing it is stated. The ceiling no longer drops a
+  configuration from the screen. `qwen3.6:27b` (median 22.7 s, p95 57.3 s with thinking off) was the first affected.
 - **GPU**: the share of the loaded model that sits on the GPU is recorded for each run (`/api/ps`). Under 99%, or not
   recorded, the latency is not attributed to the model and the configuration is not eligible as the default.
-- **Decision rule** (implemented in `agent/evaluation/matrix.py`, `eval_models.py --matrix`): no false verified result;
-  within the ceiling and fully on the GPU; then pass rate, counted only when the gap is larger than the noise of both
+- **Decision rule** (implemented in `agent/evaluation/matrix.py`, `eval_models.py --matrix`): no false verified result
+  and fully on the GPU; then pass rate, counted only when the gap is larger than the noise of both
   runs (`max(1, 2 x the larger std)` passes per repeat, as in `--compare`); ties go to the lower p95. Per dimension,
   no single score.
 - **Stage 1 (screen)**: the frozen probe suite (38 cases, 44 turns; `--suite probe`), 3 repeats, seed 7,
   `--compute-timeout 10`, routing on, code at `main`. The cut keeps **every eligible configuration within noise of
-  third place** (`matrix.screen`), not a fixed number. Configurations over the ceiling or with a false verified result
-  are dropped first.
+  third place** (`matrix.screen`), not a fixed number. Configurations with a false verified result or not fully on
+  the GPU are dropped first; slow ones stay.
 - **Stage 2 (full)**: what survived, plus the `minerva` thinking-off reference, on `--suite all`, 3 repeats, and the
   held-out suite (6 cases) for the survivors only. (2026-11-19, before any run: the held-out suite was moved here from
   Stage 1 because one report holds one case set and `--matrix` refuses to rank across case sets.)
