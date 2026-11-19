@@ -3077,7 +3077,7 @@
           "checks": [
             "christoffel: 2 independent numeric checks passed; symbolic proof proved",
             "ricci_scalar: 1 independent numeric checks passed; symbolic proof proved",
-            "kretschmann: 1 independent numeric checks passed; symbolic proof not attempted"
+            "kretschmann: 1 independent numeric checks passed; symbolic proof proved"
           ],
           "notes": [
             "Signature not determined: The sign of g_(phi,phi) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).",
@@ -3132,7 +3132,7 @@
           ],
           "checks": [
             "ricci: 1 independent numeric checks passed; symbolic proof proved",
-            "kretschmann: 1 independent numeric checks passed; symbolic proof not attempted"
+            "kretschmann: 1 independent numeric checks passed; symbolic proof proved"
           ],
           "notes": [
             "Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).",

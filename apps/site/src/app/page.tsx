@@ -209,7 +209,7 @@ export default function Home() {
                     label="The Kretschmann scalar equals 48 M squared divided by r to the sixth power"
                   />
                 </div>
-                <p className="mt-2 text-sm text-muted">Curvature survives. Numerically checked.</p>
+                <p className="mt-2 text-sm text-muted">Curvature survives. Symbolically checked.</p>
                 {kretschmannExploration && (
                   <a
                     href={exploreUrl(kretschmannExploration.id)}
@@ -221,9 +221,9 @@ export default function Home() {
               </div>
             </div>
             <p className="mt-5 max-w-3xl text-sm text-muted">
-              Both results come from the engine&apos;s Schwarzschild metric example. The Ricci
-              result has a symbolic check; the full curvature contraction has independent numerical
-              checks, not a symbolic proof. Validity excludes coordinate singularities.
+              Both results come from the engine&apos;s Schwarzschild metric example. Each has a
+              symbolic check and independent numerical checks. Validity excludes coordinate
+              singularities.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-4">
               {curvature && (

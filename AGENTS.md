@@ -594,7 +594,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `g(x', x')/2` for geodesics). Identity checks measure their residual against the size of the terms that cancel
   (a residual of 1e-9 from terms of size 1e3 is noise), a point is skipped, never failed, when the values move when
   the step is doubled, and `STABLE_TOL` must stay below `AGREE_TOL / 3`: a property test found the false
-  "not verified" that this prevents. Symbolic legs (including the second-derivative formula for `R_{abcd}`) are
+  "not verified" that this prevents. Symbolic legs (including the second-derivative formula for `R_{abcd}` and the Kretschmann scalar contracted from it with the inverse metric, `Verifier.alt_kretschmann`) are
   reported separately and never veto; "proved" is only used when they all passed, and a leg too large to try is
   "not run". Signature is never assumed (only a diagonal metric whose entry signs the declared assumptions decide);
   coordinates are real, other symbols complex unless declared; a degenerate metric (determinant identically 0) is

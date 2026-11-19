@@ -12,8 +12,9 @@ example's mathematical context in the message box, and the user decides to run i
 3. `/explore/<id>` opens a new conversation with the entry's prompt in the message box. **Nothing is sent.**
 4. The user presses Send. The model chooses tools; the engine computes, verifies and reports. The card shows
    *Proved by a symbolic zero test* only where a symbolic zero was found and *Numerically checked; no symbolic proof*
-   otherwise. For the Schwarzschild example the Ricci tensor is symbolically proved to vanish; the Kretschmann scalar
-   `48 M^2 / r^6` has independent numerical checks only.
+   otherwise. For the Schwarzschild example the Ricci tensor is symbolically proved to vanish, and the Kretschmann scalar
+   `48 M^2 / r^6` is proved by a symbolic zero test against the full contraction of the second-derivative formula for
+   `R_{abcd}`, besides its independent numerical checks (a metric too large for the symbolic leg reports it as "not run").
 5. The card's buttons ask for further quantities of the same metric (the card's own request is posted back, no model
    involved), and the conversation continues like any other: it keeps its address (`/c/<id>`), its history and the
    restrictions of earlier results.
@@ -35,7 +36,7 @@ result**: every number on the page comes from the engine when the user runs the 
 ## Tests
 
 - `services/api/tests/test_exploration_chat.py`: the prompt through the real chat endpoint (scripted model, real engine):
-  Ricci proved, Kretschmann numerically checked, restrictions reported, a follow-up quantity from the card and a second
+  Ricci and Kretschmann proved, restrictions reported, a follow-up quantity from the card and a second
   turn in the same conversation.
 - `apps/web` (vitest): the registry, the proxy redirect, the prefilled message box (not sent, not put back after sending).
 - `e2e/` (Playwright, CI job `e2e`): landing page button visibility follows the registry; login keeps the exploration;
