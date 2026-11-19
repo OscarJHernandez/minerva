@@ -41,7 +41,10 @@ _VECTOR_NAME = re.compile(
 _NAME = re.compile(
     r"(?<![A-Za-z\\])(?:\\([A-Z][a-z]+)|([A-Z])(?:_\{?([A-Za-z0-9]+)\}?)?)(?![A-Za-z])"
 )
-_ARTICLE = re.compile(r"^\s*(?:A|I)\s+[a-z]")
+# "A matrix is ..." starts with the article, but "A and B are matrices" starts with a name: a conjunction after the
+# letter means a list of names, and reading it as an article dropped the first name (`A`), so a formula that
+# mentioned only `A` was checked by sampling numbers.
+_ARTICLE = re.compile(r"^\s*(?:A|I)\s+(?!(?:and|or|nor)\b)[a-z]")
 
 
 def _names_in(fragment: str) -> set[str]:

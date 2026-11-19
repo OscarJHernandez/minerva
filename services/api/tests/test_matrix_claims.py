@@ -163,3 +163,27 @@ def test_vectors_declared_in_words() -> None:
     }
     assert declared_vectors(["Vectors are useful."]) == set()
     assert declared_vectors([r"No keyword here: $x \times y$."]) == set()
+
+
+# -- the evaluation harness tells the claim checker what the conversation declared, as the chat route does ------
+def test_the_harness_does_not_check_a_matrix_identity_as_numbers(ctx: ToolContext) -> None:
+    """A single-turn case used to reach the loop with no declared matrices, so a model's prose about
+    `(A+B)^2 = A^2 + 2AB + B^2` was "checked" by sampling commuting numbers (and counted as a false statement
+    shown as verified) where the real chat leaves it unchecked."""
+    from minerva_api.agent.evaluation.cases import EvalCase
+    from minerva_api.agent.evaluation.runner import run_case
+    from minerva_api.agent.loop import AgentLimits
+    from minerva_api.agent.replay import ReplayLLM, say
+
+    case = EvalCase(
+        id="harness-matrix-declaration",
+        category="false_claim",
+        prompt="A and B are 2x2 matrices. Show that $(A+B)^2 = A^2 + 2AB + B^2$.",
+        expected_tool="none",
+        wrong_formulas=["(A+B)^2 = A^2 + 2AB + B^2"],
+        source="matrix multiplication is not commutative",
+    )
+    reply = r"By expansion $(A+B)^2 = A^2 + 2AB + B^2$ holds, so it is shown."
+    llm = ReplayLLM([say(reply)])
+    result = asyncio.run(run_case(llm, ctx, case, AgentLimits(max_steps=3, max_seconds=60)))
+    assert result.false_verified == 0
