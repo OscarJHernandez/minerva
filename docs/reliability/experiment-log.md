@@ -48,6 +48,20 @@ long runs, and nothing indicates it changed.
 Rows 1-3 predate the model-identity table (PR 96); rows 5 onward carry it in their reports where noted, and rows 6-8
 state the digest `149a0ff8a1ca` unchanged through the run.
 
+## Probe suite (frozen 2026-11-18)
+
+`--suite probe` (`cases_probe.yaml`, 38 cases / 44 turns, not part of `all`): false identities and their true twins,
+missing and given assumptions, restrictions across turns, unsupported mathematics stated as a limit and not as an
+impossibility, premises that are not proofs, plain-text notation, two-turn explorations, and requests that must be
+answered with a question. Alternative valid tools are listed in `also_ok`. Every reference call meets its
+`expect_card` against the engine (`--check-cases`).
+
+It was written while the full baseline run was still going, **before any trace or report of that run was opened**, and is
+frozen: a test pins the digest of the prompts (`bd8f394f3c86`) and of the whole cases (`6c095266ac4c`). It has the same
+author as the fixes that will be measured on it, so it generalises less than the held-out suite (which stays unread and
+unused for tuning). A probe that fails is a finding; its prompt is never reworded. If the scoring work later adds an
+`accept:` block to a probe case, the cases digest changes and the prompts digest does not; the row that does so says so.
+
 ## Planned (not run yet)
 
 - Fresh core baseline x3 on `main` once `check_identity` has merged.
@@ -55,6 +69,4 @@ state the digest `149a0ff8a1ca` unchanged through the run.
 - Statistical mechanics, measured as separate steps: deterministic fixes (shape repair, worked examples, chain
   syntax); then the failure-budget change (also reporting model calls and seconds per turn); then the prompt rule
   alone, expected to be reverted.
-- A probe suite of about 40 new cases for the tools still weak (written by the same author as the fixes: it
-  generalises less than a suite from someone else, and the report says so).
 - Thinking on against off on the cases where the model answers from memory.
