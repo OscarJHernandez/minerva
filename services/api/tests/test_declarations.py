@@ -44,6 +44,9 @@ def test_the_kepler_reply_declares_nothing_under_the_strict_reading() -> None:
         (r"Here $a$ and $b_1$ are vectors. Also $s$ is a scalar.", {"a", "b_1"}),
         (r"Consider the vector $\mathbf{r}$ and a point.", {"r"}),
         ("a and b are vectors", {"a", "b"}),
+        # a sentence that starts with a name: "A" here is not the article
+        ("A and B are 2x2 matrices.", {"A", "B"}),
+        ("A and B are matrices. Show that $(A+B)^2 = A^2 + 2AB + B^2$.", {"A", "B"}),
     ],
 )
 def test_real_declarations_are_still_read(text: str, names: set[str]) -> None:
@@ -54,6 +57,7 @@ def test_real_declarations_are_still_read(text: str, names: set[str]) -> None:
     "text",
     [
         "A matrix is invertible if its determinant is nonzero.",
+        "A matrix and a vector are different objects.",  # the article, then a noun
         "The solution of x^2 = 4 is x = 2.",
         "Vectors are useful.",
         r"No keyword here: $x \times y$.",
@@ -184,3 +188,17 @@ def test_the_model_writing_c_underscore_1_is_marked_from_tool(engine_ctx: ToolCo
         if s.type == "math"
     }
     assert marks[r"C_1 = \mu r^2 \dot{\theta}"] == "from_tool"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "A and B are 2x2 matrices. Show that $(A+B)^2 = A^2 + 2AB + B^2$.",
+        "A and B are matrices.",
+        "A or B is a matrix.",
+    ],
+)
+def test_a_sentence_that_starts_with_a_name_declares_it_in_the_generous_reading_too(
+    text: str,
+) -> None:
+    assert declared_matrices([text]) == {"A", "B"}

@@ -18,6 +18,7 @@ from ...routers_chat import (
     _history,
     _prior_matrices,
 )
+from ..declarations import scan_declarations
 from ..llm import LLMClient
 from ..loop import AgentLimits, TurnInfo, run_agent
 from ..params import EffectiveParams
@@ -71,6 +72,14 @@ async def observe(
             "prior_groups": conversation_groups(_conversation_events(messages, case.prompt)),
         }
     else:
+        # The chat route always tells the claim checker which names the conversation declared as matrices
+        # or vectors ("A and B are 2x2 matrices"), the current message included. A single-turn case has no
+        # stored messages, so read them from the plain history the same way; without this the harness
+        # checked a matrix identity by sampling numbers where the real chat would have left it unchecked.
+        found, cleared = scan_declarations(
+            [(str(m["role"]), str(m.get("content", ""))) for m in history], strict=False
+        )
+        carried = {"prior_matrices": sorted(set(found) - cleared)}
         # What the chat route passes the loop from earlier turns: the formulas written so far, which the
         # claim checker uses as definitions. (Case histories are plain text: no earlier tool calls.)
         prior_relations = [
