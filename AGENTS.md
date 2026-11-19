@@ -537,7 +537,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   would otherwise be read as a positive symbol). `noncommutative` and unknown assumptions are removed from the
   assumptions the checker parses with (`clean_assumptions`): they used to stop the whole check. The scalar tools
   (`simplify`, `differentiate`, `integrate`, `series`, `approximation`, `isolate_variable`, `solve_polynomial`, `find_identities`,
-  `distribution`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`), so a scalar result about
+  `distribution`, `check_identity`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`; `substitute` and `rewrite_part` too, unless the call declares the name `noncommutative`, `NONCOMMUTATIVE_AWARE_TOOLS`), so a scalar result about
   matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
   Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one (every symbol of a
   sentence that says "vector") feeds the claim checker, where a wrong name only leaves a claim unchecked. The strict one
