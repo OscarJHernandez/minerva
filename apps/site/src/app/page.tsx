@@ -68,12 +68,14 @@ export default function Home() {
             Explore mathematics. Own the process.
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
-            Minerva is an open-source mathematical assistant you can run on your own machine. Explore
-            ideas, try different approaches and verify results, while your work stays private to you.
+            Minerva is an open-source mathematical assistant you can run on your own machine.
+            Explore ideas, try different approaches and verify results, while your work stays
+            private to you.
           </p>
           <p className="mt-4 max-w-2xl text-base text-muted">
-            AI should not take away your ability to figure things out. You choose what to investigate;
-            Minerva suggests tools and checks the mathematics, and the discovery stays yours.
+            AI should not take away your ability to figure things out. You choose what to
+            investigate; Minerva suggests tools and checks the mathematics, and the discovery stays
+            yours.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href={APP_URL} className={primary}>
@@ -126,7 +128,10 @@ export default function Home() {
               </a>
             )}
             {ricciExploration && (
-              <a href={exploreUrl(ricciExploration.id)} className="text-sm underline hover:text-ink">
+              <a
+                href={exploreUrl(ricciExploration.id)}
+                className="text-sm underline hover:text-ink"
+              >
                 {ricciExploration.button}
               </a>
             )}
@@ -145,11 +150,11 @@ export default function Home() {
           <p className="mt-6 max-w-3xl text-sm text-muted">
             Recorded {RECORDING.date} on the deployed chat model,{" "}
             <span className="text-ink">{modelLabel(RECORDING.model)}</span>, with{" "}
-            {settingsLine(RECORDING.settings, RECORDING.limit, RECORDING.seed)}. Each conversation was
-            run {RECORDING.runs} times; a run counts as passed only if every turn called the right
-            tool, the engine verified the result and the reply made no false claim. A formula marked{" "}
-            <span className="text-warn">unchecked</span> was written by the model and not verified;
-            results in a tool box come from the engine.{" "}
+            {settingsLine(RECORDING.settings, RECORDING.limit, RECORDING.seed)}. Each conversation
+            was run {RECORDING.runs} times; a run counts as passed only if every turn called the
+            right tool, the engine verified the result and the reply made no false claim. A formula
+            marked <span className="text-warn">unchecked</span> was written by the model and not
+            verified; results in a tool box come from the engine.{" "}
             <a href={RECORD_URL} className="underline hover:text-ink">
               Every run, pass or fail
             </a>

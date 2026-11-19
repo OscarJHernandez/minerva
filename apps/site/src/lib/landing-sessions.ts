@@ -88,7 +88,9 @@ export function settingsLine(s: SessionSettings, limit: number, seed: number): s
   const n = (x: number) => x.toLocaleString("en-US");
   return [
     s.thinking ? "thinking on" : "thinking off",
-    s.reply_budget_tokens ? `reply budget ${n(s.reply_budget_tokens)} tokens` : "the model's own reply limit",
+    s.reply_budget_tokens
+      ? `reply budget ${n(s.reply_budget_tokens)} tokens`
+      : "the model's own reply limit",
     `temperature ${s.temperature}`,
     `context window ${n(s.context_window_tokens)} tokens`,
     `tool time limit ${limit} s`,

@@ -1,12 +1,7 @@
-import { MARK_TEXT, type FormulaStatus } from "@minerva/ui/marks";
+import { MARK_TEXT, showsMark, type FormulaStatus } from "@minerva/ui/marks";
 import { Math } from "@minerva/ui/math";
 import type { ReactNode } from "react";
-import type {
-  Session,
-  SessionCard,
-  SessionSegment,
-  SessionText,
-} from "@/lib/landing-sessions";
+import type { Session, SessionCard, SessionSegment, SessionText } from "@/lib/landing-sessions";
 
 /** The look of a mark on the landing page (its words come from `@minerva/ui/marks`, the chat's own table). */
 const MARK_TONE: Record<FormulaStatus, string> = {
@@ -94,7 +89,7 @@ function Inline({ nodes }: { nodes: Node[] }) {
         ) : (
           <span key={i} className="whitespace-nowrap">
             <Math latex={n.seg.value} />
-            {n.seg.status !== "from_tool" && <Mark status={n.seg.status} />}
+            {showsMark(n.seg.status ?? "unchecked", n.seg.value) && <Mark status={n.seg.status} />}
           </span>
         ),
       )}
@@ -175,7 +170,9 @@ function Prose({ block }: { block: SessionText }) {
           <div className="min-w-0 flex-1 overflow-x-auto py-1">
             <Math latex={line.display.value} display />
           </div>
-          {line.display.status !== "from_tool" && <Mark status={line.display.status} />}
+          {showsMark(line.display.status ?? "unchecked", line.display.value) && (
+            <Mark status={line.display.status} />
+          )}
           <Num n={line.display.number} />
         </div>,
       );
@@ -198,7 +195,10 @@ function Prose({ block }: { block: SessionText }) {
     end(i);
     if (!text) return;
     if (first?.kind === "text" && /^#{1,6}\s/.test(first.text)) {
-      const rest = [{ kind: "text" as const, text: first.text.replace(/^#{1,6}\s+/, "") }, ...line.nodes.slice(1)];
+      const rest = [
+        { kind: "text" as const, text: first.text.replace(/^#{1,6}\s+/, "") },
+        ...line.nodes.slice(1),
+      ];
       out.push(
         <p key={i} className="mt-3 font-medium text-ink">
           <Inline nodes={rest} />
@@ -214,6 +214,23 @@ function Prose({ block }: { block: SessionText }) {
   });
   end(lines.length);
   return <div className="text-sm leading-relaxed text-ink/90">{out}</div>;
+}
+
+/** The person's own words: `$...$` is drawn as a formula, never marked (it is theirs, not a claim of Minerva's). */
+function UserText({ text }: { text: string }) {
+  return (
+    <>
+      {text
+        .split(/(\$[^$]+\$)/g)
+        .map((part, i) =>
+          part.startsWith("$") && part.endsWith("$") && part.length > 2 ? (
+            <Math key={i} latex={part.slice(1, -1)} />
+          ) : (
+            <span key={i}>{part}</span>
+          ),
+        )}
+    </>
+  );
 }
 
 // --- a tool result ----------------------------------------------------------------------------------------------
@@ -235,7 +252,9 @@ function Result({ card }: { card: SessionCard }) {
     return (
       <p className="my-2 text-xs text-muted">
         <span className="font-medium">{name}</span>
-        {card.status === "no_results" ? ": no handbook entry matched." : `: ${card.status.replaceAll("_", " ")}.`}
+        {card.status === "no_results"
+          ? ": no handbook entry matched."
+          : `: ${card.status.replaceAll("_", " ")}.`}
       </p>
     );
   }
@@ -297,7 +316,7 @@ export function Conversation({ session, runs }: { session: Session; runs: number
           <li key={i} className="space-y-3">
             <div className="flex justify-end">
               <p className="max-w-[85%] rounded-lg bg-sunk px-4 py-2 text-sm sm:text-base">
-                {turn.user.text}
+                <UserText text={turn.user.text} />
               </p>
             </div>
             <div className="min-w-0">

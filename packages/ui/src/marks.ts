@@ -36,3 +36,11 @@ export const MARK_TEXT: Record<FormulaStatus, { label: string | null; title: str
       "Written by the language model. Minerva did not produce this formula and could not check it. Not being checked is not a finding that it is wrong.",
   },
 };
+
+/** An equation or inequality is a claim Minerva can test; a lone symbol such as `r` or `\\theta` is not. */
+const RELATION = /=|<|>|\\(?:le|ge|leq|geq|neq|ne|approx|equiv|sim|propto|to|implies)\b/;
+export const isClaim = (latex: string) => RELATION.test(latex);
+
+/** Whether a formula shows its mark: an unchecked formula that asserts nothing (a lone symbol) is not flagged. */
+export const showsMark = (status: FormulaStatus, latex: string) =>
+  status !== "from_tool" && !(status === "unchecked" && !isClaim(latex));

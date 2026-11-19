@@ -100,7 +100,18 @@ def test_no_host_address_and_no_trace_is_published(path: Path) -> None:
             return set().union(*(keys(v) for v in node)) if node else set()
         return set()
 
-    assert not keys(_load(path)) & {"trace", "debug", "thinking", "llm_calls", "base_url", "host"}
+    assert not keys(_load(path)) & {"trace", "debug", "llm_calls", "base_url", "host"}
+
+    def reasoning(
+        node: Any,
+    ) -> bool:  # the model's thinking text; `thinking: true` is only the setting
+        if isinstance(node, dict):
+            return any(
+                (k == "thinking" and isinstance(v, str)) or reasoning(v) for k, v in node.items()
+            )
+        return isinstance(node, list) and any(reasoning(v) for v in node)
+
+    assert not reasoning(_load(path))
 
 
 def test_every_recorded_result_is_what_the_engine_returns_for_its_call(ctx: ToolContext) -> None:

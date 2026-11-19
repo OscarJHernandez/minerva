@@ -1,5 +1,5 @@
 import { EquationNumber } from "./equation-number";
-import { MARK_TEXT } from "@minerva/ui/marks";
+import { isClaim, MARK_TEXT } from "@minerva/ui/marks";
 import { Math } from "@minerva/ui/math";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { FormulaStatus, Segment } from "@/lib/chat-types";
@@ -48,9 +48,8 @@ const explain = (seg: Segment) => {
   return seg.note ? `${mark.title} ${seg.note}` : mark.title;
 };
 
-/** An equation or inequality is a claim Minerva can test; a lone symbol such as `r` or `\\theta` is not. */
-const RELATION = /=|<|>|\\(?:le|ge|leq|geq|neq|ne|approx|equiv|sim|propto|to|implies)\b/;
-export const isClaim = (latex: string) => RELATION.test(latex);
+/** The claim rule is shared with the landing page (`@minerva/ui/marks`). */
+export { isClaim };
 
 type Node = { kind: "text"; text: string } | { kind: "math"; seg: Segment; key: number };
 type Line = { nodes: Node[] } | { display: Segment; key: number };
