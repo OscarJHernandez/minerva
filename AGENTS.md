@@ -138,8 +138,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   period; `toolsets.resolve_tool_name` accepts only closed aliases (`<group>.<tool>` when the group holds the tool,
   `functions.<tool>`, case/space) and every other name stays `unknown_tool` (never redirect). The LaTeX parser refuses
   plain-text syntax (`theta_dot`, `sin(x)`, spelled Greek names) with the corrected form instead of reading it as a
-  product of letters; `analyze_lagrangian` and `search_invariants` take `format` (`auto`/`latex`/`text`, choosing a
-  strict parser, never rewriting input). A new expression field states its syntax in its description (a test).
+  product of letters; `analyze_lagrangian`, `search_invariants` and `geometry` take `format` (`auto`/`latex`/`text`, choosing a
+  strict parser, never rewriting input; for `geometry` one syntax for the whole metric, decided over every entry). A new expression field states its syntax in its description (a test).
 - Evidence for the model's equations (`engine/claim_evidence.py`, `loop.claim_evidence`): a claim is linked to a verified
   tool equation only by (1) the same left side and an equivalent right side, (2) residuals proportional by a factor free
   of the system's coordinates/velocities/accelerations (zeros of the factor become conditions) or (3) its own name for a

@@ -307,9 +307,14 @@ class GeometryArgs(BaseModel):
     metric: list[list[str]] = Field(
         min_length=1,
         max_length=4,
-        description="The metric components g_{mu nu} as an n by n grid of LaTeX strings, one row per "
+        description="The metric components g_{mu nu} as an n by n grid of strings in one syntax (see `format`), one row per "
         'coordinate, e.g. [["-(1-2M/r)", "0"], ["0", "(1-2M/r)^{-1}"]]. Use \\sin^2\\theta, '
         "not \\sin 2\\theta. Ask the user for the metric; never invent one.",
+    )
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of the `metric` entries and `tensor` components: LaTeX (\\sin^2\\theta, \\frac{2M}{r}) "
+        "or text (sin(theta)^2, 2*M/r), the same for every entry. " + FORMAT_DESCRIPTION,
     )
     assumptions: dict[str, list[str]] = Field(
         default_factory=dict,
@@ -1414,7 +1419,16 @@ def _strategy_text(result: IntegrateResult) -> str:
 
 
 def geometry_request(args: GeometryArgs) -> GeometryInput:
-    return GeometryInput(**args.model_dump(), format="latex")
+    """The engine request; `format: auto` picks one strict parser for the whole metric as written (never rewritten).
+
+    Any backslash anywhere makes it LaTeX; text markers (`*`, `sin(`) with no backslash make it text, so a metric
+    sent as `2*M/r` and `sin(theta)^2` is read as text instead of failing three times as LaTeX.
+    """
+    cells = [str(c) for row in args.metric for c in row]
+    if args.tensor is not None:
+        cells += [str(c) for c in args.tensor.components]
+    syntax = resolve_syntax(" ".join(cells), args.format)
+    return GeometryInput(**args.model_dump(exclude={"format"}), format=syntax)
 
 
 def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:

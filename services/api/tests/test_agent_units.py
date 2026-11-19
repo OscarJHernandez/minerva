@@ -1475,6 +1475,59 @@ def test_geometry_tool_failures_are_explained_not_decorated(ctx: ToolContext) ->
     assert out.status == "parse_error" and "declare" in out.for_model
 
 
+# The call the deployed model made in the landing-page trial (2026-11-19): text syntax, no `format`. Read as LaTeX it
+# failed three times ("expected an exponent", "`sin(` without a backslash"); `format: auto` reads it as text.
+SCHWARZSCHILD_TEXT = {
+    "coordinates": ["t", "r", "theta", "phi"],
+    "metric": [
+        ["-(1-2*M/r)", "0", "0", "0"],
+        ["0", "(1-2*M/r)^(-1)", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", "r^2*sin(theta)^2"],
+    ],
+    "quantities": ["ricci", "kretschmann"],
+}
+
+
+def test_geometry_reads_a_text_syntax_metric_as_text(ctx: ToolContext) -> None:
+    out = execute("geometry", SCHWARZSCHILD_TEXT, ctx)
+    assert out.status == "ok", out.for_model
+    assert (
+        out.card.data["request"]["format"] == "text"
+    )  # the card's buttons re-post it in the same syntax
+    by_kind = {q["kind"]: q for q in out.card.data["result"]["quantities"]}
+    assert by_kind["ricci"]["all_zero"] is True
+    assert by_kind["kretschmann"]["scalar_text"] == "48*M**2/r**6"
+
+
+def test_geometry_keeps_latex_and_an_explicit_format(ctx: ToolContext) -> None:
+    from minerva_api.agent.tools import GeometryArgs, geometry_request
+
+    assert (
+        geometry_request(GeometryArgs(**SPHERE_ARGS)).format == "latex"
+    )  # a backslash anywhere: LaTeX
+    plain = {**SPHERE_ARGS, "metric": [["a^2", "0"], ["0", "a^2"]]}
+    assert (
+        geometry_request(GeometryArgs(**plain)).format == "latex"
+    )  # no text marker: LaTeX, as before
+    forced = geometry_request(GeometryArgs(**{**SCHWARZSCHILD_TEXT, "format": "latex"}))
+    assert forced.format == "latex"  # an explicit choice is never overridden
+    out = execute("geometry", {**SCHWARZSCHILD_TEXT, "format": "latex"}, ctx)
+    assert (
+        out.status == "parse_error"
+    )  # and the LaTeX reader still refuses text, with the fix in its message
+
+
+def test_geometry_never_mixes_syntaxes_across_entries(ctx: ToolContext) -> None:
+    # one backslash makes the whole metric LaTeX, so `2*M/r` beside `\sin^2\theta` is read by the LaTeX reader only
+    from minerva_api.agent.tools import GeometryArgs, geometry_request
+
+    mixed = {**SCHWARZSCHILD_TEXT}
+    mixed["metric"] = [row[:] for row in SCHWARZSCHILD_TEXT["metric"]]
+    mixed["metric"][3][3] = "r^2 \\sin^2\\theta"
+    assert geometry_request(GeometryArgs(**mixed)).format == "latex"
+
+
 def test_geometry_tool_never_leaks_a_state_between_calls(ctx: ToolContext) -> None:
     # the geometry is resent each time: a second call with other quantities gives the same metric
     first = execute("geometry", SPHERE_ARGS, ctx)

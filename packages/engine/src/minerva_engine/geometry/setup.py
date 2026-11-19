@@ -14,8 +14,10 @@ import sympy as sp
 from sympy.core.function import AppliedUndef
 
 from ..build import Builder
-from ..errors import MinervaMathError, UnsupportedInput
+from ..errors import MinervaMathError, UnsupportedInput, diagnostic_of
+from ..latexparse import reject_text_syntax
 from ..models import ExpressionInput, Limits, Status
+from ..notation.models import InputDiagnostic
 from .models import GeometryInput
 from .tensors import Tensor
 
@@ -25,10 +27,13 @@ SYMMETRY_SIMPLIFY_MAX_OPS = 400
 class GeometryError(Exception):
     """The problem cannot be analysed; carries the explicit status to report."""
 
-    def __init__(self, status: Status, message: str) -> None:
+    def __init__(
+        self, status: Status, message: str, diagnostic: InputDiagnostic | None = None
+    ) -> None:
         super().__init__(message)
         self.status = status
         self.message = message
+        self.diagnostic = diagnostic
 
 
 @dataclass
@@ -98,6 +103,14 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
         functions[name] = args
 
     try:
+        if data.format == "latex":
+            # The same refusal every cell gets from parse_latex, checked over all of them first, so a metric written
+            # in text syntax is refused with the typed reason (and the chat can re-read it as text) instead of the
+            # generic error of whichever cell happens to be parsed first (`^(-1)`: "expected an exponent").
+            cells = [c for row in data.metric for c in row]
+            cells += list(data.tensor.components) if data.tensor is not None else []
+            for cell in cells:
+                reject_text_syntax(cell)
         builder = Builder(assumptions, limits, functions=functions)
         coords = [builder.symbol(c) for c in names]
         ctx = _Parser(data, limits, assumptions, functions, parse_expression)
@@ -107,7 +120,7 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
         raise
     except MinervaMathError as exc:
         status = Status.UNSUPPORTED if isinstance(exc, UnsupportedInput) else Status.PARSE_ERROR
-        raise GeometryError(status, str(exc)) from exc
+        raise GeometryError(status, str(exc), diagnostic_of(exc, "metric")) from exc
 
     _check_symmetric(g, names)
 
