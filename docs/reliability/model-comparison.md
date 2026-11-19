@@ -23,6 +23,10 @@ three times the latency, and needs a reply budget larger than the host default t
 - **Models**: `minerva` (deployed service), `gemma4:26b` (control for the alias build and for the service),
   `qwen3.5:35b`, `qwen3.6:27b`, `qwen3.8:27b`, `granite4.2:30b`, `glm-4.7-flash` (system service). Thinking off, and
   on where the host reports the capability.
+  **Added 2026-11-19, before any of these ran** (the first four Stage 1 configurations had already run): the Mistral
+  family on the host, `mistral-small3.2:24b` (thinking off only: the host reports no thinking mode), `magistral:24b`
+  (off and on) and `ministral-3:14b` (off only). Adding models widens the screen, so more configurations can look
+  good by chance; the within-noise rule and the Stage 2 confirmation on the full suite are what guard against that.
 - **Reply budget**: `--num-predict 4096`, in both arms and for every model. The `minerva` thinking-off reference at
   4096 is **re-measured**, not taken from the 2026-11-19 baseline (which ran at the host default of 1200); the old
   baseline is quoted beside it as the effect of the budget alone.
