@@ -21,16 +21,16 @@ const secondary = "rounded border border-rule px-5 py-2.5 font-medium hover:bg-s
 
 const BENEFITS = [
   [
-    "You lead",
-    "Pick the problem, assumptions, and next step. Minerva suggests methods; you decide what to explore.",
+    "Think for yourself",
+    "Pick the problem, the assumptions and the next step. Minerva suggests methods and checks your work; it does not do the thinking for you.",
   ],
   [
     "Check the mathematics",
     "A symbolic engine computes and checks results. Unverified claims stay labelled as such.",
   ],
   [
-    "Run it yourself",
-    "Host it with Docker or Kubernetes, bring a local model, or use the tools without AI.",
+    "Keep your ideas private",
+    "Host it with Docker or Kubernetes and a local model, and your conversations never leave your infrastructure. Or use the tools without AI.",
   ],
   [
     "Make it yours",
@@ -59,18 +59,18 @@ export default function Home() {
       <main id="top">
         <div className="mx-auto max-w-5xl px-5 pb-16 pt-14 sm:px-8 sm:pb-20 sm:pt-20">
           <p className="text-sm uppercase tracking-[0.18em] text-muted">
-            Open source · Self-hostable · Your exploration
+            Open source · Self-hostable · Your ideas stay yours
           </p>
           <h1 className="mt-4 max-w-3xl font-serif text-4xl leading-[1.05] tracking-tight sm:text-6xl">
             Explore mathematics. Own the process.
           </h1>
           <p className="mt-6 max-w-2xl font-serif text-xl leading-relaxed text-muted sm:text-2xl">
-            Minerva is an open-source mathematical assistant you can run yourself to explore ideas,
-            try different approaches, and verify results on your terms.
+            Minerva is an open-source mathematical assistant you can run on your own machine. Explore
+            ideas, try different approaches and verify results, while your work stays private to you.
           </p>
           <p className="mt-4 max-w-2xl text-base text-muted">
-            You choose what to investigate next. Minerva suggests tools and checks the math, without
-            taking the discovery away from you.
+            AI should not take away your ability to figure things out. You choose what to investigate;
+            Minerva suggests tools and checks the mathematics, and the discovery stays yours.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a href={APP_URL} className={primary}>
@@ -81,6 +81,7 @@ export default function Home() {
             </a>
           </div>
           <p className="mt-4 text-sm text-muted">
+            Self-hosted with a local model, nothing leaves your infrastructure.{" "}
             <a href={REPO_URL} className="underline hover:text-ink">
               View the source on GitHub
             </a>
