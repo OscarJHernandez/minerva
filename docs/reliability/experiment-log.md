@@ -44,10 +44,27 @@ long runs, and nothing indicates it changed.
 | 11 | `statmech-deterministic-fixes-b` | PR 102, step 4 | same | 8/27 -> 10/27; invalid calls 23/83; loops 3; calls 83; median turn 16.8 s | Kept (the refusal names the symbols to declare). `statmech-oscillator-heat-capacity` 0 -> 2 of 3. Five cases still 0/3: ideal gas and fermions (prose question instead of the tool), Ising (the model gave a Boltzmann weight as the bond energy: a verified result about a different system), noncommuting spin and wrong partition function (wrong or no tool). |
 | 12 | `false-claim-check-identity-group` | `check_identity` as a keyword group (`02a95b3`) | 16 `false_claim` cases x 3, seed 7 | 33/48 (68.8%) against 31/48 with it as a core tool (34/48 with the stale `false-pythagoras` check corrected); first tool chosen 30/48 (was 35/48); no tool called 9 runs (was 4); calls 55 (was 47); median turn 9.1 s (was 7.9 s) | Moved from core to a keyword group because the offline token budget (5% over the original baseline, already used up to 4.3-4.8% on `main`) has no room for a core schema. The cost is availability: `false-derivative` went 3/3 -> 0/3 because "...is x^x, right?" matched no keyword, so the tool was not loaded and the model answered from memory. |
 | 13 | `false-derivative-recheck` | keyword `right?`/`correct?`/`true?` added | `false-derivative` x 3, seed 7 | 0/3 -> 3/3 | Kept. The remaining no-tool runs are the four cases that also fail without this tool (`ode-no-closed-form...`, `integral-theorem-with-a-pole...`, two statmech). Phrasings without any keyword still miss the tool: a known limit of loading by words. |
+| 14 | `baseline-2026-11-19-all` | `c7f00a3` | core + reliability, 183 cases x 3, seed 7, `--compute-timeout 10`, routing on | 363/510 (71.2%); repeats 123/122/118 (std 2.16); tool selection 86.1%; valid arguments 88.0%; completion 93.7%; false verified 0; 258 of 798 calls unnecessary; median turn 7.0 s, p95 20.2 s; 4,830 s wall | The reference for this work. Not comparable with row 5 (core only, before PRs 99-102). |
+| 15 | `baseline-2026-11-19-heldout` | `c7f00a3` | 6 cases x 3 | 17/18 (94.4%); false verified 0 | Not independent evidence (see row 3); a regression guard. |
+| 16 | `baseline-2026-11-19-probe` | `c7f00a3` | frozen probe suite, 38 cases x 3 (prompts digest `bd8f394f3c86`) | 98/114 (86.0%); repeats 32/33/33; false verified 0 | The suite was frozen before any trace of row 14 was opened. Failures are listed in `triage-2026-11-19.md`. |
 | 17 | `exp1-spelling-calculus` | `fix/formula-spelling` | the 33 `calculus` cases x 3, seed 7, compared with row 14 | 65/99 -> 68/99 (repeats 23/21/21 -> 22/24/22); targeted case `integrate-definite` 0/3 -> 3/3; other changes are flaky cases (`delta-integral-uses-the-tool` 2->1, `differentiate-mixed` 3->2, `differentiate-first` 1->2, `vector-curl-curl-rewrite` 2->3, `homepage-stokes-curved-surface` 0->1, `vector-premise-is-conditional` 3->2); tool calls 176 -> 192; false verified 0 | Kept on the targeted case, not on the total: +3 is inside the noise (about 4). Hypothesis (a correct restated integral is unchecked only for its spelling) confirmed by the one case it predicted; the normalisation only equates spellings and its wrong twins stay different (`test_formula_spelling.py`). |
 
 Rows 1-3 predate the model-identity table (PR 96); rows 5 onward carry it in their reports where noted, and rows 6-8
 state the digest `149a0ff8a1ca` unchanged through the run.
+
+## Probe suite (frozen 2026-11-18)
+
+`--suite probe` (`cases_probe.yaml`, 38 cases / 44 turns, not part of `all`): false identities and their true twins,
+missing and given assumptions, restrictions across turns, unsupported mathematics stated as a limit and not as an
+impossibility, premises that are not proofs, plain-text notation, two-turn explorations, and requests that must be
+answered with a question. Alternative valid tools are listed in `also_ok`. Every reference call meets its
+`expect_card` against the engine (`--check-cases`).
+
+It was written while the full baseline run was still going, **before any trace or report of that run was opened**, and is
+frozen: a test pins the digest of the prompts (`bd8f394f3c86`) and of the whole cases (`6c095266ac4c`). It has the same
+author as the fixes that will be measured on it, so it generalises less than the held-out suite (which stays unread and
+unused for tuning). A probe that fails is a finding; its prompt is never reworded. If the scoring work later adds an
+`accept:` block to a probe case, the cases digest changes and the prompts digest does not; the row that does so says so.
 
 ## Planned (not run yet)
 
@@ -56,6 +73,4 @@ state the digest `149a0ff8a1ca` unchanged through the run.
 - Statistical mechanics, measured as separate steps: deterministic fixes (shape repair, worked examples, chain
   syntax); then the failure-budget change (also reporting model calls and seconds per turn); then the prompt rule
   alone, expected to be reverted.
-- A probe suite of about 40 new cases for the tools still weak (written by the same author as the fixes: it
-  generalises less than a suite from someone else, and the report says so).
 - Thinking on against off on the cases where the model answers from memory.
