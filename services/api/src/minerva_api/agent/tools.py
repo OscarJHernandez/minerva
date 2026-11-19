@@ -4283,6 +4283,9 @@ SCALAR_TOOLS = frozenset(
         "isolate_variable",
         "solve_polynomial",
         "find_identities",
+        # decides whether one stated equation holds by sampling commuting numbers: on `(A+B)^2 = A^2 + 2AB + B^2`
+        # with A and B matrices it "proved" a false identity and the loop marked it verified (A-009)
+        "check_identity",
         "distribution",
         "ode_analyze",
         "ode_solve_symbolic",
@@ -4306,11 +4309,35 @@ def _argument_texts(arguments: dict[str, Any]) -> list[str]:
     return texts
 
 
+# Tools that can work with noncommuting symbols, but only if the call declares them `noncommutative` in its
+# assumptions (substitute, rewrite_part: polynomial expressions, exact). A matrix a conversation declared in words
+# or through `matrix_calculus` is not that declaration: without it these tools read A and B as commuting numbers,
+# expanded `(A+B)^2` to `A^2 + 2AB + B^2` and called it checked at 20/20 points (A-009).
+NONCOMMUTATIVE_AWARE_TOOLS = frozenset({"substitute", "rewrite_part"})
+
+
+def _declared_noncommutative(arguments: dict[str, Any]) -> set[str]:
+    declared = arguments.get("assumptions")
+    if not isinstance(declared, dict):
+        return set()
+    return {
+        str(n)
+        for n, items in declared.items()
+        if isinstance(items, list) and "noncommutative" in items
+    }
+
+
 def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput | None:
-    if name not in SCALAR_TOOLS or not ctx.matrices:
+    aware = name in NONCOMMUTATIVE_AWARE_TOOLS
+    if not (name in SCALAR_TOOLS or aware) or not ctx.matrices:
         return None
     texts = _argument_texts(arguments)
-    hit = sorted(n for n in ctx.matrices if any(mentions_name(text, {n}) for text in texts))
+    declared_here = _declared_noncommutative(arguments) if aware else set()
+    hit = sorted(
+        n
+        for n in ctx.matrices
+        if n not in declared_here and any(mentions_name(text, {n}) for text in texts)
+    )
     if not hit:
         return None
     sources = "; ".join(
@@ -4320,8 +4347,13 @@ def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> T
         name,
         f"{', '.join(hit)} was declared as a matrix, operator or vector field in this conversation"
         + (f" ({sources})" if sources else "")
-        + f"; `{name}` treats symbols as commuting numbers and would give a wrong answer for it. "
-        "Use `matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a "
+        + f"; `{name}` treats symbols as commuting numbers and would give a wrong answer for it"
+        + (
+            " unless the call declares the name `noncommutative` in its assumptions. "
+            if aware
+            else ". "
+        )
+        + "Use `matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a "
         "vector field, or say that this is not supported. If it is only a scalar, tell the user the "
         'name was read as a matrix or vector and that saying "<name> is a scalar" clears it; do not '
         "compute it yourself.",

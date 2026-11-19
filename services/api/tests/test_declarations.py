@@ -202,3 +202,51 @@ def test_a_sentence_that_starts_with_a_name_declares_it_in_the_generous_reading_
     text: str,
 ) -> None:
     assert declared_matrices([text]) == {"A", "B"}
+
+
+# -- A-009: `check_identity` decides by sampling commuting numbers, so it must refuse a declared matrix -----------
+def test_check_identity_refuses_a_declared_matrix_and_still_answers_for_scalars(
+    engine_ctx: ToolContext,
+) -> None:
+    ctx = ToolContext(
+        engine=engine_ctx.engine,
+        kb=engine_ctx.kb,
+        matrices=frozenset({"A", "B"}),
+        matrix_sources={"A": "a matrix_calculus call earlier in this conversation"},
+    )
+    false_for_matrices = {"latex": "(A+B)^2 = A^2 + 2*A*B + B^2"}
+    refused = execute("check_identity", false_for_matrices, ctx)
+    assert refused.status == "error" and "matrix_calculus" in refused.for_model
+    assert "proved" not in refused.for_model.lower()  # a refusal is never a verdict
+    # the same equation about numbers is a true identity and is still answered
+    scalar = {"latex": "(a+b)^2 = a^2 + 2*a*b + b^2"}
+    assert execute("check_identity", scalar, ctx).status == "ok"
+    # and without any declaration the tool is unchanged (nothing says A and B are matrices)
+    plain = ToolContext(engine=engine_ctx.engine, kb=engine_ctx.kb)
+    assert execute("check_identity", false_for_matrices, plain).status == "ok"
+
+
+def test_rewrite_part_and_substitute_refuse_a_declared_matrix_unless_the_call_says_noncommutative(
+    engine_ctx: ToolContext,
+) -> None:
+    """`rewrite_part` expanded `(A+B)^2` to `A^2 + 2AB + B^2` for declared matrices and showed it checked at 20/20
+    points. These tools do handle noncommuting symbols, but only when the call declares them so (A-009)."""
+    ctx = ToolContext(
+        engine=engine_ctx.engine,
+        kb=engine_ctx.kb,
+        matrices=frozenset({"A", "B"}),
+        matrix_sources={"A": "a matrix_calculus call earlier in this conversation"},
+    )
+    wrong = execute("rewrite_part", {"latex": "(A+B)^2", "action": "expand"}, ctx)
+    assert wrong.status == "error" and "noncommutative" in wrong.for_model
+    sub = execute("substitute", {"latex": "A*B", "relations": ["A = B"]}, ctx)
+    assert sub.status == "error" and "noncommutative" in sub.for_model
+    # declared noncommutative in the call: the tool is exact and the answer keeps both orders
+    nc = {"A": ["noncommutative"], "B": ["noncommutative"]}
+    right = execute(
+        "rewrite_part", {"latex": "(A+B)^2", "action": "expand", "assumptions": nc}, ctx
+    )
+    assert right.status == "ok"
+    assert "B A" in right.for_model and "A B" in right.for_model
+    # a name the conversation did not declare is untouched
+    assert execute("rewrite_part", {"latex": "(a+b)^2", "action": "expand"}, ctx).status == "ok"
