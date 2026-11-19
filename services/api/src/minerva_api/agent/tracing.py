@@ -75,6 +75,7 @@ class RouteReason(StrEnum):
     LAGRANGIAN_FOLLOWUP = "lagrangian_followup"
     ODE_ANALYZE = "ode_analyze"
     MATRIX_SIMPLIFY = "matrix_simplify"
+    EXPLICIT_OPERATION = "explicit_operation"
     DECLINED = "not_verified_or_refused"
 
 

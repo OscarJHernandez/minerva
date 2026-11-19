@@ -13,7 +13,8 @@ model plans; no rule fills in a variable, bound, size or assumption the user did
 Rules (`RULES`): `lagrangian_equations`; `followup_reuse` ("differentiate that result": `@rN` of the one
 result the previous turn produced); `ode_analyze` (one equation with a derivative of an applied function:
 classification only, solving stays the user's choice); `lagrangian_followup` ("what is conserved?" after one
-analysed Lagrangian); `matrix_simplify` (a formula over matrices the user declared as n x n). Each is a pure function of the message and a `RouteContext`.
+analysed Lagrangian); `matrix_simplify` (a formula over matrices the user declared as n x n); `explicit_operation` (one imperative sentence: simplify, differentiate,
+Taylor series or antiderivative of one formula, every argument written in it). Each is a pure function of the message and a `RouteContext`.
 """
 
 from __future__ import annotations
@@ -253,6 +254,112 @@ def followup_reuse(text: str, context: RouteContext = NO_CONTEXT) -> Route | Non
     return Route("integrate", arguments, reason="followup_reuse")
 
 
+# --- explicit_operation: "Simplify $f$", "Differentiate $f$ with respect to $x$", a Taylor series, an antiderivative ---
+# The whole message is one imperative sentence about one formula, and every argument is in it: the variable is named
+# ("with respect to x") or is the formula's one plain letter, a Taylor series names its point and its order. Any other
+# word (twice, numerically, assuming, from/to, compare ...) means the request is more than the plain operation and the
+# model plans. A bare `e` or `i` in the formula is refused: in LaTeX those are plain symbols here, and a user who typed
+# `e^x` meant Euler's number, which only the model (writing \exponentialE) or the user can say.
+_PLEASE = r"(?:please\s+)?(?:(?:can|could|would)\s+you\s+)?"
+_WRT = re.compile(
+    r"\bwith respect to\s+(?:the\s+(?:real\s+|complex\s+)?variable\s+)?\$?([A-Za-z])\$?(?![A-Za-z])",
+    re.IGNORECASE,
+)
+_POINT = re.compile(
+    rf"\b(?:about|around|at)\s+(?:(?:the\s+point|[A-Za-z]\s*=)\s*)?\$?({_NUMBER})\$?(?![\w.])",
+    re.IGNORECASE,
+)
+_ORDER = re.compile(
+    r"\b(?:up to|to|through)\s+order\s+(\d{1,2})\b|\border\s+(\d{1,2})\b", re.IGNORECASE
+)
+_VERBS = {
+    "simplify": re.compile(rf"^{_PLEASE}simplify$", re.IGNORECASE),
+    "differentiate": re.compile(
+        rf"^{_PLEASE}(?:differentiate|(?:find|compute|give|calculate)\s+the\s+derivative\s+of)$",
+        re.IGNORECASE,
+    ),
+    "series": re.compile(
+        rf"^{_PLEASE}(?:give|find|compute|calculate|write)(?:\s+me)?\s+the\s+taylor\s+(?:series|polynomial)\s+of$",
+        re.IGNORECASE,
+    ),
+    "integrate": re.compile(
+        rf"^{_PLEASE}(?:(?:find|give|compute)\s+(?:an|the)\s+(?:antiderivative|indefinite integral)\s+of|integrate)$",
+        re.IGNORECASE,
+    ),
+}
+_NONSCALAR = re.compile(r"\b(?:matri(?:x|ces)|vectors?|tensors?|noncommut\w*)\b", re.IGNORECASE)
+_BARE_EI = re.compile(r"(?<![A-Za-z\\])[ei](?![A-Za-z])")
+# The honest outcomes of each operation, kept as the answer (the model then reports them): a result, or a refusal that
+# is itself the answer. Anything else (not verified, a parse error, a limit) drops the route and the model plans.
+_ANSWERS = {
+    "simplify": frozenset({"ok", "unchanged", "conditions_not_satisfied"}),
+    "differentiate": frozenset({"ok", "unsupported"}),
+    "integrate": frozenset({"ok", "unsupported"}),
+    "series": frozenset({"ok", "unsupported"}),
+}
+
+
+def explicit_operation(text: str, context: RouteContext = NO_CONTEXT) -> Route | None:
+    """`simplify`, `differentiate`, `series` or `integrate` (indefinite) of the one formula in a plain imperative
+    sentence. No assumption, variable, point or order is supplied that the sentence does not contain."""
+    if _NONSCALAR.search(" ".join([*context.user_messages, text])):
+        return (
+            None  # matrices, vectors and tensors have their own tools; the scalar ones refuse them
+        )
+    formulas, _ = _split(text)
+    expressions = [f for f in formulas if not _LONE_SYMBOL.fullmatch(f)]
+    if len(expressions) != 1 or "@" in expressions[0] or _BARE_EI.search(expressions[0]):
+        return None
+    if "=" in expressions[0]:
+        return None  # an equation is not an expression to simplify or differentiate
+    expression = expressions[0].strip()
+    named = _WRT.findall(text)
+    point, order = _POINT.findall(text), [a or b for a, b in _ORDER.findall(text)]
+    if len({v.lower() for v in named}) > 1 or len(point) > 1 or len(order) > 1:
+        return None
+    # The sentence without the phrases that carry the arguments and without its formulas.
+    sentence = _ORDER.sub(" ", _POINT.sub(" ", _WRT.sub(" ", text)))
+    sentence = re.sub(r"\$[^$]*\$|\\\(.*?\\\)|\\\[.*?\\\]", " ", sentence)
+    sentence = " ".join(sentence.split()).rstrip(".?!").strip()
+    operation = next((name for name, verb in _VERBS.items() if verb.fullmatch(sentence)), None)
+    if operation is None:
+        return None
+    if operation == "simplify":
+        if named or point or order:
+            return None
+        return Route(
+            "simplify",
+            {"latex": expression},
+            reason="explicit_operation",
+            answers=_ANSWERS[operation],
+        )
+    variable = named[0] if named else single_symbol(expression)
+    if variable is None:
+        return None
+    if operation == "differentiate" and not (point or order):
+        return Route(
+            "differentiate",
+            {"latex": expression, "variables": [{"name": variable}]},
+            reason="explicit_operation",
+            answers=_ANSWERS[operation],
+        )
+    if operation == "integrate" and not (point or order):
+        return Route(
+            "integrate",
+            {"latex": expression, "variable": variable},
+            reason="explicit_operation",
+            answers=_ANSWERS[operation],
+        )
+    if operation == "series" and point and order:
+        return Route(
+            "series",
+            {"latex": expression, "variable": variable, "point": point[0], "order": int(order[0])},
+            reason="explicit_operation",
+            answers=_ANSWERS[operation],
+        )
+    return None
+
+
 # --- ode_analyze: an equation with a derivative of an applied function -----------------------------------
 _ODE_CHARS = re.compile(r"^[A-Za-z0-9'()+\-*/^=.,\s]+$")
 _ODE_DERIVATIVE = re.compile(r"(?<![A-Za-z])([A-Za-z])('{1,4})\(([A-Za-z])\)")
@@ -423,6 +530,7 @@ RULES: tuple[Rule, ...] = (
     lagrangian_followup,
     ode_analyze,
     matrix_simplify,
+    explicit_operation,  # last: the specific rules above read the same sentences with more context
 )
 
 

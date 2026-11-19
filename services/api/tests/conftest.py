@@ -67,6 +67,9 @@ def make_settings(**over: object) -> Settings:
         "compute_max_concurrency": 2,
         "auth_rate_per_minute": 1000,
         "compute_rate_per_minute": 1000,
+        # The API tests exercise the model's own tool calls; routing has its own tests (`test_routing*.py`)
+        # that run the loop directly. A test of the routed path passes `agent_routing=True`.
+        "agent_routing": False,
     }
     base.update(over)
     return Settings(_env_file=None, **base)  # type: ignore[arg-type]  # hermetic: ignore .env
