@@ -25,7 +25,11 @@ export function modelFacts(info: ModelInfo): [string, string][] {
   const rows: [string, string | null | undefined][] = [
     [
       "Provider",
-      info.hosted ? "OpenRouter (hosted)" : info.provider === "ollama" ? "Local (Ollama)" : info.provider,
+      info.hosted
+        ? "OpenRouter (hosted)"
+        : info.provider === "ollama"
+          ? "Local (Ollama)"
+          : info.provider,
     ],
     ["Configured name", info.alias],
     ["Base model", info.base_model],
