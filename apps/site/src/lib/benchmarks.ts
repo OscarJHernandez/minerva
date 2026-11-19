@@ -75,14 +75,18 @@ export const BENCHMARKS = raw as Benchmarks;
 
 export const pct = (value: number) => `${(100 * value).toFixed(1)}%`;
 
-/** The model as its host reported it: never the alias alone (an alias can be re-pointed). */
+/**
+ * The model as its host reported it, by what it is: the base model first, the alias it is served under last.
+ * An alias can be re-pointed and says nothing about the weights.
+ */
 export function modelLine(m: ChatModel): string {
+  const what = m.base_model ?? m.alias;
   const parts = [
-    m.alias,
-    m.base_model ? `based on ${m.base_model}` : null,
+    what,
     m.parameter_size,
     m.quantization,
     m.digest ? `digest ${m.digest}` : null,
+    m.base_model && m.base_model !== m.alias ? `served as ${m.alias}` : null,
     m.thinking_requested ? "thinking on" : "thinking off",
     m.reply_limit
       ? `reply limit ${m.reply_limit} tokens${m.reply_limit_is_host_default ? " (the host's default)" : ""}`

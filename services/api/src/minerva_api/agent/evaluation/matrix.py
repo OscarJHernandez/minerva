@@ -57,6 +57,7 @@ class Row:
     slow: list[str] = field(
         default_factory=list
     )  # over the chat latency ceiling: only out of the quick result
+    base_model: str | None = None  # what the host says a derived build is made from
 
     @property
     def eligible(self) -> bool:
@@ -81,7 +82,15 @@ class Row:
         think = {True: "thinking on", False: "thinking off", None: "thinking not recorded"}[
             self.thinking
         ]
-        return f"{self.model} ({think})"
+        return f"{self.display} ({think})"
+
+    @property
+    def display(self) -> str:
+        """The model by what it is, not by the name a host serves it under (an alias can be re-pointed, and a
+        name like `minerva` says nothing about the weights)."""
+        if self.base_model and self.base_model != self.model:
+            return f"{self.base_model} (served as {self.model})"
+        return self.model
 
 
 def _weights(identity: dict[str, Any] | None) -> tuple[str, str | None, float | None]:
@@ -126,6 +135,7 @@ def rows_of(docs: list[dict[str, Any]]) -> list[Row]:
             row = Row(
                 source=index + 1,
                 model=model,
+                base_model=(identity or {}).get("base_model") or None,
                 weights=weights,
                 digest=digest,
                 thinking=params.get("think", meta.get("think")),
@@ -256,7 +266,7 @@ def matrix_report(docs: list[dict[str, Any]]) -> str:
         verdict = "yes" if r.eligible else "no: " + "; ".join(r.reasons)
         quick = "yes" if r.quick else ("no: " + "; ".join(r.slow) if r.eligible else "n/a")
         lines.append(
-            f"| {r.source} | {r.model} | {r.weights} | {r.digest or 'not recorded'} | {think} | "
+            f"| {r.source} | {r.display} | {r.weights} | {r.digest or 'not recorded'} | {think} | "
             f"{r.reply_budget} | {gpu} | {r.runs} | {r.passed} ({_p(r.rate)}) | {r.repeats} | "
             f"{_p(r.tool_selection)} | {_p(r.valid_arguments)} | {_p(r.completion)} | {r.false_verified} | "
             f"{r.no_tool_runs} | {r.cut_off} | {_s(r.median_s)} | {_s(r.p95_s)} | "
