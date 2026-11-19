@@ -67,8 +67,10 @@ test("an exploration survives login, fills the message box without sending, runs
   await expect(ricci).toContainText("Every component is zero.");
   await expect(ricci).toContainText("Proved by a symbolic zero test, and numerically checked");
   const kretschmann = page.getByTestId("quantity-kretschmann");
-  await expect(kretschmann).toContainText("Numerically checked; no symbolic proof");
-  await expect(kretschmann).not.toContainText("Proved by a symbolic zero test");
+  // The scalar has its own symbolic leg (the full contraction of the second-derivative formula for R_{abcd}).
+  await expect(kretschmann).toContainText(
+    "Proved by a symbolic zero test, and numerically checked",
+  );
   await expect(page.getByTestId("quantity-christoffel")).toBeVisible();
   await expect(page.getByTestId("restrictions")).toBeVisible();
   await expect(page.getByTestId("signature")).toContainText("NOT DETERMINED", {
@@ -94,7 +96,7 @@ test("an exploration survives login, fills the message box without sending, runs
   await expect(page.getByTestId("quantity-ricci_scalar")).toBeVisible();
   await expect(page.getByText("Using the Schwarzschild metric").first()).toBeVisible();
   await expect(page.getByTestId("quantity-kretschmann").first()).toContainText(
-    "Numerically checked; no symbolic proof",
+    "Proved by a symbolic zero test, and numerically checked",
   );
 });
 
