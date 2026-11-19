@@ -286,7 +286,11 @@ def _identity_cells(identity: dict[str, Any] | None) -> tuple[str, str, str]:
     defaults = identity.get("host_defaults") or {}
     shown = ", ".join(f"{k} {v}" for k, v in defaults.items()) or "none reported"
     loaded = identity.get("loaded_context")
-    return (weights or "not recorded", shown, str(loaded) if loaded else "not reported")
+    window = str(loaded) if loaded else "not reported"
+    total, gpu = identity.get("loaded_bytes"), identity.get("loaded_gpu_bytes")
+    if total and gpu is not None:
+        window += f", {100 * gpu / total:.0f}% of {total / 1e9:.1f} GB on the GPU"
+    return (weights or "not recorded", shown, window)
 
 
 def _model_section(doc: dict[str, Any]) -> list[str]:
