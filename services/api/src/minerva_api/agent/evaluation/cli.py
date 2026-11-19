@@ -37,6 +37,7 @@ from ..openrouter import OpenRouterClient
 from ..params import EffectiveParams, ParamOverrides, defaults
 from ..tools import ToolContext
 from .cases import SUITES, EvalCase, cases_digest, load_suite
+from .matrix import matrix_report
 from .reference import check_alternatives, check_reference
 from .report import build_document, compare, render_markdown
 from .runner import describe_limits, filter_cases, run_suite
@@ -140,11 +141,15 @@ def model_identity(provider: str, model: str, base_url: str | None) -> dict[str,
         )
         details = info.get("details") or {}
         loaded: int | None = None
+        loaded_bytes: int | None = None
+        loaded_vram: int | None = None
         ps = httpx.get(f"{root}/api/ps", timeout=15.0)
         if ps.status_code == 200:
             for item in ps.json().get("models", []):
                 if item.get("name") in (model, f"{model}:latest"):
                     loaded = item.get("context_length")
+                    loaded_bytes = item.get("size")
+                    loaded_vram = item.get("size_vram")
     except (httpx.HTTPError, ValueError):
         return None
     return {
@@ -161,6 +166,10 @@ def model_identity(provider: str, model: str, base_url: str | None) -> dict[str,
         "capabilities": sorted(info.get("capabilities") or []),
         "host_defaults": _parse_host_defaults(str(info.get("parameters") or "")),
         "loaded_context": loaded,
+        # What the host holds in memory for this model and how much of it sits on the GPU: a model that spills to
+        # the CPU has a latency that measures the spill, not the model.
+        "loaded_bytes": loaded_bytes,
+        "loaded_gpu_bytes": loaded_vram,
     }
 
 
@@ -413,6 +422,13 @@ def _parser() -> argparse.ArgumentParser:
         default="failed",
         help="with --traces-dir: only failed turns (default) or every turn",
     )
+    parser.add_argument(
+        "--matrix",
+        nargs="+",
+        metavar="REPORT.json",
+        help="one table across saved reports: a row per (model, thinking, reply budget) with the chat latency "
+        "ceiling and the decision rule applied (docs/reliability/model-comparison.md); runs nothing",
+    )
     parser.add_argument("--compare", metavar="BASE.json", help="compare this run with a saved one")
     parser.add_argument(
         "--compare-only", nargs=2, metavar=("BASE.json", "NEW.json"), help="compare two saved runs"
@@ -450,6 +466,13 @@ def _context(compute_timeout: float = 30.0) -> ToolContext:
 def main(argv: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
+
+    if args.matrix:
+        text = matrix_report([_load(p) for p in args.matrix])
+        if args.out:
+            _write(args.out, text)
+        print(text)
+        return 0
 
     if args.compare_only:
         text = compare(_load(args.compare_only[0]), _load(args.compare_only[1]))
