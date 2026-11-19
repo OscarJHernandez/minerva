@@ -85,7 +85,12 @@ test("an exploration survives login, fills the message box without sending, runs
   await box.fill("Now compute the Ricci scalar of the Schwarzschild metric");
   await page.getByRole("button", { name: "Send", exact: true }).click();
   await expect(page.getByTestId("quantity-ricci_scalar")).toBeVisible();
+  // Which model answered is on the page, from the server and stored with the reply (the e2e server runs the
+  // scripted stand-in, which says so instead of passing for a language model), and it survives a reload.
+  await expect(page.getByTestId("model-details").first()).toContainText("scripted stand-in");
   await page.reload();
+  await expect(page.getByTestId("model-details").first()).toContainText("scripted stand-in");
+  await expect(page.getByRole("button", { name: /^Model: scripted stand-in/ })).toBeVisible();
   await expect(page.getByTestId("quantity-ricci_scalar")).toBeVisible();
   await expect(page.getByText("Using the Schwarzschild metric").first()).toBeVisible();
   await expect(page.getByTestId("quantity-kretschmann").first()).toContainText(

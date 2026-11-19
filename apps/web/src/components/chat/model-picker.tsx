@@ -1,7 +1,9 @@
 "use client";
 
 import type { ChatStatus } from "@/lib/chat-types";
+import { modelLabel } from "@/lib/model-info";
 import { useModelSettings } from "@/lib/model-settings";
+import { useLocalModelInfo } from "@/lib/use-model-info";
 
 /** The compact chip in the composer: which model will answer. Opens the settings panel. */
 export function ModelPicker({
@@ -16,9 +18,12 @@ export function ModelPicker({
   const s = useModelSettings();
   const defaultCloud = status?.providers?.default === "openrouter";
   const cloud = s.touched ? s.provider === "openrouter" : defaultCloud;
+  const localName =
+    (s.touched && s.localModel) || status?.providers?.ollama.model || status?.model || "model";
+  const info = useLocalModelInfo(cloud ? null : status, localName);
   const label = cloud
     ? `OpenRouter · ${s.touched && s.model ? s.model : (status?.providers?.openrouter.default_model ?? "")}`
-    : `Local · ${(s.touched && s.localModel) || status?.providers?.ollama.model || status?.model || "model"}`;
+    : modelLabel(info, localName);
   const bad = !cloud && status?.providers?.ollama.reachable === false;
   return (
     <button

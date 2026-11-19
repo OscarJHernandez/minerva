@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ApiError } from "@/lib/api";
 import { chatApi } from "@/lib/chat-api";
 import type { ChatStatus, ConnectionResult } from "@/lib/chat-types";
+import { useLocalModelInfo } from "@/lib/use-model-info";
 import { memoryLine } from "@/lib/usage";
 import { isValidModelId, modelSettings, useModelSettings } from "@/lib/model-settings";
+import { ModelDetails } from "./model-details";
 
 const CUSTOM = "__custom__";
 
@@ -27,6 +29,7 @@ export function ModelSettingsPanel({
     (settings.touched && settings.provider === "ollama" && settings.localModel) ||
     local?.model ||
     "";
+  const activeInfo = useLocalModelInfo(status, activeLocal);
   const [localChoice, setLocalChoice] = useState(
     installed.some((m) => m.name === (settings.localModel || modelSettings.savedLocalModel()))
       ? settings.localModel || modelSettings.savedLocalModel()
@@ -85,6 +88,9 @@ export function ModelSettingsPanel({
               ) : (
                 <span className="text-ok">connected</span>
               )}
+            </div>
+            <div className="mt-1">
+              <ModelDetails info={activeInfo} alias={activeLocal} />
             </div>
           </div>
           {cloudActive ? (

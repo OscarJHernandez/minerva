@@ -4,6 +4,7 @@ import { splitMath } from "@/lib/inline-math";
 import { replyToMarkdown } from "@/lib/reply-markdown";
 import { CardView } from "./card-view";
 import { CopyButton, DebugPanel } from "./debug-panel";
+import { ModelDetails } from "./model-details";
 import { RichText } from "./rich-text";
 
 /** A reply that asserts mathematics although no tool ran: its formulas are the model's own. */
@@ -107,8 +108,21 @@ export function MessageView({
           engine, and its formulas are the model&apos;s own.
         </p>
       )}
-      {message.content.debug?.provider === "openrouter" && (
-        <p className="text-xs text-muted">via OpenRouter · {message.content.debug.model}</p>
+      {message.content.model_info ? (
+        <ModelDetails
+          info={message.content.model_info}
+          suffix={
+            message.content.model_info.thinking_requested == null
+              ? ""
+              : message.content.model_info.thinking_requested
+                ? " · thinking on"
+                : " · thinking off"
+          }
+        />
+      ) : (
+        message.content.debug?.provider === "openrouter" && (
+          <p className="text-xs text-muted">via OpenRouter · {message.content.debug.model}</p>
+        )
       )}
       {(blocks.length > 0 || onRetry) && (
         <div className="flex gap-3">

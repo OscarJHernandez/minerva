@@ -15,7 +15,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from minerva_engine import MotionRequest, VariationInput, trace_scope
@@ -39,6 +39,14 @@ from .agent.equations import (
     unverified_inputs,
 )
 from .agent.events import AssistantMessage, Block, Card, TraceStep, TurnDebug
+from .agent.identity import (
+    ModelInfo,
+    hosted_info,
+    probe,
+    probe_digest,
+    scripted_info,
+    stamped,
+)
 from .agent.llm import LLMClient, LLMError
 from .agent.loop import AgentLimits, TurnInfo, matrix_names, prompt_sha, run_agent, vector_names
 from .agent.openrouter import check_connection
@@ -73,6 +81,8 @@ from .db import ChatMessage, Conversation, User, utcnow
 from .deps import DbDep, EngineDep, KbDep, LimiterDep, SettingsDep, UserDep, current_user
 from .logging import error_fields, get_logger
 from .providers import (
+    LOCAL_MODEL_ID,
+    PROBE_TTL,
     OpenRouterTest,
     ProviderChoice,
     local_model_choices,
@@ -125,6 +135,8 @@ class StatusOut(BaseModel):
     params: dict[str, Any] | None = None
     context_ok: bool = True
     build: str = ""  # the commit this API was built from, for the debug report
+    # What the default model is, as its host reports it (agent/identity.py); None when no model is configured.
+    identity: ModelInfo | None = None
 
 
 class ImageIn(BaseModel):
@@ -210,6 +222,30 @@ def _owned(db: Session, conversation_id: uuid.UUID, user_id: uuid.UUID) -> Conve
     return row
 
 
+async def _identity_of(
+    request: Request, settings: Settings, provider: str, model: str, *, fresh: bool = False
+) -> ModelInfo:
+    """Which model this is, as its host reports it. The status chip may use a 30 s cache; a reply's stamp
+    (`fresh=True`) never does, so a reply sent just after the alias was re-pointed is not stamped with the old
+    weights. A hosted model (OpenRouter) is named and marked as one: its weights are not ours to report."""
+    if provider == "openrouter":
+        return hosted_info("openrouter", model)
+    if provider == "scripted" or settings.llm_mode == "scripted":
+        return scripted_info()
+    transport = getattr(request.app.state, "ollama_probe_transport", None)
+    cache: dict[str, tuple[float, ModelInfo]] = request.app.state.__dict__.setdefault(
+        "model_identity", {}
+    )
+    now = time.monotonic()
+    hit = cache.get(model)
+    if not fresh and hit and now - hit[0] < PROBE_TTL:
+        return hit[1]
+    found = await probe(settings.llm_base_url, model, transport=transport)
+    if found.known:  # an unanswered probe is not cached: the next request asks again
+        cache[model] = (now, found)
+    return found
+
+
 @router.get("/status", response_model=StatusOut)
 async def chat_status(request: Request, db: DbDep, settings: SettingsDep) -> StatusOut:
     llm = _llm(request)
@@ -242,7 +278,32 @@ async def chat_status(request: Request, db: DbDep, settings: SettingsDep) -> Sta
         params=describe(settings, user.email) if user is not None else None,
         context_ok=_context_ok(settings),
         build=settings.build_sha,
+        identity=(
+            await _identity_of(
+                request,
+                settings,
+                "openrouter" if settings.llm_mode == "openrouter" else "ollama",
+                default_model,
+            )
+            if llm is not None and default_model
+            else None
+        ),
     )
+
+
+@router.get("/model-info", response_model=ModelInfo)
+async def model_info(
+    request: Request,
+    db: DbDep,
+    settings: SettingsDep,
+    model: str = Query(min_length=1, max_length=100, pattern=LOCAL_MODEL_ID.pattern),
+) -> ModelInfo:
+    """What one installed local model is, as the host reports it (for the chip when the user picks another)."""
+    current_user(request, db, settings)
+    installed = await ollama_models(request, settings)
+    if installed is None or model not in installed:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+    return await _identity_of(request, settings, "ollama", model)
 
 
 @router.post("/providers/openrouter/test", response_model=ConnectionOut)
@@ -1018,7 +1079,12 @@ def _context_ok(settings: Settings) -> bool:
     return bool(needed < settings.llm_num_ctx - reserve)
 
 
-def _store_stopped(session_factory: Any, conv_id: uuid.UUID, order: list[str | Card]) -> None:
+def _store_stopped(
+    session_factory: Any,
+    conv_id: uuid.UUID,
+    order: list[str | Card],
+    model: ModelInfo | None = None,
+) -> None:
     """Keep what had arrived when the client went away, so the conversation shows it as stopped.
 
     Without this the user's message would sit with no reply, or a reply they saw would be gone after a
@@ -1039,6 +1105,7 @@ def _store_stopped(session_factory: Any, conv_id: uuid.UUID, order: list[str | C
         trace=[],
         truncated=True,
         stop_reason="stopped",
+        model_info=model,
     )
     with session_factory() as session:
         session.add(
@@ -1064,6 +1131,7 @@ def _store_failed(
     order: list[str | Card],
     trace_id: str = "",
     site: dict[str, Any] | None = None,
+    model: ModelInfo | None = None,
 ) -> None:
     """A turn that failed outside the agent loop leaves a message saying so (with what had arrived),
     so a reload and a debug report show the failure instead of a user message with no reply."""
@@ -1080,6 +1148,7 @@ def _store_failed(
         trace=[],
         truncated=True,
         stop_reason="internal_error",
+        model_info=model,
         # What the debug report shows for this turn: the trace id that joins the log line, and where
         # our code raised the exception (never its message).
         debug=TurnDebug(
@@ -1367,7 +1436,12 @@ async def send_message(
             str | Card
         ] = []  # prose and cards sent so far, in order (kept if the client leaves)
         replied = False
+        # Who is answering, asked of the host now (never the status cache) and again when the reply is done.
+        reply_model: ModelInfo | None = None
         try:
+            reply_model = await _identity_of(
+                request, settings, provider_label, llm.name, fresh=True
+            )
             if user_equations or shown_references:
                 # What the user's message was found to contain, before the reply: numbers for its displayed
                 # formulas and what "equation 3" was taken to mean. (The stored message has the same.)
@@ -1436,6 +1510,24 @@ async def send_message(
                 elif event["event"] == "error":
                     counts["error_kind"] = event["data"].get("debug", {}).get("error_kind")
                 if event["event"] == "message":
+                    if reply_model is not None:
+                        after = (
+                            await probe_digest(
+                                settings.llm_base_url,
+                                llm.name,
+                                transport=getattr(
+                                    request.app.state, "ollama_probe_transport", None
+                                ),
+                            )
+                            if reply_model.known
+                            else None
+                        )
+                        event["data"]["model_info"] = stamped(
+                            reply_model,
+                            after,
+                            thinking_requested=params.think,
+                            reply_budget=params.num_predict,
+                        ).model_dump(mode="json")
                     with session_factory() as session:
                         session.add(
                             ChatMessage(
@@ -1453,14 +1545,14 @@ async def send_message(
             # The browser went away (Stop, a closed tab, a dropped connection) before the reply was stored.
             stop_reason = "stopped"
             if not replied:
-                _store_stopped(session_factory, conv_id, arrived)
+                _store_stopped(session_factory, conv_id, arrived, reply_model)
             raise
         except Exception as exc:
             site = error_fields(exc)  # the class and where our code raised it, never the message
             log.error("chat_turn_failed", trace_id=trace_id, **site)
             if not replied:
                 with contextlib.suppress(Exception):  # never let the record hide the error event
-                    _store_failed(session_factory, conv_id, arrived, trace_id, site)
+                    _store_failed(session_factory, conv_id, arrived, trace_id, site, reply_model)
             yield _sse(
                 "error", {"message": "The assistant hit an internal error.", "trace_id": trace_id}
             )
