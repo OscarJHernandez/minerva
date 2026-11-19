@@ -71,7 +71,9 @@ def doc(
 
 def test_every_row_names_model_digest_thinking_and_budget() -> None:
     text = matrix_report([doc({"minerva": entry([70, 71, 69])}, think=True)])
-    row = next(line for line in text.splitlines() if line.startswith("| 1 | minerva"))
+    row = next(
+        line for line in text.splitlines() if line.startswith("| 1 | base (served as minerva)")
+    )
     assert "aaaaaaaaaaaa" in row and "| on |" in row and "host default 1200" in row
 
 
@@ -112,7 +114,8 @@ def test_the_quick_result_only_considers_models_within_the_chat_ceiling() -> Non
     text = matrix_report(
         [doc({"slow": entry([90, 90, 90], median=30.0), "ok": entry([70, 70, 70])})]
     )
-    assert "**At any speed**: slow" in text and "**Within the chat ceiling**: ok" in text
+    assert "**At any speed**: base (served as slow)" in text
+    assert "**Within the chat ceiling**: base (served as ok)" in text
     assert "over the 15 s ceiling" in text
 
 
@@ -158,3 +161,19 @@ def test_an_unrecorded_gpu_share_is_said_not_assumed() -> None:
 def test_cut_off_and_no_tool_runs_are_counted() -> None:
     rows = rows_of([doc({"a": entry([70, 70, 70], cut=2)})])
     assert rows[0].cut_off == 2 and rows[0].no_tool_runs == 3
+
+
+def test_a_model_is_named_by_what_it_is_not_by_the_alias_it_is_served_under() -> None:
+    rows = rows_of([doc({"minerva": entry([70, 70, 70])})])
+    assert rows[0].display == "base (served as minerva)"
+    assert rows[0].name == "base (served as minerva) (thinking off)"
+    text = matrix_report([doc({"minerva": entry([70, 70, 70])})])
+    assert (
+        "| 1 | base (served as minerva) |" in text and "**At any speed**: base (served as" in text
+    )
+
+
+def test_a_model_that_is_not_a_derived_build_keeps_its_own_name() -> None:
+    plain = entry([70, 70, 70])
+    plain["identity"]["base_model"] = None  # the host reports no parent: the name is the model
+    assert rows_of([doc({"gemma4:26b": plain})])[0].display == "gemma4:26b"
