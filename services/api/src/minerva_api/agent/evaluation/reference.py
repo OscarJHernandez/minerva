@@ -98,3 +98,24 @@ def check_reference(case: EvalCase, ctx: ToolContext) -> list[str]:
     if card["type"] == "error":
         return [f"reference call failed: {card['data'].get('message', '')}"]
     return card_meets(case.expect_card, card, output.status)
+
+
+def check_alternatives(case: EvalCase, ctx: ToolContext) -> list[str]:
+    """Run each alternative's reference call; report every way one fails to meet that alternative's `expect_card`."""
+    problems: list[str] = []
+    for alternative in case.accept:
+        if alternative.reference is None or alternative.expect_card is None:
+            continue
+        output = execute(alternative.reference.tool, alternative.reference.arguments, ctx)
+        card = output.card.model_dump(mode="json")
+        if card["type"] == "error":
+            problems.append(
+                f"alternative {alternative.tool}: reference call failed: "
+                f"{card['data'].get('message', '')}"
+            )
+            continue
+        problems += [
+            f"alternative {alternative.tool}: {p}"
+            for p in card_meets(alternative.expect_card, card, output.status)
+        ]
+    return problems

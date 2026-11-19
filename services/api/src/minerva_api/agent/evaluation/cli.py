@@ -37,7 +37,7 @@ from ..openrouter import OpenRouterClient
 from ..params import EffectiveParams, ParamOverrides, defaults
 from ..tools import ToolContext
 from .cases import SUITES, EvalCase, cases_digest, load_suite
-from .reference import check_reference
+from .reference import check_alternatives, check_reference
 from .report import build_document, compare, render_markdown
 from .runner import describe_limits, filter_cases, run_suite
 from .score import CaseResult
@@ -477,10 +477,12 @@ def main(argv: list[str] | None = None) -> int:
         bad = 0
         turns = [turn for case in cases for turn in case.turns()]
         for turn in turns:
-            for problem in check_reference(turn, ctx):
+            for problem in [*check_reference(turn, ctx), *check_alternatives(turn, ctx)]:
                 bad += 1
                 print(f"{turn.id}: {problem}")
-        refs = sum(1 for t in turns if t.reference)
+        refs = sum(1 for t in turns if t.reference) + sum(
+            1 for t in turns for a in t.accept if a.reference
+        )
         print(f"{len(cases)} cases ({len(turns)} turns), {refs} reference calls, {bad} problem(s)")
         return 1 if bad else 0
 

@@ -100,6 +100,20 @@ class Reference(BaseModel):
     arguments: dict[str, Any]
 
 
+class Alternative(BaseModel):
+    """Another accepted way to answer: a different tool with its own argument and result expectations.
+
+    `also_ok` only says a tool is acceptable (and its calls are not checked). An alternative is checked like the
+    expected tool: its arguments must say what the user asked (`args`) and its card must be the expected one
+    (`expect_card`). A run passes if any accepted tool, the expected one or an alternative, did both.
+    """
+
+    tool: str
+    args: ArgCheck | None = None
+    expect_card: ExpectCard | None = None
+    reference: Reference | None = None  # a correct call, run against the engine by --check-cases
+
+
 class Followup(BaseModel):
     """A later turn of a live conversation: the agent has really answered the earlier ones.
 
@@ -146,6 +160,8 @@ class EvalCase(BaseModel):
     # The tool a correct run reaches for first, or NO_TOOL / ASK.
     expected_tool: str
     also_ok: list[str] = Field(default_factory=list)  # other tools that are acceptable instead
+    # Other tools that answer correctly, with their own checks (see Alternative). Left out of the digest while empty.
+    accept: list[Alternative] = Field(default_factory=list)
     forbid: list[str] = Field(default_factory=list)
     # Calling no tool is also acceptable (a correct reply without one still has to pass every check).
     tools_optional: bool = False
@@ -200,6 +216,14 @@ class EvalCase(BaseModel):
             )
         if self.reference and self.reference.tool != self.expected_tool:
             raise ValueError(f"{self.id}: the reference call must use the expected tool")
+        if self.accept and not self.expects_tool:
+            raise ValueError(f"{self.id}: alternatives need an expected tool")
+        names = [a.tool for a in self.accept]
+        if len(set(names)) != len(names) or self.expected_tool in names:
+            raise ValueError(f"{self.id}: each accepted alternative is a different tool")
+        for alternative in self.accept:
+            if alternative.reference and alternative.reference.tool != alternative.tool:
+                raise ValueError(f"{self.id}: an alternative's reference must use its own tool")
         if not self.source:
             raise ValueError(f"{self.id}: say where the expected outcome comes from")
         for number, turn in enumerate(self.followups, start=2):
@@ -216,7 +240,9 @@ class EvalCase(BaseModel):
 
     @property
     def acceptable_tools(self) -> set[str]:
-        return {self.expected_tool, *self.also_ok} if self.expects_tool else set()
+        if not self.expects_tool:
+            return set()
+        return {self.expected_tool, *self.also_ok, *(a.tool for a in self.accept)}
 
 
 def load_cases(path: Path = CASES_FILE) -> list[EvalCase]:
@@ -253,6 +279,7 @@ def load_suite(suite: str = "core") -> list[EvalCase]:
 
 
 _RELIABILITY_FIELDS = (
+    "accept",
     "max_reply_words",
     "must_reuse",
     "restrictions_reported",
