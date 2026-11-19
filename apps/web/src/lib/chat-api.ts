@@ -6,6 +6,7 @@ import type { DistributionAnswer, GeometryRequest } from "./types";
 import type { VariationRequest } from "./variation-types";
 import type {
   ChatStatus,
+  ModelInfo,
   ConnectionResult,
   ProviderChoice,
   ConversationSummary,
@@ -32,6 +33,9 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const chatApi = {
   status: () => json<ChatStatus>("/v1/chat/status"),
+  /** What one installed local model is, as the host reports it. */
+  modelInfo: (model: string) =>
+    json<ModelInfo>(`/v1/chat/model-info?model=${encodeURIComponent(model)}`),
   list: () => json<ConversationSummary[]>("/v1/chat/conversations"),
   create: () => json<ConversationSummary>("/v1/chat/conversations", { method: "POST", body: "{}" }),
   get: (id: string, signal?: AbortSignal) =>

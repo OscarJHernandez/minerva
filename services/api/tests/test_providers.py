@@ -402,7 +402,10 @@ def test_status_reports_model_sizes_the_host_gave_and_nothing_else() -> None:
     assert "size_vram_bytes" not in rows["other:3b"] and "loaded" not in rows["other:3b"]
     # Not reported: absent, never invented.
     assert "size_bytes" not in rows["bare:1b"]
-    assert "ollama.test" not in json.dumps(body) and "digest" not in json.dumps(body)
+    assert "ollama.test" not in json.dumps(body)
+    # The memory rows carry sizes only. The digest of the default model is shown on purpose, as part of its
+    # identity (`identity`, so a user can tell which weights answer them), never on the rows of other models.
+    assert all("digest" not in row for row in body["providers"]["ollama"]["models"])
 
 
 def test_status_survives_a_host_without_ps_and_ignores_nonsense_sizes() -> None:

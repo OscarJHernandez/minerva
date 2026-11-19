@@ -313,6 +313,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   Numbers typed on a card's form are the user's. The Lagrangian card's form posts them straight to `/v1/chat/conversations/{id}/tools/integrate_motion`.
   A run is shown only if its second-method, time-reversal and conserved-quantity checks pass; do not loosen them.
 - Conversations are user data: private per account, never logged.
+- The model is never a question mark (`agent/identity.py`, `docs/model-identity.md`): the status chip and the line under every
+  reply name the weights as the model host reports them (base model, size, quantisation, digest, thinking on or off), not
+  the alias (`minerva` is a name the operator can re-point). A reply's stamp (`AssistantMessage.model_info`) is asked of the
+  host at the start of the turn and again at its end, never from the 30 s status cache, and says when the digest changed
+  while the reply was written; it is stored with the reply, so an old conversation still says what answered it. A host
+  that does not answer gives `known=false` and the interface says "identity not reported"; nothing is guessed, a
+  provider's model is marked hosted, the host address never leaves the server and the digest is not a log field.
 - "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
   (`MINERVA_LLM_VISION_MODEL`) proposes LaTeX, the user confirms it, and `Engine.read_formulas` reports how the
   strict parser reads it. Uploaded images are never stored or logged; keep it that way.

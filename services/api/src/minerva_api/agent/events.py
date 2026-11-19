@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from .identity import ModelInfo
+
 
 class Segment(BaseModel):
     """A piece of model prose: plain text, or a formula with its verification mark."""
@@ -272,3 +274,6 @@ class AssistantMessage(BaseModel):
         None  # tracing.StopReason; absent on messages stored before it existed
     )
     context_trimmed: int = 0  # earlier messages left out of this turn to fit the model's window
+    # Which model wrote this reply, as its host reported it when the reply was made (agent/identity.py). Kept with
+    # the reply, so an old conversation still says what answered it after the alias is re-pointed.
+    model_info: ModelInfo | None = None

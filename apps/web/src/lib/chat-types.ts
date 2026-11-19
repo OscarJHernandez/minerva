@@ -882,6 +882,31 @@ export interface ParamsInfo {
   num_ctx_max: number;
 }
 
+/** Which model answers, as its host reported it (never guessed): on the status, and stored with every reply. */
+export interface ModelInfo {
+  provider: string;
+  /** The configured name, which the operator can re-point. */
+  alias: string;
+  /** A provider's model: weights, quantisation and serving are theirs and not reported. */
+  hosted: boolean;
+  /** Did the host report the weights? */
+  known: boolean;
+  base_model?: string | null;
+  family?: string | null;
+  parameter_size?: string | null;
+  quantization?: string | null;
+  digest?: string | null;
+  can_think?: boolean | null;
+  loaded_context?: number | null;
+  /** How this reply was asked for (replies only). */
+  thinking_requested?: boolean | null;
+  reply_budget?: number | null;
+  /** The host served different weights between the start and the end of the reply. */
+  changed_during_reply?: boolean;
+  digest_after?: string | null;
+  notes?: string[];
+}
+
 export interface AssistantContent {
   text: string;
   blocks: Block[];
@@ -891,6 +916,8 @@ export interface AssistantContent {
   stop_reason?: string | null;
   /** Earlier messages left out of this turn so the request fit the model's window. */
   context_trimmed?: number;
+  /** The model that wrote this reply (absent on replies stored before this existed). */
+  model_info?: ModelInfo | null;
 }
 
 /** A displayed formula of the user's own message, with the number the conversation gave it. */
@@ -938,6 +965,8 @@ export interface ChatStatus {
   context_ok?: boolean;
   /** The commit the API was built from (empty from an older server). */
   build?: string;
+  /** What the default model is, as its host reports it. */
+  identity?: ModelInfo | null;
 }
 
 export interface ProviderStatus {

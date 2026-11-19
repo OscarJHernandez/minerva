@@ -103,7 +103,23 @@ describe("model settings", () => {
 
   it("the picker chip names the provider and model", () => {
     render(<ModelPicker status={status()} open={false} onToggle={() => undefined} />);
-    expect(screen.getByRole("button")).toHaveTextContent("Local · minerva");
+    // the server did not report an identity: the chip says so instead of showing the alias as if it were the model
+    expect(screen.getByRole("button")).toHaveTextContent("minerva · identity not reported");
+  });
+
+  it("the picker chip names the weights when the host reported them", () => {
+    const s = status();
+    s.identity = {
+      provider: "ollama",
+      alias: "minerva",
+      hosted: false,
+      known: true,
+      base_model: "gemma4:26b",
+      digest: "149a0ff8a1ca",
+    };
+    render(<ModelPicker status={s} open={false} onToggle={() => undefined} />);
+    expect(screen.getByRole("button")).toHaveTextContent("gemma4:26b · local");
+    expect(screen.getByRole("button")).not.toHaveTextContent(/^minerva$/);
   });
 });
 
