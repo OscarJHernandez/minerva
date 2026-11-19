@@ -1,6 +1,6 @@
 """An "Explore in Minerva" prompt, sent through the real chat endpoint, runs the geometry engine and the user can
 carry on: the numbers come from the engine (not from the registry or the page), the evidence kinds stay apart
-(Ricci: symbolically proved; Kretschmann: numerically checked, no symbolic proof), the coordinate restrictions
+(Ricci and Kretschmann: each proved by a symbolic zero test, with independent numerical checks), the coordinate restrictions
 are reported, and a follow-up in the same conversation continues from the same metric.
 
 The model here is the deterministic scripted stand-in (development only): it chooses the tool, the engine does
@@ -50,12 +50,12 @@ def test_the_full_exploration_runs_the_engine_and_keeps_proof_and_numerics_apart
     assert ricci["verification"]["numeric_passed"] is True
     assert ricci["verification"]["symbolic_zero"] is True
 
-    # The Kretschmann scalar does not, and it has numerical checks only: never a symbolic proof.
+    # The Kretschmann scalar does not; its symbolic leg is the full contraction of the second-derivative formula.
     kretschmann = by_kind["kretschmann"]
     assert kretschmann["all_zero"] is False
     assert kretschmann["scalar_text"] == "48*M**2/r**6"
     assert kretschmann["verification"]["numeric_passed"] is True
-    assert kretschmann["verification"]["symbolic_zero"] is not True
+    assert kretschmann["verification"]["symbolic_zero"] is True
 
     # The restrictions are coordinate breakdowns, and the signature is not assumed.
     restrictions = " ".join(result["restrictions_latex"])

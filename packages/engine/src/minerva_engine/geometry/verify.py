@@ -20,6 +20,7 @@ import sympy as sp
 
 from ..errors import LimitError
 from ..lagrangian import DerivationError, derive_expr
+from ..vector.algebra import exact_zero
 from ..verify import MIN_VALID_POINTS, euler_lagrange_check
 from .compute import Workspace
 from .models import Check, GeometryVerification
@@ -121,7 +122,12 @@ class Verifier:
         )
 
     # -- symbolic runner ---------------------------------------------------------------------
-    def symbolic(self, name: str, exprs: Callable[[], list[sp.Expr]]) -> Check:
+    def symbolic(
+        self,
+        name: str,
+        exprs: Callable[[], list[sp.Expr]],
+        zero: Callable[[sp.Expr], bool | None] | None = None,
+    ) -> Check:
         if time.monotonic() > self.ws.soft_deadline:
             return Check(name=name, kind="symbolic", passed=None, note="not run: time budget")
         try:
@@ -131,7 +137,7 @@ class Verifier:
         for e in items:
             if time.monotonic() > self.ws.soft_deadline:
                 return Check(name=name, kind="symbolic", passed=None, note="not run: time budget")
-            verdict = self._zero(e)
+            verdict = (zero or self._zero)(e)
             if verdict is None:
                 return Check(
                     name=name, kind="symbolic", passed=None, note="not run: expression too large"
@@ -144,6 +150,20 @@ class Verifier:
                     note="no symbolic proof found (this alone does not mean the result is wrong)",
                 )
         return Check(name=name, kind="symbolic", passed=True, note="difference simplifies to 0")
+
+    def _zero_trig(self, e: sp.Expr) -> bool | None:
+        """Exact zero test that never calls `cancel` on a trigonometric difference.
+
+        `sp.cancel` does not return within minutes on the Kretschmann difference of Reissner-Nordstrom
+        (sines and cosines of theta mixed with three parameters, and it cannot be interrupted).
+        `exact_zero` rewrites the numerator over `sin`/`cos` of plain coordinates as polynomial variables
+        reduced modulo `s^2 + c^2 = 1`: True only for the zero function, False when that cannot show it.
+        """
+        if e == 0:
+            return True
+        if sp.count_ops(e) > SYMBOLIC_MAX_OPS:
+            return None
+        return exact_zero(e)
 
     def _zero(self, e: sp.Expr) -> bool | None:
         if e == 0:
@@ -186,6 +206,51 @@ class Verifier:
                     )
             self._alt[key] = second + quad
         return self._alt[key]
+
+    def alt_kretschmann(self) -> sp.Expr:
+        """`R_{abcd} R^{abcd}` from `alt_lowered_riemann` (second derivatives of the metric) and the inverse metric.
+
+        Shares no code with `Workspace.kretschmann`, which contracts the Riemann tensor built from Christoffel
+        symbols. The lowered tensor uses only the two antisymmetries (never the pair symmetry), so the symbolic
+        leg does not assume a property that this very check is not testing; indices are raised one axis at a
+        time, skipping zero entries of the inverse metric, so a diagonal metric costs one term per component.
+        """
+        n = self.geo.n
+        ginv = self.ws.inverse()
+        Index = tuple[int, int, int, int]
+        low: dict[Index, sp.Expr] = {}
+        for a in range(n):
+            for b in range(a + 1, n):
+                for c in range(n):
+                    for d in range(c + 1, n):
+                        if time.monotonic() > self.ws.soft_deadline:
+                            raise LimitError("time budget")
+                        value = self.alt_lowered_riemann(a, b, c, d)
+                        if value == 0:
+                            continue
+                        low[(a, b, c, d)] = value
+                        low[(b, a, c, d)] = -value
+                        low[(a, b, d, c)] = -value
+                        low[(b, a, d, c)] = value
+        up = low
+        for axis in range(4):
+            raised: dict[Index, sp.Expr] = {}
+            for idx, value in up.items():
+                for new in range(n):
+                    factor = ginv[idx[axis], new]
+                    if factor == 0:
+                        continue
+                    parts = list(idx)
+                    parts[axis] = new
+                    key: Index = (parts[0], parts[1], parts[2], parts[3])
+                    raised[key] = raised.get(key, sp.S.Zero) + factor * value
+            up = raised
+        total = sp.S.Zero
+        for idx, value in low.items():
+            other = up.get(idx)
+            if other is not None:
+                total += value * other
+        return total
 
     def _cand(self, ev: Evaluator, key: str, tensor: Tensor, point: Point) -> dict[Any, Any]:
         items = list(tensor.data.items())
@@ -556,11 +621,10 @@ class Verifier:
 
         checks = [
             self._numeric_curvature_leg("agrees with the numerical Kretschmann scalar", compare),
-            Check(
-                name="independent symbolic route",
-                kind="symbolic",
-                passed=None,
-                note="not run: no independent symbolic route for this invariant",
+            self.symbolic(
+                "agrees with the full contraction of the second-derivative formula",
+                lambda: [scalar - self.alt_kretschmann()],
+                zero=self._zero_trig,
             ),
         ]
         return _combine(NUMERIC_METHOD, checks)

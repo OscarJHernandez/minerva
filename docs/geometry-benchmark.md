@@ -14,16 +14,16 @@ Environment of the stored measurements: Python 3.13.16, SymPy 1.14.0, Darwin arm
 
 | Case | Status | Reference values | Signature | `sympy.diffgeom` | Quantities | Numeric checks passed | Symbolic proofs |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| euclid3 | ok | match | ok | agrees | 6 | 6/6 | 5/6 |
-| polar | ok | match | ok | agrees | 6 | 6/6 | 5/6 |
-| sphere2 | ok | match | ok | agrees | 7 | 7/7 | 6/7 |
+| euclid3 | ok | match | ok | agrees | 6 | 6/6 | 6/6 |
+| polar | ok | match | ok | agrees | 6 | 6/6 | 6/6 |
+| sphere2 | ok | match | ok | agrees | 7 | 7/7 | 7/7 |
 | sphere_sheared | ok | match | ok | n/a | 3 | 3/3 | 2/3 |
-| sphere3 | ok | match | ok | n/a | 2 | 2/2 | 1/2 |
-| minkowski | ok | match | ok | n/a | 7 | 7/7 | 6/7 |
-| skew_flat | ok | match | ok | n/a | 6 | 6/6 | 5/6 |
-| schwarzschild | ok | match | ok | agrees | 7 | 7/7 | 6/7 |
-| de_sitter | ok | match | ok | n/a | 4 | 4/4 | 3/4 |
-| reissner_nordstrom | ok | match | ok | n/a | 2 | 2/2 | 1/2 |
+| sphere3 | ok | match | ok | n/a | 2 | 2/2 | 2/2 |
+| minkowski | ok | match | ok | n/a | 7 | 7/7 | 7/7 |
+| skew_flat | ok | match | ok | n/a | 6 | 6/6 | 6/6 |
+| schwarzschild | ok | match | ok | agrees | 7 | 7/7 | 7/7 |
+| de_sitter | ok | match | ok | n/a | 4 | 4/4 | 4/4 |
+| reissner_nordstrom | ok | match | ok | n/a | 2 | 2/2 | 2/2 |
 | static_f | ok | match | ok | n/a | 3 | 3/3 | 3/3 |
 | flrw | ok | match | ok | n/a | 2 | 2/2 | 2/2 |
 
@@ -33,18 +33,18 @@ Refusals: degenerate (unsupported), hidden_degenerate (unsupported), asymmetric 
 
 | Case | Median ms | p95 ms | Peak traced MB | Largest stage (ms) | Largest result (ops) |
 | --- | ---: | ---: | ---: | --- | ---: |
-| euclid3 | 61.9 | 75.2 | 0.2 | riemann:verify (33) | 0 |
-| polar | 26.2 | 28.7 | 0.2 | riemann:verify (9) | 3 |
-| sphere2 | 323.3 | 389.8 | 0.7 | kretschmann (98) | 18 |
-| sphere_sheared | 741.5 | 808.6 | 0.6 | kretschmann (304) | 33 |
-| sphere3 | 792.0 | 867.0 | 0.6 | kretschmann (525) | 78 |
-| minkowski | 183.9 | 202.8 | 0.5 | riemann:verify (120) | 1 |
-| skew_flat | 131.0 | 179.7 | 0.2 | einstein:verify (64) | 14 |
-| schwarzschild | 1583.0 | 2733.5 | 1.3 | geodesics:verify (607) | 128 |
-| de_sitter | 987.0 | 1015.0 | 0.8 | kretschmann (485) | 158 |
-| reissner_nordstrom | 1281.0 | 1372.6 | 1.0 | kretschmann (978) | 290 |
-| static_f | 380.2 | 390.5 | 1.1 | ricci_scalar (98) | 137 |
-| flrw | 334.3 | 374.9 | 1.0 | ricci_scalar (136) | 138 |
+| euclid3 | 52.2 | 56.6 | 0.2 | riemann:verify (30) | 0 |
+| polar | 21.2 | 22.5 | 0.2 | riemann:verify (8) | 3 |
+| sphere2 | 287.5 | 356.5 | 0.6 | kretschmann (93) | 18 |
+| sphere_sheared | 654.8 | 714.6 | 0.6 | kretschmann (268) | 33 |
+| sphere3 | 728.5 | 790.7 | 0.6 | kretschmann (471) | 78 |
+| minkowski | 165.0 | 189.1 | 0.5 | riemann:verify (109) | 1 |
+| skew_flat | 36.8 | 39.0 | 0.2 | riemann:verify (12) | 14 |
+| schwarzschild | 1376.7 | 1465.8 | 1.3 | geodesics:verify (503) | 128 |
+| de_sitter | 791.4 | 863.0 | 0.8 | kretschmann (443) | 158 |
+| reissner_nordstrom | 1118.3 | 1258.7 | 1.0 | kretschmann (805) | 290 |
+| static_f | 321.3 | 351.5 | 1.1 | ricci_scalar (83) | 137 |
+| flrw | 289.4 | 320.1 | 0.9 | ricci_scalar (120) | 138 |
 
 ## Against `sympy.diffgeom`
 
@@ -56,10 +56,10 @@ first column includes the independent verification of every quantity it returns,
 
 | Case | Engine with verification | Engine, symbolic stages only | `sympy.diffgeom` |
 | --- | ---: | ---: | ---: |
-| euclid3 | 42.4 | 0 | 172.5 |
-| polar | 17.4 | 1 | 57.2 |
-| sphere2 | 115.7 | 55 | 59.0 |
-| schwarzschild | 454.1 | 148 | 921.2 |
+| euclid3 | 39.1 | 0 | 164.0 |
+| polar | 13.7 | 0 | 45.4 |
+| sphere2 | 93.1 | 44 | 50.1 |
+| schwarzschild | 358.4 | 118 | 645.4 |
 
 ## Growth with the dimension (n-sphere)
 
@@ -68,11 +68,10 @@ compared with the known `n(n-1)/a^2`. A status other than `ok` is where a limit 
 
 | n | Status | Median ms | p95 ms | Ricci scalar | Riemann result (ops) | Peak traced MB |
 | ---: | --- | ---: | ---: | --- | ---: | ---: |
-| 2 | ok | 101.8 | 131.2 | 2/a**2 (matches) | 6 | 0.3 |
-| 3 | ok | 521.5 | 544.2 | 6/a**2 (matches) | 34 | 0.6 |
-| 4 | ok | 1347.7 | 1397.0 | 12/a**2 (matches) | 102 | 1.0 |
-| 5 | ok | 3739.3 | 4052.9 | 20/a**2 (matches) | 228 | 3.3 |
-| 6 | ok | 7358.8 | 7370.9 | 30/a**2 (matches) | 430 | 6.8 |
+| 2 | ok | 86.7 | 116.8 | 2/a**2 (matches) | 6 | 0.4 |
+| 3 | ok | 421.1 | 435.0 | 6/a**2 (matches) | 34 | 0.6 |
+| 4 | ok | 1101.9 | 1154.4 | 12/a**2 (matches) | 102 | 1.0 |
+| 5 | ok | 2778.9 | 2921.6 | 20/a**2 (matches) | 228 | 3.2 |
 
 ## Limits of this evidence
 

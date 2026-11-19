@@ -506,6 +506,61 @@ def test_correct_results_report_every_numeric_leg_passed() -> None:
         )
 
 
+# --- the Kretschmann scalar has an independent symbolic leg --------------------------------------------
+def kretschmann_checks(v):  # type: ignore[no-untyped-def]
+    return next(c for c in v.checks if c.kind == "symbolic")
+
+
+def schwarzschild_workspace() -> Workspace:
+    return workspace(
+        ["t", "r", "theta", "phi"],
+        SCHWARZSCHILD,
+        assumptions={"M": ["positive"], "r": ["positive"]},
+    )
+
+
+def test_the_kretschmann_scalar_of_schwarzschild_is_proved_by_a_symbolic_zero() -> None:
+    ws = schwarzschild_workspace()
+    M, r = ws.geo.params[0], ws.geo.coords[1]
+    assert sp.simplify(ws.kretschmann() - 48 * M**2 / r**6) == 0  # the textbook value
+    v = verified(ws, "kretschmann")
+    assert v.numeric_passed and v.symbolic_zero is True
+    assert kretschmann_checks(v).passed is True
+
+
+def test_the_kretschmann_scalar_of_the_sphere_is_proved_by_a_symbolic_zero() -> None:
+    ws = sphere_workspace()
+    v = verified(ws, "kretschmann")
+    assert v.numeric_passed and v.symbolic_zero is True
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [1 + sp.Rational(1, 1_000_000), None],
+    ids=["one part in a million", "extra factor 1 + M/r"],
+)
+def test_a_wrong_kretschmann_scalar_fails_the_symbolic_leg_and_is_rejected(scale) -> None:  # type: ignore[no-untyped-def]
+    ws = schwarzschild_workspace()
+    M, r = ws.geo.params[0], ws.geo.coords[1]
+    right = ws.kretschmann()
+    factor = scale if scale is not None else 1 + M / r
+    poison(ws, "kretschmann", right * factor)
+    v = verified(ws, "kretschmann")
+    assert kretschmann_checks(v).passed is False
+    assert v.symbolic_zero is False
+    assert rejected_by_disagreement(v)
+
+
+def test_an_oversized_symbolic_kretschmann_leg_is_not_run_rather_than_failed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("minerva_engine.geometry.verify.SYMBOLIC_MAX_OPS", 5)
+    v = verified(schwarzschild_workspace(), "kretschmann")
+    leg = kretschmann_checks(v)
+    assert leg.passed is None and "not run" in leg.note
+    assert v.symbolic_zero is None and v.numeric_passed  # numerical checks only, and said so
+
+
 # --- coordinate changes ----------------------------------------------------------------------------
 def test_christoffel_symbols_obey_the_inhomogeneous_transformation_law() -> None:
     cart = workspace(["x", "y"], [["1", "0"], ["0", "1"]], format="text")

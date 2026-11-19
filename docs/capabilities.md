@@ -915,7 +915,7 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{4}{a^{4}}$
 - **Check:** christoffel: 2 independent numeric checks passed; symbolic proof proved
 - **Check:** ricci_scalar: 1 independent numeric checks passed; symbolic proof proved
-- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof proved
 - Signature not determined: The sign of g_(phi,phi) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
 - Valid only where $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
 - Assumes: coordinates are real: theta, phi.
@@ -934,7 +934,7 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - **Ricci tensor (symmetric; one of each pair shown):** $0 \text{ (every component)}$
 - **Kretschmann scalar (full contraction of the Riemann tensor with itself):** $\frac{48 M^{2}}{r^{6}}$
 - **Check:** ricci: 1 independent numeric checks passed; symbolic proof proved
-- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof not attempted
+- **Check:** kretschmann: 1 independent numeric checks passed; symbolic proof proved
 - Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
 - Valid only where $- 2 M + r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
 - Assumes: coordinates are real: t, r, theta, phi.
