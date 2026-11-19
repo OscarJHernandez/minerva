@@ -1,6 +1,7 @@
 import { CopyMath as Formula } from "@/components/copyable-math";
 import type { DiscoveredConstant, DiscoveryReport } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
+import { Numbered } from "./equation-number";
 
 const KIND: Record<DiscoveredConstant["kind"], { label: string; tone: string }> = {
   known: { label: "Already known", tone: "bg-raised text-muted border border-rule" },
@@ -48,7 +49,7 @@ export function DiscoveryCard({ report }: { report: DiscoveryReport }) {
 
       {report.constants.length > 0 && (
         <ul className="mt-3 space-y-2">
-          {report.constants.map((c) => (
+          {report.constants.map((c, i) => (
             <li key={c.id} className="rounded border border-rule p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-medium">{c.name}</span>
@@ -65,7 +66,9 @@ export function DiscoveryCard({ report }: { report: DiscoveryReport }) {
                   {c.verified ? "dC/dt = 0 verified" : "not verified"}
                 </span>
               </div>
-              <Formula latex={c.expression_latex} display />
+              <Numbered k={`const:${i}`}>
+                <Formula latex={c.expression_latex} display />
+              </Numbered>
               <p className="text-xs text-muted">
                 {c.id === report.constants[0]?.id && c.independence === "independent"
                   ? "Functionally independent (proved)"
@@ -93,7 +96,9 @@ export function DiscoveryCard({ report }: { report: DiscoveryReport }) {
           </p>
           {ind.relations.map((r, i) => (
             <div key={i} className="mt-1">
-              <Formula latex={r.latex} display />
+              <Numbered k={`rel:${i}`}>
+                <Formula latex={r.latex} display />
+              </Numbered>
             </div>
           ))}
           {ind.relations.length > 0 && (

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Card, Segment, StoredMessage } from "@/lib/chat-types";
+import { sphere, sphereRequest } from "@/test/geometry-fixtures";
 import { CardView } from "./card-view";
 import { Composer } from "./composer";
 import { EquationNumber, InsertReferenceProvider } from "./equation-number";
@@ -53,6 +54,47 @@ describe("numbers in the conversation", () => {
     };
     render(<CardView card={card} />);
     expect(screen.getByTestId("equation-number")).toHaveTextContent("(4)");
+  });
+
+  it("numbers each listed equation of a card by its key, and a card without numbers shows none", () => {
+    const card: Card = {
+      id: "g",
+      tool: "geometry",
+      type: "geometry",
+      title: "Differential geometry",
+      data: { result: sphere, request: sphereRequest },
+      numbers: { christoffel: 7, "christoffel:0,1,1": 8, ricci_scalar: 9 },
+    };
+    const { unmount } = render(<CardView card={card} />);
+    // the Christoffel component and the Ricci scalar are numbered; a key the server did not give is not
+    expect(screen.getAllByTestId("equation-number").map((e) => e.textContent)).toEqual([
+      "(9)", // the Ricci scalar is shown first
+      "(8)",
+    ]);
+    unmount();
+    render(<CardView card={{ ...card, numbers: {} }} />);
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
+  });
+
+  it("makes a listed equation's number a reference to it", () => {
+    const insert = vi.fn();
+    const card: Card = {
+      id: "g",
+      tool: "geometry",
+      type: "geometry",
+      title: "Differential geometry",
+      data: { result: sphere, request: sphereRequest },
+      numbers: { "christoffel:0,1,1": 8 },
+    };
+    render(
+      <InsertReferenceProvider value={insert}>
+        <CardView card={card} />
+      </InsertReferenceProvider>,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Equation 8: refer to it in your message" }),
+    );
+    expect(insert).toHaveBeenCalledWith(8);
   });
 
   it("numbers the displayed formulas of the user's own message in order", () => {

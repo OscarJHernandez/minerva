@@ -76,6 +76,9 @@ class Card(BaseModel):
     title: str
     data: dict[str, Any] = Field(default_factory=dict)
     number: int | None = None  # the equation number of the primary result, when it has one
+    # For a card that lists equations (Christoffel symbols, equations of motion): the number of each listed
+    # equation by its key (`card_equations.py`). A number is a name, not a verification.
+    numbers: dict[str, int] = Field(default_factory=dict)
 
 
 CheckKind = Literal[

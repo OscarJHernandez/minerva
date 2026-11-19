@@ -4,6 +4,7 @@ import type { EntrySummary } from "@/lib/types";
 import { EntryCard } from "../entry-card";
 import { StatusPill } from "../result-panel";
 import { MotionForm } from "./motion-form";
+import { Numbered } from "./equation-number";
 
 /** Equations of motion and verified constants of motion of a Lagrangian. */
 export function LagrangianCard({
@@ -40,7 +41,9 @@ export function LagrangianCard({
         <div className="mt-4">
           <h4 className="text-sm font-medium">Equations of motion (Euler–Lagrange)</h4>
           {report.equations.map((e, i) => (
-            <Formula key={i} latex={e.latex} display />
+            <Numbered key={i} k={`eq:${i}`}>
+              <Formula latex={e.latex} display />
+            </Numbered>
           ))}
           {report.equations.every((e) => e.verification?.passed) && (
             <p className="text-xs text-muted">
@@ -57,7 +60,9 @@ export function LagrangianCard({
           <h4 className="text-sm font-medium">Conjugate momenta</h4>
           <div className="flex flex-wrap gap-x-6">
             {report.momenta.map((m, i) => (
-              <Formula key={i} latex={m.latex} />
+              <Numbered key={i} k={`mom:${i}`}>
+                <Formula latex={m.latex} />
+              </Numbered>
             ))}
           </div>
         </div>
@@ -69,7 +74,9 @@ export function LagrangianCard({
             Accelerations <span className="font-normal text-muted">(solved form): show</span>
           </summary>
           {report.accelerations.map((a, i) => (
-            <Formula key={i} latex={a.latex} display />
+            <Numbered key={i} k={`acc:${i}`}>
+              <Formula latex={a.latex} display />
+            </Numbered>
           ))}
         </details>
       )}
@@ -98,7 +105,9 @@ export function LagrangianCard({
                     {c.verified ? "dQ/dt = 0 verified" : "not verified"}
                   </span>
                 </div>
-                <Formula latex={c.expression_latex} display />
+                <Numbered k={`cons:${i}`}>
+                  <Formula latex={c.expression_latex} display />
+                </Numbered>
                 <p className="text-xs text-muted">{c.reason}</p>
                 {c.verification && (
                   <p className="mt-1 text-xs text-muted">

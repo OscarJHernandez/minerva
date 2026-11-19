@@ -1,10 +1,29 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 /** Inserts a reference to an equation ("(3)") into the message being written. Absent outside the chat. */
 const InsertReference = createContext<((n: number) => void) | null>(null);
 export const InsertReferenceProvider = InsertReference.Provider;
+
+/** The numbers of the equations a card lists, by row key. Absent outside a chat card (the workbench). */
+const RowNumbers = createContext<Record<string, number> | null>(null);
+export const RowNumbersProvider = RowNumbers.Provider;
+
+/**
+ * One listed equation of a card with its number at the right edge, when the server gave it one. Without a
+ * number (the workbench, a formula too long to number) it renders its children unchanged.
+ */
+export function Numbered({ k, children }: { k: string; children: ReactNode }) {
+  const n = useContext(RowNumbers)?.[k];
+  if (n == null) return <>{children}</>;
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <div className="min-w-0 flex-1 overflow-x-auto">{children}</div>
+      <EquationNumber n={n} />
+    </div>
+  );
+}
 
 /**
  * The number of an equation, like (3). In the chat, clicking it adds the reference to the message

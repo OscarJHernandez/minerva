@@ -10,6 +10,7 @@ import type {
   GeometryVerification,
 } from "@/lib/types";
 import { StatusPill } from "./result-panel";
+import { Numbered } from "./chat/equation-number";
 
 /** What the evidence amounts to, in the words the rest of Minerva uses: "proved" only with a symbolic zero. */
 function evidenceLabel(v: GeometryVerification): string {
@@ -39,9 +40,11 @@ function Quantity({ q }: { q: GeometryQuantityResult }) {
       </div>
 
       {shown && q.scalar_latex !== null && (
-        <div className="overflow-x-auto">
-          <Math latex={q.scalar_latex} display label={q.title} />
-        </div>
+        <Numbered k={q.kind}>
+          <div className="overflow-x-auto">
+            <Math latex={q.scalar_latex} display label={q.title} />
+          </div>
+        </Numbered>
       )}
 
       {shown && q.scalar_latex === null && q.all_zero && q.kind !== "geodesics" && (
@@ -52,7 +55,9 @@ function Quantity({ q }: { q: GeometryQuantityResult }) {
         <ul className="mt-2 space-y-1">
           {q.components.map((c) => (
             <li key={c.indices.join(",")} className="min-w-0 overflow-x-auto">
-              <Math latex={q.kind === "geodesics" ? c.latex : `${c.label_latex} = ${c.latex}`} />
+              <Numbered k={`${q.kind}:${c.indices.join(",")}`}>
+                <Math latex={q.kind === "geodesics" ? c.latex : `${c.label_latex} = ${c.latex}`} />
+              </Numbered>
             </li>
           ))}
         </ul>

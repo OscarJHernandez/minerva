@@ -19,6 +19,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from .card_equations import LIST_READERS, listed_equations
 from .events import Block
 from .reasoning import clean_reply
 from .segments import normalize, split_segments
@@ -35,6 +36,9 @@ class Equation:
     latex: str
     source: Source
     result_id: str | None = None  # "r2": the verified result this equation is, when it is one
+    # The card type whose list this equation is one row of ("geometry"). Such a row is exact LaTeX from a tool,
+    # but it is not linked to that card's verification or restrictions (see `refs.UNLINKED_INPUT`).
+    part_of: str | None = None
 
 
 @dataclass
@@ -45,7 +49,13 @@ class EquationTable:
     index: dict[str, int] = field(default_factory=dict)  # normalised LaTeX -> number
     counter: int = 0  # the highest number ever given (kept even when messages are removed)
 
-    def number_for(self, latex: str, source: Source, result_id: str | None = None) -> int | None:
+    def number_for(
+        self,
+        latex: str,
+        source: Source,
+        result_id: str | None = None,
+        part_of: str | None = None,
+    ) -> int | None:
         """The number of this formula: the one it already has, or the next. None if it cannot be numbered."""
         if not latex.strip() or len(latex) > MAX_EQUATION_CHARS:
             return None
@@ -59,18 +69,23 @@ class EquationTable:
                 item.result_id, item.source = result_id, "from_tool"
             return existing
         self.counter += 1
-        self.items[self.counter] = Equation(self.counter, latex, source, result_id)
+        self.items[self.counter] = Equation(self.counter, latex, source, result_id, part_of)
         self.index[key] = self.counter
         return self.counter
 
     def restore(
-        self, number: int, latex: str, source: Source, result_id: str | None = None
+        self,
+        number: int,
+        latex: str,
+        source: Source,
+        result_id: str | None = None,
+        part_of: str | None = None,
     ) -> None:
         """Re-enter an equation that was numbered earlier (from a stored message)."""
         self.counter = max(self.counter, number)
         key = normalize(latex)
         if number not in self.items:
-            self.items[number] = Equation(number, latex, source, result_id)
+            self.items[number] = Equation(number, latex, source, result_id, part_of)
         elif result_id and not self.items[number].result_id:
             self.items[number].result_id = result_id
             self.items[number].source = "from_tool"
@@ -101,11 +116,25 @@ def build_table(messages: Iterable[Any], counter: int = 0) -> EquationTable:
                 if isinstance(number, int) and isinstance(latex, str):
                     result_id = (steps.get(card.get("id")) or {}).get("result_id")
                     table.restore(number, latex, "from_tool", result_id)
+                _restore_listed(card, table)
             for seg in block.get("segments", []) or []:
                 number = seg.get("number") if isinstance(seg, dict) else None
                 if isinstance(number, int):
                     table.restore(number, str(seg.get("value", "")), _source_of(seg.get("status")))
     return table
+
+
+def _restore_listed(card: dict[str, Any], table: EquationTable) -> None:
+    """Re-enter the numbered rows of a stored list card (its `numbers` by key, its rows from its own data)."""
+    numbers = card.get("numbers")
+    kind = card.get("type")
+    if not isinstance(numbers, dict) or not isinstance(kind, str) or kind not in LIST_READERS:
+        return
+    data = card.get("data")
+    for key, latex in listed_equations(kind, data if isinstance(data, dict) else {}):
+        number = numbers.get(key)
+        if isinstance(number, int):
+            table.restore(number, latex, "from_tool", None, kind)
 
 
 def number_blocks(
@@ -117,6 +146,9 @@ def number_blocks(
     """
     for block in blocks:
         if block.kind == "card" and block.card is not None:
+            if block.card.type in LIST_READERS:
+                block.card.numbers = _number_listed(block.card.type, block.card.data, table)
+                continue
             latex = block.card.data.get("result_latex")
             if isinstance(latex, str):
                 block.card.number = table.number_for(
@@ -126,6 +158,16 @@ def number_blocks(
         for seg in block.segments:
             if seg.type == "display_math":
                 seg.number = table.number_for(seg.value, _source_of(seg.status))
+
+
+def _number_listed(card_type: str, data: dict[str, Any], table: EquationTable) -> dict[str, int]:
+    """One whole number per listed equation, in display order, from the conversation's one counter."""
+    out: dict[str, int] = {}
+    for key, latex in listed_equations(card_type, data):
+        number = table.number_for(latex, "from_tool", None, card_type)
+        if number is not None:
+            out[key] = number
+    return out
 
 
 def number_user_text(text: str, table: EquationTable) -> list[dict[str, Any]]:
@@ -235,6 +277,11 @@ def resolve_references(
             how = f"a verified result (write @{item.result_id} or @e{item.number} in a tool call to reuse it exactly)"
         elif item.source == "yours":
             how = f"written by the user (write @e{item.number} in a tool call to reuse it exactly)"
+        elif item.part_of:
+            how = (
+                f"one row of a {item.part_of} tool result (@e{item.number} reuses its LaTeX exactly; the tool's "
+                "verification and restrictions are not carried over, so say that)"
+            )
         else:
             how = (
                 "written by the model and NOT verified by Minerva (@e"
@@ -301,7 +348,15 @@ def number_stored(contents: Iterable[tuple[str, dict[str, Any]]], table: Equatio
         steps = {s.get("id"): s for s in content.get("trace", []) or [] if isinstance(s, dict)}
         for block in content.get("blocks", []) or []:
             card = block.get("card") if block.get("kind") == "card" else None
-            if isinstance(card, dict):
+            if isinstance(card, dict) and card.get("type") in LIST_READERS:
+                data = card.get("data")
+                listed = _number_listed(
+                    str(card["type"]), data if isinstance(data, dict) else {}, table
+                )
+                if listed and not card.get("numbers"):
+                    card["numbers"] = listed
+                    gave = True
+            elif isinstance(card, dict):
                 latex = (card.get("data") or {}).get("result_latex")
                 if isinstance(latex, str):
                     rid = (steps.get(card.get("id")) or {}).get("result_id")

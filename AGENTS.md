@@ -230,7 +230,17 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   sets `compress: false` (the CDN or nginx in front compresses). Do not turn it back on; if a deployment puts another buffering
   proxy in front, the stream must be exempt (`X-Accel-Buffering: no`, `Cache-Control: no-transform` are sent). Check with a
   fetch from the browser: many chunks over seconds, not two at the end.
-- Equation numbers (`agent/equations.py`): every displayed formula (reply or the user's message) and every tool result with a
+- Equation numbers (`agent/equations.py`, `agent/card_equations.py`): a card that lists equations (geometry: every component of
+  a quantity as the row shows it, or its scalar; Lagrangian: equations of motion, momenta, accelerations, constants; invariants
+  and discovery: the constants found and the relations) numbers each listed equation with the next whole number of the same
+  counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). Each card type must be in exactly one of
+  `LIST_READERS`, `SINGLE_RESULT` or `LIST_NOT_YET_NUMBERED` (a test); the last set names cards that still list formulas
+  without numbers (matrix, statistics, vector, statmech, tensor, solve, expansion, perturbation, motion, ode, variation,
+  dimensional): move one to `LIST_READERS` with a reader and a test. **A number on a list row is a name, not a verification**:
+  `@eN` on one substitutes its LaTeX exactly (`Equation.part_of`), but the tool's verification and the card's restrictions are
+  not carried over, so the result carries `unverified_inputs` ("equation (7), a component of an earlier result"), its
+  formulas are quoted, never `known_latex`, and a note tells the model to say so. A quantity that was not accepted lists
+  nothing. Every displayed formula (reply or the user's message) and every tool result with a
   primary `result_latex` gets a number, one counter per conversation (`Conversation.equation_counter`, a high-water mark that is
   never lowered), assigned by the server after the turn in reading order; a formula already numbered keeps its number. A number
   is a name, never a verification: do not let it change a mark, and never trust a number the model writes (the prompt says not
