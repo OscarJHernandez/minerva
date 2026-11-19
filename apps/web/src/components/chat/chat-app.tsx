@@ -41,7 +41,14 @@ import { MessageView } from "./message-view";
 import { PendingView, type Pending } from "./pending-view";
 import { MotionRunnerProvider } from "./motion-runner";
 
-export function ChatApp({ initialId }: { initialId?: string } = {}) {
+export function ChatApp({
+  initialId,
+  initialDraft,
+}: {
+  initialId?: string;
+  /** Text to put in the message box (an "Explore in Minerva" prompt). It is never sent without the user. */
+  initialDraft?: string;
+} = {}) {
   const router = useRouter();
   const [status, setStatus] = useState<ChatStatus | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
@@ -93,7 +100,7 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
     (e: unknown) => {
       if (e instanceof ApiError && e.status === 401) {
         // Log in again and come back to this conversation.
-        const here = window.location.pathname;
+        const here = window.location.pathname + window.location.search;
         return router.push(here === "/" ? "/login" : `/login?next=${encodeURIComponent(here)}`);
       }
       setError(e instanceof ApiError ? e.message : "Something went wrong. Try again.");
@@ -142,7 +149,12 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
 
   // The address names the open conversation, so a reload or a new login comes back to it. replaceState:
   // no history entry per conversation, and no navigation (the page is not rebuilt).
+  // An exploration keeps its own address (`/explore/<id>`) until its conversation starts, so a reload brings the
+  // prompt back instead of an empty chat.
+  const keepExploreAddress = useRef(Boolean(initialDraft));
   useEffect(() => {
+    if (activeId) keepExploreAddress.current = false;
+    else if (keepExploreAddress.current) return;
     const target = activeId ? conversationPath(activeId) : "/";
     if (window.location.pathname !== target) window.history.replaceState(null, "", target);
   }, [activeId]);
@@ -217,6 +229,15 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   }
 
   useEffect(() => {
+    if (!initialDraft) return;
+    const timer = setTimeout(
+      () => setReplaceRequest({ id: ++requestCounter.current, text: initialDraft }),
+      0,
+    );
+    return () => clearTimeout(timer);
+  }, [initialDraft]);
+
+  useEffect(() => {
     if (!initialId) return;
     const timer = setTimeout(() => void open(initialId), 0);
     return () => clearTimeout(timer);
@@ -287,6 +308,8 @@ export function ChatApp({ initialId }: { initialId?: string } = {}) {
   async function send(text: string, mode: SendMode = "new"): Promise<boolean> {
     const generation = viewGeneration.current;
     if (loadRef.current || abortRef.current) return false;
+    // A prefilled prompt is used once: it must not come back when the composer is rebuilt for the new conversation.
+    setReplaceRequest(null);
     pendingRef.current = { items: [], tools: [], cards: 0, startedAt: Date.now() };
     setPending(pendingRef.current);
     setError(null);

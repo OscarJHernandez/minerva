@@ -190,6 +190,42 @@ jobs:
         env:
           MINERVA_API_URL: http://localhost:8100
 
+  # Browser tests: the landing page -> app flow against the real API (deterministic scripted model, throwaway SQLite)
+  # and the built site and web app (e2e/). On a GitHub-hosted runner, always: Chromium needs system libraries
+  # (`playwright install --with-deps` uses sudo) that the self-hosted runner image does not have and its non-root pods
+  # cannot install. The job has no secrets and runs only what the other jobs already run, so nothing is exposed.
+  e2e:
+    name: Browser tests (landing page to chat)
+    needs: changes
+    if: ${{ needs.changes.outputs.web == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - run: pnpm install --frozen-lockfile
+      - name: Build the site and the web app
+        env:
+          NEXT_PUBLIC_APP_URL: http://localhost:3131
+          MINERVA_API_URL: http://127.0.0.1:8131
+        run: |
+          pnpm --filter @minerva/site build
+          pnpm --filter @minerva/web build
+      - name: Browser
+        run: pnpm --filter @minerva/e2e exec playwright install --with-deps chromium
+      - name: Browser tests
+        run: pnpm --filter @minerva/e2e e2e
+
   # Helm chart checks and workflow lint share one job (one runner pod): each is seconds of work, and a pod per
   # job made them wait minutes for a free pod whenever two runs overlapped. Each group keeps its own path filter.
   lint:
@@ -336,7 +372,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    needs: [changes, python, tests, tests-api, web, lint, images, security]
+    needs: [changes, python, tests, tests-api, web, e2e, lint, images, security]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { approvedExplorations } from "@minerva/ui/explorations";
 import { Math } from "@minerva/ui/math";
 import { StatusBadge } from "@/components/example-view";
 import { Section } from "@/components/section";
@@ -8,6 +9,7 @@ import { example, inputLatex, outputLatex } from "@/lib/capabilities";
 import {
   APP_URL,
   CONTRIBUTING_URL,
+  exploreUrl,
   ISSUES_URL,
   OPENROUTER_URL,
   REPO_URL,
@@ -36,7 +38,15 @@ const BENEFITS = [
   ],
 ];
 
+/** An "Explore in Minerva" button exists only for an exploration whose prompt passed five live runs. */
+function exploration(id: string) {
+  return approvedExplorations("geometry-schwarzschild").find((e) => e.id === id);
+}
+
 export default function Home() {
+  const curvature = exploration("schwarzschild-curvature");
+  const ricciExploration = exploration("schwarzschild-ricci");
+  const kretschmannExploration = exploration("schwarzschild-kretschmann");
   const keplerSearch = example("invariants-kepler-polar");
   const schwarzschild = example("geometry-schwarzschild");
   const trig = example("simplify-trig-quotients");
@@ -179,6 +189,14 @@ export default function Home() {
                 <p className="mt-2 text-sm text-muted">
                   All components vanish. Symbolically checked.
                 </p>
+                {ricciExploration && (
+                  <a
+                    href={exploreUrl(ricciExploration.id)}
+                    className="mt-3 inline-block text-sm underline hover:text-ink"
+                  >
+                    {ricciExploration.button}
+                  </a>
+                )}
               </div>
               <div className="min-w-0 rounded border border-rule bg-paper p-4">
                 <p className="text-xs uppercase tracking-wide text-muted">Kretschmann scalar</p>
@@ -192,6 +210,14 @@ export default function Home() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted">Curvature survives. Numerically checked.</p>
+                {kretschmannExploration && (
+                  <a
+                    href={exploreUrl(kretschmannExploration.id)}
+                    className="mt-3 inline-block text-sm underline hover:text-ink"
+                  >
+                    {kretschmannExploration.button}
+                  </a>
+                )}
               </div>
             </div>
             <p className="mt-5 max-w-3xl text-sm text-muted">
@@ -199,8 +225,13 @@ export default function Home() {
               result has a symbolic check; the full curvature contraction has independent numerical
               checks, not a symbolic proof. Validity excludes coordinate singularities.
             </p>
-            <div className="mt-4">
-              <Link href="/docs" className="text-sm underline hover:text-ink">
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              {curvature && (
+                <a href={exploreUrl(curvature.id)} className={primary}>
+                  {curvature.button}
+                </a>
+              )}
+              <Link href="/docs#differential-geometry" className="text-sm underline hover:text-ink">
                 Inspect the curvature calculation and assumptions
               </Link>
             </div>

@@ -22,7 +22,8 @@ correctness" below, say so and propose an alternative instead of complying silen
 ```
 apps/site/            Landing page. Next.js static export served by nginx (no server, no user data)
 apps/web/             Authenticated app: chat (home), workbench (/workbench: derivation scratchpad plus matrix, geometry and vector modes, no LLM), handbook, login. Next.js 16 + Tailwind 4
-packages/ui/          Shared theme tokens and the KaTeX <Math> component
+packages/ui/          Shared theme tokens, the KaTeX <Math> component and the registry of "Explore in Minerva" entry points (`fixtures/explorations.json`)
+e2e/                  Playwright browser tests: landing page -> login -> chat -> run -> continue, against the built site and web app and a real API with the scripted model
 packages/engine/      Symbolic engine (Python). Parsers, sandbox, simplify, rules, tensors, dimensions, matrix calculus, vector calculus, differential geometry, Dirac delta and Heaviside distributions, finite sums and indexed data (`indexed/`), expectations and probability (`stats/`), approximations (`approx/`)
 packages/knowledge/   Handbook: YAML entries, schema, checkers, SQLite FTS5 retrieval, identity finder
 services/api/         FastAPI: auth (Argon2id, server-side sessions), compute, history, reference, chat
@@ -99,6 +100,7 @@ pnpm install                              # JS workspace
 pnpm lint && pnpm typecheck && pnpm test  # eslint, tsc, vitest
 pnpm --filter @minerva/web dev            # app on :3000 (needs the API on :8100)
 pnpm --filter @minerva/site build         # static landing export
+NEXT_PUBLIC_APP_URL=http://localhost:3131 pnpm --filter @minerva/site build && pnpm --filter @minerva/web build && pnpm --filter @minerva/e2e exec playwright install chromium && pnpm --filter @minerva/e2e e2e   # browser tests (ports 3131/3132/8131; CI job `e2e`, on a GitHub-hosted runner)
 
 cp .env.example .env && docker compose up --build   # full local stack
 cd services/api && uv run alembic upgrade head      # migrations (MINERVA_DATABASE_URL)
@@ -173,6 +175,15 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`Xdot`) is a product there and is refused with the fix. Every change is a `Normalization` shown to the model
   (`input cleaned:` / `input:` lines), on the card and in the stored trace (`model_arguments` keeps the raw call). Do not
   add a rewrite that can change a meaning; add its inverse to `notation/transport.py` `DAMAGE` or the corruption test.
+- Explore in Minerva (`packages/ui/fixtures/explorations.json`, `packages/ui/src/explorations.ts`, `apps/web/src/app/explore/[id]/page.tsx`,
+  `services/api/tests/test_exploration_registry.py`, `docs/explore-in-minerva.md`): a landing-page example opens the real chat with its
+  prompt **in the message box, never sent** (`ChatApp initialDraft`; the user presses Send and every result then comes from the engine
+  like any other turn). The link is `/explore/<id>`: an id from the registry, never mathematics in a URL; a logged-out visitor
+  comes back to it through login and register (`next` survives the proxy, the login/register links and a 401). The registry holds no
+  result. Each entry names the landing example it continues, an evaluation case of the `explore` suite that runs its exact prompt with an
+  engine-checked reference call (the test also pins the metric, coordinates and assumptions to the capabilities example), and is
+  `approved` (its button shown on the site) only with five correct, engine-backed live runs of that exact prompt at the deployed 10 s
+  limit in `docs/benchmarks/exploration-live.json`. Do not show a button for an unapproved entry and do not put a result in the registry.
 - Homepage examples (`packages/ui/fixtures/homepage-examples.json`, `apps/web/src/lib/homepage-examples.ts`,
   `services/api/tests/test_homepage_examples.py`): one registry; a card shows only if `approved`, and `approved` is allowed only
   with five correct, engine-backed live runs of that exact prompt in `docs/benchmarks/homepage-live.json` (never the model host's

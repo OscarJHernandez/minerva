@@ -14,6 +14,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [busy, setBusy] = useState(false);
   const isRegister = mode === "register";
 
+  /** The other form, keeping where the user was going (an exploration opened while logged out). */
+  function switchTo(event: React.MouseEvent, path: "/login" | "/register") {
+    event.preventDefault();
+    const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+    router.push(next === "/" ? path : `${path}?next=${encodeURIComponent(next)}`);
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -82,14 +89,22 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {isRegister ? (
           <>
             Already registered?{" "}
-            <Link href="/login" className="text-accent hover:underline">
+            <Link
+              href="/login"
+              onClick={(e) => switchTo(e, "/login")}
+              className="text-accent hover:underline"
+            >
               Log in
             </Link>
           </>
         ) : (
           <>
             New here?{" "}
-            <Link href="/register" className="text-accent hover:underline">
+            <Link
+              href="/register"
+              onClick={(e) => switchTo(e, "/register")}
+              className="text-accent hover:underline"
+            >
               Create an account
             </Link>
           </>

@@ -286,7 +286,10 @@ class ScriptedLLM:
             async for c in self._say("I will derive that from the spectrum and have it checked. "):
                 yield c
             yield Chunk(tool_calls=[ToolCall("statistical_mechanics", sm_args)])
-        elif any(w in lower for w in ("christoffel", "geodesic", "curvature", "riemann", "ricci")):
+        elif any(
+            w in lower
+            for w in ("christoffel", "geodesic", "curvature", "riemann", "ricci", "kretschmann")
+        ):
             # Development stand-in: three named metrics; a real model asks the user for the metric.
             geometry_args = _scripted_geometry(lower)
             async for c in self._say("I will compute that for the metric you named. "):

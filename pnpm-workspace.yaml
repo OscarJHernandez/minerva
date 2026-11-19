@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/ui"
+  - "e2e"
 
 # Audit exception, reviewed 2026-11-18 (remove when picomatch > 4.0.7 is published and the lockfile uses it):
 # GHSA-fc5q-39xc-vjpf is a ReDoS in picomatch's extglob handling with no patched release yet. picomatch is reached

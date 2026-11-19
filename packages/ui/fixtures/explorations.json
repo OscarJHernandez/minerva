@@ -1,0 +1,34 @@
+{
+  "explorations": [
+    {
+      "id": "schwarzschild-curvature",
+      "title": "Explore the Schwarzschild curvature",
+      "example": "geometry-schwarzschild",
+      "capability": "differential-geometry",
+      "button": "Explore in Minerva",
+      "prompt": "Using the Schwarzschild metric $ds^2 = -(1-2M/r)\\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\\theta^2 + r^2\\sin^2\\theta\\, d\\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Christoffel symbols, the Ricci tensor and the Kretschmann scalar. Verify which curvature quantities vanish and which remain nonzero. Show the intermediate calculations and identify any coordinate restrictions.",
+      "eval_case": "explore-schwarzschild-curvature",
+      "approved": false
+    },
+    {
+      "id": "schwarzschild-ricci",
+      "title": "Explore the Ricci tensor",
+      "example": "geometry-schwarzschild",
+      "capability": "differential-geometry",
+      "button": "Explore the Ricci tensor",
+      "prompt": "For the Schwarzschild metric $ds^2 = -(1-2M/r)\\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\\theta^2 + r^2\\sin^2\\theta\\, d\\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Ricci tensor. Does it vanish? Show the intermediate calculation and identify any coordinate restrictions.",
+      "eval_case": "explore-schwarzschild-ricci",
+      "approved": false
+    },
+    {
+      "id": "schwarzschild-kretschmann",
+      "title": "Explore the Kretschmann scalar",
+      "example": "geometry-schwarzschild",
+      "capability": "differential-geometry",
+      "button": "Explore the Kretschmann scalar",
+      "prompt": "For the Schwarzschild metric $ds^2 = -(1-2M/r)\\,dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\\theta^2 + r^2\\sin^2\\theta\\, d\\phi^2$ in the coordinates t, r, theta, phi, with M and r positive, compute the Kretschmann scalar. Does it vanish? Say what was verified and how, and identify any coordinate restrictions.",
+      "eval_case": "explore-schwarzschild-kretschmann",
+      "approved": false
+    }
+  ]
+}
