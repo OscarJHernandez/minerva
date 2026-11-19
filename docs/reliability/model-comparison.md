@@ -35,11 +35,13 @@ three times the latency, and needs a reply budget larger than the host default t
   within the ceiling and fully on the GPU; then pass rate, counted only when the gap is larger than the noise of both
   runs (`max(1, 2 x the larger std)` passes per repeat, as in `--compare`); ties go to the lower p95. Per dimension,
   no single score.
-- **Stage 1 (screen)**: the frozen probe suite plus the held-out suite (44 cases), 3 repeats, seed 7,
+- **Stage 1 (screen)**: the frozen probe suite (38 cases, 44 turns; `--suite probe`), 3 repeats, seed 7,
   `--compute-timeout 10`, routing on, code at `main`. The cut keeps **every eligible configuration within noise of
   third place** (`matrix.screen`), not a fixed number. Configurations over the ceiling or with a false verified result
   are dropped first.
-- **Stage 2 (full)**: what survived, plus the `minerva` thinking-off reference, on `--suite all`, 3 repeats.
+- **Stage 2 (full)**: what survived, plus the `minerva` thinking-off reference, on `--suite all`, 3 repeats, and the
+  held-out suite (6 cases) for the survivors only. (2026-11-19, before any run: the held-out suite was moved here from
+  Stage 1 because one report holds one case set and `--matrix` refuses to rank across case sets.)
 - The model's digest is read from the host before and after every run; a changed digest stops the comparison.
 - Runs are strictly sequential. Runs on a case set other than the one of the other rows are never ranked together.
 
