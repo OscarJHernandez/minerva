@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 from ..models import SYMBOL_NAME_MAX, Status
+from ..notation.models import InputDiagnostic
 
 # A request may ask for at most this many coordinates; the benchmark raises the cap to measure growth.
 MAX_DIMENSION = 4
@@ -153,3 +154,6 @@ class GeometryResult(BaseModel):
     peak_memory_mb: float | None = None
     message: str = ""
     duration_ms: int = 0
+    # Why the input was refused, typed (a text-syntax metric read as LaTeX), so the chat can re-read it once with
+    # the other strict parser. Only the code is ever logged.
+    diagnostic: InputDiagnostic | None = None
