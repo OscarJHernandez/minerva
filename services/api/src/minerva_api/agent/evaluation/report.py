@@ -47,6 +47,30 @@ def _rate(numerator: float, denominator: float) -> float | None:
     return numerator / denominator if denominator else None
 
 
+# The six dimensions of a run (CaseResult), apart from the overall pass: completion has always been its own metric.
+DIMENSIONS = (
+    ("operation_ok", "operation and arguments"),
+    ("math_ok", "mathematics"),
+    ("evidence_ok", "evidence integrity"),
+    ("efficient", "efficiency"),
+    ("consistent", "multi-turn consistency"),
+)
+
+
+def _dimension_rates(scored: Sequence[CaseResult]) -> dict[str, dict[str, Any]]:
+    """Rate of each dimension over the runs that were scored on it (a single-turn run has no consistency)."""
+    rates: dict[str, dict[str, Any]] = {}
+    for key, _ in DIMENSIONS:
+        rows = [getattr(r, key) for r in scored if getattr(r, key) is not None]
+        if rows:
+            rates[key] = {
+                "runs": len(rows),
+                "ok": sum(bool(v) for v in rows),
+                "rate": sum(bool(v) for v in rows) / len(rows),
+            }
+    return rates
+
+
 def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
     """Metrics over the scored (non-informational) runs; informational ones are listed apart."""
     scored = [r for r in results if not r.informational]
@@ -143,6 +167,7 @@ def summarise(results: Sequence[CaseResult]) -> dict[str, Any]:
         ),
         "unclassified_failures": sum(1 for r in scored if not r.passed and not r.failure_class),
         "flaky_cases": flaky,
+        "dimensions": _dimension_rates(scored),
         "pass_counts_per_repeat": repeat_counts,
         "pass_count_stdev": statistics.pstdev(repeat_counts) if len(repeat_counts) > 1 else 0.0,
     }
@@ -492,6 +517,7 @@ def render_markdown(doc: dict[str, Any]) -> str:
             _extras_line(s),
             _context_line(s),
             _coverage_line(s),
+            _dimension_line(s),
             "",
             "### Failures by class",
             "",
@@ -617,6 +643,13 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
                 lines.append(
                     f"| {label} | {_pct(va)} | {_pct(vb)} | {100 * (vb - va):+.1f} points |"
                 )
+        da, db = a.get("dimensions") or {}, b.get("dimensions") or {}
+        for key, label in DIMENSIONS:
+            if key in da and key in db:
+                lines.append(
+                    f"| {label} | {_pct(da[key]['rate'])} | {_pct(db[key]['rate'])} | "
+                    f"{100 * (db[key]['rate'] - da[key]['rate']):+.1f} points |"
+                )
         ma, mb = a.get("model_calls") or {}, b.get("model_calls") or {}
         lines.append(
             f"| model calls per run (median) | {_num(ma.get('median'))} | {_num(mb.get('median'))} | |"
@@ -639,6 +672,12 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
                 va, vb = a[key][stat], b[key][stat]
                 digits = 1 if key == "latency_seconds" else 0
                 lines.append(f"| {label} {stat} | {_num(va, digits)} | {_num(vb, digits)} | |")
+        lines += _noise_lines(a, b)
+        flaky_a, flaky_b = a.get("flaky_cases") or [], b.get("flaky_cases") or []
+        lines += [
+            "",
+            f"Unstable across repeats: baseline {len(flaky_a)} case(s), new {len(flaky_b)} case(s).",
+        ]
         lines += ["", "### By category", "", "| Category | Baseline | New |", "| --- | --- | --- |"]
         for category in CATEGORIES:
             ca, cb = a["per_category"].get(category), b["per_category"].get(category)
@@ -662,15 +701,19 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
         ra, rb = _pass_rates(old), _pass_rates(cur)
         better = sorted(c for c in ra.keys() & rb.keys() if rb[c] > ra[c])
         worse = sorted(c for c in ra.keys() & rb.keys() if rb[c] < ra[c])
+        unstable = set(flaky_a) | set(flaky_b)
+
+        def tag(case: str, unstable: set[str] = unstable) -> str:
+            return f"`{case}`" + (" (unstable)" if case in unstable else "")
+
         lines += [
             "",
             f"Cases that improved ({len(better)}): "
-            + (", ".join(f"`{c}`" for c in better) or "none"),
+            + (", ".join(tag(c) for c in better) or "none"),
         ]
         lines += [
             "",
-            f"Cases that got worse ({len(worse)}): "
-            + (", ".join(f"`{c}`" for c in worse) or "none"),
+            f"Cases that got worse ({len(worse)}): " + (", ".join(tag(c) for c in worse) or "none"),
         ]
         lines += [
             "",
@@ -678,6 +721,45 @@ def compare(base: dict[str, Any], new: dict[str, Any]) -> str:
             "model; use repeats before reading a change into them.",
         ]
     return "\n".join(lines) + "\n"
+
+
+def _dimension_line(s: dict[str, Any]) -> str:
+    """The separate dimensions of a run (absent in reports from before they existed)."""
+    dims = s.get("dimensions") or {}
+    if not dims:
+        return ""
+    parts = [
+        f"{label} {_pct(dims[key]['rate'])} of {dims[key]['runs']}"
+        for key, label in DIMENSIONS
+        if key in dims
+    ]
+    return "Dimensions (a run can be right and still wasteful): " + " · ".join(parts) + "."
+
+
+def _noise_lines(a: dict[str, Any], b: dict[str, Any]) -> list[str]:
+    """Is the change in passes larger than the run-to-run noise of the two runs?
+
+    The noise is the spread of the number of passes between repeats (population standard deviation). A change in
+    passes per repeat of at most two of those (and at least one case) is reported as within noise. With one
+    repeat on either side the noise cannot be measured, and the line says so instead of guessing.
+    """
+    ca, cb = a.get("pass_counts_per_repeat") or [], b.get("pass_counts_per_repeat") or []
+    if len(ca) < 2 or len(cb) < 2:
+        return [
+            "",
+            "Run-to-run noise: not measurable (needs at least two repeats on each side), so no change below "
+            "is shown as larger than noise.",
+        ]
+    sa, sb = float(a.get("pass_count_stdev") or 0.0), float(b.get("pass_count_stdev") or 0.0)
+    delta = statistics.fmean(cb) - statistics.fmean(ca)
+    limit = max(1.0, 2 * max(sa, sb))
+    verdict = "within the noise" if abs(delta) <= limit else "larger than the noise"
+    return [
+        "",
+        f"Run-to-run noise: passes per repeat {ca} against {cb} (std {_num(sa, 2)} and {_num(sb, 2)}). "
+        f"The change of {delta:+.1f} passes per repeat is **{verdict}** (limit {limit:.1f}, twice the larger "
+        "std and at least one case).",
+    ]
 
 
 def _coverage_line(s: dict[str, Any]) -> str:

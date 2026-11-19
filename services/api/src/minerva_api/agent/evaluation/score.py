@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from ..loop import is_lone_symbol
 from ..segments import normalize
-from .cases import ASK, NO_TOOL, EvalCase
+from .cases import ASK, NO_TOOL, Alternative, EvalCase
 from .reference import card_meets, card_status
 
 VERIFIED_MARKS = ("from_tool", "checked")
@@ -102,6 +102,21 @@ class CaseResult(BaseModel):
     stop_reason: str | None = None
     reply: str = ""
     turns: int = 1  # live turns scored (a case with follow-ups has more than one)
+    # The six dimensions of a run, kept apart from `passed` (which stays the conjunction of every check): a run can
+    # be mathematically right and still wasteful, or efficient and wrong. None: the run was not scored on it.
+    operation_ok: bool | None = (
+        None  # an accepted tool, with arguments that say what the user asked
+    )
+    math_ok: bool | None = (
+        None  # no false or contradicted statement; the result is the expected one where stated
+    )
+    evidence_ok: bool | None = (
+        None  # nothing shown as verified that was not; restrictions and failures respected
+    )
+    efficient: bool | None = None  # no call beyond what the case needs, none repeated
+    consistent: bool | None = (
+        None  # every turn of a multi-turn case passed (None for a single turn)
+    )
 
 
 @dataclass
@@ -189,6 +204,49 @@ def classify_failure(case: EvalCase, notes: dict[str, bool], r: CaseResult) -> F
 
 
 _HOST_ERRORS = ("model host", "not reachable", "unreadable reply")
+
+
+def _alternative_outcome(
+    alternative: Alternative, obs: Observation, trace: list[dict[str, Any]]
+) -> tuple[list[str], bool, bool] | None:
+    """How one accepted alternative did: (problems, arguments checked, card checked); None if not called."""
+    calls = [
+        (cid, arguments)
+        for cid, (name, arguments) in zip(obs.call_ids, obs.calls, strict=False)
+        if name == alternative.tool
+    ]
+    if not calls:
+        return None
+    problems: list[str] = []
+    cards = [(cid, obs.cards.get(cid)) for cid, _ in calls]
+    real = [(cid, c) for cid, c in cards if c and c.get("type") != "error"]
+    if not real:
+        return (["every call ended in an error or had invalid arguments"], False, False)
+    if alternative.args is not None and not any(alternative.args.holds(a) for _, a in calls):
+        problems.append("arguments do not say what the user asked")
+    if alternative.expect_card is not None:
+        tool_status = {str(s.get("id")): s.get("status") for s in trace}
+        expected = alternative.expect_card
+        if not any(not card_meets(expected, c, tool_status.get(cid)) for cid, c in real if c):
+            problems.append("the result is not the expected one (different input or status)")
+    return problems, alternative.args is not None, alternative.expect_card is not None
+
+
+def _dimensions(result: CaseResult, flags: dict[str, bool]) -> None:
+    """The six dimensions that `passed` runs together (see CaseResult)."""
+    result.operation_ok = not (
+        flags["tool_selection"] or flags["arguments"] or flags["parse_error"]
+    )
+    result.math_ok = (
+        result.false_verified == 0
+        and result.checker_false_positive == 0
+        and result.contradicted == 0
+        and result.result_ok is not False
+    )
+    result.evidence_ok = result.false_verified == 0 and not (
+        flags["ignored_failure"] or flags["misreported_restriction"] or flags["result_reuse"]
+    )
+    result.efficient = result.unnecessary_calls == 0 and result.repeated_calls == 0
 
 
 def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
@@ -297,6 +355,7 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         notes.append(f"no reply ({obs.error or 'unknown error'})")
         result.notes = notes
         result.stop_reason = "error"
+        result.operation_ok = result.math_ok = result.evidence_ok = result.efficient = False
         result.failure_class = classify_failure(case, flags, result)
         return result
 
@@ -382,6 +441,8 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
         if name == case.expected_tool
     ]
     real_cards = [(cid, c) for cid, c in expected_cards if c and c.get("type") != "error"]
+    block_start = len(notes)
+    block_flags = (flags["arguments"], flags["parse_error"])
     if case.expects_tool and reached and tools:
         if invalid and not real_cards:
             flags["arguments"] = True
@@ -415,6 +476,28 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
                     "the tool's result is not the expected one (different input or status)"
                 )
 
+    if case.accept and case.expects_tool and reached:
+        # A different accepted tool may answer correctly. It is checked like the expected one; the run is fine if
+        # any accepted tool met its own arguments and card expectations.
+        outcomes = [
+            (a, o) for a in case.accept if (o := _alternative_outcome(a, obs, trace)) is not None
+        ]
+        called_expected = case.expected_tool in tools
+        expected_failed = len(notes) > block_start
+        satisfied = [(a, o) for a, o in outcomes if not o[0]]
+        if satisfied and (expected_failed or not called_expected):
+            del notes[block_start:]
+            flags["arguments"], flags["parse_error"] = block_flags
+            checked_args, checked_card = satisfied[0][1][1], satisfied[0][1][2]
+            if checked_args:
+                result.args_ok = True
+            if checked_card:
+                result.result_ok = True
+        elif outcomes and not called_expected:
+            flags["arguments"] = True
+            for alt, outcome in outcomes:
+                notes += [f"{alt.tool}: {problem}" for problem in outcome[0]]
+
     if result.false_verified:
         notes.append(f"{result.false_verified} false statement(s) shown as verified")
     if result.checker_false_positive:
@@ -440,6 +523,7 @@ def score_case(case: EvalCase, obs: Observation, repeat: int = 0) -> CaseResult:
 
     result.notes = notes
     result.passed = not notes
+    _dimensions(result, flags)
     if not result.passed:
         result.failure_class = classify_failure(case, flags, result)
     return result
@@ -553,6 +637,10 @@ def combine(results: list[CaseResult]) -> CaseResult:
             first.args_ok = bool(first.args_ok is not False and later.args_ok is not False)
         if first.result_ok is not None or later.result_ok is not None:
             first.result_ok = bool(first.result_ok is not False and later.result_ok is not False)
+    for name in ("operation_ok", "math_ok", "evidence_ok", "efficient"):
+        values = [getattr(r, name) for r in results if getattr(r, name) is not None]
+        setattr(first, name, all(values) if values else None)
+    first.consistent = all(r.passed for r in results)
     first.passed = all(r.passed for r in results)
     first.failure_class = next((r.failure_class for r in results if r.failure_class), None)
     return first
