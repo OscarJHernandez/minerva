@@ -17,7 +17,10 @@ test("the Benchmarks tab opens the page, and the page shows the committed number
   page,
 }) => {
   await page.goto(SITE);
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Benchmarks" }).click();
+  await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Benchmarks" })
+    .click();
   await expect(page).toHaveURL(/\/benchmarks\/?$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("How Minerva is measured");
   const total = DATA.suites.reduce((n, s) => n + s.total, 0);
