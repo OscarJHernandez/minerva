@@ -14,6 +14,9 @@ export function SiteFooter({ wide = false }: { wide?: boolean }) {
           <Link href="/docs" className="hover:text-ink">
             Docs
           </Link>
+          <Link href="/benchmarks" className="hover:text-ink">
+            Benchmarks
+          </Link>
           <a href={SELF_HOSTING_URL} className="hover:text-ink">
             Self-hosting
           </a>

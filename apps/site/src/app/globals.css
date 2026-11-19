@@ -19,6 +19,8 @@
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Newsreader Variable", Georgia, "Times New Roman", serif;
 }

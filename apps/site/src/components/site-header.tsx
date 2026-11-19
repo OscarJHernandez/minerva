@@ -19,6 +19,9 @@ export function SiteHeader({ wide = false }: { wide?: boolean }) {
         <Link href="/docs" className="text-muted hover:text-ink">
           Docs
         </Link>
+        <Link href="/benchmarks" className="hidden text-muted hover:text-ink sm:inline">
+          Benchmarks
+        </Link>
         <a href={SELF_HOSTING_URL} className="hidden text-muted hover:text-ink md:inline">
           Self-host
         </a>
