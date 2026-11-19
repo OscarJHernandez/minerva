@@ -57,7 +57,8 @@ test("an exploration survives login, fills the message box without sending, runs
   await expect(page).toHaveURL(/\/explore\/schwarzschild-curvature$/);
 
   // The original context is in the box, exactly, and nothing was sent.
-  const box = page.getByLabel("Message");
+  // exact: a numbered equation's button says "refer to it in your message", which a substring match would find
+  const box = page.getByLabel("Message", { exact: true });
   await expect(box).toHaveValue(FULL.prompt);
   await expect(page.getByTestId("quantity-ricci")).toHaveCount(0);
 

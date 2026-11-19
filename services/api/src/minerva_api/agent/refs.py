@@ -137,6 +137,12 @@ class ResultStore:
                     label = f"equation ({equation.number})"
                     if label not in unverified:
                         unverified.append(label)
+                elif equation.part_of:
+                    # One row of a tool's list: exact LaTeX, but not linked to the verification or the
+                    # restrictions of the card it came from, so the result must say so.
+                    label = f"equation ({equation.number}){COMPONENT_SUFFIX}"
+                    if label not in unverified:
+                        unverified.append(label)
                 return equation.latex if whole else rf"\left({equation.latex}\right)"
 
             staged[key] = EQ_REFERENCE.sub(sub, value)
@@ -198,12 +204,28 @@ def reference_note(result_id: str) -> str:
 
 
 UNVERIFIED_INPUT = "computed from an equation the model wrote and Minerva never verified"
+# A row of a card's list (a Christoffel symbol): the tool computed it, but reusing it by number does not carry
+# the card's verification or restrictions with it.
+COMPONENT_SUFFIX = ", a component of an earlier result"
+UNLINKED_INPUT = "computed from one component of an earlier result; its verification and restrictions were not carried over"
 
 
 def unverified_note(sources: Sequence[str]) -> str:
-    """What a tool message says when its input was an equation Minerva never verified (fixed text)."""
-    return (
-        f"Input not verified: this result was computed from {', '.join(sources)}, which the model wrote and "
-        "Minerva never verified. The computation is checked, but whether that input is right is not established: "
-        "say so with the result, and do not call anything built on it verified."
-    )
+    """What a tool message says when its input was not verified as a whole (fixed text)."""
+    written = [s for s in sources if not s.endswith(COMPONENT_SUFFIX)]
+    parts = [s for s in sources if s.endswith(COMPONENT_SUFFIX)]
+    lines: list[str] = []
+    if written:
+        lines.append(
+            f"Input not verified: this result was computed from {', '.join(written)}, which the model wrote and "
+            "Minerva never verified. The computation is checked, but whether that input is right is not established: "
+            "say so with the result, and do not call anything built on it verified."
+        )
+    if parts:
+        lines.append(
+            f"Input taken from a list: this result was computed from {', '.join(parts)}. Its LaTeX is exactly what "
+            "the tool returned, but the tool's verification and its restrictions are not carried over by reusing "
+            "one component by number: say so with the result, state the restrictions of the earlier result "
+            "yourself, and do not call anything built on it verified."
+        )
+    return " ".join(lines)

@@ -1,6 +1,7 @@
 import { CopyMath as Formula } from "@/components/copyable-math";
 import type { InvariantReport } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
+import { Numbered } from "./equation-number";
 
 /** Constants of motion found by the search, each verified, with the exact family that was searched. */
 export function InvariantsCard({ report }: { report: InvariantReport }) {
@@ -30,7 +31,9 @@ export function InvariantsCard({ report }: { report: InvariantReport }) {
                   {c.verified ? "dC/dt = 0 verified" : "not verified"}
                 </span>
               </div>
-              <Formula latex={c.expression_latex} display />
+              <Numbered k={`found:${i}`}>
+                <Formula latex={c.expression_latex} display />
+              </Numbered>
               {c.verification && (
                 <p className="mt-1 text-xs text-muted">
                   On the equations of motion: {c.verification.numeric_points_agreed} of{" "}

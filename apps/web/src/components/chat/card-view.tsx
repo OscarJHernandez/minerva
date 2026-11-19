@@ -3,7 +3,7 @@
 import { Math } from "@minerva/ui/math";
 import { useFormulaActions } from "./formula-actions";
 import { ResultActions } from "../result-actions";
-import { EquationNumber } from "./equation-number";
+import { EquationNumber, RowNumbersProvider } from "./equation-number";
 import type { Card } from "@/lib/chat-types";
 import { DerivativePanel } from "../derivative-panel";
 import { EntryCard } from "../entry-card";
@@ -59,10 +59,16 @@ export function CardView({ card, streaming = false }: { card: Card; streaming?: 
       }
     />
   );
+  const numbers = card.numbers && Object.keys(card.numbers).length > 0 ? card.numbers : null;
+  const content = (
+    <RowNumbersProvider value={numbers}>
+      <CardContent card={card} />
+    </RowNumbersProvider>
+  );
   if (card.number == null)
     return (
       <>
-        <CardContent card={card} />
+        {content}
         {actions}
       </>
     );
@@ -71,7 +77,7 @@ export function CardView({ card, streaming = false }: { card: Card; streaming?: 
       <div className="flex justify-end">
         <EquationNumber n={card.number} />
       </div>
-      <CardContent card={card} />
+      {content}
       {actions}
     </div>
   );

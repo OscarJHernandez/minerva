@@ -54,7 +54,14 @@ from .recovery import (
     classify,
     rerun_arguments,
 )
-from .refs import UNVERIFIED_INPUT, ResultStore, inherited_note, unverified_note
+from .refs import (
+    COMPONENT_SUFFIX,
+    UNLINKED_INPUT,
+    UNVERIFIED_INPUT,
+    ResultStore,
+    inherited_note,
+    unverified_note,
+)
 from .routing import RouteContext, plan_route
 from .segments import normalize, split_segments
 from .tools import (
@@ -1286,7 +1293,16 @@ async def _run_turn(
                     output.for_model += "\n" + unverified_note(unverified_inputs)
                     output.quoted_latex = [
                         *output.quoted_latex,
-                        *((normalize(f), UNVERIFIED_INPUT) for f in output.known_latex if f),
+                        *(
+                            (
+                                normalize(f),
+                                UNVERIFIED_INPUT
+                                if any(not u.endswith(COMPONENT_SUFFIX) for u in unverified_inputs)
+                                else UNLINKED_INPUT,
+                            )
+                            for f in output.known_latex
+                            if f
+                        ),
                     ]
                     output.known_latex = []
                 result_id = (

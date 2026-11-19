@@ -447,7 +447,12 @@ export interface Segment {
 }
 
 /** A tool result card; `number` is its equation number when it has a primary result formula. */
-export type Card = CardBody & { number?: number | null };
+/**
+ * `number`: the equation number of a card's one primary result. `numbers`: for a card that lists equations
+ * (Christoffel symbols, equations of motion, constants found), the number of each listed equation by its key
+ * (assigned by the server, see `card_equations.py`). A number is a name, never a verification.
+ */
+export type Card = CardBody & { number?: number | null; numbers?: Record<string, number> };
 
 /** `check_identity`: a verdict on one stated equation (see `identity_check.py`). */
 export interface IdentityReport {
