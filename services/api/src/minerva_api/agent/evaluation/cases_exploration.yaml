@@ -92,6 +92,10 @@
     - prompt: 'Can you search for hidden symmetries?'
       expected_tool: find_conserved_quantities
       also_ok: [search_invariants]
+      # Optional: when turn 2 already ran the full search (the model often answers "symmetries" with it), the right
+      # answer points to those verified constants instead of repeating the call (seen in the first live trial,
+      # 2026-11-19). The reply must still name the hidden constants.
+      tools_optional: true
       max_calls: 3
       args: {includes: {coordinates: [r]}}
       expect_card: {status: ok}

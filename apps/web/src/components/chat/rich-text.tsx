@@ -1,61 +1,46 @@
 import { EquationNumber } from "./equation-number";
+import { MARK_TEXT } from "@minerva/ui/marks";
 import { Math } from "@minerva/ui/math";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { FormulaStatus, Segment } from "@/lib/chat-types";
 import { FormulaButtons } from "./formula-actions";
 
-export const MARKS: Record<
-  FormulaStatus,
-  { label: string | null; title: string; underline: string; box: string; tone: string }
-> = {
-  from_tool: {
-    label: null,
-    title: "Matches a formula from a tool result or the handbook",
-    underline: "",
-    box: "border-rule bg-raised",
-    tone: "",
-  },
+const STYLE: Record<FormulaStatus, { underline: string; box: string; tone: string }> = {
+  from_tool: { underline: "", box: "border-rule bg-raised", tone: "" },
   quoted: {
-    label: "quoted",
-    title:
-      "Shown in a tool result, but not a verified result of its own: your input as read by Minerva, or a handbook entry that is only stated. It is not marked as checked.",
     underline: "border-b border-dotted border-muted",
     box: "border-rule bg-sunk",
     tone: "text-muted",
   },
   checked: {
-    label: "checked",
-    title:
-      "Written by the language model. Minerva tested this equation numerically at sample points and it held. Conditions written beside it are not tested.",
     underline: "border-b border-dotted border-ok",
     box: "border-ok/40 bg-ok-soft/40",
     tone: "text-ok",
   },
   conditional: {
-    label: "conditional",
-    title:
-      "Written by the language model. Minerva tested this equation: it is not true in general, but it holds under an extra assumption or a definition stated earlier (see the note; Minerva has not verified that assumption or definition).",
     underline: "border-b border-dashed border-warn",
     box: "border-warn/50 bg-warn-soft/40",
     tone: "text-warn",
   },
   contradicted: {
-    label: "contradicted",
-    title:
-      "Written by the language model. Minerva tested this equation, as an identity (true for every value of its symbols) or against definitions stated earlier, and it does not hold. See the note for which.",
     underline: "border-b border-solid border-bad",
     box: "border-bad/50 bg-bad-soft/50",
     tone: "text-bad",
   },
   unchecked: {
-    label: "unchecked",
-    title:
-      "Written by the language model. Minerva did not produce this formula and could not check it. Not being checked is not a finding that it is wrong.",
     underline: "border-b border-dotted border-warn",
     box: "border-warn/50 bg-warn-soft/40",
     tone: "text-warn",
   },
 };
+
+/** Each mark's words (shared with the landing page, `@minerva/ui/marks`) and its look in the chat. */
+export const MARKS = Object.fromEntries(
+  (Object.keys(STYLE) as FormulaStatus[]).map((s) => [s, { ...MARK_TEXT[s], ...STYLE[s] }]),
+) as Record<
+  FormulaStatus,
+  { label: string | null; title: string; underline: string; box: string; tone: string }
+>;
 
 /** The mark's explanation plus the reason Minerva gave for this particular formula, if any. */
 const explain = (seg: Segment) => {
