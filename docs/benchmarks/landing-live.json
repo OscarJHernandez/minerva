@@ -1,0 +1,174 @@
+{
+  "description": "Live runs of the landing page's research sessions on the deployed model (scripts/record_landing_sessions.py). The page shows the first run of each conversation that passed every turn, with the number of runs that passed. Contains no model host address.",
+  "date": "2026-11-20",
+  "model": {
+    "name": "qwen3.5:35b",
+    "base_model": "qwen35-validation-20261004:35b-a3b-q4",
+    "family": "qwen35moe",
+    "parameter_size": "34.7B",
+    "quantization": "Q4_K_M",
+    "digest": "c2ee66a3c0d6",
+    "hosted": false,
+    "provider": "ollama"
+  },
+  "model_unchanged_during_run": true,
+  "runs_per_conversation": 5,
+  "seed": 7,
+  "tool_time_limit_seconds": 10.0,
+  "thinking": true,
+  "reply_budget_tokens": 4096,
+  "prompts_digest": "523d22793fb6",
+  "all_passed": false,
+  "passed_runs": {
+    "landing-kepler": 5,
+    "landing-schwarzschild": 4
+  },
+  "runs": [
+    {
+      "case": "landing-kepler",
+      "run": 1,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 41.0
+    },
+    {
+      "case": "landing-schwarzschild",
+      "run": 1,
+      "passed": false,
+      "turns": [
+        false,
+        true,
+        true
+      ],
+      "failure_class": "tool_selection",
+      "notes": [
+        "turn 1: expected one of ['search_handbook'], called ['geometry']"
+      ],
+      "seconds": 46.8
+    },
+    {
+      "case": "landing-kepler",
+      "run": 2,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 56.3
+    },
+    {
+      "case": "landing-schwarzschild",
+      "run": 2,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 54.5
+    },
+    {
+      "case": "landing-kepler",
+      "run": 3,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 43.3
+    },
+    {
+      "case": "landing-schwarzschild",
+      "run": 3,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 35.1
+    },
+    {
+      "case": "landing-kepler",
+      "run": 4,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 51.9
+    },
+    {
+      "case": "landing-schwarzschild",
+      "run": 4,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 42.0
+    },
+    {
+      "case": "landing-kepler",
+      "run": 5,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 37.2
+    },
+    {
+      "case": "landing-schwarzschild",
+      "run": 5,
+      "passed": true,
+      "turns": [
+        true,
+        true,
+        true
+      ],
+      "failure_class": null,
+      "notes": [],
+      "seconds": 46.4
+    }
+  ],
+  "limits": {
+    "max_steps": 6,
+    "max_seconds": 360.0,
+    "max_tool_calls": 12
+  },
+  "settings": {
+    "temperature": 0.2,
+    "context_window_tokens": 32768,
+    "reply_budget_tokens": 4096,
+    "thinking": true,
+    "top_p": null,
+    "top_k": null,
+    "tool_routing": true
+  }
+}

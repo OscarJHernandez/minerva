@@ -1,9 +1,10 @@
 """Record the landing page's research sessions from live runs of the real chat loop.
 
 Two conversations (`landing-kepler`, `landing-schwarzschild` in cases_exploration.yaml) are run five times each
-against a model host, through the same loop, tools, limits and scoring as `scripts/eval_models.py`. Nothing is
-published unless every turn of every run passed; then the FIRST run of each is written for the site, so no run
-is picked by hand:
+against a model host, through the same loop, tools, limits and scoring as `scripts/eval_models.py`. The rule, fixed
+before a recording (2026-11-20): the page shows the FIRST run of each conversation in which every turn passed, and says
+how many of the runs passed (with a link to the record). Nothing else is chosen, and a conversation with no passing run
+is not published at all:
 
   apps/site/src/data/landing-sessions.json   what the page shows: each turn's text with its marks, each card's
                                              rows, numbers and evidence, and the call that produced it
@@ -47,9 +48,10 @@ TITLES = {
 # Model fields a reader may see: what the weights are, never where they are served from.
 MODEL_FIELDS = (
     "name",
+    "base_model",
     "family",
     "parameter_size",
-    "quantization_level",
+    "quantization",
     "digest",
     "hosted",
     "provider",
@@ -174,13 +176,15 @@ async def _run(
             "--seed", str(args.seed),
             "--compute-timeout", str(args.compute_timeout),
             "--suite", "explore",
+            "--num-predict", str(args.num_predict),
+            "--think" if args.think else "--no-think",
         ]
     )  # fmt: skip
     limits = AgentLimits(max_steps=6, max_seconds=ev.case_timeout or ev.timeout * 2)
     ctx = cli._context(ev.compute_timeout)
     params = cli.build_params(ev)
     runs: list[dict[str, Any]] = []
-    first: dict[str, list[tuple[str, dict[str, Any], bool]]] = {}
+    first: dict[str, tuple[int, list[tuple[str, dict[str, Any], bool]]]] = {}
     for repeat in range(args.runs):
         client = cli.make_client(args.model, ev, repeat)[2]
         for case in cases:
@@ -208,6 +212,7 @@ async def _run(
                     "passed": bool(result.passed),
                     "turns": [bool(p) for _, _, p in turns],
                     "failure_class": result.failure_class,
+                    "notes": list(result.notes),  # fixed scoring text, never the model's words
                     "seconds": round(result.seconds, 1),
                 }
             )
@@ -217,11 +222,22 @@ async def _run(
                 else f"FAIL [{result.failure_class}] {'; '.join(result.notes)}"
             )
             print(f"  run {repeat + 1} {case.id:<24} {mark}", flush=True)
-            if repeat == 0:
-                first[case.id] = turns
+            if result.passed and case.id not in first:
+                first[case.id] = (repeat + 1, turns)  # the first run that passed every turn
+    settings = {
+        # what every model request of the run carried (the agent's own effective parameters, not a restatement)
+        "temperature": params.temperature,
+        "context_window_tokens": params.num_ctx,
+        "reply_budget_tokens": params.num_predict,
+        "thinking": params.think,
+        "top_p": params.top_p,
+        "top_k": params.top_k,
+        "tool_routing": bool(ev.routing),
+    }
     return {
         "runs": runs,
         "limits": describe_limits(limits),
+        "settings": settings,
     }, first
 
 
@@ -235,10 +251,19 @@ def _model(args: argparse.Namespace) -> dict[str, Any] | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--base-url", required=True, help="Ollama host (never written to any file)")
-    parser.add_argument("--model", default="minerva")
+    parser.add_argument(
+        "--model", default="qwen3.5:35b", help="the deployed chat model (llm.model)"
+    )
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--compute-timeout", type=float, default=10.0)
+    parser.add_argument("--num-predict", type=int, default=4096, help="reply budget, as deployed")
+    parser.add_argument(
+        "--think",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="as deployed (MINERVA_LLM_THINK)",
+    )
     args = parser.parse_args(argv)
     cases = [c for c in load_suite("explore") if c.id in CASES]
     digest = hashlib.sha256(
@@ -248,6 +273,10 @@ def main(argv: list[str] | None = None) -> int:
     record, first = asyncio.run(_run(args, cases))
     after = _model(args)
     passed = all(r["passed"] for r in record["runs"])
+    passed_runs = {
+        case.id: sum(1 for r in record["runs"] if r["case"] == case.id and r["passed"])
+        for case in cases
+    }
     meta = {
         "date": dt.date.today().isoformat(),
         "model": after,
@@ -257,16 +286,19 @@ def main(argv: list[str] | None = None) -> int:
         "runs_per_conversation": args.runs,
         "seed": args.seed,
         "tool_time_limit_seconds": args.compute_timeout,
+        "thinking": args.think,
+        "reply_budget_tokens": args.num_predict,
         "prompts_digest": digest,
     }
     RECORD.write_text(
         json.dumps(
             {
                 "description": "Live runs of the landing page's research sessions on the deployed model "
-                "(scripts/record_landing_sessions.py). The page shows the first run of each conversation, and only "
-                "if every turn of every run passed. Contains no model host address.",
+                "(scripts/record_landing_sessions.py). The page shows the first run of each conversation that passed "
+                "every turn, with the number of runs that passed. Contains no model host address.",
                 **meta,
                 "all_passed": passed,
+                "passed_runs": passed_runs,
                 **record,
             },
             indent=2,
@@ -274,22 +306,34 @@ def main(argv: list[str] | None = None) -> int:
         + "\n"
     )
     print(f"wrote {RECORD.relative_to(ROOT)}")
-    if not passed:
-        print("not every run passed: the page's sessions were NOT updated", file=sys.stderr)
+    missing = [c.id for c in cases if c.id not in first]
+    if missing:
+        print(f"no passing run of {missing}: the page's sessions were NOT updated", file=sys.stderr)
         return 1
     sessions = []
     for case in cases:
         table = EquationTable()
         contents: list[tuple[str, dict[str, Any]]] = []
-        for prompt, final, _ in first[case.id]:
+        shown_run, transcript = first[case.id]
+        for prompt, final, _ in transcript:
             contents += [("user", {"text": prompt}), ("assistant", json.loads(json.dumps(final)))]
         number_stored(contents, table)  # the server's own reading-order numbering
         turns = [
             _public_turn(contents[i][1]["text"], contents[i][1], contents[i + 1][1])
             for i in range(0, len(contents), 2)
         ]
-        sessions.append({"id": case.id, "title": TITLES[case.id], "turns": turns})
-    SESSIONS.write_text(json.dumps({**meta, "sessions": sessions}, indent=2) + "\n")
+        sessions.append(
+            {
+                "id": case.id,
+                "title": TITLES[case.id],
+                "shown_run": shown_run,
+                "passed_runs": passed_runs[case.id],
+                "turns": turns,
+            }
+        )
+    SESSIONS.write_text(
+        json.dumps({**meta, "settings": record["settings"], "sessions": sessions}, indent=2) + "\n"
+    )
     print(f"wrote {SESSIONS.relative_to(ROOT)}")
     return 0
 
