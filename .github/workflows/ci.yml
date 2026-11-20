@@ -349,7 +349,7 @@ jobs:
         if: ${{ needs.changes.outputs.deps == 'true' }}
         run: |
           uv export --frozen --no-hashes --no-emit-workspace > "$RUNNER_TEMP/requirements.txt"
-          uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
+          uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip --cache-dir "$RUNNER_TEMP/pip-audit-cache"
       # Node first: the stock self-hosted runner image has no `node`, and pnpm's installer needs it.
       # No package-manager cache: pods are ephemeral, and setup-node v5 would otherwise look for pnpm before it is installed.
       - if: ${{ needs.changes.outputs.deps == 'true' }}
