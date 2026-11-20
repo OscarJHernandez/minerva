@@ -89,6 +89,9 @@ class SearchResult:
     cancellation_suspected: int = 0  # screened as different at 30 digits, equal at higher precision
     domain_differences: int = 0  # defined on one side only: reported, not a counterexample
     exhausted: bool = False  # the budget ended the search before every probe was tried
+    # The wall-clock stop ended the search before the point cap did: how many points were tried then depends on
+    # how loaded the machine was, so a search that found nothing is weaker than its point count says (V-017).
+    clock_cut: bool = False
     unsupported: str | None = None  # "distribution" or "noncommutative": nothing was searched
 
 
@@ -574,7 +577,14 @@ def find_counterexample(
             seen.add(key)
             if tried >= budget.points or time.monotonic() > deadline:
                 return SearchResult(
-                    None, tried, tuple(kinds_tried), cancelled, domain, exhausted=True
+                    None,
+                    tried,
+                    tuple(kinds_tried),
+                    cancelled,
+                    domain,
+                    exhausted=True,
+                    clock_cut=tried
+                    < budget.points,  # the cap is checked first: otherwise the clock ended it
                 )
             tried += 1
             screen = _gap(a, b, point, SCREEN_DPS)

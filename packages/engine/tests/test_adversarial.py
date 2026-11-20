@@ -61,19 +61,29 @@ def test_noncommuting_polynomial_identities_in_both_directions() -> None:
     assert not verify_equal_nc((A + B) * (A - B), A**2 - B**2).passed  # cross terms do not cancel
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="V-017: a probe search the clock cut short returns `exhausted`, which nothing reads, so the pass says nothing",
-)
-def test_a_search_the_clock_cut_short_does_not_pass_silently() -> None:
+def _cut_case_verification(seconds: float):  # type: ignore[no-untyped-def]
     import minerva_engine.verify as verify_module
 
     case = next(c for c in CASES if c.id == "branch.log_reciprocal_cut")
     saved = verify_module.PROBE_SECONDS
-    verify_module.PROBE_SECONDS = 0.0  # the clock ends the search before its first point
+    verify_module.PROBE_SECONDS = seconds
     try:
-        verification = verify_equal(case.a, case.b, symbolic=False)
+        return verify_equal(case.a, case.b, symbolic=False)
     finally:
         verify_module.PROBE_SECONDS = saved
-    # Either it does not claim agreement, or it says that probes were skipped.
-    assert (not verification.passed) or "probe" in verification.note.lower()
+
+
+def test_a_search_the_clock_cut_short_says_so_and_leaves_the_verdict_alone() -> None:
+    """V-017. On a loaded machine the probes' wall-clock stop ended the search before the negative real axis and
+    `log(1/z) = -log(z)` passed with nothing to show that probes were skipped. The pass is still "no disagreement
+    found" (changing the verdict would make a slow server decide differently), but it now says so."""
+    cut = _cut_case_verification(0.0)  # the clock ends the search before its first point
+    assert cut.passed is True  # the verdict is unchanged
+    assert cut.probes_cut_short is True
+    assert "cut short by the time limit" in cut.note and "no disagreement was found" in cut.note
+
+
+def test_a_search_that_ran_to_its_point_cap_is_not_reported_as_cut_short() -> None:
+    whole = _cut_case_verification(60.0)
+    assert whole.probes_cut_short is False
+    assert whole.passed is False and whole.probe_kind is not None  # the false identity is found

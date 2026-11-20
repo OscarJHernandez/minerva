@@ -1082,7 +1082,7 @@ def _chain_lines(result: TransformResponse) -> tuple[list[str], list[str], list[
         v = step.verification
         evidence = (
             f"checked numerically at {v.numeric_points_agreed}/{v.numeric_points_checked} "
-            f"points; symbolic_zero={v.symbolic_zero}"
+            f"points; symbolic_zero={v.symbolic_zero}{_probe_cut_note(v)}"
         )
         entry = result.entries.get(step.name)
         if step.kind == "rule" and entry is not None:
@@ -3384,13 +3384,24 @@ def _step_known(result: Any) -> list[str]:
     return known
 
 
+def _probe_cut_note(v: Any) -> str:
+    """Said when the targeted probes were stopped by the clock before their point cap (V-017): the machine was
+    loaded, fewer probes ran than usual, and a pass only means no disagreement was found in those points."""
+    if not getattr(v, "probes_cut_short", False):
+        return ""
+    return (
+        "; the targeted probes were cut short by the time limit, so this is no disagreement found "
+        "in the points tried"
+    )
+
+
 def _evidence_clause(result: Any) -> str:
     v = result.verification
     if v is None:
         return ""
     return (
         f"checked numerically at {v.numeric_points_agreed}/{v.numeric_points_checked} points; "
-        f"symbolic_zero={v.symbolic_zero}"
+        f"symbolic_zero={v.symbolic_zero}{_probe_cut_note(v)}"
     )
 
 

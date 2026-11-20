@@ -1729,3 +1729,18 @@ def test_the_same_integral_with_another_value_stays_unchecked(ctx: ToolContext) 
 def test_limits_commands_are_spelling_not_meaning() -> None:
     assert normalize(r"\int\limits_{0}^{1} x\, dx") == normalize(r"\int_0^1 x\,dx")
     assert normalize(r"\int_0^1 x\,dx") != normalize(r"\int_0^2 x\,dx")
+
+
+# -- V-017: the evidence line says when the probes were cut short by the clock ------------------------------------
+def test_the_evidence_line_says_when_the_targeted_probes_were_cut_short() -> None:
+    from types import SimpleNamespace
+
+    from minerva_api.agent.tools import _evidence_clause
+    from minerva_engine.models import Verification
+
+    whole = Verification(numeric_points_checked=20, numeric_points_agreed=20, passed=True)
+    cut = whole.model_copy(update={"probes_cut_short": True})
+    assert "cut short" not in _evidence_clause(SimpleNamespace(verification=whole))
+    said = _evidence_clause(SimpleNamespace(verification=cut))
+    assert "cut short by the time limit" in said and "no disagreement found" in said
+    assert said.startswith("checked numerically at 20/20 points")  # the usual wording is unchanged

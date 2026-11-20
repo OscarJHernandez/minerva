@@ -80,6 +80,10 @@ class Verification(BaseModel):
     # only add a disagreement; a probe never counts as agreement. `probe_kind` is a fixed label, never content.
     numeric_points_probed: int = 0
     probe_kind: str | None = None  # set when a probe found a point where the two sides differ
+    # The probes' wall-clock stop ended the search before their point cap: the machine was loaded, fewer probes
+    # ran than usual, and a pass means "no disagreement found in the points that were tried" (V-017). The verdict
+    # is unchanged; this only says so.
+    probes_cut_short: bool = False
     passed: bool = False
     note: str = ""
 

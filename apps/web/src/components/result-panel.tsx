@@ -79,6 +79,14 @@ export function Evidence({ v }: { v: Verification }) {
       {v.numeric_points_agreed}/{v.numeric_points_checked} points agree
       {" · "}
       {v.symbolic_zero ? "difference simplifies to 0" : "no symbolic proof found"}
+      {v.probes_cut_short && (
+        <>
+          {" · "}
+          <span data-testid="probes-cut-short">
+            targeted probes cut short by the time limit: no disagreement found in the points tried
+          </span>
+        </>
+      )}
     </span>
   );
 }
