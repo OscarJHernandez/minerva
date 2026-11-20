@@ -4313,6 +4313,26 @@ SCALAR_TOOLS = frozenset(
 _EXPRESSION_FIELDS = MATH_FIELDS
 
 
+# Every other tool, and why a declared matrix cannot make it show a wrong result as verified. A new tool must be in exactly one
+# of `SCALAR_TOOLS`, `NONCOMMUTATIVE_AWARE_TOOLS`, `MATRIX_ONLY_TOOLS` or here, with a reason
+# (`test_tool_matrix_classes.py`): the holes of A-009 were tools nobody had asked the question of.
+MATRIX_SAFE: dict[str, str] = {
+    "matrix_calculus": "the matrix tool itself: matrices are noncommutative symbols there",
+    "vector_calculus": "typed vector fields; refuses what it cannot type",
+    "check_units": "compares dimensions only; it makes no claim that two sides are equal",
+    "dimensional_analysis": "dimensions of the declared quantities only",
+    "expectation": "random variables the caller declares; a matrix is not one and undeclared symbols are refused",
+    "statistical_model": "families and parameters typed by their own schema",
+    "statistical_mechanics": "systems typed by their own schema; refuses what it cannot build",
+    "geometry": "explicit coordinates and metric components; the quantities are numbers or functions of them",
+    "electromagnetism": "its own typed charges, fields and premises",
+    "tensor_canonicalize": "abstract-index tensors by index structure only, never by sampled values",
+    "search_handbook": "retrieval; no mathematics is evaluated",
+    "get_entry": "retrieval; no mathematics is evaluated",
+    "load_tools": "widens the toolset; evaluates nothing",
+}
+
+
 def _argument_texts(arguments: dict[str, Any]) -> list[str]:
     """The strings in a call that hold mathematics: expression fields, and for a differential equation
     its equations and written conditions."""
