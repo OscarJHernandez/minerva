@@ -18,6 +18,7 @@ quoted without them. The host's address is never in a report.
 
 from __future__ import annotations
 
+import re
 import statistics
 from dataclasses import dataclass, field
 from typing import Any
@@ -29,6 +30,14 @@ MEDIAN_CEILING_SECONDS = 15.0
 P95_CEILING_SECONDS = 40.0
 # Fraction of the model that must sit on the GPU for its latency to count as the model's.
 MIN_GPU_SHARE = 0.99
+
+
+_MODEL_TAG = re.compile(r"^[a-z][a-z0-9.\-]*:[a-z0-9][a-z0-9._\-]*$")
+
+
+def _is_model_tag(name: str) -> bool:
+    """`family:size` (`gemma4:26b`, `qwen3.5:35b`) names a model; an operator's alias (`minerva`) does not."""
+    return bool(_MODEL_TAG.match(name))
 
 
 @dataclass
@@ -88,6 +97,12 @@ class Row:
     def display(self) -> str:
         """The model by what it is, not by the name a host serves it under (an alias can be re-pointed, and a
         name like `minerva` says nothing about the weights)."""
+        if _is_model_tag(self.model) or (
+            self.base_model and self.base_model.removesuffix(":latest") == self.model
+        ):
+            return (
+                self.model
+            )  # `qwen3.5:35b` is the model; a parent the host reports is a detail, not its name
         if self.base_model and self.base_model != self.model:
             return f"{self.base_model} (served as {self.model})"
         return self.model
