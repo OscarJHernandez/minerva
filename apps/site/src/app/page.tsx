@@ -122,9 +122,13 @@ export default function Home() {
           </div>
           <Conversation session={schwarzschild} runs={RECORDING.runs} />
           <div className="mt-4 flex flex-wrap items-center gap-4">
-            {curvature && (
+            {curvature ? (
               <a href={exploreUrl(curvature.id)} className={primary}>
                 {curvature.button}
+              </a>
+            ) : (
+              <a href={APP_URL} className={secondary}>
+                Try it in Minerva
               </a>
             )}
             {ricciExploration && (
