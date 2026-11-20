@@ -13,7 +13,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.concurrency import run_in_threadpool
@@ -1275,41 +1275,53 @@ def _prior_evidence(messages: list[ChatMessage]) -> list[dict[str, Any]]:
     return rows
 
 
-def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
-    """Matrix and vector names this conversation declared, read generously: in tool calls
-    (`matrix_calculus`, `noncommutative` assumptions, `vector_calculus` fields) and in words ("let A
-    and B be matrices", any formula of a sentence that says "vector"). The whole conversation counts,
-    not only the history window: a name is cheap to remember and forgetting one makes a matrix claim
-    checkable as if it were about numbers. A name the user later called a scalar is dropped. This only
-    leaves claims unchecked; what refuses a tool is `_declared_for_tools`."""
-    steps, entries = _declaration_inputs(messages, current)
-    found, cleared = scan_declarations(entries, strict=False)
-    return sorted(((matrix_names(steps) | vector_names(steps)) - cleared) | set(found))
+class Declarations(NamedTuple):
+    """What a conversation declared as matrices or vectors, read three ways for three purposes."""
+
+    # generous: leaves a claim unchecked. A name is cheap to remember and forgetting one makes a matrix claim
+    # checkable as if it were about numbers; a name the user later called a scalar is dropped.
+    prior_matrices: list[str]
+    # strict: name -> where it came from, for the names that make a scalar tool refuse (tool-call declarations
+    # and sentences that *declare* a name), minus names the user later called scalars.
+    declared_for_tools: dict[str, str]
+    # of the strict names, those declared as VECTORS (not matrices): a vector's components and coordinates are
+    # scalars, so the tools that only a declared matrix makes wrong (`tools.MATRIX_ONLY_TOOLS`) keep answering.
+    vector_kind_names: frozenset[str]
 
 
-def _declared_vector_kind(messages: list[ChatMessage], current: str = "") -> frozenset[str]:
-    """Of the names `_declared_for_tools` returns, those a sentence or a `vector_calculus` call declared as
-    VECTORS (not matrices). A vector's components and coordinates are scalars, so the tools that only a
-    declared matrix makes wrong (`tools.MATRIX_ONLY_TOOLS`) keep answering for them."""
-    steps, entries = _declaration_inputs(messages, current)
+def declarations_of(steps: list[dict[str, Any]], entries: list[tuple[str, str]]) -> Declarations:
+    """The one place a conversation's declarations are read. The chat route and the evaluation harness both call
+    it (`routers_chat.send_message`, `evaluation.runner.observe`): they once computed it separately, and the
+    harness gave the claim checker less than the chat did (A-008)."""
+    found_generous, cleared_generous = scan_declarations(entries, strict=False)
+    tool_matrices, tool_vectors = matrix_names(steps), vector_names(steps)
+    prior = sorted(((tool_matrices | tool_vectors) - cleared_generous) | set(found_generous))
     found, cleared = scan_declarations(entries, strict=True)
-    by_sentence = {n for n, d in found.items() if d.kind == "vector"}
-    return frozenset((by_sentence | vector_names(steps)) - cleared - matrix_names(steps))
-
-
-def _declared_for_tools(messages: list[ChatMessage], current: str = "") -> dict[str, str]:
-    """name -> where it came from, for the names that make a scalar tool refuse: tool-call declarations
-    and sentences that *declare* a name (strict reading), minus names the user later called scalars."""
-    steps, entries = _declaration_inputs(messages, current)
-    found, cleared = scan_declarations(entries, strict=True)
-    out = {
+    sources = {
         name: ("a matrix or vector declared in a tool call earlier in this conversation")
-        for name in (matrix_names(steps) | vector_names(steps)) - cleared
+        for name in (tool_matrices | tool_vectors) - cleared
     }
     for name, d in found.items():
         who = "your message" if d.role == "user" else "my earlier reply"
-        out[name] = f"{who}: \u00ab{d.quote}\u00bb"
-    return out
+        sources[name] = f"{who}: \u00ab{d.quote}\u00bb"
+    by_sentence = {n for n, d in found.items() if d.kind == "vector"}
+    vectors = frozenset((by_sentence | tool_vectors) - cleared - tool_matrices)
+    return Declarations(prior, sources, vectors)
+
+
+def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
+    """Matrix and vector names this conversation declared, read generously (see `Declarations`)."""
+    return declarations_of(*_declaration_inputs(messages, current)).prior_matrices
+
+
+def _declared_vector_kind(messages: list[ChatMessage], current: str = "") -> frozenset[str]:
+    """Of the names `_declared_for_tools` returns, those declared as vectors (see `Declarations`)."""
+    return declarations_of(*_declaration_inputs(messages, current)).vector_kind_names
+
+
+def _declared_for_tools(messages: list[ChatMessage], current: str = "") -> dict[str, str]:
+    """name -> where it came from, for the names that make a scalar tool refuse (see `Declarations`)."""
+    return declarations_of(*_declaration_inputs(messages, current)).declared_for_tools
 
 
 def _title(text: str) -> str:
@@ -1381,10 +1393,11 @@ async def send_message(
     prior_groups = conversation_groups(_conversation_events(previous, text))
     prior_unverified = unverified_inputs(previous)
     prior_relations, prior_assumptions = _claim_context(previous, text)
-    prior_matrices = _prior_matrices(previous, text)
+    declarations = declarations_of(*_declaration_inputs(previous, text))
+    prior_matrices = declarations.prior_matrices
     prior_evidence = _prior_evidence(previous)
-    declared_for_tools = _declared_for_tools(previous, text)
-    vector_kind_names = _declared_vector_kind(previous, text)
+    declared_for_tools = declarations.declared_for_tools
+    vector_kind_names = declarations.vector_kind_names
     if history and history[-1]["role"] == "user":  # the last reply was never stored: one message
         history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
     else:
