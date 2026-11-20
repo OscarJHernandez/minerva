@@ -29,6 +29,18 @@ pnpm lint && pnpm typecheck && pnpm test
   assumption cases (the result changes with `positive`, `real`, ...).
 - Do not use `eval`, `exec`, `sympify` or `parse_expr` on user input.
 
+## Requesting a feature
+
+Use [Feature request](https://github.com/OscarJHernandez/minerva/issues/new/choose) in GitHub
+Issues for new capabilities and usability improvements. Search existing issues first to avoid
+duplicates. Describe the problem, proposed user experience, a concrete mathematical example
+where applicable, and observable acceptance criteria. A feature request is a proposal, not a
+commitment to implement it.
+
+Maintainers can triage requests with the `enhancement` label, area labels, milestones, and
+GitHub Projects as the backlog grows. Link implementation pull requests to their feature issue.
+Use the existing bug and incorrect-result forms for regressions and mathematical errors.
+
 ## Adding a handbook entry
 
 1. Choose or add a chapter in `packages/knowledge/src/minerva_knowledge/data/chapters.yaml`.
