@@ -17,25 +17,27 @@
   "tool_time_limit_seconds": 10.0,
   "thinking": true,
   "reply_budget_tokens": 4096,
-  "prompts_digest": "523d22793fb6",
+  "prompts_digest": "9bfb21eb1e49",
   "all_passed": false,
   "passed_runs": {
-    "landing-kepler": 5,
+    "landing-kepler": 4,
     "landing-schwarzschild": 4
   },
   "runs": [
     {
       "case": "landing-kepler",
       "run": 1,
-      "passed": true,
+      "passed": false,
       "turns": [
         true,
-        true,
+        false,
         true
       ],
-      "failure_class": null,
-      "notes": [],
-      "seconds": 41.0
+      "failure_class": "tool_selection",
+      "notes": [
+        "turn 2: expected one of ['analyze_lagrangian', 'find_conserved_quantities'], called none"
+      ],
+      "seconds": 34.7
     },
     {
       "case": "landing-schwarzschild",
@@ -50,7 +52,7 @@
       "notes": [
         "turn 1: expected one of ['search_handbook'], called ['geometry']"
       ],
-      "seconds": 46.8
+      "seconds": 46.1
     },
     {
       "case": "landing-kepler",
@@ -63,7 +65,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 56.3
+      "seconds": 40.8
     },
     {
       "case": "landing-schwarzschild",
@@ -76,7 +78,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 54.5
+      "seconds": 47.3
     },
     {
       "case": "landing-kepler",
@@ -89,7 +91,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 43.3
+      "seconds": 40.0
     },
     {
       "case": "landing-schwarzschild",
@@ -102,7 +104,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 35.1
+      "seconds": 39.9
     },
     {
       "case": "landing-kepler",
@@ -115,7 +117,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 51.9
+      "seconds": 48.0
     },
     {
       "case": "landing-schwarzschild",
@@ -128,7 +130,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 42.0
+      "seconds": 50.7
     },
     {
       "case": "landing-kepler",
@@ -141,7 +143,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 37.2
+      "seconds": 35.9
     },
     {
       "case": "landing-schwarzschild",
@@ -154,7 +156,7 @@
       ],
       "failure_class": null,
       "notes": [],
-      "seconds": 46.4
+      "seconds": 41.9
     }
   ],
   "limits": {

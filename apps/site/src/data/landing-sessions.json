@@ -16,7 +16,7 @@
   "tool_time_limit_seconds": 10.0,
   "thinking": true,
   "reply_budget_tokens": 4096,
-  "prompts_digest": "523d22793fb6",
+  "prompts_digest": "9bfb21eb1e49",
   "settings": {
     "temperature": 0.2,
     "context_window_tokens": 32768,
@@ -30,8 +30,8 @@
     {
       "id": "landing-kepler",
       "title": "The Kepler problem: from the Lagrangian to a hidden symmetry",
-      "shown_run": 1,
-      "passed_runs": 5,
+      "shown_run": 2,
+      "passed_runs": 4,
       "turns": [
         {
           "user": {
@@ -61,7 +61,25 @@
                 "segments": [
                   {
                     "type": "text",
-                    "value": "The Lagrangian for the Kepler problem in polar coordinates "
+                    "value": "The Lagrangian for the Kepler problem (a particle of mass "
+                  },
+                  {
+                    "type": "math",
+                    "value": "m",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " moving in a central gravitational potential "
+                  },
+                  {
+                    "type": "math",
+                    "value": "V(r) = -\\frac{GMm}{r}",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": ") in polar coordinates "
                   },
                   {
                     "type": "math",
@@ -74,7 +92,7 @@
                   },
                   {
                     "type": "display_math",
-                    "value": "L = \\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{k}{r}",
+                    "value": "L = \\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{GMm}{r}",
                     "status": "unchecked",
                     "number": 1
                   },
@@ -84,66 +102,21 @@
                   },
                   {
                     "type": "math",
-                    "value": "m",
+                    "value": "r",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " is the mass of the orbiting body.\n- "
+                    "value": " and "
                   },
                   {
                     "type": "math",
-                    "value": "k = G M m",
+                    "value": "\\theta",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " (with "
-                  },
-                  {
-                    "type": "math",
-                    "value": "G",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " being the gravitational constant and "
-                  },
-                  {
-                    "type": "math",
-                    "value": "M",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " the central mass). Note that in standard mechanics, the potential energy is "
-                  },
-                  {
-                    "type": "math",
-                    "value": "V(r) = -k/r",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": ", so the Lagrangian term is "
-                  },
-                  {
-                    "type": "math",
-                    "value": "+k/r",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": ". Sometimes "
-                  },
-                  {
-                    "type": "math",
-                    "value": "k",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " is defined as negative to absorb the sign; check your convention.\n- "
+                    "value": " are the generalized coordinates.\n- "
                   },
                   {
                     "type": "math",
@@ -161,25 +134,61 @@
                   },
                   {
                     "type": "text",
-                    "value": " are the time derivatives of the coordinates.\n\nThis describes a particle moving in a central inverse-square force field (gravity or electrostatics). The term "
+                    "value": " are the corresponding velocities.\n- "
                   },
                   {
                     "type": "math",
-                    "value": "\\frac{1}{2} m r^2 \\dot{\\theta}^2",
+                    "value": "G",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " represents the kinetic energy associated with angular motion, and "
+                    "value": " is the gravitational constant.\n- "
                   },
                   {
                     "type": "math",
-                    "value": "\\frac{k}{r}",
+                    "value": "M",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " is the potential energy term (with sign depending on convention).\n\nIf you need to derive the equations of motion or find conserved quantities for this Lagrangian, I can help with that."
+                    "value": " is the mass of the central body (assuming "
+                  },
+                  {
+                    "type": "math",
+                    "value": "m \\ll M",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": ", or using reduced mass "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\mu",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " if considering two bodies).\n\nThis Lagrangian describes the motion under an inverse-square law force. The term "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2)",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " is the kinetic energy in polar coordinates, and "
+                  },
+                  {
+                    "type": "math",
+                    "value": "+\\frac{GMm}{r}",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " is the potential energy (note the sign convention where potential energy is negative for attraction).\n\nIf you need to derive the equations of motion or find conserved quantities for this Lagrangian, I can help with that using the mechanics tools."
                   }
                 ]
               }
@@ -217,7 +226,7 @@
                     "rows": [
                       {
                         "key": "eq:0",
-                        "latex": "\\frac{k}{r^{2}} - m r \\dot{\\theta}^{2} + m \\ddot{r} = 0"
+                        "latex": "\\frac{m \\left(G M + r^{2} \\left(- r \\dot{\\theta}^{2} + \\ddot{r}\\right)\\right)}{r^{2}} = 0"
                       },
                       {
                         "key": "eq:1",
@@ -243,7 +252,7 @@
                     "rows": [
                       {
                         "key": "cons:1",
-                        "latex": "h = - \\frac{k}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
+                        "latex": "h = - \\frac{G M m}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
                       }
                     ],
                     "note": null
@@ -256,12 +265,11 @@
                 "call": {
                   "tool": "analyze_lagrangian",
                   "arguments": {
-                    "lagrangian": "\\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{k}{r}",
+                    "lagrangian": "\\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{GMm}{r}",
                     "coordinates": [
                       "r",
                       "theta"
-                    ],
-                    "time": "t"
+                    ]
                   }
                 }
               },
@@ -270,16 +278,7 @@
                 "segments": [
                   {
                     "type": "text",
-                    "value": "The Lagrangian "
-                  },
-                  {
-                    "type": "math",
-                    "value": "L = \\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{k}{r}",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " has the following symmetries:\n\n- **Rotational symmetry**: The coordinate "
+                    "value": "The Lagrangian of the Kepler problem in polar coordinates has the following symmetries:\n\n1.  **Rotational Symmetry (Cyclic Coordinate "
                   },
                   {
                     "type": "math",
@@ -288,16 +287,16 @@
                   },
                   {
                     "type": "text",
-                    "value": " is cyclic (does not appear in "
+                    "value": "):** The Lagrangian does not depend explicitly on the angle "
                   },
                   {
                     "type": "math",
-                    "value": "L",
+                    "value": "\\theta",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": "), which implies conservation of angular momentum "
+                    "value": ". This implies that the conjugate momentum "
                   },
                   {
                     "type": "math",
@@ -306,16 +305,26 @@
                   },
                   {
                     "type": "text",
-                    "value": ". This corresponds to rotational invariance in the plane.\n- **Time translation symmetry**: The Lagrangian has no explicit time dependence, so the energy function "
+                    "value": " is conserved. Physically, this corresponds to the conservation of angular momentum.\n\n2.  **Time Translation Symmetry:** The Lagrangian has no explicit dependence on time "
                   },
                   {
                     "type": "math",
-                    "value": "h = \\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) - \\frac{k}{r}",
-                    "status": "from_tool"
+                    "value": "t",
+                    "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " is conserved.\n\nThe analysis also notes that:\n- Rotations of coordinate pairs (as in Cartesian coordinates) do not leave the Lagrangian unchanged in this form.\n- Hidden symmetries, such as the Laplace-Runge-Lenz vector specific to the Kepler problem, were not searched for by this tool but can be found with a dedicated search.\n\nIf you'd like to explore these hidden symmetries or other conserved quantities, I can perform a more detailed search."
+                    "value": ". This implies that the energy function (Hamiltonian) is conserved:\n    "
+                  },
+                  {
+                    "type": "display_math",
+                    "value": "E = \\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) - \\frac{GMm}{r}",
+                    "status": "from_tool",
+                    "number": 9
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n\nThe analysis tool also notes that it tested for rotations of coordinate pairs (as in Cartesian coordinates) and found none, which is expected since the polar form already isolates the rotational symmetry.\n\nHowever, the Kepler problem is known to have a \"hidden\" symmetry associated with the conservation of the **Laplace-Runge-Lenz vector**, which explains why the orbits are closed ellipses. The standard `analyze_lagrangian` tool does not search for this hidden constant by default. If you would like me to search for this additional conserved quantity, I can use the `find_conserved_quantities` or `search_invariants` tools specifically for that purpose."
                   }
                 ]
               }
@@ -336,11 +345,11 @@
                 "title": "Conserved quantities",
                 "status": "ok",
                 "numbers": {
-                  "const:0": 9,
-                  "const:1": 10,
-                  "const:2": 11,
-                  "const:3": 12,
-                  "rel:0": 13
+                  "const:0": 10,
+                  "const:1": 11,
+                  "const:2": 12,
+                  "const:3": 13,
+                  "rel:0": 14
                 },
                 "number": null,
                 "sections": [
@@ -361,7 +370,7 @@
                     "rows": [
                       {
                         "key": "const:1",
-                        "latex": "C_{2} = - \\frac{k}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
+                        "latex": "C_{2} = - \\frac{G M m}{r} + \\frac{m r^{2} \\dot{\\theta}^{2}}{2} + \\frac{m \\dot{r}^{2}}{2}"
                       }
                     ],
                     "note": null
@@ -372,7 +381,7 @@
                     "rows": [
                       {
                         "key": "const:2",
-                        "latex": "C_{3} = - k \\cos{\\left(\\theta \\right)} + m r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
+                        "latex": "C_{3} = - G M \\cos{\\left(\\theta \\right)} + r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
                       }
                     ],
                     "note": null
@@ -383,7 +392,7 @@
                     "rows": [
                       {
                         "key": "const:3",
-                        "latex": "C_{4} = k \\sin{\\left(\\theta \\right)} - m r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + m r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
+                        "latex": "C_{4} = G M \\sin{\\left(\\theta \\right)} - r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
                       }
                     ],
                     "note": null
@@ -393,12 +402,9 @@
                 "call": {
                   "tool": "find_conserved_quantities",
                   "arguments": {
-                    "lagrangian": "\\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{k}{r}",
+                    "lagrangian": "\\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{GMm}{r}",
                     "coordinates": [
                       "r",
-                      "theta"
-                    ],
-                    "angles": [
                       "theta"
                     ]
                   }
@@ -409,62 +415,125 @@
                 "segments": [
                   {
                     "type": "text",
-                    "value": "The search found two new conserved quantities beyond the known ones:\n\n- **C\u2083** = "
+                    "value": "The search for hidden symmetries found two new conserved quantities, "
                   },
                   {
                     "type": "math",
-                    "value": "-k \\cos(\\theta) + m r^3 \\dot{\\theta}^2 \\cos(\\theta) + m r^2 \\dot{r} \\dot{\\theta} \\sin(\\theta)",
+                    "value": "C_3",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": "\n- **C\u2084** = "
+                    "value": " and "
                   },
                   {
                     "type": "math",
-                    "value": "k \\sin(\\theta) - m r^3 \\dot{\\theta}^2 \\sin(\\theta) + m r^2 \\dot{r} \\dot{\\theta} \\cos(\\theta)",
+                    "value": "C_4",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": "\n\nThese are the components of the **Laplace-Runge-Lenz vector**, which is the hidden symmetry specific to the Kepler problem. Together with the angular momentum "
+                    "value": ", which correspond to the components of the **Laplace-Runge-Lenz vector**.\n\nThe constants found are:\n1.  **Angular Momentum ("
                   },
                   {
                     "type": "math",
-                    "value": "p_\\theta = m r^2 \\dot{\\theta}",
-                    "status": "from_tool"
-                  },
-                  {
-                    "type": "text",
-                    "value": " and energy "
-                  },
-                  {
-                    "type": "math",
-                    "value": "h",
+                    "value": "C_1",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": ", they form a complete set of conserved quantities.\n\nThe three independent constants satisfy the algebraic relation:\n"
+                    "value": "):** "
+                  },
+                  {
+                    "type": "math",
+                    "value": "m r^2 \\dot{\\theta}",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " (already known).\n2.  **Energy ("
+                  },
+                  {
+                    "type": "math",
+                    "value": "C_2",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "):** "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\frac{1}{2} m (\\dot{r}^2 + r^2 \\dot{\\theta}^2) - \\frac{GMm}{r}",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " (already known).\n3.  **Laplace-Runge-Lenz Component 1 ("
+                  },
+                  {
+                    "type": "math",
+                    "value": "C_3",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "):** "
+                  },
+                  {
+                    "type": "math",
+                    "value": "- GM \\cos(\\theta) + r^3 \\dot{\\theta}^2 \\cos(\\theta) + r^2 \\dot{r} \\dot{\\theta} \\sin(\\theta)",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " (new).\n4.  **Laplace-Runge-Lenz Component 2 ("
+                  },
+                  {
+                    "type": "math",
+                    "value": "C_4",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "):** "
+                  },
+                  {
+                    "type": "math",
+                    "value": "GM \\sin(\\theta) - r^3 \\dot{\\theta}^2 \\sin(\\theta) + r^2 \\dot{r} \\dot{\\theta} \\cos(\\theta)",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " (new).\n\nThese three constants ("
+                  },
+                  {
+                    "type": "math",
+                    "value": "C_1, C_2, C_3",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": " or "
+                  },
+                  {
+                    "type": "math",
+                    "value": "C_4",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": ") are functionally independent. The tool verified that there is an exact algebraic relation between them:\n"
                   },
                   {
                     "type": "display_math",
-                    "value": "2 C_1^2 C_2 - C_3^2 m - C_4^2 m + k^2 m = 0",
-                    "status": "from_tool",
-                    "number": 13
+                    "value": "2 C_{1}^{2} C_{2} - m^3 (C_{3}^{2} + C_{4}^{2}) + G^2 M^2 m^3 = 0",
+                    "status": "unchecked",
+                    "number": 15
                   },
                   {
                     "type": "text",
-                    "value": "\n\nThis hidden symmetry is responsible for the closed elliptical orbits in the Kepler problem and explains why the orbit doesn't precess (unlike in general relativity where this symmetry is broken).\n\nThe search was limited to polynomial families up to degree 4 in velocities and powers of "
-                  },
-                  {
-                    "type": "math",
-                    "value": "r",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " from -1 to 1, with trigonometric harmonics up to order 2. Larger families would require more computational resources than the tool allows."
+                    "value": "\n\nThe existence of these additional conserved quantities (beyond energy and angular momentum) is the \"hidden symmetry\" responsible for the closed elliptical orbits in the Kepler problem. The search was limited to polynomial families up to a certain degree, but it successfully identified the known hidden symmetry."
                   }
                 ]
               }
@@ -476,7 +545,7 @@
     },
     {
       "id": "landing-schwarzschild",
-      "title": "Schwarzschild spacetime: empty, and still curved",
+      "title": "Schwarzschild spacetime: from the metric to its curvature",
       "shown_run": 2,
       "passed_runs": 4,
       "turns": [
@@ -611,7 +680,7 @@
         },
         {
           "user": {
-            "text": "Compute its Ricci tensor $R_{\\mu\\nu}$.",
+            "text": "Compute the Christoffel symbols.",
             "equations": []
           },
           "assistant": {
@@ -636,14 +705,14 @@
                     ],
                     "metric": [
                       [
-                        "-(1-2*M/r)",
+                        "-(1-2M/r)",
                         "0",
                         "0",
                         "0"
                       ],
                       [
                         "0",
-                        "(1-2*M/r)^{-1}",
+                        "(1-2M/r)^{-1}",
                         "0",
                         "0"
                       ],
@@ -661,16 +730,8 @@
                       ]
                     ],
                     "quantities": [
-                      "ricci"
-                    ],
-                    "assumptions": {
-                      "M": [
-                        "positive"
-                      ],
-                      "r": [
-                        "positive"
-                      ]
-                    }
+                      "christoffel"
+                    ]
                   }
                 }
               },
@@ -679,19 +740,67 @@
                 "tool": "geometry",
                 "title": "Differential geometry",
                 "status": "ok",
-                "numbers": {},
+                "numbers": {
+                  "christoffel:0,0,1": 2,
+                  "christoffel:1,0,0": 3,
+                  "christoffel:1,1,1": 4,
+                  "christoffel:1,2,2": 5,
+                  "christoffel:1,3,3": 6,
+                  "christoffel:2,1,2": 7,
+                  "christoffel:2,3,3": 8,
+                  "christoffel:3,1,3": 9,
+                  "christoffel:3,2,3": 10
+                },
                 "number": null,
                 "sections": [
                   {
-                    "title": "Ricci tensor (symmetric; one of each pair shown)",
+                    "title": "Christoffel symbols (symmetric in the lower indices; one of each pair shown)",
                     "evidence": "Proved by a symbolic zero test, and numerically checked",
-                    "rows": [],
-                    "note": "Every component is zero."
+                    "rows": [
+                      {
+                        "key": "christoffel:0,0,1",
+                        "latex": "\\Gamma^{t}{}_{t r} = \\frac{M}{r \\left(- 2 M + r\\right)}"
+                      },
+                      {
+                        "key": "christoffel:1,0,0",
+                        "latex": "\\Gamma^{r}{}_{t t} = \\frac{M \\left(- 2 M + r\\right)}{r^{3}}"
+                      },
+                      {
+                        "key": "christoffel:1,1,1",
+                        "latex": "\\Gamma^{r}{}_{r r} = - \\frac{M}{r \\left(- 2 M + r\\right)}"
+                      },
+                      {
+                        "key": "christoffel:1,2,2",
+                        "latex": "\\Gamma^{r}{}_{\\theta \\theta} = 2 M - r"
+                      },
+                      {
+                        "key": "christoffel:1,3,3",
+                        "latex": "\\Gamma^{r}{}_{\\phi \\phi} = \\left(2 M - r\\right) \\sin^{2}{\\left(\\theta \\right)}"
+                      },
+                      {
+                        "key": "christoffel:2,1,2",
+                        "latex": "\\Gamma^{\\theta}{}_{r \\theta} = \\frac{1}{r}"
+                      },
+                      {
+                        "key": "christoffel:2,3,3",
+                        "latex": "\\Gamma^{\\theta}{}_{\\phi \\phi} = - \\sin{\\left(\\theta \\right)} \\cos{\\left(\\theta \\right)}"
+                      },
+                      {
+                        "key": "christoffel:3,1,3",
+                        "latex": "\\Gamma^{\\phi}{}_{r \\phi} = \\frac{1}{r}"
+                      },
+                      {
+                        "key": "christoffel:3,2,3",
+                        "latex": "\\Gamma^{\\phi}{}_{\\theta \\phi} = \\cot{\\left(\\theta \\right)}"
+                      }
+                    ],
+                    "note": null
                   }
                 ],
                 "restrictions_latex": [
                   "- 2 M + r \\neq 0",
-                  "\\sin{\\left(\\theta \\right)} \\neq 0"
+                  "\\sin{\\left(\\theta \\right)} \\neq 0",
+                  "r \\neq 0"
                 ],
                 "call": {
                   "tool": "geometry",
@@ -712,34 +821,26 @@
                       ],
                       [
                         "0",
-                        "(1-2*M/r)**(-1)",
+                        "1/(1-2*M/r)",
                         "0",
                         "0"
                       ],
                       [
                         "0",
                         "0",
-                        "r**2",
+                        "r^2",
                         "0"
                       ],
                       [
                         "0",
                         "0",
                         "0",
-                        "r**2*sin(theta)**2"
+                        "r^2*sin(theta)^2"
                       ]
                     ],
                     "quantities": [
-                      "ricci"
-                    ],
-                    "assumptions": {
-                      "M": [
-                        "positive"
-                      ],
-                      "r": [
-                        "positive"
-                      ]
-                    }
+                      "christoffel"
+                    ]
                   }
                 }
               },
@@ -748,53 +849,106 @@
                 "segments": [
                   {
                     "type": "text",
-                    "value": "The **Ricci tensor** "
+                    "value": "The Christoffel symbols for the Schwarzschild metric (in coordinates "
                   },
                   {
                     "type": "math",
-                    "value": "R_{\\mu\\nu}",
+                    "value": "t, r, \\theta, \\phi",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " for the Schwarzschild metric is identically zero:\n\n"
-                  },
-                  {
-                    "type": "display_math",
-                    "value": "R_{\\mu\\nu} = 0",
-                    "status": "unchecked",
-                    "number": 2
-                  },
-                  {
-                    "type": "text",
-                    "value": "\n\nThis confirms that the Schwarzschild metric is a **vacuum solution** to Einstein's field equations ("
+                    "value": ") are:\n\n- "
                   },
                   {
                     "type": "math",
-                    "value": "R_{\\mu\\nu} = 0",
+                    "value": "\\Gamma^{t}{}_{tr} = \\frac{M}{r(r - 2M)}",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": "), meaning it describes spacetime in regions where there is no matter or energy (outside the mass "
+                    "value": "\n- "
                   },
                   {
                     "type": "math",
-                    "value": "M",
+                    "value": "\\Gamma^{r}{}_{tt} = \\frac{M(r - 2M)}{r^3}",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": ").\n\n**Verification:**\n- Numerically checked at multiple sample points\n- Symbolic zero test confirmed all components vanish\n- Valid for "
+                    "value": "\n- "
                   },
                   {
                     "type": "math",
-                    "value": "r > 0",
+                    "value": "\\Gamma^{r}{}_{rr} = -\\frac{M}{r(r - 2M)}",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": ", "
+                    "value": "\n- "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{r}{}_{\\theta\\theta} = -(r - 2M)",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n- "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{r}{}_{\\phi\\phi} = -(r - 2M)\\sin^2\\theta",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n- "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{\\theta}{}_{r\\theta} = \\frac{1}{r}",
+                    "status": "from_tool"
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n- "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{\\theta}{}_{\\phi\\phi} = -\\sin\\theta\\cos\\theta",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n- "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{\\phi}{}_{r\\phi} = \\frac{1}{r}",
+                    "status": "from_tool"
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n- "
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{\\phi}{}_{\\theta\\phi} = \\cot\\theta",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": "\n\nAll other components are zero or follow from symmetry in the lower indices ("
+                  },
+                  {
+                    "type": "math",
+                    "value": "\\Gamma^{\\rho}{}_{\\mu\\nu} = \\Gamma^{\\rho}{}_{\\nu\\mu}",
+                    "status": "unchecked"
+                  },
+                  {
+                    "type": "text",
+                    "value": ").\n\n**Validity**: These expressions hold where "
                   },
                   {
                     "type": "math",
@@ -812,34 +966,16 @@
                   },
                   {
                     "type": "text",
-                    "value": "\n\nThe coordinate singularities at "
+                    "value": ", and "
                   },
                   {
                     "type": "math",
-                    "value": "r = 2M",
-                    "status": "unchecked"
+                    "value": "r \\neq 0",
+                    "status": "from_tool"
                   },
                   {
                     "type": "text",
-                    "value": " (event horizon) and "
-                  },
-                  {
-                    "type": "math",
-                    "value": "\\theta = 0, \\pi",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " (poles) are artifacts of the Schwarzschild coordinates, not physical singularities. The true curvature singularity is at "
-                  },
-                  {
-                    "type": "math",
-                    "value": "r = 0",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": "."
+                    "value": " (coordinate breakdown points, not necessarily curvature singularities).\n\nWould you like the Riemann tensor, Ricci tensor, or geodesic equations next?"
                   }
                 ]
               }
@@ -860,7 +996,7 @@
                 "title": "Differential geometry",
                 "status": "ok",
                 "numbers": {
-                  "kretschmann": 3
+                  "kretschmann": 11
                 },
                 "number": null,
                 "sections": [
@@ -878,7 +1014,8 @@
                 ],
                 "restrictions_latex": [
                   "- 2 M + r \\neq 0",
-                  "\\sin{\\left(\\theta \\right)} \\neq 0"
+                  "\\sin{\\left(\\theta \\right)} \\neq 0",
+                  "r \\neq 0"
                 ],
                 "call": {
                   "tool": "geometry",
@@ -899,34 +1036,26 @@
                       ],
                       [
                         "0",
-                        "(1-2*M/r)**(-1)",
+                        "1/(1-2*M/r)",
                         "0",
                         "0"
                       ],
                       [
                         "0",
                         "0",
-                        "r**2",
+                        "r^2",
                         "0"
                       ],
                       [
                         "0",
                         "0",
                         "0",
-                        "r**2*sin(theta)**2"
+                        "r^2*sin(theta)^2"
                       ]
                     ],
                     "quantities": [
                       "kretschmann"
-                    ],
-                    "assumptions": {
-                      "M": [
-                        "positive"
-                      ],
-                      "r": [
-                        "positive"
-                      ]
-                    }
+                    ]
                   }
                 }
               },
@@ -939,40 +1068,13 @@
                   },
                   {
                     "type": "display_math",
-                    "value": "K = R_{\\mu\\nu\\rho\\sigma}R^{\\mu\\nu\\rho\\sigma} = \\frac{48 M^2}{r^6}",
+                    "value": "K = R_{\\mu\\nu\\rho\\sigma}R^{\\mu\\nu\\rho\\sigma} = \\frac{48M^2}{r^6}",
                     "status": "unchecked",
-                    "number": 4
+                    "number": 12
                   },
                   {
                     "type": "text",
-                    "value": "\n\n**Physical significance:**\n- **Curvature singularity**: "
-                  },
-                  {
-                    "type": "math",
-                    "value": "K \\to \\infty",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " as "
-                  },
-                  {
-                    "type": "math",
-                    "value": "r \\to 0",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": ", confirming a true physical singularity at the center\n- **Event horizon**: "
-                  },
-                  {
-                    "type": "math",
-                    "value": "K = \\frac{48 M^2}{(2M)^6} = \\frac{3}{4M^4}",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": " is finite at "
+                    "value": "\n\n**Key insights:**\n- This scalar curvature invariant is **finite at the event horizon** ("
                   },
                   {
                     "type": "math",
@@ -981,52 +1083,34 @@
                   },
                   {
                     "type": "text",
-                    "value": ", showing this is only a coordinate singularity\n- **Asymptotic flatness**: "
+                    "value": "), confirming it's a coordinate singularity, not a physical one.\n- It **diverges as "
                   },
                   {
                     "type": "math",
-                    "value": "K \\to 0",
+                    "value": "r \\to 0",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": " as "
+                    "value": "**, revealing the true curvature singularity at the center.\n- The result depends only on "
                   },
                   {
                     "type": "math",
-                    "value": "r \\to \\infty",
+                    "value": "M",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": ", consistent with Minkowski spacetime far from the mass\n\n**Verification:**\n- Numerically checked at multiple sample points\n- Symbolic computation confirmed the result\n- Valid for "
+                    "value": " and "
                   },
                   {
                     "type": "math",
-                    "value": "r > 0",
+                    "value": "r",
                     "status": "unchecked"
                   },
                   {
                     "type": "text",
-                    "value": ", "
-                  },
-                  {
-                    "type": "math",
-                    "value": "r \\neq 2M",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": ", "
-                  },
-                  {
-                    "type": "math",
-                    "value": "\\sin\\theta \\neq 0",
-                    "status": "unchecked"
-                  },
-                  {
-                    "type": "text",
-                    "value": "\n\nThe Kretschmann scalar is a coordinate-independent measure of spacetime curvature, making it ideal for distinguishing true singularities from coordinate artifacts."
+                    "value": ", not on angular coordinates, reflecting spherical symmetry.\n\nThe computation was numerically checked and symbolically verified. Would you like the Ricci tensor, geodesic equations, or other curvature quantities next?"
                   }
                 ]
               }
