@@ -20,9 +20,10 @@ CASES_FILE = Path(__file__).with_name("cases.yaml")
 RELIABILITY_FILE = Path(__file__).with_name("cases_reliability.yaml")
 HELDOUT_FILE = Path(__file__).with_name("cases_heldout.yaml")
 PROBE_FILE = Path(__file__).with_name("cases_probe.yaml")
+HELDOUT2_FILE = Path(__file__).with_name("cases_heldout2.yaml")
 EXPLORE_FILE = Path(__file__).with_name("cases_exploration.yaml")
 # `heldout` and `probe` are not part of `all`: see cases_heldout.yaml and cases_probe.yaml.
-SUITES = ("core", "reliability", "all", "heldout", "probe", "explore")
+SUITES = ("core", "reliability", "all", "heldout", "heldout2", "probe", "explore")
 
 Category = Literal[
     "symbolic",  # simple symbolic calculations
@@ -272,6 +273,8 @@ def load_suite(suite: str = "core") -> list[EvalCase]:
         cases += load_cases(RELIABILITY_FILE)
     if suite == "heldout":
         cases += load_cases(HELDOUT_FILE)
+    if suite == "heldout2":
+        cases += load_cases(HELDOUT2_FILE)
     if suite == "probe":
         cases += load_cases(PROBE_FILE)
     if suite == "explore":

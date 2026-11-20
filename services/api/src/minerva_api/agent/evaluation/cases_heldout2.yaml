@@ -1,0 +1,550 @@
+# Second held-out set: written from docs/capabilities.md and the engine's documented behaviour alone, before any
+# model trace of these prompts exists. Not part of `all`; run with `--suite heldout2`. Nothing may be tuned
+# against it, and no trace of it is to be read before the final measurement. Every reference call is run
+# against the engine by `--check-cases`.
+
+# ----------------------------------------------------------------------------- statistical mechanics
+- id: h2-sm-three-levels
+  category: physics
+  prompt: 'A system has three nondegenerate energy levels at -eps, 0 and +eps (eps is positive). Give me Z and the mean energy as functions of beta.'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: derive
+      system: {kind: levels, levels: [{energy: '-eps'}, {energy: '0'}, {energy: eps}]}
+      assumptions: {eps: [positive]}
+      quantities: [Z, U]
+  source: "hand calculation: Z = exp(beta eps) + 1 + exp(-beta eps) = 1 + 2 cosh(beta eps), U = -d ln Z / d beta"
+
+- id: h2-sm-degenerate-heat-capacity
+  category: physics
+  prompt: "heat capacity of a system with a single ground state at 0 and an excited level at energy eps that's g-fold degenerate? eps > 0 and g is a positive integer"
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: derive
+      system: {kind: levels, levels: [{energy: '0'}, {energy: eps, degeneracy: g}]}
+      assumptions: {eps: [positive], g: [integer, positive]}
+      quantities: [Z, U]
+      partials: [{of: U, variable: T, held_fixed: [], label: C}]
+  source: "hand calculation: Z = 1 + g exp(-beta eps); C = dU/dT with U = g eps exp(-beta eps)/(1 + g exp(-beta eps))"
+
+- id: h2-sm-coupled-oscillators-refused
+  category: unsupported
+  prompt: 'Two classical oscillators on a line, H = px^2/(2m) + py^2/(2m) + (k/2)(x - y)^2 + (k/2)(x + y)^2, with x and y each ranging over the whole real line. What is the canonical partition function?'
+  expected_tool: statistical_mechanics
+  also_ok: [none]
+  args: {present: [system]}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: partition
+      system:
+        kind: classical
+        hamiltonian: '(px**2 + py**2)/(2*m) + (k/2)*(x - y)**2 + (k/2)*(x + y)**2'
+        variables:
+          - {name: x, domain_lower: '-oo', domain_upper: 'oo'}
+          - {name: y, domain_lower: '-oo', domain_upper: 'oo'}
+          - {name: px}
+          - {name: py}
+      assumptions: {m: [positive], k: [positive]}
+  reply_matches: 'separab|couple|normal.mode|cross|not.*(supported|handled)|cannot'
+  source: "docs/capabilities.md and AGENTS.md (statistical mechanics): a term that couples two variables is not_separable and no change of variables is attempted"
+
+- id: h2-sm-bose-chemical-potential
+  category: physics
+  prompt: 'Non-interacting bosons occupy two single-particle levels with energies 0 and eps. The chemical potential mu is positive and so is eps. Find the mean particle number.'
+  expected_tool: statistical_mechanics
+  args: {present: [system], equals: {ensemble: grand_canonical}}
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      ensemble: grand_canonical
+      action: derive
+      system:
+        kind: occupation
+        statistics: bose
+        levels: [{energy: '0'}, {energy: eps}]
+      assumptions: {mu: [positive], eps: [positive]}
+      quantities: [N]
+  reply_matches: 'below|mu|diverg|converge|condition|negative'
+  source: "AGENTS.md (statistical mechanics): Bose needs mu provably below every level; a positive mu above the level 0 makes the occupation sum diverge"
+
+# ----------------------------------------------------------------------------- vector calculus
+- id: h2-vec-gradient-explicit
+  category: calculus
+  prompt: 'Cartesian coordinates, f = x^2 y + z. What is grad f?'
+  expected_tool: vector_calculus
+  args: {present: [expression]}
+  expect_card: {status: ok}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla f'
+      fields: [{name: f, kind: scalar, components: ['x**2*y + z']}]
+  source: "hand calculation: (2xy, x^2, 1)"
+
+- id: h2-vec-div-curl-needs-smoothness
+  category: ambiguous
+  prompt: 'In cylindrical coordinates, what is the divergence of the curl of an arbitrary vector field A?'
+  expected_tool: vector_calculus
+  expect_card: {status: conditions_not_satisfied}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla\cdot(\nabla\times\mathbf{A})'
+      coordinates: cylindrical
+      fields: [{name: A, kind: vector}]
+  reply_matches: 'smooth|differentiab|C\^?2|continuous|mixed'
+  source: "AGENTS.md (vector calculus): nothing is assumed smooth; div curl A = 0 needs equal mixed partials, which the user did not state"
+
+- id: h2-vec-laplacian-radial
+  category: calculus
+  prompt: 'Laplacian of r^3 in spherical coordinates please'
+  expected_tool: vector_calculus
+  args: {equals: {coordinates: spherical}}
+  expect_card: {status: ok, result_text: "12*r"}
+  reference:
+    tool: vector_calculus
+    arguments:
+      expression: '\nabla^2 (r^3)'
+      coordinates: spherical
+  source: "hand calculation: (1/r^2) d/dr (r^2 * 3 r^2) = 12 r"
+
+# ----------------------------------------------------------------------------- integration
+- id: h2-int-definite-by-parts
+  category: calculus
+  prompt: "What's the area under x e^(-x) between x = 0 and x = 1?"
+  expected_tool: integrate
+  args: {present: [latex, variable, lower, upper]}
+  expect_card: {status: ok, result_text: "1 - 2*exp(-1)"}
+  reference: {tool: integrate, arguments: {latex: 'x\exp(-x)', variable: x, lower: '0', upper: '1'}}
+  source: "hand calculation by parts: [-x e^-x - e^-x]_0^1 = 1 - 2/e"
+
+- id: h2-int-no-closed-form
+  category: unsupported
+  prompt: 'Find the antiderivative of $x^x$.'
+  expected_tool: integrate
+  args: {equals: {variable: x}}
+  expect_card: {status: unsupported}
+  reference: {tool: integrate, arguments: {latex: 'x^x', variable: x}}
+  reply_forbids: 'no closed.form (exists|antiderivative exists)|is impossible|proved that|can.t be expressed'
+  source: "AGENTS.md (antiderivatives): no closed form found is unsupported and never claims that none exists"
+
+- id: h2-int-gaussian-needs-assumption
+  category: calculus
+  prompt: 'Compute the integral of exp(-a x^2) over the whole real line.'
+  expected_tool: integrate
+  forbid_assumptions: true
+  args: {absent: [assumptions]}
+  expect_card: {status: conditions_not_satisfied}
+  reference: {tool: integrate, arguments: {latex: '\exp(-a x^2)', variable: x, lower: '-oo', upper: 'oo'}}
+  reply_matches: 'positive|a\s*>\s*0|real part|assum|converge'
+  source: "the integral converges only for Re(a) > 0 (Gaussian integral); a is complex unless declared (AGENTS.md)"
+  followups:
+    - prompt: 'Take a > 0 then.'
+      expected_tool: integrate
+      args: {assumes: {a: positive}}
+      expect_card: {status: ok, result_text: "sqrt(pi)/sqrt(a)"}
+      reference:
+        tool: integrate
+        arguments: {latex: '\exp(-a x^2)', variable: x, lower: '-oo', upper: 'oo', assumptions: {a: [positive]}}
+      source: "Gaussian integral: sqrt(pi/a) for a > 0"
+
+# ----------------------------------------------------------------------------- differentiation and series
+- id: h2-diff-log-quotient
+  category: calculus
+  prompt: 'd/dx of ln(x)/x'
+  expected_tool: differentiate
+  args: {includes: {variables: [{name: x}]}}
+  expect_card: {status: ok, result_text: "(1 - log(x))/x**2"}
+  reference: {tool: differentiate, arguments: {latex: '\frac{\log x}{x}', variables: [{name: x}]}}
+  source: "quotient rule: (1/x * x - ln x)/x^2 = (1 - ln x)/x^2"
+
+- id: h2-series-sqrt
+  category: calculus
+  prompt: 'Taylor polynomial of sqrt(1+x) around 0 through x^3, please.'
+  expected_tool: series
+  args: {equals: {variable: x}}
+  expect_card: {status: ok, result_text: "1 + x/2 - x**2/8 + x**3/16"}
+  reference: {tool: series, arguments: {latex: '\sqrt{1+x}', variable: x, point: '0', order: 3}}
+  source: "binomial series: 1 + x/2 - x^2/8 + x^3/16 - ..."
+
+# ----------------------------------------------------------------------------- matrix calculus
+- id: h2-mat-noncommuting-product
+  category: tensor_matrix
+  prompt: 'A and B are 2x2 matrices. Multiply out (A+B)(A-B).'
+  expected_tool: matrix_calculus
+  args: {present: [matrices], absent: [commuting]}
+  forbid_assumptions: true
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '(A+B)(A-B)'
+      matrices: [{name: A, rows: 2}, {name: B, rows: 2}]
+      action: simplify
+  wrong_formulas: ['(A+B)(A-B) = A^2 - B^2']
+  source: "distributing without reordering: A^2 - AB + BA - B^2; equal to A^2 - B^2 only if AB = BA"
+
+- id: h2-mat-exp-nilpotent
+  category: tensor_matrix
+  prompt: 'Evaluate exp(N) for N = [[0, 2], [0, 0]].'
+  expected_tool: matrix_calculus
+  args: {present: [matrices]}
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: '\exp(N)'
+      matrices: [{name: N, entries: [['0', '2'], ['0', '0']]}]
+      action: evaluate
+  reply_matches: '1.*2.*0.*1'
+  source: "N^2 = 0, so exp(N) = I + N = [[1, 2], [0, 1]]"
+
+- id: h2-mat-quadratic-form-gradient
+  category: tensor_matrix
+  prompt: 'x is a 3-vector and A a 3x3 matrix. What is the gradient of x^T A x with respect to x?'
+  expected_tool: matrix_calculus
+  args: {equals: {action: gradient}, absent: [symmetric]}
+  expect_card: {status: ok}
+  reference:
+    tool: matrix_calculus
+    arguments:
+      latex: 'transpose(x)*A*x'
+      matrices: [{name: x, rows: 3, cols: 1}, {name: A, rows: 3}]
+      action: gradient
+      variable: x
+  reply_matches: 'A\s*\+\s*A\^?\{?(T|\\top)|A\^?\{?(T|\\top)\}?\s*\+\s*A'
+  source: "differential: d(x'Ax) = x'(A + A')dx, so the gradient is (A + A')x; A is not stated symmetric"
+
+# ----------------------------------------------------------------------------- statistics
+- id: h2-stat-mle-poisson
+  category: symbolic
+  prompt: 'I have counts x_1, ..., x_n, independent and identically Poisson distributed with unknown rate lam. What is the maximum likelihood estimate of lam?'
+  expected_tool: statistical_model
+  args: {equals: {family: poisson, action: mle, iid: true}, includes: {estimate: [lam]}}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_model
+    arguments:
+      family: poisson
+      observation: x
+      sample_size: n
+      iid: true
+      estimate: [lam]
+      action: mle
+      assumptions: {n: [integer, positive], x: [integer, nonnegative]}
+  source: "textbook: the Poisson MLE is the sample mean (score sum(x_i)/lam - n = 0)"
+
+- id: h2-stat-fisher-bernoulli
+  category: symbolic
+  prompt: 'Fisher information of a single Bernoulli(p) observation?'
+  expected_tool: statistical_model
+  args: {equals: {family: bernoulli, action: fisher_information}, includes: {estimate: [p]}}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_model
+    arguments:
+      family: bernoulli
+      estimate: [p]
+      action: fisher_information
+      assumptions: {p: [positive]}
+  source: "textbook: I(p) = 1/(p(1-p)) for the Bernoulli family"
+
+- id: h2-stat-poisson-gamma-posterior
+  category: symbolic
+  prompt: 'One observed count k from a Poisson(lam) distribution; my prior on lam is Gamma with shape a and rate b. Derive the posterior for lam.'
+  expected_tool: statistical_model
+  args: {equals: {family: poisson, action: posterior}, includes: {estimate: [lam]}}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_model
+    arguments:
+      family: poisson
+      observation: k
+      estimate: [lam]
+      prior: {family: gamma, parameters: {alpha: a, beta: b}}
+      action: posterior
+      assumptions: {a: [positive], b: [positive], k: [integer, nonnegative]}
+  source: "conjugacy (textbook): Gamma(a + k, b + 1); the prior is the user's"
+
+- id: h2-stat-variance-linear-combination
+  category: symbolic
+  prompt: 'Expand Var(2X - Y) for random variables X and Y.'
+  expected_tool: expectation
+  args: {absent: [independent]}
+  expect_card: {status: ok}
+  reference:
+    tool: expectation
+    arguments: {latex: '\operatorname{Var}(2X - Y)', random: [X, Y]}
+  source: "bilinearity of covariance: 4 Var X + Var Y - 4 Cov(X, Y); no independence was stated"
+  followups:
+    - prompt: 'X and Y are independent, by the way. Does that change it?'
+      expected_tool: expectation
+      args: {includes: {independent: [[X, Y]]}}
+      expect_card: {status: ok}
+      reference:
+        tool: expectation
+        arguments: {latex: '\operatorname{Var}(2X - Y)', random: [X, Y], independent: [[X, Y]]}
+      reply_matches: 'given|assum|independen'
+      source: "independence kills Cov(X, Y): 4 Var X + Var Y, which holds given the premise the user stated"
+
+# ----------------------------------------------------------------------------- mechanics
+- id: h2-mech-atwood
+  category: physics
+  prompt: 'Atwood machine with masses m1 and m2, y is the position of m1 measured downward: L = (m1+m2) ydot^2 / 2 + (m1-m2) g y. Equation of motion?'
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [y]}}
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments: {lagrangian: '\frac{(m_1+m_2)\dot{y}^2}{2} + (m_1-m_2) g y', coordinates: [y]}
+  source: "textbook (Atwood machine): (m1 + m2) y'' = (m1 - m2) g"
+
+- id: h2-mech-kepler-conserved
+  category: physics
+  prompt: 'For L = (rdot^2 + r^2 phidot^2)/2 + k/r in polar coordinates r and phi, which quantities are conserved?'
+  expected_tool: find_conserved_quantities
+  also_ok: [analyze_lagrangian]
+  args: {includes: {coordinates: [r, phi]}}
+  expect_card: {status: ok}
+  reference:
+    tool: find_conserved_quantities
+    arguments:
+      lagrangian: '\frac12(\dot{r}^2 + r^2\dot{\phi}^2) + \frac{k}{r}'
+      coordinates: [r, phi]
+  reply_forbids: 'no other|has no more|completely integrable|fully integrable|only two'
+  source: "textbook: energy (no explicit time) and the angular momentum r^2 phidot (phi is cyclic); a result holds within the explored families only (docs/conserved-quantities.md)"
+
+- id: h2-mech-oscillator-total-derivative
+  category: physics
+  prompt: "For L = m xdot^2/2 - k x^2/2, is the energy E = m xdot^2/2 + k x^2/2 constant along the motion?"
+  expected_tool: time_derivative
+  also_ok: [find_conserved_quantities, analyze_lagrangian]
+  args: {present: [latex]}
+  expect_card: {status: ok}
+  reference:
+    tool: time_derivative
+    arguments:
+      latex: '\frac{m\dot{x}^2}{2} + \frac{k x^2}{2}'
+      coordinates: [x]
+      lagrangian: '\frac{m\dot{x}^2}{2} - \frac{k x^2}{2}'
+  source: "hand calculation: dE/dt = m xdot xddot + k x xdot = xdot (m xddot + k x) = 0 on the equation of motion m xddot = -k x"
+
+# ----------------------------------------------------------------------------- differential geometry
+- id: h2-geo-polar-flat
+  category: tensor_matrix
+  prompt: 'Is the plane in polar coordinates, ds^2 = dr^2 + r^2 dtheta^2, flat? Compute the Ricci scalar to find out.'
+  expected_tool: geometry
+  args: {includes: {coordinates: [r, theta], quantities: [ricci_scalar]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [r, theta]
+      metric: [['1', '0'], ['0', 'r^2']]
+      assumptions: {r: [positive]}
+      quantities: [ricci_scalar]
+  reply_matches: 'flat|zero|vanish|0'
+  source: "polar coordinates on the Euclidean plane: curvature 0"
+
+- id: h2-geo-hyperbolic-curvature
+  category: tensor_matrix
+  prompt: 'Metric ds^2 = dx^2 + e^{2x} dy^2 on coordinates (x, y). What is the scalar curvature?'
+  expected_tool: geometry
+  args: {includes: {coordinates: [x, y], quantities: [ricci_scalar]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [x, y]
+      metric: [['1', '0'], ['0', '\exp(2x)']]
+      quantities: [ricci_scalar]
+  reply_matches: '-\s*2'
+  source: "for dx^2 + f(x)^2 dy^2 the Gauss curvature is -f''/f = -1, so R = 2K = -2 (hyperbolic plane)"
+
+# ----------------------------------------------------------------------------- ordinary differential equations
+- id: h2-ode-forced-linear
+  category: calculus
+  prompt: 'Solve y'' + 2y = e^(-t) with y(0) = 0.'
+  expected_tool: ode_solve_symbolic
+  also_ok: [ode_analyze]
+  args: {present: [equations, conditions]}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: ode_solve_symbolic
+    arguments:
+      equations: ["y' + 2*y = exp(-t)"]
+      independent: t
+      conditions: ["y(0) = 0"]
+      format: text
+  source: "hand calculation: y = e^-t - e^-2t (check: y' + 2y = e^-t, y(0) = 0)"
+
+- id: h2-ode-equilibria
+  category: ambiguous
+  prompt: 'What are the equilibria of x'' = x - x^3 and are they stable?'
+  expected_tool: ode_analyze
+  also_ok: [ode_solve_symbolic]
+  args: {present: [equations]}
+  expect_card: {status: ok}
+  reference: {tool: ode_analyze, arguments: {equations: ["x' = x - x^3"], independent: t}}
+  reply_forbids: 'globally stable|stable for all'
+  source: "hand calculation: equilibria 0, 1, -1; f'(x) = 1 - 3x^2 is +1 at 0 (unstable) and -2 at +-1 (stable); local statements only (docs/ode.md)"
+
+# ----------------------------------------------------------------------------- unsupported and ask-first
+- id: h2-ask-van-der-pol
+  category: ambiguous
+  prompt: 'Simulate the Van der Pol oscillator for me and tell me how the amplitude settles.'
+  expected_tool: ask
+  forbid: [ode_solve_numerical, integrate_motion]
+  reply_matches: '\?|mu|initial|interval|which|value|choose|provide|give'
+  source: "AGENTS.md (ODEs): never invent initial conditions, parameters or intervals; a numerical run needs numbers only the user may choose"
+
+- id: h2-unsupported-laurent
+  category: unsupported
+  prompt: 'Laurent expansion of 1/(x(x-1)) about x = 0, a few terms.'
+  expected_tool: series
+  expect_card: {status: unsupported}
+  reference: {tool: series, arguments: {latex: '\frac{1}{x(x-1)}', variable: x, point: '0', order: 3}}
+  reply_matches: 'pole|Laurent|not supported|unsupported|cannot|can.t'
+  source: "AGENTS.md (series): poles are unsupported and there are no Laurent fallbacks"
+
+- id: h2-unsupported-heat-equation
+  category: unsupported
+  prompt: 'Solve the heat equation u_t = u_xx on 0 < x < pi with u(0,t) = u(pi,t) = 0 and u(x,0) = sin(x).'
+  expected_tool: none
+  informational: true
+  reply_matches: 'not (supported|implemented)|cannot|can.t|unsupported|partial differential|PDE'
+  source: "AGENTS.md (ODEs): partial differential equations are not implemented and must be refused, not approximated"
+
+# ----------------------------------------------------------------------------- false claims
+- id: h2-false-reciprocal-sum
+  category: false_claim
+  prompt: 'Please confirm that $\frac{1}{a+b} = \frac{1}{a} + \frac{1}{b}$.'
+  expected_tool: check_identity
+  also_ok: [simplify, find_identities]
+  expect_card: {status: ok}
+  reference: {tool: check_identity, arguments: {latex: '\frac{1}{a+b} = \frac{1}{a} + \frac{1}{b}'}}
+  reply_matches: 'not|false|incorrect|does not|isn.t'
+  reply_forbids: 'confirmed|that is correct|yes,? (it|this) (is|holds)'
+  wrong_formulas: ['\frac{1}{a+b} = \frac{1}{a} + \frac{1}{b}']
+  source: "a = b = 1 gives 1/2 on the left and 2 on the right"
+
+- id: h2-false-two-level-energy
+  category: false_claim
+  prompt: 'For a two-level system with energies 0 and eps (eps > 0) I get a mean energy U = eps/(1 + e^(-beta eps)). Right?'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: derive
+      system: {kind: levels, levels: [{energy: '0'}, {energy: eps}]}
+      assumptions: {eps: [positive]}
+      quantities: [Z, U]
+  reply_matches: 'not|incorrect|wrong|differ|isn.t|actually'
+  reply_forbids: 'that is correct|yes,? (it|this) (is|holds)|confirmed'
+  wrong_formulas: ['U = \frac{\epsilon}{1 + \mathrm{e}^{-\beta \epsilon}}']
+  right_formulas: ['U = \frac{\epsilon}{\mathrm{e}^{\beta \epsilon} + 1}']
+  source: "hand calculation: U = eps e^(-beta eps) / (1 + e^(-beta eps)) = eps/(e^(beta eps) + 1); the claim has the sign of the exponent reversed (it would exceed eps/2)"
+
+- id: h2-false-expectation-factors
+  category: false_claim
+  prompt: 'For random variables X and Y, E[XY] = E[X]E[Y], right?'
+  expected_tool: expectation
+  args: {absent: [independent]}
+  expect_card: {status: unchanged}
+  reference:
+    tool: expectation
+    arguments: {latex: '\mathbb{E}[XY]', random: [X, Y]}
+  reply_matches: 'independen|covarian|not (always|in general)|only if|only when'
+  reply_forbids: 'yes,? (it|this) (is|holds)|that is correct|always holds'
+  wrong_formulas: ['\mathbb{E}[XY] = \mathbb{E}[X]\mathbb{E}[Y]']
+  source: "E[XY] = E[X]E[Y] + Cov(X, Y); the factorisation needs uncorrelated variables (independence is never assumed)"
+
+# ----------------------------------------------------------------------------- multi-turn follow-ups
+- id: h2-follow-simplify-differentiate
+  category: followup
+  prompt: 'Simplify $\frac{x^3-8}{x-2}$.'
+  expected_tool: simplify
+  args: {absent: [assumptions]}
+  forbid_assumptions: true
+  expect_card: {status: ok, result_text: "x**2 + 2*x + 4"}
+  reference: {tool: simplify, arguments: {latex: '\frac{x^3-8}{x-2}'}}
+  restrictions_reported: 'x\s*(\\neq|\\ne|≠|!=)\s*2|(undefined|not defined|excluded|excluding|except)[^.]*\b2\b'
+  source: "difference of cubes: (x - 2)(x^2 + 2x + 4)/(x - 2), valid for x != 2"
+  followups:
+    - prompt: 'Differentiate that.'
+      expected_tool: differentiate
+      args: {present: [latex]}
+      expect_card: {status: ok, result_text: "2*x + 2"}
+      reference: {tool: differentiate, arguments: {latex: 'x^2 + 2x + 4', variables: [{name: x}]}}
+      must_reuse: true
+      source: "power rule: 2x + 2"
+
+- id: h2-follow-two-level-heat-capacity
+  category: followup
+  prompt: 'A two-level system has energies 0 and eps, eps > 0. What is its partition function?'
+  expected_tool: statistical_mechanics
+  args: {present: [system]}
+  expect_card: {status: ok}
+  reference:
+    tool: statistical_mechanics
+    arguments:
+      action: partition
+      system: {kind: levels, levels: [{energy: '0'}, {energy: eps}]}
+      assumptions: {eps: [positive]}
+  source: "hand calculation: Z = 1 + exp(-beta eps)"
+  followups:
+    - prompt: 'And its heat capacity?'
+      expected_tool: statistical_mechanics
+      args: {present: [system]}
+      expect_card: {status: ok}
+      reference:
+        tool: statistical_mechanics
+        arguments:
+          action: derive
+          system: {kind: levels, levels: [{energy: '0'}, {energy: eps}]}
+          assumptions: {eps: [positive]}
+          quantities: [Z, U]
+          partials: [{of: U, variable: T, held_fixed: [], label: C}]
+      source: "C = dU/dT with U = eps/(e^(beta eps) + 1): the Schottky form k (beta eps)^2 e^(beta eps)/(e^(beta eps) + 1)^2"
+
+- id: h2-follow-christoffel-then-ricci-scalar
+  category: followup
+  prompt: 'The unit 2-sphere has metric diag(1, sin^2 theta) in (theta, phi). Which Christoffel symbols are nonzero?'
+  expected_tool: geometry
+  args: {includes: {coordinates: [theta, phi], quantities: [christoffel]}}
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [theta, phi]
+      metric: [['1', '0'], ['0', '\sin^2\theta']]
+      quantities: [christoffel]
+  reply_matches: 'cot|\\cos.*\\sin|sin.*cos'
+  source: "textbook: Gamma^theta_{phi phi} = -sin(theta) cos(theta), Gamma^phi_{theta phi} = cot(theta)"
+  followups:
+    - prompt: 'Same metric: what is the Ricci scalar?'
+      expected_tool: geometry
+      args: {includes: {quantities: [ricci_scalar]}}
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [theta, phi]
+          metric: [['1', '0'], ['0', '\sin^2\theta']]
+          quantities: [ricci_scalar]
+      reply_matches: '\b2\b'
+      source: "the unit 2-sphere has Gauss curvature 1, so R = 2"
