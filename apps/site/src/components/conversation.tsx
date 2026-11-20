@@ -300,8 +300,12 @@ function Result({ card }: { card: SessionCard }) {
   );
 }
 
-/** One recorded research session: the person's questions and Minerva's replies, as they were. */
+/**
+ * One recorded research session: the person's questions and Minerva's replies, as they were. The page shows its
+ * start; the rest opens with a checkbox (no script: the site is a static export), so nothing is cut from the record.
+ */
 export function Conversation({ session, runs }: { session: Session; runs: number }) {
+  const toggle = `full-${session.id}`;
   return (
     <figure className="mt-8 overflow-hidden rounded-lg border border-rule bg-raised">
       <figcaption className="border-b border-rule px-5 py-4 sm:px-8">
@@ -310,28 +314,49 @@ export function Conversation({ session, runs }: { session: Session; runs: number
           {session.passed_runs} of {runs} recorded runs passed every turn. Shown: run{" "}
           {session.shown_run}, the first that did.
         </p>
-      </figcaption>
-      <ol className="space-y-6 p-5 sm:p-8">
-        {session.turns.map((turn, i) => (
-          <li key={i} className="space-y-3">
-            <div className="flex justify-end">
-              <p className="max-w-[85%] rounded-lg bg-sunk px-4 py-2 text-sm sm:text-base">
+        <ol className="mt-3 space-y-1 text-sm">
+          {session.turns.map((turn, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="tabular-nums text-muted">{i + 1}.</span>
+              <span>
                 <UserText text={turn.user.text} />
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">Minerva</p>
-              {turn.assistant.blocks.map((block, j) =>
-                block.kind === "card" ? (
-                  <Result key={j} card={block} />
-                ) : (
-                  <Prose key={j} block={block} />
-                ),
-              )}
-            </div>
-          </li>
-        ))}
-      </ol>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </figcaption>
+      <input id={toggle} type="checkbox" className="peer sr-only" />
+      <div className="relative max-h-[26rem] overflow-hidden peer-checked:max-h-none">
+        <ol className="space-y-6 p-5 sm:p-8">
+          {session.turns.map((turn, i) => (
+            <li key={i} className="space-y-3">
+              <div className="flex justify-end">
+                <p className="max-w-[85%] rounded-lg bg-sunk px-4 py-2 text-sm sm:text-base">
+                  <UserText text={turn.user.text} />
+                </p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">Minerva</p>
+                {turn.assistant.blocks.map((block, j) =>
+                  block.kind === "card" ? (
+                    <Result key={j} card={block} />
+                  ) : (
+                    <Prose key={j} block={block} />
+                  ),
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="pointer-events-none relative -mt-24 h-24 bg-gradient-to-t from-raised to-transparent peer-checked:hidden" />
+      <label
+        htmlFor={toggle}
+        className="block cursor-pointer border-t border-rule px-5 py-3 text-center text-sm font-medium text-accent hover:bg-sunk peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:-outline-offset-2 peer-focus-visible:outline-accent peer-checked:[&_.less]:inline peer-checked:[&_.more]:hidden sm:px-8"
+      >
+        <span className="more">Show the full conversation ({session.turns.length} questions)</span>
+        <span className="less hidden">Show less</span>
+      </label>
     </figure>
   );
 }

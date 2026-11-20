@@ -111,11 +111,11 @@
   expected_tool: search_handbook  # or no tool at all (tools_optional): the handbook has no entry, the model answers
   tools_optional: true
   reply_matches: '(?is)(?=.*2\s*(G\s*)?M)(?=.*ds\^2|g_)'
-  source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
+  source: "general relativity: the Schwarzschild metric is whose nonzero Christoffel symbols are 9 up to symmetry and whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
   followups:
-    - prompt: 'Compute its Ricci tensor $R_{\mu\nu}$.'
+    - prompt: 'Compute the Christoffel symbols.'
       expected_tool: geometry
-      args: {includes: {quantities: [ricci]}}
+      args: {includes: {quantities: [christoffel]}}
       expect_card: {status: ok}
       reference:
         tool: geometry
@@ -127,8 +127,8 @@
             - ['0', '0', 'r^2', '0']
             - ['0', '0', '0', 'r^2 \sin^2\theta']
           assumptions: {M: [positive], r: [positive]}
-          quantities: [ricci]
-      reply_matches: '(?i)vanish|zero|flat'
+          quantities: [christoffel]
+      reply_matches: '(?i)Gamma|Christoffel'
     - prompt: 'Now compute the Kretschmann scalar.'
       expected_tool: geometry
       args: {includes: {quantities: [kretschmann]}}

@@ -46,6 +46,54 @@ function exploration(id: string) {
   return approvedExplorations("geometry-schwarzschild").find((e) => e.id === id);
 }
 
+/** One engine example: what went in, what came out, and how it was checked (worded from the engine's record). */
+function Evidence({
+  tag,
+  title,
+  lead,
+  steps,
+  checks,
+  href,
+}: {
+  tag: string;
+  title: string;
+  lead: string;
+  steps: [string, string][];
+  checks: string[];
+  /** Where to try it: the workbench page of this tool (it opens empty; nothing is passed in the URL). */
+  href: string;
+}) {
+  return (
+    <article className="flex min-w-0 flex-col rounded-lg border border-rule bg-raised p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-medium uppercase tracking-wider text-muted">{tag}</span>
+        <StatusBadge status="ok" label="Verified" />
+      </div>
+      <h4 className="mt-3 font-serif text-xl">{title}</h4>
+      <p className="mt-1 text-sm text-muted">{lead}</p>
+      <div className="mt-5 min-w-0 flex-1 rounded-md border border-rule bg-paper p-4">
+        {steps.map(([label, latex], i) => (
+          <div key={label}>
+            {i > 0 && (
+              <span className="my-1 block font-serif text-xl text-accent" aria-hidden="true">
+                ↓
+              </span>
+            )}
+            <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
+            <div className="mt-1 overflow-x-auto">
+              <Math latex={latex} display />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-sm font-medium text-ink">{checks.join(" · ")}</p>
+      <a href={href} className={`${secondary} mt-4 self-start text-sm`}>
+        Try it in Minerva
+      </a>
+    </article>
+  );
+}
+
 export default function Home() {
   const curvature = exploration("schwarzschild-curvature");
   const ricciExploration = exploration("schwarzschild-ricci");
@@ -53,8 +101,9 @@ export default function Home() {
   const kepler = session("landing-kepler");
   const schwarzschild = session("landing-schwarzschild");
   const trig = example("simplify-trig-quotients");
-  const logBlocked = example("identity-log-blocked");
-  const logOk = example("identity-log-applicable");
+  const laplace = example("telescoping-inverse-gaussian");
+  const schottky = example("two-level-heat-capacity");
+  const ode = example("ode-second-order-linear");
 
   return (
     <>
@@ -122,9 +171,13 @@ export default function Home() {
           </div>
           <Conversation session={schwarzschild} runs={RECORDING.runs} />
           <div className="mt-4 flex flex-wrap items-center gap-4">
-            {curvature && (
+            {curvature ? (
               <a href={exploreUrl(curvature.id)} className={primary}>
                 {curvature.button}
+              </a>
+            ) : (
+              <a href={APP_URL} className={secondary}>
+                Try it in Minerva
               </a>
             )}
             {ricciExploration && (
@@ -162,75 +215,77 @@ export default function Home() {
           </p>
           <div className="mt-12">
             <h3 className="font-serif text-2xl">Small calculations. Clear evidence.</h3>
-            <p className="mt-2 max-w-2xl text-muted">
-              Even everyday algebra should show what changed and why it is valid.
+            <p className="mt-2 max-w-3xl text-muted">
+              Every result is checked twice, by routes that do not share code: a symbolic proof
+              where one can be found, and numerical checks at sample points. Four results as the
+              engine records them:
             </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <article className="min-w-0 rounded-lg border border-rule bg-raised p-5 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted">
-                    01 · Verified rewrite
-                  </span>
-                  <StatusBadge status="ok" label="Verified" />
-                </div>
-                <h4 className="mt-3 font-serif text-xl">Simplify. Then prove the rewrite.</h4>
-                <p className="mt-1 text-sm text-muted">
-                  A shorter expression, checked before it is shown.
-                </p>
-                <div className="mt-5 min-w-0 rounded-md border border-rule bg-paper p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted">Start with</p>
-                  <div className="mt-2 overflow-x-auto py-2 text-lg">
-                    <Math latex={inputLatex(trig)} />
-                  </div>
-                  <div className="my-3 flex items-center gap-3" aria-hidden="true">
-                    <span className="font-serif text-xl text-accent">↓</span>
-                    <span className="text-xs text-muted">Simplify and check</span>
-                  </div>
-                  <p className="text-xs uppercase tracking-wide text-muted">Verified result</p>
-                  <div className="mt-2 overflow-x-auto py-2 text-xl">
-                    <Math latex={outputLatex(trig, "Result")} />
-                  </div>
-                </div>
-                <p className="mt-4 text-sm font-medium text-ink">
-                  Symbolic zero test passed · 20/20 numerical checks
-                </p>
-              </article>
-
-              <article className="min-w-0 rounded-lg border border-rule bg-raised p-5 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted">
-                    02 · Assumption-aware identities
-                  </span>
-                  <StatusBadge status="warn" label="Conditional" />
-                </div>
-                <h4 className="mt-3 font-serif text-xl">No assumptions. No shortcuts.</h4>
-                <p className="mt-1 text-sm text-muted">
-                  A matching identity is not permission to use it.
-                </p>
-                <div className="mt-5 min-w-0 rounded-md border border-rule bg-paper p-4">
-                  <p className="text-xs uppercase tracking-wide text-muted">
-                    Without assumptions · Not applied
-                  </p>
-                  <div className="mt-2 overflow-x-auto py-2 text-lg">
-                    <Math latex={inputLatex(logBlocked)} />
-                  </div>
-                  <div className="my-3 flex items-center gap-3 border-t border-rule pt-3">
-                    <span className="font-serif text-xl text-accent" aria-hidden="true">
-                      ↓
-                    </span>
-                    <span className="text-xs text-muted">You declare x and y positive</span>
-                  </div>
-                  <p className="text-xs uppercase tracking-wide text-muted">
-                    Conditions satisfied · Identity applied
-                  </p>
-                  <div className="mt-2 overflow-x-auto py-2 text-lg">
-                    <Math latex={inputLatex(logOk) + " = " + outputLatex(logOk, "Logarithm")} />
-                  </div>
-                </div>
-                <p className="mt-4 text-sm font-medium text-ink">
-                  Applied only with x, y positive · 20/20 numerical checks
-                </p>
-              </article>
+              <Evidence
+                tag="01 · Verified rewrite"
+                href={`${APP_URL}/workbench`}
+                title="Simplify. Then prove the rewrite."
+                lead="A shorter expression, checked before it is shown."
+                steps={[
+                  ["Start with", inputLatex(trig)],
+                  ["Verified result", outputLatex(trig, "Result")],
+                ]}
+                checks={["Symbolic zero test passed", "numerical check at 20 of 20 points"]}
+              />
+              <Evidence
+                tag="02 · A differential equation"
+                href={`${APP_URL}/workbench`}
+                title="Solve. Then put it back in."
+                lead="A damped equation with initial values; the solution is substituted into the equation as written."
+                steps={[
+                  [
+                    "Equation",
+                    "\\begin{gathered} y'' + 3y' + 2y = 0 \\\\ y(0) = 1, \\; y'(0) = 0 \\end{gathered}",
+                  ],
+                  ["Verified solution", outputLatex(ode, "Solution")],
+                ]}
+                checks={[
+                  "Symbolic zero test passed",
+                  "numerical derivatives agree at 10 of 10 points",
+                ]}
+              />
+              <Evidence
+                tag="03 · A parameter integral"
+                href={`${APP_URL}/workbench/telescoping`}
+                title="Laplace's integral, from a proved equation."
+                lead="Minerva finds the differential equation the integral obeys, proves it exactly and solves it."
+                steps={[
+                  // the bounds are those of the example in docs/capabilities.yaml
+                  [
+                    "Integral",
+                    `I(a) = \\int_0^{\\infty} ${inputLatex(laplace)}\\,dx, \\quad a > 0`,
+                  ],
+                  ["Proved relation", outputLatex(laplace, "Differential equation")],
+                  ["Value", outputLatex(laplace, "Value")],
+                ]}
+                checks={[
+                  "Equation proved exactly (symbolic zero)",
+                  "value checked by numerical quadrature",
+                ]}
+              />
+              <Evidence
+                tag="04 · Statistical mechanics"
+                href={`${APP_URL}/workbench`}
+                title="A heat capacity, from the partition function."
+                lead="A two-level system with gap ε > 0: one route, differentiate ln Z, no formula looked up."
+                steps={[
+                  ["Partition function", outputLatex(schottky, "Partition function")],
+                  ["Internal energy", outputLatex(schottky, "Internal energy")],
+                  [
+                    "Heat capacity",
+                    `C = ${outputLatex(schottky, "Partial derivative of internal energy")}`,
+                  ],
+                ]}
+                checks={[
+                  "U: symbolic zero, direct enumeration and finite differences agree",
+                  "C: finite differences agree",
+                ]}
+              />
             </div>
           </div>
           <p className="mt-6 text-sm text-muted">
