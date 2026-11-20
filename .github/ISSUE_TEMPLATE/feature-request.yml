@@ -1,0 +1,59 @@
+name: Feature request
+description: Propose a new capability or improvement for Minerva
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search existing issues first to avoid duplicates. Describe the user problem
+        and expected behavior, rather than prescribing an implementation.
+        Do not include secrets, personal data, or private infrastructure details.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of Minerva would benefit most?
+      options:
+        - Mathematical engine
+        - LLM and model integration
+        - Knowledge and retrieval
+        - Web interface and user experience
+        - API and infrastructure
+        - Documentation
+        - Other or cross-cutting
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or limitation
+      description: What task is difficult or impossible today? Who encounters it?
+      placeholder: "When I try to ..., I currently have to ..."
+    validations:
+      required: true
+  - type: textarea
+    id: capability
+    attributes:
+      label: Proposed capability
+      description: What should Minerva let the user do?
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example workflow or mathematical input
+      description: A concrete example makes the request easier to evaluate.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable behavior and tests that would demonstrate success.
+      placeholder: |
+        - [ ] The user can ...
+        - [ ] Existing behavior still ...
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or implementation notes
+      description: Optional constraints, tradeoffs, or relevant components.
