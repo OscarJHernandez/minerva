@@ -22,7 +22,9 @@ ROOT = Path(__file__).resolve().parents[3]
 REGISTRY = json.loads((ROOT / "packages" / "ui" / "fixtures" / "explorations.json").read_text())
 EXPLORATIONS = REGISTRY["explorations"]
 LIVE = ROOT / "docs" / "benchmarks" / "exploration-live.json"
-CASES = {c.id: c for c in load_suite("explore")}
+# The `landing-*` cases are the landing page's recorded research sessions, pinned by test_landing_sessions.py, not
+# "Explore in Minerva" buttons.
+CASES = {c.id: c for c in load_suite("explore") if not c.id.startswith("landing-")}
 CAPABILITIES = {
     c["id"]: c
     for c in yaml.safe_load((ROOT / "docs" / "capabilities.yaml").read_text())["capabilities"]

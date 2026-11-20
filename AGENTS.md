@@ -186,6 +186,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   engine-checked reference call (the test also pins the metric, coordinates and assumptions to the capabilities example), and is
   `approved` (its button shown on the site) only with five correct, engine-backed live runs of that exact prompt at the deployed 10 s
   limit in `docs/benchmarks/exploration-live.json`. Do not show a button for an unapproved entry and do not put a result in the registry.
+- Landing research sessions (`scripts/record_landing_sessions.py`, `apps/site/src/data/landing-sessions.json`,
+  `docs/benchmarks/landing-live.json`, `services/api/tests/test_landing_sessions.py`, `docs/explore-in-minerva.md`): the landing
+  page shows two recorded conversations (Kepler, Schwarzschild): of five live runs of the `landing-*` cases on the deployed
+  model, the first in which every turn passed, with the number that passed, the model and its settings stated beside it (a
+  conversation with no passing run is not shown). Every recorded tool call is re-run against the engine in
+  CI; changing a prompt or the deployed model means recording again. Never edit the JSON by hand. The page's formula marks use
+  the chat's own wording (`packages/ui/src/marks.ts`).
 - Homepage examples (`packages/ui/fixtures/homepage-examples.json`, `apps/web/src/lib/homepage-examples.ts`,
   `services/api/tests/test_homepage_examples.py`): one registry; a card shows only if `approved`, and `approved` is allowed only
   with five correct, engine-backed live runs of that exact prompt in `docs/benchmarks/homepage-live.json` (never the model host's

@@ -3,6 +3,7 @@
 # if its exploration is `approved`, which requires five correct, engine-backed live runs of the exact prompt at the
 # deployed 10 s compute limit (docs/benchmarks/exploration-live.json, checked by test_exploration_registry.py).
 # The reference call is the one the metric in docs/capabilities.yaml (`geometry-schwarzschild`) describes.
+# Since the Kretschmann scalar got its own symbolic leg (#118) a reply may say it was proved, so that is no longer forbidden.
 
 - id: explore-schwarzschild-curvature
   category: tensor_matrix
@@ -22,7 +23,7 @@
       assumptions: {M: [positive], r: [positive]}
       quantities: [christoffel, ricci, kretschmann]
   reply_matches: '(?is)(?=.*(vanish|zero|flat))(?=.*48)'
-  reply_forbids: 'Kretschmann[^.]{0,80}(symbolically (proved|verified|checked)|is proved)|singularit(y|ies) (at|in) the (Ricci|metric) is physical'
+  reply_forbids: 'singularit(y|ies) (at|in) the (Ricci|metric) is physical'
   source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
 
 - id: explore-schwarzschild-ricci
@@ -43,7 +44,7 @@
       assumptions: {M: [positive], r: [positive]}
       quantities: [ricci]
   reply_matches: '(?is)vanish|zero|flat'
-  reply_forbids: 'Kretschmann[^.]{0,80}(symbolically (proved|verified|checked)|is proved)|singularit(y|ies) (at|in) the (Ricci|metric) is physical'
+  reply_forbids: 'singularit(y|ies) (at|in) the (Ricci|metric) is physical'
   source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
 
 - id: explore-schwarzschild-kretschmann
@@ -64,5 +65,84 @@
       assumptions: {M: [positive], r: [positive]}
       quantities: [kretschmann]
   reply_matches: '48'
-  reply_forbids: 'Kretschmann[^.]{0,80}(symbolically (proved|verified|checked)|is proved)|singularit(y|ies) (at|in) the (Ricci|metric) is physical'
+  reply_forbids: 'singularit(y|ies) (at|in) the (Ricci|metric) is physical'
   source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
+
+# Landing-page research sessions (apps/site/src/data/landing-sessions.json, recorded by scripts/record_landing_sessions.py):
+# a person asks short questions in their own words and Minerva works through them with the engine. The first turn names no
+# formula, so the model answers it from memory (shown as unchecked); the next turns must use the tools on what it wrote.
+# A recording is published only when five live runs of these exact prompts pass every turn at the deployed 10 s limit.
+- id: landing-kepler
+  category: physics
+  prompt: 'What is the Lagrangian of the Kepler problem in polar coordinates?'
+  expected_tool: search_handbook  # or no tool at all (tools_optional): the handbook has no entry, the model answers
+  tools_optional: true
+  reply_matches: '(?is)(?=.*\\dot\{?r)(?=.*\\dot\{?\\theta)(?=.*\{?r\}?)'
+  source: "classical mechanics: L = m(r'^2 + r^2 theta'^2)/2 + k/r for an attractive inverse-square force (Goldstein, Classical Mechanics, ch. 3)"
+  followups:
+    - prompt: 'What are its symmetries?'
+      expected_tool: analyze_lagrangian
+      also_ok: [find_conserved_quantities]
+      args: {includes: {coordinates: [r]}}
+      expect_card: {status: ok}
+      reference:
+        tool: analyze_lagrangian
+        arguments: {lagrangian: '\frac{m}{2}\left(\dot{r}^2 + r^2\dot{\theta}^2\right) + \frac{k}{r}', coordinates: [r, theta]}
+      reply_matches: '(?is)(?=.*(angular momentum|p_\{?\\theta|cyclic))(?=.*energy)'
+    - prompt: 'Can you search for hidden symmetries?'
+      expected_tool: find_conserved_quantities
+      also_ok: [search_invariants]
+      # Optional: when turn 2 already ran the full search (the model often answers "symmetries" with it), the right
+      # answer points to those verified constants instead of repeating the call (seen in the first live trial,
+      # 2026-11-19). The reply must still name the hidden constants.
+      tools_optional: true
+      max_calls: 3
+      args: {includes: {coordinates: [r]}}
+      expect_card: {status: ok}
+      reference:
+        tool: find_conserved_quantities
+        arguments: {lagrangian: '\frac{m}{2}\left(\dot{r}^2 + r^2\dot{\theta}^2\right) + \frac{k}{r}', coordinates: [r, theta]}
+      reply_matches: '(?i)runge|lenz|laplace|eccentricity|C_\{?[34]'
+      reply_forbids: '(?i)no other|has no more|completely integrable|fully integrable|proves? (that )?(there are|no) '
+
+- id: landing-schwarzschild
+  category: tensor_matrix
+  prompt: 'What is the Schwarzschild metric?'
+  expected_tool: search_handbook  # or no tool at all (tools_optional): the handbook has no entry, the model answers
+  tools_optional: true
+  reply_matches: '(?is)(?=.*2\s*(G\s*)?M)(?=.*ds\^2|g_)'
+  source: "general relativity: the Schwarzschild metric is a vacuum solution (Ricci = 0) whose Kretschmann scalar is 48 M^2 / r^6; see docs/geometry-benchmark.md for the closed-form references"
+  followups:
+    - prompt: 'Compute its Ricci tensor $R_{\mu\nu}$.'
+      expected_tool: geometry
+      args: {includes: {quantities: [ricci]}}
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [t, r, theta, phi]
+          metric:
+            - ['-(1-2M/r)', '0', '0', '0']
+            - ['0', '(1-2M/r)^{-1}', '0', '0']
+            - ['0', '0', 'r^2', '0']
+            - ['0', '0', '0', 'r^2 \sin^2\theta']
+          assumptions: {M: [positive], r: [positive]}
+          quantities: [ricci]
+      reply_matches: '(?i)vanish|zero|flat'
+    - prompt: 'Now compute the Kretschmann scalar.'
+      expected_tool: geometry
+      args: {includes: {quantities: [kretschmann]}}
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [t, r, theta, phi]
+          metric:
+            - ['-(1-2M/r)', '0', '0', '0']
+            - ['0', '(1-2M/r)^{-1}', '0', '0']
+            - ['0', '0', 'r^2', '0']
+            - ['0', '0', '0', 'r^2 \sin^2\theta']
+          assumptions: {M: [positive], r: [positive]}
+          quantities: [kretschmann]
+      reply_matches: '48'
+      reply_forbids: 'singularit(y|ies) (at|in) the (Ricci|metric) is physical'

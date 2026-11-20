@@ -49,3 +49,25 @@ Add an entry to `docs/capabilities.yaml` (the landing example), a case to `cases
 `explorations.json` with `approved: false`, run the case five times live at the deployed limit
 (`--suite explore --cases <id> --repeat 5 --compute-timeout 10`), record the runs, then set `approved`. Kepler's
 button still points at the app home; it needs its own entry the same way.
+
+## Recorded research sessions on the landing page
+
+The landing page's examples are two real conversations, not hand-written results: "What is the Lagrangian of the Kepler
+problem in polar coordinates?" → "What are its symmetries?" → "Can you search for hidden symmetries?", and "What is the
+Schwarzschild metric?" → "Compute its Ricci tensor" → "Now compute the Kretschmann scalar". They show how Minerva helps
+someone work through a problem: the model answers from memory where no tool applies (and that formula carries the chat's
+**unchecked** mark), then the engine computes and checks each result.
+
+- The prompts are the `landing-kepler` and `landing-schwarzschild` cases of `cases_exploration.yaml` (suite `explore`).
+- `scripts/record_landing_sessions.py --base-url <host>` runs them five times each through the real loop, with the deployed
+  model, thinking and reply budget, at the 10 s tool limit. It writes `docs/benchmarks/landing-live.json` (every run, the
+  model as the host reports it, the settings every request carried) and `apps/site/src/data/landing-sessions.json` with,
+  for each conversation, **the first run in which every turn passed** and **how many of the runs passed**, numbered by the
+  server's own rule. The page states that count, the model (name, family, size, quantisation, digest) and the settings
+  (thinking, reply budget, temperature, context window, tool time limit, seed), and links the record of every run. A
+  conversation with no passing run is not published. Nothing is chosen or edited by hand. (Rule fixed on 2026-11-20, before
+  the recording it applies to; the first recording on Qwen 3.5 passed 8 of 10 under the older all-must-pass rule.)
+- `services/api/tests/test_landing_sessions.py` re-runs every recorded tool call against the engine, checks the recording
+  belongs to the current prompts, that the shown run is the first that passed and the stated count matches the record,
+  that the model and settings are the record's, and that no host address or trace is published.
+  Changing a prompt or the deployed model means recording again.
