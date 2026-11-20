@@ -15,7 +15,7 @@ import re
 import threading
 import time
 import uuid
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -632,6 +632,7 @@ async def run_agent(
     info: TurnInfo | None = None,
     declared_for_tools: Mapping[str, str] | None = None,
     prior_evidence: Sequence[Mapping[str, Any]] = (),
+    vector_kind_names: Collection[str] = (),
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
 
@@ -664,6 +665,7 @@ async def run_agent(
                 prior_unverified,
                 declared_for_tools,
                 prior_evidence,
+                vector_kind_names,
             ):
                 yield event
     finally:
@@ -690,6 +692,7 @@ async def _run_turn(
     prior_unverified: Mapping[str, Sequence[str]] | None = None,
     declared_for_tools: Mapping[str, str] | None = None,
     prior_evidence: Sequence[Mapping[str, Any]] = (),
+    vector_kind_names: Collection[str] = (),
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
     # Without parameters (tests, scripts that predate them) everything is sent and nothing is trimmed.
@@ -776,6 +779,7 @@ async def _run_turn(
                 frozenset(matrix_names(trace)) | frozenset(vector_names(trace)) | frozenset(gate)
             ),
             matrix_sources=dict(declared_for_tools or {}),
+            vector_names=frozenset(vector_names(trace)) | frozenset(vector_kind_names),
             numbers_delegated=numbers_delegated,
             user_numbers=user_numbers,
             input_notes=input_notes,

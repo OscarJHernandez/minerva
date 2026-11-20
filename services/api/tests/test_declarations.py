@@ -250,3 +250,74 @@ def test_rewrite_part_and_substitute_refuse_a_declared_matrix_unless_the_call_sa
     assert "B A" in right.for_model and "A B" in right.for_model
     # a name the conversation did not declare is untouched
     assert execute("rewrite_part", {"latex": "(a+b)^2", "action": "expand"}, ctx).status == "ok"
+
+
+# -- A-009 (continued): `sums` and the Lagrangian tools treat symbols as commuting numbers, but only a declared MATRIX
+#    makes them wrong; a vector's coordinate or components are scalars ---------------------------------------------
+LAGRANGIAN = r"\frac12 A \dot{x}^2 - \frac12 B x^2"
+SUM_INTS = {"n": ["integer", "positive"]}
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments"),
+    [
+        (
+            "sums",
+            {"latex": r"\sum_{i=1}^{n} (A_i + B_i)^2", "action": "expand", "assumptions": SUM_INTS},
+        ),
+        ("analyze_lagrangian", {"lagrangian": LAGRANGIAN, "coordinates": ["x"]}),
+        (
+            "expand_motion",
+            {"lagrangian": LAGRANGIAN, "coordinates": ["x"], "equilibrium": {"x": "0"}},
+        ),
+        ("find_conserved_quantities", {"lagrangian": LAGRANGIAN, "coordinates": ["x"]}),
+        ("search_invariants", {"lagrangian": LAGRANGIAN, "coordinates": ["x"]}),
+    ],
+)
+def test_the_sums_and_lagrangian_tools_refuse_a_declared_matrix(
+    engine_ctx: ToolContext, tool: str, arguments: dict[str, object]
+) -> None:
+    matrices = ToolContext(
+        engine=engine_ctx.engine,
+        kb=engine_ctx.kb,
+        matrices=frozenset({"A", "B"}),
+        matrix_sources={"A": "your message: «Let A and B be matrices.»"},
+    )
+    refused = execute(tool, arguments, matrices)
+    assert refused.status == "error" and "matrix_calculus" in refused.for_model, tool
+    # the same call with nothing declared is unchanged (it is a valid question about numbers)
+    assert execute(tool, arguments, engine_ctx).status in {
+        "ok",
+        "conditions_not_satisfied",
+        "unchanged",
+    }
+
+
+def test_a_declared_vector_does_not_block_the_tools_only_a_matrix_makes_wrong(
+    engine_ctx: ToolContext,
+) -> None:
+    """ "The vector r" is common in a Kepler conversation, and `r` is also the radial coordinate of its Lagrangian:
+    declaring a vector must not stop `analyze_lagrangian` or `sums` over its components `r_i`."""
+    ctx = ToolContext(
+        engine=engine_ctx.engine,
+        kb=engine_ctx.kb,
+        matrices=frozenset({"r"}),
+        vector_names=frozenset({"r"}),
+        matrix_sources={"r": "your message: «the position vector r»"},
+    )
+    kepler = r"\frac12 m (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}"
+    assert (
+        execute(
+            "analyze_lagrangian", {"lagrangian": kepler, "coordinates": ["r", "theta"]}, ctx
+        ).status
+        == "ok"
+    )
+    ints = {"n": ["integer", "positive"]}
+    squared = execute(
+        "sums",
+        {"latex": r"\sum_{i=1}^{n} (r_i + 1)^2", "action": "expand", "assumptions": ints},
+        ctx,
+    )
+    assert squared.status == "ok"
+    # the scalar tools that a vector does break are still refused for it
+    assert execute("simplify", {"latex": r"(r+1)^2", "goal": "expand"}, ctx).status == "error"

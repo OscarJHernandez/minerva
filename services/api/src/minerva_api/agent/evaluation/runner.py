@@ -15,6 +15,8 @@ from typing import Any
 from ...routers_chat import (
     _claim_context,
     _conversation_events,
+    _declared_for_tools,
+    _declared_vector_kind,
     _history,
     _prior_matrices,
 )
@@ -69,6 +71,10 @@ async def observe(
             "prior_restrictions": restrictions,
             "prior_assumptions": prior_assumptions,
             "prior_matrices": _prior_matrices(messages, case.prompt),
+            # what refuses a tool is the strict reading, as in the chat route (the generous one only leaves
+            # claims unchecked), and which of those names are vectors, not matrices
+            "declared_for_tools": _declared_for_tools(messages, case.prompt),
+            "vector_kind_names": _declared_vector_kind(messages, case.prompt),
             "prior_groups": conversation_groups(_conversation_events(messages, case.prompt)),
         }
     else:
@@ -79,7 +85,19 @@ async def observe(
         found, cleared = scan_declarations(
             [(str(m["role"]), str(m.get("content", ""))) for m in history], strict=False
         )
-        carried = {"prior_matrices": sorted(set(found) - cleared)}
+        strict_found, _ = scan_declarations(
+            [(str(m["role"]), str(m.get("content", ""))) for m in history], strict=True
+        )
+        carried = {
+            "prior_matrices": sorted(set(found) - cleared),
+            "declared_for_tools": {
+                n: f"{'your message' if d.role == 'user' else 'my earlier reply'}: \u00ab{d.quote}\u00bb"
+                for n, d in strict_found.items()
+            },
+            "vector_kind_names": frozenset(
+                n for n, d in strict_found.items() if d.kind == "vector"
+            ),
+        }
         # What the chat route passes the loop from earlier turns: the formulas written so far, which the
         # claim checker uses as definitions. (Case histories are plain text: no earlier tool calls.)
         prior_relations = [
