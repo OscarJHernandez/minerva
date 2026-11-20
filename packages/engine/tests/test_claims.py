@@ -455,3 +455,55 @@ def test_the_differential_rule_does_not_hide_a_wrong_relation_or_a_name_that_onl
     # `ad` (a product of a and d) and `\delta` are not differentials
     assert check_claim(r"ad + ad = 2ad", {}, L).status == "holds"
     assert check_claim(r"\delta + \delta = 2\delta", {}, L).status == "holds"
+
+
+# -- A-010: two statements about one symbol must not make a correct value "contradicted" ---------------------------
+KRETSCHMANN = r"K = \frac{48 M^2}{r^6}"
+AT_HORIZON = r"K = \frac{48 M^2}{(2M)^6} = \frac{3}{4M^4}"
+WRONG_AT_HORIZON = r"K = \frac{48 M^2}{(2M)^6} = \frac{3}{5M^4}"
+
+
+def test_a_later_value_for_a_symbol_reaches_the_definitions_built_on_the_old_one() -> None:
+    """A reply wrote `r = 0` ("r = 0 is a singularity") in one turn and evaluated at `r = 2M` in the next. The
+    definition of K, learned while `r = 0` held, kept that value, so the correct value of K at the horizon was
+    "does not agree with r = 0; K = ... (40 of 40 sample points disagree)"."""
+    for relations in (
+        ["r = 0", KRETSCHMANN],
+        [KRETSCHMANN, "r = 0"],
+        ["r = 0", KRETSCHMANN, "r = 2M"],
+    ):
+        formulas = ["r = 2M", AT_HORIZON]
+        # the reply's own `r = 2M` comes before the value that uses it
+        result = check_claims(formulas, {}, relations, L)[1]
+        assert result.status == "conditional", relations
+        assert "r = 2M" in result.detail and "r = 0" not in result.detail, relations
+
+
+def test_the_wrong_value_at_the_horizon_is_still_contradicted() -> None:
+    # the wrong twin: a false value must not be rescued by the rebuild
+    for relations in (["r = 0", KRETSCHMANN], [KRETSCHMANN, "r = 2M"]):
+        result = check_claims(["r = 2M", WRONG_AT_HORIZON], {}, relations, L)[1]
+        assert result.status == "fails", relations
+        assert "does not agree with" in result.detail
+
+
+def test_a_definition_built_on_a_redefined_symbol_follows_the_new_value() -> None:
+    relations = ["a = 2", "b = a + 1", "a = 5"]
+    holds = check_claims([r"b = a + 1 = 6"], {}, relations, L)[0]
+    assert holds.status == "conditional", holds.detail
+    wrong = check_claims([r"b = a + 1 = 7"], {}, relations, L)[0]
+    assert wrong.status == "fails"
+
+
+def test_an_undefined_substituted_value_is_not_a_disagreement() -> None:
+    """`r = 0` substituted into `K = 48 M^2 / r^6` is a division by zero. That says nothing about the claim
+    (it used to count as 40 of 40 sample points disagreeing)."""
+    result = check_claims([AT_HORIZON], {}, [KRETSCHMANN, "r = 0"], L)[0]
+    assert result.status == "unverified", result.detail
+    assert "undefined" in result.detail
+
+
+def test_repeating_the_same_definition_changes_nothing() -> None:
+    relations = ["a = 2", "b = a + 1", "a = 2"]
+    holds = check_claims([r"b = a + 1 = 3"], {}, relations, L)[0]
+    assert holds.status == "conditional"

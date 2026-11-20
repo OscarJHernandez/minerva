@@ -307,6 +307,9 @@ class ClaimChecker:
         self.evidence = EvidenceIndex(list(evidence), assumptions, limits) if evidence else None
         # symbol -> (right side with earlier definitions substituted, its text, texts it was built on)
         self.definitions: dict[sp.Symbol, tuple[sp.Expr, str, list[str]]] = {}
+        # the definitions that were accepted, in order: a redefinition rebuilds the others without the old one
+        self._log: list[tuple[str, sp.Symbol]] = []
+        self._replaying = False
 
     def _parse(self, latex: str) -> list[sp.Expr] | None:
         sides = split_equation(latex)
@@ -333,13 +336,32 @@ class ClaimChecker:
         found = _definition(parsed) if parsed else None
         if found is None:
             return
-        symbol, rhs = found
-        (rhs,), used = self._substitute([rhs])
+        symbol, raw = found
+        (rhs,), used = self._substitute([raw])
         if symbol in rhs.free_symbols:
             return
         if symbol not in self.definitions and len(self.definitions) >= MAX_DEFINITIONS:
             return
+        if (
+            not self._replaying
+            and symbol in self.definitions
+            and self.definitions[symbol][0] != rhs
+        ):
+            # A redefinition. A definition made in terms of the old value (`K = 48 M^2 / r^6` while `r = 0` held)
+            # has that value baked in, and the new one (`r = 2M`) would never reach it: it was then compared
+            # with a number that came from a statement the conversation had since replaced. Rebuild the others
+            # without the old definition of `symbol`, so what was written in terms of it follows the new value.
+            kept = [text for text, defined in self._log if defined != symbol]
+            self.definitions, self._log = {}, []
+            self._replaying = True
+            try:
+                for text in kept:
+                    self.learn(text)
+            finally:
+                self._replaying = False
+            (rhs,), used = self._substitute([raw])
         self.definitions[symbol] = (rhs, _text(latex), self._given(used))
+        self._log.append((latex, symbol))
 
     def _is_vector(self, latex: str) -> bool:
         text = _text(latex)
@@ -510,6 +532,15 @@ class ClaimChecker:
         substituted, used = self._substitute(parsed)
         if not used:
             return unchecked
+        if any(e.has(sp.zoo, sp.nan, sp.oo, -sp.oo) for e in substituted):
+            # A definition that is undefined where it was substituted (`r = 0` into `1/r^6`) says nothing about the
+            # claim: comparing the claim with "undefined" at sample points is not a disagreement.
+            return ClaimCheck(
+                status="unverified",
+                detail="a definition stated earlier gives an undefined value here (a division by zero); "
+                "not tested",
+                kind="relation",
+            )
         given = self._given(used)
         if latex and _SPACES.sub("", _text(latex)) in {_SPACES.sub("", g) for g in given}:
             # The claim is one of the definitions it would be "given": a statement cannot justify itself.

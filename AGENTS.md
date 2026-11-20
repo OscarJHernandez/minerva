@@ -573,7 +573,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   stated earlier in the conversation (`symbol = expression`, from the user or the model, not verified by Minerva) are
   substituted into it; a result that used them names them (`given`), and one that disagrees with them after
   substitution is `fails` ("does not agree with …"), not "false". A new definition is never a contradiction, and a
-  stale definition never rescues a false identity. "Could not check" must never be worded as "false".
+  stale definition never rescues a false identity. A later definition of a symbol replaces the earlier one and the
+  definitions made in terms of it are rebuilt, so they follow the new value (they used to keep the old one: `K = 48 M^2 / r^6`
+  learned while `r = 0` held contradicted the correct `K` at `r = 2M`); a definition that is undefined where it was
+  substituted (a division by zero) leaves the claim `unverified`, never `fails` (A-010). "Could not check" must never be worded
+  as "false".
 - Controlled steps (`steps.py`, `substitute.py`, `isolate.py`; tools `substitute`, `rewrite_part`, `isolate_variable`) do one move the
   user chose. A relation the user supplies is a *premise*: a result that depends on it is `conditional` ("holds given ..."), is never
   called proved, and Minerva never checks that the relation is true. Several relations whose order changes the result, or that rewrite
