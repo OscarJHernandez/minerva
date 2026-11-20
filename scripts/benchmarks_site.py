@@ -24,6 +24,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections import Counter
 from collections.abc import Callable
@@ -344,6 +345,102 @@ def chat() -> dict[str, Any]:
     return {"rows": rows, "targets": targets}
 
 
+# ----------------------------------------------------------------------------------------------- model comparison
+MODEL_DIR = "model-comparison-2026-11-20"
+# (full-suite report, held-out report, what the configuration is in the comparison: a label, not a number)
+STAGE2 = [
+    (
+        "stage2-all-qwen3.5-35b-thinking-on",
+        "stage2-heldout-qwen3.5-35b-thinking-on",
+        "the model the chat was switched to on 2026-11-19",
+    ),
+    (
+        "stage2-all-gemma4-26b-deployed-build-thinking-off",
+        "stage2-heldout-gemma4-26b-deployed-build-thinking-off",
+        "the reference: the build deployed until 2026-11-19",
+    ),
+    (
+        "stage2-all-glm-4.7-flash-thinking-off",
+        "stage2-heldout-glm-4.7-flash-thinking-off",
+        "the other finalist of the screen",
+    ),
+]
+_TAG = re.compile(r"^[a-z][a-z0-9.\-]*:[a-z0-9][a-z0-9._\-]*$")
+
+
+def model_name(alias: str, identity: dict[str, Any]) -> str:
+    """The model by what it is: a tag (`qwen3.5:35b`) is its own name, an operator's alias (`minerva`) is described by
+    the base model the host reports. Never the alias alone, and never an internal parent name over a real tag."""
+    base = identity.get("base_model")
+    if _TAG.match(alias) or (base and str(base).removesuffix(":latest") == alias):
+        return alias
+    return f"{base} (served as {alias})" if base and base != alias else alias
+
+
+def stage1_screen() -> list[dict[str, Any]]:
+    """One row per model and digest from the probe-suite reports: passes with thinking off and on."""
+    rows: dict[tuple[str, str], dict[str, Any]] = {}
+    for path in sorted((BENCH / MODEL_DIR).glob("stage1-probe-*.json")):
+        doc = load(f"{MODEL_DIR}/{path.stem}")
+        alias, entry = next(iter(doc["models"].items()))
+        summary, identity = entry["summary"], entry.get("identity") or {}
+        if not identity or identity.get("hosted") or not summary:
+            raise SystemExit(
+                f"{path.name} does not record the model's identity; it cannot be published"
+            )
+        name = model_name(alias, identity)
+        row = rows.setdefault(
+            (name, str(identity.get("digest"))),
+            {
+                "model": name,
+                "digest": identity.get("digest"),
+                "parameter_size": identity.get("parameter_size"),
+                "off": None,
+                "on": None,
+            },
+        )
+        key = (
+            "on"
+            if (doc["meta"].get("params") or {}).get("think", doc["meta"].get("think"))
+            else "off"
+        )
+        row[key] = {
+            "passed": summary["passed"],
+            "runs": summary["runs"],
+            "median_seconds": round(summary["latency_seconds"]["median"], 1),
+            "false_verified": summary["false_verified"],
+        }
+    return sorted(
+        rows.values(),
+        key=lambda r: -max((r[k]["passed"] for k in ("on", "off") if r[k]), default=0),
+    )
+
+
+def model_comparison() -> dict[str, Any]:
+    final = []
+    for full, held, label in STAGE2:
+        row = chat_row("all", f"{MODEL_DIR}/{full}", "Full suite")
+        out = chat_row("heldout", f"{MODEL_DIR}/{held}", "Held-out suite")
+        identity = next(iter(load(f"{MODEL_DIR}/{full}")["models"].values()))["identity"]
+        row["model"]["name"] = model_name(row["model"]["alias"], identity)
+        row["role"] = label
+        row["held_out"] = {"passed": out["passed"], "runs": out["run"]["runs"]}
+        fv = row["measured"]["false_verified"]
+        row["eligible"] = fv == 0
+        row["not_eligible_reason"] = (
+            None
+            if fv == 0
+            else f"{fv} false-verified result(s) in this run (see the note below the table)"
+        )
+        final.append(row)
+    return {
+        "directory": f"docs/benchmarks/{MODEL_DIR}",
+        "doc": "docs/reliability/model-comparison.md",
+        "final": final,
+        "screen": stage1_screen(),
+    }
+
+
 def build() -> dict[str, Any]:
     suites = []
     for sid, title, what, builder, files, command, doc in SUITES:
@@ -360,7 +457,12 @@ def build() -> dict[str, Any]:
                 "doc": doc,
             }
         )
-    return {"suites": suites, "verification": verification(), "chat": chat()}
+    return {
+        "suites": suites,
+        "verification": verification(),
+        "chat": chat(),
+        "models": model_comparison(),
+    }
 
 
 def render() -> str:

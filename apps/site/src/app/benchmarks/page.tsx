@@ -38,7 +38,7 @@ function Target({ id }: { id: string }) {
 }
 
 export default function Benchmarks() {
-  const { suites, verification: v, chat } = BENCHMARKS;
+  const { suites, verification: v, chat, models } = BENCHMARKS;
   const problems = suites.reduce((n, s) => n + s.total, 0);
   const gaps = suites.reduce((n, s) => n + s.pending, 0);
   const full = chat.rows.find((r) => r.id === "all");
@@ -201,15 +201,15 @@ export default function Benchmarks() {
               over others.
             </li>
             <li>
-              A comparison of other models, with and without thinking, is being run on the same
-              cases under a protocol fixed beforehand (
+              Other models were compared on the same cases under a protocol fixed beforehand, with
+              and without thinking; the result is in the next section and the full account is in{" "}
               <a
                 className="underline hover:text-ink"
                 href={repoFile("docs/reliability/model-comparison.md")}
               >
                 model-comparison.md
               </a>
-              ). It is published here when it is complete, not before.
+              .
             </li>
           </ul>
           <p className="mt-6 text-sm text-muted">
@@ -223,6 +223,136 @@ export default function Benchmarks() {
               href={repoFile("docs/reliability/experiment-log.md")}
             >
               docs/reliability
+            </a>
+            .
+          </p>
+        </section>
+
+        <section aria-labelledby="models-h" className="mt-14 border-t border-rule pt-12">
+          <h2 id="models-h" className="font-serif text-3xl tracking-tight sm:text-4xl">
+            Which model should answer?
+          </h2>
+          <p className="mt-3 max-w-3xl text-muted">
+            Seven local models were screened with and without thinking on the probe suite, and the
+            finalists were run on the full suite and the held-out suite under a protocol written
+            before the runs. Every model is named by what it is, with its digest; an operator&apos;s
+            alias is never the name. Accuracy decides; speed is reported apart, and was measured on
+            a host shared with other work, so it is approximate.
+          </p>
+
+          <h3 className="mt-8 font-serif text-2xl tracking-tight">The full suite</h3>
+          <ul className="mt-4 max-w-3xl" data-testid="model-final">
+            {models.final.map((r) => (
+              <li
+                key={`${r.model.name}-${r.model.thinking_requested}`}
+                className="border-b border-rule py-4"
+                data-testid={`model-${r.model.digest}`}
+              >
+                <p className="font-medium">
+                  {r.model.name}
+                  <span className="font-normal text-muted">
+                    {" "}
+                    · digest {r.model.digest} · thinking {r.model.thinking_requested ? "on" : "off"}
+                  </span>
+                </p>
+                <p className="text-sm text-muted">{r.role}</p>
+                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+                  {[
+                    ["Passed", `${r.passed}/${r.run.runs} (${pct(r.measured.pass_rate ?? 0)})`],
+                    ["Tool selection", pct(r.measured.tool_selection ?? 0)],
+                    ["Valid arguments", pct(r.measured.valid_arguments ?? 0)],
+                    ["Completion", pct(r.measured.completion ?? 0)],
+                    ["Wrongly verified", String(r.measured.false_verified)],
+                    ["Held-out suite", `${r.held_out.passed}/${r.held_out.runs}`],
+                    ["Median turn", `${r.median_seconds} s (approximate)`],
+                    ["Slowest 5%", `${r.p95_seconds} s (approximate)`],
+                  ].map(([k, val]) => (
+                    <div key={k}>
+                      <dt className="text-muted">{k}</dt>
+                      <dd className="tabular-nums">{val}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {!r.eligible && (
+                  <p className="mt-2 text-sm text-warn" data-testid="not-eligible">
+                    Not eligible as measured: {r.not_eligible_reason}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 max-w-3xl text-sm text-muted">
+            {models.final[0]?.run.runs} runs each, {models.final[0]?.run.repeats} repeats, seed{" "}
+            {models.final[0]?.run.seed}, reply limit {models.final[0]?.model.reply_limit} tokens,
+            code {models.final[0]?.run.code}. The raw reports are in{" "}
+            <a className="underline hover:text-ink" href={repoFile(models.directory)}>
+              {models.directory}
+            </a>
+            .
+          </p>
+
+          <h3 className="mt-10 font-serif text-2xl tracking-tight">
+            The screen: probe suite, thinking off and on
+          </h3>
+          <ul className="mt-4 max-w-3xl" data-testid="model-screen">
+            {models.screen.map((r) => (
+              <li
+                key={`${r.model}-${r.digest}`}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-rule py-3"
+              >
+                <span className="font-medium">
+                  {r.model}
+                  <span className="font-normal text-muted"> · digest {r.digest}</span>
+                </span>
+                <span className="text-sm tabular-nums">
+                  <span className="text-muted">thinking off </span>
+                  {r.off ? `${r.off.passed}/${r.off.runs}` : "not run"}
+                  <span className="text-muted"> · thinking on </span>
+                  {r.on ? `${r.on.passed}/${r.on.runs}` : "not run"}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="mt-10 font-serif text-2xl tracking-tight">
+            What it shows, and what it does not
+          </h3>
+          <ul className="mt-3 max-w-3xl list-disc space-y-2 pl-5 text-muted">
+            <li>
+              On the full suite the model the chat now uses is the most accurate configuration
+              measured, by more than the run-to-run noise, and the only one that meets the
+              tool-selection target. It is also about twice as slow, and no configuration meets the
+              pass-rate, valid-arguments or completion targets.
+            </li>
+            <li>
+              The screen on the small probe suite over-predicted for one finalist: it passed about
+              91% of the probe runs and 62% of the full suite. A suite written by the people fixing
+              what it measures is a screen, not a ranking.
+            </li>
+            <li>
+              Thinking helped the three Qwen models, made no measurable difference for the Gemma and
+              GLM builds, and hurt the Granite model. It cannot be assumed to help.
+            </li>
+            <li>
+              The false-verified results in the table above and in the earlier runs were not a model
+              failing. Two were defects in Minerva&apos;s own tools (a declared matrix read as
+              commuting numbers), found because a different model wrote different prose; both are
+              fixed, with tests, and one affected run is shown as not eligible until its full suite
+              is repeated on the fixed code.
+            </li>
+            <li>
+              Two models were not completed (
+              <code className="rounded bg-sunk px-1 text-xs">magistral:24b</code>,{" "}
+              <code className="rounded bg-sunk px-1 text-xs">ministral-3:14b</code>) and are not
+              ranked. The prompts and repairs were developed on traces of one model, which favours
+              it, and the weights measured here may not be byte-identical to those of a deployment
+              with the same name.
+            </li>
+          </ul>
+          <p className="mt-4 text-sm text-muted">
+            The protocol, the results, the recommendation and every change made along the way are in{" "}
+            <a className="underline hover:text-ink" href={repoFile(models.doc)}>
+              {models.doc}
             </a>
             .
           </p>
