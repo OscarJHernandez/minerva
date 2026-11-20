@@ -9,6 +9,18 @@
 > distributions, failure classes, baseline-versus-new comparisons) are produced by the benchmark described in
 > [observability.md](observability.md) and kept as JSON and Markdown under `docs/benchmarks/`.
 
+## Which model (2026-11-20)
+
+The 2026-11-13 comparison below had `qwen3.5:35b` ahead of `gemma4:26b` by about 15 points on an older case set. A new
+comparison on today's suites, with thinking on and off and every row naming the model, digest and reply limit, is in
+[reliability/model-comparison.md](reliability/model-comparison.md) (reports in
+[benchmarks/model-comparison-2026-11-20](benchmarks/model-comparison-2026-11-20/)). In short: `qwen3.5:35b` with thinking on
+is the most accurate configuration measured on the full suite (389/510 against 372/510 for the deployed `gemma4:26b`
+build, beyond the run-to-run noise), at about twice the latency; no configuration meets the pass-rate, valid-arguments or
+completion target; and the screen on the small probe suite over-predicted for `glm-4.7-flash` (91.2% there, 62.0% on the
+full suite). The comparison also found three defects in Minerva itself (A-008 to A-010) and one in the verifier's
+reporting (V-017), all fixed or recorded in `docs/verification-defects.md`.
+
 ## Agent benchmark: before and after the reliability changes (2026-11-13)
 
 > Historical. The case counts below (78, then 90) are those of that run. The set has since grown to 161 core

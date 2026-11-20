@@ -1,0 +1,337 @@
+{
+  "meta": {
+    "case_count": 1,
+    "cases_digest": "bfa93d8c719d",
+    "categories": [
+      "false_claim"
+    ],
+    "compute_timeout": 10.0,
+    "date": "2026-11-19",
+    "git_sha": "737397c80f",
+    "label": "s1-rerun-mistral-small3.2_24b-matrix-square",
+    "limits": {
+      "max_seconds": 360.0,
+      "max_steps": 6,
+      "max_tool_calls": 12
+    },
+    "ollama": "0.40.3",
+    "params": {
+      "history_messages": 20,
+      "history_tokens": null,
+      "num_ctx": 32768,
+      "num_predict": 4096,
+      "temperature": 0.2,
+      "think": false,
+      "toolset": "auto",
+      "top_k": null,
+      "top_p": null
+    },
+    "platform": "Darwin arm64",
+    "prompt_sha": "3125a4c9ab20",
+    "python": "3.13.16",
+    "repeats": 3,
+    "request_timeout_seconds": 180.0,
+    "routing": true,
+    "seed": 7,
+    "strip_thinking": false,
+    "sympy": "1.14.0",
+    "temperature": 0.2,
+    "think": false
+  },
+  "models": {
+    "mistral-small3.2:24b": {
+      "identity": {
+        "base_model": null,
+        "capabilities": [
+          "completion",
+          "tools",
+          "vision"
+        ],
+        "digest": "5a408ab55df5",
+        "family": "mistral3",
+        "format": "gguf",
+        "host_defaults": {
+          "temperature": 0.15
+        },
+        "hosted": false,
+        "loaded_bytes": 25808024371,
+        "loaded_context": 32768,
+        "loaded_gpu_bytes": 25808024371,
+        "modified_at": "2026-10-25T18:49:13.060797691Z",
+        "name": "mistral-small3.2:24b",
+        "parameter_size": "24.0B",
+        "provider": "ollama",
+        "quantization": "Q4_K_M",
+        "unchanged_during_run": true
+      },
+      "results": [
+        {
+          "args_ok": null,
+          "calls": 0,
+          "case_id": "probe-false-matrix-square",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "consistent": null,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "efficient": true,
+          "error_kind": null,
+          "evidence_ok": true,
+          "expected_tool": "matrix_calculus",
+          "failure_class": "tool_selection",
+          "false_verified": 0,
+          "first_token_ms": 23869,
+          "first_tool": null,
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 1,
+          "llm_ms": 49037,
+          "math_ok": true,
+          "max_prompt_tokens": 8226,
+          "notes": [
+            "expected one of ['matrix_calculus'], called none",
+            "reply says what it should not"
+          ],
+          "operation_ok": false,
+          "passed": false,
+          "repeat": 0,
+          "repeated_calls": 0,
+          "reply": "To show that \\((A+B)^2 = A^2 + 2AB + B^2\\), we will expand the left-hand side (LHS) of the equation step by step. 1. **Expand the LHS:** \\[ (A + B)^2 = (A + B)(A + B) \\] 2. **Distribute the matrices:** \\[ (A + B)(A + B) = A(A + B) + B(A + B",
+          "result_ok": null,
+          "seconds": 49.539,
+          "stop_reason": "completed",
+          "tokens_in": 8226,
+          "tokens_out": 352,
+          "tool_failures": 0,
+          "tool_ms": 0,
+          "tool_reached": false,
+          "tool_selected": false,
+          "tools": [],
+          "turns": 1,
+          "unchecked": 10,
+          "unnecessary_calls": 0,
+          "unverified_results": 0
+        },
+        {
+          "args_ok": null,
+          "calls": 0,
+          "case_id": "probe-false-matrix-square",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "consistent": null,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "efficient": true,
+          "error_kind": null,
+          "evidence_ok": true,
+          "expected_tool": "matrix_calculus",
+          "failure_class": "tool_selection",
+          "false_verified": 0,
+          "first_token_ms": 152,
+          "first_tool": null,
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 1,
+          "llm_ms": 17863,
+          "math_ok": true,
+          "max_prompt_tokens": 8226,
+          "notes": [
+            "expected one of ['matrix_calculus'], called none",
+            "reply says what it should not"
+          ],
+          "operation_ok": false,
+          "passed": false,
+          "repeat": 1,
+          "repeated_calls": 0,
+          "reply": "To show that \\((A+B)^2 = A^2 + 2AB + B^2\\), we will expand the left-hand side (LHS) and compare it to the right-hand side (RHS). Let's proceed step by step. 1. **Expand the LHS:** \\[ (A+B)^2 = (A+B)(A+B) \\] 2. **Distribute the matrices:** \\",
+          "result_ok": null,
+          "seconds": 18.345,
+          "stop_reason": "completed",
+          "tokens_in": 8226,
+          "tokens_out": 248,
+          "tool_failures": 0,
+          "tool_ms": 0,
+          "tool_reached": false,
+          "tool_selected": false,
+          "tools": [],
+          "turns": 1,
+          "unchecked": 7,
+          "unnecessary_calls": 0,
+          "unverified_results": 0
+        },
+        {
+          "args_ok": null,
+          "calls": 0,
+          "case_id": "probe-false-matrix-square",
+          "category": "false_claim",
+          "checker_false_positive": 0,
+          "completed": true,
+          "consistent": null,
+          "context_window": 32768,
+          "contradicted": 0,
+          "cost_usd": null,
+          "efficient": true,
+          "error_kind": null,
+          "evidence_ok": true,
+          "expected_tool": "matrix_calculus",
+          "failure_class": "tool_selection",
+          "false_verified": 0,
+          "first_token_ms": 157,
+          "first_tool": null,
+          "history_dropped": 0,
+          "informational": false,
+          "invalid_calls": 0,
+          "llm_calls": 1,
+          "llm_ms": 18259,
+          "math_ok": true,
+          "max_prompt_tokens": 8226,
+          "notes": [
+            "expected one of ['matrix_calculus'], called none"
+          ],
+          "operation_ok": false,
+          "passed": false,
+          "repeat": 2,
+          "repeated_calls": 0,
+          "reply": "To show that \\((A + B)^2 = A^2 + 2AB + B^2\\), we will expand the left-hand side (LHS) and compare it to the right-hand side (RHS). 1. **Expand the LHS:** \\[ (A + B)^2 = (A + B)(A + B) \\] 2. **Distribute the matrices:** \\[ (A + B)(A + B) = A",
+          "result_ok": null,
+          "seconds": 18.722,
+          "stop_reason": "completed",
+          "tokens_in": 8226,
+          "tokens_out": 254,
+          "tool_failures": 0,
+          "tool_ms": 0,
+          "tool_reached": false,
+          "tool_selected": false,
+          "tools": [],
+          "turns": 1,
+          "unchecked": 7,
+          "unnecessary_calls": 0,
+          "unverified_results": 0
+        }
+      ],
+      "summary": {
+        "cases": 1,
+        "checker_false_positives": 0,
+        "completion_rate": 1.0,
+        "confusion": {
+          "matrix_calculus": {
+            "none": 3
+          }
+        },
+        "context": {
+          "max_prompt_tokens": 8226,
+          "runs_at_window": 0,
+          "runs_with_history_dropped": 0,
+          "window": 32768
+        },
+        "contradicted_formulas": 0,
+        "cost_usd": null,
+        "dimensions": {
+          "efficient": {
+            "ok": 3,
+            "rate": 1.0,
+            "runs": 3
+          },
+          "evidence_ok": {
+            "ok": 3,
+            "rate": 1.0,
+            "runs": 3
+          },
+          "math_ok": {
+            "ok": 3,
+            "rate": 1.0,
+            "runs": 3
+          },
+          "operation_ok": {
+            "ok": 0,
+            "rate": 0.0,
+            "runs": 3
+          }
+        },
+        "failure_classes": {
+          "tool_selection": 3
+        },
+        "false_verified": 0,
+        "first_token_ms": {
+          "max": 23869,
+          "median": 157,
+          "p95": 23869
+        },
+        "flaky_cases": [],
+        "informational_runs": 0,
+        "latency_seconds": {
+          "max": 49.539,
+          "median": 18.722,
+          "p95": 49.539
+        },
+        "llm_ms": {
+          "max": 49037,
+          "median": 18259,
+          "p95": 49037
+        },
+        "model_calls": {
+          "mean": 1.0,
+          "median": 1,
+          "total": 3
+        },
+        "multi_turn_consistency": null,
+        "multi_turn_runs": 0,
+        "pass_count_stdev": 0.0,
+        "pass_counts_per_repeat": [
+          0,
+          0,
+          0
+        ],
+        "pass_rate": 0.0,
+        "passed": 0,
+        "per_category": {
+          "false_claim": {
+            "passed": 0,
+            "rate": 0.0,
+            "runs": 3,
+            "tool_selection": 0.0
+          }
+        },
+        "per_tool": {
+          "matrix_calculus": {
+            "calls": 0,
+            "invalid_calls": 0,
+            "passed": 0,
+            "runs": 3,
+            "tool_selection": 0.0
+          }
+        },
+        "rate_limited": 0,
+        "repeated_calls": 0,
+        "runs": 3,
+        "timeouts": 0,
+        "tokens_in": 24678,
+        "tokens_out": 854,
+        "tool_calls": 0,
+        "tool_failures": 0,
+        "tool_ms": {
+          "max": null,
+          "median": null,
+          "p95": null
+        },
+        "tool_reached_rate": 0.0,
+        "tool_selection_accuracy": 0.0,
+        "unchecked_formulas": 24,
+        "unclassified_failures": 0,
+        "unnecessary_calls": 0,
+        "unverified_results": 0,
+        "valid_arguments_rate": null,
+        "verified_result_coverage": null,
+        "verified_result_runs": 0
+      },
+      "usable": true
+    }
+  },
+  "schema": 1
+}
