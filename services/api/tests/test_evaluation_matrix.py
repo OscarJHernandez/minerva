@@ -177,3 +177,19 @@ def test_a_model_that_is_not_a_derived_build_keeps_its_own_name() -> None:
     plain = entry([70, 70, 70])
     plain["identity"]["base_model"] = None  # the host reports no parent: the name is the model
     assert rows_of([doc({"gemma4:26b": plain})])[0].display == "gemma4:26b"
+
+
+def test_a_model_tag_is_the_name_even_when_the_host_reports_an_internal_parent() -> None:
+    """`qwen3.5:35b` was shown as `qwen35-validation-20261004:35b-a3b-q4 (served as qwen3.5:35b)`: the host's
+    parent field is an internal name, and the tag the user knows is the model."""
+    e = entry([70, 70, 70])
+    e["identity"]["base_model"] = "qwen35-validation-20261004:35b-a3b-q4"
+    assert rows_of([doc({"qwen3.5:35b": e})])[0].display == "qwen3.5:35b"
+    # an operator's alias is still described by what it is built on
+    assert rows_of([doc({"minerva": entry([70, 70, 70])})])[0].display == "base (served as minerva)"
+
+
+def test_the_default_latest_tag_is_not_an_alias() -> None:
+    e = entry([70, 70, 70])
+    e["identity"]["base_model"] = "glm-4.7-flash:latest"
+    assert rows_of([doc({"glm-4.7-flash": e})])[0].display == "glm-4.7-flash"
