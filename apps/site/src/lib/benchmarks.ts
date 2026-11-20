@@ -65,10 +65,38 @@ export type ChatRow = {
   p95_seconds: number;
 };
 export type Target = { id: string; label: string; target: number; measured: number; met: boolean };
+export type ModelRun = {
+  passed: number;
+  runs: number;
+  median_seconds: number;
+  false_verified: number;
+};
+export type FinalModel = ChatRow & {
+  model: ChatModel & { name: string };
+  /** What the configuration is in the comparison (a label, not a number). */
+  role: string;
+  held_out: { passed: number; runs: number };
+  eligible: boolean;
+  not_eligible_reason: string | null;
+};
+export type ScreenRow = {
+  model: string;
+  digest: string | null;
+  parameter_size: string | null;
+  off: ModelRun | null;
+  on: ModelRun | null;
+};
+export type ModelComparison = {
+  directory: string;
+  doc: string;
+  final: FinalModel[];
+  screen: ScreenRow[];
+};
 export type Benchmarks = {
   suites: Suite[];
   verification: Verification;
   chat: { rows: ChatRow[]; targets: Target[] };
+  models: ModelComparison;
 };
 
 export const BENCHMARKS = raw as Benchmarks;

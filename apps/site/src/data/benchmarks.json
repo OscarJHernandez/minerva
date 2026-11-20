@@ -335,5 +335,291 @@
         "met": true
       }
     ]
+  },
+  "models": {
+    "directory": "docs/benchmarks/model-comparison-2026-11-20",
+    "doc": "docs/reliability/model-comparison.md",
+    "final": [
+      {
+        "id": "all",
+        "title": "Full suite",
+        "report": "model-comparison-2026-11-20/stage2-all-qwen3.5-35b-thinking-on.json",
+        "date": "2026-11-19",
+        "model": {
+          "alias": "qwen3.5:35b",
+          "base_model": "qwen35-validation-20261004:35b-a3b-q4",
+          "family": "qwen35moe",
+          "parameter_size": "34.7B",
+          "quantization": "Q4_K_M",
+          "digest": "72aac7c28be8",
+          "thinking_requested": true,
+          "reply_limit": 4096,
+          "reply_limit_is_host_default": false,
+          "name": "qwen3.5:35b"
+        },
+        "run": {
+          "runs": 510,
+          "cases": 170,
+          "repeats": 3,
+          "seed": 7,
+          "compute_limit_seconds": 10.0,
+          "cases_digest": "091eb4bf23e4",
+          "code": "a295cb82f7"
+        },
+        "passed": 389,
+        "per_repeat": [
+          128,
+          130,
+          131
+        ],
+        "measured": {
+          "pass_rate": 0.7627450980392156,
+          "tool_selection": 0.9529411764705882,
+          "valid_arguments": 0.8350515463917526,
+          "completion": 0.9235294117647059,
+          "false_verified": 2
+        },
+        "median_seconds": 12.4,
+        "p95_seconds": 43.8,
+        "role": "the model the chat was switched to on 2026-11-19",
+        "held_out": {
+          "passed": 16,
+          "runs": 18
+        },
+        "eligible": false,
+        "not_eligible_reason": "2 false-verified result(s) in this run (see the note below the table)"
+      },
+      {
+        "id": "all",
+        "title": "Full suite",
+        "report": "model-comparison-2026-11-20/stage2-all-gemma4-26b-deployed-build-thinking-off.json",
+        "date": "2026-11-19",
+        "model": {
+          "alias": "minerva",
+          "base_model": "gemma4:26b",
+          "family": "gemma4",
+          "parameter_size": "25.2B",
+          "quantization": "Q4_K_M",
+          "digest": "149a0ff8a1ca",
+          "thinking_requested": false,
+          "reply_limit": 4096,
+          "reply_limit_is_host_default": false,
+          "name": "gemma4:26b (served as minerva)"
+        },
+        "run": {
+          "runs": 510,
+          "cases": 170,
+          "repeats": 3,
+          "seed": 7,
+          "compute_limit_seconds": 10.0,
+          "cases_digest": "091eb4bf23e4",
+          "code": "a295cb82f7"
+        },
+        "passed": 372,
+        "per_repeat": [
+          126,
+          125,
+          121
+        ],
+        "measured": {
+          "pass_rate": 0.7294117647058823,
+          "tool_selection": 0.8725490196078431,
+          "valid_arguments": 0.8804483188044832,
+          "completion": 0.9372549019607843,
+          "false_verified": 0
+        },
+        "median_seconds": 6.1,
+        "p95_seconds": 18.9,
+        "role": "the reference: the build deployed until 2026-11-19",
+        "held_out": {
+          "passed": 17,
+          "runs": 18
+        },
+        "eligible": true,
+        "not_eligible_reason": null
+      },
+      {
+        "id": "all",
+        "title": "Full suite",
+        "report": "model-comparison-2026-11-20/stage2-all-glm-4.7-flash-thinking-off.json",
+        "date": "2026-11-20",
+        "model": {
+          "alias": "glm-4.7-flash",
+          "base_model": "glm-4.7-flash:latest",
+          "family": "glm4moelite",
+          "parameter_size": "29.9B",
+          "quantization": "Q4_K_M",
+          "digest": "4475827791a2",
+          "thinking_requested": false,
+          "reply_limit": 4096,
+          "reply_limit_is_host_default": false,
+          "name": "glm-4.7-flash"
+        },
+        "run": {
+          "runs": 510,
+          "cases": 170,
+          "repeats": 3,
+          "seed": 7,
+          "compute_limit_seconds": 10.0,
+          "cases_digest": "091eb4bf23e4",
+          "code": "a295cb82f7"
+        },
+        "passed": 316,
+        "per_repeat": [
+          108,
+          104,
+          104
+        ],
+        "measured": {
+          "pass_rate": 0.6196078431372549,
+          "tool_selection": 0.8607843137254902,
+          "valid_arguments": 0.825062034739454,
+          "completion": 0.8333333333333334,
+          "false_verified": 0
+        },
+        "median_seconds": 10.2,
+        "p95_seconds": 51.0,
+        "role": "the other finalist of the screen",
+        "held_out": {
+          "passed": 17,
+          "runs": 18
+        },
+        "eligible": true,
+        "not_eligible_reason": null
+      }
+    ],
+    "screen": [
+      {
+        "model": "qwen3.5:35b",
+        "digest": "72aac7c28be8",
+        "parameter_size": "34.7B",
+        "off": {
+          "passed": 97,
+          "runs": 114,
+          "median_seconds": 6.4,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 106,
+          "runs": 114,
+          "median_seconds": 7.9,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "glm-4.7-flash",
+        "digest": "4475827791a2",
+        "parameter_size": "29.9B",
+        "off": {
+          "passed": 104,
+          "runs": 114,
+          "median_seconds": 5.3,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 103,
+          "runs": 114,
+          "median_seconds": 8.8,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "qwen3.6:27b",
+        "digest": "bcbdbd4bcf86",
+        "parameter_size": "27.3B",
+        "off": {
+          "passed": 97,
+          "runs": 114,
+          "median_seconds": 22.7,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 104,
+          "runs": 114,
+          "median_seconds": 28.0,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "qwen3.8:27b",
+        "digest": "aaee06c39dcf",
+        "parameter_size": "27.3B",
+        "off": {
+          "passed": 97,
+          "runs": 114,
+          "median_seconds": 18.1,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 104,
+          "runs": 114,
+          "median_seconds": 24.4,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "gemma4:26b (served as minerva)",
+        "digest": "149a0ff8a1ca",
+        "parameter_size": "25.2B",
+        "off": {
+          "passed": 101,
+          "runs": 114,
+          "median_seconds": 4.4,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 100,
+          "runs": 114,
+          "median_seconds": 5.6,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "gemma4:26b",
+        "digest": "001e5dafc3c7",
+        "parameter_size": "25.2B",
+        "off": {
+          "passed": 101,
+          "runs": 114,
+          "median_seconds": 3.2,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 100,
+          "runs": 114,
+          "median_seconds": 5.5,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "granite4.2:30b",
+        "digest": "be22829aa92a",
+        "parameter_size": "29.3B",
+        "off": {
+          "passed": 98,
+          "runs": 114,
+          "median_seconds": 17.9,
+          "false_verified": 0
+        },
+        "on": {
+          "passed": 90,
+          "runs": 114,
+          "median_seconds": 61.6,
+          "false_verified": 0
+        }
+      },
+      {
+        "model": "mistral-small3.2:24b",
+        "digest": "5a408ab55df5",
+        "parameter_size": "24.0B",
+        "off": {
+          "passed": 69,
+          "runs": 114,
+          "median_seconds": 16.9,
+          "false_verified": 2
+        },
+        "on": null
+      }
+    ]
   }
 }

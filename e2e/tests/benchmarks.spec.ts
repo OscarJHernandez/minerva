@@ -11,6 +11,7 @@ const DATA = JSON.parse(
 ) as {
   suites: { id: string; total: number }[];
   chat: { rows: { id: string; model: { digest: string } }[] };
+  models: { final: { model: { name: string; digest: string }; eligible: boolean }[] };
 };
 
 test("the Benchmarks tab opens the page, and the page shows the committed numbers", async ({
@@ -33,4 +34,12 @@ test("the Benchmarks tab opens the page, and the page shows the committed number
   await expect(page.getByTestId("chat-model")).toContainText(`digest ${digest}`);
   await expect(page.getByTestId("chat-model")).toContainText(/thinking (on|off)/);
   await expect(page.getByTestId("false-accepts")).toHaveText("0");
+
+  // The model comparison names every model by what it is, with its digest, and shows a false-verified run as such.
+  for (const row of DATA.models.final) {
+    const card = page.getByTestId(`model-${row.model.digest}`);
+    await expect(card).toContainText(row.model.name);
+    await expect(card).toContainText(`digest ${row.model.digest}`);
+    await expect(card.getByTestId("not-eligible")).toHaveCount(row.eligible ? 0 : 1);
+  }
 });

@@ -138,3 +138,62 @@ def test_an_unknown_outcome_is_not_guessed(monkeypatch: pytest.MonkeyPatch) -> N
     patched(monkeypatch, "reference", lambda d: d["problems"][0].update(outcome="mostly_right"))
     with pytest.raises(SystemExit, match="unknown outcome"):
         MODULE.problems("reference")()
+
+
+# ------------------------------------------------------------------------------------------ the model comparison
+def test_every_model_row_names_the_model_its_digest_and_thinking(data: dict[str, Any]) -> None:
+    final = data["models"]["final"]
+    assert len(final) >= 3
+    for row in final:
+        m = row["model"]
+        assert m["digest"] and isinstance(m["thinking_requested"], bool) and m["reply_limit"]
+        assert row["held_out"]["runs"] > 0 and row["run"]["runs"] > 0
+        # never the alias alone, and never an internal parent name over a real tag
+        assert m["name"] != "minerva" and "qwen35-validation" not in m["name"]
+    names = {r["model"]["name"] for r in final}
+    assert "qwen3.5:35b" in names and "gemma4:26b (served as minerva)" in names
+
+
+def test_a_run_with_a_false_verified_result_is_shown_as_not_eligible(data: dict[str, Any]) -> None:
+    for row in data["models"]["final"]:
+        fv = row["measured"]["false_verified"]
+        assert row["eligible"] is (fv == 0)
+        assert (row["not_eligible_reason"] is None) == (fv == 0)
+    # the one in the committed reports is the A-009 run: it must not be hidden or counted in its favour
+    assert any(not r["eligible"] for r in data["models"]["final"])
+
+
+def test_the_screen_lists_each_model_once_with_its_digest(data: dict[str, Any]) -> None:
+    screen = data["models"]["screen"]
+    assert len({(r["model"], r["digest"]) for r in screen}) == len(screen)
+    assert all(r["digest"] and (r["off"] or r["on"]) for r in screen)
+    # a model that was not offered thinking says so, instead of showing a made-up number
+    assert any(r["on"] is None for r in screen)
+
+
+def test_a_model_report_without_the_models_identity_is_not_published(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = MODULE.STAGE2[0][0]
+
+    def drop(d: dict[str, Any]) -> None:
+        for entry in d["models"].values():
+            entry["identity"] = None
+
+    patched(monkeypatch, f"{MODULE.MODEL_DIR}/{first}", drop)
+    with pytest.raises(SystemExit, match="identity"):
+        MODULE.model_comparison()
+
+
+def test_the_model_name_rules() -> None:
+    parent = {"base_model": "qwen35-validation-20261004:35b-a3b-q4"}
+    assert MODULE.model_name("qwen3.5:35b", parent) == "qwen3.5:35b"
+    assert (
+        MODULE.model_name("minerva", {"base_model": "gemma4:26b"})
+        == "gemma4:26b (served as minerva)"
+    )
+    assert (
+        MODULE.model_name("glm-4.7-flash", {"base_model": "glm-4.7-flash:latest"})
+        == "glm-4.7-flash"
+    )
+    assert MODULE.model_name("minerva", {}) == "minerva"
