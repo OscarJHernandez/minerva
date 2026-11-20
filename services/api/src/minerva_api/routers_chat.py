@@ -1287,6 +1287,16 @@ def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]
     return sorted(((matrix_names(steps) | vector_names(steps)) - cleared) | set(found))
 
 
+def _declared_vector_kind(messages: list[ChatMessage], current: str = "") -> frozenset[str]:
+    """Of the names `_declared_for_tools` returns, those a sentence or a `vector_calculus` call declared as
+    VECTORS (not matrices). A vector's components and coordinates are scalars, so the tools that only a
+    declared matrix makes wrong (`tools.MATRIX_ONLY_TOOLS`) keep answering for them."""
+    steps, entries = _declaration_inputs(messages, current)
+    found, cleared = scan_declarations(entries, strict=True)
+    by_sentence = {n for n, d in found.items() if d.kind == "vector"}
+    return frozenset((by_sentence | vector_names(steps)) - cleared - matrix_names(steps))
+
+
 def _declared_for_tools(messages: list[ChatMessage], current: str = "") -> dict[str, str]:
     """name -> where it came from, for the names that make a scalar tool refuse: tool-call declarations
     and sentences that *declare* a name (strict reading), minus names the user later called scalars."""
@@ -1374,6 +1384,7 @@ async def send_message(
     prior_matrices = _prior_matrices(previous, text)
     prior_evidence = _prior_evidence(previous)
     declared_for_tools = _declared_for_tools(previous, text)
+    vector_kind_names = _declared_vector_kind(previous, text)
     if history and history[-1]["role"] == "user":  # the last reply was never stored: one message
         history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
     else:
@@ -1461,6 +1472,7 @@ async def send_message(
                 prior_assumptions=prior_assumptions,
                 prior_matrices=prior_matrices,
                 declared_for_tools=declared_for_tools,
+                vector_kind_names=vector_kind_names,
                 prior_results=prior_results,
                 prior_restrictions=prior_restrictions,
                 prior_groups=prior_groups,

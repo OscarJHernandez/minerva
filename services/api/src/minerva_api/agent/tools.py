@@ -100,6 +100,10 @@ class ToolContext:
     # Where a declared name came from, for the refusal: name -> "your message: «sentence»" (set by the
     # loop). Never logged; shown only to the user who wrote the sentence.
     matrix_sources: dict[str, str] = field(default_factory=dict)
+    # Of `matrices`, the names declared as vectors or vector fields (not matrices). A vector's components are
+    # scalars (`r_i`, a coordinate `r`), so the tools that only a declared MATRIX makes wrong keep answering
+    # for them (`MATRIX_ONLY_TOOLS`).
+    vector_names: frozenset[str] = frozenset()
     # What the USER answered on a card (`delta(...)` is a Dirac delta). Only the direct-post route fills
     # it; the agent loop never does, so the model cannot make such an answer.
     notation: dict[str, str] = field(default_factory=dict)
@@ -4315,6 +4319,22 @@ def _argument_texts(arguments: dict[str, Any]) -> list[str]:
 # expanded `(A+B)^2` to `A^2 + 2AB + B^2` and called it checked at 20/20 points (A-009).
 NONCOMMUTATIVE_AWARE_TOOLS = frozenset({"substitute", "rewrite_part"})
 
+# Tools that treat symbols as commuting numbers but are also used with a vector's coordinates and components
+# (`r`, `r_i`): only a declared matrix makes them wrong. `sums` expanded `sum (A_i + B_i)^2` to
+# `2 sum A_i B_i + sum A_i^2 + sum B_i^2` and called it agreed on explicit instances; the Lagrangian tools
+# solved `A x'' + B x = 0` for `x'' = -B x / A` with a matrix `A` (A-009).
+MATRIX_ONLY_TOOLS = frozenset(
+    {
+        "sums",
+        "analyze_lagrangian",
+        "expand_motion",
+        "perturbation_solve",
+        "find_conserved_quantities",
+        "search_invariants",
+        "integrate_motion",
+    }
+)
+
 
 def _declared_noncommutative(arguments: dict[str, Any]) -> set[str]:
     declared = arguments.get("assumptions")
@@ -4329,13 +4349,15 @@ def _declared_noncommutative(arguments: dict[str, Any]) -> set[str]:
 
 def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> ToolOutput | None:
     aware = name in NONCOMMUTATIVE_AWARE_TOOLS
-    if not (name in SCALAR_TOOLS or aware) or not ctx.matrices:
+    matrix_only = name in MATRIX_ONLY_TOOLS
+    if not (name in SCALAR_TOOLS or aware or matrix_only) or not ctx.matrices:
         return None
     texts = _argument_texts(arguments)
     declared_here = _declared_noncommutative(arguments) if aware else set()
+    candidates = ctx.matrices - ctx.vector_names if matrix_only else ctx.matrices
     hit = sorted(
         n
-        for n in ctx.matrices
+        for n in candidates
         if n not in declared_here and any(mentions_name(text, {n}) for text in texts)
     )
     if not hit:
