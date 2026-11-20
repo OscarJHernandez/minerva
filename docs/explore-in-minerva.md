@@ -54,7 +54,7 @@ button still points at the app home; it needs its own entry the same way.
 
 The landing page's examples are two real conversations, not hand-written results: "What is the Lagrangian of the Kepler
 problem in polar coordinates?" → "What are its symmetries?" → "Can you search for hidden symmetries?", and "What is the
-Schwarzschild metric?" → "Compute its Ricci tensor" → "Now compute the Kretschmann scalar". They show how Minerva helps
+Schwarzschild metric?" → "Compute the Christoffel symbols" → "Now compute the Kretschmann scalar". They show how Minerva helps
 someone work through a problem: the model answers from memory where no tool applies (and that formula carries the chat's
 **unchecked** mark), then the engine computes and checks each result.
 

@@ -53,12 +53,15 @@ function Evidence({
   lead,
   steps,
   checks,
+  href,
 }: {
   tag: string;
   title: string;
   lead: string;
   steps: [string, string][];
   checks: string[];
+  /** Where to try it: the workbench page of this tool (it opens empty; nothing is passed in the URL). */
+  href: string;
 }) {
   return (
     <article className="flex min-w-0 flex-col rounded-lg border border-rule bg-raised p-5 sm:p-6">
@@ -84,6 +87,9 @@ function Evidence({
         ))}
       </div>
       <p className="mt-4 text-sm font-medium text-ink">{checks.join(" · ")}</p>
+      <a href={href} className={`${secondary} mt-4 self-start text-sm`}>
+        Try it in Minerva
+      </a>
     </article>
   );
 }
@@ -217,6 +223,7 @@ export default function Home() {
             <div className="mt-5 grid gap-4 md:grid-cols-2">
               <Evidence
                 tag="01 · Verified rewrite"
+                href={`${APP_URL}/workbench`}
                 title="Simplify. Then prove the rewrite."
                 lead="A shorter expression, checked before it is shown."
                 steps={[
@@ -227,10 +234,14 @@ export default function Home() {
               />
               <Evidence
                 tag="02 · A differential equation"
+                href={`${APP_URL}/workbench`}
                 title="Solve. Then put it back in."
                 lead="A damped equation with initial values; the solution is substituted into the equation as written."
                 steps={[
-                  ["Equation", "\\begin{gathered} y'' + 3y' + 2y = 0 \\\\ y(0) = 1, \\; y'(0) = 0 \\end{gathered}"],
+                  [
+                    "Equation",
+                    "\\begin{gathered} y'' + 3y' + 2y = 0 \\\\ y(0) = 1, \\; y'(0) = 0 \\end{gathered}",
+                  ],
                   ["Verified solution", outputLatex(ode, "Solution")],
                 ]}
                 checks={[
@@ -240,6 +251,7 @@ export default function Home() {
               />
               <Evidence
                 tag="03 · A parameter integral"
+                href={`${APP_URL}/workbench/telescoping`}
                 title="Laplace's integral, from a proved equation."
                 lead="Minerva finds the differential equation the integral obeys, proves it exactly and solves it."
                 steps={[
@@ -258,6 +270,7 @@ export default function Home() {
               />
               <Evidence
                 tag="04 · Statistical mechanics"
+                href={`${APP_URL}/workbench`}
                 title="A heat capacity, from the partition function."
                 lead="A two-level system with gap ε > 0: one route, differentiate ln Z, no formula looked up."
                 steps={[
