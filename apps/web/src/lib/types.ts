@@ -37,6 +37,8 @@ export interface Verification {
   symbolic_zero: boolean;
   numeric_points_checked: number;
   numeric_points_agreed: number;
+  /** The targeted probes were stopped by the time limit before their usual number of points (a loaded server). */
+  probes_cut_short?: boolean;
   passed: boolean;
   note: string;
 }

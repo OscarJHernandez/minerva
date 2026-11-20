@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { chainSimplify, okSimplify } from "@/test/fixtures";
-import { ResultPanel } from "./result-panel";
+import { Evidence, ResultPanel } from "./result-panel";
 
 describe("ResultPanel", () => {
   it("shows the verified result and how it was checked", () => {
@@ -148,5 +148,23 @@ describe("ResultPanel", () => {
     render(<ResultPanel result={{ ...chainSimplify, goal: "factor" }} />);
     expect(screen.getByText("Factored and proved equal")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Factor" })).toBeInTheDocument();
+  });
+});
+
+describe("Evidence", () => {
+  const v = {
+    symbolic_zero: false,
+    numeric_points_checked: 20,
+    numeric_points_agreed: 20,
+    passed: true,
+    note: "",
+  };
+  it("says when the targeted probes were cut short by the time limit", () => {
+    render(<Evidence v={{ ...v, probes_cut_short: true }} />);
+    expect(screen.getByTestId("probes-cut-short")).toHaveTextContent(/cut short by the time limit/);
+  });
+  it("says nothing extra when they ran in full", () => {
+    render(<Evidence v={v} />);
+    expect(screen.queryByTestId("probes-cut-short")).not.toBeInTheDocument();
   });
 });

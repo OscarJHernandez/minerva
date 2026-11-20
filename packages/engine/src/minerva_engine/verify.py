@@ -213,6 +213,7 @@ def verify_with_witness(
     else:
         note = "numeric check agreed at all sampled points"
     probed = 0
+    probes_cut_short = False
     probe_kind: str | None = None
     witness: Counterexample | None = None
     # Only a candidate that passed is probed, and only on a full check (not a rule-search screen). Probes
@@ -230,6 +231,12 @@ def verify_with_witness(
             kinds=TARGETED,
         )
         probed = found.probes_tried
+        probes_cut_short = found.clock_cut and found.counterexample is None
+        if probes_cut_short:
+            note = (
+                f"{note}; the targeted probes were cut short by the time limit after {probed} of "
+                f"{PROBE_POINTS} points, so this means no disagreement was found in the points tried"
+            )
         if found.counterexample is not None:
             witness = found.counterexample
             probe_kind = witness.probe
@@ -244,6 +251,7 @@ def verify_with_witness(
             numeric_points_skipped=skipped,
             numeric_points_probed=probed,
             probe_kind=probe_kind,
+            probes_cut_short=probes_cut_short,
             passed=passed,
             note=note,
         ),

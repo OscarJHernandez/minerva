@@ -10,6 +10,7 @@ import pytest
 import sympy as sp
 from minerva_engine.counterexample import (
     KINDS,
+    TARGETED,
     Budget,
     check_counterexample,
     find_counterexample,
@@ -161,3 +162,15 @@ def test_distributions_and_noncommuting_symbols_are_refused_not_searched() -> No
     )
     matrices = find_counterexample((A + B) ** 2, A**2 + 2 * A * B + B**2)
     assert matrices.unsupported == "noncommutative" and matrices.counterexample is None
+
+
+# -- V-017: the clock stop is told apart from the point cap ----------------------------------------------------------
+def test_the_clock_stop_is_reported_apart_from_the_point_cap() -> None:
+    z = sp.Symbol("z")
+    a, b = sp.log(1 / z), -sp.log(z)
+    by_clock = find_counterexample(a, b, budget=Budget(points=96, seconds=0.0), kinds=TARGETED)
+    assert by_clock.exhausted and by_clock.clock_cut
+    by_cap = find_counterexample(a, b, budget=Budget(points=1, seconds=60.0), kinds=TARGETED)
+    assert by_cap.exhausted and not by_cap.clock_cut
+    found = find_counterexample(a, b, budget=Budget(points=96, seconds=60.0), kinds=TARGETED)
+    assert found.counterexample is not None and not found.clock_cut
