@@ -43,7 +43,7 @@ RECORD = ROOT / "docs" / "benchmarks" / "landing-live.json"
 CASES = ("landing-kepler", "landing-schwarzschild")
 TITLES = {
     "landing-kepler": "The Kepler problem: from the Lagrangian to a hidden symmetry",
-    "landing-schwarzschild": "Schwarzschild spacetime: empty, and still curved",
+    "landing-schwarzschild": "Schwarzschild spacetime: from the metric to its curvature",
 }
 # Model fields a reader may see: what the weights are, never where they are served from.
 MODEL_FIELDS = (
