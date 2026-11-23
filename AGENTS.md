@@ -545,8 +545,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   "do not commute", never `$1/r$` or `$H = T + V$`) feeds `ToolContext.matrices`, because there a wrong name blocks every
   scalar tool for the rest of the conversation (a reply mentioning "the Runge-Lenz vector, unique to $1/r$ potentials" once
   made `r` a vector). A refusal quotes the sentence and who wrote it (`ToolContext.matrix_sources`, never logged), and a
-  *user* sentence calling a name a scalar clears it (the model's own text never does). Do not feed the generous reading to a
-  tool refusal.
+  *user* sentence calling a name a scalar clears it (the model's own text never does), with one exception that is a
+  definition and not an opinion: `r = |\mathbf{r}|` (the bare letter is the norm of its own bold or arrowed spelling) makes
+  the bare letter a scalar whoever wrote it, and the bold spelling then names the vector without declaring `r`. A scalar
+  made by that rule or by a user sentence about that very name is *held*: only a later user sentence that declares the
+  bare name brings it back, never the model repeating "the position vector" (`declarations.scan`, `Scan.held`; the
+  reply's own claim check reads the same set through `declared_in_reply`). Do not feed the generous reading to a tool
+  refusal. The refusal reads the fields by kind: a declared vector blocks the expression fields of a scalar tool, and a
+  Lagrangian or Hamiltonian field only when the name is a declared matrix (`tools._SYSTEM_FIELDS`), because the
+  coordinates of a system are scalars whatever vector the model also wrote. The claim checker is told which names are
+  vectors and which matrices (`Declarations.prior_vectors` / `prior_matrices`), so a vector is never called a matrix.
 - Distributions (`distributions/`, tool and endpoint `distribution`): a Dirac delta is 0 at every point a sampler can
   draw, so pointwise sampling proves nothing about it. Every other operation refuses `DiracDelta` / `Heaviside` input as
   `unsupported`, `verify_equal` never passes it, and the claim checker leaves such statements `unverified` (never

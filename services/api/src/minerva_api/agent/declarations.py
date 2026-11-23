@@ -110,7 +110,12 @@ def declared_vectors(texts: Iterable[str]) -> set[str]:
 #   names + "do not commute"                       "A and B do not commute"
 # and only a bare name or list of names counts: `$1/r$` or `$H = T + V$` is an expression.
 # A sentence of the USER that says a name is a scalar clears it from then on; the model's own text
-# never clears anything.
+# never clears anything, with one exception that is a definition and not an opinion: `r = |\mathbf{r}|`
+# (the bare letter is the norm of the bold one) makes the bare letter a scalar whoever wrote it, and
+# from then on the bold spelling names the vector and does not declare the bare letter. A scalar tool
+# refuses `\mathbf{r}` itself (the parser has no such command), so the vector cannot get in that way.
+# A name the norm rule or a user sentence about that very name ("r is a scalar") made a scalar is
+# *held*: only a later USER sentence that declares the bare name brings it back, never the model's.
 
 _BARE_NAME = (
     r"(?:\\(?:mathbf|vec|boldsymbol|bm|hat)\s*\{\s*)?"
@@ -136,6 +141,48 @@ _SCALAR = re.compile(
     r"vectors?|operators?))\b",
     re.IGNORECASE,
 )
+
+_WRAPPER = r"\\(?:mathbf|vec|boldsymbol|bm|hat)"
+_LETTER = r"(\\[A-Za-z]+|[A-Za-z])"
+_BAR_OPEN = r"(?:\\left\s*)?(?:\\lVert|\\\||\\lvert|\|)"
+_BAR_CLOSE = r"(?:\\right\s*)?(?:\\rVert|\\\||\\rvert|\|)"
+_NORM_OF = rf"{_BAR_OPEN}\s*{_WRAPPER}\s*\{{?\s*(?P=n)\s*\}}?\s*{_BAR_CLOSE}"
+# `r = |\mathbf{r}|` or `|\vec{r}| = r`: the same letter on both sides, the wrapped one inside bars.
+_NORM_DEFINITION = re.compile(
+    rf"(?<![A-Za-z\\_^{{])(?P<n>\\[A-Za-z]+|[A-Za-z])\s*(?:=|\\equiv)\s*{_NORM_OF}(?![_^])"
+    rf"|{_BAR_OPEN}\s*{_WRAPPER}\s*\{{?\s*(?P<m>\\[A-Za-z]+|[A-Za-z])\s*\}}?\s*{_BAR_CLOSE}"
+    rf"\s*(?:=|\\equiv)\s*(?P=m)(?![A-Za-z_^])"
+)
+
+
+def norm_defined(sentence: str) -> set[str]:
+    """Names a sentence defines as the norm of their own bold or arrowed spelling (`r = |\\mathbf{r}|`)."""
+    names: set[str] = set()
+    for match in _MATH.finditer(sentence):
+        fragment = next(g for g in match.groups() if g is not None)
+        for found in _NORM_DEFINITION.finditer(fragment):
+            names.add((found.group("n") or found.group("m")).lstrip("\\"))
+    return names
+
+
+def _without_wrapped(sentence: str, names: set[str]) -> str:
+    """`sentence` with the bold or arrowed spelling of each held name taken out of its formulas: that
+    spelling is the vector, and it must not declare the bare letter, which is a scalar."""
+    if not names:
+        return sentence
+    alternatives = "|".join(
+        sorted((re.escape(n) if len(n) == 1 else rf"\\{re.escape(n)}" for n in names), key=len)[
+            ::-1
+        ]
+    )
+    wrapped = re.compile(
+        rf"{_WRAPPER}\s*(?:\{{\s*(?:{alternatives})\s*\}}|(?:{alternatives})(?![A-Za-z]))"
+    )
+
+    def strip(match: re.Match[str]) -> str:
+        return wrapped.sub("0", match.group(0))
+
+    return _MATH.sub(strip, sentence)
 
 
 @dataclass(frozen=True)
@@ -210,13 +257,43 @@ def _cleared_names(sentence: str) -> set[str]:
     return _names_of(text, (0, len(text)), capitals_only=False)
 
 
-def scan_declarations(
-    entries: Iterable[tuple[str, str]], *, strict: bool = True
-) -> tuple[dict[str, Declared], set[str]]:
-    """(declarations, cleared) for `(role, text)` messages in order. A user sentence that calls a name
-    a scalar removes it and records it as cleared; a later declaration adds it back (and un-clears)."""
+def _held_by_user(sentence: str) -> set[str]:
+    """Names a USER sentence ties to the scalar keyword itself ("r is a scalar", "the scalar $r$",
+    "r is not a vector"): narrower than `_cleared_names`, which takes every name of the sentence."""
+    if not _SCALAR.search(sentence):
+        return set()
+    text = _plain(sentence)
+    keyword = _SCALAR.pattern.replace(r"\b", "")
+    names: set[str] = set()
+    for pattern in (
+        rf"(?P<n>{_S_NAMES})\s+(?:is|are|be)\s+(?:an?\s+|the\s+)?{_FILLER}{keyword}(?![\w-])",
+        rf"\b{keyword}\s+(?P<n>{_S_NAMES})(?![\w])",
+    ):
+        for match in re.finditer(pattern, text, re.IGNORECASE):
+            names |= _names_of(text, match.span("n"), capitals_only=False)
+    return names
+
+
+@dataclass(frozen=True)
+class Scan:
+    found: dict[str, Declared]
+    cleared: set[str]  # names a user sentence called scalars and nothing declared again
+    held: set[
+        str
+    ]  # scalars by a norm definition or by the user's word: the model cannot re-declare them
+
+
+def scan(
+    entries: Iterable[tuple[str, str]], *, strict: bool = True, held: Iterable[str] = ()
+) -> Scan:
+    """Read `(role, text)` messages in order. A user sentence that calls a name a scalar removes it and
+    records it as cleared; a later declaration adds it back (and un-clears), except that a *held* name
+    (see the comment above) comes back only through a user sentence that declares the bare name.
+    `held` starts the scan with names held by earlier text (the claim check of a reply reads only the
+    reply, but what the conversation settled before it still applies)."""
     found: dict[str, Declared] = {}
     cleared: set[str] = set()
+    holding: set[str] = set(held)
     for role, text in entries:
         for sentence in _SENTENCE.split(text):
             quote = " ".join(sentence.split())[:240]
@@ -224,17 +301,47 @@ def scan_declarations(
                 for name in _cleared_names(sentence):
                     found.pop(name, None)
                     cleared.add(name)
+                holding |= _held_by_user(sentence)
+            defined_here = norm_defined(sentence)
+            for name in defined_here:
+                found.pop(name, None)
+                holding.add(name)
+            readable = _without_wrapped(sentence, holding)
             for kind, keyword, reader in (
                 ("matrix", _KEYWORD, declared_matrices),
                 ("vector", _VECTOR_KEYWORD, declared_vectors),
             ):
-                if not keyword.search(sentence):
+                if not keyword.search(readable):
                     continue
-                names = _strict_names(sentence, kind) if strict else reader([sentence])
+                names = _strict_names(readable, kind) if strict else reader([readable])
                 for name in names:
+                    if name in defined_here:
+                        continue  # the sentence that defines `r` as a norm cannot also declare it
+                    if name in holding:
+                        if role != "user":
+                            continue
+                        holding.discard(name)
                     found[name] = Declared(kind, role, quote)
                     cleared.discard(name)
-    return found, cleared
+    return Scan(found, cleared, holding)
+
+
+def scan_declarations(
+    entries: Iterable[tuple[str, str]], *, strict: bool = True
+) -> tuple[dict[str, Declared], set[str]]:
+    """(declarations, cleared) for `(role, text)` messages in order (see `scan`)."""
+    result = scan(entries, strict=strict)
+    return result.found, result.cleared
+
+
+def declared_in_reply(texts: Iterable[str], held: Iterable[str] = ()) -> tuple[set[str], set[str]]:
+    """(matrices, vectors) the model's own prose declares, read generously, for the claim check of that
+    reply. Names the conversation holds as scalars are not declared by it."""
+    found = scan([("assistant", text) for text in texts], strict=False, held=held).found
+    return (
+        {n for n, d in found.items() if d.kind == "matrix"},
+        {n for n, d in found.items() if d.kind == "vector"},
+    )
 
 
 def read_declarations(
