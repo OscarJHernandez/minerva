@@ -2686,10 +2686,13 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
             f"searched {len(searched)} families, from: {searched[0].description}; up to: "
             f"{searched[-1].description}"
         )
+    roles: dict[str, str] = {}
     for c in report.constants:
         label = "already known" if c.kind == "known" else "new, verified on the equations of motion"
         lines.append(f"{c.id} ({label}; {c.independence}): ${c.expression_latex}$")
         known.append(c.expression_latex)
+        if c.verified:  # the model's later `C_{4} = ...` is compared with it (claim_evidence)
+            roles[c.expression_latex] = "conserved"
     if report.independence:
         ind = report.independence
         lines.append(
@@ -2715,7 +2718,14 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
             "These are constants in the searched families only. Naming one (for example as the "
             "Laplace-Runge-Lenz vector) is a recognition you may offer, not something this result proves."
         )
-    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        report.status.value,
+        formula_roles=roles,
+        variables=tuple(report.coordinates),
+    )
 
 
 def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
@@ -2740,6 +2750,7 @@ def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.lagrangian_latex] if report.lagrangian_latex else []
+    roles: dict[str, str] = {}
     if report.ansatz:
         lines.append(f"searched: {report.ansatz}")
     if report.known:
@@ -2749,13 +2760,21 @@ def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
             f"new constant of motion (verified on the equations of motion): ${c.expression_latex}$"
         )
         known.append(c.expression_latex)
+        roles[c.expression_latex] = "conserved"
     lines.extend(f"note: {n}" for n in report.notes)
     if report.found:
         lines.append(
             "These are constants in the searched family only. Naming them (for example as the "
             "Laplace-Runge-Lenz vector) is a recognition you may offer, not something this result proves."
         )
-    return ToolOutput(card, "\n".join(lines), known, report.status.value)
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        report.status.value,
+        formula_roles=roles,
+        variables=tuple(report.coordinates),
+    )
 
 
 def _motion_summary(report: Any) -> list[str]:

@@ -106,3 +106,51 @@ def test_the_support_note_names_the_result_and_the_restrictions(ctx: ToolContext
 )
 def test_lone_symbols(latex: str, lone: bool) -> None:
     assert is_lone_symbol(latex) is lone
+
+
+# -- issue #132: `C_4` re-typed with `\ddot\theta` for `\dot\theta` -------------------------------------------
+POLAR = r"\frac{\mu}{2}(\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{G M \mu}{r}"
+C4_RIGHT = r"C_4 = G M \sin\theta - r^3\dot\theta^2\sin\theta + r^2\dot r\dot\theta\cos\theta"
+C4_RETYPED = C4_RIGHT.replace(r"\dot r\dot\theta\cos", r"\dot r\,\ddot\theta\cos")
+
+
+def discovery_turn(ctx: ToolContext, answer: str) -> dict[str, Any]:
+    llm = ReplayLLM(
+        [
+            call(
+                "find_conserved_quantities",
+                {"lagrangian": POLAR, "coordinates": ["r", "theta"], "budget": "thorough"},
+            ),
+            say(answer),
+        ]
+    )
+
+    async def go() -> list[dict[str, Any]]:
+        text = "Find the hidden conserved quantities of the Kepler problem."
+        return [e async for e in run_agent(llm, [{"role": "user", "content": text}], ctx)]
+
+    return next(e["data"] for e in asyncio.run(go()) if e["event"] == "message")
+
+
+def test_the_discovered_constant_the_model_repeats_is_linked_to_the_search(
+    ctx: ToolContext,
+) -> None:
+    message = discovery_turn(ctx, f"The fourth constant is $$ {C4_RIGHT} $$")
+    claim = next(s for s in formulas(message) if s["value"].strip().startswith("C_4"))
+    assert claim["status"] == "from_tool", claim
+    assert {c["evidence_rule"] for c in message["debug"]["claims"]} == {"same_left_side"}
+
+
+def test_a_re_typed_constant_is_unchecked_with_a_note_naming_the_verified_equation(
+    ctx: ToolContext,
+) -> None:
+    message = discovery_turn(ctx, f"The fourth constant is $$ {C4_RETYPED} $$")
+    claim = next(s for s in formulas(message) if s["value"].strip().startswith("C_4"))
+    assert (
+        claim["status"] == "unchecked"
+    )  # never contradicted: it is the tool's name, not a false identity
+    assert "verified result" in (claim["note"] or "") and "dot{\\theta} \\cos" in (
+        claim["note"] or ""
+    )
+    rules = {c["evidence_rule"] for c in message["debug"]["claims"]}
+    assert rules == {"mismatch"}

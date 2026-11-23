@@ -146,7 +146,15 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   verified conserved quantity or momentum. The result's restrictions travel with the match; it is never "proved" unless
   both the tool's check and the link were symbolic zeros; matrices, vectors, distributions and sums are never linked;
   a wrong equation stays unchecked (not contradicted). Lone symbols are not claims. Add a wrong twin to
-  `test_claim_evidence.py` for every new rule.
+  `test_claim_evidence.py` for every new rule. One outcome is not a match and not a contradiction: a claim that reuses a
+  tool's own name for a verified conserved quantity or momentum (`C_{4} = ...`, from `analyze_lagrangian`,
+  `find_conserved_quantities` or `search_invariants`, which set roles and variables) with a right side that provably
+  differs (`counterexample.find_counterexample`: a gap confirmed at 60 and 120 digits, never noise, a pole or an
+  exception) stays `unchecked` with a note naming the verified equation and `evidence_rule: "mismatch"` in the debug
+  claims (`EvidenceIndex.mismatch`). The name must be the same: another name on the left is the model's own quantity.
+  Because discovery constants now carry the `conserved` role, rule (3) also links `K = <the C_4 expression>`; its wrong
+  twins (a sign, a 1e-6 factor, a dropped term) are in `test_claim_evidence.py`. The evaluation harness hands the claim
+  check the earlier turns' verified results (`prior_evidence`) as the chat route does.
 - Routing (`agent/routing.py`, `MINERVA_AGENT_ROUTING`): a rule may choose the first tool only when two independent
   signals agree: structure it can read (a Lagrangian with unambiguous velocities; the one result the previous turn
   produced; an equation with a derivative of an applied function; matrices the user declared n x n) and words that ask
