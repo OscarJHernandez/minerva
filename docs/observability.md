@@ -195,7 +195,13 @@ a JSON block for scripts. A turn that failed is stored too, so its trace survive
 - **Repeated calls.** A call identical to one that already ran in the turn is not run again; the model is
   told, and the step is recorded as `repeated`. After two repeats, or three calls in a row that establish
   nothing, the turn is wrapped up: one last model call with no tools asks for a summary of what was and
-  was not established, and the stop reason is `repeated_calls`.
+  was not established, and the stop reason is `repeated_calls`. The same last call is made when the turn
+  ends at `step_limit` or `tool_call_limit` (a turn that spent every step on tool calls used to end with
+  the stop sentence alone, issue 137). Its formulas go through the usual claim check; any tool call it
+  returns is dropped. When that call cannot be made (no time left) or gives nothing usable (empty, a
+  tool call written as text, a host error), the server writes the closing itself (`loop.closing_summary`):
+  fixed words from counts and statuses of the turn's own trace (how many calculations gave a verified
+  result, how many did not and why), with no formula, argument or model text.
 - **Retries.** A model call that fails before any output is retried once (`agent.retry`); nothing
   mathematical is ever retried into a different answer. A tool call written as text, or with arguments that
   are not a JSON object, gets one correction; a second one ends the turn (`malformed_output`).

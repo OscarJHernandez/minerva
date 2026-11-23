@@ -9,10 +9,13 @@ from typing import Any
 
 import pytest
 from minerva_api.agent import loop as loop_module
+from minerva_api.agent.events import Evidence, TraceStep
 from minerva_api.agent.llm import Chunk, LLMError, ToolCall, Usage
 from minerva_api.agent.loop import (
     REPEAT_MESSAGE,
+    STOP_SENTENCES,
     AgentLimits,
+    closing_summary,
     looks_like_tool_call,
     run_agent,
 )
@@ -20,6 +23,7 @@ from minerva_api.agent.refs import ResultStore
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.segments import normalize
 from minerva_api.agent.tools import ToolContext, execute
+from minerva_api.agent.tracing import StopReason
 from minerva_engine import Engine, Limits
 from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
@@ -75,6 +79,181 @@ def test_the_closing_sentence_names_the_limit_and_is_shown_to_the_user(ctx: Tool
         s["value"] for b in msg["blocks"] if b["kind"] == "text" for s in b["segments"]
     )
     assert "step limit" in msg["text"] and "step limit" in shown  # in the blocks, not only the text
+
+
+# ------------------------------------------------- a turn cut short still says what it found
+# Issue 137: a turn that spent every step on tool calls ended with the stop sentence alone.
+DOUBLE_PENDULUM = (
+    r"\frac{1}{2}(m_1 + m_2)l_1^2\dot{\theta}_1^2 + \frac{1}{2}m_2l_2^2\dot{\theta}_2^2 "
+    r"+ m_2l_1l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) "
+    r"+ (m_1+m_2)gl_1\cos\theta_1 + m_2gl_2\cos\theta_2"
+)
+EXPAND = {
+    "lagrangian": DOUBLE_PENDULUM,
+    "coordinates": ["theta_1", "theta_2"],
+    "equilibrium": {"theta_1": "0", "theta_2": "0"},
+    "order": 1,
+}
+ISSUE_137_CALLS = [
+    call("expand_motion", EXPAND),
+    call("expand_motion", EXPAND),
+    call(
+        "approximation",
+        {
+            "latex": DOUBLE_PENDULUM,
+            "method": "taylor",
+            "variable": "theta_1",
+            "point": "0",
+            "order": 2,
+        },
+    ),
+    call(
+        "approximation",
+        {
+            "latex": DOUBLE_PENDULUM,
+            "method": "taylor",
+            "variables": ["theta_1", "theta_2"],
+            "point": "0",
+            "order": 2,
+        },
+    ),
+    call("series", {"latex": DOUBLE_PENDULUM, "variable": "theta_1", "point": "0", "order": 2}),
+    call("series", {"latex": DOUBLE_PENDULUM, "variable": "theta_2", "point": "0", "order": 2}),
+]
+SIX_STEPS = AgentLimits(max_steps=6, retry_delay_seconds=0)
+
+
+def text_of(msg: dict[str, Any]) -> str:
+    return " ".join(s["value"] for s in segments(msg) if s["type"] == "text")
+
+
+def test_the_double_pendulum_turn_ends_with_a_summary_not_only_the_stop_sentence(
+    ctx: ToolContext,
+) -> None:
+    """The six tool calls of the chat trace, at the deployed limit of six steps."""
+    summary = "Verified: the series in each angle separately. Not established: both angles at once."
+    llm = ReplayLLM([*ISSUE_137_CALLS, say(summary)])
+    msg = final(play(llm, ctx, limits=SIX_STEPS))
+    assert msg["stop_reason"] == "step_limit" and msg["truncated"] is True
+    assert len(llm.seen) == 7 and llm.tools_seen[-1] == []  # a seventh call, without tools
+    assert "Stop calling tools" in llm.seen[-1][-1]["content"]
+    sentence = STOP_SENTENCES[StopReason.STEP_LIMIT]
+    assert summary in msg["text"] and msg["text"].index(summary) < msg["text"].index(sentence)
+    by_call = msg["trace"]
+    assert by_call[1]["repeated"] is True  # the identical expansion is not run twice
+    # Taylor with a list of variables used to be `ok` on the unchanged expression, in the variable x
+    assert by_call[3]["status"] == "conditions_not_satisfied"
+    assert "fields_not_for_method" in by_call[3]["for_model"]
+    assert by_call[3]["result_id"] is None
+    assert [t["status"] for t in by_call[4:]] == ["ok", "ok"]
+    assert "What was established" not in msg["text"]  # the model summarised: no server fallback
+
+
+def test_the_tool_call_limit_also_gets_the_summary_call(ctx: ToolContext) -> None:
+    llm = ReplayLLM(
+        [
+            call("simplify", SIMPLIFY),
+            call("simplify", {"latex": r"\frac{x^2-4}{x-2}"}),
+            say("Verified: the first simplification. The second was not run."),
+        ]
+    )
+    msg = final(play(llm, ctx, limits=AgentLimits(max_tool_calls=1, retry_delay_seconds=0)))
+    assert msg["stop_reason"] == "tool_call_limit"
+    assert llm.tools_seen[-1] == [] and "The second was not run" in msg["text"]
+    assert STOP_SENTENCES[StopReason.TOOL_CALL_LIMIT] in msg["text"]
+
+
+FALLBACK_ONE = "What was established: 1 calculation gave a verified result, shown in the card above with its checks."
+
+
+@pytest.mark.parametrize(
+    "last",
+    [None, say(""), say("   "), say('{"name": "simplify", "arguments": {"latex": "x"}}')],
+    ids=["no reply", "empty", "blank", "a tool call written as text"],
+)
+def test_without_a_usable_summary_the_server_says_what_was_established(
+    ctx: ToolContext, last: Any
+) -> None:
+    replies = [call("simplify", SIMPLIFY), *([last] if last else [])]
+    msg = final(play(ReplayLLM(replies), ctx, limits=AgentLimits(max_steps=1)))
+    assert msg["stop_reason"] == "step_limit"
+    assert FALLBACK_ONE in msg["text"] and "arguments" not in text_of(msg)
+    assert msg["text"].rstrip().endswith(STOP_SENTENCES[StopReason.STEP_LIMIT])
+
+
+def test_a_summary_call_that_fails_falls_back_to_the_server_text(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("simplify", SIMPLIFY), say("never reached")])
+    llm.fail_on = {1: LLMError("host down")}
+    msg = final(play(llm, ctx, limits=AgentLimits(max_steps=1, retry_delay_seconds=0)))
+    assert msg["stop_reason"] == "step_limit"  # the stop reason is the turn's, not the summary's
+    assert FALLBACK_ONE in msg["text"] and "host down" not in msg["text"]
+
+
+def test_with_no_time_for_a_summary_call_the_server_text_is_used(
+    ctx: ToolContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(loop_module, "MIN_WRAP_UP_SECONDS", 10_000.0)
+    llm = ReplayLLM([call("simplify", SIMPLIFY), say("never asked")])
+    msg = final(play(llm, ctx, limits=AgentLimits(max_steps=1)))
+    assert len(llm.seen) == 1 and FALLBACK_ONE in msg["text"]
+
+
+def test_a_turn_that_established_nothing_says_so(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("simplify", {"latex": r"\foo{a}"})])
+    msg = final(play(llm, ctx, limits=AgentLimits(max_steps=1)))
+    assert "No verified result was established in this answer." in msg["text"]
+    assert "1 (the input could not be read)" in msg["text"]
+    assert "gave a verified result" not in msg["text"]
+
+
+def test_a_formula_the_summary_invents_is_marked_unchecked(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("simplify", SIMPLIFY), say("Verified: $x + 1$. Also $x^{7} + 3 = 0$.")])
+    msg = final(play(llm, ctx, limits=AgentLimits(max_steps=1)))
+    assert mark_of(msg, "x + 1") == "from_tool"
+    assert mark_of(msg, "x^{7} + 3 = 0") != "from_tool"
+
+
+def _step(status: str, accepted: bool = False, **kw: Any) -> TraceStep:
+    evidence = (
+        Evidence(check="none", accepted=accepted, reason="verified" if accepted else "not_verified")
+        if status == "ok"
+        else None
+    )
+    return TraceStep(
+        id="c",
+        name="simplify",
+        arguments={"latex": r"\secret{input}"},
+        for_model=r"result=$\secret{output}$",
+        status=status,
+        evidence=evidence,
+        **kw,
+    )
+
+
+def test_the_server_summary_is_counts_and_fixed_words_only() -> None:
+    assert closing_summary([]) == ""
+    assert closing_summary([_step("skipped", repeated=True)]) == ""  # nothing ran
+    text = closing_summary(
+        [
+            _step("ok", accepted=True),
+            _step("ok", accepted=True),
+            _step("ok"),  # ran, but nothing was accepted as verified: not counted
+            _step("resource_limit"),
+            _step("resource_limit"),
+            _step("unsupported"),
+            _step("something_new"),
+            _step("skipped", repeated=True),
+        ]
+    )
+    assert (
+        "2 calculations gave a verified result, shown in the cards above with their checks" in text
+    )
+    assert (
+        "2 (stopped at the time or resource limit); 1 (not supported); 1 (it did not finish)"
+        in text
+    )
+    for forbidden in ("$", "\\", "secret", "simplify", "@r"):
+        assert forbidden not in text
 
 
 # --------------------------------------------------------------------------- repeated calls

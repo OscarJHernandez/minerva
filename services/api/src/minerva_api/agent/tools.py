@@ -4244,6 +4244,24 @@ def _validation_message(
 _BARE_E_POWER = re.compile(r"(?<![A-Za-z\\])e\s*\^")
 
 
+# After a calculation that ran out of time or memory. The same call would run out again, and the
+# model used to spend the rest of the turn on calls that answered a different question.
+RESOURCE_LIMIT_HINT = (
+    "hint: this calculation is too large for the limit; the same call will fail again, so do not "
+    "repeat it. Only make another call if it is a smaller version of what the user asked for. "
+    "Otherwise stop calling tools and tell the user that it could not be computed within the limit."
+)
+RESOURCE_LIMIT_HINTS = {
+    "expand_motion": (
+        "hint: this expansion is too large for the limit; the same call will fail again, so do not "
+        "repeat it. If `order` was above 1 and the user asked for small oscillations or a "
+        "linearisation, `order: 1` is the smaller call. Otherwise stop calling tools and tell the "
+        "user that the expansion could not be computed within the limit. Do not replace it with "
+        "an expansion in one variable unless that is what the user asked for."
+    ),
+}
+
+
 def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None:
     """Fixed advice for the model on failures it keeps repeating. It only ever adds text for the
     model; the card and the input are unchanged, and nothing is reinterpreted."""
@@ -4282,6 +4300,8 @@ def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None
             "is a product of rational functions, powers and exponentials, `creative_telescoping` "
             "may derive a verified differential equation for the integral."
         )
+    if output.status == "resource_limit":
+        hints.append(RESOURCE_LIMIT_HINTS.get(name, RESOURCE_LIMIT_HINT))
     if hints:
         output.for_model += "\n" + "\n".join(hints)
 

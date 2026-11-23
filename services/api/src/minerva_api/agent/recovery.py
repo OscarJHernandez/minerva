@@ -76,7 +76,7 @@ NEVER_RERUN = frozenset(FailureClass)
 
 EQUIVALENT_FAILED = (
     "These are the same arguments as the call above, which did not succeed: change the input as the "
-    "diagnostic describes, or tell the user what could not be established."
+    "diagnostic or the hint above describes, or tell the user what could not be established."
 )
 BUDGET_EXHAUSTED = (
     "error: not run. This tool has failed several times in a row in this answer. Do not call it again: say what could "

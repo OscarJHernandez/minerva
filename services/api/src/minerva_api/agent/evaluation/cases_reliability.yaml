@@ -245,6 +245,45 @@
       assumptions: {p: [positive], G: [positive], M: [positive], m: [positive]}
   source: "engine expansion check (omega^2 = G^4 M^4 m^6 / p^6, verified); the linearisation is the tool's, not a hand derivation"
 
+# Issue 137: a chat about a small-angle double pendulum ended at the step limit with no answer. The two
+# cases keep the two regimes apart: both angles small is `expand_motion`; one angle small is never widened.
+- id: double-pendulum-both-angles-small-uses-expand-motion
+  category: multistep
+  prompt: 'For the double pendulum with Lagrangian $\frac12 (m_1+m_2) l_1^2 \dot{\theta}_1^2 + \frac12 m_2 l_2^2 \dot{\theta}_2^2 + m_2 l_1 l_2 \dot{\theta}_1 \dot{\theta}_2 \cos(\theta_1-\theta_2) + (m_1+m_2) g l_1 \cos\theta_1 + m_2 g l_2 \cos\theta_2$ (m_1, m_2, g, l_1 and l_2 positive), linearise the motion for small angles: both $\theta_1$ and $\theta_2$ are small.'
+  expected_tool: expand_motion
+  forbid: [substitute]
+  args: {includes: {coordinates: [theta_1, theta_2]}, equals: {order: 1}}
+  max_calls: 3
+  expect_card: {status: ok}
+  reference:
+    tool: expand_motion
+    arguments:
+      lagrangian: '\frac12 (m_1+m_2) l_1^2 \dot{\theta}_1^2 + \frac12 m_2 l_2^2 \dot{\theta}_2^2 + m_2 l_1 l_2 \dot{\theta}_1 \dot{\theta}_2 \cos(\theta_1-\theta_2) + (m_1+m_2) g l_1 \cos\theta_1 + m_2 g l_2 \cos\theta_2'
+      coordinates: [theta_1, theta_2]
+      equilibrium: {theta_1: '0', theta_2: '0'}
+      order: 1
+      assumptions: {m_1: [positive], m_2: [positive], g: [positive], l_1: [positive], l_2: [positive]}
+  source: "engine expansion check against the hand-written quadratic Lagrangian of issue 137 (stiffness (m_1+m_2) g l_1 and m_2 g l_2, equal masses and lengths give omega^2 = (2 -+ sqrt 2) g/l)"
+
+- id: double-pendulum-one-small-angle-is-not-widened
+  category: ambiguous
+  prompt: 'For the double pendulum with Lagrangian $\frac12 (m_1+m_2) l_1^2 \dot{\theta}_1^2 + \frac12 m_2 l_2^2 \dot{\theta}_2^2 + m_2 l_1 l_2 \dot{\theta}_1 \dot{\theta}_2 \cos(\theta_1-\theta_2) + (m_1+m_2) g l_1 \cos\theta_1 + m_2 g l_2 \cos\theta_2$, approximate the system when only the first angle $\theta_1$ is small. The second angle $\theta_2$ is not small.'
+  expected_tool: series
+  also_ok: [approximation]
+  forbid: [expand_motion]
+  tools_optional: true
+  max_calls: 3
+  expect_card: {status: ok}
+  reply_matches: 'theta_1|first angle|first rod|only'
+  reference:
+    tool: series
+    arguments:
+      latex: '\frac12 (m_1+m_2) l_1^2 \dot{\theta}_1^2 + \frac12 m_2 l_2^2 \dot{\theta}_2^2 + m_2 l_1 l_2 \dot{\theta}_1 \dot{\theta}_2 \cos(\theta_1-\theta_2) + (m_1+m_2) g l_1 \cos\theta_1 + m_2 g l_2 \cos\theta_2'
+      variable: theta_1
+      point: '0'
+      order: 2
+  source: "`expand_motion` expands in every coordinate at once, so it cannot express one small angle; a Taylor series in theta_1 only (series) or a question is the faithful answer (issue 137)"
+
 - id: answer-without-thinking-aloud
   category: ambiguous
   prompt: 'Whats the tautochrone problem, in two sentences?'
