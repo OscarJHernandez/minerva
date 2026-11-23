@@ -1,0 +1,8 @@
+{
+  "_comment": "Shared by services/api/src/minerva_api/agent/refs.py (COMPONENT_SUFFIX) and apps/web (provenance-notes.tsx). An entry of a card's unverified_inputs that ends with this suffix names one row of an earlier card's list; any other entry is an equation the model wrote. Change it in all three places.",
+  "component_suffix": ", a component of an earlier result",
+  "examples": {
+    "model_written": "equation (2)",
+    "list_component": "equation (3), a component of an earlier result"
+  }
+}

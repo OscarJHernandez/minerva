@@ -34,9 +34,21 @@ import { VariationCard } from "./variation-card";
 import { ResultPanel, StatusPill } from "../result-panel";
 import { IsolatePanel, StepResultPanel } from "../step-result-panel";
 import type { Status } from "@/lib/types";
+import { ProvenanceNotes, type Provenance } from "./provenance-notes";
 
 /** Renders a tool result. The content comes from Minerva's own computation, never from the model. */
 export function CardView({ card, streaming = false }: { card: Card; streaming?: boolean }) {
+  // The agent loop attaches inherited restrictions and unverified-input provenance to every kind of
+  // successful card, whatever its own result schema. Show them whether or not the model repeats them.
+  return (
+    <div className="min-w-0 space-y-2">
+      <ProvenanceNotes data={(card.data ?? {}) as Provenance} />
+      <CardResult card={card} streaming={streaming} />
+    </div>
+  );
+}
+
+function CardResult({ card, streaming = false }: { card: Card; streaming?: boolean }) {
   const { openInWorkbench } = useFormulaActions();
   const data = card.data as {
     status?: string;
@@ -59,6 +71,18 @@ export function CardView({ card, streaming = false }: { card: Card; streaming?: 
       }
     />
   );
+  // The number and copy actions name the unrestricted derivative, even when the panel leads
+  // with a separate conclusion on the equations of motion. Keep them with that exact formula.
+  if (card.type === "differentiate") {
+    return (
+      <DerivativePanel
+        result={card.data}
+        total={card.tool === "time_derivative"}
+        number={card.number}
+        actions={actions}
+      />
+    );
+  }
   const numbers = card.numbers && Object.keys(card.numbers).length > 0 ? card.numbers : null;
   const content = (
     <RowNumbersProvider value={numbers}>

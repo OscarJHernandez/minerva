@@ -454,6 +454,17 @@ read back as the same expression. Logging uses an allow-list of fields (no input
 - `apps/site`: static export served by nginx, pre-rendered math, no cookies or analytics. Public URLs
   are build arguments (`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_REPO_URL`).
 - `packages/ui`: theme tokens (light/dark) and the `Math` component.
+- Derivative cards lead with the engine's checked zero on the supplied equations of motion when
+  available. This is separate from the unrestricted total derivative: its equation number and copy
+  actions stay with that original formula inside the full-derivative disclosure. Nonzero substituted
+  expressions retain the engine's caveat that they were not separately sampled. Long formulas are
+  collapsed, never truncated or simplified by the browser; definitions and verification details can be
+  expanded. Display math scrolls from its beginning so oversized centered KaTeX cannot hide leading terms.
+- Every chat card displays inherited restrictions and unverified-input provenance supplied by the agent
+  loop, independently of the model's prose, in three kinds: inherited conditions; an equation the model wrote
+  (never verified: checking the computation does not establish it); and a list component (the original tool's
+  verification and restrictions were not carried forward). The suffix that tells the last two apart is shared
+  with `agent/refs.py` through `packages/ui/fixtures/input-provenance.json`. The UI only displays stored fields.
 
 ## Deployment shape
 

@@ -44,6 +44,13 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
 }
+/* KaTeX centers an oversized formula inside its scroll box, which can put its beginning
+   beyond the left scroll boundary. Center short formulas; start long ones at a reachable edge. */
+.katex-display > .katex {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
 math-field {
   display: block;
   width: 100%;
