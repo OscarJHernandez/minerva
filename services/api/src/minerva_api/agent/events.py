@@ -249,6 +249,9 @@ class TurnDebug(BaseModel):
     max_tool_calls: int = 0
     events: list[dict[str, Any]] = Field(default_factory=list)  # tracing.py event records, in order
     events_dropped: int = 0
+    # Equation labels the model wrote on its displayed formulas and the server removed (`equations.strip_label`):
+    # conversation content like the arguments, stored with the message and shown in debug mode, never logged.
+    removed_labels: list[str] = Field(default_factory=list)
     claim_check: str | None = (
         None  # ok | none | timeout | error: why claims were or were not checked
     )

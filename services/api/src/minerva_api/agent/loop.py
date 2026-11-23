@@ -1586,8 +1586,13 @@ async def _run_turn(
         failure_site = error_fields(exc)  # class and location only, never the message
 
     # ---- the end of the turn: one place builds the message, whatever way the turn ended ----------
-    raw = strip_equation_tags("\n\n".join(full_text).strip())
-    order = [strip_equation_tags(i) if isinstance(i, str) else i for i in order]
+    # A label the model wrote on a displayed formula is dropped before the reply is split and numbered. A
+    # formula that is already numbered as written (a tool result of this or an earlier turn, a formula of
+    # the conversation) is left as it is.
+    as_written = formulas_numbered_as_written(order, outputs, prior_known, prior_quoted, equations)
+    raw, removed_labels = strip_equation_tags("\n\n".join(full_text).strip(), as_written)
+    order = [strip_equation_tags(i, as_written)[0] if isinstance(i, str) else i for i in order]
+    debug.removed_labels = removed_labels
     if stop is not StopReason.COMPLETED:
         sentence = STOP_SENTENCES[stop]
         raw = (raw + "\n\n" if raw else "") + sentence
@@ -1616,6 +1621,7 @@ async def _run_turn(
         scalar_names,
     )
     claims_ms = _ms(claims_started)
+    reused_before = equations.reused if equations is not None else 0
     if equations is not None:  # numbers are assigned here, in reading order, never by the model
         number_blocks(blocks, equations, result_ids)
     # A lone symbol (`\\theta`) asserts nothing: it is not counted as a formula that lacks evidence. An
@@ -1680,6 +1686,9 @@ async def _run_turn(
         formulas=debug.formulas,
         formulas_with_evidence=debug.formulas_with_evidence,
         evidence_pct=debug.evidence_pct,
+        equation_labels_removed=len(debug.removed_labels),
+        equations_reused=(equations.reused - reused_before) if equations is not None else 0,
+        equation_aliases_resolved=equations.aliases_resolved if equations is not None else 0,
         stop_reason=stop,
         error_category=failure_category,
         events_dropped=tracer.dropped,
@@ -1710,6 +1719,31 @@ async def _run_turn(
             },
         }
     yield {"event": "message", "data": final.model_dump(mode="json")}
+
+
+def formulas_numbered_as_written(
+    order: Sequence[str | Card],
+    outputs: list[ToolOutput],
+    prior_known: set[str],
+    prior_quoted: Mapping[str, str],
+    equations: EquationTable | None,
+) -> Callable[[str], bool]:
+    """Whether a displayed formula the model wrote is one that is numbered as it stands: the conversation's
+    equations, results and quoted formulas of earlier turns, and the cards and tool formulas of this one.
+    The model restating one of them cannot change it (see `equations.strip_label`)."""
+    keys = (
+        set(prior_known)
+        | set(prior_quoted)
+        | known_formulas(outputs)
+        | set(quoted_formulas(outputs))
+    )
+    for item in order:
+        if isinstance(item, Card):
+            latex = item.data.get("result_latex")
+            if isinstance(latex, str):
+                keys.add(normalize(latex))
+    index = equations.index if equations is not None else {}
+    return lambda body: (key := normalize(body)) in keys or key in index
 
 
 def matrix_names(trace: Sequence[TraceStep | dict[str, Any]]) -> set[str]:

@@ -16,7 +16,7 @@ from .events import Segment
 # `$` follows the pandoc rule: the opener is not followed by whitespace, the closer is not preceded by
 # whitespace or followed by a digit, so prices such as "$5 to $10" stay text. A bare environment
 # (`\\begin{aligned}...\\end{aligned}`) is a display formula. `apps/web/src/lib/inline-math.ts` mirrors this.
-_MATH = re.compile(
+MATH = re.compile(
     r"\$\$(?P<d1>.+?)\$\$"
     r"|\\\[(?P<d2>.+?)\\\]"
     r"|\\\((?P<i2>.+?)\\\)"
@@ -187,7 +187,7 @@ def split_segments(
     quoted = quoted or {}
     segments: list[Segment] = []
     position = 0
-    for match in _MATH.finditer(text):
+    for match in MATH.finditer(text):
         if match.start() > position:
             segments.extend(_text_segments(text[position : match.start()], known, quoted))
         display = any(match.group(n) is not None for n in ("d1", "d2", "d3"))

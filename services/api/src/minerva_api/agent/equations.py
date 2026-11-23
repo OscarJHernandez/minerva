@@ -15,16 +15,18 @@ never verified is allowed, but the result then carries that fact.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from .card_equations import LIST_READERS, listed_equations
 from .events import Block
 from .reasoning import clean_reply
-from .segments import normalize, split_segments
+from .segments import MATH, normalize, split_segments
 
 Source = Literal["from_tool", "written_by_model", "yours"]
+# Whose text a formula is, which decides whether a trailing equation label may be read off it (see `strip_label`).
+LabelMode = Literal["model", "user", "none"]
 MAX_EQUATION_CHARS = (
     500  # a longer formula is shown but not numbered, like the claim checker's limit
 )
@@ -39,6 +41,95 @@ class Equation:
     # The card type whose list this equation is one row of ("geometry"). Such a row is exact LaTeX from a tool,
     # but it is not linked to that card's verification or restrictions (see `refs.UNLINKED_INPUT`).
     part_of: str | None = None
+    # A stored equation that is the same formula as a lower number once its own label is read off (a
+    # conversation numbered before labels inside display math were removed): the lower number.
+    alias_of: int | None = None
+
+
+# --- labels the model writes inside a displayed formula ----------------------------------------------
+_SPACING_CMD = r"(?:\\(?:quad|qquad|hfill)(?![A-Za-z])|\\hspace\*?\{[^{}]*\})"
+_PAREN_NUMBER = r"\(\s*\d{1,3}\s*\)"
+_TEXT_NUMBER = rf"\\(?:text|textrm|mathrm)\{{\s*{_PAREN_NUMBER}\s*\}}"
+_TAG = r"\\tag\*?\{\s*\d{1,3}\s*\}"
+_TRAILER = r"(?P<punct>[.,]?)\s*$"
+# Forms that can only be a label: `\tag{3}`, a spacing command then `(3)`, `\text{(3)}`.
+_UNAMBIGUOUS = re.compile(
+    rf"\s*(?:{_TAG}|(?:{_SPACING_CMD}\s*)+(?:{_PAREN_NUMBER}|{_TEXT_NUMBER})|{_TEXT_NUMBER}){_TRAILER}"
+)
+# Whitespace then `(3)` at the very end: a label or a factor; `_bare_label_ok` decides.
+_BARE = re.compile(rf"(?<=\S)\s+{_PAREN_NUMBER}{_TRAILER}")
+_SINGLE_ENV = re.compile(
+    r"(?P<open>\\begin\{(?P<env>equation\*?)\})(?P<inner>.*)(?P<close>\\end\{(?P=env)\})\Z",
+    re.DOTALL,
+)
+_OPERATOR_END = set("+-*/=<>,;:([{&^_")
+
+
+def _balanced(text: str) -> bool:
+    plain = re.sub(r"\\[{}]|\\left|\\right", "", text)
+    return all(plain.count(a) == plain.count(b) for a, b in ("()", "[]", "{}")) and len(
+        re.findall(r"\\begin\{", text)
+    ) == len(re.findall(r"\\end\{", text))
+
+
+def _bare_label_ok(prefix: str) -> bool:
+    """Whether a final ` (N)` after `prefix` reads as a label rather than a factor or an argument.
+
+    Kept (not a label): after a command name (`\\sin (2)`, `\\Gamma (3)`), after an operator, relation,
+    comma or opening bracket, after a letter the formula applies as a function elsewhere (`f(x) + f (1)`),
+    and whenever removing it would leave unbalanced brackets or environments.
+    """
+    p = prefix.rstrip()
+    if not p or p[-1] in _OPERATOR_END or p.endswith("\\\\"):
+        return False
+    if re.search(r"\\[A-Za-z]+$", p) or not _balanced(p):
+        return False
+    applied = p[-1].isalpha() and re.search(
+        rf"(?<![A-Za-z\\]){re.escape(p[-1])}\s*(?:\\left)?\(", p
+    )
+    return not applied
+
+
+def strip_label(body: str, mode: LabelMode) -> tuple[str, str]:
+    """The formula without an equation label the model (or user) wrote at its end, and the label removed.
+
+    The server numbers equations; a number written inside the formula is presentation, not mathematics.
+    Only the very end of the body is read, one label, once:
+
+    - `model` (text the model wrote): `\\tag{3}`, a spacing command or `\\text{...}` around `(3)`, and a
+      bare ` (3)` after whitespace unless it can be a factor or an argument (`_bare_label_ok`).
+      Accepted risk: a formula new to the conversation such as `y = g (1)` loses its `(1)` when `g` is not
+      applied elsewhere in it; every removal is recorded (`TurnDebug.removed_labels`).
+    - `user` (the user's own message): the unambiguous forms only; a bare ` (3)` there is a factor.
+    - `none` (tool output): nothing. A verified formula is keyed and stored exactly as the tool gave it.
+
+    A single-formula environment (`equation`, `equation*`) is read before its `\\end`; multi-row ones
+    (`align`, `aligned`, `gather`, `eqnarray`) are left alone, as are row labels inside them. A final `.` or
+    `,` after the label stays: `a = b \\quad (1).` gives `a = b.`.
+    """
+    if mode == "none":
+        return body, ""
+    env = _SINGLE_ENV.match(body.strip())
+    if env is not None:
+        inner, removed = strip_label(env.group("inner"), mode)
+        if not removed:
+            return body, ""
+        return f"{env.group('open')}{inner}{env.group('close')}", removed
+    core = body.rstrip()
+    tail = body[len(core) :]
+    hit = _UNAMBIGUOUS.search(core)
+    if hit is None and mode == "model":
+        hit = _BARE.search(core)
+        if hit is not None and not _bare_label_ok(core[: hit.start()]):
+            hit = None
+    if hit is None or not core[: hit.start()].strip():
+        return body, ""
+    return core[: hit.start()] + hit.group("punct") + tail, core[hit.start() : hit.end()].strip()
+
+
+def equation_key(latex: str, mode: LabelMode) -> str:
+    """The comparison key of a formula once the label `mode` allows is read off."""
+    return normalize(strip_label(latex, mode)[0])
 
 
 @dataclass
@@ -48,6 +139,10 @@ class EquationTable:
     items: dict[int, Equation] = field(default_factory=dict)
     index: dict[str, int] = field(default_factory=dict)  # normalised LaTeX -> number
     counter: int = 0  # the highest number ever given (kept even when messages are removed)
+    reused: int = (
+        0  # formulas that were given the number they already had (counted per table, per turn)
+    )
+    aliases_resolved: int = 0  # references to a number that is an alias of a lower one
 
     def number_for(
         self,
@@ -55,21 +150,38 @@ class EquationTable:
         source: Source,
         result_id: str | None = None,
         part_of: str | None = None,
+        *,
+        mode: LabelMode,
     ) -> int | None:
-        """The number of this formula: the one it already has, or the next. None if it cannot be numbered."""
+        """The number of this formula: the one it already has, or the next. None if it cannot be numbered.
+
+        A formula already numbered *as written* is found first and never stripped (a model restating a tool
+        result or the user's formula cannot change it); only otherwise is the label `mode` allows read off.
+        Known gap: a tool result that ends in whitespace + `(N)` and is quoted by the model before its card
+        in reading order is keyed stripped, before the card's exact entry exists.
+        """
         if not latex.strip() or len(latex) > MAX_EQUATION_CHARS:
             return None
-        key = normalize(latex)
+        exact = normalize(latex)
+        if not exact:
+            return None
+        existing = self.index.get(exact)
+        stored = latex
+        key = exact
+        if existing is None:
+            stored = strip_label(latex, mode)[0]
+            key = normalize(stored)
+            existing = self.index.get(key) if key else None
         if not key:
             return None
-        existing = self.index.get(key)
         if existing is not None:
             item = self.items[existing]
             if result_id and not item.result_id:  # the same formula is also a verified result
                 item.result_id, item.source = result_id, "from_tool"
+            self.reused += 1
             return existing
         self.counter += 1
-        self.items[self.counter] = Equation(self.counter, latex, source, result_id, part_of)
+        self.items[self.counter] = Equation(self.counter, stored, source, result_id, part_of)
         self.index[key] = self.counter
         return self.counter
 
@@ -80,12 +192,25 @@ class EquationTable:
         source: Source,
         result_id: str | None = None,
         part_of: str | None = None,
+        *,
+        mode: LabelMode,
     ) -> None:
-        """Re-enter an equation that was numbered earlier (from a stored message)."""
+        """Re-enter an equation that was numbered earlier (from a stored message).
+
+        Same order as `number_for`: the exact key, then the key with the label `mode` allows read off. A
+        number whose formula already belongs to a lower number is kept and recorded as its alias.
+        """
         self.counter = max(self.counter, number)
+        stored = latex
         key = normalize(latex)
+        earlier = self.index.get(key)
+        if earlier is None:
+            stored = strip_label(latex, mode)[0]
+            key = normalize(stored)
+            earlier = self.index.get(key) if key else None
         if number not in self.items:
-            self.items[number] = Equation(number, latex, source, result_id, part_of)
+            alias = earlier if earlier is not None and earlier < number else None
+            self.items[number] = Equation(number, stored, source, result_id, part_of, alias)
         elif result_id and not self.items[number].result_id:
             self.items[number].result_id = result_id
             self.items[number].source = "from_tool"
@@ -105,7 +230,7 @@ def build_table(messages: Iterable[Any], counter: int = 0) -> EquationTable:
         if m.role == "user":
             for e in content.get("equations", []) or []:
                 if isinstance(e, dict) and isinstance(e.get("number"), int):
-                    table.restore(e["number"], str(e.get("latex", "")), "yours")
+                    table.restore(e["number"], str(e.get("latex", "")), "yours", mode="user")
             continue
         steps = {s.get("id"): s for s in content.get("trace", []) or [] if isinstance(s, dict)}
         for block in content.get("blocks", []) or []:
@@ -115,12 +240,17 @@ def build_table(messages: Iterable[Any], counter: int = 0) -> EquationTable:
                 latex = (card.get("data") or {}).get("result_latex")
                 if isinstance(number, int) and isinstance(latex, str):
                     result_id = (steps.get(card.get("id")) or {}).get("result_id")
-                    table.restore(number, latex, "from_tool", result_id)
+                    table.restore(number, latex, "from_tool", result_id, mode="none")
                 _restore_listed(card, table)
             for seg in block.get("segments", []) or []:
                 number = seg.get("number") if isinstance(seg, dict) else None
                 if isinstance(number, int):
-                    table.restore(number, str(seg.get("value", "")), _source_of(seg.get("status")))
+                    table.restore(
+                        number,
+                        str(seg.get("value", "")),
+                        _source_of(seg.get("status")),
+                        mode="model",
+                    )
     return table
 
 
@@ -134,7 +264,7 @@ def _restore_listed(card: dict[str, Any], table: EquationTable) -> None:
     for key, latex in listed_equations(kind, data if isinstance(data, dict) else {}):
         number = numbers.get(key)
         if isinstance(number, int):
-            table.restore(number, latex, "from_tool", None, kind)
+            table.restore(number, latex, "from_tool", None, kind, mode="none")
 
 
 def number_blocks(
@@ -152,19 +282,19 @@ def number_blocks(
             latex = block.card.data.get("result_latex")
             if isinstance(latex, str):
                 block.card.number = table.number_for(
-                    latex, "from_tool", (result_ids or {}).get(block.card.id)
+                    latex, "from_tool", (result_ids or {}).get(block.card.id), mode="none"
                 )
             continue
         for seg in block.segments:
             if seg.type == "display_math":
-                seg.number = table.number_for(seg.value, _source_of(seg.status))
+                seg.number = table.number_for(seg.value, _source_of(seg.status), mode="model")
 
 
 def _number_listed(card_type: str, data: dict[str, Any], table: EquationTable) -> dict[str, int]:
     """One whole number per listed equation, in display order, from the conversation's one counter."""
     out: dict[str, int] = {}
     for key, latex in listed_equations(card_type, data):
-        number = table.number_for(latex, "from_tool", None, card_type)
+        number = table.number_for(latex, "from_tool", None, card_type, mode="none")
         if number is not None:
             out[key] = number
     return out
@@ -175,9 +305,9 @@ def number_user_text(text: str, table: EquationTable) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for seg in split_segments(text, set()):
         if seg.type == "display_math":
-            number = table.number_for(seg.value, "yours")
+            number = table.number_for(seg.value, "yours", mode="user")
             if number is not None:
-                out.append({"number": number, "latex": seg.value})
+                out.append({"number": number, "latex": table.items[number].latex})
     return out
 
 
@@ -273,6 +403,9 @@ def resolve_references(
                     )
             continue
         shown.append({"number": ref.number, "latex": item.latex, "source": item.source})
+        if item.alias_of is not None:
+            shown[-1]["alias_of"] = item.alias_of
+            table.aliases_resolved += 1
         if item.result_id:
             how = f"a verified result (write @{item.result_id} or @e{item.number} in a tool call to reuse it exactly)"
         elif item.source == "yours":
@@ -287,7 +420,8 @@ def resolve_references(
                 "written by the model and NOT verified by Minerva (@e"
                 f"{item.number} reuses it exactly; say that it was not verified)"
             )
-        lines.append(f"({ref.number}) = ${item.latex}$, {how}.")
+        same = f"the same formula as ({item.alias_of}); " if item.alias_of is not None else ""
+        lines.append(f"({ref.number}) = ${item.latex}$, {same}{how}.")
     if not lines:
         return shown, ""
     note = (
@@ -360,12 +494,12 @@ def number_stored(contents: Iterable[tuple[str, dict[str, Any]]], table: Equatio
                 latex = (card.get("data") or {}).get("result_latex")
                 if isinstance(latex, str):
                     rid = (steps.get(card.get("id")) or {}).get("result_id")
-                    card["number"] = table.number_for(latex, "from_tool", rid)
+                    card["number"] = table.number_for(latex, "from_tool", rid, mode="none")
                     gave = gave or card["number"] is not None
             for seg in block.get("segments", []) or []:
                 if isinstance(seg, dict) and seg.get("type") == "display_math":
                     seg["number"] = table.number_for(
-                        str(seg.get("value", "")), _source_of(seg.get("status"))
+                        str(seg.get("value", "")), _source_of(seg.get("status")), mode="model"
                     )
                     gave = gave or seg["number"] is not None
     return gave
@@ -390,14 +524,46 @@ def unverified_inputs(messages: Iterable[Any]) -> dict[str, list[str]]:
     return out
 
 
-_MODEL_TAG = re.compile(r"(\$\$.+?\$\$|\\\[.+?\\\])[ \t]*\(\s*\d{1,3}\s*\)", re.DOTALL)
+_AFTER_LABEL = re.compile(r"[ \t]*\(\s*\d{1,3}\s*\)")
 
 
-def strip_equation_tags(text: str) -> str:
-    """Remove a number the model wrote itself right after a displayed formula ("$$...$$ (3)").
+def strip_equation_tags(
+    text: str, keep: Callable[[str], bool] | None = None
+) -> tuple[str, list[str]]:
+    """Remove the numbers the model wrote itself on displayed formulas, and say what was removed.
 
     The server numbers equations; a number the model writes would be its guess (it copies the pattern
     from the replayed history) and could differ from the real one, so it is dropped before the reply is
-    split, stored and numbered. A "(3)" anywhere else in the prose, in a sentence or a list, stays.
+    split, stored and numbered: after the closing delimiter (`$$...$$ (3)`) and inside the formula
+    (`$$... (3)$$`, `\\tag{3}`, see `strip_label`). The display formulas are found with the splitter's own
+    pattern (`segments.MATH`), so the two never disagree about where one ends. `keep(body)` is true for a
+    formula that is already numbered as written (a tool result, the user's formula): its body is left alone.
+    A "(3)" anywhere else in the prose, in a sentence or a list, stays. Returns the text and the removed
+    labels in reading order.
     """
-    return _MODEL_TAG.sub(r"\1", text)
+    removed: list[str] = []
+    out: list[str] = []
+    position = 0
+    for match in MATH.finditer(text):
+        group = next((g for g in ("d1", "d2", "d3") if match.group(g) is not None), None)
+        if group is None:
+            continue
+        body = match.group(group)
+        new_body = body
+        if keep is None or not keep(body.strip()):
+            new_body, label = strip_label(body, "model")
+            if label:
+                removed.append(label)
+        end = match.end()
+        after = _AFTER_LABEL.match(text, end)
+        if after is not None:
+            removed.append(after.group().strip())
+            end = after.end()
+        if new_body == body and end == match.end():
+            continue
+        start = match.start(group)
+        out.append(text[position:start] + new_body)
+        out.append(text[match.end(group) : match.end()])
+        position = end
+    out.append(text[position:])
+    return "".join(out), removed

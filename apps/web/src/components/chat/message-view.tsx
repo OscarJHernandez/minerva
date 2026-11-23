@@ -71,6 +71,7 @@ export function MessageView({
                 ) : (
                   <>
                     Taken as equation ({r.number}): <Math latex={r.latex} />
+                    {r.alias_of != null && ` (the same formula as (${r.alias_of}))`}
                     {r.source === "written_by_model" && " (written by the model, not verified)"}
                   </>
                 )}

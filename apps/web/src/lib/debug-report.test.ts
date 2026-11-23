@@ -438,6 +438,7 @@ const traced: StoredMessage = {
       formulas: 2,
       formulas_with_evidence: 1,
       claim_check: "timeout",
+      removed_labels: ["(1)", "\\tag{3}"],
       llm_calls: [
         {
           ms: 50,
@@ -497,6 +498,7 @@ describe("buildDebugReport, format 3", () => {
     expect(report).toContain("tokens: 120 in, 9 out (as reported by the model host)");
     expect(report).toContain("formulas with engine evidence: 1/2 (50%)");
     expect(report).toContain("claim check: timeout");
+    expect(report).toContain("equation labels removed from the reply: (1) \\tag{3}");
   });
 
   it("tells the story of the turn in order", () => {

@@ -381,6 +381,11 @@ class AgentCompleted(TraceEvent, ErrorSite):
     formulas: int = 0
     formulas_with_evidence: int = 0
     evidence_pct: float | None = None
+    # Equation numbering (counts only): labels the model wrote that were removed, formulas that kept the
+    # number they had, references to a number that is an alias of a lower one.
+    equation_labels_removed: int = 0
+    equations_reused: int = 0
+    equation_aliases_resolved: int = 0
     stop_reason: StopReason = StopReason.COMPLETED
     error_category: ErrorCategory | None = None
     events_dropped: int = 0

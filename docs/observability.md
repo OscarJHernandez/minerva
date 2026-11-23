@@ -37,7 +37,7 @@ turn started, from a monotonic clock) and `step` (the model call it belongs to).
 | `agent.routed` | a rule chose the first tool without asking the model (`routed`) or its result was not verified so the model plans (`declined`): decision, tool, and a fixed reason (see `docs/agent-reliability.md`) |
 | `agent.retry` | reason, attempt number |
 | `agent.stopped` | stop reason, steps, tool calls |
-| `agent.completed` | total latency, model, tool, sandbox and claim-check time, tokens, tool calls and errors, repeated calls, formulas with engine evidence |
+| `agent.completed` | total latency, model, tool, sandbox and claim-check time, tokens, tool calls and errors, repeated calls, formulas with engine evidence, equation numbering counts (`equation_labels_removed`, `equations_reused`, `equation_aliases_resolved`; counts only: the removed labels themselves are `debug.removed_labels`, stored with the message, shown in debug mode, never logged) |
 
 Stop reasons: `completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`
 (the last model call hit its length limit with no tool call; the reply is cut off and says so), `model_error`,

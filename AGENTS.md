@@ -266,6 +266,18 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   reuse** (`ResultStore.unverified`, rebuilt from cards by `equations.unverified_inputs`). Do not widen `known_latex` through a
   reference. The shared fixture `packages/ui/fixtures/math-delimiters.json` is run by both `segments.py` and `inline-math.ts`:
   change a delimiter rule in both places and in the fixture.
+  **A label the model writes inside a displayed formula is not part of it** (`equations.strip_label`, `strip_equation_tags`):
+  `$$E = mc^2 (1)$$`, `\\tag{1}`, `\\quad (1)`, `\\text{(1)}` and a `\\begin{equation}` with one are read off the end
+  of the formula before it is stored and keyed, so one formula keeps one number. Three modes decide who wrote the text:
+  `model` (the full rule, including a bare ` (1)` unless it can be a factor or an argument: after a command name, an
+  operator, an opening bracket, or a letter the formula applies as a function elsewhere), `user` (only the unambiguous
+  forms; the user's own message is never rewritten) and `none` (every tool result and list row: stored exactly as the
+  tool gave it, so `@eN` never differs from the verified formula). `number_for` and `restore` take the mode as a required
+  argument and look the formula up *as written* first, so the model restating a tool result or the user's formula cannot
+  change it. A conversation numbered before this keeps every number (nothing stored is rewritten); a stored duplicate is an
+  `Equation.alias_of` the lower number and a reference to it says so. Removed labels are listed in `debug.removed_labels`
+  and counted in `agent.completed` (`equation_labels_removed`, `equations_reused`, `equation_aliases_resolved`). Not read:
+  labels inside multi-row environments; a new formula such as `y = g (1)` loses its `(1)` (accepted, and recorded).
 - Model parameters (`MINERVA_LLM_*`, `agent/params.py`) are operator defaults, per-turn overrides in the chat's debug panel
   (`SendMessage.params`; off unless `MINERVA_LLM_TUNING`, the context size only for `MINERVA_LLM_TUNING_EMAILS`, capped) and
   flags of `scripts/eval_models.py`; what a turn used is stored in `AssistantMessage.debug.params`. **Nothing mathematical is a
