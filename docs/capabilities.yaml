@@ -55,7 +55,8 @@
 #                limit | pade | chebyshev | legendre | fourier | piecewise | continued_fraction | euler_maclaurin |
 #                integral_expansion | root_expansion | reversion | laplace | accelerate | compare), variable, point,
 #                direction, order, small, variables, points, lower, upper, degree, denominator_degree, period, modes,
-#                segments, kind, tolerance, tolerance_kind, max_terms, methods (every number is the user's: nothing is defaulted)
+#                segments, kind, tolerance, tolerance_kind, max_terms, methods (every number is the user's: nothing is defaulted;
+#                variables/points only with multivariable or auto, and variable must be a symbol of the expression)
 #   integrate    input, variable, lower, upper, assumptions, strategy (auto | a technique name; leave out for SymPy's route first)
 #   entry        entry [handbook entry id]
 #   read_formulas formulas [LaTeX strings, as a vision model would transcribe them]

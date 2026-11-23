@@ -28,7 +28,7 @@ the stated reason and showed no result.
 | Root expansion and function reversion | pass | 2 |
 | Laplace's method gives Stirling's series | pass | 2 |
 | The strategy picks the expected method | pass | 7 |
-| What must be refused, with the stated reason | pass | 13 |
+| What must be refused, with the stated reason | pass | 17 |
 
 ## Checks
 
@@ -205,6 +205,10 @@ the stated reason and showed no result.
 | refused | `degenerate_system` | `degenerate_system` | yes |
 | no result shown | `none` | `None` | yes |
 | refused | `essential_singularity` | `essential_singularity` | yes |
+| no result shown | `none` | `None` | yes |
+| refused | `fields_not_for_method` | `fields_not_for_method` | yes |
+| no result shown | `none` | `None` | yes |
+| refused | `variable_missing` | `variable_missing` | yes |
 | no result shown | `none` | `None` | yes |
 | oscillating sum is not shown | `not_verified` | `not_verified` | yes |
 

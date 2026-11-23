@@ -439,6 +439,13 @@ def case_refusals() -> list[Check]:
             "degenerate_system",
         ),
         *refused(run("asymptotic", "exp(x)", point="oo", order=2), "essential_singularity"),
+        # A list of variables sent to a method of one variable, and a variable the expression
+        # does not contain: both used to give a checked "series" of the unchanged expression.
+        *refused(
+            run("taylor", "cos(a - b)", variables=["a", "b"], point="0", order=2),
+            "fields_not_for_method",
+        ),
+        *refused(run("taylor", "cos(a - b)", point="0", order=2), "variable_missing"),
         Check(
             "oscillating sum is not shown",
             Status.NOT_VERIFIED.value,

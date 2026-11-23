@@ -15,6 +15,12 @@ displayed. Errors are **measurements** on sampled points, never bounds, and "the
 of modes belong to the user: none has a default, and a missing one is a question (`domain_unspecified`
 with `questions`), not a guess.
 
+A request whose fields do not belong to its method is refused, never answered about something else:
+`variables` or `points` sent to a method of one variable is `fields_not_for_method` (they belong to
+`multivariable`, one point per variable; nothing is rerouted, because `point` is not `points`), and a
+`variable` the expression does not contain is `variable_missing`. Both used to return a checked series
+of the unchanged expression in the default variable `x`.
+
 Evidence is one of `series_checked` (coefficients and remainder order against independent estimates),
 `numeric_estimate` (a measurement), `bound_established` (an inequality that was verified; used only for
 continued fractions of a rational) or `none`.

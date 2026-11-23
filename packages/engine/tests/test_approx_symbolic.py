@@ -12,8 +12,14 @@ import sympy as sp
 from minerva_engine import ApproximationInput
 from minerva_engine.approx import expand, leading, multivar
 from minerva_engine.approx.common import Context
-from minerva_engine.approx.operation import approximation
-from minerva_engine.models import Limits, Status
+from minerva_engine.approx.operation import (
+    HANDLERS,
+    NO_SINGLE_VARIABLE,
+    TAKES_VARIABLES,
+    approximation,
+)
+from minerva_engine.models import ExpressionInput, Limits, Status
+from minerva_engine.ops import parse_expression
 
 LIMITS = Limits(timeout_seconds=60)
 
@@ -268,6 +274,104 @@ def test_multivariable_with_a_wrong_derivative_is_not_shown(
         method="multivariable", input="exp(x+y)", variables=["x", "y"], points=["0", "0"], order=2
     )
     assert r.status is Status.NOT_VERIFIED and r.result_latex is None
+
+
+# --- A request whose fields do not belong to its method (issue 137) ---------------------------
+DOUBLE_PENDULUM = (
+    r"\frac{1}{2}(m_1 + m_2)l_1^2\dot{\theta}_1^2 + \frac{1}{2}m_2l_2^2\dot{\theta}_2^2 "
+    r"+ m_2l_1l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) "
+    r"+ (m_1+m_2)gl_1\cos\theta_1 + m_2gl_2\cos\theta_2"
+)
+PENDULUM_POTENTIAL = "(m_1+m_2)*g*l_1*cos(theta_1) + m_2*g*l_2*cos(theta_2)"
+ONE_VARIABLE_METHODS = sorted(set(HANDLERS) - NO_SINGLE_VARIABLE)
+
+
+def test_taylor_with_a_list_of_variables_is_refused_not_expanded_in_x() -> None:
+    """The call of the chat trace: it used to be `ok` with the Lagrangian unchanged."""
+    r = run(
+        method="taylor",
+        format="latex",
+        input=DOUBLE_PENDULUM,
+        variables=["theta_1", "theta_2"],
+        point="0",
+        order=2,
+    )
+    assert r.status is Status.CONDITIONS_NOT_SATISFIED and r.reason == "fields_not_for_method"
+    assert r.result_latex is None and r.evidence == "none" and not r.orders
+    assert "multivariable" in r.message and "Nothing was computed" in r.message
+
+
+@pytest.mark.parametrize("method", sorted(set(HANDLERS) - TAKES_VARIABLES))
+@pytest.mark.parametrize(
+    "extra",
+    [{"variables": ["x", "y"]}, {"points": ["0", "0"]}, {"variables": ["x"], "points": ["0"]}],
+    ids=["variables", "points", "both"],
+)
+def test_variables_and_points_are_refused_by_every_method_of_one_variable(
+    method: str, extra: dict[str, list[str]]
+) -> None:
+    r = run(method=method, input="sin(x)*y", point="0", order=3, **extra)
+    assert r.reason == "fields_not_for_method" and r.result_latex is None
+    assert f"`{method}`" in r.message
+
+
+@pytest.mark.parametrize("method", ONE_VARIABLE_METHODS)
+def test_a_variable_the_expression_does_not_contain_is_refused(method: str) -> None:
+    r = run(method=method, input="sin(a)*b", point="0", order=3)  # the default variable is x
+    assert r.status is Status.UNSUPPORTED and r.reason == "variable_missing"
+    assert r.result_latex is None and r.evidence == "none"
+    assert "`x`" in r.message
+
+
+def test_the_true_twins_of_the_refusals_still_answer() -> None:
+    # the same expression, with the variable it does contain
+    r = run(method="taylor", input="sin(a)*b", variable="a", point="0", order=3)
+    assert r.status is Status.OK and r.result_latex == r"a b - \frac{a^{3} b}{6}"
+    # a number contains no variable at all: unchanged behaviour, it is its own series
+    r = run(method="taylor", input="2", point="0", order=3)
+    assert r.status is Status.OK and r.result_latex == "2"
+    # perturbation names its own parameter and never reads `variable`
+    r = run(method="perturbation", input="sqrt(1+eps)*a", small="eps", order=1)
+    assert r.status is Status.OK
+
+
+def test_auto_does_not_expand_in_a_variable_that_is_absent() -> None:
+    r = run(method="auto", input="sin(a)*b", point="0", order=3)
+    assert r.status is not Status.OK and r.result_latex is None
+    assert r.reason == "variable_missing"
+
+
+def test_multivariable_double_pendulum_potential_matches_the_hand_expansion() -> None:
+    """cos t = 1 - t^2/2 + O(t^4) in each angle, written out by hand."""
+    r = run(
+        method="multivariable",
+        input=PENDULUM_POTENTIAL,
+        variables=["theta_1", "theta_2"],
+        points=["0", "0"],
+        order=2,
+    )
+    assert r.status is Status.OK and r.evidence == "series_checked"
+    assert all(c.passed for c in r.checks)
+    got = parse_expression(ExpressionInput(input=r.result_latex, format="latex"), LIMITS)
+    m1, m2, g, l1, l2, t1, t2 = sp.symbols("m_1 m_2 g l_1 l_2 theta_1 theta_2")
+    expected = (m1 + m2) * g * l1 * (1 - t1**2 / 2) + m2 * g * l2 * (1 - t2**2 / 2)
+    assert {s.name for s in got.free_symbols} == {s.name for s in expected.free_symbols}
+    assert sp.expand(got.subs({s: sp.Symbol(s.name) for s in got.free_symbols}) - expected) == 0
+
+
+@pytest.mark.parametrize(
+    "points", [[], ["0"], ["0", "0", "0"]], ids=["none", "too few", "too many"]
+)
+def test_multivariable_without_one_point_per_variable_is_a_question(points: list[str]) -> None:
+    r = run(
+        method="multivariable",
+        input=PENDULUM_POTENTIAL,
+        variables=["theta_1", "theta_2"],
+        points=points,
+        order=2,
+    )
+    assert r.status is Status.CONDITIONS_NOT_SATISFIED and r.reason == "domain_unspecified"
+    assert r.questions and r.result_latex is None
 
 
 # --- Leading order and limits -----------------------------------------------------------------

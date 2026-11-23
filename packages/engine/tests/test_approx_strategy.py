@@ -25,6 +25,12 @@ def auto(**kw):  # type: ignore[no-untyped-def]
 
 
 # --- the strategy -----------------------------------------------------------------------------
+def test_several_variables_without_their_points_are_a_question() -> None:
+    r = auto(input="cos(a - b)", variables=["a", "b"], order=2)
+    assert r.status is Status.CONDITIONS_NOT_SATISFIED and r.reason == "domain_unspecified"
+    assert r.questions and r.result_latex is None
+
+
 def test_each_shape_of_request_gets_its_method() -> None:
     assert auto(input="sin(x)", point="0", order=5).method == "taylor"
     assert auto(input="1/(x+1)", point="oo", order=3).method == "asymptotic"

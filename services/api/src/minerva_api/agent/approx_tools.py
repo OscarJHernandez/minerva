@@ -59,7 +59,11 @@ class ApproximationArgs(SimplifyArgs):
         "reversion, laplace, accelerate, or compare (several methods on an interval).",
     )
     variable: str = Field(
-        default="x", min_length=1, max_length=32, description="The variable, e.g. x"
+        default="x",
+        min_length=1,
+        max_length=32,
+        description="The ONE variable of a single-variable method, a symbol of the expression (e.g. x). "
+        "Several variables at once: method `multivariable` with `variables` and `points`, not this field.",
     )
     point: str | None = Field(
         default=None,
