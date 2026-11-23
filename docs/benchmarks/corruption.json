@@ -1,5 +1,5 @@
 {
-  "applied": 877,
+  "applied": 892,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -40,21 +40,21 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 12,
+      "same_after_cleaning": 13,
       "untyped_failure": 0
     },
     "shape:formula_alias": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 98,
+      "same_after_cleaning": 100,
       "untyped_failure": 0
     },
     "shape:json_as_string": {
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 78,
+      "same_after_cleaning": 79,
       "untyped_failure": 0
     },
     "shape:kind_wrapped": {
@@ -68,7 +68,7 @@
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 27,
+      "same_after_cleaning": 28,
       "untyped_failure": 0
     },
     "shape:number_as_string": {
@@ -82,28 +82,28 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 131,
+      "same_after_cleaning": 133,
       "untyped_failure": 0
     },
     "transport:dollar_wrapper": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 131,
+      "same_after_cleaning": 133,
       "untyped_failure": 0
     },
     "transport:doubled_backslash": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 95,
+      "same_after_cleaning": 97,
       "untyped_failure": 0
     },
     "transport:markdown_escape": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 75,
+      "same_after_cleaning": 77,
       "untyped_failure": 0
     },
     "transport:trailing_period": {
@@ -117,7 +117,7 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 98,
+      "same_after_cleaning": 100,
       "untyped_failure": 0
     }
   },
@@ -189,7 +189,7 @@
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 1,
-      "same_after_cleaning": 20,
+      "same_after_cleaning": 29,
       "untyped_failure": 0
     },
     "expectation": {
@@ -280,7 +280,7 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 1,
-      "same_after_cleaning": 10,
+      "same_after_cleaning": 16,
       "untyped_failure": 0
     },
     "simplify": {
@@ -351,33 +351,33 @@
   "format": 1,
   "mode": "pr",
   "not_applicable": {
-    "derivative:joined": 152,
-    "derivative:latex_letter_run": 144,
-    "derivative:leibniz": 152,
-    "derivative:spaced": 152,
-    "derivative:upper": 152,
-    "shape:assignment_prefix": 141,
+    "derivative:joined": 154,
+    "derivative:latex_letter_run": 146,
+    "derivative:leibniz": 154,
+    "derivative:spaced": 154,
+    "derivative:upper": 154,
+    "shape:assignment_prefix": 142,
     "shape:formula_alias": 55,
-    "shape:json_as_string": 65,
-    "shape:kind_wrapped": 144,
-    "shape:list_as_string": 123,
+    "shape:json_as_string": 66,
+    "shape:kind_wrapped": 146,
+    "shape:list_as_string": 124,
     "shape:number_as_string": 146,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
     "transport:doubled_backslash": 58,
     "transport:markdown_escape": 78,
-    "transport:trailing_period": 47,
+    "transport:trailing_period": 49,
     "transport:unicode_look_alikes": 55
   },
-  "recovered_without_a_model_call": 869,
-  "recovery_rate": 0.9909,
-  "references": 153,
+  "recovered_without_a_model_call": 884,
+  "recovery_rate": 0.991,
+  "references": 155,
   "tools_covered": 34,
   "totals": {
     "diagnosed": 8,
     "different_verified_result": 0,
     "same": 9,
-    "same_after_cleaning": 860,
+    "same_after_cleaning": 875,
     "untyped_failure": 0
   }
 }

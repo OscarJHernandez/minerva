@@ -1046,7 +1046,9 @@ def test_total_tool_calls_are_capped_whatever_the_steps(ctx: ToolContext) -> Non
     assert msg["truncated"] is True and "limit" in msg["text"]
     assert msg["stop_reason"] == "tool_call_limit"
     assert len(cards_of(msg)) == 4
-    assert len(llm.seen) == 2  # the cap ends the turn: no further model call
+    # The cap ends the tool calls; one last call without tools lets the model say what was established.
+    assert len(llm.seen) == 3
+    assert llm.tools_seen[-1] == []
     refused = [m["content"] for m in llm.seen[-1] if m["role"] == "tool"][4:]
     assert all("not run" in r for r in refused)
     skipped = [t for t in msg["trace"] if t["status"] == "skipped"]

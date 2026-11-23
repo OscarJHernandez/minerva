@@ -184,7 +184,9 @@ Everything is a closed list with a test and an inverse; nothing rewrites a meani
    numbers and text unified, `format: auto` resolved) so an equivalent call that ran or failed is not run again
    (`refused_equivalent`); a budget of consecutive failures per tool (`budget_exhausted`); a failure with a diagnostic
    code not seen before for the tool is progress. Unsupported mathematics is an answer and is never retried with
-   equivalent input.
+   equivalent input. A `resource_limit` result gets a fixed hint (`tools.RESOURCE_LIMIT_HINT`; for `expand_motion`,
+   `order: 1` is the smaller call when the user asked for small oscillations) and the turn ends with a summary
+   even at the step limit (issue 137).
 6. **Handles**: the model is told the handles (`@e4`) of the formulas the user displayed, so it passes the handle and
    Minerva substitutes the user's exact text. The user's own formula is never marked verified by being used.
 

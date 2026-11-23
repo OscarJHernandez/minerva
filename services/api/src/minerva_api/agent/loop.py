@@ -179,6 +179,58 @@ WRAP_UP_NOTICE = (
     "could not be established, and what the user could do next. Write no formula that is not in a tool "
     "result above."
 )
+# Stops after which the model gets one last call without tools to say what was established. A turn
+# that used every step on tool calls otherwise ends with the stop sentence alone (issue 137).
+WRAP_UP_STOPS = frozenset(
+    {StopReason.REPEATED_CALLS, StopReason.STEP_LIMIT, StopReason.TOOL_CALL_LIMIT}
+)
+# Stops after which the server says what the tool calls established when the model did not (no
+# time for the last call, or it failed, was empty or wrote a tool call as text).
+CLOSING_STOPS = WRAP_UP_STOPS | {StopReason.TIME_LIMIT}
+# Why a calculation gave no verified result, in fixed words, by the tool's own status.
+CLOSING_REASONS = {
+    "resource_limit": "stopped at the time or resource limit",
+    "unsupported": "not supported",
+    "conditions_not_satisfied": "its conditions were not established",
+    "not_verified": "a result was found but not verified, so it is not shown",
+    "parse_error": "the input could not be read",
+    "unchanged": "no other verified form was found",
+}
+CLOSING_OTHER = "it did not finish"
+
+
+def closing_summary(trace: Sequence[TraceStep]) -> str:
+    """What this turn's tool calls established, in fixed words built from counts and statuses.
+
+    Written by the server when the turn was cut short and the model said nothing about its results.
+    It holds no formula, no argument and nothing the user or the model wrote, so there is nothing in
+    it to verify: the results themselves are in the cards, each with its own checks.
+    """
+    ran = [t for t in trace if not t.repeated and t.status != "skipped"]
+    if not ran:
+        return ""
+    accepted = sum(1 for t in ran if t.status == "ok" and t.evidence and t.evidence.accepted)
+    reasons: dict[str, int] = {}
+    for t in ran:
+        if t.status == "ok":
+            continue
+        reason = CLOSING_REASONS.get(t.status or "", CLOSING_OTHER)
+        reasons[reason] = reasons.get(reason, 0) + 1
+    if accepted:
+        noun = "calculation" if accepted == 1 else "calculations"
+        parts = [
+            f"What was established: {accepted} {noun} gave a verified result, shown in the "
+            f"{'card' if accepted == 1 else 'cards'} above with {'its' if accepted == 1 else 'their'} checks."
+        ]
+    else:
+        parts = ["No verified result was established in this answer."]
+    if reasons:
+        listed = "; ".join(f"{count} ({reason})" for reason, count in reasons.items())
+        parts.append(f"Calculations without a verified result: {listed}.")
+    parts.append("I did not get to combine these into an answer to your question.")
+    return " ".join(parts)
+
+
 MALFORMED_TEXT = {
     "missing_name": "the call had no tool name",
     "arguments_not_json": "the arguments were not valid JSON",
@@ -1472,11 +1524,20 @@ async def _run_turn(
         else:
             stop = StopReason.STEP_LIMIT
 
-        if stop is StopReason.REPEATED_CALLS and remaining() > MIN_WRAP_UP_SECONDS:
+        summarised = False
+        if stop in WRAP_UP_STOPS and trace and remaining() > MIN_WRAP_UP_SECONDS:
             # One last call without tools, so the user gets what was and was not established.
             messages.append({"role": "user", "content": WRAP_UP_NOTICE})
             step += 1
-            tracer.emit(LLMRequest, step, message_count=len(messages), tool_count=0)
+            tracer.emit(
+                LLMRequest,
+                step,
+                message_count=len(messages),
+                tool_count=0,
+                window=params.num_ctx if params is not None else 0,
+                groups_loaded=len(active),
+                request_sha=request_sha(system_now, []),
+            )
             summary = _Step()
             async for ev in _model_step(llm, messages, [], remaining()):
                 if ev["event"] == "_step":
@@ -1508,9 +1569,15 @@ async def _run_turn(
                 tokens_in=summary.usage.prompt_tokens if summary.usage else None,
                 tokens_out=summary.usage.completion_tokens if summary.usage else None,
             )
-            if summary.text and not looks_like_tool_call(summary.text):
+            if summary.text.strip() and not looks_like_tool_call(summary.text):
                 full_text.append(summary.text)
                 order.append(summary.text)
+                summarised = True
+        if stop in CLOSING_STOPS and not summarised:
+            closing = closing_summary(trace)
+            if closing:
+                full_text.append(closing)
+                order.append(closing)
     except Exception as exc:
         stop = StopReason.INTERNAL_ERROR
         failure = "The assistant hit an internal error."

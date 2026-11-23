@@ -44,6 +44,13 @@ def run(case_id: str, script: list[Any], ctx: ToolContext) -> CaseResult:
     return asyncio.run(go())
 
 
+# The double pendulum Lagrangian of issue 137, as the cases write it.
+DOUBLE_PENDULUM = (
+    r"\frac12 (m_1+m_2) l_1^2 \dot{\theta}_1^2 + \frac12 m_2 l_2^2 \dot{\theta}_2^2 "
+    r"+ m_2 l_1 l_2 \dot{\theta}_1 \dot{\theta}_2 \cos(\theta_1-\theta_2) "
+    r"+ (m_1+m_2) g l_1 \cos\theta_1 + m_2 g l_2 \cos\theta_2"
+)
+
 # (case id) -> {"ideal": script, "adversarial": {failure class: script}}
 SCRIPTS: dict[str, dict[str, Any]] = {
     "pole-cancelled-by-simplification-is-reported": {
@@ -405,6 +412,54 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             FailureClass.TOOL_SELECTION: [
                 call("substitute", {"latex": "x^2 + y", "relations": ["y = 3x"]}),
                 say("I substituted the circular radius by hand."),
+            ],
+        },
+    },
+    "double-pendulum-both-angles-small-uses-expand-motion": {
+        "ideal": [
+            call(
+                "expand_motion",
+                {
+                    "lagrangian": DOUBLE_PENDULUM,
+                    "coordinates": ["theta_1", "theta_2"],
+                    "equilibrium": {"theta_1": "0", "theta_2": "0"},
+                    "order": 1,
+                    "assumptions": {n: ["positive"] for n in ("m_1", "m_2", "g", "l_1", "l_2")},
+                },
+            ),
+            say("The tool checked the linearisation about both angles at zero (see the card)."),
+        ],
+        "adversarial": {
+            # substituting by hand instead of linearising with the tool
+            FailureClass.TOOL_SELECTION: [
+                call("substitute", {"latex": "x^2 + y", "relations": ["y = 3x"]}),
+                say("I replaced the cosines by hand."),
+            ],
+        },
+    },
+    "double-pendulum-one-small-angle-is-not-widened": {
+        "ideal": [
+            call(
+                "series",
+                {"latex": DOUBLE_PENDULUM, "variable": "theta_1", "point": "0", "order": 2},
+            ),
+            say("Only $\\theta_1$ is taken as small here; $\\theta_2$ is left as it is."),
+        ],
+        "adversarial": {
+            # expand_motion expands in every coordinate at once: it answers a different regime. The call
+            # only has to be one to the forbidden tool, so it is a cheap one: the double pendulum itself
+            # would spend seconds in the engine, and a slow runner would report a resource limit first.
+            FailureClass.TOOL_SELECTION: [
+                call(
+                    "expand_motion",
+                    {
+                        "lagrangian": r"\frac12 m l^2\dot{\theta}_1^2 + m g l\cos\theta_1",
+                        "coordinates": ["theta_1"],
+                        "equilibrium": {"theta_1": "0"},
+                        "order": 1,
+                    },
+                ),
+                say("Both angles were taken as small."),
             ],
         },
     },

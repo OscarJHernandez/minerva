@@ -314,7 +314,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   output is retried once; nothing mathematical is retried. A verified result gets an id and can be reused as `@rN`.
   A turn that fails outside the loop stores an assistant message with `stop_reason: "internal_error"` and fixed text (never
   the cause), so a reload and a debug report show it; the report also says when it was copied mid-reply or when the last
-  message has no stored reply. Differential equations: when `ode_analyze` lists two or more applicable methods and the
+  message has no stored reply. A turn that ends at `step_limit`, `tool_call_limit` or `repeated_calls` gets one last model
+  call with no tools to say what was and was not established; if that gives nothing usable the server writes a fixed
+  closing from the turn's own trace (`loop.closing_summary`: counts and statuses only, no formula). A tool result of
+  `resource_limit` carries a fixed hint not to repeat the call and to make a smaller one only if it is what the user asked
+  for (`tools.RESOURCE_LIMIT_HINTS`). Differential equations: when `ode_analyze` lists two or more applicable methods and the
   user's message names none (`agent/choice.py`: closed form, numerically, series, perturbation, phase plane, equilibria;
   a pick by position counts only as a reply to that list), `ode_solve_symbolic` and `ode_solve_numerical` are refused
   (`needs_user_choice`) and the assistant lists the methods and asks. The server enforces it; the prompt only says it.

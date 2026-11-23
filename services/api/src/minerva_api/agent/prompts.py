@@ -181,7 +181,11 @@ A numerical solution (integrate_motion) needs numbers that only the user can cho
         """\
 To linearise about an equilibrium or a circular orbit (small oscillations), call `expand_motion` with the
    Lagrangian, the coordinates and the equilibrium written in text syntax (for example `p^2/(G*M*m^2)`).
-   Never differentiate and substitute by hand: its expansion, frequencies and modes are checked.\
+   Never differentiate and substitute by hand: its expansion, frequencies and modes are checked.
+   For small oscillations use `order: 1`. It expands in ALL the coordinates at once: say which
+   coordinates you take as small. If the user named only one of several, or named something that
+   is not a coordinate (a length, a mass), do not widen it to all of them: ask one short question,
+   or state the regime you use before the result.\
 """,
         """\
 perturbation_solve gives a local series in a small parameter. Do not call it valid for large values of
