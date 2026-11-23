@@ -1,9 +1,17 @@
 """Regression tests for expanding equations of motion about an equilibrium (sandboxed engine)."""
 
+import time
+
+import numpy as np
 import pytest
 import sympy as sp
-from minerva_engine import Engine, Status
-from minerva_engine.expansion import _zero_check
+from minerva_engine import Engine, Limits, Status, parse_latex
+from minerva_engine.expansion import (
+    ExpansionReport,
+    _modes,
+    _vector_residual_check,
+    _zero_check,
+)
 from minerva_engine.series import check_series
 from minerva_engine.testing import budget_limits
 
@@ -205,3 +213,132 @@ def test_wrong_normal_mode_is_rejected_by_substitution() -> None:
     assert _zero_check(poly.subs(w, -g / ell), "").passed
     assert not _zero_check(poly.subs(w, g / ell), "").passed
     assert not _zero_check(poly.subs(w, -g / (2 * ell)), "").passed
+
+
+# --- the double pendulum of issue 137 (theta_1, theta_2), both with and without assumptions -------
+# The Lagrangian as the chat sent it. The expected squared frequencies are not read from the engine: they are
+# the generalised eigenvalues of K v = omega^2 M v for the quadratic Lagrangian written out by hand,
+#   L2 = 1/2 (m1+m2) l1^2 th1d^2 + 1/2 m2 l2^2 th2d^2 + m2 l1 l2 th1d th2d
+#        - 1/2 (m1+m2) g l1 th1^2 - 1/2 m2 g l2 th2^2
+DOUBLE_PENDULUM = (
+    r"\frac12 (m_1+m_2) l_1^2\dot{\theta}_1^2 + \frac12 m_2 l_2^2\dot{\theta}_2^2 "
+    r"+ m_2 l_1 l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) "
+    r"+ (m_1+m_2) g l_1\cos\theta_1 + m_2 g l_2\cos\theta_2"
+)
+PARAMETERS = ("m_1", "m_2", "g", "l_1", "l_2")
+VALUES = {"m_1": 1.3, "m_2": 0.7, "g": 9.8, "l_1": 1.1, "l_2": 0.9}
+
+
+def _oracle_omega_squared() -> list[float]:
+    m1, m2, g, l1, l2 = (VALUES[n] for n in PARAMETERS)
+    mass = np.array([[(m1 + m2) * l1**2, m2 * l1 * l2], [m2 * l1 * l2, m2 * l2**2]])
+    stiffness = np.diag([(m1 + m2) * g * l1, m2 * g * l2])
+    return sorted(float(x) for x in np.linalg.eigvals(np.linalg.solve(mass, stiffness)).real)
+
+
+@pytest.mark.parametrize("declared", [False, True], ids=["no assumptions", "positive parameters"])
+def test_the_double_pendulum_of_the_issue_gives_verified_linear_modes(
+    engine: Engine, declared: bool
+) -> None:
+    assumptions = {n: ["positive"] for n in PARAMETERS} if declared else {}
+    report = expand(
+        engine,
+        DOUBLE_PENDULUM,
+        ["theta_1", "theta_2"],
+        order=1,
+        assumptions=assumptions,
+        theta_1="0",
+        theta_2="0",
+    )
+    assert report.status is Status.OK, report.message
+    assert len(report.equations) == 2
+    assert all(e.verification is not None and e.verification.passed for e in report.equations)
+    assert report.equilibrium_verification is not None and report.equilibrium_verification.passed
+    assert len(report.modes) == 2
+    assert all(m.verified and m.eigenvector_latex for m in report.modes)
+    values = sorted(
+        float(
+            parse_latex(m.omega_squared_latex.split("=", 1)[1], assumptions, Limits()).subs(
+                {
+                    s: VALUES[s.name]
+                    for s in parse_latex(
+                        m.omega_squared_latex.split("=", 1)[1], assumptions, Limits()
+                    ).free_symbols
+                }
+            )
+        )
+        for m in report.modes
+    )
+    assert values == pytest.approx(_oracle_omega_squared(), rel=1e-9)
+
+
+def test_the_report_says_how_long_each_stage_took(engine: Engine) -> None:
+    report = expand(engine, PENDULUM, ["theta"], order=1)
+    assert set(report.stages) == {"prepare", "expand", "linear", "modes"}
+    assert all(isinstance(ms, int) and ms >= 0 for ms in report.stages.values())
+
+
+# --- the eigenvector check: wrong twins of every kind --------------------------------------------
+_G, _L, _M1, _M2, _L2 = sp.symbols("g l_1 m_1 m_2 l_2", positive=True)
+_A = sp.Matrix(
+    [
+        [-_G * (_M1 + _M2) / (_L * _M1), _G * _M2 / (_L * _M1)],
+        [_G * (_M1 + _M2) / (_L2 * _M1), -_G * (_M1 + _M2) / (_L2 * _M1)],
+    ]
+)
+
+
+def _a_mode() -> tuple[sp.Expr, sp.Matrix]:
+    w = sp.Symbol("w")
+    root = next(iter(sp.roots(sp.Poly(sp.expand((_A + w * sp.eye(2)).det()), w))))
+    (vector,) = (_A + root * sp.eye(2)).nullspace(simplify=True)
+    return root, vector
+
+
+def test_the_true_eigenvector_passes_and_the_wrong_ones_do_not() -> None:
+    root, vector = _a_mode()
+    assert _vector_residual_check(_A, root, vector, "").passed
+    # a 1e-9 relative error in one component, the other component, a swapped pair, a wrong root
+    nudged = sp.Matrix([vector[0] * (1 + sp.Rational(1, 10**9)), vector[1]])
+    assert not _vector_residual_check(_A, root, nudged, "").passed
+    assert not _vector_residual_check(_A, root, sp.Matrix([vector[1], vector[0]]), "").passed
+    assert not _vector_residual_check(_A, root * (1 + sp.Rational(1, 10**9)), vector, "").passed
+    assert not _vector_residual_check(_A, root + 1, vector, "").passed
+
+
+def test_the_zero_vector_is_not_an_eigenvector() -> None:
+    root, _ = _a_mode()
+    result = _vector_residual_check(_A, root, sp.zeros(2, 1), "")
+    assert not result.passed and result.numeric_points_checked == 0
+
+
+def test_a_numeric_matrix_is_checked_the_same_way() -> None:
+    a = sp.Matrix([[2, 0], [0, 3]])
+    assert _vector_residual_check(a, sp.Integer(-2), sp.Matrix([1, 0]), "").passed
+    assert not _vector_residual_check(a, sp.Integer(-2), sp.Matrix([0, 1]), "").passed
+
+
+# --- the budget -----------------------------------------------------------------------------------
+def test_modes_are_left_out_not_guessed_when_the_time_budget_is_used_up() -> None:
+    report = ExpansionReport(status=Status.OK)
+    _modes(report, _A, 2, {"w"}, deadline=time.monotonic() - 1)
+    assert report.modes == []
+    assert any("time budget" in note for note in report.notes)
+
+
+@pytest.mark.extended
+@pytest.mark.parametrize("declared", [False, True], ids=["no assumptions", "positive parameters"])
+def test_the_double_pendulum_fits_the_production_limit(declared: bool) -> None:
+    """Issue 137 timed out at the deployed 10 s. Wall-clock dependent, so not part of the pull-request tier."""
+    assumptions = {n: ["positive"] for n in PARAMETERS} if declared else {}
+    live = Engine(Limits(timeout_seconds=10, max_concurrency=1))
+    report = live.expand_motion(
+        DOUBLE_PENDULUM,
+        ["theta_1", "theta_2"],
+        "t",
+        assumptions,
+        {"theta_1": "0", "theta_2": "0"},
+        1,
+    )
+    assert report.status is Status.OK, report.message
+    assert len(report.modes) == 2

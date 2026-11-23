@@ -9,7 +9,7 @@ the extended profile (`MINERVA_HYPOTHESIS_PROFILE=extended`) many more with a re
 import mpmath
 import pytest
 import sympy as sp
-from hypothesis import assume, given
+from hypothesis import assume, example, given
 from hypothesis import strategies as st
 from minerva_engine import Engine, ExpressionInput, Limits, Status
 from minerva_engine.counterexample import Budget, check_counterexample, find_counterexample
@@ -31,6 +31,7 @@ LIMITS = Limits(timeout_seconds=60)
 
 
 # --- integration and differentiation ------------------------------------------------------------------------
+@example((X * sp.exp(X) + 8 * sp.exp(4 * X) + sp.exp(X), X * sp.exp(X) + 2 * sp.exp(4 * X)))
 @given(antiderivable())
 def test_an_antiderivative_differentiates_back_to_the_integrand(
     engine: Engine, case: tuple[sp.Expr, sp.Expr]
@@ -44,7 +45,10 @@ def test_an_antiderivative_differentiates_back_to_the_integrand(
     found = parse_text(result.result_text)
     assert verify_equal(sp.diff(found, X), integrand, symbolic=False).passed
     # Two antiderivatives of one integrand differ by a constant: their derivatives agree everywhere.
-    assert verify_equal(sp.diff(found - F, X), sp.Integer(0), symbolic=False).passed
+    # Compared side against side, not as a difference against 0: for exp(4x) the difference of two large
+    # derivatives (about e^200 at |x| = 50) is cancellation noise that the sampler read as a disagreement
+    # on the nightly runs of 2026-11-18 and 2026-11-22 (pinned by the @example above).
+    assert verify_equal(sp.diff(found, X), sp.diff(F, X), symbolic=False).passed
 
 
 # --- restrictions propagate -----------------------------------------------------------------------------------

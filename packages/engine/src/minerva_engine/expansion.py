@@ -25,10 +25,12 @@ and systems with velocity-linear terms get the characteristic polynomial only.
 
 from __future__ import annotations
 
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Literal
 
+import mpmath
 import sympy as sp
 from pydantic import BaseModel, Field
 
@@ -38,10 +40,23 @@ from .latexprint import to_latex
 from .models import ExpressionInput, Limits, Status, Verification
 from .notation.models import InputAware
 from .series import MAX_ORDER, SeriesVerification, check_series
-from .verify import MIN_VALID_POINTS, numeric_check
+from .verify import (
+    MIN_VALID_POINTS,
+    NARROW_POINTS,
+    SAMPLE_ATTEMPTS,
+    WIDE_POINTS,
+    _sample,
+    numeric_check,
+)
 
 MAX_POLY_COORDINATES = 4
 NODE_FACTOR = 5
+# The eigenvector check evaluates (A + omega^2 I) w at sampled parameter values with this many digits and
+# accepts a residual only if it is below RESIDUAL_TOLERANCE of the size of the terms that cancel. Exact
+# arithmetic leaves ~1e-55 at 60 digits, a vector wrong by 1e-9 leaves ~1e-9.
+RESIDUAL_DIGITS = 60
+RESIDUAL_TOLERANCE = mpmath.mpf(10) ** -25
+RESIDUAL_SEED = 20260101
 
 
 class ExpansionTerm(BaseModel):
@@ -87,6 +102,12 @@ class ExpansionReport(InputAware):
     notes: list[str] = Field(default_factory=list)
     message: str = ""
     duration_ms: int = 0
+    # Milliseconds per stage (prepare, expand, linear, modes): names and numbers only.
+    stages: dict[str, int] = Field(default_factory=dict)
+
+
+def _elapsed_ms(since: float) -> int:
+    return int((time.monotonic() - since) * 1000)
 
 
 def _fail(status: Status, message: str, **extra: object) -> ExpansionReport:
@@ -99,6 +120,69 @@ def _zero_check(expr: sp.Expr, note: str) -> Verification:
     checked, agreed = numeric_check(expr, sp.Integer(0))
     return Verification(
         symbolic_zero=bool(symbolic),
+        numeric_points_checked=checked,
+        numeric_points_agreed=agreed,
+        passed=checked >= MIN_VALID_POINTS and agreed == checked,
+        note=note,
+    )
+
+
+def _row_residuals_vanish(matrix: mpmath.matrix, vec: mpmath.matrix, n: int) -> bool:
+    """Every row of matrix * vec is below RESIDUAL_TOLERANCE of the size of the products in it."""
+    if all(vec[j] == 0 for j in range(n)):
+        raise ValueError("the zero vector satisfies every residual")
+    held = True
+    for i in range(n):
+        residual = sum((matrix[i, j] * vec[j] for j in range(n)), mpmath.mpf(0))
+        scale = sum((abs(matrix[i, j]) * abs(vec[j]) for j in range(n)), mpmath.mpf(0))
+        if not (mpmath.isfinite(residual) and mpmath.isfinite(scale)):
+            raise ValueError("not finite")
+        held = held and abs(residual) <= RESIDUAL_TOLERANCE * scale
+    return held
+
+
+def _vector_residual_check(
+    a_matrix: sp.Matrix, root: sp.Expr, vector: sp.Matrix, note: str
+) -> Verification:
+    """Test (A + root I) vector = 0 at sampled parameter values, with 60-digit mpmath arithmetic.
+
+    The sum of |r_i|^2 of nested radicals that `_zero_check` used to evaluate is exactly zero, so SymPy's
+    `evalf` kept raising its precision to resolve the cancellation (0.1-0.3 s per point, 5 s per mode for a
+    double pendulum with no assumptions). Here the entries are lambdified, the points are the same kind of
+    assumption-respecting samples as `numeric_check`, and each row's residual is compared with the size of
+    the products that cancel in it. A point where something is undefined is skipped; the vector must be
+    nonzero there (the zero vector satisfies everything). There is no symbolic leg.
+    """
+    n = a_matrix.shape[0]
+    symbols = sorted(
+        a_matrix.free_symbols | root.free_symbols | vector.free_symbols, key=lambda s: s.name
+    )
+    shifted = a_matrix + root * sp.eye(n)
+    entries = sp.lambdify(symbols, shifted, "mpmath")
+    components = sp.lambdify(symbols, vector, "mpmath")
+    rng = random.Random(RESIDUAL_SEED)  # noqa: S311 - deterministic sampling, not cryptographic
+    checked = agreed = 0
+    with mpmath.workdps(RESIDUAL_DIGITS):
+        for wide, limit in ((False, NARROW_POINTS), (True, WIDE_POINTS)):
+            got = 0
+            for _ in range(SAMPLE_ATTEMPTS):
+                point = [
+                    mpmath.mpmathify(
+                        complex(_sample(s, rng, wide=wide, spread=max(1, len(symbols))))
+                    )
+                    for s in symbols
+                ]
+                try:
+                    held = _row_residuals_vanish(entries(*point), components(*point), n)
+                except (ZeroDivisionError, ValueError, OverflowError, TypeError):
+                    continue  # undefined here (or the zero vector): not a point of the check
+                checked += 1
+                got += 1
+                agreed += 1 if held else 0
+                if got >= limit:
+                    break
+    return Verification(
+        symbolic_zero=False,
         numeric_points_checked=checked,
         numeric_points_agreed=agreed,
         passed=checked >= MIN_VALID_POINTS and agreed == checked,
@@ -255,7 +339,9 @@ def expand_motion(
     deadline = started + 0.8 * limits.timeout_seconds
     if not 1 <= order <= MAX_ORDER:
         return _fail(Status.UNSUPPORTED, f"Give an order between 1 and {MAX_ORDER}.")
+    stages: dict[str, int] = {}
     prepared = prepare(latex, coordinates, time_name, assumptions, equilibrium, limits)
+    stages["prepare"] = _elapsed_ms(started)
     if isinstance(prepared, Refusal):
         return _fail(prepared.status, prepared.message, order=order, **prepared.extra)
     d, q0, shown_coordinates = prepared.d, prepared.q0, prepared.shown_coordinates
@@ -331,7 +417,9 @@ def expand_motion(
         )
         first_order.append(coefficients[1])
 
-    report = ExpansionReport(status=Status.OK, equations=equations, **base)
+    stages["expand"] = _elapsed_ms(started) - stages["prepare"]
+    report = ExpansionReport(status=Status.OK, equations=equations, stages=stages, **base)
+    stages = report.stages  # the report keeps its own copy: later stages are added to that one
 
     # 4. The linear system: uddot = A u + B v.
     a_matrix = sp.Matrix(d.n, d.n, lambda i, j: sp.diff(first_order[i], u[j]))
@@ -356,8 +444,11 @@ def expand_motion(
             "Characteristic polynomial of the linearised system: each root λ gives solutions "
             "proportional to exp(λ t)."
         )
+    stages["linear"] = _elapsed_ms(started) - stages["prepare"] - stages["expand"]
     if velocity_free and d.n <= 2:
-        _modes(report, a_matrix, d.n, taken)
+        modes_started = time.monotonic()
+        _modes(report, a_matrix, d.n, taken, deadline)
+        stages["modes"] = _elapsed_ms(modes_started)
     elif not velocity_free:
         report.notes.append(
             "The linear part has velocity terms (damping or gyroscopic), so normal-mode "
@@ -380,7 +471,9 @@ def _message(report: ExpansionReport) -> str:
     )
 
 
-def _modes(report: ExpansionReport, a_matrix: sp.Matrix, n: int, taken: set[str]) -> None:
+def _modes(
+    report: ExpansionReport, a_matrix: sp.Matrix, n: int, taken: set[str], deadline: float
+) -> None:
     w = _fresh("w", taken)
     poly = sp.expand((a_matrix + w * sp.eye(n)).det())
     roots = sp.roots(sp.Poly(poly, w))
@@ -388,6 +481,13 @@ def _modes(report: ExpansionReport, a_matrix: sp.Matrix, n: int, taken: set[str]
         report.notes.append("The normal-mode frequencies could not be found in closed form.")
         return
     for root, multiplicity in roots.items():
+        if time.monotonic() > deadline:
+            report.modes = []
+            report.notes.append(
+                "The normal modes were not computed: the time budget was used up. The expansion above "
+                "is verified; the modes are not shown."
+            )
+            return
         substitution = sp.expand(poly.subs(w, root))
         ver = _zero_check(substitution, "det(A + omega^2 I) is zero at this omega^2")
         sign: Literal["positive", "negative", "zero", "unknown"] = "unknown"
@@ -401,8 +501,7 @@ def _modes(report: ExpansionReport, a_matrix: sp.Matrix, n: int, taken: set[str]
         vectors = (a_matrix + root * sp.eye(n)).nullspace(simplify=True)
         if len(vectors) == 1:
             vec = vectors[0]
-            residual = (a_matrix + root * sp.eye(n)) * vec
-            if _zero_check(sum((sp.Abs(r) ** 2 for r in residual), sp.Integer(0)), "").passed:
+            if _vector_residual_check(a_matrix, root, vec, "").passed:
                 eigenvector = to_latex(vec.applyfunc(sp.simplify))
         report.modes.append(
             NormalMode(
