@@ -59,6 +59,7 @@ Reason = Literal[
     "tolerance_not_met",
     "degenerate_system",
     "domain_invalid",
+    "fields_not_for_method",
 ]
 
 Warning = Literal[
@@ -82,7 +83,12 @@ Evidence = Literal["series_checked", "numeric_estimate", "bound_established", "n
 
 
 class ApproximationInput(ExpressionInput):
-    """`input` is the expression (or the summand, for a sum). Fields not used by `method` are ignored."""
+    """`input` is the expression (or the summand, for a sum).
+
+    Most fields a method does not use are ignored, with two exceptions that used to produce a result
+    about another request (`operation.refuse_mismatched_request`): `variables` / `points` sent to a
+    method of one variable, and a `variable` the expression does not contain.
+    """
 
     method: Method = "taylor"
     variable: str = Field(default="x", min_length=1, max_length=32)

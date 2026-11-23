@@ -54,6 +54,42 @@ HANDLERS: dict[str, Handler] = {
 }
 
 
+# Methods that work in the one `variable`. The others name what they expand in themselves
+# (`perturbation`: `small`; `multivariable`: `variables`; `continued_fraction`: a number).
+NO_SINGLE_VARIABLE = frozenset({"auto", "perturbation", "multivariable", "continued_fraction"})
+# Methods `variables` and `points` are meant for (`auto` routes them to `multivariable`).
+TAKES_VARIABLES = frozenset({"auto", "multivariable"})
+
+
+def refuse_mismatched_request(ctx: Context, method: str) -> None:
+    """Refuse a request whose fields say something the method would silently not do.
+
+    `variables` sent to a method of one variable used to be dropped, and the method then expanded
+    in the default `variable`, which the expression did not contain: a verified series of the
+    unchanged expression, presented as the answer. Nothing is rerouted here: `point` is not
+    `points`, so which expansion was meant is the caller's to say.
+    """
+    data = ctx.data
+    if method not in TAKES_VARIABLES and (data.variables or data.points):
+        raise Refused(
+            Status.CONDITIONS_NOT_SATISFIED,
+            "fields_not_for_method",
+            f"`variables` and `points` belong to the method `multivariable` (one expansion point for "
+            f"each variable); `{method}` works in the one `variable`. Nothing was computed.",
+        )
+    if method in NO_SINGLE_VARIABLE:
+        return
+    free = ctx.expr.free_symbols
+    if free and ctx.var not in free:
+        raise Refused(
+            Status.UNSUPPORTED,
+            "variable_missing",
+            f"The expression does not contain the variable `{data.variable}`, so there is nothing to "
+            "approximate in it. Name a variable of the expression (several variables at once: the "
+            "method `multivariable` with `variables` and `points`).",
+        )
+
+
 def approximation_with(
     ctx: Context, method: str, update: dict[str, Any], handlers: dict[str, Handler]
 ) -> ApproximationReport:
@@ -62,6 +98,7 @@ def approximation_with(
     data = ctx.data.model_copy(update={"method": method, **update})
     sub = Context(data, ctx.limits, ctx.started, ctx.expr, ctx.var)
     try:
+        refuse_mismatched_request(sub, method)
         return handler(sub)
     except Refused as refused:
         return failure(method, refused, data=data)
@@ -91,7 +128,9 @@ def approximation(data: ApproximationInput, limits: Limits) -> ApproximationRepo
         )
     else:
         try:
-            report = handler(build_context(data, limits, started))
+            ctx = build_context(data, limits, started)
+            refuse_mismatched_request(ctx, data.method)
+            report = handler(ctx)
         except Refused as refused:
             report = failure(data.method, refused, data=data)
         except LimitError as exc:

@@ -47,6 +47,24 @@ def test_a_missing_regime_is_a_question_not_a_guess(authed: TestClient) -> None:
     assert body["questions"] and body["result_latex"] is None
 
 
+def test_a_list_of_variables_for_a_method_of_one_variable_is_refused(authed: TestClient) -> None:
+    r = authed.post(
+        "/v1/compute/approximation",
+        json={
+            "input": "cos(a - b)",
+            "format": "text",
+            "method": "taylor",
+            "variables": ["a", "b"],
+            "point": "0",
+            "order": 2,
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "conditions_not_satisfied"
+    assert body["reason"] == "fields_not_for_method" and body["result_latex"] is None
+
+
 def test_interval_methods_report_measurements_not_bounds(authed: TestClient) -> None:
     r = authed.post(
         "/v1/compute/approximation",
@@ -220,3 +238,55 @@ def test_the_tool_refuses_an_expression_about_a_declared_matrix(
         context,
     )
     assert out.card.type == "error" and out.status != "ok"
+
+
+ISSUE_137_CALL = {
+    "latex": r"m_2 l_1 l_2 \dot{\theta}_1 \dot{\theta}_2 \cos(\theta_1-\theta_2) + m_2 g l_2 \cos\theta_2",
+    "method": "taylor",
+    "variables": ["theta_1", "theta_2"],
+    "point": "0",
+    "order": 2,
+}
+
+
+def _context() -> ToolContext:
+    from minerva_engine import Engine, Limits
+
+    return ToolContext(engine=Engine(Limits(timeout_seconds=20, max_concurrency=2)), kb=None)  # type: ignore[arg-type]
+
+
+def test_the_tool_tells_the_model_why_taylor_with_a_list_of_variables_was_not_run() -> None:
+    """Issue 137: this call was `ok` with the expression unchanged, in the default variable x."""
+    out = execute("approximation", dict(ISSUE_137_CALL), _context())
+    assert out.status == "conditions_not_satisfied"
+    assert "reason=fields_not_for_method" in out.for_model
+    assert "multivariable" in out.for_model and "approximation=" not in out.for_model
+    assert out.known_latex == []
+    assert out.card.data["report"]["result_latex"] is None
+
+
+def test_the_tool_refuses_a_variable_the_expression_does_not_contain() -> None:
+    call = {k: v for k, v in ISSUE_137_CALL.items() if k != "variables"}  # variable defaults to x
+    out = execute("approximation", call, _context())
+    assert out.status == "unsupported" and "reason=variable_missing" in out.for_model
+    assert out.known_latex == []
+
+
+def test_the_tool_expands_in_both_angles_when_asked_with_one_point_each() -> None:
+    call = {**ISSUE_137_CALL, "method": "multivariable", "points": ["0", "0"]}
+    del call["point"]
+    out = execute("approximation", call, _context())
+    assert out.status == "ok" and "approximation=" in out.for_model
+    assert all(c["passed"] for c in out.card.data["report"]["checks"])
+
+
+def test_the_card_form_gets_the_same_refusal() -> None:
+    app = build_app(llm_mode="scripted")
+    with TestClient(app) as client:
+        register(client)
+        cid = client.post("/v1/chat/conversations", json={}).json()["id"]
+        r = client.post(f"/v1/chat/conversations/{cid}/tools/approximation", json=ISSUE_137_CALL)
+        assert r.status_code == 201
+        (card,) = cards_of(r.json()["content"])
+        assert card["data"]["report"]["reason"] == "fields_not_for_method"
+        assert card["data"]["report"]["result_latex"] is None

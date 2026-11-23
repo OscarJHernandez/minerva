@@ -587,6 +587,30 @@
             "ok": true
           },
           {
+            "expected": "fields_not_for_method",
+            "got": "fields_not_for_method",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
+            "expected": "variable_missing",
+            "got": "variable_missing",
+            "name": "refused",
+            "ok": true
+          },
+          {
+            "expected": "none",
+            "got": "None",
+            "name": "no result shown",
+            "ok": true
+          },
+          {
             "expected": "not_verified",
             "got": "not_verified",
             "name": "oscillating sum is not shown",
@@ -603,25 +627,25 @@
   },
   "measurements": {
     "seconds": {
-      "acceleration": 0.34,
-      "asymptotic": 0.11,
-      "chebyshev": 0.09,
-      "chebyshev-tolerance": 0.23,
-      "continued-fractions": 0.04,
-      "euler-maclaurin": 0.05,
-      "fourier": 0.28,
-      "integral-expansion": 0.15,
-      "laplace": 0.14,
+      "acceleration": 0.32,
+      "asymptotic": 0.1,
+      "chebyshev": 0.08,
+      "chebyshev-tolerance": 0.22,
+      "continued-fractions": 0.03,
+      "euler-maclaurin": 0.04,
+      "fourier": 0.25,
+      "integral-expansion": 0.14,
+      "laplace": 0.13,
       "laurent": 0.05,
-      "legendre": 0.1,
-      "limits": 0.03,
-      "multivariable": 0.06,
+      "legendre": 0.09,
+      "limits": 0.02,
+      "multivariable": 0.05,
       "pade": 0.03,
       "piecewise": 0.05,
-      "refusals": 0.37,
+      "refusals": 0.34,
       "relativistic": 0.13,
-      "root-and-inverse": 0.14,
-      "strategy": 0.41,
+      "root-and-inverse": 0.12,
+      "strategy": 0.37,
       "taylor": 0.03
     }
   }
