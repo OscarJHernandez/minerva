@@ -7,7 +7,7 @@ import {
   momentsCauchy,
   sumsOk,
 } from "@/test/stat-fixtures";
-import type { StoredMessage, TraceEvent } from "./chat-types";
+import type { Card, StoredMessage, TraceEvent } from "./chat-types";
 import { sphere, sphereRequest } from "../test/geometry-fixtures";
 import {
   CONTENT_NOTICE,
@@ -466,12 +466,12 @@ describe("the build in a report", () => {
   });
 });
 
-describe("buildDebugReport, format 3", () => {
+describe("buildDebugReport, format 4", () => {
   const report = buildDebugReport({ ...input, messages: [user, traced] });
 
   it("says what it contains and how it is shaped", () => {
-    expect(REPORT_FORMAT).toBe(3);
-    expect(report).toContain("format 3 ·");
+    expect(REPORT_FORMAT).toBe(4);
+    expect(report).toContain("format 4 ·");
     expect(report).toContain(CONTENT_NOTICE);
     expect(CONTENT_NOTICE).toMatch(/conversation content/);
     const json = JSON.parse(
@@ -479,7 +479,7 @@ describe("buildDebugReport, format 3", () => {
         .slice(report.indexOf(JSON_START) + JSON_START.length, report.indexOf(JSON_END))
         .replace(/```json|```/g, ""),
     );
-    expect(json.format).toBe(3);
+    expect(json.format).toBe(4);
     expect(json.contains_conversation_content).toBe(true);
     expect(json.messages[1].debug.events).toHaveLength(5);
     expect(json.messages[1].stop_reason).toBe("repeated_calls");
@@ -530,11 +530,98 @@ describe("buildDebugReport, format 3", () => {
 
   it("still reports messages stored before tracing, with no invented fields", () => {
     const old = buildDebugReport({ ...input, messages: [user, assistant] });
-    expect(old).toContain("format 3");
+    expect(old).toContain("format 4");
     expect(old).not.toContain("stop reason:");
     expect(old).not.toContain("Timeline:");
     expect(old).not.toContain("- evidence:");
     expect(old).toContain("trace - · request req123");
+  });
+});
+
+describe("what a follow-up turn is rebuilt from (format 4)", () => {
+  // The discovery report is large; the test needs only its id, type and numbered rows.
+  const card = {
+    id: "t9",
+    tool: "find_conserved_quantities",
+    type: "discovery" as const,
+    title: "Constants of motion",
+    data: { report: { system: "lagrangian", constants: [] } },
+    number: null,
+    numbers: { "const:0": 7, "const:1": 8 },
+  } as unknown as Card;
+
+  const earlier: StoredMessage = {
+    ...assistant,
+    id: "a0",
+    content: {
+      text: "Found two constants.",
+      truncated: false,
+      trace: [],
+      blocks: [
+        { kind: "card", segments: [], card },
+        {
+          kind: "text",
+          card: null,
+          segments: [{ type: "display_math", value: "y = x", status: "unchecked", number: 9 }],
+        },
+      ],
+    },
+  };
+  const asked: StoredMessage = {
+    ...user,
+    id: "u2",
+    content: {
+      text: "Use equation 7 and $$q = 1$$",
+      equations: [{ number: 11, latex: "q = 1" }],
+      references: [{ number: 7, latex: "C_1 = a", source: "from_tool" }],
+    },
+  };
+  const messages = [user, earlier, asked, assistant];
+
+  it("keeps the cards as stored, the user's numbered formulas and what their references were", () => {
+    const data = reportData({ ...input, messages });
+    expect(data.messages[1]?.blocks).toEqual(earlier.content.blocks);
+    expect(data.messages[1]?.blocks[0]?.card?.numbers).toEqual({ "const:0": 7, "const:1": 8 });
+    expect(data.messages[2]?.equations).toEqual([{ number: 11, latex: "q = 1" }]);
+    expect(data.messages[2]?.references).toEqual([
+      { number: 7, latex: "C_1 = a", source: "from_tool" },
+    ]);
+    // a user message has no cards and an assistant message no numbered user formulas
+    expect(data.messages[0]?.blocks).toEqual([]);
+    expect(data.messages[1]?.equations).toEqual([]);
+  });
+
+  it("carries the equation counter: the server's mark, never below the numbers shown", () => {
+    expect(reportData({ ...input, messages }).conversation.equation_counter).toBe(11);
+    const high = reportData({ ...input, messages, equationCounter: 15 }).conversation;
+    expect(high.equation_counter).toBe(15);
+    expect(high.equation_counter_reported).toBe(15);
+    const low = reportData({ ...input, messages, equationCounter: 2 }).conversation;
+    expect(low.equation_counter).toBe(11);
+    expect(low.equation_counter_reported).toBe(2);
+    expect(reportData({ ...input, messages }).conversation.equation_counter_reported).toBeNull();
+  });
+
+  it("says which messages a per-turn copy holds, so a replay knows what is missing", () => {
+    const whole = reportData({ ...input, messages }).conversation;
+    expect(whole).toMatchObject({
+      messages_total: 4,
+      first_message_index: 0,
+      messages_included: 4,
+    });
+    const turn = buildTurnReport({ ...input, equationCounter: 15 }, messages, 3);
+    const json = JSON.parse(
+      turn
+        .slice(turn.indexOf(JSON_START) + JSON_START.length, turn.indexOf(JSON_END))
+        .replace(/`{3,}(json)?/g, ""),
+    );
+    expect(json.conversation).toMatchObject({
+      messages_total: 4,
+      first_message_index: 2,
+      messages_included: 2,
+      equation_counter: 15,
+    });
+    expect(json.messages).toHaveLength(2);
   });
 });
 

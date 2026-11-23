@@ -376,13 +376,22 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - A turn is bounded: `AgentLimits` caps steps, total tool calls (12) and seconds, enforced during model streaming, between
   tool calls and around the claim check; a failing or hanging tool becomes an error card with fixed text, never its cause.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows a timeline (`apps/web/src/lib/trace-timeline.ts`) and each tool
-  call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 2) to
+  call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 4) to
   paste to an agent; use the `chat-trace-triage` skill on it. The data comes from `AssistantMessage.trace/debug` stored with
   the message (failed turns too). The server log gets counters, `request_id` and `trace_id` only, never content. See
   `docs/observability.md`. With thinking requested (`MINERVA_LLM_THINK`, off by default), the model's reasoning is
   stored per model call in `debug.llm_calls[i].thinking` and shown only in debug mode (collapsed, and in the copied
   report); it is never reply text, never replayed to the model, never checked, and only its length (`thinking_chars`)
   reaches a trace event or the log.
+  A follow-up turn is replayed offline with its stored context (`scripts/replay_trace.py --llm`, `ReplayLLM` only, never a model host):
+  the report's earlier messages go through `turn_context`, the function the chat route calls. Format 4 adds each assistant message's
+  `blocks` (the cards as stored, with their equation numbers), each user message's `equations` and `references`, and `conversation`
+  (the equation-number high-water mark and which messages the report holds); with them the constants, `@rN` results and their
+  restrictions, unverified inputs, evidence and the equation table are restored, and numbers given out once are not reused. Formats 2
+  and 3 have no cards: the script names what it cannot restore (`missing`) and says the follow-up cannot be faithfully replayed; a
+  difference that missing context may explain is listed apart from one in what the engine established, and a replay with anything
+  missing is never "same" (exit status 3, not 0). A new kind of stored context the route reads must go into `turn_context`, into the
+  report (`reportData`) and into `replay_trace.missing_context`.
 
 ## Mathematical correctness (non-negotiable)
 

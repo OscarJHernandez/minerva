@@ -2,8 +2,8 @@
 
 From "this answer looks wrong" to a regression test, without another model and without user content in the repo.
 
-1. **Export.** Open the chat in debug mode (footer checkbox or `?debug=1`) and use "Copy debug report" (format 3;
-   formats 1 and 2 are still read). The report starts with a `diagnosis:` line: the stage, the step, the first
+1. **Export.** Open the chat in debug mode (footer checkbox or `?debug=1`) and use "Copy debug report" (format 4;
+   formats 1 to 3 are still read, but a follow-up in them cannot be replayed faithfully). The report starts with a `diagnosis:` line: the stage, the step, the first
    failure code, and whether the turn can be replayed.
 2. **Read the diagnosis.** Stages: `model`, `parser`, `orchestrator`, `engine`, `verifier`, `infrastructure`,
    `undetermined`. `undetermined` is an honest answer (several subsystems, or events were dropped): read the
@@ -12,6 +12,9 @@ From "this answer looks wrong" to a regression test, without another model and w
    calls and compares status and evidence. A difference means the code changed behaviour since the report.
 4. **Replay the whole turn.** `--llm` plays the recorded model replies through the real loop and compares the
    executed arguments and the evidence verdicts per step, so a change in routing, cleaning or recovery shows.
+   A follow-up turn gets its stored context back (constants, `@rN` results and restrictions, evidence, the equation
+   table) when the report is format 4; `missing` says what an older report cannot restore, and exit status 3 means
+   "no difference found, but not an equivalent replay" (see `observability.md`).
 5. **Classify** with the closed vocabulary (`FailureClass`, `InputCode`, stop reasons) and `scripts/diagnostic_codes.py`
    over the API log for how often a code occurs. Decide: model mistake the input layer should read (add the inverse to
    `notation/transport.py` `DAMAGE` or a corruption operator), orchestration defect (fix and pin), engine

@@ -350,7 +350,8 @@ and explains; it never computes and never decides correctness.
   replaced, the text it read back, status, duration, an `evidence` record, an error category) and `debug` (trace id,
   model, prompt fingerprint, per-call timings, the events, how each equation the model wrote was tested). Failed turns
   are stored too. With "Debug mode" on, the chat shows a timeline and copies a Markdown report ending in a JSON block;
-  `scripts/replay_trace.py` re-runs the recorded tool calls, or a whole turn with `--llm`, and the `chat-trace-triage`
+  `scripts/replay_trace.py` re-runs the recorded tool calls, or a whole turn with `--llm` (a follow-up with its stored
+  context, rebuilt by the same `agent/turn_context.py` the chat route calls), and the `chat-trace-triage`
   skill says how to classify the result. This is conversation content: it is shown and stored only with the
   conversation, under its access and deletion rules. The server log holds no content at any setting: `chat_turn` and
   the events carry identifiers, counts, durations and fixed vocabulary. See [observability.md](observability.md).

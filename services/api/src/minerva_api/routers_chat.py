@@ -158,6 +158,9 @@ class MessageOut(BaseModel):
 
 class ConversationDetail(ConversationOut):
     messages: list[MessageOut]
+    # The highest equation number ever given out in this conversation (a high-water mark: it stays above the
+    # numbers of messages that were replaced). A debug report carries it so a replay numbers like the live chat.
+    equation_counter: int = 0
 
 
 class NewConversation(BaseModel):
@@ -455,6 +458,7 @@ def get_conversation(conversation_id: uuid.UUID, user: UserDep, db: DbDep) -> Co
             MessageOut(id=m.id, role=m.role, content=m.content, created_at=m.created_at)
             for m in messages
         ],
+        equation_counter=row.equation_counter,
     )
 
 

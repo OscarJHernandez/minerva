@@ -15,10 +15,20 @@ the evidence record with what was recorded. No model and no network are involved
 `--llm` rebuilds the model's replies of one turn from the recorded events (which tools it asked for at
 each step, the prose it wrote) and runs the real agent loop on them with a `ReplayLLM`. Everything but the
 model is real: tools, result references, formula marks, the claim check, repeated-call detection, stop
-reasons. It reproduces what the agent did with those replies; it cannot reproduce the model.
+reasons. It reproduces what the agent did with those replies; it cannot reproduce the model. Nothing here
+ever calls a model host.
 
-Exit status 1 means at least one call or turn now differs, which is what you want to see after a fix and
-what a regression test pins. 2 means the report could not be read.
+A follow-up turn is given the context the live chat gave it: the earlier messages of the report are handed to
+`minerva_api.agent.turn_context.turn_context`, the function the chat route calls, so the history, the
+verified constants of earlier discovery cards, `@rN` results with their restrictions, the equation table,
+unverified inputs, evidence and declarations are rebuilt from the stored cards and trace. A format 4 report
+holds the cards. Formats 2 and 3 do not: for them the script says which categories it cannot restore and that
+the follow-up cannot be faithfully replayed, and a difference that missing context may explain is listed
+apart from a difference in what the engine established.
+
+Exit status 1 means at least one call or turn now differs in what the engine did, which is what you want to
+see after a fix and what a regression test pins. 2 means the report could not be read. 3 means a whole-turn
+replay found no such difference but could not be faithful (context missing from the report): it is not a pass.
 
 Reports contain the user's mathematics: keep them out of the repository.
 """
@@ -28,22 +38,31 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
+from minerva_api.agent.equations import (
+    build_table,
+    find_references,
+    number_user_text,
+    resolve_references,
+)
 from minerva_api.agent.llm import Chunk, LLMError, ToolCall
 from minerva_api.agent.loop import STOP_SENTENCES, AgentLimits, run_agent
 from minerva_api.agent.replay import ReplayLLM
 from minerva_api.agent.tools import ToolContext, execute
 from minerva_api.agent.tracing import StopReason
+from minerva_api.agent.turn_context import HISTORY_MESSAGES, turn_context
 from minerva_engine import Engine, Limits
 from minerva_knowledge import KnowledgeBase
 
 JSON_START = "<!-- minerva-debug-json -->"
 JSON_END = "<!-- /minerva-debug-json -->"
-SUPPORTED_FORMATS = (1, 2, 3)
+SUPPORTED_FORMATS = (1, 2, 3, 4)
 SUPPORTED_FORMAT = SUPPORTED_FORMATS[-1]
 
 
@@ -185,13 +204,26 @@ def render(items: list[Replayed], *, full: bool = False) -> str:
 @dataclass
 class TurnReplay:
     turn: int
+    # Differences in what the engine did that missing context cannot explain: a different tool, argument,
+    # status, verdict, stop reason, mark or reply for a call that does not depend on the missing part.
     differences: list[str] = field(default_factory=list)
+    # Differences that the missing context may explain (listed apart, never counted as a verdict change).
+    context_differences: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     message: dict[str, Any] | None = None
+    # What the live chat would have restored for this turn that the report cannot give back (category -> why).
+    # Empty means the replay was given the same context. Never treat a replay with entries here as equivalent.
+    missing: dict[str, str] = field(default_factory=dict)
+    # The equation-number high-water mark the replay started the turn from (see `_counter_for`).
+    counter: int = 0
+
+    @property
+    def faithful(self) -> bool:
+        return not self.missing
 
     @property
     def same(self) -> bool:
-        return not self.differences
+        return self.faithful and not self.differences and not self.context_differences
 
 
 def prose_text(segments: list[dict[str, Any]]) -> str:
@@ -329,16 +361,21 @@ def to_fixture(data: dict[str, Any], turn: int | None = None) -> dict[str, Any]:
     }
 
 
-def compare_turn(recorded: dict[str, Any], now: dict[str, Any]) -> list[str]:
-    """What differs between the recorded turn and the replayed one."""
-    out: list[str] = []
+def compare_turn_tagged(recorded: dict[str, Any], now: dict[str, Any]) -> list[tuple[str, str]]:
+    """What differs between the recorded turn and the replayed one, each with what kind of thing it is.
+
+    The kinds: `tool` (a call, its arguments, status or evidence), `stop` (the stop reason), `marks` (the
+    formula marks) and `reply` (the reply text). `replay_turn` uses the kind to say whether missing context could
+    explain a difference.
+    """
+    out: list[tuple[str, str]] = []
     a_stop = recorded.get("stop_reason") or (recorded.get("debug") or {}).get("stop_reason")
     if a_stop != now.get("stop_reason"):
-        out.append(f"stop reason: recorded {a_stop}, now {now.get('stop_reason')}")
+        out.append(("stop", f"stop reason: recorded {a_stop}, now {now.get('stop_reason')}"))
     a_steps = [(t["name"], t.get("status")) for t in recorded.get("trace") or []]
     b_steps = [(t["name"], t.get("status")) for t in now.get("trace") or []]
     if a_steps != b_steps:
-        out.append(f"tool calls and statuses: recorded {a_steps}, now {b_steps}")
+        out.append(("tool", f"tool calls and statuses: recorded {a_steps}, now {b_steps}"))
     a_marks = [(f["value"], f["status"]) for f in recorded.get("formulas") or []]
     b_marks = [
         (s["value"], s["status"])
@@ -355,21 +392,179 @@ def compare_turn(recorded: dict[str, Any], now: dict[str, Any]) -> list[str]:
         if old["name"] != new["name"]:
             continue
         if old.get("arguments") != new.get("arguments"):
-            out.append(f"step {index} ({old['name']}): the arguments executed differ")
+            out.append(("tool", f"step {index} ({old['name']}): the arguments executed differ"))
         if _verdict(old.get("evidence")) != _verdict(new.get("evidence")):
             out.append(
-                f"step {index} ({old['name']}): evidence recorded {_verdict(old.get('evidence'))}, "
-                f"now {_verdict(new.get('evidence'))}"
+                (
+                    "tool",
+                    f"step {index} ({old['name']}): evidence recorded {_verdict(old.get('evidence'))}, "
+                    f"now {_verdict(new.get('evidence'))}",
+                )
             )
     if recorded.get("formulas") is not None and a_marks != b_marks:
-        out.append(f"formula marks: recorded {a_marks}, now {b_marks}")
+        out.append(("marks", f"formula marks: recorded {a_marks}, now {b_marks}"))
     if recorded.get("text") != now.get("text"):
-        out.append("the reply text differs")
+        out.append(("reply", "the reply text differs"))
     return out
 
 
+def compare_turn(recorded: dict[str, Any], now: dict[str, Any]) -> list[str]:
+    """What differs between the recorded turn and the replayed one."""
+    return [text for _, text in compare_turn_tagged(recorded, now)]
+
+
+# ----------------------------------------------------------------------------- what the report holds
+DISCOVERY_TOOLS = frozenset({"find_conserved_quantities"})
+EQUATION_HANDLE = re.compile(r"@e\d+")
+CAUSES = {
+    "earlier messages": "the report holds only part of the conversation",
+    "constants": "the verified constants of earlier discovery results come from their stored cards",
+    "result handles": "an `@rN` result and its LaTeX come from the stored card of the call that made it",
+    "restrictions": "the restrictions a result carries come from its stored card",
+    "unverified inputs": "which unverified equations a result was computed from comes from its stored card",
+    "equation table": "the equation numbers and what 'equation N' means come from the stored cards and messages",
+}
+
+
+def _stored_messages(messages: list[dict[str, Any]]) -> list[Any]:
+    """The report's messages as the chat stored them, as far as the report holds them.
+
+    Formats before 4 have no cards, no numbered user formulas and no references: those stay empty, which is
+    exactly what `missing_context` then reports instead of pretending they were restored.
+    """
+    out: list[Any] = []
+    for index, m in enumerate(messages):
+        content: dict[str, Any] = {"text": m.get("text") or ""}
+        if m["role"] == "user":
+            content["equations"] = list(m.get("equations") or [])
+            content["references"] = list(m.get("references") or [])
+        else:
+            content["trace"] = [
+                {"id": f"step{index}.{i}", **step} for i, step in enumerate(m.get("trace") or [])
+            ]
+            content["blocks"] = list(m.get("blocks") or [])
+            content["stop_reason"] = m.get("stop_reason")
+        out.append(SimpleNamespace(role=m["role"], content=content))
+    return out
+
+
+def _card_ids(message: dict[str, Any]) -> set[Any]:
+    return {
+        (b.get("card") or {}).get("id")
+        for b in message.get("blocks") or []
+        if b.get("kind") == "card" and isinstance(b.get("card"), dict)
+    }
+
+
+def missing_context(data: dict[str, Any], upto: int) -> dict[str, str]:
+    """What the live chat would have restored for the turn after message `upto` (0-based, exclusive) that this
+    report cannot give back: category -> why. Empty means every category the earlier messages feed is in the
+    report; a category nothing earlier feeds is not listed (a first turn misses nothing).
+    """
+    out: dict[str, str] = {}
+    window = data.get("conversation") or {}
+    skipped = int(window.get("first_message_index") or 0)
+    if skipped > 0:
+        out["earlier messages"] = (
+            f"this report starts at message {skipped + 1} of {window.get('messages_total', '?')}: "
+            "everything before it is missing: constants, results, restrictions and equation numbers are unknown"
+        )
+    complete = int(data.get("format") or 1) >= 4
+    wording = (
+        "this report format has no stored cards"
+        if not complete
+        else "its card is not in the report"
+    )
+    for index, m in enumerate(data.get("messages", [])[:upto]):
+        if m["role"] == "user":
+            if not complete and "$$" in (m.get("text") or "") and "equation table" not in out:
+                out["equation table"] = (
+                    "a displayed formula of yours was numbered, and this format keeps no numbers"
+                )
+            continue
+        cards = _card_ids(m)
+        for step in m.get("trace") or []:
+            if step.get("status") == "skipped" or step.get("repeated"):
+                continue
+            has_card = step.get("id") in cards
+            if step.get("name") in DISCOVERY_TOOLS and not has_card:
+                out.setdefault("constants", f"message {index + 1}: a discovery result, {wording}")
+            if not step.get("result_id") or has_card:
+                continue
+            note = f"message {index + 1}: result {step['result_id']}, {wording}"
+            out.setdefault("result handles", note)
+            if step.get("restrictions") or (step.get("evidence") or {}).get("restrictions"):
+                out.setdefault("restrictions", note)
+            if EQUATION_HANDLE.search(
+                json.dumps(step.get("model_arguments") or step.get("arguments") or {})
+            ):
+                out.setdefault("unverified inputs", note)
+            out.setdefault("equation table", f"message {index + 1}: a numbered result, {wording}")
+        if (
+            not complete
+            and "equation table" not in out
+            and any("$$" in piece for piece in m.get("prose") or [])
+        ):
+            out["equation table"] = (
+                f"message {index + 1}: displayed formulas were numbered, and this format keeps no numbers"
+            )
+    return out
+
+
+def _depends_on_context(recorded: dict[str, Any], now: dict[str, Any]) -> bool:
+    """Could a missing category change what a *tool call* of this turn did? Only a call that refers to an
+    earlier result or equation (`@rN`, `@eN`), uses a constant by name or is the total derivative can."""
+    for message in (recorded, now):
+        for step in message.get("trace") or []:
+            if step.get("name") == "time_derivative":
+                return True
+            text = json.dumps(step.get("model_arguments") or step.get("arguments") or {})
+            if re.search(r"@[re]\d+", text):
+                return True
+    return False
+
+
+def _user_numbering(
+    stored: list[Any], text: str, counter: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """What the chat shows under a user message: its numbered displayed formulas and what its references meant."""
+    table = build_table(stored, counter)
+    shown, _ = resolve_references(find_references(text), table)
+    return number_user_text(text, table), shown
+
+
+def _counter_for(
+    stored: list[Any], text: str, recorded_user: dict[str, Any], reported: int | None
+) -> tuple[int, bool]:
+    """The equation-number high-water mark before this turn, and whether it reproduces what the chat recorded.
+
+    Numbers given out once are never reused, so the mark can be above every number still stored. The report holds
+    the mark after the whole conversation; the one before this turn lies between the highest stored number and
+    that. It is the smallest value under which the numbers and references recorded on the user's message come
+    out again. A report without those (formats before 4) cannot tell: the floor is used and `False` returned.
+    """
+    floor = build_table(stored, 0).counter
+    if "equations" not in recorded_user and "references" not in recorded_user:
+        return floor, False
+    want = (recorded_user.get("equations") or [], recorded_user.get("references") or [])
+    ceiling = max(floor, reported or 0)
+    fits = [c for c in range(floor, ceiling + 1) if _user_numbering(stored, text, c) == want]
+    if not fits:
+        return floor, False
+    # An unknown number is worded "no longer exists" when the mark had reached it and "does not exist" when not.
+    # If the candidates disagree on that, the report cannot say which the chat showed: not reproduced.
+    unknown = [int(r.get("number", 0)) for r in want[1] if r.get("source") == "unknown"]
+    if any(len({n <= c for c in fits}) > 1 for n in unknown):
+        return floor, False
+    return fits[0], True
+
+
 def replay_turn(data: dict[str, Any], ctx: ToolContext, turn: int | None = None) -> TurnReplay:
-    """Replay one assistant turn through the real loop with a ReplayLLM built from the report."""
+    """Replay one assistant turn through the real loop with a ReplayLLM built from the report.
+
+    The earlier messages of the report are handed to `turn_context`, the function the chat route calls, so the
+    turn is given what the live chat gave it. What a report cannot hold is named in `TurnReplay.missing`.
+    """
     messages = data.get("messages", [])
     if turn is None:
         candidates = [
@@ -384,49 +579,87 @@ def replay_turn(data: dict[str, Any], ctx: ToolContext, turn: int | None = None)
         raise ReportError(f"message {turn} is not an assistant turn")
     recorded = messages[turn - 1]
     replies, failures, notes = rebuild_replies(recorded)
-    history = [
-        {"role": m["role"], "content": m.get("text", "")}
-        for m in messages[: turn - 1]
-        if m.get("text")
-    ]
-    if not history or history[-1]["role"] != "user":
+    asked = messages[turn - 2] if turn >= 2 else None
+    if asked is None or asked["role"] != "user" or not asked.get("text"):
         raise ReportError("the user message before this turn is missing from the report")
+    stored = _stored_messages(messages)[: turn - 2]
+    missing = missing_context(data, turn - 2)
+    debug = recorded.get("debug") or {}
+    window = data.get("conversation") or {}
+    counter, reproduced = _counter_for(stored, asked["text"], asked, window.get("equation_counter"))
+    if "equations" in asked and not reproduced:
+        missing["equation table"] = (
+            "the numbers the chat gave this message's formulas and references cannot be reproduced "
+            "from the report's equation counter"
+        )
+    parameters = debug.get("params") or {}
+    context = turn_context(
+        stored,
+        asked["text"],
+        counter=counter,
+        max_messages=int(parameters.get("history_messages") or HISTORY_MESSAGES),
+        max_tokens=parameters.get("history_tokens") or None,
+    )
     llm = ReplayLLM(replies)
     llm.fail_on = failures
-    debug = recorded.get("debug") or {}
     limits = AgentLimits(
         max_steps=int(debug.get("max_steps") or 6),
         max_seconds=float(debug.get("max_seconds") or 180.0),
         max_tool_calls=int(debug.get("max_tool_calls") or 12),
         retry_delay_seconds=0.0,
     )
-    if turn > 1:
+    # This turn's own copy: the caller's context keeps no constants or messages of it.
+    turn_ctx = replace(ctx)
+    context.apply_to(turn_ctx)
+    if missing:
         notes.append(
-            "earlier turns are replayed as plain text: their verified marks and results are not restored"
+            "the follow-up cannot be faithfully replayed: the report lacks "
+            + ", ".join(sorted(missing))
+            + " (see `missing`); a difference below may come from that, not from the engine"
         )
 
     async def go() -> dict[str, Any] | None:
         final = None
-        async for event in run_agent(llm, history, ctx, limits):
+        async for event in run_agent(
+            llm, context.history, turn_ctx, limits, **context.agent_kwargs()
+        ):
             if event["event"] == "message":
                 final = event["data"]
         return final
 
     now = asyncio.run(go())
-    result = TurnReplay(turn=turn, notes=notes, message=now)
+    result = TurnReplay(turn=turn, notes=notes, message=now, missing=missing, counter=counter)
     if now is None:
         result.differences.append("the replay produced no message")
         return result
-    # A recorded turn that was the first of its conversation can be compared in full; with earlier
-    # turns, marks of formulas from those turns may legitimately differ, so only report what is certain.
-    result.differences = compare_turn(recorded, now)
+    # A difference that missing context could explain is kept apart from one that it cannot: a call that does
+    # not refer to an earlier result or equation, run on the same arguments, gives the engine's answer either way.
+    dependent = bool(missing) and _depends_on_context(recorded, now)
+    for kind, text in compare_turn_tagged(recorded, now):
+        explained = bool(missing) and (
+            kind in ("marks", "reply") or (kind in ("tool", "stop") and dependent)
+        )
+        (result.context_differences if explained else result.differences).append(text)
     return result
 
 
 def render_turn(r: TurnReplay) -> str:
-    lines = [f"[turn {r.turn}] whole-turn replay: {'same' if r.same else 'DIFFERENT'}"]
+    if r.differences:
+        verdict = "DIFFERENT"
+    elif r.missing:
+        verdict = "NOT FAITHFUL" if not r.context_differences else "NOT COMPARABLE"
+    else:
+        verdict = "same"
+    lines = [f"[turn {r.turn}] whole-turn replay: {verdict}"]
+    lines += [f"  missing {name}: {why}" for name, why in sorted(r.missing.items())]
     lines += [f"  note: {n}" for n in r.notes]
     lines += [f"  difference: {d}" for d in r.differences]
+    lines += [f"  difference that missing context may explain: {d}" for d in r.context_differences]
+    if r.missing and not r.differences:
+        lines.append(
+            "  this is not an equivalent replay: nothing was found that the engine did differently, "
+            "but the follow-up was not given the context the live chat gave it"
+        )
     return "\n".join(lines)
 
 
@@ -475,7 +708,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 2
         print(render_turn(outcome))
-        return 0 if outcome.same else 1
+        if outcome.differences:
+            return 1
+        return 0 if outcome.same else 3
     items = replay(data, ctx)
     print(render(items, full=args.full))
     return 1 if any(not r.same for r in items) else 0

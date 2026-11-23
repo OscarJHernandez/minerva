@@ -402,6 +402,8 @@ def test_the_counter_survives_and_is_never_reused() -> None:
         send(client, cid, "two")
         with client.app.state.session_factory() as session:  # type: ignore[attr-defined]
             assert session.get(Conversation, uuid.UUID(cid)).equation_counter == 2
+        # the high-water mark is part of the conversation the client reads (a debug report carries it)
+        assert client.get(f"/v1/chat/conversations/{cid}").json()["equation_counter"] == 2
         reply = send(client, cid, "three")  # still numbers 3 onwards, whatever was stored before
         assert reply
         messages = client.get(f"/v1/chat/conversations/{cid}").json()["messages"]

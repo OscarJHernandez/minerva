@@ -38,7 +38,7 @@ user message -> prepare arguments (cleaning, derivative reader) -> tool (sandbox
                  typed diagnostic                              evidence kinds
 model <- tool text (for_model) ...                     claim check on the prose afterwards
         every step is a trace event (ids, counts, durations, hex digests only)
-turn end -> debug.diagnosis -> debug report (format 3) -> replay_trace.py -> fixture -> regression test
+turn end -> debug.diagnosis -> debug report (format 4) -> replay_trace.py -> fixture -> regression test
 ```
 
 See `evaluation-matrix.md` for what covers each tool and `triage-playbook.md` for what to do with a failure.

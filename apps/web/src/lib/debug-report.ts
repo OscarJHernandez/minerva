@@ -13,8 +13,12 @@ import { buildTimeline, stageTimings, STOP_EXPLANATION } from "./trace-timeline"
  * Bump when the JSON block changes shape, so `scripts/replay_trace.py` can tell.
  * 2: adds trace ids, stop reasons, events, evidence and error categories per step.
  * 3: adds the diagnosis and per-call request fingerprints (only adds fields; format 2 is still read).
+ * 4: adds what a follow-up turn needs to be replayed with its stored context (issue 150): each assistant
+ *    message's `blocks` (the cards as stored, with their equation numbers), each user message's `equations` and
+ *    `references`, and `conversation` (the equation-number high-water mark and which messages the report holds).
+ *    Formats 2 and 3 are still read, but a follow-up in them cannot be replayed faithfully.
  */
-export const REPORT_FORMAT = 3;
+export const REPORT_FORMAT = 4;
 export const CONTENT_NOTICE =
   "This report contains conversation content (your messages, expressions and tool results). " +
   "Share it only where you would share the conversation. The server log never holds this content.";
@@ -36,6 +40,13 @@ export interface ReportInput {
   /** A reply is still being written (the copy was made mid-turn). */
   replying?: boolean;
   now?: Date;
+  /**
+   * The conversation's equation-number high-water mark as the server last reported it. Numbers given out once are
+   * never reused, so it can be higher than any number still shown; the highest number in `messages` is a floor.
+   */
+  equationCounter?: number | null;
+  /** Set when `messages` is a slice of the conversation (a per-turn copy): where it starts and how long it is. */
+  window?: { from: number; total: number };
 }
 
 /** A code fence longer than any run of backticks inside `text`, so content cannot close it early. */
@@ -412,6 +423,23 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
   return lines;
 }
 
+/** The highest equation number the messages show (cards, listed rows, displayed formulas, the user's own). */
+export function highestEquationNumber(messages: StoredMessage[]): number {
+  let highest = 0;
+  const see = (n: unknown) => {
+    if (typeof n === "number" && Number.isInteger(n) && n > highest) highest = n;
+  };
+  for (const m of messages) {
+    for (const e of m.content.equations ?? []) see(e.number);
+    for (const block of m.content.blocks ?? []) {
+      see(block.card?.number);
+      for (const n of Object.values(block.card?.numbers ?? {})) see(n);
+      for (const segment of block.segments ?? []) see(segment.number);
+    }
+  }
+  return highest;
+}
+
 /** The machine-readable part: what `scripts/replay_trace.py` re-runs. Cards are summarised above. */
 export function reportData(input: ReportInput) {
   return {
@@ -424,10 +452,23 @@ export function reportData(input: ReportInput) {
       model: input.status?.model ?? null,
       build: input.status?.build || null,
     },
+    conversation: {
+      // The server's high-water mark for the whole conversation (or, without one, the highest number shown).
+      equation_counter: Math.max(input.equationCounter ?? 0, highestEquationNumber(input.messages)),
+      equation_counter_reported: input.equationCounter ?? null,
+      messages_total: input.window?.total ?? input.messages.length,
+      first_message_index: input.window?.from ?? 0,
+      messages_included: input.messages.length,
+    },
     messages: input.messages.map((m) => ({
       role: m.role,
       created_at: m.created_at,
       text: m.content.text,
+      // The stored context a later turn is rebuilt from (format 4): the cards as stored, and the user's
+      // numbered formulas with what its references were taken to mean.
+      blocks: m.role === "assistant" ? (m.content.blocks ?? []) : [],
+      equations: m.role === "user" ? (m.content.equations ?? []) : [],
+      references: m.role === "user" ? (m.content.references ?? []) : [],
       trace: m.content.trace ?? [],
       debug: m.content.debug ?? null,
       truncated: m.content.truncated ?? false,
@@ -491,5 +532,9 @@ export function buildTurnReport(
   index: number,
 ): string {
   const from = index > 0 && messages[index - 1]?.role === "user" ? index - 1 : index;
-  return buildDebugReport({ ...input, messages: messages.slice(from, index + 1) });
+  return buildDebugReport({
+    ...input,
+    messages: messages.slice(from, index + 1),
+    window: { from, total: messages.length },
+  });
 }
