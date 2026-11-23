@@ -136,6 +136,49 @@ def _isotropic_oscillator_discovery(engine: Engine) -> tuple[str, str]:
     return verdict("correct", True, gradients.rank() >= 3, "exact brackets and Jacobian rank")
 
 
+def _double_pendulum_small_oscillations(engine: Engine) -> tuple[str, str]:
+    """Squared frequencies of the double pendulum about the hanging position, against the roots of det(K - w M).
+
+    For small angles the Lagrangian is the quadratic form with mass matrix
+    M = [[(m1+m2) l1^2, m2 l1 l2], [m2 l1 l2, m2 l2^2]] and stiffness K = diag((m1+m2) g l1, m2 g l2)
+    (Landau and Lifshitz, Mechanics, section 23, problem 1); the squared frequencies are the roots of
+    det(K - w M) = 0, found here from its coefficients with `mpmath.polyroots`. The parameters are
+    declared nothing: no sign is assumed for them.
+    """
+    report = engine.expand_motion(
+        r"\frac12 (m_1+m_2) l_1^2\dot{\theta}_1^2 + \frac12 m_2 l_2^2\dot{\theta}_2^2 "
+        r"+ m_2 l_1 l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) "
+        r"+ (m_1+m_2) g l_1\cos\theta_1 + m_2 g l_2\cos\theta_2",
+        ["theta_1", "theta_2"],
+        "t",
+        {},
+        {"theta_1": "0", "theta_2": "0"},
+        1,
+    )
+    if report.status.value != "ok" or len(report.modes) != 2:
+        return verdict("correct", False, None, f"status {report.status.value}")
+    m1, m2, g, l1, l2 = (sp.Rational(x) for x in ("13/10", "7/10", "49/5", "11/10", "9/10"))
+    mass = sp.Matrix([[(m1 + m2) * l1**2, m2 * l1 * l2], [m2 * l1 * l2, m2 * l2**2]])
+    stiffness = sp.diag((m1 + m2) * g * l1, m2 * g * l2)
+    lam = sp.Symbol("lam")
+    coefficients = sp.Poly((stiffness - lam * mass).det(), lam).all_coeffs()
+    expected = sorted(
+        float(mp.re(r)) for r in mp.polyroots([mp.mpf(str(float(c))) for c in coefficients])
+    )
+    names = dict(zip(("m_1", "m_2", "g", "l_1", "l_2"), (m1, m2, g, l1, l2), strict=True))
+    found = []
+    for mode in report.modes:
+        value = parse_latex(mode.omega_squared_latex.split("=", 1)[1])
+        found.append(float(value.subs({x: names[x.name] for x in value.free_symbols}).evalf(20)))
+    found.sort()
+    return verdict(
+        "correct",
+        True,
+        all(abs(a - b) <= 1e-9 * max(1.0, abs(b)) for a, b in zip(found, expected, strict=True)),
+        "squared frequencies vs the roots of det(K - w M)",
+    )
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "duffing-frequency-shift",
@@ -162,6 +205,15 @@ PROBLEMS: list[Problem] = [
         _rotation_constant_along_the_motion,
         oracle="exact_solution",
         evidence="symbolic_proof",
+    ),
+    Problem(
+        "expansion-double-pendulum-small-oscillation-frequencies",
+        "mechanics",
+        "Landau and Lifshitz, Mechanics, section 23, problem 1 (small oscillations of a double pendulum)",
+        "correct",
+        _double_pendulum_small_oscillations,
+        oracle="mpmath_polyroots",
+        evidence="numeric_agreement",
     ),
     Problem(
         "discovery-isotropic-oscillator",

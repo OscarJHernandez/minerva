@@ -267,6 +267,54 @@ def run_time_derivative(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase)
     )
 
 
+def run_expand_motion(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.expand_motion(
+        spec["input"],
+        spec["coordinates"],
+        spec.get("time", "t"),
+        spec.get("assumptions") or {},
+        spec["equilibrium"],
+        int(spec.get("order", 1)),
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    if r.status.value == "ok":
+        for eq in r.equations:
+            outputs.append(
+                {"label": f"Linearised equation ({eq.coordinate})", "latex": eq.full_latex}
+            )
+            if eq.verification:
+                checks.append(
+                    f"{eq.coordinate}: coefficients agree with a Cauchy-integral estimate and the "
+                    "remainder shrinks at the next order"
+                )
+        if r.stiffness_latex:
+            outputs.append({"label": "Matrix A in the linear part", "latex": r.stiffness_latex})
+        for mode in r.modes:
+            outputs.append({"label": "Normal mode", "latex": mode.omega_squared_latex})
+            if mode.verified and mode.verification:
+                v = mode.verification
+                checks.append(
+                    f"det(A + omega^2 I) vanishes at this omega^2 ({v.numeric_points_agreed} of "
+                    f"{v.numeric_points_checked} points)"
+                )
+    return _example(
+        spec,
+        r.status.value,
+        [
+            _source_line(spec, "Lagrangian", reading=r.lagrangian_latex),
+            {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
+            {
+                "label": "Equilibrium",
+                "text": ", ".join(f"{k} = {v}" for k, v in spec["equilibrium"].items()),
+            },
+        ],
+        outputs,
+        checks,
+        [r.message, *r.notes] if r.message else list(r.notes),
+    )
+
+
 def run_series(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.series(
         _expr(spec),
@@ -1854,6 +1902,7 @@ RUNNERS = {
     "identity": run_identity,
     "differentiate": run_differentiate,
     "time_derivative": run_time_derivative,
+    "expand_motion": run_expand_motion,
     "series": run_series,
     "approximation": run_approximation,
     "matrix": run_matrix,

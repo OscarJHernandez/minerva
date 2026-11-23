@@ -224,6 +224,18 @@ def _corrupt(result: Any) -> Any:
             for eq in qualitative.equilibria
         ]
         updates["qualitative"] = qualitative.model_copy(update={"equilibria": shifted})
+    modes = getattr(result, "modes", None)
+    if modes:  # normal modes of an expansion: every squared frequency off by 1/1000
+        updates["modes"] = [
+            m.model_copy(
+                update={
+                    "omega_squared_latex": (
+                        rf"\omega^2 = ({m.omega_squared_latex.split('=', 1)[1]})\cdot 1.001"
+                    )
+                }
+            )
+            for m in modes
+        ]
     if getattr(result, "frequency_latex", None):
         updates["frequency_latex"] = "\\omega = 2"
     if getattr(result, "restrictions_latex", None):
