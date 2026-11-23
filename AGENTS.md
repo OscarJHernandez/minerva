@@ -372,7 +372,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   provider's model is marked hosted, the host address never leaves the server and the digest is not a log field.
 - "Add image" (`agent/vision.py`, `/v1/chat/formula-image`) is transcription, not computation: a vision model
   (`MINERVA_LLM_VISION_MODEL`) proposes LaTeX, the user confirms it, and `Engine.read_formulas` reports how the
-  strict parser reads it. Uploaded images are never stored or logged; keep it that way.
+  strict parser reads it. Uploaded images are never stored or logged; keep it that way. "Take photo" is a native
+  `capture="environment"` file input (no `getUserMedia`, keep `camera=()`), with a Retake / Use photo preview before anything is
+  read; same gate (`imagesEnabled`) and same `image-prep` path as a chosen file.
 - A turn is bounded: `AgentLimits` caps steps, total tool calls (12) and seconds, enforced during model streaming, between
   tool calls and around the claim check; a failing or hanging tool becomes an error card with fixed text, never its cause.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows a timeline (`apps/web/src/lib/trace-timeline.ts`) and each tool

@@ -94,6 +94,21 @@ export function Composer({
   const dragDepth = useRef(0);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const cameraRef = useRef<HTMLInputElement | null>(null);
+  // A photo just taken: shown with Retake / Use photo; nothing is read or sent until "Use photo".
+  const [photo, setPhotoState] = useState<{ file: File; url: string } | null>(null);
+  const photoRef = useRef<{ file: File; url: string } | null>(null);
+  const setPhoto = useCallback((file: File | null) => {
+    if (photoRef.current) URL.revokeObjectURL(photoRef.current.url);
+    photoRef.current = file ? { file, url: URL.createObjectURL(file) } : null;
+    setPhotoState(photoRef.current);
+  }, []);
+  useEffect(
+    () => () => {
+      if (photoRef.current) URL.revokeObjectURL(photoRef.current.url);
+    },
+    [],
+  );
 
   // Grow with the content up to MAX_HEIGHT_VH of the viewport, then scroll inside.
   useLayoutEffect(() => {
@@ -169,6 +184,20 @@ export function Composer({
     setImage(file);
   }
 
+  function addPhoto(file: File | undefined) {
+    if (!file) return; // the camera was cancelled: nothing changes
+    if (!imagesEnabled) {
+      setImageError(NOT_SET_UP);
+      return;
+    }
+    const problem = checkImageFile(file);
+    setImageError(problem);
+    if (problem) return;
+    setFormula(false);
+    setImage(null);
+    setPhoto(file);
+  }
+
   function submit() {
     const value = text.trim();
     if (!value || disabled || busy) return;
@@ -206,6 +235,46 @@ export function Composer({
           onClose={close}
           draftKey={draftKey ? draftKey + ":formula" : undefined}
         />
+      )}
+      {photo && (
+        <div
+          className="mb-2 rounded-lg border border-rule bg-raised p-3 shadow-sm"
+          role="dialog"
+          aria-label="Photo preview"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- a local blob URL, not a remote image */}
+          <img
+            src={photo.url}
+            alt="The photo you took"
+            className="mb-3 max-h-64 w-full rounded border border-rule bg-sunk object-contain"
+          />
+          <p className="mb-2 text-xs text-muted">
+            Is the formula sharp and fully in the frame? The photo stays in this browser until you
+            choose Use photo.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPhoto(null);
+                cameraRef.current?.click();
+              }}
+              className="rounded border border-rule px-3 py-1.5 text-sm hover:bg-sunk"
+            >
+              Retake
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setImage(photo.file);
+                setPhoto(null);
+              }}
+              className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-accent-ink"
+            >
+              Use photo
+            </button>
+          </div>
+        </div>
       )}
       {image && <ImageFormulasPanel file={image} onInsert={insertMany} onClose={closeImage} />}
       {imageError && (
@@ -325,6 +394,40 @@ export function Composer({
                   <path d="M2 12.5l4-4 3 3 2-2 3 3" />
                 </svg>
                 <span className="hidden sm:inline">Image</span>
+              </button>
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                aria-label="Take a photo of a formula"
+                onChange={(e) => {
+                  addPhoto(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                disabled={disabled}
+                title="Take a photo of a formula with the camera"
+                aria-label="Take photo"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted hover:bg-sunk hover:text-ink disabled:opacity-40"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  aria-hidden="true"
+                >
+                  <path d="M2 5h2.5l1-1.5h5L11.5 5H14v8H2z" />
+                  <circle cx="8" cy="8.8" r="2.2" />
+                </svg>
+                <span className="hidden sm:inline">Take photo</span>
               </button>
             </>
           )}

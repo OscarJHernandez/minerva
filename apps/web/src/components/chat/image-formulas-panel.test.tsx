@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api";
 import type { ExtractedFormula } from "@/lib/chat-types";
+import { ImageError } from "@/lib/image-prep";
 import { ImageFormulasPanel } from "./image-formulas-panel";
 
 const readFormulaImage = vi.fn();
@@ -137,6 +138,30 @@ describe("ImageFormulasPanel", () => {
   it("shows the server's message when reading fails", async () => {
     setup(new ApiError(502, "The image model host is not reachable."));
     expect(await screen.findByRole("alert")).toHaveTextContent("not reachable");
+  });
+
+  it("says the vision model is unavailable and offers Close without inserting", async () => {
+    const { onInsert, onClose } = setup(
+      new ApiError(503, "Reading images is not set up on this server."),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("not set up");
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalled();
+    expect(onInsert).not.toHaveBeenCalled();
+  });
+
+  it("shows the preparation error for an unreadable photo", async () => {
+    prepareImage.mockRejectedValue(new ImageError("That file could not be read as an image."));
+    readFormulaImage.mockResolvedValue([]);
+    render(
+      <ImageFormulasPanel
+        file={new File(["x"], "IMG.jpg", { type: "image/jpeg" })}
+        onInsert={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not be read");
+    expect(readFormulaImage).not.toHaveBeenCalled();
   });
 
   it("asks to sign in again on 401", async () => {
