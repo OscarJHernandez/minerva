@@ -26,6 +26,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .agent.budget import fit_history
+from .agent.constants import constants_of_blocks
 from .agent.declarations import scan
 from .agent.equations import (
     EquationTable,
@@ -1440,6 +1441,11 @@ async def send_message(
     session_factory = request.app.state.session_factory
     ctx = ToolContext(engine=engine, kb=kb)
     ctx.user_messages = [t for role, t in _declaration_inputs(previous, text)[1] if role == "user"]
+    # What earlier discovery results found and verified, for `time_derivative` of a relation among the
+    # constants (read from the stored cards, never from the model's text).
+    ctx.constants = tuple(
+        constants_of_blocks(m.content.get("blocks", []) for m in previous if m.role == "assistant")
+    )
     limits = AgentLimits(
         max_steps=settings.agent_max_steps,
         max_seconds=settings.agent_max_seconds,

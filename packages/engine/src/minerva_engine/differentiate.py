@@ -80,6 +80,9 @@ class DifferentiateResult(InputAware):
     on_motion_latex: str | None = None
     zero_on_motion: bool | None = None
     symbolic_zero_on_motion: bool | None = None
+    # `time_derivative` only: the names the caller gave a definition for (verified constants of motion found
+    # earlier), as `name = expression`. The derivative and its check are of the expression with them inserted.
+    definitions_used: list[str] = Field(default_factory=list)
     message: str = ""
     duration_ms: int = 0
 

@@ -10,7 +10,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 49542,
+        "est_tokens_in": 49783,
         "est_tokens_out": 234,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -33,9 +33,9 @@
       "id": "wedge-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 385,
-        "tool_ms": 2530,
-        "total_ms": 2932
+        "claim_check_ms": 408,
+        "tool_ms": 2606,
+        "total_ms": 3032
       }
     },
     {
@@ -47,7 +47,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29262,
+        "est_tokens_in": 29382,
         "est_tokens_out": 119,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -70,9 +70,9 @@
       "id": "wedge-xdot-first-call",
       "pending": "",
       "timing": {
-        "claim_check_ms": 385,
-        "tool_ms": 840,
-        "total_ms": 1241
+        "claim_check_ms": 419,
+        "tool_ms": 867,
+        "total_ms": 1303
       }
     },
     {
@@ -84,7 +84,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29289,
+        "est_tokens_in": 29410,
         "est_tokens_out": 124,
         "evidence_pct": 100.0,
         "format_switches": 1,
@@ -107,9 +107,9 @@
       "id": "wedge-wrong-format-recovered",
       "pending": "",
       "timing": {
-        "claim_check_ms": 384,
-        "tool_ms": 1209,
-        "total_ms": 1608
+        "claim_check_ms": 409,
+        "tool_ms": 1277,
+        "total_ms": 1703
       }
     },
     {
@@ -121,7 +121,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29332,
+        "est_tokens_in": 29452,
         "est_tokens_out": 124,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -144,9 +144,9 @@
       "id": "wedge-shape-errors-repaired",
       "pending": "",
       "timing": {
-        "claim_check_ms": 390,
-        "tool_ms": 829,
-        "total_ms": 1234
+        "claim_check_ms": 416,
+        "tool_ms": 875,
+        "total_ms": 1307
       }
     },
     {
@@ -158,7 +158,7 @@
         "budget_exhausted": 0,
         "claims": 0,
         "contradicted": 0,
-        "est_tokens_in": 43225,
+        "est_tokens_in": 43406,
         "est_tokens_out": 73,
         "evidence_pct": null,
         "format_switches": 0,
@@ -182,8 +182,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 847,
-        "total_ms": 863
+        "tool_ms": 958,
+        "total_ms": 975
       }
     },
     {
@@ -219,8 +219,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 764,
-        "total_ms": 779
+        "tool_ms": 818,
+        "total_ms": 833
       }
     },
     {
@@ -256,8 +256,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 383,
-        "total_ms": 397
+        "tool_ms": 408,
+        "total_ms": 423
       }
     },
     {
@@ -269,7 +269,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 15098,
+        "est_tokens_in": 15158,
         "est_tokens_out": 65,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -292,9 +292,9 @@
       "id": "wedge-routed-xdot",
       "pending": "",
       "timing": {
-        "claim_check_ms": 384,
-        "tool_ms": 831,
-        "total_ms": 1230
+        "claim_check_ms": 419,
+        "tool_ms": 871,
+        "total_ms": 1307
       }
     },
     {
@@ -306,7 +306,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 60047,
+        "est_tokens_in": 60290,
         "est_tokens_out": 219,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -329,9 +329,9 @@
       "id": "pendulum-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 900,
-        "tool_ms": 1721,
-        "total_ms": 2638
+        "claim_check_ms": 948,
+        "tool_ms": 1788,
+        "total_ms": 2755
       }
     },
     {
@@ -343,7 +343,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 14969,
+        "est_tokens_in": 15029,
         "est_tokens_out": 92,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -366,9 +366,9 @@
       "id": "pendulum-routed-latex",
       "pending": "",
       "timing": {
-        "claim_check_ms": 892,
-        "tool_ms": 858,
-        "total_ms": 1766
+        "claim_check_ms": 960,
+        "tool_ms": 891,
+        "total_ms": 1868
       }
     },
     {
@@ -380,7 +380,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 14959,
+        "est_tokens_in": 15019,
         "est_tokens_out": 92,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -403,9 +403,9 @@
       "id": "pendulum-routed-text-velocities",
       "pending": "",
       "timing": {
-        "claim_check_ms": 898,
-        "tool_ms": 842,
-        "total_ms": 1755
+        "claim_check_ms": 951,
+        "tool_ms": 890,
+        "total_ms": 1857
       }
     },
     {
@@ -417,7 +417,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29082,
+        "est_tokens_in": 29202,
         "est_tokens_out": 131,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -440,9 +440,9 @@
       "id": "pendulum-model-calls-with-text",
       "pending": "",
       "timing": {
-        "claim_check_ms": 897,
-        "tool_ms": 848,
-        "total_ms": 1760
+        "claim_check_ms": 987,
+        "tool_ms": 911,
+        "total_ms": 1915
       }
     },
     {
@@ -454,7 +454,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29109,
+        "est_tokens_in": 29229,
         "est_tokens_out": 133,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -477,9 +477,9 @@
       "id": "pendulum-assignment-and-greek",
       "pending": "",
       "timing": {
-        "claim_check_ms": 893,
-        "tool_ms": 845,
-        "total_ms": 1753
+        "claim_check_ms": 990,
+        "tool_ms": 934,
+        "total_ms": 1940
       }
     },
     {
@@ -491,7 +491,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29095,
+        "est_tokens_in": 29216,
         "est_tokens_out": 138,
         "evidence_pct": 75.0,
         "format_switches": 0,
@@ -514,9 +514,9 @@
       "id": "pendulum-wrong-sign-stays-unbacked",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1449,
-        "tool_ms": 849,
-        "total_ms": 2313
+        "claim_check_ms": 1547,
+        "tool_ms": 924,
+        "total_ms": 2487
       }
     },
     {
@@ -528,7 +528,7 @@
         "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
-        "est_tokens_in": 28764,
+        "est_tokens_in": 28884,
         "est_tokens_out": 45,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -551,9 +551,9 @@
       "id": "cyclic-oscillator",
       "pending": "",
       "timing": {
-        "claim_check_ms": 442,
-        "tool_ms": 446,
-        "total_ms": 903
+        "claim_check_ms": 528,
+        "tool_ms": 491,
+        "total_ms": 1034
       }
     },
     {
@@ -589,8 +589,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 965,
-        "total_ms": 980
+        "tool_ms": 1126,
+        "total_ms": 1142
       }
     },
     {
@@ -626,8 +626,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 4288,
-        "total_ms": 4303
+        "tool_ms": 4822,
+        "total_ms": 4840
       }
     },
     {
@@ -663,8 +663,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 2625,
-        "total_ms": 2639
+        "tool_ms": 2733,
+        "total_ms": 2748
       }
     },
     {
@@ -700,8 +700,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 965,
-        "total_ms": 979
+        "tool_ms": 1039,
+        "total_ms": 1054
       }
     },
     {
@@ -737,8 +737,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 564,
-        "total_ms": 579
+        "tool_ms": 604,
+        "total_ms": 619
       }
     },
     {
@@ -774,8 +774,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 557,
-        "total_ms": 572
+        "tool_ms": 606,
+        "total_ms": 622
       }
     },
     {
@@ -811,8 +811,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 564,
-        "total_ms": 579
+        "tool_ms": 640,
+        "total_ms": 655
       }
     },
     {
@@ -847,9 +847,9 @@
       "id": "matrix-expansion-noncommuting",
       "pending": "",
       "timing": {
-        "claim_check_ms": 380,
-        "tool_ms": 393,
-        "total_ms": 788
+        "claim_check_ms": 421,
+        "tool_ms": 454,
+        "total_ms": 891
       }
     },
     {
@@ -884,9 +884,9 @@
       "id": "ode-first-order",
       "pending": "",
       "timing": {
-        "claim_check_ms": 530,
-        "tool_ms": 445,
-        "total_ms": 990
+        "claim_check_ms": 590,
+        "tool_ms": 486,
+        "total_ms": 1092
       }
     },
     {
@@ -921,9 +921,9 @@
       "id": "vector-divergence-product",
       "pending": "",
       "timing": {
-        "claim_check_ms": 382,
-        "tool_ms": 559,
-        "total_ms": 956
+        "claim_check_ms": 415,
+        "tool_ms": 601,
+        "total_ms": 1031
       }
     },
     {
@@ -958,14 +958,14 @@
       "id": "vector-distributional-divergence",
       "pending": "",
       "timing": {
-        "claim_check_ms": 385,
-        "tool_ms": 688,
-        "total_ms": 1089
+        "claim_check_ms": 416,
+        "tool_ms": 732,
+        "total_ms": 1165
       }
     }
   ],
   "summary": {
-    "est_tokens_in": 725125,
+    "est_tokens_in": 726812,
     "est_tokens_out": 2202,
     "format_switches": 3,
     "input_adjusted": 2,

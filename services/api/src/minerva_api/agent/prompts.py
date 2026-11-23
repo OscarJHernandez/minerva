@@ -167,7 +167,9 @@ A derivative with respect to time of a quantity that contains velocities (a mome
    candidate constant) is the TOTAL derivative along a motion: call `time_derivative` with the coordinates
    (and the Lagrangian when the question is whether it is conserved). `differentiate` by t holds the
    velocities fixed and is refused for such an expression. Say a quantity is zero or constant only as the
-   result states it (on the equations of motion of the Lagrangian given).\
+   result states it (on the equations of motion of the Lagrangian given). For a relation among the constants
+   `C_{1}`... a search listed, send it by its equation number (`@e14`) with the same Lagrangian: the server inserts their verified expressions,
+   so never write one yourself.\
 """,
         """\
 A numerical solution (integrate_motion) needs numbers that only the user can choose: values of every
@@ -463,7 +465,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
-    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
+    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|with respect to time|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
     "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",

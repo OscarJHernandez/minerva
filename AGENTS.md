@@ -408,6 +408,18 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   Lagrangian it is also evaluated on the equations of motion (`derive`, confirmed by `check_equations`) and a zero is
   decided as for a constant of motion; "zero on the equations of motion of this Lagrangian" is the only wording, the
   nonzero formula is quoted (never `known_latex`), and accelerations in the input are `unsupported`.
+  Names of constants of motion an earlier `find_conserved_quantities` listed (`C_{1}`...: "the derivative of Equation 14
+  with respect to time") are bare symbols with no dependence on the motion (`unsupported`, `no_dynamic_dependence`, never a
+  retry). The SERVER inserts their verified expressions (`agent/constants.py`, `ToolContext.constants` read from the
+  stored discovery cards; `time_derivative.definitions`, exact `xreplace`, no simplification) and only when each name has
+  exactly one verified definition in one Lagrangian system (`ambiguous_constant`, `constant_not_verified`,
+  `unsupported_definition` otherwise). The model has no argument for a definition (a test pins the schema), the card and
+  the model are told which names were replaced, the derivative and every check are of the expression with them
+  inserted, and `Q = 0` sent for a quantity is repaired to `Q` with the repair shown. The zero test on the motion
+  evaluates at 80 digits on the sample floats taken as exact rationals (`verify.numeric_check(digits=)`, compiled once
+  through mpmath): an expression of several constants has terms near 1e22 at the wide sample points that cancel exactly,
+  and 53-bit samples made a true zero "not zero". The tolerance did not change; a definition wrong by 1e-6 is still
+  rejected. Constants found in the same turn are not read (only stored cards).
 - Series (`series.py`) are Taylor polynomials about a finite real point, shown only if two checks that do not
   use `sympy.series` both pass: the coefficients against a Cauchy-integral estimate (trapezoid on circles,
   trusted only where the estimates at r and r/2 agree, tolerance per coefficient) and the h^(N+1) decay of the

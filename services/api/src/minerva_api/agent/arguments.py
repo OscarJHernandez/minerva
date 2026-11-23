@@ -142,6 +142,7 @@ def repair_arguments(
             out[name] = str(value)
             notes.append(_note(name, str(value), repr(str(value)), "this field takes text"))
 
+    _equation_to_zero(model, out, notes)
     _kind_wrapper(fields, out, notes)
     _theorem_expression(fields, out, notes)
     _item_keys(fields, out, notes)
@@ -149,6 +150,35 @@ def repair_arguments(
     _nested_numbers(fields, out, notes)
 
     return (out if notes else arguments), tuple(notes)
+
+
+# Tools whose one formula is a quantity (not an equation) and the field that holds it. A relation read from a
+# numbered equation arrives as `Q = 0`, and `Q` alone is the only reading: the tool differentiates the quantity.
+_QUANTITY_FIELDS = {"TimeDerivativeArgs": "latex"}
+_EQUALS_ZERO = re.compile(r"^(?P<lhs>[^=]+?)\s*=\s*0\s*$")
+
+
+def _equation_to_zero(
+    model: type[BaseModel], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """`Q = 0` sent where a quantity `Q` is wanted (one `=`, the right side exactly 0): `Q`, shown as a repair.
+    `Q = 5` or `Q = f` is not touched: that is a different statement and stays the tool's own refusal."""
+    name = _QUANTITY_FIELDS.get(model.__name__)
+    value = out.get(name) if name else None
+    if name is None or not isinstance(value, str):
+        return
+    match = _EQUALS_ZERO.match(value.strip())
+    if match is None or "\\le" in value or "\\ge" in value:
+        return
+    out[name] = match.group("lhs").strip()
+    notes.append(
+        _note(
+            name,
+            "an equation `Q = 0`",
+            "the quantity `Q`",
+            "this tool takes the quantity, not an equation",
+        )
+    )
 
 
 def _tags(info: Any) -> dict[str, Any]:
