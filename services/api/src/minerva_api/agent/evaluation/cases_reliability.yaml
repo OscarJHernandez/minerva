@@ -302,6 +302,7 @@
   forbid: [expand_motion]
   tools_optional: true
   max_calls: 4
+  expect_card: {status: ok}
   reply_matches: 'theta_1|first angle|first rod|l_1|only|which'
   reply_forbids: '(?i)both (angles|\$?\\theta)'
   reference:
