@@ -46,7 +46,7 @@ from minerva_engine import (
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_engine.integration_strategy.models import StrategyName
-from minerva_engine.notation.models import Normalization
+from minerva_engine.notation.models import InputDiagnostic, Normalization
 from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -70,6 +70,7 @@ from ..search_log import log_search_events
 from ..variation_log import log_variation
 from ..vector_log import log_vector
 from .choice import numbers_in
+from .constants import KnownConstant, Refusal, expand_constants
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .mathinput import (
@@ -125,6 +126,10 @@ class ToolContext:
     # Set by the loop for one call (and cleared after it): what `mathinput.prepare_arguments` removed from
     # the model's arguments (markdown escapes, a `$` wrapper, `L =`...). `execute` shows it with the result.
     input_notes: tuple[Normalization, ...] = ()
+    # The constants of motion earlier results of this conversation found and verified (set by the chat route
+    # from the stored discovery cards, never by the model): `time_derivative` inserts their expressions for
+    # the names `C_{1}`... that its quantity uses (`agent/constants.py`).
+    constants: tuple[KnownConstant, ...] = ()
 
 
 @dataclass
@@ -1063,6 +1068,7 @@ def _error(
 
 # --- tool implementations ----------------------------------------------------------------------
 MAX_STEPS_FOR_MODEL = 6
+LONG_RESULT = 800  # characters of LaTeX; a longer total derivative stays on the card
 
 
 NOT_APPLIED = "a handbook identity that was not applied: its conditions are not established"
@@ -1238,8 +1244,30 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, known, result.status.value)
 
 
+def _constants_refusal(refusal: Refusal) -> ToolOutput:
+    out = _error("time_derivative", refusal.message, "unsupported")
+    diagnostic = InputDiagnostic(
+        code=refusal.code, field="latex", symbols=list(refusal.symbols), recoverable=False
+    )
+    out.card.data["diagnostic"] = diagnostic.model_dump(mode="json")
+    out.reason_code = refusal.code.value
+    return out
+
+
 def run_time_derivative(args: TimeDerivativeArgs, ctx: ToolContext) -> ToolOutput:
-    result = ctx.engine.time_derivative(_expr(args), args.coordinates, args.time, args.lagrangian)
+    expansion = expand_constants(args.latex, ctx.constants)
+    if isinstance(expansion, Refusal):
+        return _constants_refusal(expansion)
+    # The system of the constants is the one whose equations of motion the zero is decided on, unless the
+    # call names its own Lagrangian.
+    lagrangian = args.lagrangian or (expansion.function if expansion else None)
+    result = ctx.engine.time_derivative(
+        _expr(args),
+        args.coordinates,
+        args.time,
+        lagrangian,
+        expansion.definitions if expansion else None,
+    )
     card = Card(
         id=uuid.uuid4().hex[:8],
         tool="time_derivative",
@@ -1250,7 +1278,22 @@ def run_time_derivative(args: TimeDerivativeArgs, ctx: ToolContext) -> ToolOutpu
     v = result.verification
     text = (
         f"status={result.status.value}; {_as_read(result.input_latex)}"
-        + (f"total time derivative=${result.result_latex}$; " if result.result_latex else "")
+        + (
+            "constants replaced by their verified expressions from the earlier result: "
+            + "; ".join(f"${d}$" for d in result.definitions_used)
+            + "; "
+            if result.definitions_used
+            else ""
+        )
+        + (
+            f"total time derivative=${result.result_latex}$; "
+            if result.result_latex and len(result.result_latex) <= LONG_RESULT
+            else (
+                "total time derivative: a long expression, on the card and not repeated here; "
+                if result.result_latex
+                else ""
+            )
+        )
         + (
             f"numerically checked along random motions: {v.points_agreed}/{v.points_checked} points; "
             if v
@@ -4265,7 +4308,7 @@ RESOURCE_LIMIT_HINTS = {
 def _add_hints(name: str, arguments: dict[str, Any], output: ToolOutput) -> None:
     """Fixed advice for the model on failures it keeps repeating. It only ever adds text for the
     model; the card and the input are unchanged, and nothing is reinterpreted."""
-    text = " ".join(_argument_texts(arguments))
+    text = " ".join(text for _, text in _argument_texts(arguments))
     hints: list[str] = []
     if output.status in ("unsupported", "unchanged", "parse_error") and _BARE_E_POWER.search(text):
         hints.append(
@@ -4353,14 +4396,20 @@ MATRIX_SAFE: dict[str, str] = {
 }
 
 
-def _argument_texts(arguments: dict[str, Any]) -> list[str]:
-    """The strings in a call that hold mathematics: expression fields, and for a differential equation
-    its equations and written conditions."""
-    texts = [arguments[f] for f in _EXPRESSION_FIELDS if isinstance(arguments.get(f), str)]
+# The fields that hold the system a quantity lives in, not the quantity itself. A Lagrangian in a vector's
+# coordinates and components (`r`, `theta`) is the ordinary case, and the Lagrangian tools already answer it
+# (`MATRIX_ONLY_TOOLS`); `time_derivative` refused the same Lagrangian for an expression without `r` in it.
+_SYSTEM_FIELDS = frozenset({"lagrangian", "hamiltonian"})
+
+
+def _argument_texts(arguments: dict[str, Any]) -> list[tuple[str, str]]:
+    """(field, text) for the strings in a call that hold mathematics: expression fields, and for a
+    differential equation its equations and written conditions."""
+    texts = [(f, arguments[f]) for f in _EXPRESSION_FIELDS if isinstance(arguments.get(f), str)]
     for field_name in ("equations", "conditions"):
         value = arguments.get(field_name)
         if isinstance(value, list):
-            texts.extend(item for item in value if isinstance(item, str))
+            texts.extend((field_name, item) for item in value if isinstance(item, str))
     return texts
 
 
@@ -4405,11 +4454,18 @@ def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> T
         return None
     texts = _argument_texts(arguments)
     declared_here = _declared_noncommutative(arguments) if aware else set()
-    candidates = ctx.matrices - ctx.vector_names if matrix_only else ctx.matrices
+    # Only a declared matrix makes a Lagrangian or Hamiltonian wrong; a declared vector blocks the
+    # expression fields of a scalar tool and nothing else.
+    matrices_only = ctx.matrices - ctx.vector_names
     hit = sorted(
         n
-        for n in candidates
-        if n not in declared_here and any(mentions_name(text, {n}) for text in texts)
+        for n in ctx.matrices
+        if n not in declared_here
+        and any(
+            mentions_name(text, {n})
+            for field_name, text in texts
+            if n in matrices_only or not (matrix_only or field_name in _SYSTEM_FIELDS)
+        )
     )
     if not hit:
         return None
@@ -4428,8 +4484,8 @@ def _matrix_refusal(name: str, arguments: dict[str, Any], ctx: ToolContext) -> T
         )
         + "Use `matrix_calculus` for a matrix (it needs its size or entries), `vector_calculus` for a "
         "vector field, or say that this is not supported. If it is only a scalar, tell the user the "
-        'name was read as a matrix or vector and that saying "<name> is a scalar" clears it; do not '
-        "compute it yourself.",
+        'name was read as a matrix or vector and that saying "<name> is a scalar" clears it (so does '
+        "defining it as a norm, `r = |\\mathbf{r}|`); do not compute it yourself.",
         "unsupported",
     )
 

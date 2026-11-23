@@ -28,7 +28,7 @@ from ..logging import error_fields
 from .arguments import repair_arguments
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .choice import delegation_active, names_a_method, numbers_in
-from .declarations import declared_matrices, declared_vectors
+from .declarations import declared_in_reply
 from .diagnosis import diagnose
 from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
@@ -685,6 +685,8 @@ async def run_agent(
     declared_for_tools: Mapping[str, str] | None = None,
     prior_evidence: Sequence[Mapping[str, Any]] = (),
     vector_kind_names: Collection[str] = (),
+    prior_vectors: Sequence[str] = (),
+    scalar_names: Collection[str] = (),
 ) -> AsyncIterator[dict[str, Any]]:
     """Yield events: {"event": "text"|"tool_call"|"card"|"message"|"error", "data": {...}}.
 
@@ -718,6 +720,8 @@ async def run_agent(
                 declared_for_tools,
                 prior_evidence,
                 vector_kind_names,
+                prior_vectors,
+                scalar_names,
             ):
                 yield event
     finally:
@@ -745,6 +749,8 @@ async def _run_turn(
     declared_for_tools: Mapping[str, str] | None = None,
     prior_evidence: Sequence[Mapping[str, Any]] = (),
     vector_kind_names: Collection[str] = (),
+    prior_vectors: Sequence[str] = (),
+    scalar_names: Collection[str] = (),
 ) -> AsyncIterator[dict[str, Any]]:
     started = time.monotonic()
     # Without parameters (tests, scripts that predate them) everything is sent and nothing is trimmed.
@@ -824,7 +830,9 @@ async def _run_turn(
         messages (a name a sentence declares, a user sentence can clear it); `prior_matrices`, the generous
         reading, only leaves claims unchecked. The worker thread gets its own copy: a call that timed out
         leaves a thread that may still be reading it, and the next call must not change what it sees."""
-        gate = prior_matrices if declared_for_tools is None else declared_for_tools
+        gate = (
+            {*prior_matrices, *prior_vectors} if declared_for_tools is None else declared_for_tools
+        )
         return replace(
             ctx,
             matrices=(
@@ -1604,6 +1612,8 @@ async def _run_turn(
         prior_assumptions,
         prior_matrices,
         prior_evidence,
+        prior_vectors,
+        scalar_names,
     )
     claims_ms = _ms(claims_started)
     if equations is not None:  # numbers are assigned here, in reading order, never by the model
@@ -1837,6 +1847,8 @@ async def _check_claims_in_budget(
     prior_assumptions: dict[str, list[str]] | None = None,
     prior_matrices: Sequence[str] = (),
     prior_evidence: Sequence[Mapping[str, Any]] = (),
+    prior_vectors: Sequence[str] = (),
+    scalar_names: Collection[str] = (),
 ) -> tuple[list[ClaimDebug], str]:
     """Run the claim check inside what is left of the turn's time.
 
@@ -1856,6 +1868,8 @@ async def _check_claims_in_budget(
             prior_assumptions,
             prior_matrices,
             prior_evidence,
+            prior_vectors,
+            scalar_names,
         )
         return report, "ok"
     except TimeoutError:
@@ -1885,6 +1899,8 @@ async def check_model_claims(
     prior_assumptions: dict[str, list[str]] | None = None,
     prior_matrices: Sequence[str] = (),
     prior_evidence: Sequence[Mapping[str, Any]] = (),
+    prior_vectors: Sequence[str] = (),
+    scalar_names: Collection[str] = (),
 ) -> list[ClaimDebug]:
     """Test the equations the model wrote itself; mark them checked, contradicted or unchecked.
 
@@ -1904,15 +1920,17 @@ async def check_model_claims(
             for name, items in declared.items():
                 if isinstance(items, list):
                     assumptions[str(name)] = [str(i) for i in items]
-    prose = _prose_of(blocks)
-    matrices = matrix_names(trace) | set(prior_matrices) | declared_matrices(prose)
+    # What the reply itself declares, minus what the conversation settled as scalars (`r = |\\mathbf{r}|`,
+    # or the user's word): the reply repeating "the position vector" must not undo that for its own claims.
+    said_matrices, said_vectors = declared_in_reply(_prose_of(blocks), scalar_names)
+    matrices = matrix_names(trace) | set(prior_matrices) | said_matrices
     results = await run_in_threadpool(
         ctx.engine.check_claims,
         [s.value for s in pending],
         assumptions,
         list(prior_relations),
         sorted(matrices),
-        sorted(declared_vectors(prose) | vector_names(trace)),
+        sorted(said_vectors | set(prior_vectors) | vector_names(trace)),
         claim_evidence(trace, prior_evidence),
     )
     report: list[ClaimDebug] = []

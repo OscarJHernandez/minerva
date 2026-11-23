@@ -412,6 +412,18 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   Lagrangian it is also evaluated on the equations of motion (`derive`, confirmed by `check_equations`) and a zero is
   decided as for a constant of motion; "zero on the equations of motion of this Lagrangian" is the only wording, the
   nonzero formula is quoted (never `known_latex`), and accelerations in the input are `unsupported`.
+  Names of constants of motion an earlier `find_conserved_quantities` listed (`C_{1}`...: "the derivative of Equation 14
+  with respect to time") are bare symbols with no dependence on the motion (`unsupported`, `no_dynamic_dependence`, never a
+  retry). The SERVER inserts their verified expressions (`agent/constants.py`, `ToolContext.constants` read from the
+  stored discovery cards; `time_derivative.definitions`, exact `xreplace`, no simplification) and only when each name has
+  exactly one verified definition in one Lagrangian system (`ambiguous_constant`, `constant_not_verified`,
+  `unsupported_definition` otherwise). The model has no argument for a definition (a test pins the schema), the card and
+  the model are told which names were replaced, the derivative and every check are of the expression with them
+  inserted, and `Q = 0` sent for a quantity is repaired to `Q` with the repair shown. The zero test on the motion
+  evaluates at 80 digits on the sample floats taken as exact rationals (`verify.numeric_check(digits=)`, compiled once
+  through mpmath): an expression of several constants has terms near 1e22 at the wide sample points that cancel exactly,
+  and 53-bit samples made a true zero "not zero". The tolerance did not change; a definition wrong by 1e-6 is still
+  rejected. Constants found in the same turn are not read (only stored cards).
 - Series (`series.py`) are Taylor polynomials about a finite real point, shown only if two checks that do not
   use `sympy.series` both pass: the coefficients against a Cauchy-integral estimate (trapezoid on circles,
   trusted only where the estimates at r and r/2 agree, tolerance per coefficient) and the h^(N+1) decay of the
@@ -549,8 +561,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   "do not commute", never `$1/r$` or `$H = T + V$`) feeds `ToolContext.matrices`, because there a wrong name blocks every
   scalar tool for the rest of the conversation (a reply mentioning "the Runge-Lenz vector, unique to $1/r$ potentials" once
   made `r` a vector). A refusal quotes the sentence and who wrote it (`ToolContext.matrix_sources`, never logged), and a
-  *user* sentence calling a name a scalar clears it (the model's own text never does). Do not feed the generous reading to a
-  tool refusal.
+  *user* sentence calling a name a scalar clears it (the model's own text never does), with one exception that is a
+  definition and not an opinion: `r = |\mathbf{r}|` (the bare letter is the norm of its own bold or arrowed spelling) makes
+  the bare letter a scalar whoever wrote it, and the bold spelling then names the vector without declaring `r`. A scalar
+  made by that rule or by a user sentence about that very name is *held*: only a later user sentence that declares the
+  bare name brings it back, never the model repeating "the position vector" (`declarations.scan`, `Scan.held`; the
+  reply's own claim check reads the same set through `declared_in_reply`). Do not feed the generous reading to a tool
+  refusal. The refusal reads the fields by kind: a declared vector blocks the expression fields of a scalar tool, and a
+  Lagrangian or Hamiltonian field only when the name is a declared matrix (`tools._SYSTEM_FIELDS`), because the
+  coordinates of a system are scalars whatever vector the model also wrote. The claim checker is told which names are
+  vectors and which matrices (`Declarations.prior_vectors` / `prior_matrices`), so a vector is never called a matrix.
 - Distributions (`distributions/`, tool and endpoint `distribution`): a Dirac delta is 0 at every point a sampler can
   draw, so pointwise sampling proves nothing about it. Every other operation refuses `DiracDelta` / `Heaviside` input as
   `unsupported`, `verify_equal` never passes it, and the claim checker leaves such statements `unverified` (never

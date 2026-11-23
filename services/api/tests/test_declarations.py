@@ -321,3 +321,138 @@ def test_a_declared_vector_does_not_block_the_tools_only_a_matrix_makes_wrong(
     assert squared.status == "ok"
     # the scalar tools that a vector does break are still refused for it
     assert execute("simplify", {"latex": r"(r+1)^2", "goal": "expand"}, ctx).status == "error"
+
+
+# -- issue #132: the position vector and its length are two different names ---------------------------
+
+KEPLER_VECTOR_REPLY = (
+    r"Take the relative position vector $\mathbf{r}$, where $r = |\mathbf{r}|$ is the distance. "
+    r"In polar form $L = \frac{\mu}{2}(\dot{r}^2 + r^2\dot{\theta}^2) + \frac{GM\mu}{r}$."
+)
+POLAR_LAGRANGIAN = r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{G M \mu}{r}"
+
+
+def test_a_norm_definition_makes_the_bare_letter_a_scalar_whoever_wrote_it() -> None:
+    for role in ("assistant", "user"):
+        assert strict(KEPLER_VECTOR_REPLY, role=role) == set()
+        assert read_declarations([(role, KEPLER_VECTOR_REPLY)], strict=False) == {}
+
+
+@pytest.mark.parametrize(
+    ("text", "names"),
+    [
+        # the same sentence without the definition still declares the vector
+        (r"Take the position vector $\mathbf{r}$ of the body.", {"r"}),
+        # the norm of another letter, or of a bare letter, is not a definition of `r`
+        (r"The vector $\mathbf{r}$, where $s = |\mathbf{r}|$ is its length.", {"r"}),
+        (r"The vector $\mathbf{r}$, where $r = |x|$.", {"r"}),
+        # a bare letter named after the keyword stays a declaration
+        (r"The vector $r$, where $r = |\mathbf{r}|$.", set()),
+    ],
+)
+def test_only_the_norm_of_the_same_letter_defines_a_scalar(text: str, names: set[str]) -> None:
+    assert strict(text, role="assistant") == names
+
+
+def _rows(*pairs: tuple[str, str]) -> list[_Row]:
+    return [_Row(role, {"text": text, "trace": []}) for role, text in pairs]
+
+
+def test_the_polar_kepler_conversation_declares_no_vector_and_no_matrix() -> None:
+    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+
+    rows = _rows(
+        ("user", "Give the Kepler Lagrangian in vector and polar form."),
+        ("assistant", KEPLER_VECTOR_REPLY),
+    )
+    found = declarations_of(*_declaration_inputs(rows, "Differentiate $C_1$ in time"))  # type: ignore[arg-type]
+    assert found.declared_for_tools == {} and not found.vector_kind_names
+    assert "r" not in found.prior_matrices and "r" not in found.prior_vectors
+    assert "r" in found.scalar_names
+
+
+def test_a_vector_name_goes_to_the_vector_list_not_to_the_matrix_list() -> None:
+    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+
+    rows = _rows(("user", r"Let $\mathbf{E}$ be a vector field and let A and B be matrices."))
+    found = declarations_of(*_declaration_inputs(rows, ""))  # type: ignore[arg-type]
+    assert "E" in found.prior_vectors and "E" not in found.prior_matrices
+    assert {"A", "B"} <= set(found.prior_matrices) and not {"A", "B"} & set(found.prior_vectors)
+
+
+def test_a_scalar_the_user_named_stays_a_scalar_when_the_model_repeats_the_vector() -> None:
+    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+
+    again = r"Here the position vector $\mathbf{r}$ is used again."
+    rows = _rows(
+        ("assistant", r"Let the position vector $\mathbf{r}$ be given."),
+        ("user", "Fix your tool call. r is a scalar."),
+        ("assistant", again),
+    )
+    found = declarations_of(*_declaration_inputs(rows, ""))  # type: ignore[arg-type]
+    assert "r" not in found.declared_for_tools and "r" not in found.prior_vectors
+    # ... and only the user can bring it back
+    rows.append(_Row("user", {"text": r"Let the vector $r$ be a field again.", "trace": []}))
+    back = declarations_of(*_declaration_inputs(rows, ""))  # type: ignore[arg-type]
+    assert "r" in back.declared_for_tools
+
+
+def test_a_user_sentence_about_one_name_does_not_hold_the_other_names_of_the_sentence() -> None:
+    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+
+    rows = _rows(
+        ("user", "Let A and B be matrices."),
+        ("user", "Treat x as a scalar, and keep B in mind."),
+        ("assistant", "Let A and B be matrices again."),
+    )
+    found = declarations_of(*_declaration_inputs(rows, ""))  # type: ignore[arg-type]
+    assert {"A", "B"} <= set(found.declared_for_tools)
+
+
+def test_a_declared_vector_in_the_lagrangian_does_not_block_time_derivative(
+    engine_ctx: ToolContext,
+) -> None:
+    system = {"lagrangian": POLAR_LAGRANGIAN, "coordinates": ["r", "theta"]}
+    vector_r = ToolContext(
+        engine=engine_ctx.engine,
+        kb=engine_ctx.kb,
+        matrices=frozenset({"r"}),
+        vector_names=frozenset({"r"}),
+        matrix_sources={"r": "my earlier reply: «the vector r»"},
+    )
+    # the quantity has no `r` in it: the Lagrangian's coordinates are not the quantity
+    ok = execute("time_derivative", {"latex": r"\mu \dot{\theta}", **system}, vector_r)
+    assert ok.status == "ok", ok.for_model
+    # a quantity that does contain the declared vector is still refused
+    refused = execute("time_derivative", {"latex": r"\mu r^2 \dot{\theta}", **system}, vector_r)
+    assert refused.status == "error" and "declared as a matrix" in refused.for_model
+
+
+def test_a_declared_matrix_in_the_lagrangian_still_blocks_time_derivative(
+    engine_ctx: ToolContext,
+) -> None:
+    matrix_r = ToolContext(
+        engine=engine_ctx.engine,
+        kb=engine_ctx.kb,
+        matrices=frozenset({"r"}),
+        matrix_sources={"r": "your message: «Let r be a matrix.»"},
+    )
+    out = execute(
+        "time_derivative",
+        {
+            "latex": r"\mu \dot{\theta}",
+            "lagrangian": POLAR_LAGRANGIAN,
+            "coordinates": ["r", "theta"],
+        },
+        matrix_r,
+    )
+    assert out.status == "error" and "declared as a matrix" in out.for_model
+
+
+def test_a_vector_name_gets_the_vector_wording_in_the_claim_check(engine_ctx: ToolContext) -> None:
+    prose = r"For the field, $(r + 1)^2 = r^2 + 2r + 1$."
+    as_vector = engine_ctx.engine.check_claims([r"(r+1)^2 = r^2 + 2 r + 1"], {}, [], [], ["r"], [])
+    as_matrix = engine_ctx.engine.check_claims([r"(r+1)^2 = r^2 + 2 r + 1"], {}, [], ["r"], [], [])
+    assert prose and as_vector[0].status == as_matrix[0].status == "unverified"
+    assert "vector" in as_vector[0].detail and "matrix" not in as_vector[0].detail
+    assert "matrix" in as_matrix[0].detail

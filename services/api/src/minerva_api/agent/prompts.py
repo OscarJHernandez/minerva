@@ -467,7 +467,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
-    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
+    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|with respect to time|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
     "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",

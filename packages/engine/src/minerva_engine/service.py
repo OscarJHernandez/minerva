@@ -594,13 +594,16 @@ class Engine:
         coordinates: list[str],
         time: str = "t",
         lagrangian: str | None = None,
+        definitions: dict[str, str] | None = None,
     ) -> DifferentiateResult:
-        """Total time derivative along a motion (chain rule over coordinates, velocities, time)."""
+        """Total time derivative along a motion (chain rule over coordinates, velocities, time).
+        `definitions` (name -> expression) are inserted for the names of the expression, exactly."""
         payload = {
             "expression": expression.model_dump(),
             "coordinates": coordinates,
             "time": time,
             "lagrangian": lagrangian,
+            "definitions": definitions or {},
         }
         outcome, ms = self._run("time_derivative", payload)
         if outcome.outcome is not Outcome.OK or outcome.value is None:

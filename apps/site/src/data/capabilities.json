@@ -7431,7 +7431,8 @@
       "limits": [
         "It is not a partial derivative; `differentiate` by t of an expression that contains velocities is refused and points here.",
         "A zero is a statement about the Lagrangian given (on its equations of motion), never about other systems, and the nonzero case is worded as an exact substitution of the verified accelerations.",
-        "Expressions that already contain accelerations need third derivatives and are not supported."
+        "Expressions that already contain accelerations need third derivatives and are not supported.",
+        "The names `C_{1}`... of constants an earlier search found are replaced by their verified expressions by the server, never by the model, and only when each name has exactly one verified definition in one Lagrangian system; otherwise the call is refused with the reason. The derivative and its check are of the expression with them inserted."
       ],
       "examples": [
         {
@@ -7490,6 +7491,51 @@
           "notes": [
             "Total time derivative along a motion; verified against a central difference of the input along random motions.",
             "Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.",
+            "Zero on the equations of motion of the Lagrangian given (confirmed numerically; also a symbolic zero). That is a statement about this Lagrangian's motions, not about other systems."
+          ]
+        },
+        {
+          "id": "time-derivative-kepler-relation",
+          "title": "A relation among the four Kepler constants is zero on the motion",
+          "op": "time_derivative",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Input",
+              "source": "2 C_{1}^{2} C_{2} - C_{3}^{2} \\mu^{3} - C_{4}^{2} \\mu^{3} + G^{2} M^{2} \\mu^{3}",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Constant of motion, as found earlier",
+              "latex": "C_{1} = \\mu r^{2} \\dot{\\theta}"
+            },
+            {
+              "label": "Constant of motion, as found earlier",
+              "latex": "C_{2} = - \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}"
+            },
+            {
+              "label": "Constant of motion, as found earlier",
+              "latex": "C_{3} = - G M \\cos{\\left(\\theta \\right)} + r^{3} \\dot{\\theta}^{2} \\cos{\\left(\\theta \\right)} + r^{2} \\dot{r} \\dot{\\theta} \\sin{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Constant of motion, as found earlier",
+              "latex": "C_{4} = G M \\sin{\\left(\\theta \\right)} - r^{3} \\dot{\\theta}^{2} \\sin{\\left(\\theta \\right)} + r^{2} \\dot{r} \\dot{\\theta} \\cos{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "On the equations of motion (zero)",
+              "latex": "0"
+            }
+          ],
+          "checks": [
+            "central difference of the input along random motions agreed at 10 of 10 points"
+          ],
+          "notes": [
+            "Total time derivative along a motion; verified against a central difference of the input along random motions.",
+            "Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.",
+            "Inserted, as given: $C_{1}$, $C_{2}$, $C_{3}$, $C_{4}$. The derivative and its check are of the expression with these replaced.",
             "Zero on the equations of motion of the Lagrangian given (confirmed numerically; also a symbolic zero). That is a statement about this Lagrangian's motions, not about other systems."
           ]
         },

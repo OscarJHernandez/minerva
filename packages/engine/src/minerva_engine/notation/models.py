@@ -36,6 +36,12 @@ class InputCode(StrEnum):
     DEPENDENT_ARGUMENT_NOT_VARIABLE = "dependent_argument_not_variable"
     DERIVATIVE_OF_EXPRESSION = "derivative_of_expression"
     TOTAL_DERIVATIVE_REQUESTED = "total_derivative_requested"
+    # `time_derivative` of an expression that is not a function of the motion as written (bare names such
+    # as constants of motion a tool found earlier), and the refusals of a definition for such a name.
+    NO_DYNAMIC_DEPENDENCE = "no_dynamic_dependence"
+    UNSUPPORTED_DEFINITION = "unsupported_definition"
+    AMBIGUOUS_CONSTANT = "ambiguous_constant"
+    CONSTANT_NOT_VERIFIED = "constant_not_verified"
 
 
 class NormalizationKind(StrEnum):

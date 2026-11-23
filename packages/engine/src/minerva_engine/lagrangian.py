@@ -323,11 +323,13 @@ class ConservedSearch:
     features: list[str] = field(default_factory=list)
 
 
-def verify_zero_derivative(derivative: sp.Expr) -> tuple[bool, Verification]:
+def verify_zero_derivative(derivative: sp.Expr, digits: int = 30) -> tuple[bool, Verification]:
     """Is the time derivative of a candidate constant zero on the motion? Checked symbolically (exact
-    cancellation first, then `simplify`) and at random numerical points; the numeric check decides `passed`."""
+    cancellation first, then `simplify`) and at random numerical points; the numeric check decides `passed`.
+    `digits` is the precision of the evaluation, never the tolerance: an expression built from several
+    constants of motion has terms of size 1e20 at the wide sample points that cancel exactly."""
     symbolic_zero = sp.cancel(sp.together(derivative)) == 0 or sp.simplify(derivative) == 0
-    checked, agreed = numeric_check(derivative, sp.Integer(0))
+    checked, agreed = numeric_check(derivative, sp.Integer(0), digits=digits)
     passed = checked >= 4 and agreed == checked
     verification = Verification(
         symbolic_zero=symbolic_zero,

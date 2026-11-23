@@ -17,7 +17,7 @@ those of its Euler-Lagrange equations, confirmed numerically by `lagrangian.chec
 from __future__ import annotations
 
 import random
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import mpmath as mp
@@ -46,7 +46,7 @@ from .notation.derivatives import (
     refuse_latex_letter_runs,
     resolve_derivatives,
 )
-from .notation.models import InputCode, InputReading, Normalization
+from .notation.models import InputCode, InputDiagnostic, InputReading, Normalization
 from .variational import polypath
 from .verify import _sample
 
@@ -58,6 +58,9 @@ MAX_POINTS = 10
 ATTEMPTS = 60
 DEGREE = 4
 TIDY_MAX_OPS = 120
+# Evaluation digits for the zero test on the motion (the tolerance is unchanged): an expression made of
+# several constants of motion has terms near 1e22 at the wide sample points that cancel to exactly 0.
+ON_MOTION_DIGITS = 80
 
 
 def _mp(value: sp.Expr) -> Any:
@@ -140,6 +143,58 @@ def check_total_derivative(
     )
 
 
+def _insert_definitions(
+    expr: sp.Expr,
+    definitions: Mapping[str, str],
+    data: ExpressionInput,
+    coordinates: list[str],
+    time: str,
+    limits: Limits,
+) -> tuple[sp.Expr, list[tuple[str, sp.Expr]]]:
+    """Replace each name of `definitions` that `expr` contains by its expression, exactly and without
+    simplifying. The definitions are the caller's (the server takes them from verified constants of an
+    earlier result, never from the model); a definition that has accelerations, a velocity of something
+    that is not a coordinate, or another defined name is refused, so the replacement cannot loop or hide
+    a second derivative. The derivative and its check are then of the expression with them inserted."""
+    from .ops import parse_expression  # local import: ops imports this module
+
+    present = {s.name: s for s in expr.free_symbols if s.name in definitions}
+    parsed: dict[str, sp.Expr] = {}
+    for name in sorted(present):
+        text = definitions[name]
+        refused = InputDiagnostic(
+            code=InputCode.UNSUPPORTED_DEFINITION, field="definitions", symbols=[name]
+        )
+        try:
+            body = resolve_derivatives(
+                parse_expression(data.model_copy(update={"input": text}), limits),
+                coordinates,
+                time,
+                data.assumptions,
+            ).expr
+        except (ParseError, MinervaMathError) as exc:
+            raise DerivationError(
+                Status.UNSUPPORTED, f"The definition of {name} could not be read: {exc}", refused
+            ) from exc
+        symbols = {s.name for s in body.free_symbols}
+        known = {*coordinates, *(f"{c}_dot" for c in coordinates), time}
+        bad = sorted(
+            n
+            for n in symbols
+            if n.endswith("_ddot") or n in definitions or (n.endswith("_dot") and n not in known)
+        )
+        if bad:
+            raise DerivationError(
+                Status.UNSUPPORTED,
+                f"The definition of {name} contains {', '.join(bad)}: an acceleration, a velocity of "
+                "something that is not a coordinate, or another defined name is not supported.",
+                refused,
+            )
+        parsed[name] = body
+    replaced = expr.xreplace({present[name]: body for name, body in parsed.items()})
+    return replaced, [(name, parsed[name]) for name in sorted(parsed)]
+
+
 def _chain_rule(
     f: sp.Expr,
     q: Sequence[sp.Symbol],
@@ -159,6 +214,7 @@ def time_derivative(
     time: str,
     lagrangian: str | None,
     limits: Limits,
+    definitions: Mapping[str, str] | None = None,
 ) -> DifferentiateResult:
     from .ops import parse_expression  # local import: ops imports this module
 
@@ -167,6 +223,8 @@ def time_derivative(
     if len(set(coordinates)) != len(coordinates):
         return _fail(Status.PARSE_ERROR, "Coordinates must be distinct.")
     variables = [DiffVariable(name=time, order=1)]
+    as_written: sp.Expr | None = None
+    inserted: list[tuple[str, sp.Expr]] = []
     try:
         if lagrangian is not None:
             reject_equation(lagrangian, "Lagrangian")
@@ -183,6 +241,9 @@ def time_derivative(
         reading = InputReading(
             format=data.format, normalizations=[*spaced, *resolved.normalizations]
         )
+        if definitions:
+            as_written = expr
+            expr, inserted = _insert_definitions(expr, definitions, data, coordinates, time, limits)
     except DerivationError as exc:
         return _fail(
             exc.status, exc.message, variables=variables, total_order=1, diagnostic=exc.diagnostic
@@ -219,12 +280,13 @@ def time_derivative(
     def show(e: sp.Expr) -> str:
         return str(to_latex(e, symbol_names=names))
 
-    input_latex = show(expr)
+    input_latex = show(as_written if as_written is not None else expr)
     base_fields: dict[str, Any] = {
         "input_latex": input_latex,
         "variables": variables,
         "total_order": 1,
         "reading": reading,
+        "definitions_used": [f"{to_latex(sp.Symbol(n))} = {show(b)}" for n, b in inserted],
     }
     if any(s.name.endswith("_ddot") for s in expr.free_symbols):
         return _fail(
@@ -242,11 +304,19 @@ def time_derivative(
                 "coordinates; list it as a coordinate.",
                 **base_fields,
             )
-    if not (expr.free_symbols & {*q, *qd, t}):
+    depends = bool(expr.free_symbols & {*q, *qd, t})
+    if not depends and not inserted:
         return _fail(
             Status.UNSUPPORTED,
-            "The expression does not depend on the coordinates, their velocities or the time, so "
-            "its derivative along a motion is 0 trivially.",
+            "The expression is not a function of the coordinates, their velocities or the time as "
+            "written, so there is nothing to differentiate along a motion (its derivative is 0 "
+            "trivially). If its symbols name constants of motion a tool found earlier, refer to that "
+            "result and not to the bare names.",
+            diagnostic=InputDiagnostic(
+                code=InputCode.NO_DYNAMIC_DEPENDENCE,
+                field="latex",
+                symbols=sorted(s.name for s in expr.free_symbols),
+            ),
             **base_fields,
         )
 
@@ -280,6 +350,17 @@ def time_derivative(
         "Total derivative along a motion q(t): velocities and accelerations are the first and "
         "second time derivatives of the coordinates (chain rule); this is not a partial derivative."
     ]
+    if inserted:
+        notes.append(
+            "Inserted, as given: "
+            + ", ".join(f"${to_latex(sp.Symbol(n))}$" for n, _ in inserted)
+            + ". The derivative and its check are of the expression with these replaced."
+        )
+        if not depends:
+            notes.append(
+                "After the replacement the expression no longer contains the coordinates, the "
+                "velocities or the time, so it is constant along every motion."
+            )
     steps = [DerivativeStep(variable=time, order_so_far=1, latex=show(final))]
     extra: dict[str, Any] = {}
     if lagrangian is not None:
@@ -342,7 +423,7 @@ def _on_motion(
         for acceleration, value in d.solution.items()
     }
     on_motion = final.xreplace(substitution)
-    passed, ver = verify_zero_derivative(on_motion)
+    passed, ver = verify_zero_derivative(on_motion, digits=ON_MOTION_DIGITS)
     checked, agreed = ver.numeric_points_checked, ver.numeric_points_agreed
     if passed:
         extra.update(on_motion_latex="0", zero_on_motion=True)

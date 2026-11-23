@@ -235,14 +235,24 @@ def run_identity(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dic
 
 def run_time_derivative(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.time_derivative(
-        _expr(spec), spec["coordinates"], spec.get("time", "t"), spec.get("lagrangian")
+        _expr(spec),
+        spec["coordinates"],
+        spec.get("time", "t"),
+        spec.get("lagrangian"),
+        spec.get("definitions"),
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     if r.status.value == "ok" and r.result_latex and r.notation_latex:
-        outputs.append(
-            {"label": "Total time derivative", "latex": f"{r.notation_latex} = {r.result_latex}"}
-        )
+        for definition in r.definitions_used:
+            outputs.append({"label": "Constant of motion, as found earlier", "latex": definition})
+        if len(r.result_latex) <= 800:  # a long unsimplified derivative is not worth showing
+            outputs.append(
+                {
+                    "label": "Total time derivative",
+                    "latex": f"{r.notation_latex} = {r.result_latex}",
+                }
+            )
         if r.on_motion_latex is not None:
             zero = r.zero_on_motion is True
             outputs.append(

@@ -26,7 +26,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .agent.budget import fit_history
-from .agent.declarations import scan_declarations
+from .agent.constants import constants_of_blocks
+from .agent.declarations import scan
 from .agent.equations import (
     EquationTable,
     build_table,
@@ -1279,7 +1280,8 @@ class Declarations(NamedTuple):
     """What a conversation declared as matrices or vectors, read three ways for three purposes."""
 
     # generous: leaves a claim unchecked. A name is cheap to remember and forgetting one makes a matrix claim
-    # checkable as if it were about numbers; a name the user later called a scalar is dropped.
+    # checkable as if it were about numbers; a name the user later called a scalar is dropped. Matrices only:
+    # a vector name goes to `prior_vectors`, so the claim is told it is about a vector, not a matrix.
     prior_matrices: list[str]
     # strict: name -> where it came from, for the names that make a scalar tool refuse (tool-call declarations
     # and sentences that *declare* a name), minus names the user later called scalars.
@@ -1287,16 +1289,24 @@ class Declarations(NamedTuple):
     # of the strict names, those declared as VECTORS (not matrices): a vector's components and coordinates are
     # scalars, so the tools that only a declared matrix makes wrong (`tools.MATRIX_ONLY_TOOLS`) keep answering.
     vector_kind_names: frozenset[str]
+    # generous, like `prior_matrices`, for the names declared as vectors.
+    prior_vectors: list[str]
+    # names the conversation settled as scalars (`r = |\\mathbf{r}|`, or the user's "r is a scalar"): the
+    # model's reply cannot declare them again for its own claim check (`declarations.declared_in_reply`).
+    scalar_names: frozenset[str]
 
 
 def declarations_of(steps: list[dict[str, Any]], entries: list[tuple[str, str]]) -> Declarations:
     """The one place a conversation's declarations are read. The chat route and the evaluation harness both call
     it (`routers_chat.send_message`, `evaluation.runner.observe`): they once computed it separately, and the
     harness gave the claim checker less than the chat did (A-008)."""
-    found_generous, cleared_generous = scan_declarations(entries, strict=False)
+    generous = scan(entries, strict=False)
     tool_matrices, tool_vectors = matrix_names(steps), vector_names(steps)
-    prior = sorted(((tool_matrices | tool_vectors) - cleared_generous) | set(found_generous))
-    found, cleared = scan_declarations(entries, strict=True)
+    said_vector = {n for n, d in generous.found.items() if d.kind == "vector"}
+    prior_vectors = ((tool_vectors - generous.cleared) | said_vector) - tool_matrices
+    prior = ((tool_matrices - generous.cleared) | set(generous.found)) - prior_vectors
+    strict = scan(entries, strict=True)
+    found, cleared = strict.found, strict.cleared
     sources = {
         name: ("a matrix or vector declared in a tool call earlier in this conversation")
         for name in (tool_matrices | tool_vectors) - cleared
@@ -1306,12 +1316,15 @@ def declarations_of(steps: list[dict[str, Any]], entries: list[tuple[str, str]])
         sources[name] = f"{who}: \u00ab{d.quote}\u00bb"
     by_sentence = {n for n, d in found.items() if d.kind == "vector"}
     vectors = frozenset((by_sentence | tool_vectors) - cleared - tool_matrices)
-    return Declarations(prior, sources, vectors)
+    return Declarations(
+        sorted(prior), sources, vectors, sorted(prior_vectors), frozenset(generous.held)
+    )
 
 
 def _prior_matrices(messages: list[ChatMessage], current: str = "") -> list[str]:
     """Matrix and vector names this conversation declared, read generously (see `Declarations`)."""
-    return declarations_of(*_declaration_inputs(messages, current)).prior_matrices
+    found = declarations_of(*_declaration_inputs(messages, current))
+    return sorted({*found.prior_matrices, *found.prior_vectors})
 
 
 def _declared_vector_kind(messages: list[ChatMessage], current: str = "") -> frozenset[str]:
@@ -1398,6 +1411,7 @@ async def send_message(
     prior_evidence = _prior_evidence(previous)
     declared_for_tools = declarations.declared_for_tools
     vector_kind_names = declarations.vector_kind_names
+    prior_vectors, scalar_names = declarations.prior_vectors, declarations.scalar_names
     if history and history[-1]["role"] == "user":  # the last reply was never stored: one message
         history[-1] = {"role": "user", "content": history[-1]["content"] + "\n\n" + text}
     else:
@@ -1427,6 +1441,11 @@ async def send_message(
     session_factory = request.app.state.session_factory
     ctx = ToolContext(engine=engine, kb=kb)
     ctx.user_messages = [t for role, t in _declaration_inputs(previous, text)[1] if role == "user"]
+    # What earlier discovery results found and verified, for `time_derivative` of a relation among the
+    # constants (read from the stored cards, never from the model's text).
+    ctx.constants = tuple(
+        constants_of_blocks(m.content.get("blocks", []) for m in previous if m.role == "assistant")
+    )
     limits = AgentLimits(
         max_steps=settings.agent_max_steps,
         max_seconds=settings.agent_max_seconds,
@@ -1486,6 +1505,8 @@ async def send_message(
                 prior_matrices=prior_matrices,
                 declared_for_tools=declared_for_tools,
                 vector_kind_names=vector_kind_names,
+                prior_vectors=prior_vectors,
+                scalar_names=scalar_names,
                 prior_results=prior_results,
                 prior_restrictions=prior_restrictions,
                 prior_groups=prior_groups,
