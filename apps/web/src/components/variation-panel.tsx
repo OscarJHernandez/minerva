@@ -13,6 +13,7 @@ import type {
   VariationChecks,
   VariationReport,
 } from "@/lib/variation-types";
+import { Numbered } from "./chat/equation-number";
 import { LinePlot, type PlotSeries } from "./chat/line-plot";
 import { StatusPill } from "./result-panel";
 
@@ -105,12 +106,17 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Formula({ latex, label }: { latex: string; label?: string }) {
-  return (
+/**
+ * A displayed formula. With `k` it is a numbered row (`card_equations.variation` names the same keys on the
+ * server); without a number from the server, or outside a chat card, it is drawn unchanged.
+ */
+function Formula({ latex, label, k }: { latex: string; label?: string; k?: string }) {
+  const body = (
     <div className="overflow-x-auto">
       <Math latex={latex} display label={label} />
     </div>
   );
+  return k ? <Numbered k={k}>{body}</Numbered> : body;
 }
 
 function Notes({ items }: { items: string[] }) {
@@ -395,7 +401,11 @@ export function VariationPanel({
                     <div className="text-xs text-muted">
                       for {e.function} (order {e.order})
                     </div>
-                    <Formula latex={e.equation_latex} label={`Equation for ${e.function}`} />
+                    <Formula
+                      latex={e.equation_latex}
+                      label={`Equation for ${e.function}`}
+                      k={`el:${e.function}`}
+                    />
                   </div>
                 ))}
               </Block>
@@ -435,7 +445,9 @@ export function VariationPanel({
                       </td>
                       <td className={CELL}>
                         {b.natural_condition_latex ? (
-                          <Math latex={b.natural_condition_latex} />
+                          <Numbered k={`natural:${b.end}:${b.function}:${b.order}`}>
+                            <Math latex={b.natural_condition_latex} />
+                          </Numbered>
                         ) : (
                           "–"
                         )}
@@ -444,11 +456,11 @@ export function VariationPanel({
                   ))}
                 </Table>
                 <div className={`${LABEL} mt-3`}>Complete first variation</div>
-                <Formula latex={f.first_variation_latex} label="First variation" />
+                <Formula latex={f.first_variation_latex} label="First variation" k="first" />
               </Block>
               <Block title="Stationarity conditions">
-                {f.stationarity_latex.map((l) => (
-                  <Formula key={l} latex={l} />
+                {f.stationarity_latex.map((l, i) => (
+                  <Formula key={l} latex={l} k={`stationarity:${i}`} />
                 ))}
                 <Notes items={f.notes} />
               </Block>
@@ -461,7 +473,11 @@ export function VariationPanel({
               <div className="text-xs text-muted">Convention</div>
               <Formula latex={report.second.convention_latex} />
               <div className="text-xs text-muted">Quadratic form</div>
-              <Formula latex={report.second.quadratic_form_latex} label="Second variation" />
+              <Formula
+                latex={report.second.quadratic_form_latex}
+                label="Second variation"
+                k="second"
+              />
               {report.second.endpoint_form_latex.trim() !== "" &&
                 report.second.endpoint_form_latex.trim() !== "0" && (
                   <>

@@ -11,6 +11,7 @@ import type {
   Status,
   SumsResult,
 } from "@/lib/types";
+import { Numbered } from "./chat/equation-number";
 import { StatusPill } from "./result-panel";
 
 export type StatisticsKind = "sums" | "expectation" | "statistics";
@@ -382,13 +383,15 @@ function StatBody({ result }: { result: StatModelResult }) {
             const note = optimumText(e);
             return (
               <div key={e.parameter}>
-                <div className="overflow-x-auto">
-                  <Math
-                    latex={`\\hat{${nameLatex(e.parameter)}} = ${e.latex}`}
-                    display
-                    label={`Estimate of ${e.parameter}`}
-                  />
-                </div>
+                <Numbered k={`estimate:${e.parameter}`}>
+                  <div className="overflow-x-auto">
+                    <Math
+                      latex={`\\hat{${nameLatex(e.parameter)}} = ${e.latex}`}
+                      display
+                      label={`Estimate of ${e.parameter}`}
+                    />
+                  </div>
+                </Numbered>
                 {note && <p className="text-sm">{note}</p>}
                 {e.admissible_if.length > 0 && (
                   <Conditions items={e.admissible_if} title="The estimate exists only if" />
@@ -406,7 +409,9 @@ function StatBody({ result }: { result: StatModelResult }) {
                 <Math latex={MOMENT_LABEL[name] ?? name} />
               </dt>
               <dd>
-                <Math latex={latex} />
+                <Numbered k={`moment:${name}`}>
+                  <Math latex={latex} />
+                </Numbered>
               </dd>
             </div>
           ))}
@@ -419,9 +424,11 @@ function StatBody({ result }: { result: StatModelResult }) {
               <div className="text-xs uppercase tracking-wide text-muted">
                 {expressionLabel(name)}
               </div>
-              <div className="overflow-x-auto">
-                <Math latex={latex} display />
-              </div>
+              <Numbered k={`expr:${name}`}>
+                <div className="overflow-x-auto">
+                  <Math latex={latex} display />
+                </div>
+              </Numbered>
             </div>
           ))}
         </div>

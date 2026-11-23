@@ -1,6 +1,7 @@
 import { CopyMath as Math } from "@/components/copyable-math";
 import type { ExpansionReport } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
+import { Numbered } from "./equation-number";
 
 const SIGN = {
   positive: { label: "ω² > 0 (follows from the declared assumptions)", tone: "bg-ok-soft text-ok" },
@@ -28,19 +29,21 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
       <p className="mt-1 text-sm text-muted">{report.message}</p>
 
       {report.equilibrium.length > 0 && (
-        <p className="mt-3 text-sm">
-          Equilibrium:{" "}
+        <div className="mt-3 text-sm">
+          <p>
+            Equilibrium:{" "}
+            {eq && (
+              <span className="text-xs text-muted">
+                {eq.passed ? "(accelerations vanish there: checked)" : "(not an equilibrium)"}
+              </span>
+            )}
+          </p>
           {report.equilibrium.map((e) => (
-            <span key={e.name} className="mr-3">
+            <Numbered key={e.name} k={`equil:${e.name}`}>
               <Math latex={`${e.name_latex || e.name} = ${e.latex}`} />
-            </span>
+            </Numbered>
           ))}
-          {eq && (
-            <span className="text-xs text-muted">
-              {eq.passed ? "(accelerations vanish there: checked)" : "(not an equilibrium)"}
-            </span>
-          )}
-        </p>
+        </div>
       )}
 
       {shown && report.equations.length > 0 && (
@@ -49,7 +52,9 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
           <ul className="mt-2 space-y-2">
             {report.equations.map((e) => (
               <li key={e.coordinate} className="overflow-x-auto rounded border border-rule p-3">
-                <Math latex={e.full_latex} display />
+                <Numbered k={`eq:${e.coordinate}`}>
+                  <Math latex={e.full_latex} display />
+                </Numbered>
                 <p className="text-xs text-muted">
                   {e.verification?.passed
                     ? "Coefficients agree with a Cauchy-integral estimate and the remainder falls at the claimed order."
@@ -76,7 +81,9 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
       {shown && report.characteristic_latex && (
         <div className="mt-2 overflow-x-auto">
           <h4 className="text-sm font-medium">Characteristic polynomial</h4>
-          <Math latex={report.characteristic_latex} display />
+          <Numbered k="char">
+            <Math latex={report.characteristic_latex} display />
+          </Numbered>
         </div>
       )}
 
@@ -87,8 +94,14 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
             {report.modes.map((m, i) => (
               <li key={i} className="rounded border border-rule p-3">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <Math latex={m.omega_squared_latex} />
-                  {m.omega_latex && <Math latex={m.omega_latex} />}
+                  <Numbered k={`mode:${i}:omega2`}>
+                    <Math latex={m.omega_squared_latex} />
+                  </Numbered>
+                  {m.omega_latex && (
+                    <Numbered k={`mode:${i}:omega`}>
+                      <Math latex={m.omega_latex} />
+                    </Numbered>
+                  )}
                   {m.eigenvector_latex && <Math latex={`v = ${m.eigenvector_latex}`} />}
                 </div>
                 <span
