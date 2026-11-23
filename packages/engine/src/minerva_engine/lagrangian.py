@@ -41,6 +41,7 @@ from .notation.models import (
     InputReading,
     Normalization,
 )
+from .notation.time_symbol import time_clash, time_clash_message
 from .restrictions import determinant_conditions
 from .textparse import parse_text
 from .verify import euler_lagrange_check, numeric_check
@@ -163,6 +164,9 @@ def derive(
     symbol by `notation.derivatives` and reported in `Derivation.normalizations`.
     """
     _check_coordinates(coordinates)
+    clash = time_clash(coordinates, time, source=latex)
+    if clash is not None:
+        raise DerivationError(Status.PARSE_ERROR, time_clash_message(clash), clash)
     reject_equation(latex, "Lagrangian")
     started = time_module.perf_counter()
     notes: list[Normalization] = []

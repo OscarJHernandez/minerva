@@ -217,6 +217,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   with nothing visible and no tool call (not a length cut) is asked again once (`RetryReason.EMPTY_REPLY`, never repeated).
   The claim checker leaves relations between differentials (`dx = -du`) unverified: they are notation, not products of symbols.
   `scripts/eval_models.py --compute-timeout 10` runs the tools with the deployed chart's limit.
+- Time symbol vs coordinates (`notation/time_symbol.py`): a `time` that is also a coordinate (or a Hamiltonian momentum) is
+  refused as `parse_error` / `time_symbol_is_coordinate` (`recoverable`, field `time`, suggestions = the first free names of a
+  fixed list) by `derive`, `hamiltonian_flow` and `time_derivative`, so every Lagrangian tool and the direct API get it.
+  Never rename the time symbol for the caller; a new tool with `coordinates` and `time` is covered by
+  `test_time_symbol_clash.py` (it lists the tools).
 - Typed diagnostics: a refused input carries `diagnostic` (`InputDiagnostic`: closed `code`, `field`, the user's
   `symbols`, `suggestions`, `recoverable`) on its report, shown to the model as one `diagnostic: {...}` JSON line, and
   only the `code` is logged (`reason_code`, vocabulary `tracing.REASON_CODES`). Symbols and suggestions are the user's
