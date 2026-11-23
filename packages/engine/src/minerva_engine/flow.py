@@ -24,7 +24,7 @@ from typing import Literal
 import mpmath
 import sympy as sp
 
-from .errors import MinervaMathError
+from .errors import MinervaMathError, ParseError
 from .lagrangian import (
     ConservedQuantity,
     DerivationError,
@@ -38,6 +38,8 @@ from .lagrangian import (
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
+from .notation.models import InputCode, InputDiagnostic
+from .textparse import parse_text
 
 MAX_COORDINATES = 3
 
@@ -82,18 +84,44 @@ class Flow:
         return verify_zero_derivative(self.total_derivative(quantity))
 
 
+def coordinate_limit_error(count: int, coordinates: list[str] | None = None) -> DerivationError:
+    """The typed refusal of a system with more coordinates than the search supports.
+
+    Nothing is searched and no coordinate is dropped: a coordinate removed without the user's own stated
+    conserved momentum would change the system, and the search of four coordinates is not implemented.
+    """
+    return DerivationError(
+        Status.UNSUPPORTED,
+        f"The search of conserved quantities supports at most {MAX_COORDINATES} coordinates; "
+        f"{count} were given, so nothing was searched and no coordinate was dropped. A cyclic "
+        "coordinate can be removed by hand only with a conserved momentum the user states themselves "
+        "(then search the remaining coordinates as a new system and say so). Automatic reduction and "
+        "a search of more coordinates are not available yet. Tell the user this; do not drop a "
+        "coordinate or retry with a different list on your own.",
+        InputDiagnostic(
+            code=InputCode.TOO_MANY_COORDINATES,
+            field="coordinates",
+            symbols=list(coordinates or []),
+            suggestions=[
+                f"at most {MAX_COORDINATES} coordinates",
+                "remove a cyclic coordinate only with the user's own conserved momentum",
+            ],
+            recoverable=False,
+        ),
+    )
+
+
 def lagrangian_flow(
     latex: str,
     coordinates: list[str],
     time: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
+    format: Literal["latex", "text"] = "latex",
 ) -> Flow:
-    d = derive(latex, coordinates, time, assumptions, limits)
     if len(coordinates) > MAX_COORDINATES:
-        raise DerivationError(
-            Status.UNSUPPORTED, f"The search handles between 1 and {MAX_COORDINATES} coordinates."
-        )
+        raise coordinate_limit_error(len(coordinates), coordinates)
+    d = derive(latex, coordinates, time, assumptions, limits, format)
     if not d.solution:
         raise DerivationError(
             Status.UNSUPPORTED,
@@ -201,12 +229,13 @@ def hamiltonian_flow(
     time: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
+    format: Literal["latex", "text"] = "latex",
 ) -> Flow:
     n = len(coordinates)
-    if not coordinates or n > MAX_COORDINATES:
-        raise DerivationError(
-            Status.UNSUPPORTED, f"The search handles between 1 and {MAX_COORDINATES} coordinates."
-        )
+    if n > MAX_COORDINATES:
+        raise coordinate_limit_error(n, coordinates)
+    if not coordinates:
+        raise DerivationError(Status.UNSUPPORTED, "Give at least one coordinate.")
     if len(set(coordinates)) != n:
         raise DerivationError(Status.PARSE_ERROR, "Coordinates must be distinct.")
     p_names = momenta if momenta else [f"p_{c}" for c in coordinates]
@@ -216,7 +245,13 @@ def hamiltonian_flow(
         )
     reject_equation(latex, "Hamiltonian")
     try:
-        H = parse_latex(latex, assumptions, limits)
+        H = (
+            parse_text(latex, assumptions, limits)
+            if format == "text"
+            else parse_latex(latex, assumptions, limits)
+        )
+    except ParseError as exc:
+        raise DerivationError(Status.PARSE_ERROR, str(exc), exc.diagnostic("hamiltonian")) from exc
     except MinervaMathError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc)) from exc
     by_name = {s.name: s for s in H.free_symbols}

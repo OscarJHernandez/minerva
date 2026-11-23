@@ -485,6 +485,7 @@ def op_discover_invariants(payload: dict[str, Any]) -> dict[str, Any]:
         str(payload.get("time", "t")),
         payload.get("assumptions", {}),
         Limits(**payload["limits"]),
+        _syntax(payload),
     )
     return report.model_dump(mode="json")
 

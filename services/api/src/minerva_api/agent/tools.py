@@ -795,7 +795,11 @@ class LagrangianArgs(BaseModel):
         max_length=8,
         description="Names of the generalised coordinates, e.g. ['r', 'theta']",
     )
-    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    time: str = Field(
+        default="t",
+        max_length=16,
+        description="Name of the time symbol; not a coordinate's name (with a coordinate `t`, use `s`).",
+    )
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
@@ -827,7 +831,11 @@ class TimeDerivativeArgs(SimplifyArgs):
         "derivative is also evaluated on that system's equations of motion and says whether it vanishes "
         "there (is constant along its motions).",
     )
-    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    time: str = Field(
+        default="t",
+        max_length=16,
+        description="Name of the time symbol; not a coordinate's name (with a coordinate `t`, use `s`).",
+    )
 
 
 class ExpandMotionArgs(LagrangianArgs):
@@ -901,7 +909,11 @@ class InvariantArgs(BaseModel):
     harmonics: int = Field(
         default=1, ge=1, le=2, description="Highest harmonic of an angle that is searched"
     )
-    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    time: str = Field(
+        default="t",
+        max_length=16,
+        description="Name of the time symbol; not a coordinate's name (with a coordinate `t`, use `s`).",
+    )
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
 
@@ -909,26 +921,34 @@ class DiscoveryArgs(BaseModel):
     lagrangian: str | None = Field(
         default=None,
         max_length=MAX_INPUT,
-        description=r"L(q, qdot) in LaTeX, using \dot{q} for velocities. Give exactly one of `lagrangian` and `hamiltonian`.",
+        description=r"L(q, qdot), using \dot{q} for velocities in LaTeX and q_dot in text syntax (see `format`). "
+        "Give exactly one of `lagrangian` and `hamiltonian`.",
     )
     hamiltonian: str | None = Field(
         default=None,
         max_length=MAX_INPUT,
-        description="H(q, p) in LaTeX, with the canonical momenta as symbols such as p_x or p_\\theta.",
+        description="H(q, p), with the canonical momenta as symbols such as p_x or p_\\theta (p_theta in text "
+        "syntax), in the syntax `format` names.",
+    )
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of `lagrangian` or `hamiltonian`: LaTeX or text (theta_dot). "
+        + FORMAT_DESCRIPTION,
     )
     coordinates: list[str] = Field(
         min_length=1,
-        max_length=3,
-        description="Names of the generalised coordinates (at most 3), e.g. ['r', 'theta']",
+        max_length=8,
+        description="Names of the generalised coordinates (the search supports at most 3; more is refused "
+        "with the reason and nothing is searched), e.g. ['r', 'theta']",
     )
     momenta: list[str] | None = Field(
         default=None,
-        max_length=3,
+        max_length=8,
         description="Hamiltonian only: the momentum symbols in the order of the coordinates. Default p_<coordinate>.",
     )
     angles: list[str] = Field(
         default_factory=list,
-        max_length=3,
+        max_length=8,
         description="Optional: coordinates known to be angles. Not needed: angles are detected (a coordinate "
         "that appears only through cos and sin, or that does not appear in the equations at all).",
     )
@@ -957,7 +977,11 @@ class DiscoveryArgs(BaseModel):
         le=2,
         description="Advanced, only on request: pin one family (powers of t)",
     )
-    time: str = Field(default="t", max_length=16, description="Name of the time symbol")
+    time: str = Field(
+        default="t",
+        max_length=16,
+        description="Name of the time symbol; not a coordinate's name (with a coordinate `t`, use `s`).",
+    )
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -2670,8 +2694,10 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
             time_degree=args.time_degree,
         )
     system = "hamiltonian" if args.hamiltonian is not None else "lagrangian"
+    source = args.hamiltonian if args.hamiltonian is not None else str(args.lagrangian)
+    source = strip_assignment(source, "H" if system == "hamiltonian" else "L")
     report = ctx.engine.discover_invariants(
-        args.hamiltonian if args.hamiltonian is not None else str(args.lagrangian),
+        source,
         args.coordinates,
         system,
         args.momenta,
@@ -2680,6 +2706,7 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
         pins,
         args.time,
         args.assumptions,
+        format=resolve_syntax(source, args.format),
     )
     log_search_events(report.events)
     card = Card(
@@ -3875,7 +3902,7 @@ TOOLS: dict[str, Tool] = {
             "(with exact relations such as |A|^2 in terms of the energy and angular momentum). Use this "
             "for 'find the conserved quantities', 'is there a hidden symmetry', 'more constants of "
             "motion'. Reports exactly which families were searched and which were not; finding nothing "
-            "means nothing within them. Not for square roots (Cartesian Kepler) or more than 3 coordinates.",
+            "means nothing within them, never that the list is complete. Not for square roots (Cartesian Kepler); more than 3 coordinates is refused (nothing is searched).",
             DiscoveryArgs,
             run_discovery,
         ),

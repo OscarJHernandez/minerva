@@ -669,3 +669,46 @@ def test_results_are_deterministic() -> None:
         ["theta", "phi"], SPHERE, ["christoffel", "ricci"], assumptions={"a": ["positive"]}
     )
     assert [q.model_dump() for q in first.quantities] == [q.model_dump() for q in second.quantities]
+
+
+def test_a_braced_exponent_in_a_text_metric_gives_the_same_verified_result() -> None:
+    """Regression (#131): `(1-2*M/r)^{-1}` was `unsupported syntax: Set`; `1/(1-2*M/r)` worked."""
+    coordinates = ["t", "r", "theta", "phi"]
+
+    def metric(g_rr: str) -> list[list[str]]:
+        return [
+            ["-(1-2*M/r)", "0", "0", "0"],
+            ["0", g_rr, "0", "0"],
+            ["0", "0", "r^2", "0"],
+            ["0", "0", "0", "r^2*sin(theta)^2"],
+        ]
+
+    braced = run(coordinates, metric("(1-2*M/r)^{-1}"), ["christoffel"], format="text")
+    plain = run(coordinates, metric("1/(1-2*M/r)"), ["christoffel"], format="text")
+    assert braced.status is Status.OK and plain.status is Status.OK
+    assert comps(quantity(braced, "christoffel")) == comps(quantity(plain, "christoffel"))
+    assert quantity(braced, "christoffel").verification.numeric_passed
+
+
+def test_a_wrong_twin_of_the_braced_exponent_is_not_the_inverse_metric_component() -> None:
+    """`^{-1}` must be a power: reading it as `-1` (a product) would give a different, still valid metric."""
+    coordinates = ["t", "r", "theta", "phi"]
+    grid = [
+        ["-(1-2*M/r)", "0", "0", "0"],
+        ["0", "(1-2*M/r)^{1}", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", "r^2*sin(theta)^2"],
+    ]
+    other = run(coordinates, grid, ["christoffel"], format="text")
+    good = run(
+        coordinates,
+        [row[:] if i != 1 else ["0", "(1-2*M/r)^{-1}", "0", "0"] for i, row in enumerate(grid)],
+        ["christoffel"],
+        format="text",
+    )
+    assert comps(quantity(other, "christoffel")) != comps(quantity(good, "christoffel"))
+
+
+def test_a_set_in_a_text_metric_is_still_refused() -> None:
+    r = run(["x", "y"], [["{1,2}", "0"], ["0", "1"]], ["christoffel"], format="text")
+    assert r.status is Status.PARSE_ERROR

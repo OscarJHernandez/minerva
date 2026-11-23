@@ -1,5 +1,5 @@
 {
-  "applied": 898,
+  "applied": 908,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -16,9 +16,9 @@
       "untyped_failure": 0
     },
     "derivative:leibniz": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
@@ -40,21 +40,21 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 13,
+      "same_after_cleaning": 14,
       "untyped_failure": 0
     },
     "shape:formula_alias": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 101,
+      "same_after_cleaning": 102,
       "untyped_failure": 0
     },
     "shape:json_as_string": {
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 79,
+      "same_after_cleaning": 80,
       "untyped_failure": 0
     },
     "shape:kind_wrapped": {
@@ -68,7 +68,7 @@
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 28,
+      "same_after_cleaning": 29,
       "untyped_failure": 0
     },
     "shape:number_as_string": {
@@ -78,18 +78,25 @@
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
+    "syntax:braced_exponent": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 1,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
     "transport:code_fence": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 134,
+      "same_after_cleaning": 135,
       "untyped_failure": 0
     },
     "transport:dollar_wrapper": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 134,
+      "same_after_cleaning": 135,
       "untyped_failure": 0
     },
     "transport:doubled_backslash": {
@@ -103,30 +110,30 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 78,
+      "same_after_cleaning": 79,
       "untyped_failure": 0
     },
     "transport:trailing_period": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 106,
+      "same_after_cleaning": 107,
       "untyped_failure": 0
     },
     "transport:unicode_look_alikes": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 101,
+      "same_after_cleaning": 102,
       "untyped_failure": 0
     }
   },
   "by_tool": {
     "analyze_lagrangian": {
-      "diagnosed": 1,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 4,
-      "same_after_cleaning": 46,
+      "same_after_cleaning": 55,
       "untyped_failure": 0
     },
     "approximation": {
@@ -352,32 +359,33 @@
   "mode": "pr",
   "not_applicable": {
     "derivative:joined": 155,
-    "derivative:latex_letter_run": 147,
+    "derivative:latex_letter_run": 148,
     "derivative:leibniz": 155,
     "derivative:spaced": 155,
     "derivative:upper": 155,
     "shape:assignment_prefix": 143,
     "shape:formula_alias": 55,
     "shape:json_as_string": 67,
-    "shape:kind_wrapped": 147,
+    "shape:kind_wrapped": 148,
     "shape:list_as_string": 125,
-    "shape:number_as_string": 146,
+    "shape:number_as_string": 147,
+    "syntax:braced_exponent": 155,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
-    "transport:doubled_backslash": 58,
+    "transport:doubled_backslash": 59,
     "transport:markdown_escape": 78,
     "transport:trailing_period": 50,
     "transport:unicode_look_alikes": 55
   },
-  "recovered_without_a_model_call": 890,
-  "recovery_rate": 0.9911,
-  "references": 156,
+  "recovered_without_a_model_call": 899,
+  "recovery_rate": 0.9901,
+  "references": 157,
   "tools_covered": 34,
   "totals": {
-    "diagnosed": 8,
+    "diagnosed": 9,
     "different_verified_result": 0,
     "same": 9,
-    "same_after_cleaning": 881,
+    "same_after_cleaning": 890,
     "untyped_failure": 0
   }
 }

@@ -135,3 +135,20 @@ def test_cleaning_does_not_hide_a_genuine_error(ctx: ToolContext) -> None:
     llm = ReplayLLM([call("analyze_lagrangian", arguments), say("It could not be read.")])
     (step,) = final(play(llm, ctx, limits=AgentLimits(retry_delay_seconds=0)))["trace"]
     assert step["status"] == "parse_error"
+
+
+def test_a_braced_exponent_in_a_text_formula_is_cleaned_and_said() -> None:
+    cleaned, notes = prepare_arguments(
+        "analyze_lagrangian",
+        {"lagrangian": "1/2*m*x_dot^{2} - k*x^{-1}", "coordinates": ["x"]},
+    )
+    assert cleaned["lagrangian"] == "1/2*m*x_dot^(2) - k*x^(-1)"
+    assert notes and "^(...)" in (transport_line(notes) or "")
+
+
+def test_braces_of_a_latex_formula_are_never_touched() -> None:
+    arguments = {"lagrangian": r"\frac{1}{2} m \dot{x}^{2} - k x^{-1}", "coordinates": ["x"]}
+    cleaned, notes = prepare_arguments("analyze_lagrangian", arguments)
+    assert cleaned is arguments and notes == ()
+    explicit = {"lagrangian": "m*x^{12}", "coordinates": ["x"], "format": "latex"}
+    assert prepare_arguments("analyze_lagrangian", explicit)[0] is explicit

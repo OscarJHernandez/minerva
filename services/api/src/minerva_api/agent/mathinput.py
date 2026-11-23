@@ -23,7 +23,11 @@ from minerva_engine.notation.models import (
     Normalization,
     NormalizationKind,
 )
-from minerva_engine.notation.transport import clean_transport, localize_symbols
+from minerva_engine.notation.transport import (
+    clean_transport,
+    localize_symbols,
+    read_braced_exponents,
+)
 
 # Every argument that carries mathematics as one string, in every tool (the single list: references
 # `@rN`/`@eN`, the scalar-tool guard, hints, dropped-assumption notes and transport cleaning all read it).
@@ -39,7 +43,7 @@ FORMAT_DESCRIPTION = (
 _TEXT_MARKERS = re.compile(rf"\*|{DERIVATIVE_NAME}|\b[A-Za-z]\w*\s*\(")
 
 # Tools that read `format: auto` by default, and tools whose expression field is text syntax by nature.
-AUTO_TOOLS = frozenset({"analyze_lagrangian", "search_invariants"})
+AUTO_TOOLS = frozenset({"analyze_lagrangian", "search_invariants", "find_conserved_quantities"})
 TEXT_TOOLS = frozenset({"tensor_canonicalize"})
 _ASSIGNED = {"lagrangian": "L", "hamiltonian": "H"}
 
@@ -88,8 +92,14 @@ def _prepare_text(
                 )
             )
             text = bare
-    text, local = localize_symbols(text, _syntax(tool, arguments, text))
-    return text, [*out, *local]
+    syntax = _syntax(tool, arguments, text)
+    text, local = localize_symbols(text, syntax)
+    braced: tuple[Normalization, ...] = ()
+    if (
+        syntax == "text"
+    ):  # `x^{-1}` is `x^(-1)` in text syntax only; in LaTeX the braces are the syntax
+        text, braced = read_braced_exponents(text)
+    return text, [*out, *local, *braced]
 
 
 def prepare_arguments(

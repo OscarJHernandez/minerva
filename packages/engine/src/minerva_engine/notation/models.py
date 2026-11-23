@@ -42,6 +42,8 @@ class InputCode(StrEnum):
     UNSUPPORTED_DEFINITION = "unsupported_definition"
     AMBIGUOUS_CONSTANT = "ambiguous_constant"
     CONSTANT_NOT_VERIFIED = "constant_not_verified"
+    # The discovery of conserved quantities supports at most `flow.MAX_COORDINATES` coordinates.
+    TOO_MANY_COORDINATES = "too_many_coordinates"
 
 
 class NormalizationKind(StrEnum):
