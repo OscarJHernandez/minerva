@@ -117,6 +117,11 @@ export interface DifferentiateResult {
     passed: boolean;
     note: string;
   } | null;
+  /** Total derivatives only. Optional for results saved before these fields existed. */
+  on_motion_latex?: string | null;
+  zero_on_motion?: boolean | null;
+  symbolic_zero_on_motion?: boolean | null;
+  definitions_used?: string[];
   notes: string[];
   message: string;
   duration_ms: number;
