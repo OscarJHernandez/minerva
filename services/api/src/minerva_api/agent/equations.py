@@ -152,15 +152,19 @@ class EquationTable:
         part_of: str | None = None,
         *,
         mode: LabelMode,
+        any_length: bool = False,
     ) -> int | None:
         """The number of this formula: the one it already has, or the next. None if it cannot be numbered.
 
         A formula already numbered *as written* is found first and never stripped (a model restating a tool
         result or the user's formula cannot change it); only otherwise is the label `mode` allows read off.
+        `any_length` is for the one result of a tool card: its number is a name that resolves through the
+        result id (or, without one, to the exact stored text), so it is given whatever the length. The limit
+        stays for the model's prose and the user's formulas.
         Known gap: a tool result that ends in whitespace + `(N)` and is quoted by the model before its card
         in reading order is keyed stripped, before the card's exact entry exists.
         """
-        if not latex.strip() or len(latex) > MAX_EQUATION_CHARS:
+        if not latex.strip() or (len(latex) > MAX_EQUATION_CHARS and not any_length):
             return None
         exact = normalize(latex)
         if not exact:
@@ -282,7 +286,11 @@ def number_blocks(
             latex = block.card.data.get("result_latex")
             if isinstance(latex, str):
                 block.card.number = table.number_for(
-                    latex, "from_tool", (result_ids or {}).get(block.card.id), mode="none"
+                    latex,
+                    "from_tool",
+                    (result_ids or {}).get(block.card.id),
+                    mode="none",
+                    any_length=True,
                 )
             continue
         for seg in block.segments:
@@ -494,7 +502,9 @@ def number_stored(contents: Iterable[tuple[str, dict[str, Any]]], table: Equatio
                 latex = (card.get("data") or {}).get("result_latex")
                 if isinstance(latex, str):
                     rid = (steps.get(card.get("id")) or {}).get("result_id")
-                    card["number"] = table.number_for(latex, "from_tool", rid, mode="none")
+                    card["number"] = table.number_for(
+                        latex, "from_tool", rid, mode="none", any_length=True
+                    )
                     gave = gave or card["number"] is not None
             for seg in block.get("segments", []) or []:
                 if isinstance(seg, dict) and seg.get("type") == "display_math":

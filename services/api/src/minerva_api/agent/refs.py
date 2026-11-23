@@ -26,8 +26,11 @@ REFERENCE = re.compile(r"@r(\d+)\b")
 EQ_REFERENCE = re.compile(r"@e(\d+)\b")
 # Tools whose card holds one result expression in `result_latex`.
 REFERENCEABLE_TOOLS = frozenset(
-    {"simplify", "differentiate", "integrate", "series", "creative_telescoping"}
+    {"simplify", "differentiate", "integrate", "series", "creative_telescoping", "time_derivative"}
 )
+# `time_derivative`: the id names `result_latex`, the total derivative before any equations of motion are used.
+# Its conclusion on the equations of motion (`zero_on_motion`, `on_motion_latex`) is a statement about a system
+# and never gets an id: a plain `0` would drop the system it was decided on.
 # Arguments that may contain references (the ones that hold a mathematical expression).
 EXPRESSION_ARGUMENTS = MATH_FIELDS
 
@@ -143,6 +146,12 @@ class ResultStore:
                     label = f"equation ({equation.number}){COMPONENT_SUFFIX}"
                     if label not in unverified:
                         unverified.append(label)
+                elif equation.source == "from_tool":
+                    # A tool's result with no result id (it was not accepted as a whole, or its tool cannot
+                    # be referenced): exact LaTeX, but its restrictions and verification are not carried.
+                    label = f"equation ({equation.number}){NO_ID_SUFFIX}"
+                    if label not in unverified:
+                        unverified.append(label)
                 return equation.latex if whole else rf"\left({equation.latex}\right)"
 
             staged[key] = EQ_REFERENCE.sub(sub, value)
@@ -207,13 +216,15 @@ UNVERIFIED_INPUT = "computed from an equation the model wrote and Minerva never 
 # A row of a card's list (a Christoffel symbol): the tool computed it, but reusing it by number does not carry
 # the card's verification or restrictions with it.
 COMPONENT_SUFFIX = ", a component of an earlier result"
+# A tool result that has an equation number but no result id.
+NO_ID_SUFFIX = ", a tool result with no result id"
 UNLINKED_INPUT = "computed from one component of an earlier result; its verification and restrictions were not carried over"
 
 
 def unverified_note(sources: Sequence[str]) -> str:
     """What a tool message says when its input was not verified as a whole (fixed text)."""
-    written = [s for s in sources if not s.endswith(COMPONENT_SUFFIX)]
-    parts = [s for s in sources if s.endswith(COMPONENT_SUFFIX)]
+    written = [s for s in sources if not s.endswith((COMPONENT_SUFFIX, NO_ID_SUFFIX))]
+    parts = [s for s in sources if s.endswith((COMPONENT_SUFFIX, NO_ID_SUFFIX))]
     lines: list[str] = []
     if written:
         lines.append(
@@ -225,7 +236,7 @@ def unverified_note(sources: Sequence[str]) -> str:
         lines.append(
             f"Input taken from a list: this result was computed from {', '.join(parts)}. Its LaTeX is exactly what "
             "the tool returned, but the tool's verification and its restrictions are not carried over by reusing "
-            "one component by number: say so with the result, state the restrictions of the earlier result "
+            "an equation without a result id by number: say so with the result, state the restrictions of the earlier result "
             "yourself, and do not call anything built on it verified."
         )
     return " ".join(lines)

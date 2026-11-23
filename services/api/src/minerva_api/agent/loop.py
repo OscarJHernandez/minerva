@@ -56,6 +56,7 @@ from .recovery import (
 )
 from .refs import (
     COMPONENT_SUFFIX,
+    NO_ID_SUFFIX,
     UNLINKED_INPUT,
     UNVERIFIED_INPUT,
     ResultStore,
@@ -1361,7 +1362,10 @@ async def _run_turn(
                             (
                                 normalize(f),
                                 UNVERIFIED_INPUT
-                                if any(not u.endswith(COMPONENT_SUFFIX) for u in unverified_inputs)
+                                if any(
+                                    not u.endswith((COMPONENT_SUFFIX, NO_ID_SUFFIX))
+                                    for u in unverified_inputs
+                                )
                                 else UNLINKED_INPUT,
                             )
                             for f in output.known_latex
