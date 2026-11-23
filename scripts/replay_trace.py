@@ -608,7 +608,8 @@ def replay_turn(data: dict[str, Any], ctx: ToolContext, turn: int | None = None)
         max_tool_calls=int(debug.get("max_tool_calls") or 12),
         retry_delay_seconds=0.0,
     )
-    # This turn's own copy: the caller's context keeps no constants or messages of it.
+    # This turn's own copy: the caller's context keeps no constants or messages of it. `replace` is shallow: its
+    # mutable fields (`matrices`, `notation`, ...) are shared; only whole fields of the copy are assigned.
     turn_ctx = replace(ctx)
     context.apply_to(turn_ctx)
     if missing:

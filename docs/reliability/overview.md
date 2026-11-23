@@ -29,6 +29,12 @@ Latest live measurements, what changed and what is still open: `progress-2026-11
 - Replayed and scripted runs show the loop and tools, not a real model. Only a live run (`scripts/eval_models.py`)
   says something about a model, and it is noisy: compare pass counts to the run-to-run spread and do not compare
   latency across days or hosts.
+- Live evaluation scores are not comparable across the change that made the harness build a turn's context with the
+  chat route's own function (`agent/turn_context.py`, issue 150). Since then a case's prompt carries the notes the chat
+  appends (what "equation 3" is, the handle of a displayed formula), its equations are numbered, consecutive user
+  messages are merged and the unverified-input provenance is passed, as in the chat; scores recorded before it
+  measured a slightly different prompt. The committed benchmark JSON was not re-baselined (`scripts/eval_offline.py
+  --check` did not need it); compare new runs with new runs.
 
 ## How the pieces fit
 

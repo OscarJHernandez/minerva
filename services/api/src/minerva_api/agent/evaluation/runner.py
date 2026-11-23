@@ -69,9 +69,10 @@ async def observe(
         max_messages=params.history_messages if params else HISTORY_MESSAGES,
         max_tokens=params.history_tokens if params else None,
     )
-    ctx = replace(
-        ctx
-    )  # this turn's own: a case run alongside must not see its messages or constants
+    # This turn's own copy: a case run alongside must not see its messages or constants. `replace` is shallow: the
+    # mutable fields (`matrices`, `matrix_sources`, `notation`, `numeric`, `statmech_answers`) are shared with the
+    # caller's context. Only whole fields of the copy are assigned (`apply_to`); never edit one of those in place.
+    ctx = replace(ctx)
     turn.apply_to(ctx)
     history = turn.history
     obs = Observation()
