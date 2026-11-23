@@ -48,6 +48,9 @@ class InputCode(StrEnum):
     # expression, or an expression where it needs an equation. Refused, never rewritten or split.
     EQUATION_REFERENCE_NOT_EXPRESSION = "equation_reference_not_expression"
     EXPRESSION_REFERENCE_NOT_EQUATION = "expression_reference_not_equation"
+    # The `time` symbol of a mechanics tool is also the name of a coordinate (or momentum): nothing is
+    # renamed; the diagnostic lists free names (`notation/time_symbol.py`).
+    TIME_SYMBOL_IS_COORDINATE = "time_symbol_is_coordinate"
 
 
 class NormalizationKind(StrEnum):

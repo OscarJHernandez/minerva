@@ -39,6 +39,7 @@ from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
 from .notation.models import InputCode, InputDiagnostic
+from .notation.time_symbol import time_clash, time_clash_message
 from .textparse import parse_text
 
 MAX_COORDINATES = 3
@@ -239,6 +240,9 @@ def hamiltonian_flow(
     if len(set(coordinates)) != n:
         raise DerivationError(Status.PARSE_ERROR, "Coordinates must be distinct.")
     p_names = momenta if momenta else [f"p_{c}" for c in coordinates]
+    clash = time_clash(coordinates, time, also_used=p_names, source=latex)
+    if clash is not None:
+        raise DerivationError(Status.PARSE_ERROR, time_clash_message(clash), clash)
     if len(p_names) != n or len(set(p_names)) != n or set(p_names) & set(coordinates):
         raise DerivationError(
             Status.PARSE_ERROR, "Give one distinct momentum name per coordinate (default p_<q>)."

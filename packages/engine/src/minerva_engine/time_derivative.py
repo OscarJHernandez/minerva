@@ -47,6 +47,7 @@ from .notation.derivatives import (
     resolve_derivatives,
 )
 from .notation.models import InputCode, InputDiagnostic, InputReading, Normalization
+from .notation.time_symbol import time_clash, time_clash_message
 from .variational import polypath
 from .verify import _sample
 
@@ -223,6 +224,15 @@ def time_derivative(
     if len(set(coordinates)) != len(coordinates):
         return _fail(Status.PARSE_ERROR, "Coordinates must be distinct.")
     variables = [DiffVariable(name=time, order=1)]
+    clash = time_clash(coordinates, time, source=data.input)
+    if clash is not None:
+        return _fail(
+            Status.PARSE_ERROR,
+            time_clash_message(clash),
+            variables=variables,
+            total_order=1,
+            diagnostic=clash,
+        )
     as_written: sp.Expr | None = None
     inserted: list[tuple[str, sp.Expr]] = []
     try:
