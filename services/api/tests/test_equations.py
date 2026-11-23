@@ -63,8 +63,8 @@ def test_numbers_follow_reading_order_and_a_formula_keeps_its_number() -> None:
 
 
 def test_a_long_formula_is_shown_but_not_numbered() -> None:
-    assert EquationTable().number_for("x+" * 400, "written_by_model") is None
-    assert EquationTable().number_for("   ", "written_by_model") is None
+    assert EquationTable().number_for("x+" * 400, "written_by_model", mode="model") is None
+    assert EquationTable().number_for("   ", "written_by_model", mode="model") is None
 
 
 def test_the_users_displayed_formulas_are_numbered_in_order() -> None:
@@ -76,7 +76,7 @@ def test_the_users_displayed_formulas_are_numbered_in_order() -> None:
 
 def test_the_stored_high_water_mark_is_never_lowered() -> None:
     table = build_table([], counter=7)  # messages were removed; the numbers up to 7 were given
-    assert table.number_for("a", "written_by_model") == 8
+    assert table.number_for("a", "written_by_model", mode="model") == 8
 
 
 def test_the_table_is_rebuilt_from_stored_messages() -> None:
@@ -175,9 +175,9 @@ def test_references_are_found_only_where_they_are_explicit(text: str, numbers: l
 
 def test_resolving_references_tells_what_each_was_taken_to_be() -> None:
     table = EquationTable()
-    table.number_for("x + 1", "from_tool", "r1")
-    table.number_for("y^2", "written_by_model")
-    table.number_for("z", "yours")
+    table.number_for("x + 1", "from_tool", "r1", mode="none")
+    table.number_for("y^2", "written_by_model", mode="model")
+    table.number_for("z", "yours", mode="user")
     shown, note = resolve_references(
         find_references("add equation 1 to (2) and (3), see eq. 9"), table
     )
@@ -215,9 +215,9 @@ def test_the_model_sees_the_number_after_each_numbered_formula() -> None:
 # --- @eN in tool arguments -----------------------------------------------------------------------------------
 def store_with_equations() -> ResultStore:
     table = EquationTable()
-    table.number_for("x + 1", "from_tool", "r1")
-    table.number_for("y^2", "written_by_model")
-    table.number_for("z", "yours")
+    table.number_for("x + 1", "from_tool", "r1", mode="none")
+    table.number_for("y^2", "written_by_model", mode="model")
+    table.number_for("z", "yours", mode="user")
     return ResultStore.from_prior(
         {"r1": "x + 1"}, {"r1": [r"x \neq 1"]}, table.items, unverified={}
     )
@@ -268,7 +268,7 @@ def play(llm: ReplayLLM, ctx: ToolContext, text: str, **kw: Any) -> dict[str, An
 
 def table_with_model_equation() -> EquationTable:
     table = EquationTable()
-    table.number_for(r"x^{2} + 2 x", "written_by_model")
+    table.number_for(r"x^{2} + 2 x", "written_by_model", mode="model")
     return table
 
 
@@ -302,7 +302,7 @@ def test_a_result_computed_from_an_unverified_equation_says_so_and_is_not_marked
 
 def test_the_same_chain_from_a_verified_equation_stays_verified(ctx: ToolContext) -> None:
     table = EquationTable()
-    table.number_for(r"x^{2} + 2 x", "from_tool", "r1")
+    table.number_for(r"x^{2} + 2 x", "from_tool", "r1", mode="none")
     llm = ReplayLLM(
         [
             call("differentiate", {"latex": "@e1", "variables": [{"name": "x"}]}),
@@ -502,3 +502,97 @@ def test_a_markdown_table_row_is_never_taken_for_an_equation() -> None:
     # the table text itself arrives unchanged
     joined = "".join(s.value for s in parts if s.type == "text")
     assert "| x = 1 | y = 2 |" in joined
+
+
+# --- labels inside display math: legacy duplicates, tool output, user formulas, reload (issue 134) ---------
+
+
+def _stored(*segments: tuple[int, str]) -> Any:
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        role="assistant",
+        content={
+            "blocks": [
+                {
+                    "kind": "text",
+                    "segments": [
+                        {"type": "display_math", "value": v, "number": n, "status": "unchecked"}
+                        for n, v in segments
+                    ],
+                }
+            ]
+        },
+    )
+
+
+def test_a_legacy_duplicate_is_an_alias_and_nothing_stored_changes() -> None:
+    table = build_table([_stored((2, "c = R"), (3, "c = R (1)"), (7, "c = R (3)"))], counter=7)
+    assert [table.items[n].alias_of for n in (2, 3, 7)] == [None, 2, 2]
+    assert table.items[3].latex == "c = R" == table.items[7].latex
+    assert table.counter == 7
+    assert table.number_for("c = R", "written_by_model", mode="model") == 2
+    assert table.number_for("c = R (4)", "written_by_model", mode="model") == 2
+    assert table.counter == 7  # no new number
+    _, note = resolve_references(find_references("what is equation 7?"), table)
+    assert "the same formula as (2)" in note
+    assert table.aliases_resolved == 1
+
+
+def test_a_changed_formula_is_new_and_a_repeat_is_not() -> None:
+    table = EquationTable()
+    assert table.number_for("y = x (1)", "written_by_model", mode="model") == 1
+    assert table.number_for("y = x", "written_by_model", mode="model") == 1
+    assert table.number_for("y = x^2", "written_by_model", mode="model") == 2
+    assert table.reused == 1
+
+
+def test_tool_output_is_never_stripped_and_a_restatement_finds_it() -> None:
+    table = EquationTable()
+    card = table.number_for("A (2)", "from_tool", "r1", mode="none")
+    row = table.number_for("B (2)", "from_tool", None, "geometry", mode="none")
+    assert card is not None and row is not None
+    assert table.items[card].latex == "A (2)"  # what @eN would hand a tool
+    assert table.items[row].latex == "B (2)"
+    # The model restating it as written finds the card; so does a restatement the text pass cleaned.
+    assert table.number_for("A (2)", "written_by_model", mode="model") == card
+    assert table.number_for("B (2)", "written_by_model", mode="model") == row
+    assert table.counter == 2
+
+
+def test_the_users_formula_is_kept_as_written() -> None:
+    table = EquationTable()
+    found = number_user_text("Use $$x (2)$$ and $$x \\tag{1}$$ and $$x$$", table)
+    assert [(f["number"], f["latex"]) for f in found] == [(1, "x (2)"), (2, "x"), (2, "x")]
+    # A model restating the user's formula as written keeps the user's number and text.
+    assert table.number_for("x (2)", "written_by_model", mode="model") == 1
+
+
+def test_a_reply_numbered_live_and_rebuilt_from_storage_agree() -> None:
+    from types import SimpleNamespace
+
+    from minerva_api.agent.equations import number_blocks
+    from minerva_api.agent.events import Block, Segment
+
+    live = EquationTable()
+    user = number_user_text("Take $$u (2)$$", live)
+    segments = [
+        Segment(type="display_math", value=v)
+        for v in ("F = ma (2)", "u (2)", "F = ma", "G \\quad (4)")
+    ]
+    blocks = [Block(kind="text", segments=segments)]
+    number_blocks(blocks, live, None)
+    assert [s.number for s in segments] == [2, 1, 2, 3]
+    stored = SimpleNamespace(
+        role="assistant", content={"blocks": [b.model_dump(mode="json") for b in blocks]}
+    )
+    asked = SimpleNamespace(role="user", content={"text": "Take", "equations": user})
+    rebuilt = build_table([asked, stored], live.counter)
+    assert rebuilt.index == live.index
+    assert {n: e.latex for n, e in rebuilt.items.items()} == {
+        n: e.latex for n, e in live.items.items()
+    }
+    for latex in ("F = ma (5)", "G", "u (2)", "new"):
+        assert rebuilt.number_for(latex, "written_by_model", mode="model") == live.number_for(
+            latex, "written_by_model", mode="model"
+        )

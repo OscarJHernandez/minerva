@@ -238,6 +238,27 @@ tells), and it is not a measure of the model.
 * A coordinate named like a derivative spelling (`xdot` with `x`) is kept as declared, but the LaTeX printer shows a
   symbol named `xdot` as `\dot{x}`: name coordinates so that this cannot happen.
 
+## Equation labels inside a formula
+
+The server numbers equations; the model is told not to, but it copies the `$$...$$ (3)` pattern from the replayed
+history and sometimes writes the number inside the formula (`$$E = mc^2 (1)$$`). The key of the formula then contained
+the label, so the same formula restated without it was a new equation (issue 134: one cycloid under (2), (3) and (7)).
+`strip_label` reads one label off the very end of a displayed formula, by who wrote it:
+
+| Form | model reply | user message | tool output |
+| --- | --- | --- | --- |
+| `\tag{3}`, `\tag*{3}` | removed | removed from the key | kept |
+| `\quad`, `\qquad`, `\hfill`, `\hspace{..}` then `(3)` | removed | removed from the key | kept |
+| `\text{(3)}`, `\mathrm{(3)}` | removed | removed from the key | kept |
+| whitespace then `(3)` | removed unless it can be a factor | kept | kept |
+
+A bare ` (3)` is kept after a command name (`\sin (2)`, `\Gamma (3)`), an operator, relation, comma or opening bracket,
+a letter the same formula applies as a function elsewhere, and when removing it would unbalance brackets. `f(1)`,
+`(1+x)`, `2(3)`, limits and matrix entries are never touched. A formula already numbered as written is found first and
+never stripped. Accepted risk: a formula new to the conversation such as `y = g (1)` loses its `(1)`; every removal is
+recorded. Not handled: labels inside `align`, `aligned`, `gather`, `eqnarray`; a tool result that ends in `(N)` quoted
+before its card.
+
 ## The three-dimensional delta and the model
 
 The model reaches `distributional` only through `vector_calculus` (a keyword group and one rule block); the coefficient,

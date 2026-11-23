@@ -843,6 +843,8 @@ export interface TurnDebug {
   max_tool_calls?: number;
   events?: TraceEvent[];
   events_dropped?: number;
+  /** Equation labels the model wrote on its formulas and the server removed (debug mode only). */
+  removed_labels?: string[];
   claim_check?: string | null;
   formulas?: number;
   formulas_with_evidence?: number;
@@ -938,6 +940,8 @@ export interface EquationReference {
   latex: string | null;
   /** from_tool: a verified result; written_by_model: not verified; yours: the user's own; unknown. */
   source: "from_tool" | "written_by_model" | "yours" | "unknown";
+  /** A number from before labels inside display math were removed: the same formula as this lower number. */
+  alias_of?: number;
 }
 
 export interface StoredMessage {

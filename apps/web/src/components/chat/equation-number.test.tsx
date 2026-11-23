@@ -136,6 +136,20 @@ describe("numbers in the conversation", () => {
     expect(list).toHaveTextContent("written by the model, not verified");
     expect(list).toHaveTextContent("Equation (9): there is no such equation");
   });
+
+  it("says when a number is the same formula as a lower one (a conversation numbered before labels were removed)", () => {
+    const message: StoredMessage = {
+      id: "u",
+      role: "user",
+      created_at: "2026-11-15T00:00:00Z",
+      content: {
+        text: "what is equation 7?",
+        references: [{ number: 7, latex: "x+1", source: "written_by_model", alias_of: 2 }],
+      },
+    };
+    render(<MessageView message={message} />);
+    expect(screen.getByTestId("equation-references")).toHaveTextContent("the same formula as (2)");
+  });
 });
 
 describe("Composer: inserting a reference", () => {

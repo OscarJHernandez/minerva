@@ -37,6 +37,7 @@ from .agent.equations import (
     number_user_text,
     replay_prose,
     resolve_references,
+    strip_equation_tags,
     unverified_inputs,
 )
 from .agent.events import AssistantMessage, Block, Card, TraceStep, TurnDebug
@@ -1085,6 +1086,7 @@ def _store_stopped(
     conv_id: uuid.UUID,
     order: list[str | Card],
     model: ModelInfo | None = None,
+    equations: EquationTable | None = None,
 ) -> None:
     """Keep what had arrived when the client went away, so the conversation shows it as stopped.
 
@@ -1094,6 +1096,10 @@ def _store_stopped(
     """
     if not order:
         return
+    as_written = (
+        (lambda body: normalize(body) in equations.index) if equations is not None else None
+    )
+    order = [strip_equation_tags(i, as_written)[0] if isinstance(i, str) else i for i in order]
     blocks = [
         Block(kind="card", card=item)
         if isinstance(item, Card)
@@ -1591,7 +1597,7 @@ async def send_message(
             # The browser went away (Stop, a closed tab, a dropped connection) before the reply was stored.
             stop_reason = "stopped"
             if not replied:
-                _store_stopped(session_factory, conv_id, arrived, reply_model)
+                _store_stopped(session_factory, conv_id, arrived, reply_model, equations)
             raise
         except Exception as exc:
             site = error_fields(exc)  # the class and where our code raised it, never the message

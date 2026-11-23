@@ -329,6 +329,9 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
         `formulas with engine evidence: ${d.formulas_with_evidence}/${d.formulas} (${d.evidence_pct}%)`,
       );
     }
+    if (d.removed_labels && d.removed_labels.length > 0) {
+      lines.push(`equation labels removed from the reply: ${d.removed_labels.join(" ")}`);
+    }
     if (d.claim_check && d.claim_check !== "ok") lines.push(`claim check: ${d.claim_check}`);
     if (d.diagnosis?.stage) {
       const g = d.diagnosis;
