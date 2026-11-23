@@ -77,6 +77,7 @@ from .mathinput import (
     FORMAT_DESCRIPTION,
     MATH_FIELDS,
     SyntaxChoice,
+    diagnostic_line,
     input_lines,
     input_record,
     resolve_syntax,
@@ -1282,6 +1283,20 @@ def _constants_refusal(refusal: Refusal) -> ToolOutput:
     )
     out.card.data["diagnostic"] = diagnostic.model_dump(mode="json")
     out.reason_code = refusal.code.value
+    return out
+
+
+def reference_refusal(tool: str, message: str, diagnostic: InputDiagnostic) -> ToolOutput:
+    """The refusal of an `@eN` of the wrong kind for a field: typed, never run, never retried unchanged.
+
+    The model sees the message and the `diagnostic:` line; the card carries the diagnostic; the log gets the code.
+    """
+    out = _error(tool, message, "invalid_arguments", arguments_valid=False)
+    out.card.data["diagnostic"] = diagnostic.model_dump(mode="json")
+    line = diagnostic_line("parse_error", diagnostic)
+    if line is not None:
+        out.for_model = f"{out.for_model}\n{line}"
+    out.reason_code = diagnostic.code.value
     return out
 
 

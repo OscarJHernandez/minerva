@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 from minerva_api.agent.card_equations import (
+    EXCLUDED_WITH_REASON,
     LIST_NOT_YET_NUMBERED,
     LIST_READERS,
     SINGLE_RESULT,
@@ -65,9 +66,19 @@ def number(card: Card, table: EquationTable) -> None:
 # --- numbering ---------------------------------------------------------------------------------------------
 def test_every_card_type_is_classified_for_equation_numbers() -> None:
     kinds = set(typing.get_args(Card.model_fields["type"].annotation))
-    sets = [set(LIST_READERS), set(SINGLE_RESULT), set(LIST_NOT_YET_NUMBERED)]
+    sets = [
+        set(LIST_READERS),
+        set(SINGLE_RESULT),
+        set(LIST_NOT_YET_NUMBERED),
+        set(EXCLUDED_WITH_REASON),
+    ]
     assert set().union(*sets) == kinds, kinds.symmetric_difference(set().union(*sets))
     assert sum(len(s) for s in sets) == len(kinds)  # in exactly one
+
+
+def test_every_exclusion_states_its_reason() -> None:
+    assert set(EXCLUDED_WITH_REASON) == {"ode_numeric", "motion"}
+    assert all(len(reason) > 30 for reason in EXCLUDED_WITH_REASON.values())
 
 
 def test_each_christoffel_symbol_gets_its_own_whole_number_in_display_order(

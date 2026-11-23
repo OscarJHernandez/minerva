@@ -74,6 +74,7 @@ from .tools import (
     execute,
     known_formulas,
     quoted_formulas,
+    reference_refusal,
     schemas,
 )
 from .toolsets import (
@@ -1120,13 +1121,17 @@ async def _run_turn(
                         arguments_valid=False,
                     )
                 else:
-                    resolution = store.resolve(call.arguments)
+                    resolution = store.resolve(call.arguments, call.name)
                     if resolution.error:
-                        refusal = _error(
-                            call.name,
-                            resolution.error,
-                            ErrorCategory.INVALID_ARGUMENTS.value,
-                            arguments_valid=False,
+                        refusal = (
+                            reference_refusal(call.name, resolution.error, resolution.diagnostic)
+                            if resolution.diagnostic is not None
+                            else _error(
+                                call.name,
+                                resolution.error,
+                                ErrorCategory.INVALID_ARGUMENTS.value,
+                                arguments_valid=False,
+                            )
                         )
                     else:
                         arguments, references = resolution.arguments, resolution.count
