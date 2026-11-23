@@ -297,3 +297,32 @@ def test_what_the_message_was_found_to_contain_is_sent_before_the_reply() -> Non
     for client, cid, llm in start():
         llm.replies = [say("ok")]
         assert "user" not in [e for e, _ in send(client, cid, "no formulas here")]
+
+
+def test_the_position_vector_and_its_length_do_not_block_a_derivative_in_r() -> None:
+    """Issue #132: the reply wrote `\\mathbf{r}` and `r = |\\mathbf{r}|`; `r` stayed a scalar for the next tool."""
+    reply = (
+        r"Take the relative position vector $\mathbf{r}$, where $r = |\mathbf{r}|$ is the distance. "
+        r"The angular momentum is $\mu r^2 \dot{\theta}$."
+    )
+    lagrangian = r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{G M \mu}{r}"
+    for client, cid, llm in start():
+        llm.replies = [
+            say(reply),
+            call(
+                "time_derivative",
+                {
+                    "latex": r"\mu r^2 \dot{\theta}",
+                    "coordinates": ["r", "theta"],
+                    "lagrangian": lagrangian,
+                },
+            ),
+            say("The result is shown on the card."),
+        ]
+        send(client, cid, "Write the Kepler Lagrangian in vector and polar form.")
+        events = send(client, cid, "Take the time derivative of the angular momentum.")
+        cards = [d for e, d in events if e == "card"]
+        assert cards and cards[-1]["type"] == "differentiate", cards
+        assert cards[-1]["data"]["status"] == "ok"
+        refusal = [m for m in llm.seen[-1] if "declared as a matrix" in str(m.get("content", ""))]
+        assert not refusal
