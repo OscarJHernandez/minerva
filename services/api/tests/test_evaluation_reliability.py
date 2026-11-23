@@ -463,6 +463,30 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             ],
         },
     },
+    "double-pendulum-chat-one-small-angle-in-the-users-words": {
+        "ideal": [
+            call(
+                "series",
+                {"latex": DOUBLE_PENDULUM, "variable": "theta_1", "point": "0", "order": 2},
+            ),
+            say("Only $\\theta_1$ is taken as small here; $\\theta_2$ is left as it is."),
+        ],
+        "adversarial": {
+            # the reported failure: both angles small, in answer to a request about one rod
+            FailureClass.TOOL_SELECTION: [
+                call(
+                    "expand_motion",
+                    {
+                        "lagrangian": r"\frac12 m l^2\dot{\theta}_1^2 + m g l\cos\theta_1",
+                        "coordinates": ["theta_1"],
+                        "equilibrium": {"theta_1": "0"},
+                        "order": 1,
+                    },
+                ),
+                say("Both angles were taken as small."),
+            ],
+        },
+    },
     "answer-without-thinking-aloud": {
         "ideal": [
             say(

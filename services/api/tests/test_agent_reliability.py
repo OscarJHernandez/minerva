@@ -863,3 +863,84 @@ def test_a_handbook_search_for_something_it_does_not_cover_says_so(ctx: ToolCont
     # a query that the handbook does cover still returns its entries
     found = execute("search_handbook", {"query": "Euler Lagrange equations"}, ctx)
     assert found.status == "ok" and "method.mech.euler_lagrange" in found.for_model
+
+
+# ------------------------------------------- issue 137: the whole four-turn chat, turn 4 replayed
+# The earlier turns are the stored text of the reported conversation. The last user message names `l1`,
+# a rod length: the replayed model then does what the trace shows (both angles small, a Taylor call
+# with a list of variables, then one series per angle) at the deployed limit of six steps.
+CHAT_137 = [
+    {"role": "user", "content": "Whats the lagrangian for a double pendulum"},
+    {"role": "assistant", "content": f"The Lagrangian is $$L = {DOUBLE_PENDULUM}$$ (1)"},
+    {"role": "user", "content": "What are the symmetries of Equation (1)"},
+    {"role": "assistant", "content": "L has no explicit time dependence: the energy is conserved."},
+    {"role": "user", "content": "Are there any hidden symmetries?"},
+    {"role": "assistant", "content": "None was found within the families searched."},
+    {
+        "role": "user",
+        "content": "Can we approximate system if the l1 is moving as a small angle thing",
+    },
+]
+
+
+def play_chat(llm: Any, ctx: ToolContext, limits: AgentLimits) -> dict[str, Any]:
+    async def go() -> list[dict[str, Any]]:
+        return [e async for e in run_agent(llm, CHAT_137, ctx, limits)]
+
+    return final(asyncio.run(go()))
+
+
+def test_issue_137_chat_turn_four_has_no_false_success_and_ends_with_the_scoped_summary(
+    ctx: ToolContext,
+) -> None:
+    summary = (
+        "Verified: the Taylor series of $L$ in $\\theta_1$ alone, and separately in $\\theta_2$. "
+        "Not established: a joint expansion; only the first rod was asked to be small."
+    )
+    llm = ReplayLLM([*ISSUE_137_CALLS, say(summary)])
+    msg = play_chat(llm, ctx, SIX_STEPS)
+    trace = msg["trace"]
+    tools = [t["name"] for t in trace]
+    assert tools == ["expand_motion"] * 2 + ["approximation"] * 2 + ["series"] * 2
+    # the stored conversation reached the model, with the user's last message
+    assert any("l1 is moving" in str(m.get("content")) for m in llm.seen[0])
+    # the first expansion is a definite outcome (ok within the test budget, resource_limit at 10 s in the
+    # trace) and the identical retry is not run again
+    assert trace[0]["status"] in {"ok", "resource_limit"} and trace[0]["repeated"] is False
+    assert trace[1]["repeated"] is True
+    # a `variables`-only Taylor call is refused with its typed reason: no ok result, no result id
+    assert trace[3]["status"] == "conditions_not_satisfied" and trace[3]["result_id"] is None
+    assert "fields_not_for_method" in trace[3]["for_model"]
+    # the univariate calls that were asked for are the ones that succeeded
+    assert [trace[2]["status"], trace[4]["status"], trace[5]["status"]] == ["ok"] * 3
+    # cut at the step limit, yet the model's scoped summary comes before the stop sentence
+    assert msg["stop_reason"] == "step_limit" and len(llm.seen) == 7 and llm.tools_seen[-1] == []
+    text = msg["text"]
+    sentence = STOP_SENTENCES[StopReason.STEP_LIMIT]
+    assert summary in text and text.index(summary) < text.index(sentence)
+
+
+def test_issue_137_chat_turn_four_when_the_model_says_nothing_the_server_closes_it(
+    ctx: ToolContext,
+) -> None:
+    msg = play_chat(ReplayLLM([*ISSUE_137_CALLS]), ctx, SIX_STEPS)
+    assert msg["stop_reason"] == "step_limit"
+    assert (
+        msg["text"].strip() != STOP_SENTENCES[StopReason.STEP_LIMIT]
+    )  # not only the generic sentence
+    assert "What was established" in msg["text"]
+    assert "I did not get to combine these" in msg["text"]
+
+
+def test_issue_137_chat_expand_motion_at_a_short_limit_is_a_resource_limit_not_repeated() -> None:
+    """The reported first call at a limit it cannot meet: `resource_limit`, the identical retry is
+    skipped, and the turn still says that nothing was established."""
+    short = ToolContext(
+        engine=Engine(Limits(timeout_seconds=0.5, max_concurrency=2)), kb=KnowledgeBase.load()
+    )
+    llm = ReplayLLM([call("expand_motion", EXPAND), call("expand_motion", EXPAND)])
+    msg = play_chat(llm, short, AgentLimits(max_steps=2, retry_delay_seconds=0))
+    trace = msg["trace"]
+    assert trace[0]["status"] == "resource_limit" and trace[1]["repeated"] is True
+    assert "No verified result was established" in msg["text"]
+    assert "stopped at the time or resource limit" in msg["text"]
