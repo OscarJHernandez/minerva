@@ -314,6 +314,38 @@
       order: 2
   source: "issue 137 trace: `expand_motion` expands every coordinate at once (both angles small), the user named one small angle; a Taylor series in theta_1 only, or a question about the regime, is the faithful answer"
 
+# Issue 131, the Schwarzschild sequence up to the conserved quantities (metric -> Christoffel -> Lagrangian -> symmetries
+# -> conserved quantities; the radial effective potential needs mathematics that is not built yet). The earlier turns are
+# plain history written for this case (no tool calls). The last one asks for the conserved quantities of Equation (1) with
+# all four coordinates: the answer is `analyze_lagrangian` (cyclic momenta and the energy, each verified), and the reply must
+# say which symmetries were tested, never that these are all of them. `find_conserved_quantities` searches at most three
+# coordinates and refuses four with a typed reason (it is not a way to the answer here); the time symbol is `s` because `t`
+# is a coordinate.
+- id: schwarzschild-chat-conserved-quantities-are-scoped
+  category: physics
+  prompt: 'Which quantities are conserved along the geodesics of Equation (1)? The curve parameter is s and the coordinates are t, r, theta, phi.'
+  history:
+    - {role: user, content: 'Compute the Christoffel symbols of the metric diag(-(1-2M/r), 1/(1-2M/r), r^2, r^2 sin(theta)^2) in the coordinates t, r, theta, phi.'}
+    - {role: assistant, content: 'The geometry tool computed and checked all the Christoffel symbols of this metric; the nonzero ones are listed in its card.'}
+    - {role: user, content: 'Now write the geodesic Lagrangian L = 1/2 g_{mu nu} xdot^mu xdot^nu for it.'}
+    - {role: assistant, content: 'With the metric above: $$L = \frac{1}{2}\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2 + \frac{\dot{r}^2}{1-2M/r} + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2\right)$$ (1)'}
+    - {role: user, content: 'What are the symmetries of Equation (1)?'}
+    - {role: assistant, content: 'L does not depend on t or phi explicitly, so those two coordinates are cyclic, and it has no explicit dependence on the curve parameter.'}
+  expected_tool: analyze_lagrangian
+  args: {includes: {coordinates: [t, r, theta, phi]}}
+  max_calls: 4
+  expect_card: {status: ok}
+  reply_matches: '(?i)(cyclic|tested|searched|families|symmetries)'
+  reply_forbids: '(?i)\ball (the )?(conserved|constants)|every conserved|complete (list|set)|no other (conserved|constant)|curvature singularity (at|of) \$?r ?= ?2'
+  reference:
+    tool: analyze_lagrangian
+    arguments:
+      lagrangian: '1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)'
+      coordinates: [t, r, theta, phi]
+      time: s
+      format: text
+  source: "Schwarzschild geodesics: t and phi are cyclic (p_t = -E, p_phi = L_z) and L has no explicit parameter dependence (energy function); analyze_lagrangian's own checks decide, and it states the symmetries it tested (cyclic, time translation, coordinate-pair rotations); total angular momentum J^2 is not searched there (issue 151), so the reply may not say the list is complete"
+
 - id: answer-without-thinking-aloud
   category: ambiguous
   prompt: 'Whats the tautochrone problem, in two sentences?'

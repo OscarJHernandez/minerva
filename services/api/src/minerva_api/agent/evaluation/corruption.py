@@ -38,7 +38,7 @@ from minerva_engine.notation.models import Normalization
 from minerva_engine.notation.transport import DAMAGE
 
 from ..arguments import repair_arguments
-from ..mathinput import MATH_FIELDS, MATH_LIST_FIELDS, prepare_arguments
+from ..mathinput import MATH_FIELDS, MATH_LIST_FIELDS, _syntax, prepare_arguments
 from ..tools import ToolContext, ToolOutput, execute
 from .cases import load_suite
 
@@ -93,6 +93,51 @@ def _damage(name: str) -> Operator:
         return _map_fields(arguments, lambda _key, text: function(text))
 
     return apply
+
+
+def _brace_exponents(text: str) -> str:
+    """`x^2` -> `x^{2}`, `x^(a+1)` -> `x^{a+1}`, `x^-1` -> `x^{-1}` (the LaTeX habit in a text formula)."""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "^" and text[i + 1 : i + 2] == "(":
+            depth, j = 0, i + 1
+            while j < len(text):
+                depth += {"(": 1, ")": -1}.get(text[j], 0)
+                if depth == 0:
+                    break
+                j += 1
+            if depth == 0:
+                out.append("^{" + _brace_exponents(text[i + 2 : j]) + "}")
+                i = j + 1
+                continue
+        match = re.compile(r"\^(-?\d+)(?!\d|\.)").match(text, i)
+        if match:
+            out.append("^{" + match.group(1) + "}")
+            i = match.end()
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _braced_exponent(tool: str, arguments: Arguments) -> Arguments | None:
+    """Braces round an exponent, only in a field read as text syntax (in LaTeX they are the syntax itself).
+    The inverse of `notation.transport.read_braced_exponents`, which `mathinput` applies to text fields."""
+    out = copy.deepcopy(arguments)
+    changed = False
+    for key in MATH_FIELDS:
+        value = out.get(key)
+        if (
+            isinstance(value, str)
+            and "\\" not in value
+            and _syntax(tool, arguments, value) == "text"
+        ):
+            new = _brace_exponents(value)
+            if new != value:
+                out[key], changed = new, True
+    return out if changed else None
 
 
 def _assignment(tool: str, arguments: Arguments) -> Arguments | None:
@@ -218,6 +263,7 @@ def _formula_alias(tool: str, arguments: Arguments) -> Arguments | None:
 
 OPERATORS: dict[str, Operator] = {
     **{f"transport:{name}": _damage(name) for name in sorted(DAMAGE)},
+    "syntax:braced_exponent": _braced_exponent,
     "shape:assignment_prefix": _assignment,
     "shape:list_as_string": _list_as_string,
     "shape:json_as_string": _json_as_string,

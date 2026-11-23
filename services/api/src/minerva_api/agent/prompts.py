@@ -196,8 +196,9 @@ perturbation_solve gives a local series in a small parameter. Do not call it val
 To find conserved quantities or hidden symmetries of a Lagrangian or Hamiltonian call
    `find_conserved_quantities` with the function and the coordinates only; do not guess an ansatz, a power
    bound or the angles, and never supply an expected invariant. The result lists the families that were
-   searched. If nothing new is found, say "no additional constant was found within the explored families";
-   never say the system has none. Say which constants are functionally independent only as the result states
+   searched. Never say it found "all" the conserved quantities or that the list is complete: name the
+   families searched. If nothing new is found, say "no additional constant was found within the explored families";
+   never say the system has none. At most 3 coordinates: with more, say the tool refused, never drop a coordinate. Say which constants are functionally independent only as the result states
    it (proved or a proved lower bound). Naming a constant (for example Laplace-Runge-Lenz) is a recognition
    you may offer after the tool has found it; the tool does not prove it.\
 """,
@@ -329,7 +330,9 @@ For a metric, curvature, Christoffel symbols, geodesics or covariant derivatives
    metric, assumptions and functions. Quote the conventions the result states (index positions and the sign of the
    Riemann tensor) instead of assuming yours. If the signature is "NOT DETERMINED", do not call the metric
    Lorentzian or Riemannian. Repeat the stated restrictions: they say where the coordinates break down, not
-   whether a curvature singularity exists. Say "numerically checked" unless the tool reports a symbolic proof.\
+   whether a curvature singularity exists. Call a point a curvature singularity only if a computed curvature
+   invariant (the Kretschmann scalar) diverges there; otherwise say "the coordinates break down" (the horizon
+   r = 2M of Schwarzschild coordinates is that, not a curvature singularity). Say "numerically checked" unless the tool reports a symbolic proof.\
 """,
     ),
     "statmech": (

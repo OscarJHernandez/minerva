@@ -21,6 +21,7 @@ from .build import CONSTANTS, FUNCTIONS, TEXT_FUNCTION_ALIASES, Builder, JetBind
 from .errors import LimitError, ParseError
 from .models import Limits
 from .notation.models import InputCode
+from .notation.transport import read_braced_exponents
 
 _MAX_AST_DEPTH = 100
 
@@ -57,7 +58,7 @@ def parse_text(
     )
     if denominators is not None:
         builder.denominators = denominators
-    source = text.strip().replace("^", "**")
+    source = read_braced_exponents(text.strip())[0].replace("^", "**")
     try:
         tree = ast.parse(source, mode="eval")
     except (SyntaxError, ValueError, RecursionError, MemoryError) as exc:

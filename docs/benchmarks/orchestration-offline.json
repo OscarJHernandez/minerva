@@ -10,7 +10,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 49931,
+        "est_tokens_in": 50937,
         "est_tokens_out": 234,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -33,9 +33,9 @@
       "id": "wedge-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 608,
-        "tool_ms": 4008,
-        "total_ms": 4635
+        "claim_check_ms": 437,
+        "tool_ms": 2774,
+        "total_ms": 3231
       }
     },
     {
@@ -47,7 +47,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29456,
+        "est_tokens_in": 30090,
         "est_tokens_out": 119,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -70,9 +70,9 @@
       "id": "wedge-xdot-first-call",
       "pending": "",
       "timing": {
-        "claim_check_ms": 467,
-        "tool_ms": 881,
-        "total_ms": 1366
+        "claim_check_ms": 416,
+        "tool_ms": 919,
+        "total_ms": 1351
       }
     },
     {
@@ -84,7 +84,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29484,
+        "est_tokens_in": 30118,
         "est_tokens_out": 124,
         "evidence_pct": 100.0,
         "format_switches": 1,
@@ -107,9 +107,9 @@
       "id": "wedge-wrong-format-recovered",
       "pending": "",
       "timing": {
-        "claim_check_ms": 416,
-        "tool_ms": 1777,
-        "total_ms": 2209
+        "claim_check_ms": 400,
+        "tool_ms": 1311,
+        "total_ms": 1726
       }
     },
     {
@@ -121,7 +121,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29526,
+        "est_tokens_in": 30160,
         "est_tokens_out": 124,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -144,9 +144,9 @@
       "id": "wedge-shape-errors-repaired",
       "pending": "",
       "timing": {
-        "claim_check_ms": 425,
-        "tool_ms": 916,
-        "total_ms": 1358
+        "claim_check_ms": 398,
+        "tool_ms": 848,
+        "total_ms": 1262
       }
     },
     {
@@ -158,7 +158,7 @@
         "budget_exhausted": 0,
         "claims": 0,
         "contradicted": 0,
-        "est_tokens_in": 43517,
+        "est_tokens_in": 44469,
         "est_tokens_out": 73,
         "evidence_pct": null,
         "format_switches": 0,
@@ -182,8 +182,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 934,
-        "total_ms": 951
+        "tool_ms": 879,
+        "total_ms": 896
       }
     },
     {
@@ -219,8 +219,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 834,
-        "total_ms": 849
+        "tool_ms": 796,
+        "total_ms": 811
       }
     },
     {
@@ -256,8 +256,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 424,
-        "total_ms": 440
+        "tool_ms": 395,
+        "total_ms": 410
       }
     },
     {
@@ -269,7 +269,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 15195,
+        "est_tokens_in": 15512,
         "est_tokens_out": 65,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -292,9 +292,9 @@
       "id": "wedge-routed-xdot",
       "pending": "",
       "timing": {
-        "claim_check_ms": 425,
-        "tool_ms": 950,
-        "total_ms": 1395
+        "claim_check_ms": 402,
+        "tool_ms": 854,
+        "total_ms": 1273
       }
     },
     {
@@ -306,7 +306,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 60438,
+        "est_tokens_in": 61706,
         "est_tokens_out": 219,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -329,9 +329,9 @@
       "id": "pendulum-original-failure",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1234,
-        "tool_ms": 1883,
-        "total_ms": 3135
+        "claim_check_ms": 952,
+        "tool_ms": 1710,
+        "total_ms": 2681
       }
     },
     {
@@ -343,7 +343,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 15066,
+        "est_tokens_in": 15383,
         "est_tokens_out": 92,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -366,9 +366,9 @@
       "id": "pendulum-routed-latex",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1282,
-        "tool_ms": 991,
-        "total_ms": 2289
+        "claim_check_ms": 923,
+        "tool_ms": 881,
+        "total_ms": 1820
       }
     },
     {
@@ -380,7 +380,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 15056,
+        "est_tokens_in": 15373,
         "est_tokens_out": 92,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -403,9 +403,9 @@
       "id": "pendulum-routed-text-velocities",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1265,
-        "tool_ms": 1282,
-        "total_ms": 2564
+        "claim_check_ms": 929,
+        "tool_ms": 936,
+        "total_ms": 1881
       }
     },
     {
@@ -417,7 +417,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29276,
+        "est_tokens_in": 29910,
         "est_tokens_out": 131,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -440,9 +440,9 @@
       "id": "pendulum-model-calls-with-text",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1188,
-        "tool_ms": 1283,
-        "total_ms": 2489
+        "claim_check_ms": 1066,
+        "tool_ms": 931,
+        "total_ms": 2015
       }
     },
     {
@@ -454,7 +454,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29303,
+        "est_tokens_in": 29938,
         "est_tokens_out": 133,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -477,9 +477,9 @@
       "id": "pendulum-assignment-and-greek",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1141,
-        "tool_ms": 1219,
-        "total_ms": 2376
+        "claim_check_ms": 976,
+        "tool_ms": 980,
+        "total_ms": 1974
       }
     },
     {
@@ -491,7 +491,7 @@
         "budget_exhausted": 0,
         "claims": 4,
         "contradicted": 0,
-        "est_tokens_in": 29290,
+        "est_tokens_in": 29924,
         "est_tokens_out": 138,
         "evidence_pct": 75.0,
         "format_switches": 0,
@@ -514,9 +514,9 @@
       "id": "pendulum-wrong-sign-stays-unbacked",
       "pending": "",
       "timing": {
-        "claim_check_ms": 1882,
-        "tool_ms": 1236,
-        "total_ms": 3134
+        "claim_check_ms": 1475,
+        "tool_ms": 854,
+        "total_ms": 2344
       }
     },
     {
@@ -528,7 +528,7 @@
         "budget_exhausted": 0,
         "claims": 1,
         "contradicted": 0,
-        "est_tokens_in": 28958,
+        "est_tokens_in": 29593,
         "est_tokens_out": 45,
         "evidence_pct": 100.0,
         "format_switches": 0,
@@ -551,9 +551,9 @@
       "id": "cyclic-oscillator",
       "pending": "",
       "timing": {
-        "claim_check_ms": 754,
-        "tool_ms": 778,
-        "total_ms": 1548
+        "claim_check_ms": 452,
+        "tool_ms": 456,
+        "total_ms": 924
       }
     },
     {
@@ -589,8 +589,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 1576,
-        "total_ms": 1591
+        "tool_ms": 976,
+        "total_ms": 991
       }
     },
     {
@@ -626,8 +626,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 5837,
-        "total_ms": 5854
+        "tool_ms": 4400,
+        "total_ms": 4416
       }
     },
     {
@@ -663,8 +663,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 3291,
-        "total_ms": 3306
+        "tool_ms": 2586,
+        "total_ms": 2601
       }
     },
     {
@@ -700,8 +700,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 1368,
-        "total_ms": 1384
+        "tool_ms": 995,
+        "total_ms": 1010
       }
     },
     {
@@ -737,8 +737,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 858,
-        "total_ms": 873
+        "tool_ms": 570,
+        "total_ms": 585
       }
     },
     {
@@ -774,8 +774,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 783,
-        "total_ms": 799
+        "tool_ms": 564,
+        "total_ms": 579
       }
     },
     {
@@ -811,8 +811,8 @@
       "pending": "",
       "timing": {
         "claim_check_ms": null,
-        "tool_ms": 634,
-        "total_ms": 649
+        "tool_ms": 564,
+        "total_ms": 579
       }
     },
     {
@@ -847,9 +847,9 @@
       "id": "matrix-expansion-noncommuting",
       "pending": "",
       "timing": {
-        "claim_check_ms": 472,
-        "tool_ms": 718,
-        "total_ms": 1206
+        "claim_check_ms": 415,
+        "tool_ms": 407,
+        "total_ms": 838
       }
     },
     {
@@ -884,9 +884,9 @@
       "id": "ode-first-order",
       "pending": "",
       "timing": {
-        "claim_check_ms": 589,
-        "tool_ms": 747,
-        "total_ms": 1354
+        "claim_check_ms": 540,
+        "tool_ms": 460,
+        "total_ms": 1015
       }
     },
     {
@@ -921,9 +921,9 @@
       "id": "vector-divergence-product",
       "pending": "",
       "timing": {
-        "claim_check_ms": 485,
-        "tool_ms": 917,
-        "total_ms": 1419
+        "claim_check_ms": 392,
+        "tool_ms": 569,
+        "total_ms": 977
       }
     },
     {
@@ -958,14 +958,14 @@
       "id": "vector-distributional-divergence",
       "pending": "",
       "timing": {
-        "claim_check_ms": 422,
-        "tool_ms": 930,
-        "total_ms": 1369
+        "claim_check_ms": 393,
+        "tool_ms": 700,
+        "total_ms": 1109
       }
     }
   ],
   "summary": {
-    "est_tokens_in": 727858,
+    "est_tokens_in": 736475,
     "est_tokens_out": 2202,
     "format_switches": 3,
     "input_adjusted": 2,

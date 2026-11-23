@@ -116,9 +116,9 @@ and compare with `--compare`.
   marks and the new evidence note already say which, and the split touches the UI, scoring and the debug report
   for a presentation change. The `basis` is available in the claim debug record.
 * Routed: Lagrangian equations of motion, `differentiate`/`integrate` of "that result" (`followup_reuse`), `ode_analyze` of a bare equation and `matrix_simplify` over matrices the user declared n x n. Not routed, deliberately: simplify, differentiate and integrate of a formula in the message (the 2026-11-18 baseline shows the model choosing them correctly), vector calculus and distributions (a coordinate system, declared fields and the delta notation are the user's to state). See `docs/reliability/triage-2026-11-18.md`.
-* `format` exists for `analyze_lagrangian` and `search_invariants` (visible) and, hidden, for the formula tools listed
-  in the audit below. Other Lagrangian tools (`expand_motion`, `perturbation_solve`, `integrate_motion`,
-  `find_conserved_quantities`) take LaTeX only: their engine entry points read LaTeX, so a text Lagrangian is refused
+* `format` exists for `analyze_lagrangian`, `search_invariants` and `find_conserved_quantities` (visible; the last one
+  since issue 131: the engine reads the Hamiltonian in text too) and, hidden, for the formula tools listed
+  in the audit below. Other Lagrangian tools (`expand_motion`, `perturbation_solve`, `integrate_motion`) take LaTeX only: their engine entry points read LaTeX, so a text Lagrangian is refused
   with the fix there (see "Second pass").
 
 ## Argument audit
@@ -129,8 +129,8 @@ Every main expression field of every tool must state its syntax (a test). Syntax
 | --- | --- | --- |
 | `simplify`, `differentiate`, `integrate`, `series`, `time_derivative`, `find_identities` | LaTeX; a text form (`sin(x)`, `x*y`) that LaTeX refuses is re-read as text by the loop | hidden `format` (`latex` default, `text`), switched by the recovery policy |
 | `substitute`, `rewrite_part`, `isolate_variable`, `solve_polynomial`, `check_units`, `sums`, `expectation`, `distribution`, `creative_telescoping`, `approximation`, `variation` | LaTeX | none (text is refused with the fix) |
-| `analyze_lagrangian`, `search_invariants` | LaTeX or text (`theta_dot`, `Xdot`) | `auto` / `latex` / `text` |
-| `expand_motion`, `perturbation_solve`, `integrate_motion`, `find_conserved_quantities` | LaTeX (spelled velocities of a declared coordinate are refused with the fix in LaTeX) | none |
+| `analyze_lagrangian`, `search_invariants`, `find_conserved_quantities` | LaTeX or text (`theta_dot`, `Xdot`) | `auto` / `latex` / `text` |
+| `expand_motion`, `perturbation_solve`, `integrate_motion` | LaTeX (spelled velocities of a declared coordinate are refused with the fix in LaTeX) | none |
 | `matrix_calculus` | LaTeX; text for the gradient actions | per action |
 | `vector_calculus`, `electromagnetism` | LaTeX (explicit components: text) | none |
 | `ode_*` | the user's notation, `format` `latex` or `text` | `format` |
@@ -172,7 +172,13 @@ Everything is a closed list with a test and an inverse; nothing rewrites a meani
 2. **Transport cleaning** (`notation/transport.py`, `agent/mathinput.py`): markdown escapes, `$` and code-fence
    wrappers, doubled backslashes, Unicode look-alikes, HTML entities, sentence punctuation, a leading `L =`/`H =`,
    Greek and dotted letters in the syntax of the tool. Runs on every formula argument after `@rN` references are filled
-   in and before the call is keyed.
+   in and before the call is keyed. In a field read as text syntax only, a braced exponent is the parenthesised one
+   (`x^{-1}` -> `x^(-1)`, `(a+b)^{n+1}`; `transport.read_braced_exponents`: directly after `^`, balanced braces, nested
+   groups handled; a group with a top-level comma, an empty or an unbalanced one stays refused, and no set literal is
+   ever accepted; LaTeX is never touched). The same function runs in the text parser itself, because geometry
+   metric entries and the workbench reach it without this layer (issue 131: `(1-2*M/r)^{-1}` was `unsupported syntax: Set`).
+   It is not in `clean_transport` (that one is format-independent and `^{12}` is the syntax in LaTeX), so its inverse is
+   the corruption operator `syntax:braced_exponent`, not a `DAMAGE` row.
 3. **Shape repair** (`agent/arguments.py`): a list sent as a string, one equation where a list is wanted, JSON sent as
    text, a formula under `expression`, a number where text is wanted.
 4. **Typed diagnostics** (`notation/models.py`): `InputDiagnostic` (closed `code`, `field`, `symbols`, `suggestions`,
@@ -231,8 +237,13 @@ tells), and it is not a measure of the model.
   product `x t` unless the tool declares functions.
 * **The ODE and variational readers keep their own derivative spellings**; `ydot` is read only where the Lagrangian
   reader is used.
-* `expand_motion`, `perturbation_solve`, `integrate_motion`, `find_conserved_quantities` read LaTeX only (a spelled
-  velocity in LaTeX is refused with the fix).
+* `expand_motion`, `perturbation_solve`, `integrate_motion` read LaTeX only (a spelled velocity in LaTeX is refused
+  with the fix). `find_conserved_quantities` takes `format` since issue 131 and refuses more than three coordinates with
+  the typed code `too_many_coordinates` (the limit, what a user may do by hand, and that reduction and a larger search
+  are not available yet); the coordinate cap of its schema is 8 so that this reason, not a generic length error, is shown.
+* A coordinate named `t` clashes with the default time symbol `t`: `analyze_lagrangian` then answers `not_verified`
+  (the Euler-Lagrange check cannot separate the two). The `time` argument says so and the reliability case
+  `schwarzschild-chat-conserved-quantities-are-scoped` uses `time: s`. A typed refusal for the clash is not built.
 * Inline formulas have no handle (only displayed ones); distinct verification marks and the per-call prompt size are
   still open (see "Not done" above).
 * A coordinate named like a derivative spelling (`xdot` with `x`) is kept as declared, but the LaTeX printer shows a

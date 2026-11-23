@@ -307,3 +307,49 @@ def test_constants_are_named_with_a_subscript_like_the_relation_between_them() -
         "C_{3}",
         "C_{4}",
     ]
+
+
+def test_text_syntax_is_read_by_the_strict_text_parser() -> None:
+    latex = run(KEPLER, ["r", "theta"], angles=["theta"])
+    text = discover_invariants(
+        "lagrangian",
+        "1/2*m*(r_dot^2 + r^2*theta_dot^2) + k/r",
+        ["r", "theta"],
+        None,
+        ["theta"],
+        "standard",
+        None,
+        "t",
+        {},
+        LIMITS,
+        "text",
+    )
+    assert text.status is Status.OK and latex.status is Status.OK
+    assert len(text.constants) == len(latex.constants)
+    hamiltonian = discover_invariants(
+        "hamiltonian",
+        "p_r^2/(2*m) + p_theta^2/(2*m*r^2) - k/r",
+        ["r", "theta"],
+        None,
+        [],
+        "standard",
+        None,
+        "t",
+        {},
+        LIMITS,
+        "text",
+    )
+    assert hamiltonian.status is Status.OK and hamiltonian.constants
+
+
+def test_more_than_three_coordinates_is_a_typed_refusal_that_names_the_limit() -> None:
+    from minerva_engine.notation.models import InputCode
+
+    report = run(r"\frac{1}{2}(\dot{a}^2+\dot{b}^2+\dot{c}^2+\dot{d}^2)", ["a", "b", "c", "d"])
+    assert report.status is Status.UNSUPPORTED
+    assert report.diagnostic is not None
+    assert report.diagnostic.code is InputCode.TOO_MANY_COORDINATES
+    assert report.diagnostic.field == "coordinates" and not report.diagnostic.recoverable
+    assert "at most 3 coordinates" in report.message and "4 were given" in report.message
+    assert "not available yet" in report.message
+    assert not report.constants  # nothing was searched and nothing was dropped

@@ -204,6 +204,65 @@ def localize_symbols(source: str, format: str) -> tuple[str, tuple[Normalization
     return re.sub(r"[ ]{2,}", " ", text).strip() if format == "latex" else text, tuple(notes)
 
 
+def _group_end(text: str, start: int) -> int | None:
+    """Index of the `}` that closes the `{` at `start`, or None (unbalanced, or a comma at its top level)."""
+    depth = 0
+    pairs = {"(": ")", "[": "]"}
+    stack: list[str] = []
+    for i in range(start, len(text)):
+        c = text[i]
+        if c == "{":
+            depth += 1
+            stack.append("}")
+        elif c in pairs:
+            stack.append(pairs[c])
+        elif c in "})]":
+            if not stack or stack.pop() != c:
+                return None
+            if c == "}":
+                depth -= 1
+                if depth == 0:
+                    return i
+        elif c == "," and len(stack) == 1:
+            return None  # `^{a,b}`: a tuple or set, not an exponent
+    return None
+
+
+def _braced(text: str, notes: list[Normalization]) -> str:
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == "^" and i + 1 < len(text) and text[i + 1] == "{":
+            end = _group_end(text, i + 1)
+            inner = text[i + 2 : end] if end is not None else ""
+            if end is not None and inner.strip():
+                body = _braced(inner, notes)
+                notes.append(_note("^{...}", "^(...)", "a braced exponent is a parenthesised one"))
+                out.append(f"^({body})")
+                i = end + 1
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def read_braced_exponents(source: str) -> tuple[str, tuple[Normalization, ...]]:
+    """Text syntax only: `x^{-1}` -> `x^(-1)`, `(a+b)^{n+1}` -> `(a+b)^(n+1)`.
+
+    A brace group is read only directly after `^`, with balanced braces (nested groups after a `^` inside it
+    too). A group that is empty, unbalanced or has a comma at its top level (`^{a,b}`) is left as written, so
+    the parser still refuses it, and a brace anywhere else stays a Python set that the parser refuses: no set
+    literal is ever accepted. Text that has no `^{` is returned unchanged. LaTeX is never passed through here
+    (`x^{12}` is the exponent 12 there already).
+    """
+    if "^{" not in source:
+        return source, ()
+    notes: list[Normalization] = []
+    text = _braced(source, notes)
+    return text, tuple(dict.fromkeys(notes))
+
+
 # -- the inverse operators ---------------------------------------------------------------------------
 # Each damages a string the way a transport does, and is the exact inverse of one row of `clean_transport`.
 # They live here so that a row cannot be added without its inverse (a test pairs them); the corruption

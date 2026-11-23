@@ -47,7 +47,7 @@ import sympy as sp
 from pydantic import BaseModel, Field
 from sympy.polys.matrices import DomainMatrix
 
-from .flow import Flow, hamiltonian_flow, lagrangian_flow
+from .flow import Flow, coordinate_limit_error, hamiltonian_flow, lagrangian_flow
 from .independence import IndependenceReport, PolyContext, analyze_independence, point_rank
 from .invariants import _new_directions
 from .lagrangian import DerivationError
@@ -1025,17 +1025,20 @@ def discover_invariants(
     time_name: str,
     assumptions: dict[str, list[str]],
     limits: Limits,
+    format: Literal["latex", "text"] = "latex",
 ) -> DiscoveryReport:
     started = time.monotonic()
     if budget not in BUDGETS:
         return DiscoveryReport(
             status=Status.UNSUPPORTED, message="The budget is quick, standard or thorough."
         )
-    if not coordinates or len(coordinates) > MAX_COORDINATES:
+    if len(coordinates) > MAX_COORDINATES:
+        refusal = coordinate_limit_error(len(coordinates), coordinates)
         return DiscoveryReport(
-            status=Status.UNSUPPORTED,
-            message=f"The search handles between 1 and {MAX_COORDINATES} coordinates.",
+            status=refusal.status, message=refusal.message, diagnostic=refusal.diagnostic
         )
+    if not coordinates:
+        return DiscoveryReport(status=Status.UNSUPPORTED, message="Give at least one coordinate.")
     if not set(angles) <= set(coordinates):
         return DiscoveryReport(
             status=Status.PARSE_ERROR, message="Every angle must be one of the coordinates."
@@ -1043,10 +1046,12 @@ def discover_invariants(
     try:
         if system == "hamiltonian":
             flow = hamiltonian_flow(
-                function_latex, coordinates, momenta, time_name, assumptions, limits
+                function_latex, coordinates, momenta, time_name, assumptions, limits, format
             )
         else:
-            flow = lagrangian_flow(function_latex, coordinates, time_name, assumptions, limits)
+            flow = lagrangian_flow(
+                function_latex, coordinates, time_name, assumptions, limits, format
+            )
     except DerivationError as exc:
         return DiscoveryReport(status=exc.status, message=exc.message, diagnostic=exc.diagnostic)
     try:

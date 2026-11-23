@@ -178,7 +178,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   sent as text, a formula under `expression`, a number where text is wanted), transport cleaning
   (`mathinput.prepare_arguments` over `MATH_FIELDS`, the one list of formula arguments: markdown escapes `\*`, `$`/code
   fence wrappers, doubled backslashes, Unicode look-alikes, HTML entities, a leading `L =`/`H =`, Greek letters and
-  dotted letters in the syntax of the tool), then the derivative reader (`notation/derivatives.py`: `Xdot`, `X_DOT`,
+  dotted letters in the syntax of the tool; and, in a field read as text syntax only, a braced exponent as the parenthesised one:
+  `x^{-1}` is `x^(-1)`, through the one closed rule `transport.read_braced_exponents`: directly after `^`, balanced braces, nested
+  groups handled; a group with a top-level comma, an empty or unbalanced one stays refused and no set literal is ever accepted.
+  The text parser applies the same rule itself, because geometry metric entries reach it without this layer; its inverse is the
+  corruption operator `syntax:braced_exponent`, not a `DAMAGE` row, because `clean_transport` is format-independent and in LaTeX
+  the braces are syntax), then the derivative reader (`notation/derivatives.py`: `Xdot`, `X_DOT`,
   `dX_dt`, `x dot` are the velocity of a *declared* coordinate; the keyword is case-insensitive and the stem exact). A
   name with two readings, two spellings of one derivative in the same expression, a declared name, or a velocity of an
   undeclared coordinate is **refused with a typed `InputCode`** and the candidates, never guessed; a LaTeX letter run
@@ -552,8 +557,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   result to assert. Time-dependent Lagrangians and non-rational accelerations are `unsupported`, an oversized
   ansatz is `resource_limit`. Do not widen the ansatz silently or report an unverified candidate.
 - Adaptive discovery of conserved quantities (`discovery.py`, `flow.py`, `independence.py`; tool
-  `find_conserved_quantities`, endpoint `POST /v1/compute/conserved`) takes a Lagrangian **or** a Hamiltonian and
-  chooses its own ansatz: a deterministic ladder of nested families (momentum degree, power bound, harmonics, cyclic
+  `find_conserved_quantities`, endpoint `POST /v1/compute/conserved`) takes a Lagrangian **or** a Hamiltonian (the tool takes
+  `format` `auto`/`latex`/`text` like `analyze_lagrangian`) and chooses its own ansatz: a deterministic ladder of nested families (momentum degree, power bound, harmonics, cyclic
   powers, powers of t), cheapest first, each solved exactly. It shows a constant only if it passed `Flow.verify`
   (symbolic zero and numeric points on the equations of motion, which were themselves confirmed by numerical
   differentiation of L or H); a candidate that fails is dropped and counted. Products of known and found constants
@@ -568,8 +573,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`packages/engine/tests/bench`, fixtures regenerate from seeds) are separate from the discovery code and never
   hand it an expected invariant. Names such as Laplace–Runge–Lenz are for the model to offer afterwards. Events
   (`invariant_search.*`) carry counters and fixed labels only; the API logs them with the request id as trace id
-  (`search_log.py`), expressions stay in the user's private card. Square roots, logarithms, non-polynomial time
-  dependence and more than 3 coordinates are `unsupported`; families above the unknown cap are listed as not searched.
+  (`search_log.py`), expressions stay in the user's private card. Square roots, logarithms and non-polynomial time
+  dependence are `unsupported`; more than 3 coordinates is `unsupported` with the typed code `too_many_coordinates` (the limit, removing a
+  cyclic coordinate by hand only with the user's own stated momentum, and that automatic reduction and a larger search are not available
+  yet; nothing is searched and no coordinate is dropped; the tool schema allows 8 so that this reason, not a length error, reaches the model); families above the unknown cap are listed as not searched.
   The original `search_invariants` is kept unchanged as the fixed-ansatz baseline of `docs/invariant-benchmark.md`.
 - Chains of identities (`transform.py`, tool and endpoint `simplify`) are shown only if every step passed the
   numeric check and the whole chain was re-verified with the symbolic zero test added; the two are reported

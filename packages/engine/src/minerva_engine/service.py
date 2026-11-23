@@ -906,6 +906,7 @@ class Engine:
         pins: Pins | None = None,
         time: str = "t",
         assumptions: dict[str, list[str]] | None = None,
+        format: Literal["latex", "text"] = "latex",
     ) -> DiscoveryReport:
         """Adaptive search for conserved quantities of a Lagrangian or Hamiltonian, sandboxed."""
         seconds = BUDGETS[budget].seconds if budget in BUDGETS else self.limits.timeout_seconds
@@ -921,6 +922,7 @@ class Engine:
                 "pins": pins.model_dump() if pins else None,
                 "time": time,
                 "assumptions": assumptions or {},
+                "format": format,
             },
             timeout=seconds,
         )
