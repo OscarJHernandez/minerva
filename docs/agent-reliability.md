@@ -41,6 +41,13 @@ equation is **not** shown as contradicted (a false statement about a system Mine
 told from a different system), it is simply not backed. All of these are tests
 (`packages/engine/tests/test_claim_evidence.py`, `services/api/tests/test_claim_evidence_agent.py`).
 
+One more outcome is neither: the model re-types a verified constant under the tool's own name with another
+expression (`C_4 = … r^2 \dot r\,\ddot\theta …` for `\dot\theta`, seen in issue #132). If the left side is
+exactly the name of a verified conserved quantity or momentum and the right side provably differs (a gap
+confirmed at 60 and 120 digits), the claim stays `unchecked` and its note names the verified equation
+(`evidence_rule: "mismatch"`). Still not "contradicted": the mark says the equation was not backed, and why it
+should be compared. A different name on the left, or evidence from a result that set no role, never mismatches.
+
 Coverage is narrower than "every correct statement": any form that is neither a restatement of the same left
 side nor proportional by a constant factor is not linked, and the evaluation reports exactly that.
 

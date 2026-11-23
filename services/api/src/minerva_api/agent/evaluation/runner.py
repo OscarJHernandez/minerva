@@ -17,8 +17,10 @@ from ...routers_chat import (
     _conversation_events,
     _declaration_inputs,
     _history,
+    _prior_evidence,
     declarations_of,
 )
+from ..constants import constants_of_blocks
 from ..llm import LLMClient
 from ..loop import AgentLimits, TurnInfo, run_agent
 from ..params import EffectiveParams
@@ -79,7 +81,15 @@ async def observe(
             # tool) and which of those names are vectors
             **declarations_of(*_declaration_inputs(messages, case.prompt))._asdict(),
             "prior_groups": conversation_groups(_conversation_events(messages, case.prompt)),
+            # what the chat route hands the claim check: the verified results of the earlier turns
+            "prior_evidence": _prior_evidence(messages),
         }
+        # ... and `time_derivative` the constants of earlier discovery results (set on the context, as the route does)
+        ctx.constants = tuple(
+            constants_of_blocks(
+                m.content.get("blocks", []) for m in messages if m.role == "assistant"
+            )
+        )
     else:
         # The chat route always tells the claim checker which names the conversation declared as matrices
         # or vectors ("A and B are 2x2 matrices"), the current message included. A single-turn case has no

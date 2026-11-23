@@ -511,7 +511,19 @@ class ClaimChecker:
             return None
         found = self.evidence.match(parsed)
         if found is None:
-            return None
+            differs = self.evidence.mismatch(parsed)
+            if differs is None:
+                return None
+            where = f" ({differs.source})" if differs.source else ""
+            # Still unchecked, never "false": the name is the tool's, the expression is not.
+            return ClaimCheck(
+                status="unverified",
+                kind="relation",
+                detail=f"This uses the name of a verified result but a different expression: the verified "
+                f"result{where} is ${differs.latex}$. Compare them before relying on this equation.",
+                evidence_source=differs.source or None,
+                evidence_rule="mismatch",
+            )
         where = f" ({found.source})" if found.source else ""
         return ClaimCheck(
             status="supported",

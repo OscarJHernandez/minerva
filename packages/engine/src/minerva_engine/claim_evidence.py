@@ -13,6 +13,12 @@ mathematics, never by spelling, and only three kinds of match exist:
 3. **A named conserved quantity.** `E = ...` against a verified `h = ...` whose role is a conserved quantity or a
    momentum, with equivalent right sides. Only for those roles: `y = 2` is not supported by a verified `x = 2`.
 
+One more outcome is not a match: a claim that reuses the tool's own name for a verified conserved quantity or
+momentum (`C_{4} = ...` against the verified `C_{4} = ...`) with a right side that provably differs (a gap
+confirmed at 60 and 120 digits by `counterexample.find_counterexample`). It is reported as a difference from
+that result, never as a contradiction: the mark stays "unchecked" and the note says which verified equation it
+departs from. A mismatch needs the same name; a different name on the left is the model's own quantity.
+
 A match says "the same statement a verified result made". It does not verify the claim by itself and never
 widens what the tool established: the restrictions of the result travel with the match. Anything else (a
 rearranged form, terms moved across the equals sign, solved for another symbol) is not matched and stays
@@ -26,6 +32,7 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel
 
+from .counterexample import Budget, find_counterexample
 from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .models import Limits
@@ -54,6 +61,14 @@ class EvidenceMatch(BaseModel):
     basis: Literal["symbolic", "numeric"]
     restrictions: list[str] = []
     detail: str = ""
+
+
+class EvidenceMismatch(BaseModel):
+    """The claim uses the name of a verified result and a different expression for it."""
+
+    source: str
+    latex: str  # the verified equation, as the tool printed it
+    role: str
 
 
 def _dynamic(names: list[str]) -> set[str]:
@@ -112,6 +127,25 @@ class EvidenceIndex:
                 found = self._proportional(a, b, item, c, d)
                 if found is not None:
                     return found
+        return None
+
+    def mismatch(self, claim: list[sp.Expr]) -> EvidenceMismatch | None:
+        """The verified result whose name `claim` reuses with an expression that provably differs, if any.
+        Only after `match` found nothing. Cancellation noise, a point defined on one side only and an
+        exception are not a difference (`find_counterexample` confirms at 60 and 120 digits)."""
+        if len(claim) != 2 or not self.items:
+            return None
+        for a, b in (claim, claim[::-1]):
+            if not a.is_Symbol or a.name.endswith(("_dot", "_ddot")) or a in b.free_symbols:
+                continue
+            for item, c, d in reversed(self.items):
+                if item.role not in NAMED_ROLES or not c.is_Symbol or c != a:
+                    continue
+                found = find_counterexample(
+                    b, d, budget=Budget(points=40, seconds=1.0), kinds=("random", "special")
+                )
+                if found.counterexample is not None:
+                    return EvidenceMismatch(source=item.source, latex=item.latex, role=item.role)
         return None
 
     @staticmethod
