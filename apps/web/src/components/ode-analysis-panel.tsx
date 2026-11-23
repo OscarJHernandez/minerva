@@ -1,6 +1,7 @@
 import { Math as Formula } from "@minerva/ui/math";
 import type { ReactNode } from "react";
 import type { MethodSuggestion, OdeAnalysis, ProblemKind } from "@/lib/ode-types";
+import { Numbered } from "./chat/equation-number";
 import { OdeQualitativePanel } from "./ode-qualitative-panel";
 import { StatusPill } from "./result-panel";
 import type { PlotSeries } from "./chat/line-plot";
@@ -163,9 +164,11 @@ export function OdeAnalysisPanel({
           )}
           {report.solved_latex.length > 0 && (
             <ul className="mt-2 overflow-x-auto">
-              {report.solved_latex.map((eq) => (
+              {report.solved_latex.map((eq, i) => (
                 <li key={eq}>
-                  <Formula latex={eq} />
+                  <Numbered k={`solved:${i}`}>
+                    <Formula latex={eq} />
+                  </Numbered>
                 </li>
               ))}
             </ul>

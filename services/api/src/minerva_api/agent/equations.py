@@ -44,6 +44,84 @@ class Equation:
     # A stored equation that is the same formula as a lower number once its own label is read off (a
     # conversation numbered before labels inside display math were removed): the lower number.
     alias_of: int | None = None
+    # What the displayed text is: a relation with a top-level `=` ("equation"), a formula with no relation
+    # at all ("expression"), or None when that cannot be decided from the text (another relation sign, a
+    # multi-row environment, unbalanced brackets). Read off the text by `relation_kind` (one rule, no
+    # keyword), so a table rebuilt from stored messages agrees with the live one. Used only to refuse an
+    # `@eN` reference where a tool provably cannot read it (`reference_types.py`); never to change a formula.
+    kind: Literal["equation", "expression"] | None = None
+
+
+# --- what a numbered formula is: a relation or an expression ---------------------------------------
+# Relations other than `=` make the text neither: it is left undecided (kind None), never called an expression.
+_OTHER_RELATIONS = (
+    "<", ">", "\\leq", "\\le", "\\geq", "\\ge", "\\neq", "\\ne", "\\approx", "\\equiv", "\\simeq",
+    "\\sim", "\\propto", "\\in", "\\notin", "\\subset", "\\subseteq", "\\to", "\\mapsto",
+    "\\Rightarrow", "\\implies", "\\iff", "\\Leftrightarrow", "\\leftrightarrow", "\\rightarrow",
+    "\\ll", "\\gg", "\\perp", "\\parallel", "\\cong", "\\doteq",
+)  # fmt: skip
+_COMMAND = re.compile(r"\\([A-Za-z]+)")
+_OPEN, _CLOSE = "([{", ")]}"
+
+
+def relation_kind(latex: str) -> Literal["equation", "expression"] | None:
+    """Whether a formula is a relation with a top-level `=`, an expression, or undecided (None).
+
+    One deterministic reading of the text: `=` counts only outside every bracket, brace, `\\left...\\right`
+    pair and `\\begin...\\end` environment (`x_{n=1}`, a matrix entry, `f(a=1)` are not relations). A text
+    with unbalanced brackets, a row separator (`&`, `\\\\`) at the top level or another relation sign at the
+    top level is undecided. Nothing here parses mathematics or looks at a keyword.
+    """
+    depth = 0
+    top_equals = False
+    other = False
+    i, n = 0, len(latex)
+    while i < n:
+        ch = latex[i]
+        if ch == "\\":
+            m = _COMMAND.match(latex, i)
+            if m is None:  # an escaped symbol: `\\{`, `\\,`, `\\\\`
+                follow = latex[i + 1] if i + 1 < n else ""
+                if follow == "\\" and depth == 0:
+                    return None  # a row separator at the top level
+                if follow == "{":  # a literal brace pairs like a bracket
+                    depth += 1
+                elif follow == "}":
+                    depth -= 1
+                    if depth < 0:
+                        return None
+                i += 2
+                continue
+            name = m.group(1)
+            if name == "begin":
+                depth += 1
+            elif name == "end":
+                depth -= 1
+            elif depth == 0 and any(
+                rel[1:] == name for rel in _OTHER_RELATIONS if rel.startswith("\\")
+            ):
+                other = True
+            i = m.end()
+            continue
+        if ch in _OPEN:
+            depth += 1
+        elif ch in _CLOSE:
+            depth -= 1
+            if depth < 0:
+                return None
+        elif depth == 0:
+            if ch == "=":
+                top_equals = True
+            elif ch in "<>":
+                other = True
+            elif ch == "&":
+                return None
+        i += 1
+    if depth != 0:
+        return None
+    if top_equals:
+        return "equation"
+    return None if other else "expression"
 
 
 # --- labels the model writes inside a displayed formula ----------------------------------------------
@@ -185,7 +263,9 @@ class EquationTable:
             self.reused += 1
             return existing
         self.counter += 1
-        self.items[self.counter] = Equation(self.counter, stored, source, result_id, part_of)
+        self.items[self.counter] = Equation(
+            self.counter, stored, source, result_id, part_of, kind=relation_kind(stored)
+        )
         self.index[key] = self.counter
         return self.counter
 
@@ -214,7 +294,9 @@ class EquationTable:
             earlier = self.index.get(key) if key else None
         if number not in self.items:
             alias = earlier if earlier is not None and earlier < number else None
-            self.items[number] = Equation(number, stored, source, result_id, part_of, alias)
+            self.items[number] = Equation(
+                number, stored, source, result_id, part_of, alias, relation_kind(stored)
+            )
         elif result_id and not self.items[number].result_id:
             self.items[number].result_id = result_id
             self.items[number].source = "from_tool"
@@ -280,10 +362,20 @@ def number_blocks(
     """
     for block in blocks:
         if block.kind == "card" and block.card is not None:
+            # A card can have both a list and one primary result (a later matrix or vector card): both are
+            # numbered, the whole first so that its number is the lower one.
+            latex = result_formula(block.card.type, block.card.data)
             if block.card.type in LIST_READERS:
+                if isinstance(latex, str):
+                    block.card.number = table.number_for(
+                        latex,
+                        "from_tool",
+                        (result_ids or {}).get(block.card.id),
+                        mode="none",
+                        any_length=True,
+                    )
                 block.card.numbers = _number_listed(block.card.type, block.card.data, table)
                 continue
-            latex = result_formula(block.card.type, block.card.data)
             if isinstance(latex, str):
                 block.card.number = table.number_for(
                     latex,
@@ -490,15 +582,7 @@ def number_stored(contents: Iterable[tuple[str, dict[str, Any]]], table: Equatio
         steps = {s.get("id"): s for s in content.get("trace", []) or [] if isinstance(s, dict)}
         for block in content.get("blocks", []) or []:
             card = block.get("card") if block.get("kind") == "card" else None
-            if isinstance(card, dict) and card.get("type") in LIST_READERS:
-                data = card.get("data")
-                listed = _number_listed(
-                    str(card["type"]), data if isinstance(data, dict) else {}, table
-                )
-                if listed and not card.get("numbers"):
-                    card["numbers"] = listed
-                    gave = True
-            elif isinstance(card, dict):
+            if isinstance(card, dict):
                 latex = result_formula(card.get("type"), card.get("data") or {})
                 if isinstance(latex, str):
                     rid = (steps.get(card.get("id")) or {}).get("result_id")
@@ -506,6 +590,14 @@ def number_stored(contents: Iterable[tuple[str, dict[str, Any]]], table: Equatio
                         latex, "from_tool", rid, mode="none", any_length=True
                     )
                     gave = gave or card["number"] is not None
+                if card.get("type") in LIST_READERS:
+                    data = card.get("data")
+                    listed = _number_listed(
+                        str(card["type"]), data if isinstance(data, dict) else {}, table
+                    )
+                    if listed and not card.get("numbers"):
+                        card["numbers"] = listed
+                        gave = True
             for seg in block.get("segments", []) or []:
                 if isinstance(seg, dict) and seg.get("type") == "display_math":
                     seg["number"] = table.number_for(

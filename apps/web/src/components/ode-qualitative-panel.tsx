@@ -1,5 +1,6 @@
 import { Math as Formula } from "@minerva/ui/math";
 import type { Classification, OdeQualitative } from "@/lib/ode-types";
+import { Numbered } from "./chat/equation-number";
 import { PhasePlot, type Marker } from "./chat/phase-plot";
 import type { PlotSeries } from "./chat/line-plot";
 
@@ -70,9 +71,11 @@ export function OdeQualitativePanel({
         Equilibria and local stability
       </p>
       <ul className="mt-1 overflow-x-auto">
-        {q.field_latex.map((f) => (
+        {q.field_latex.map((f, i) => (
           <li key={f}>
-            <Formula latex={f} />
+            <Numbered k={`field:${i}`}>
+              <Formula latex={f} />
+            </Numbered>
           </li>
         ))}
       </ul>

@@ -44,6 +44,10 @@ class InputCode(StrEnum):
     CONSTANT_NOT_VERIFIED = "constant_not_verified"
     # The discovery of conserved quantities supports at most `flow.MAX_COORDINATES` coordinates.
     TOO_MANY_COORDINATES = "too_many_coordinates"
+    # A numbered equation (`@eN`) of one kind sent where the tool reads the other: a relation where it reads an
+    # expression, or an expression where it needs an equation. Refused, never rewritten or split.
+    EQUATION_REFERENCE_NOT_EXPRESSION = "equation_reference_not_expression"
+    EXPRESSION_REFERENCE_NOT_EQUATION = "expression_reference_not_equation"
 
 
 class NormalizationKind(StrEnum):

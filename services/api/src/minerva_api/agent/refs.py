@@ -17,6 +17,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from minerva_engine.notation.models import InputDiagnostic
+
 from .card_equations import (
     PREMISE_SUFFIX,
     premise_labels,
@@ -25,6 +27,7 @@ from .card_equations import (
 )
 from .equations import Equation
 from .mathinput import MATH_FIELDS
+from .reference_types import refusal_diagnostic
 from .tools import ToolOutput
 
 REFERENCE = re.compile(r"@r(\d+)\b")
@@ -59,6 +62,9 @@ class Resolution:
     arguments: dict[str, Any]
     count: int = 0  # how many references were replaced
     error: str | None = None  # safe to show the model
+    # Set with `error` when the reference is of a kind the field cannot take (`reference_types.py`): the typed
+    # reason the model sees as a `diagnostic:` line. Holds `@eN`, never a formula.
+    diagnostic: InputDiagnostic | None = None
     # Restrictions that the referenced results carry ("x \\neq 2"), and which results they come from. A result
     # computed from `@r1` is valid only where `@r1` was, so these travel with it (see `inherited_note`).
     inherited: list[str] = field(default_factory=list)
@@ -132,8 +138,14 @@ class ResultStore:
             self.unverified[result_id] = list(dict.fromkeys(carried))
         return result_id
 
-    def resolve(self, arguments: dict[str, Any]) -> Resolution:
-        """Replace `@eN` and `@rN` in the expression arguments. A reference to nothing is an error, not a guess."""
+    def resolve(self, arguments: dict[str, Any], tool: str | None = None) -> Resolution:
+        """Replace `@eN` and `@rN` in the expression arguments. A reference to nothing is an error, not a guess.
+
+        With `tool`, a reference whose kind the field cannot take (a relation for an expression field, an
+        expression for an equation field; `reference_types.FIELD_POLICY`) is refused with a typed diagnostic
+        and the call is not run. A kind that is unknown (an old stored equation, or text that cannot be
+        decided) is never refused.
+        """
         staged = dict(arguments)
         count = 0
         unverified: list[str] = []
@@ -150,6 +162,16 @@ class ResultStore:
                     error=f"unknown equation reference @e{missing[0]}; equations: {known}",
                 )
             whole = EQ_REFERENCE.fullmatch(value.strip()) is not None
+            if tool is not None:
+                for n in dict.fromkeys(numbers):
+                    kind = self.equations[n].kind
+                    # An expression is refused only as the whole argument (`@e3 = 4` is a relation built
+                    # from it); a relation is refused wherever it sits (it would be wrapped in brackets).
+                    if kind is None or (kind == "expression" and not whole):
+                        continue
+                    refused = refusal_diagnostic(tool, key, n, kind)
+                    if refused is not None:
+                        return Resolution(arguments, error=refused[1], diagnostic=refused[0])
 
             def sub(m: re.Match[str], whole: bool = whole) -> str:
                 equation = self.equations[int(m.group(1))]

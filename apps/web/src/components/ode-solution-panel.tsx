@@ -1,6 +1,7 @@
 import { Math as Formula } from "@minerva/ui/math";
 import type { ReactNode } from "react";
 import type { OdeSolution, OdeSolutionItem } from "@/lib/ode-types";
+import { Numbered } from "./chat/equation-number";
 import { StatusPill } from "./result-panel";
 
 const KIND = {
@@ -46,9 +47,11 @@ export function formatResidual(value: number | null): string {
 
 function Item({
   item,
+  index,
   onUse,
 }: {
   item: OdeSolutionItem;
+  index: number;
   onUse?: (text: string, equation: string) => void;
 }) {
   const v = item.verification;
@@ -57,9 +60,11 @@ function Item({
   return (
     <li className="rounded border border-rule bg-paper p-3" data-kind={item.kind}>
       <ul className="space-y-1 overflow-x-auto">
-        {item.equations_latex.map((eq) => (
+        {item.equations_latex.map((eq, j) => (
           <li key={eq}>
-            <Formula latex={eq} display />
+            <Numbered k={`solution:${index}:${j}`}>
+              <Formula latex={eq} display />
+            </Numbered>
           </li>
         ))}
       </ul>
@@ -183,8 +188,8 @@ export function OdeSolutionPanel({
       )}
       {report.solutions.length > 0 && (
         <ul className="mt-3 space-y-3">
-          {report.solutions.map((item) => (
-            <Item key={item.equations_latex.join("|")} item={item} onUse={onUse} />
+          {report.solutions.map((item, s) => (
+            <Item key={item.equations_latex.join("|")} item={item} index={s} onUse={onUse} />
           ))}
         </ul>
       )}

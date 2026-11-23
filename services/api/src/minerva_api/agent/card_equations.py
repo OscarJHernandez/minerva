@@ -151,12 +151,88 @@ def discovery(data: dict[str, Any]) -> Listed:
     ]
 
 
+def solve(data: dict[str, Any]) -> Listed:
+    """The factors and the exact roots of an accepted `solve` card, as the card shows them.
+
+    `factor:i` is a factor, `root:i:j` an exact root of factor i, `rootrow:k` the exact form in row k of the table
+    of roots (the same formula as a `root:` row is one number). Not numbered: the equation as read (an echo of the
+    user's input), the numerical decimals and the verification lines. A card that was not accepted (`not_verified`
+    still shows its factors) lists nothing.
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok":
+        return []
+    out: Listed = []
+    factors = report.get("factors")
+    for i, factor in enumerate(factors if isinstance(factors, list) else []):
+        if not isinstance(factor, dict):
+            continue
+        latex = _text(factor.get("factor_latex"))
+        if latex:
+            out.append((f"factor:{i}", latex))
+        roots = factor.get("exact_roots_latex")
+        for j, root in enumerate(roots if isinstance(roots, list) else []):
+            if (text := _text(root)) is not None:
+                out.append((f"root:{i}:{j}", text))
+    return [*out, *_rows(report.get("roots"), "exact_latex", "rootrow")]
+
+
+# A solution of kind `explicit` or `implicit` that is `evaluated` is a closed form; an unevaluated integral, a
+# series and a perturbation expansion are representations or truncations and are never presented as a result.
+_CLOSED_FORM_KINDS = frozenset({"explicit", "implicit"})
+
+
+def ode_solution(data: dict[str, Any]) -> Listed:
+    """`solution:s:j`: equation j of solution s, for a verified closed form only.
+
+    Not numbered: restrictions, the checked conditions and the right-hand side text (the card's own bookkeeping).
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok":
+        return []
+    out: Listed = []
+    solutions = report.get("solutions")
+    for s, item in enumerate(solutions if isinstance(solutions, list) else []):
+        if (
+            not isinstance(item, dict)
+            or item.get("kind") not in _CLOSED_FORM_KINDS
+            or item.get("evaluated") is not True
+        ):
+            continue
+        out += _rows(
+            [{"latex": e} for e in item.get("equations_latex") or []], "latex", f"solution:{s}"
+        )
+    return out
+
+
+def ode_analysis(data: dict[str, Any]) -> Listed:
+    """`solved:i` (an equation solved for its highest derivative) and `field:i` (a direction-field formula).
+
+    Not numbered: the equilibria (their order is not canonical, deferred), the interpretation (the user's own
+    input, quoted), restrictions and notes.
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok":
+        return []
+    qualitative = report.get("qualitative")
+    field = None
+    if isinstance(qualitative, dict) and qualitative.get("status") == "ok":
+        field = qualitative.get("field_latex")
+    return [
+        *_rows([{"latex": e} for e in report.get("solved_latex") or []], "latex", "solved"),
+        *_rows([{"latex": e} for e in field or []], "latex", "field"),
+    ]
+
+
 # Card types whose listed equations are numbered one by one.
 LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
     "lagrangian": lagrangian,
     "invariants": invariants,
     "discovery": discovery,
+    "solve": solve,
+    "ode_solution": ode_solution,
+    "ode_analysis": ode_analysis,
 }
 
 # One primary result (`result_latex`, numbered as a whole) or no formula of its own to refer to.
@@ -172,6 +248,8 @@ SINGLE_RESULT = frozenset(
         "expectation",
         "distribution",
         "approximation",
+        # `tensor`: one canonical form, numbered as a whole through its top-level `result_latex`.
+        "tensor",
         "step",
         "identities",
         "entries",
@@ -193,18 +271,23 @@ LIST_NOT_YET_NUMBERED = frozenset(
         "statistics",
         "vector",
         "statmech",
-        "tensor",
-        "solve",
         "expansion",
         "perturbation",
-        "motion",
-        "ode_analysis",
-        "ode_solution",
-        "ode_numeric",
         "variation",
         "dimensional",
     }
 )
+
+# Card types that are deliberately not numbered, each with the reason a test pins. Not a gap: a number would
+# present something that is not a displayed equation, or a numerical approximation, as a result to refer to.
+EXCLUDED_WITH_REASON: dict[str, str] = {
+    "ode_numeric": (
+        "a numerical trajectory on a stated interval: it shows values and checks, no equation to refer to"
+    ),
+    "motion": (
+        "a numerical solution of the user's own Lagrangian; the only formula it displays is that input, quoted"
+    ),
+}
 
 
 def listed_equations(card_type: str, data: dict[str, Any]) -> Listed:

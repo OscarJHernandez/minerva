@@ -1,0 +1,455 @@
+{
+  "comment": "Real engine output of three cards and the row keys the server numbers. The Python test (test_equation_rows_contract.py) checks the keys against the reader; the vitest test checks that the panels put a number on exactly these rows. Regenerate with that test's helper, never by hand.",
+  "solve": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "equation_latex": "\\left(x^{2} - 1\\right) \\left(x^{2} + x + 1\\right) = 0",
+        "variable": "x",
+        "degree": 4,
+        "symbolic_coefficients": false,
+        "factors": [
+          {
+            "factor_latex": "x - 1",
+            "multiplicity": 1,
+            "degree": 1,
+            "radicals": "yes",
+            "radicals_reason": "linear",
+            "exact_roots_latex": ["1"]
+          },
+          {
+            "factor_latex": "x + 1",
+            "multiplicity": 1,
+            "degree": 1,
+            "radicals": "yes",
+            "radicals_reason": "linear",
+            "exact_roots_latex": ["-1"]
+          },
+          {
+            "factor_latex": "x^{2} + x + 1",
+            "multiplicity": 1,
+            "degree": 2,
+            "radicals": "yes",
+            "radicals_reason": "quadratic formula",
+            "exact_roots_latex": [
+              "- \\frac{1}{2} - \\frac{\\sqrt{3} \\mathrm{i}}{2}",
+              "- \\frac{1}{2} + \\frac{\\sqrt{3} \\mathrm{i}}{2}"
+            ]
+          }
+        ],
+        "roots": [
+          {
+            "numeric": "-1",
+            "real": true,
+            "multiplicity": 1,
+            "exact_latex": "-1"
+          },
+          {
+            "numeric": "1",
+            "real": true,
+            "multiplicity": 1,
+            "exact_latex": "1"
+          },
+          {
+            "numeric": "-0.5 - 0.8660254037844386467637232 i",
+            "real": false,
+            "multiplicity": 1,
+            "exact_latex": "- \\frac{1}{2} - \\frac{\\sqrt{3} \\mathrm{i}}{2}"
+          },
+          {
+            "numeric": "-0.5 + 0.8660254037844386467637232 i",
+            "real": false,
+            "multiplicity": 1,
+            "exact_latex": "- \\frac{1}{2} + \\frac{\\sqrt{3} \\mathrm{i}}{2}"
+          }
+        ],
+        "verification": {
+          "roots_substituted_back": true,
+          "max_residual": "0",
+          "count_matches_degree": true,
+          "vieta_holds": true,
+          "exact_roots_match_numeric": true
+        },
+        "features": ["poly", "poly:degree:4", "poly:numeric-roots"],
+        "notes": [],
+        "message": "Degree 4: 4 roots found and verified by substitution and Vieta's relations.",
+        "duration_ms": 2109
+      },
+      "methods": []
+    },
+    "keys": [
+      "factor:0",
+      "root:0:0",
+      "factor:1",
+      "root:1:0",
+      "factor:2",
+      "root:2:0",
+      "root:2:1",
+      "rootrow:0",
+      "rootrow:1",
+      "rootrow:2",
+      "rootrow:3"
+    ]
+  },
+  "ode_solution": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "message": "",
+        "method": "closed_form",
+        "interpretation": {
+          "unknowns": ["y"],
+          "independent": "x",
+          "parameters": [],
+          "orders": {
+            "y": 2
+          },
+          "equations_latex": ["y'' = y"],
+          "conditions_latex": [],
+          "notes": ["x is the independent variable, read as real unless you declared otherwise"]
+        },
+        "solutions": [
+          {
+            "kind": "explicit",
+            "expansion": null,
+            "equations_latex": [
+              "y\\left(x\\right) = C_{1} \\mathrm{e}^{- x} + C_{2} \\mathrm{e}^{x}"
+            ],
+            "rhs_text": ["C1*exp(-x) + C2*exp(x)"],
+            "constants": ["C1", "C2"],
+            "family": "general",
+            "evaluated": true,
+            "verification": {
+              "points_checked": 10,
+              "points_agreed": 10,
+              "points_skipped": 0,
+              "max_residual": 4.880997142165921e-62,
+              "symbolic_zero": true,
+              "independent_constants": 2,
+              "passed": true,
+              "note": ""
+            },
+            "conditions": [],
+            "restrictions_latex": []
+          }
+        ],
+        "verification": {
+          "points_checked": 10,
+          "points_agreed": 10,
+          "points_skipped": 0,
+          "max_residual": 4.880997142165921e-62,
+          "symbolic_zero": true,
+          "independent_constants": 2,
+          "passed": true,
+          "note": ""
+        },
+        "dropped": 0,
+        "notes": [
+          "Singular solutions are not searched, and branch cuts of roots and logarithms are not analysed."
+        ],
+        "diagnostics": {
+          "trace_id": null,
+          "stages": [
+            {
+              "name": "read",
+              "ms": 0.38
+            },
+            {
+              "name": "solve",
+              "ms": 17.42
+            },
+            {
+              "name": "verify",
+              "ms": 10.56
+            },
+            {
+              "name": "conditions",
+              "ms": 0.0
+            },
+            {
+              "name": "total",
+              "ms": 29.86
+            }
+          ],
+          "n_equations": 1,
+          "order": 2,
+          "state_dimension": 2,
+          "classes": [],
+          "method": "closed_form",
+          "methods_tried": [],
+          "steps": null,
+          "evaluations": null,
+          "candidates": 1,
+          "verified": 1,
+          "dropped": 0,
+          "solution_kind": "explicit",
+          "max_residual": 4.880997142165921e-62,
+          "failure_reason": null
+        },
+        "duration_ms": 268
+      }
+    },
+    "keys": ["solution:0:0"]
+  },
+  "ode_analysis": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "message": "",
+        "interpretation": {
+          "unknowns": ["y"],
+          "independent": "t",
+          "parameters": [],
+          "orders": {
+            "y": 2
+          },
+          "equations_latex": ["y^{3} + y + \\frac{y'}{5} + y'' = 0"],
+          "conditions_latex": [],
+          "notes": ["t is the independent variable, read as real unless you declared otherwise"]
+        },
+        "structure": {
+          "kind": "ode",
+          "n_unknowns": 1,
+          "n_equations": 1,
+          "orders": {
+            "y": 2
+          },
+          "order": 2,
+          "state_dimension": 2,
+          "linear": false,
+          "homogeneous": null,
+          "constant_coefficients": null,
+          "autonomous": true,
+          "solved_for_highest": true,
+          "position_only": false
+        },
+        "problem_kind": "general",
+        "conditions_needed": ["y(t_0)", "y'(t_0)"],
+        "classes": [],
+        "solved_latex": ["y'' = - y^{3} - y - \\frac{y'}{5}"],
+        "restrictions_latex": [],
+        "methods": [
+          {
+            "id": "numerical_ivp",
+            "title": "Numerical integration (initial-value problem)",
+            "applicable": true,
+            "available": true,
+            "rank": 1,
+            "reason": "the highest derivatives can be solved for, so it becomes a first-order system",
+            "requires": [
+              "initial values for every unknown and derivative below its order",
+              "no parameters",
+              "the interval of the independent variable"
+            ],
+            "limitations": [
+              "an approximation on the interval you choose; not exact and not valid beyond it",
+              "stiffness cannot be judged in advance: the integrator is chosen from measured behaviour",
+              "checked against an independent integrator, tolerance refinement and the equation's defect"
+            ],
+            "tool": "ode_solve_numerical",
+            "action": "ivp"
+          },
+          {
+            "id": "power_series",
+            "title": "Local power series about a regular point",
+            "applicable": true,
+            "available": true,
+            "rank": 2,
+            "reason": "the highest derivatives can be solved for, so a Taylor series can be built from the initial values",
+            "requires": [
+              "the expansion point",
+              "initial values for every unknown and derivative below its order",
+              "a truncation order"
+            ],
+            "limitations": [
+              "local: valid near the expansion point only, and a singular point is unsupported",
+              "the residual is checked through the claimed order"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "series"
+          },
+          {
+            "id": "equilibrium_analysis",
+            "title": "Equilibria and local linear stability",
+            "applicable": true,
+            "available": true,
+            "rank": 3,
+            "reason": "autonomous with few states: equilibria, the Jacobian and its eigenvalues",
+            "requires": [],
+            "limitations": [
+              "local and from the linearisation only; it says nothing about global stability",
+              "where the linearisation has eigenvalues on the imaginary axis it does not decide"
+            ],
+            "tool": "ode_analyze",
+            "action": "qualitative"
+          },
+          {
+            "id": "phase_plane",
+            "title": "Phase plane (direction field and trajectories)",
+            "applicable": true,
+            "available": true,
+            "rank": 4,
+            "reason": "autonomous with two states",
+            "requires": [],
+            "limitations": [
+              "trajectories are numerical approximations, each checked as in the IVP method"
+            ],
+            "tool": "ode_analyze",
+            "action": "qualitative"
+          },
+          {
+            "id": "symbolic_closed_form",
+            "title": "Closed-form solution (SymPy), verified by substitution",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "no solvable class was recognised, so Minerva does not attempt a closed form",
+            "requires": [],
+            "limitations": [
+              "SymPy may fail, or give an implicit or unevaluated form",
+              "shown only after substituting back into your equation and checking numerically",
+              "the solution may omit singular solutions and is valid only where its restrictions hold"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "closed_form"
+          },
+          {
+            "id": "poincare_lindstedt",
+            "title": "Poincaré-Lindstedt (periodic motion, one degree of freedom)",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "the acceleration depends on the velocity (damping or a gyroscopic term)",
+            "requires": ["a small parameter named by you", "an equilibrium to oscillate about"],
+            "limitations": [
+              "periodic solutions near a stable equilibrium only",
+              "an asymptotic series"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "perturbation"
+          },
+          {
+            "id": "regular_perturbation",
+            "title": "Regular perturbation expansion",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "no symbolic parameter to expand in",
+            "requires": ["a small parameter named by you"],
+            "limitations": [
+              "valid for small values of that parameter and bounded intervals",
+              "secular terms grow with time and can invalidate the expansion for long times"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "perturbation"
+          },
+          {
+            "id": "numerical_bvp",
+            "title": "Numerical boundary-value solution",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "needs conditions at two distinct points",
+            "requires": [
+              "numerical values for every parameter",
+              "a starting guess is chosen by Minerva"
+            ],
+            "limitations": [
+              "a solution may not exist, may not be unique, and the solver may converge to another one",
+              "shown only after the boundary conditions, the residual and a refined mesh agree"
+            ],
+            "tool": "ode_solve_numerical",
+            "action": "bvp"
+          },
+          {
+            "id": "multiple_scales",
+            "title": "Multiple scales",
+            "applicable": false,
+            "available": false,
+            "rank": null,
+            "reason": "not implemented in Minerva",
+            "requires": [],
+            "limitations": [],
+            "tool": null,
+            "action": null
+          }
+        ],
+        "qualitative": {
+          "status": "ok",
+          "message": "",
+          "states_latex": ["y", "y'"],
+          "field_latex": ["y' = y'", "y'' = - y^{3} - y - \\frac{y'}{5}"],
+          "equilibria": [
+            {
+              "point_latex": ["y = 0", "y' = 0"],
+              "point_numeric": [0.0, 0.0],
+              "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\-1 & - \\frac{1}{5}\\end{matrix}\\right]",
+              "eigenvalues_latex": [
+                "- \\frac{1}{10} - \\frac{3 \\sqrt{11} \\mathrm{i}}{10}",
+                "- \\frac{1}{10} + \\frac{3 \\sqrt{11} \\mathrm{i}}{10}"
+              ],
+              "eigenvalues_numeric": ["-0.1 - 0.99498744i", "-0.1 + 0.99498744i"],
+              "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} + 1",
+              "classification": "stable_spiral",
+              "classification_text": "linearly asymptotically stable (a sink: a spiral)",
+              "decided": true
+            }
+          ],
+          "complete": true,
+          "jacobian_checked": true,
+          "direction_field": null,
+          "notes": [],
+          "local_note": "Local and from the linearisation only: it describes orbits that start close to the point and says nothing about global behaviour or about orbits that start elsewhere."
+        },
+        "notes": [
+          "Classes marked by SymPy's classification are candidates: each solver verifies its own result."
+        ],
+        "diagnostics": {
+          "trace_id": null,
+          "stages": [
+            {
+              "name": "read",
+              "ms": 0.88
+            },
+            {
+              "name": "structure",
+              "ms": 50.64
+            },
+            {
+              "name": "classify",
+              "ms": 90.48
+            },
+            {
+              "name": "methods",
+              "ms": 0.07
+            },
+            {
+              "name": "qualitative",
+              "ms": 90.18
+            },
+            {
+              "name": "total",
+              "ms": 232.26
+            }
+          ],
+          "n_equations": 1,
+          "order": 2,
+          "state_dimension": 2,
+          "classes": [],
+          "method": null,
+          "methods_tried": [],
+          "steps": null,
+          "evaluations": null,
+          "candidates": null,
+          "verified": null,
+          "dropped": null,
+          "solution_kind": null,
+          "max_residual": null,
+          "failure_reason": null
+        },
+        "duration_ms": 466
+      }
+    },
+    "keys": ["solved:0", "field:0", "field:1"]
+  }
+}

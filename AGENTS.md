@@ -260,11 +260,20 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   fetch from the browser: many chunks over seconds, not two at the end.
 - Equation numbers (`agent/equations.py`, `agent/card_equations.py`): a card that lists equations (geometry: every component of
   a quantity as the row shows it, or its scalar; Lagrangian: equations of motion, momenta, accelerations, constants; invariants
-  and discovery: the constants found and the relations) numbers each listed equation with the next whole number of the same
-  counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). Each card type must be in exactly one of
-  `LIST_READERS`, `SINGLE_RESULT` or `LIST_NOT_YET_NUMBERED` (a test); the last set names cards that still list formulas
-  without numbers (matrix rows, statistics, vector, statmech, tensor, solve, expansion, perturbation, motion, ode, variation,
-  dimensional): move one to `LIST_READERS` with a reader and a test. **A number on a list row is a name, not a verification**:
+  and discovery: the constants found and the relations; solve: `factor:i`, `root:i:j`, `rootrow:k`; ode_solution: `solution:s:j`
+  for an evaluated explicit or implicit closed form only (an unevaluated integral, a series and a perturbation expansion are
+  representations and get no row); ode_analysis: `solved:i` and `field:i`, not the equilibria (their order is not canonical) and
+  never the interpretation, which is the user's own input) numbers each listed equation with the next whole number of the same
+  counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). A solve, ode_solution or ode_analysis card
+  that was not accepted lists nothing. Each card type must be in exactly one of `LIST_READERS`, `SINGLE_RESULT`,
+  `LIST_NOT_YET_NUMBERED` or `EXCLUDED_WITH_REASON` (a test); `tensor` is a single result (its one canonical form, numbered
+  through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
+  equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
+  list formulas without numbers (matrix rows, statistics, vector, statmech, expansion, perturbation, variation, dimensional):
+  move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
+  as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
+  `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py` and
+  `equation-rows.test.tsx`). **A number on a list row is a name, not a verification**:
   `@eN` on one substitutes its LaTeX exactly (`Equation.part_of`), but the tool's verification and the card's restrictions are
   not carried over, so the result carries `unverified_inputs` ("equation (7), a component of an earlier result"), its
   formulas are quoted, never `known_latex`, and a note tells the model to say so. A quantity that was not accepted lists
@@ -476,6 +485,19 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   a number would present a Sylvester equation, a block or integral form or a numerical approximation as an evaluated
   result. An evaluated matrix result is numbered (a name) but is not in `REFERENCEABLE_TOOLS` (matrices are
   noncommutative; reuse by `@eN` carries `NO_ID_SUFFIX`); the rows it lists stay in `LIST_NOT_YET_NUMBERED`.
+  Typed references (issue #133, part 3; `agent/reference_types.py`, `equations.relation_kind`, `refs.ResultStore.resolve(args, tool)`):
+  every numbered formula records a kind read off its text by one rule (`equation`: a top-level `=`; `expression`: no
+  relation; `None`: undecided, for another relation sign, a multi-row environment or unbalanced brackets, and for an
+  equation stored without one). `FIELD_POLICY` says per (tool, formula field) whether the tool takes only an expression
+  (`simplify`, `differentiate`, `series`, `integrate`, `distribution`, `time_derivative.latex`, `find_identities`, `sums`,
+  `expectation`, `creative_telescoping`, `approximation`, `substitute`, `rewrite_part`, `variation.integrand`), requires an
+  equation (`solve_polynomial`, `isolate_variable`, `check_identity`, `check_units`) or is unclassified with a stated reason
+  (matrix and vector calculus, the Lagrangian and Hamiltonian fields, `tensor_canonicalize`). An entry exists only where the
+  real tool was shown to refuse (or require) a relation (`test_reference_types.py` runs every one). `@eN` of a kind the
+  field cannot take is refused with a typed diagnostic (`InputCode.EQUATION_REFERENCE_NOT_EXPRESSION`,
+  `EXPRESSION_REFERENCE_NOT_EQUATION`; symbols hold `@eN`, never a formula; only the code is logged) and the call is not
+  run; which side of an equation to use is never decided by Minerva. A kind that is unknown is never refused. Add a (tool,
+  field) entry only with that evidence; `test_every_tool_with_a_formula_field_is_classified_with_a_reason` fails otherwise.
   `substitute` and `rewrite_part` are in `REFERENCEABLE_TOOLS`: the id names the whole expression after the step, with
   its own and inherited restrictions. A `substitute` that holds only given the user's relations (`evidence ==
   "conditional"`) registers those premises with the id (`card_equations.premise_labels`, class `PREMISE_SUFFIX`, rebuilt

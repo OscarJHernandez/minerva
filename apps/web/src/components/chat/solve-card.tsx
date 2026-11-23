@@ -3,6 +3,7 @@ import type { SolveReport } from "@/lib/chat-types";
 import type { EntrySummary } from "@/lib/types";
 import { EntryCard } from "../entry-card";
 import { StatusPill } from "../result-panel";
+import { Numbered } from "./equation-number";
 
 const RADICALS = {
   yes: { label: "Formula in radicals exists", tone: "bg-ok-soft text-ok" },
@@ -29,7 +30,9 @@ export function SolveCard({ report, methods }: { report: SolveReport; methods: E
             {report.factors.map((f, i) => (
               <li key={i} className="rounded border border-rule p-3">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <Math latex={f.factor_latex} />
+                  <Numbered k={`factor:${i}`}>
+                    <Math latex={f.factor_latex} />
+                  </Numbered>
                   {f.multiplicity > 1 && (
                     <span className="text-xs text-muted">multiplicity {f.multiplicity}</span>
                   )}
@@ -43,14 +46,14 @@ export function SolveCard({ report, methods }: { report: SolveReport; methods: E
                 </div>
                 <p className="mt-1 text-xs text-muted">{f.radicals_reason}</p>
                 {f.exact_roots_latex.length > 0 && (
-                  <p className="mt-1 text-sm">
-                    Exact roots:{" "}
+                  <div className="mt-1 text-sm">
+                    <p>Exact roots:</p>
                     {f.exact_roots_latex.map((r, j) => (
-                      <span key={j} className="mr-3">
+                      <Numbered key={j} k={`root:${i}:${j}`}>
                         <Math latex={r} />
-                      </span>
+                      </Numbered>
                     ))}
-                  </p>
+                  </div>
                 )}
               </li>
             ))}
@@ -76,7 +79,15 @@ export function SolveCard({ report, methods }: { report: SolveReport; methods: E
                   <td className="py-1 pr-3 text-muted">{i + 1}</td>
                   <td className="py-1 pr-3 font-mono text-xs">{r.numeric}</td>
                   <td className="py-1 pr-3">{r.real ? "real" : "complex"}</td>
-                  <td className="py-1">{r.exact_latex ? <Math latex={r.exact_latex} /> : "–"}</td>
+                  <td className="py-1">
+                    {r.exact_latex ? (
+                      <Numbered k={`rootrow:${i}`}>
+                        <Math latex={r.exact_latex} />
+                      </Numbered>
+                    ) : (
+                      "–"
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
