@@ -446,14 +446,16 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             say("Only $\\theta_1$ is taken as small here; $\\theta_2$ is left as it is."),
         ],
         "adversarial": {
-            # expand_motion expands in both angles: it answers a different regime
+            # expand_motion expands in every coordinate at once: it answers a different regime. The call
+            # only has to be one to the forbidden tool, so it is a cheap one: the double pendulum itself
+            # would spend seconds in the engine, and a slow runner would report a resource limit first.
             FailureClass.TOOL_SELECTION: [
                 call(
                     "expand_motion",
                     {
-                        "lagrangian": DOUBLE_PENDULUM,
-                        "coordinates": ["theta_1", "theta_2"],
-                        "equilibrium": {"theta_1": "0", "theta_2": "0"},
+                        "lagrangian": r"\frac12 m l^2\dot{\theta}_1^2 + m g l\cos\theta_1",
+                        "coordinates": ["theta_1"],
+                        "equilibrium": {"theta_1": "0"},
                         "order": 1,
                     },
                 ),
