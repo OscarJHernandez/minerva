@@ -7346,6 +7346,79 @@
       ]
     },
     {
+      "id": "expand-motion",
+      "title": "Small oscillations about an equilibrium",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Expands the accelerations of a Lagrangian system about an equilibrium the user names, to the order the user asks for. For order 1 this is the linearisation: the matrix of the linear part and, for up to two coordinates without damping, the normal-mode frequencies and eigenvectors. The Euler–Lagrange equations, the equilibrium, each expansion and each frequency are checked independently of SymPy's series, and nothing is shown if one check fails.",
+      "limits": [
+        "The expansion is in all the coordinates at once; it cannot express that only one of several angles is small. That case is a series in the one variable (`series`), or a question.",
+        "The result is local to the equilibrium and says nothing about large motions; the sign of a squared frequency is stated only when the declared assumptions decide it.",
+        "Normal modes for at most two coordinates and no velocity-linear terms; otherwise the characteristic polynomial. Explicit time dependence and a singular mass matrix are refused.",
+        "The time limit is the deployed one (10 s). When the modes do not fit, the verified equations are shown and the result says that the modes were not computed."
+      ],
+      "examples": [
+        {
+          "id": "expand-motion-double-pendulum",
+          "title": "A double pendulum, both angles small",
+          "op": "expand_motion",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12 (m_1+m_2) l_1^2\\dot{\\theta}_1^2 + \\frac12 m_2 l_2^2\\dot{\\theta}_2^2 + m_2 l_1 l_2\\dot{\\theta}_1\\dot{\\theta}_2\\cos(\\theta_1-\\theta_2) + (m_1+m_2) g l_1\\cos\\theta_1 + m_2 g l_2\\cos\\theta_2",
+              "syntax": "latex"
+            },
+            {
+              "label": "Coordinates",
+              "text": "theta_1, theta_2"
+            },
+            {
+              "label": "Equilibrium",
+              "text": "theta_1 = 0, theta_2 = 0"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Linearised equation (theta_1)",
+              "latex": "\\ddot{\\delta \\theta_{1}} = - \\frac{\\delta \\theta_{1} g}{l_{1}} + \\frac{\\delta \\theta_{2} g m_{2}}{l_{1} m_{1}} - \\frac{\\delta \\theta_{1} g m_{2}}{l_{1} m_{1}} + O\\left(\\delta^{2}\\right)"
+            },
+            {
+              "label": "Linearised equation (theta_2)",
+              "latex": "\\ddot{\\delta \\theta_{2}} = \\frac{\\delta \\theta_{1} g}{l_{2}} - \\frac{\\delta \\theta_{2} g}{l_{2}} + \\frac{\\delta \\theta_{1} g m_{2}}{l_{2} m_{1}} - \\frac{\\delta \\theta_{2} g m_{2}}{l_{2} m_{1}} + O\\left(\\delta^{2}\\right)"
+            },
+            {
+              "label": "Matrix A in the linear part",
+              "latex": "\\left[\\begin{matrix}\\frac{g \\left(- m_{1} - m_{2}\\right)}{l_{1} m_{1}} & \\frac{g m_{2}}{l_{1} m_{1}}\\\\\\frac{g \\left(m_{1} + m_{2}\\right)}{l_{2} m_{1}} & \\frac{g \\left(- m_{1} - m_{2}\\right)}{l_{2} m_{1}}\\end{matrix}\\right]"
+            },
+            {
+              "label": "Normal mode",
+              "latex": "\\omega^2 = \\frac{g \\left(- \\sqrt{\\left(m_{1} + m_{2}\\right) \\left(l_{1}^{2} m_{1} + l_{1}^{2} m_{2} - 2 l_{1} l_{2} m_{1} + 2 l_{1} l_{2} m_{2} + l_{2}^{2} m_{1} + l_{2}^{2} m_{2}\\right)} + \\left(l_{1} + l_{2}\\right) \\left(m_{1} + m_{2}\\right)\\right)}{2 l_{1} l_{2} m_{1}}"
+            },
+            {
+              "label": "Normal mode",
+              "latex": "\\omega^2 = \\frac{g \\left(\\sqrt{\\left(m_{1} + m_{2}\\right) \\left(l_{1}^{2} m_{1} + l_{1}^{2} m_{2} - 2 l_{1} l_{2} m_{1} + 2 l_{1} l_{2} m_{2} + l_{2}^{2} m_{1} + l_{2}^{2} m_{2}\\right)} + \\left(l_{1} + l_{2}\\right) \\left(m_{1} + m_{2}\\right)\\right)}{2 l_{1} l_{2} m_{1}}"
+            }
+          ],
+          "checks": [
+            "theta_1: coefficients agree with a Cauchy-integral estimate and the remainder shrinks at the next order",
+            "theta_2: coefficients agree with a Cauchy-integral estimate and the remainder shrinks at the next order",
+            "det(A + omega^2 I) vanishes at this omega^2 (20 of 20 points)",
+            "det(A + omega^2 I) vanishes at this omega^2 (20 of 20 points)"
+          ],
+          "notes": [
+            "2 accelerations expanded to order 1 about the equilibrium; the Euler-Lagrange equations, the equilibrium and each expansion were checked independently of SymPy's series.",
+            "Characteristic polynomial of the linearised system: each root λ gives solutions proportional to exp(λ t)."
+          ]
+        }
+      ]
+    },
+    {
       "id": "time-derivative",
       "title": "Total time derivative along a motion",
       "status": "available",

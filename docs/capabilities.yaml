@@ -2117,6 +2117,35 @@ capabilities:
         input: "m*x_dot^2/2 - k*x^2*t/2"
         coordinates: [x]
 
+  - id: expand-motion
+    title: Small oscillations about an equilibrium
+    status: available
+    group: physics
+    where: [chat]
+    summary: >-
+      Expands the accelerations of a Lagrangian system about an equilibrium the user names, to the order the
+      user asks for. For order 1 this is the linearisation: the matrix of the linear part and, for up to two
+      coordinates without damping, the normal-mode frequencies and eigenvectors. The Euler–Lagrange
+      equations, the equilibrium, each expansion and each frequency are checked independently of SymPy's
+      series, and nothing is shown if one check fails.
+    limits:
+      - The expansion is in all the coordinates at once; it cannot express that only one of several angles
+        is small. That case is a series in the one variable (`series`), or a question.
+      - The result is local to the equilibrium and says nothing about large motions; the sign of a squared
+        frequency is stated only when the declared assumptions decide it.
+      - Normal modes for at most two coordinates and no velocity-linear terms; otherwise the characteristic
+        polynomial. Explicit time dependence and a singular mass matrix are refused.
+      - The time limit is the deployed one (10 s). When the modes do not fit, the verified equations are
+        shown and the result says that the modes were not computed.
+    examples:
+      - id: expand-motion-double-pendulum
+        title: A double pendulum, both angles small
+        op: expand_motion
+        input: '\frac12 (m_1+m_2) l_1^2\dot{\theta}_1^2 + \frac12 m_2 l_2^2\dot{\theta}_2^2 + m_2 l_1 l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) + (m_1+m_2) g l_1\cos\theta_1 + m_2 g l_2\cos\theta_2'
+        coordinates: [theta_1, theta_2]
+        equilibrium: { theta_1: "0", theta_2: "0" }
+        order: 1
+
   - id: time-derivative
     title: Total time derivative along a motion
     status: available
