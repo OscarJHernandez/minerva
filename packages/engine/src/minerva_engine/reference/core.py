@@ -30,9 +30,19 @@ from ..models import ExpressionInput
 from ..service import Engine
 from ..textparse import parse_text
 
-mp.mp.dps = 30
+ORACLE_DPS = 30
+mp.mp.dps = ORACLE_DPS
 
 Judge = Callable[[Engine], tuple[str, str]]  # -> (outcome, detail)
+
+
+def _at_oracle_precision(judge: Judge) -> Judge:
+    def run(engine: Engine) -> tuple[str, str]:
+        with mp.workdps(ORACLE_DPS):
+            return judge(engine)
+
+    return run
+
 
 ORACLES = frozenset(
     {
@@ -73,6 +83,10 @@ class Problem:
         assert self.evidence in EVIDENCE, (self.id, self.evidence)  # noqa: S101
         assert self.tier in TIERS, (self.id, self.tier)  # noqa: S101
         assert (self.expected == "refused") == (self.evidence == "refusal"), self.id  # noqa: S101
+        # Many modules set the process-wide mpmath precision and never restore it, so an oracle's thresholds
+        # (1e-25 and the like) held or failed depending on which test ran before it in the same worker.
+        # Every call of a judge, from the runner or from a test, runs at the precision this module intends.
+        object.__setattr__(self, "judge", _at_oracle_precision(self.judge))
 
 
 def expr(latex: str, **assumptions: list[str]) -> ExpressionInput:
