@@ -258,7 +258,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   and discovery: the constants found and the relations) numbers each listed equation with the next whole number of the same
   counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). Each card type must be in exactly one of
   `LIST_READERS`, `SINGLE_RESULT` or `LIST_NOT_YET_NUMBERED` (a test); the last set names cards that still list formulas
-  without numbers (matrix, statistics, vector, statmech, tensor, solve, expansion, perturbation, motion, ode, variation,
+  without numbers (matrix rows, statistics, vector, statmech, tensor, solve, expansion, perturbation, motion, ode, variation,
   dimensional): move one to `LIST_READERS` with a reader and a test. **A number on a list row is a name, not a verification**:
   `@eN` on one substitutes its LaTeX exactly (`Equation.part_of`), but the tool's verification and the card's restrictions are
   not carried over, so the result carries `unverified_inputs` ("equation (7), a component of an earlier result"), its
@@ -459,6 +459,23 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   points to the result id instead of "not repeated here". Receiving tools keep their input limits: an over-limit handle
   is refused there. A card equation `@eN` with no result id is substituted but carries `NO_ID_SUFFIX` provenance (no
   verification or restrictions carried over), like a list row. Tests: `test_total_derivative_handles.py`.
+  Step and matrix results (issue #133, part 1): `substitute`, `rewrite_part` and `matrix_calculus` keep their tool result
+  under `card.data["result"]`, and the numbering used to read only the top-level `result_latex`, so a successful step was
+  never numbered although `step` is in `SINGLE_RESULT`. `card_equations.result_formula(card.type, data)` is the one reader
+  (used by `number_blocks`, `number_stored`, `build_table`, `ResultStore.register`, the `turn_context` rebuild and the
+  label guard in the loop, so a live table and one rebuilt from stored rows agree; `result_restrictions` reads
+  `restrictions_latex` the same way). A step counts only if its result is `ok`; a `matrix` result only if it is
+  `evaluated` and not an `equation`, `representation` or `numeric` kind: those get **no number and no handle**, because
+  a number would present a Sylvester equation, a block or integral form or a numerical approximation as an evaluated
+  result. An evaluated matrix result is numbered (a name) but is not in `REFERENCEABLE_TOOLS` (matrices are
+  noncommutative; reuse by `@eN` carries `NO_ID_SUFFIX`); the rows it lists stay in `LIST_NOT_YET_NUMBERED`.
+  `substitute` and `rewrite_part` are in `REFERENCEABLE_TOOLS`: the id names the whole expression after the step, with
+  its own and inherited restrictions. A `substitute` that holds only given the user's relations (`evidence ==
+  "conditional"`) registers those premises with the id (`card_equations.premise_labels`, class `PREMISE_SUFFIX`, rebuilt
+  from stored cards by `equations.unverified_inputs`): every later `@rN`/`@eN` use carries them, its formulas are quoted
+  (never `known_latex`) with `refs.PREMISE_INPUT`, the note says "given, not proved", and the card shows "Holds only given
+  a premise" (shared fixture `packages/ui/fixtures/input-provenance.json`). The step's own result keeps its existing
+  marking (the premise is named in the tool text). Tests: `test_step_numbering.py`.
   Names of constants of motion an earlier `find_conserved_quantities` listed (`C_{1}`...: "the derivative of Equation 14
   with respect to time") are bare symbols with no dependence on the motion (`unsupported`, `no_dynamic_dependence`, never a
   retry). The SERVER inserts their verified expressions (`agent/constants.py`, `ToolContext.constants` read from the

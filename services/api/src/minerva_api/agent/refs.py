@@ -17,6 +17,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from .card_equations import (
+    PREMISE_SUFFIX,
+    premise_labels,
+    result_formula,
+    result_restrictions,
+)
 from .equations import Equation
 from .mathinput import MATH_FIELDS
 from .tools import ToolOutput
@@ -26,8 +32,21 @@ REFERENCE = re.compile(r"@r(\d+)\b")
 EQ_REFERENCE = re.compile(r"@e(\d+)\b")
 # Tools whose card holds one result expression in `result_latex`.
 REFERENCEABLE_TOOLS = frozenset(
-    {"simplify", "differentiate", "integrate", "series", "creative_telescoping", "time_derivative"}
+    {
+        "simplify",
+        "differentiate",
+        "integrate",
+        "series",
+        "creative_telescoping",
+        "time_derivative",
+        "substitute",
+        "rewrite_part",
+    }
 )
+# `substitute` and `rewrite_part` keep their result under `data["result"]` (`card_equations.result_formula`); the id
+# names that result with its restrictions. A `substitute` that holds only given the user's relations (evidence
+# `conditional`) keeps its premises: the id carries them (`premise_labels`), so a result built on `@rN` is quoted,
+# worded "given", and never called proved.
 # `time_derivative`: the id names `result_latex`, the total derivative before any equations of motion are used.
 # Its conclusion on the equations of motion (`zero_on_motion`, `on_motion_latex`) is a statement about a system
 # and never gets an id: a plain `0` would drop the system it was decided on.
@@ -98,19 +117,19 @@ class ResultStore:
         if tool not in REFERENCEABLE_TOOLS or evidence is None or not evidence.accepted:
             return None
         data = output.card.data
-        latex = data.get("result_latex")
-        if output.status != "ok" or not isinstance(latex, str) or not latex.strip():
+        latex = result_formula(output.card.type, data)
+        if output.status != "ok" or latex is None:
             return None
         result_id = f"r{self._next}"
         self._next += 1
         self.results[result_id] = latex
-        own = data.get("restrictions_latex")
-        merged = [r for r in (own if isinstance(own, list) else []) if isinstance(r, str)]
+        merged = result_restrictions(output.card.type, data)
         merged += [r for r in inherited if r not in merged]
         if merged:
             self.restrictions[result_id] = merged
-        if unverified:
-            self.unverified[result_id] = list(dict.fromkeys(unverified))
+        carried = [*unverified, *premise_labels(output.card.type, data)]
+        if carried:
+            self.unverified[result_id] = list(dict.fromkeys(carried))
         return result_id
 
     def resolve(self, arguments: dict[str, Any]) -> Resolution:
@@ -218,22 +237,27 @@ UNVERIFIED_INPUT = "computed from an equation the model wrote and Minerva never 
 COMPONENT_SUFFIX = ", a component of an earlier result"
 # A tool result that has an equation number but no result id.
 NO_ID_SUFFIX = ", a tool result with no result id"
+_CLASS_SUFFIXES = (COMPONENT_SUFFIX, NO_ID_SUFFIX, PREMISE_SUFFIX)
 UNLINKED_INPUT = "computed from one component of an earlier result; its verification and restrictions were not carried over"
+PREMISE_INPUT = "computed from a result that holds only given a relation you supplied as a premise, which Minerva never checked"
 UNNUMBERED_INPUT = "computed from a tool result that has no result id; its verification and restrictions were not carried over"
 
 
 def quote_reason(sources: Sequence[str]) -> str:
     """Why the formulas of a result computed from `sources` are quoted. Written > component > no result id."""
-    if any(not s.endswith((COMPONENT_SUFFIX, NO_ID_SUFFIX)) for s in sources):
+    if any(not s.endswith(_CLASS_SUFFIXES) for s in sources):
         return UNVERIFIED_INPUT
     if any(s.endswith(COMPONENT_SUFFIX) for s in sources):
         return UNLINKED_INPUT
+    if any(s.endswith(PREMISE_SUFFIX) for s in sources):
+        return PREMISE_INPUT
     return UNNUMBERED_INPUT
 
 
 def unverified_note(sources: Sequence[str]) -> str:
     """What a tool message says when its input was not verified as a whole (fixed text)."""
-    written = [s for s in sources if not s.endswith((COMPONENT_SUFFIX, NO_ID_SUFFIX))]
+    written = [s for s in sources if not s.endswith(_CLASS_SUFFIXES)]
+    premises = [s for s in sources if s.endswith(PREMISE_SUFFIX)]
     parts = [s for s in sources if s.endswith(COMPONENT_SUFFIX)]
     unnumbered = [s for s in sources if s.endswith(NO_ID_SUFFIX)]
     lines: list[str] = []
@@ -242,6 +266,12 @@ def unverified_note(sources: Sequence[str]) -> str:
             f"Input not verified: this result was computed from {', '.join(written)}, which the model wrote and "
             "Minerva never verified. The computation is checked, but whether that input is right is not established: "
             "say so with the result, and do not call anything built on it verified."
+        )
+    if premises:
+        lines.append(
+            f"Input given, not proved: this result was computed from {', '.join(premises)}. It holds only "
+            "given that premise, which Minerva never checked: say 'given', never 'proved', and name the premise "
+            "with the result. The restrictions of the earlier result are carried over."
         )
     if parts:
         lines.append(

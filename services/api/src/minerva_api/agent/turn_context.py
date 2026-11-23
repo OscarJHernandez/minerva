@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any, NamedTuple, Protocol
 
 from .budget import fit_history
+from .card_equations import result_formula, result_restrictions
 from .constants import KnownConstant, constants_of_blocks
 from .declarations import scan
 from .equations import (
@@ -134,15 +135,18 @@ def _history(
             result_id = step.get("result_id")
             if result_id:
                 content += "\n" + reference_note(result_id)
-                latex = cards.get(step["id"], {}).get("data", {}).get("result_latex")
-                if isinstance(latex, str) and latex:
+                card = cards.get(step["id"], {})
+                data = card.get("data", {})
+                latex = result_formula(card.get("type"), data)
+                if latex:
                     results[result_id] = latex
-                data = cards.get(step["id"], {}).get("data", {})
                 carried = [
-                    r
-                    for key in ("restrictions_latex", "inherited_restrictions_latex")
-                    for r in (data.get(key) or [])
-                    if isinstance(r, str)
+                    *result_restrictions(card.get("type"), data),
+                    *(
+                        r
+                        for r in (data.get("inherited_restrictions_latex") or [])
+                        if isinstance(r, str)
+                    ),
                 ]
                 if carried:
                     restrictions[result_id] = list(dict.fromkeys(carried))

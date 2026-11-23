@@ -161,3 +161,27 @@ describe("CardView, qualifications stored on a card", () => {
     expect(screen.getByLabelText("Handbook: curve of fastest descent")).toBeVisible();
   });
 });
+
+describe("CardView, a premise carried to a later result", () => {
+  it("says the result holds given a premise, never that the model wrote it", () => {
+    const premise = "$y^{2} = 1 - x^{2}$, a relation you gave as a premise";
+    render(
+      <CardView
+        card={
+          {
+            id: "p",
+            type: "differentiate",
+            tool: "time_derivative",
+            title: "Total time derivative",
+            data: { ...okDerivative, unverified_inputs: [premise] },
+          } as unknown as Card
+        }
+      />,
+    );
+    const box = screen.getByLabelText("Holds given a premise");
+    expect(box).toHaveTextContent(premise);
+    expect(box).toHaveTextContent("given, not proved");
+    expect(box).not.toHaveTextContent(/model wrote/i);
+    expect(screen.queryByLabelText("Input not verified")).not.toBeInTheDocument();
+  });
+});
