@@ -89,3 +89,16 @@ def test_the_no_result_id_class_is_shared_and_has_its_own_sentence() -> None:
         chunk = note[start : min(ends)] if ends else note[start:]
         assert entry in chunk
         assert all(other not in chunk for h, other in sentences.items() if h != head)
+
+
+def test_the_premise_class_is_shared_and_has_its_own_sentence() -> None:
+    fixture = json.loads(PROVENANCE.read_text())
+    assert fixture["premise_suffix"] == refs.PREMISE_SUFFIX
+    example = fixture["examples"]["premise"]
+    assert example.endswith(refs.PREMISE_SUFFIX)
+    assert not example.endswith((refs.COMPONENT_SUFFIX, refs.NO_ID_SUFFIX))
+    note = refs.unverified_note([fixture["examples"]["model_written"], example])
+    assert note.count("Input given, not proved") == 1 and note.count("Input not verified") == 1
+    # the premise is never described as written by the model
+    chunk = note[note.index("Input given, not proved") :]
+    assert "model wrote" not in chunk

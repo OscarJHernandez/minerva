@@ -7,6 +7,9 @@ export const COMPONENT_SUFFIX: string = provenance.component_suffix;
 /** Ends an entry that names a tool result with an equation number but no result id (see refs.py). */
 export const NO_ID_SUFFIX: string = provenance.no_result_id_suffix;
 
+/** Ends an entry that names a relation the user gave as a premise of a conditional step result (see refs.py). */
+export const PREMISE_SUFFIX: string = provenance.premise_suffix;
+
 export interface Provenance {
   inherited_restrictions_latex?: string[] | null;
   unverified_inputs?: string[] | null;
@@ -19,13 +22,18 @@ export interface Provenance {
 export function ProvenanceNotes({ data }: { data: Provenance }) {
   const restrictions = data.inherited_restrictions_latex ?? [];
   const inputs = data.unverified_inputs ?? [];
-  const written = inputs.filter((s) => !s.endsWith(COMPONENT_SUFFIX) && !s.endsWith(NO_ID_SUFFIX));
+  const written = inputs.filter(
+    (s) =>
+      !s.endsWith(COMPONENT_SUFFIX) && !s.endsWith(NO_ID_SUFFIX) && !s.endsWith(PREMISE_SUFFIX),
+  );
+  const premises = inputs.filter((s) => s.endsWith(PREMISE_SUFFIX));
   const parts = inputs.filter((s) => s.endsWith(COMPONENT_SUFFIX));
   const unnumbered = inputs.filter((s) => s.endsWith(NO_ID_SUFFIX));
   if (
     restrictions.length === 0 &&
     written.length === 0 &&
     parts.length === 0 &&
+    premises.length === 0 &&
     unnumbered.length === 0
   )
     return null;
@@ -43,6 +51,23 @@ export function ProvenanceNotes({ data }: { data: Provenance }) {
           </p>
           <ul className="mt-1 list-disc pl-5 text-xs">
             {written.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </aside>
+      )}
+      {premises.length > 0 && (
+        <aside
+          className="rounded border border-rule bg-warn-soft p-3 text-sm"
+          aria-label="Holds given a premise"
+        >
+          <p className="font-medium">Holds only given a premise</p>
+          <p className="mt-1">
+            This was computed from a result that holds only given a relation you supplied. Minerva
+            never checked that the relation is true, so this is given, not proved.
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-xs">
+            {premises.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>

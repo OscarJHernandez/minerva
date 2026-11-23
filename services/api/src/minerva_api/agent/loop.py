@@ -27,6 +27,7 @@ from minerva_engine.sandbox import cancel_event
 from ..logging import error_fields
 from .arguments import repair_arguments
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
+from .card_equations import result_formula, result_restrictions
 from .choice import delegation_active, names_a_method, numbers_in
 from .declarations import declared_in_reply
 from .diagnosis import diagnose
@@ -1409,8 +1410,10 @@ async def _run_turn(
                         variables=list(output.variables),
                         restrictions=[
                             r
-                            for key in ("restrictions_latex", "inherited_restrictions_latex")
-                            for r in (output.card.data.get(key) or [])
+                            for r in [
+                                *result_restrictions(output.card.type, output.card.data),
+                                *(output.card.data.get("inherited_restrictions_latex") or []),
+                            ]
                             if isinstance(r, str)
                         ],
                         policy=policy,
@@ -1735,8 +1738,8 @@ def formulas_numbered_as_written(
     )
     for item in order:
         if isinstance(item, Card):
-            latex = item.data.get("result_latex")
-            if isinstance(latex, str):
+            latex = result_formula(item.type, item.data)
+            if latex is not None:
                 keys.add(normalize(latex))
     index = equations.index if equations is not None else {}
     return lambda body: (key := normalize(body)) in keys or key in index

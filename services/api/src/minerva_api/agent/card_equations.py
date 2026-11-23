@@ -22,6 +22,72 @@ from typing import Any
 
 Listed = list[tuple[str, str]]
 
+# Cards that keep their whole tool result under `data["result"]` (a step, a matrix calculation) instead of at the
+# top of `data`. Before `result_formula` the numbering and the reference table read only the top level, so a
+# successful `substitute` or `rewrite_part` never got a number although `step` is a single-result card (#133).
+NESTED_RESULT_CARDS = frozenset({"step", "matrix"})
+# `result_kind` values of a matrix card that are not an evaluated expression: an equation, a representation, or a
+# numerical approximation. Such a result is never numbered or given an id as if it were a closed form.
+_NOT_EVALUATED_KINDS = frozenset({"equation", "representation", "numeric"})
+
+
+def _nested(card_type: object, data: dict[str, Any]) -> dict[str, Any] | None:
+    inner = data.get("result")
+    return inner if card_type in NESTED_RESULT_CARDS and isinstance(inner, dict) else None
+
+
+def result_formula(card_type: object, data: dict[str, Any]) -> str | None:
+    """The one result formula of a card that can be numbered as a whole, or None.
+
+    One reader for every place that needs it (`equations.number_blocks`, `number_stored`, `build_table`,
+    `refs.ResultStore.register` and the rebuild in `turn_context`), so a live table and one rebuilt from stored
+    rows agree. The top-level `result_latex` of a card is returned as it is (the tool's own gate decided
+    whether to write one). For a `step` or `matrix` card the formula lives in `data["result"]`, and counts only
+    if that result is `ok`; a matrix result must also be `evaluated` (an equation, a representation, a block
+    or integral form and a numerical approximation are not an evaluated result, so they have no number).
+    """
+    top = _text(data.get("result_latex"))
+    if top is not None:
+        return top
+    inner = _nested(card_type, data)
+    if inner is None or inner.get("status") != "ok":
+        return None
+    if card_type == "matrix" and (
+        inner.get("evaluated") is not True or inner.get("result_kind") in _NOT_EVALUATED_KINDS
+    ):
+        return None
+    return _text(inner.get("result_latex"))
+
+
+def result_restrictions(card_type: object, data: dict[str, Any]) -> list[str]:
+    """Where the card's result is valid: its own `restrictions_latex` (top level, or inside a step's result)."""
+    inner = _nested(card_type, data)
+    for source in (data, inner or {}):
+        found = source.get("restrictions_latex")
+        if isinstance(found, list) and found:
+            return [r for r in found if isinstance(r, str)]
+    return []
+
+
+# What a premise label ends with in `unverified_inputs` (`refs.py` words the note and the quote reason).
+PREMISE_SUFFIX = ", a relation you gave as a premise"
+
+
+def premise_labels(card_type: object, data: dict[str, Any]) -> list[str]:
+    """The premises a conditional step result rests on, as the labels `unverified_inputs` carries."""
+    return [f"${p}${PREMISE_SUFFIX}" for p in result_premises(card_type, data)]
+
+
+def result_premises(card_type: object, data: dict[str, Any]) -> list[str]:
+    """The relations the user gave that a step result holds *given* (`evidence == "conditional"`), as LaTeX."""
+    inner = _nested(card_type, data)
+    if inner is None or inner.get("evidence") != "conditional":
+        return []
+    given = inner.get("given")
+    if not isinstance(given, list):
+        return []
+    return [str(g["latex"]) for g in given if isinstance(g, dict) and _text(g.get("latex"))]
+
 
 def _text(value: object) -> str | None:
     return value if isinstance(value, str) and value.strip() else None
@@ -120,6 +186,9 @@ SINGLE_RESULT = frozenset(
 # statement of what is missing, not a claim that it has no list: move it to LIST_READERS with a reader.
 LIST_NOT_YET_NUMBERED = frozenset(
     {
+        # `matrix`: its primary EVALUATED result is numbered as a whole (`result_formula`); the rows it lists
+        # (alternative conventions, steps) are not numbered yet. An equation, a representation or a numerical
+        # approximation has no number at all: a number would present it as an evaluated result.
         "matrix",
         "statistics",
         "vector",

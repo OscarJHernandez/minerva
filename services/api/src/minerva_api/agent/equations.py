@@ -19,7 +19,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from .card_equations import LIST_READERS, listed_equations
+from .card_equations import LIST_READERS, listed_equations, premise_labels, result_formula
 from .events import Block
 from .reasoning import clean_reply
 from .segments import MATH, normalize, split_segments
@@ -241,7 +241,7 @@ def build_table(messages: Iterable[Any], counter: int = 0) -> EquationTable:
             if block.get("kind") == "card" and isinstance(block.get("card"), dict):
                 card = block["card"]
                 number = card.get("number")
-                latex = (card.get("data") or {}).get("result_latex")
+                latex = result_formula(card.get("type"), card.get("data") or {})
                 if isinstance(number, int) and isinstance(latex, str):
                     result_id = (steps.get(card.get("id")) or {}).get("result_id")
                     table.restore(number, latex, "from_tool", result_id, mode="none")
@@ -283,7 +283,7 @@ def number_blocks(
             if block.card.type in LIST_READERS:
                 block.card.numbers = _number_listed(block.card.type, block.card.data, table)
                 continue
-            latex = block.card.data.get("result_latex")
+            latex = result_formula(block.card.type, block.card.data)
             if isinstance(latex, str):
                 block.card.number = table.number_for(
                     latex,
@@ -499,7 +499,7 @@ def number_stored(contents: Iterable[tuple[str, dict[str, Any]]], table: Equatio
                     card["numbers"] = listed
                     gave = True
             elif isinstance(card, dict):
-                latex = (card.get("data") or {}).get("result_latex")
+                latex = result_formula(card.get("type"), card.get("data") or {})
                 if isinstance(latex, str):
                     rid = (steps.get(card.get("id")) or {}).get("result_id")
                     card["number"] = table.number_for(
@@ -528,9 +528,14 @@ def unverified_inputs(messages: Iterable[Any]) -> dict[str, list[str]]:
         }
         for step in m.content.get("trace", []) or []:
             rid = step.get("result_id")
-            carried = (cards.get(step.get("id")) or {}).get("data", {}).get("unverified_inputs")
-            if rid and isinstance(carried, list) and carried:
-                out[rid] = [str(c) for c in carried]
+            card = cards.get(step.get("id")) or {}
+            data = card.get("data") or {}
+            carried = data.get("unverified_inputs")
+            labels = [str(c) for c in carried] if isinstance(carried, list) else []
+            # a result that holds only given the user's premise carries that premise to every later reuse
+            labels += [p for p in premise_labels(card.get("type"), data) if p not in labels]
+            if rid and labels:
+                out[rid] = labels
     return out
 
 
