@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Composer } from "./composer";
 
 vi.mock("./image-formulas-panel", () => ({
@@ -300,5 +300,80 @@ describe("Composer: a message is not lost", () => {
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     fireEvent.keyDown(area, { key: "Enter", ctrlKey: true });
     expect(onSend).not.toHaveBeenCalled();
+  });
+});
+
+describe("Composer: take photo", () => {
+  const camera = () => screen.getByLabelText("Take a photo of a formula") as HTMLInputElement;
+  const shot = () => new File(["x"], "IMG_1.jpg", { type: "image/jpeg" });
+  const takePhoto = (file: File) => fireEvent.change(camera(), { target: { files: [file] } });
+
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => "blob:photo");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  it("has a camera input with rear capture, beside the unchanged gallery input", () => {
+    render(<Composer {...props} imagesEnabled />);
+    expect(camera()).toHaveAttribute("capture", "environment");
+    expect(camera()).toHaveAttribute("accept", "image/*");
+    const gallery = screen.getByLabelText("Choose an image of a formula");
+    expect(gallery).not.toHaveAttribute("capture");
+    expect(gallery).toHaveAttribute("accept", "image/png,image/jpeg,image/webp");
+    expect(screen.getByRole("button", { name: "Take photo" })).toBeInTheDocument();
+  });
+
+  it("does not advertise the camera when images are not set up", () => {
+    render(<Composer {...props} />);
+    expect(screen.queryByRole("button", { name: "Take photo" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Take a photo of a formula")).not.toBeInTheDocument();
+  });
+
+  it("previews a photo and reads nothing until Use photo", () => {
+    render(<Composer {...props} imagesEnabled />);
+    takePhoto(shot());
+    expect(screen.getByRole("dialog", { name: "Photo preview" })).toBeInTheDocument();
+    expect(screen.queryByText(/reading IMG_1/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("reading IMG_1.jpg");
+    expect(screen.queryByRole("dialog", { name: "Photo preview" })).not.toBeInTheDocument();
+  });
+
+  it("Retake closes the preview and reopens the camera", () => {
+    render(<Composer {...props} imagesEnabled />);
+    takePhoto(shot());
+    const click = vi.spyOn(camera(), "click");
+    fireEvent.click(screen.getByRole("button", { name: "Retake" }));
+    expect(click).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("does nothing when the camera is cancelled and keeps the draft", () => {
+    render(<Composer {...props} imagesEnabled />);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "my draft" } });
+    fireEvent.change(camera(), { target: { files: [] } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Message")).toHaveValue("my draft");
+  });
+
+  it("explains HEIC and keeps the draft", () => {
+    render(<Composer {...props} imagesEnabled />);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "my draft" } });
+    takePhoto(new File(["x"], "IMG_2.HEIC", { type: "" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("HEIC");
+    expect(screen.getByRole("alert")).toHaveTextContent("Most Compatible");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Message")).toHaveValue("my draft");
+  });
+
+  it("refuses an oversized photo and keeps the draft", () => {
+    render(<Composer {...props} imagesEnabled />);
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "my draft" } });
+    const big = shot();
+    Object.defineProperty(big, "size", { value: 30_000_000 });
+    takePhoto(big);
+    expect(screen.getByRole("alert")).toHaveTextContent("too large");
+    expect(screen.getByLabelText("Message")).toHaveValue("my draft");
   });
 });

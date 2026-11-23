@@ -388,6 +388,11 @@ and explains; it never computes and never decides correctness.
   simplifying. The user confirms or edits in a panel and the formulas enter the draft as `$...$`; from then on they
   are ordinary user text. The picture is held in memory for the request only: never stored, never logged (the
   log line has status, duration and user id). Transcription quality depends on the model and is not scored yet.
+  On a phone, "Take photo" is a second hidden file input (`accept="image/*" capture="environment"`: the platform's
+  native camera; no `getUserMedia`, `Permissions-Policy` unchanged). A photo is shown with Retake / Use photo first and
+  nothing is read or sent until Use photo; a chosen file (gallery, paste, drop) goes straight to the panel. Both
+  buttons exist only when the server reads images. HEIC/HEIF is refused with a message (no decoder is shipped) and a
+  cancelled camera changes nothing; the chat draft is never touched. Capture behaviour on real phones is not yet verified.
 
 ### Workbench continuity
 

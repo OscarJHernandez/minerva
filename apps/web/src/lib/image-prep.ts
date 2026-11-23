@@ -31,7 +31,13 @@ export function fitWithin(
 }
 
 /** Why a file cannot be used, or null. */
-export function checkImageFile(file: Pick<File, "type" | "size">): string | null {
+export function checkImageFile(
+  file: Pick<File, "type" | "size"> & { name?: string },
+): string | null {
+  // iPhone cameras may produce HEIC/HEIF, which browsers cannot draw to a canvas reliably; no decoder is added.
+  if (/^image\/hei[cf]/.test(file.type) || /\.hei[cf]$/i.test(file.name ?? "")) {
+    return "This photo is in HEIC/HEIF format, which cannot be read here. Choose a PNG, JPEG or WebP image instead, or set the camera to its most compatible format (iPhone: Settings > Camera > Formats > Most Compatible) and take the photo again.";
+  }
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) return "Use a PNG, JPEG or WebP image.";
   if (file.size > MAX_SOURCE_BYTES) return "That image is too large (20 MB at most).";
   return null;

@@ -29,6 +29,16 @@ describe("checkImageFile", () => {
     }
   });
 
+  it("says what to do about HEIC and HEIF, by type or by name", () => {
+    for (const f of [
+      { type: "image/heic", size: 1000 },
+      { type: "image/heif", size: 1000 },
+      { type: "", size: 1000, name: "IMG_1.HEIC" },
+    ]) {
+      expect(checkImageFile(f)).toMatch(/HEIC.*Most Compatible/);
+    }
+  });
+
   it("rejects very large files", () => {
     expect(checkImageFile({ type: "image/png", size: MAX_SOURCE_BYTES + 1 })).toMatch(/too large/);
   });
