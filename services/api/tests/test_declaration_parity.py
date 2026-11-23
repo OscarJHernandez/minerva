@@ -7,7 +7,7 @@ conversation can tell them apart, so a measurement made by the harness is a meas
 
 import pytest
 from minerva_api.agent.evaluation.runner import plain_declarations
-from minerva_api.routers_chat import _declaration_inputs, declarations_of
+from minerva_api.agent.turn_context import _declaration_inputs, declarations_of
 
 
 class Row:

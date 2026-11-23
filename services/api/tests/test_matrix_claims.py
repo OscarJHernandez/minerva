@@ -112,7 +112,8 @@ def test_a_noncommutative_declaration_does_not_switch_off_scalar_checks(ctx: Too
 
 # -- the whole conversation counts ---------------------------------------------------------------------
 def test_prior_matrices_read_the_whole_conversation_not_the_history_window() -> None:
-    from minerva_api.routers_chat import HISTORY_MESSAGES, _prior_matrices
+    from minerva_api.agent.turn_context import HISTORY_MESSAGES
+    from minerva_api.routers_chat import _prior_matrices
 
     class Row:
         def __init__(self, role: str, content: dict[str, object]) -> None:

@@ -240,6 +240,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   is streamed, stored and replayed, wherever in the reply it sits; a call that ends inside it shows nothing. A
   message sent after a reply that was never stored is merged with the unreplied one (the model never sees two user messages in a row).
   The composer gives the text back when a send failed before anything was sent; the address `/c/<id>` names the open conversation.
+- Turn context (`agent/turn_context.py`, `turn_context(previous, text, counter=...)`, pinned by `test_turn_context_pin.py`): what a
+  turn is given from the conversation before it (rebuilt history, verified and quoted formulas, `@rN` results and their
+  restrictions, the equation table and what "equation 3" means, unverified inputs, claim relations, assumptions and evidence,
+  declarations in words, tool groups, the verified constants of earlier discovery cards, the user's messages) is built by this
+  one pure function from stored rows (`role`, `content`), never a database or a model. The chat route, `agent/evaluation/runner.py`
+  and `scripts/replay_trace.py` all call it; do not assemble any of it anywhere else. A change to what it returns is a change of
+  the live chat: the pin test compares what the route hands `run_agent` over a retry and an edit with a file written before the
+  function existed, and must not be edited to make a change pass.
 - The reply is a server-sent stream and must reach the browser as it is written. Through the web app's proxy Next.js gzips it
   and delivers the whole reply in one piece at the end (no live text; Stop keeps nothing), which is why `apps/web/next.config.ts`
   sets `compress: false` (the CDN or nginx in front compresses). Do not turn it back on; if a deployment puts another buffering
@@ -319,7 +327,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `print` that bypasses it, and keep `--no-access-log` on the API's uvicorn command.
 - Restrictions travel with a verified result (`ResultStore.restrictions`): when a later call reuses `@rN`, its card gets
   `inherited_restrictions_latex` and its tool message names them ("Inherited from @r1"); they are rebuilt from stored cards
-  for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `routers_chat._history` (V-015).
+  for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `turn_context._history` (V-015).
 - A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`, `model_error`,
   `malformed_output`, `internal_error`). A last model call that reaches the model's length limit with no tool call is
   `output_limit` (stored as cut off, with a plain sentence), never `completed`. An identical call in a turn is not run twice; a model call that failed before any
@@ -583,7 +591,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   would otherwise be read as a positive symbol). `noncommutative` and unknown assumptions are removed from the
   assumptions the checker parses with (`clean_assumptions`): they used to stop the whole check. The scalar tools
   (`simplify`, `differentiate`, `integrate`, `series`, `approximation`, `isolate_variable`, `solve_polynomial`, `find_identities`,
-  `distribution`, `check_identity`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`; `substitute` and `rewrite_part` too, unless the call declares the name `noncommutative`, `NONCOMMUTATIVE_AWARE_TOOLS`; `sums` and the Lagrangian tools too, but for a declared matrix only, not a vector: `MATRIX_ONLY_TOOLS`, `ToolContext.vector_names`); a new tool must be classified in `tools.py` (`MATRIX_SAFE` needs a reason; `test_tool_matrix_classes.py`), and the chat route and the evaluation harness read declarations through one function, `routers_chat.declarations_of`, so a scalar result about
+  `distribution`, `check_identity`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`; `substitute` and `rewrite_part` too, unless the call declares the name `noncommutative`, `NONCOMMUTATIVE_AWARE_TOOLS`; `sums` and the Lagrangian tools too, but for a declared matrix only, not a vector: `MATRIX_ONLY_TOOLS`, `ToolContext.vector_names`); a new tool must be classified in `tools.py` (`MATRIX_SAFE` needs a reason; `test_tool_matrix_classes.py`), and the chat route and the evaluation harness read declarations through one function, `turn_context.declarations_of`, so a scalar result about
   matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
   Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one (every symbol of a
   sentence that says "vector") feeds the claim checker, where a wrong name only leaves a claim unchecked. The strict one
