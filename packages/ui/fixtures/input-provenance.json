@@ -1,8 +1,10 @@
 {
-  "_comment": "Shared by services/api/src/minerva_api/agent/refs.py (COMPONENT_SUFFIX) and apps/web (provenance-notes.tsx). An entry of a card's unverified_inputs that ends with this suffix names one row of an earlier card's list; any other entry is an equation the model wrote. Change it in all three places.",
+  "_comment": "Shared by services/api/src/minerva_api/agent/refs.py (COMPONENT_SUFFIX, NO_ID_SUFFIX) and apps/web (provenance-notes.tsx). An entry of a card's unverified_inputs that ends with component_suffix names one row of an earlier card's list; one that ends with no_result_id_suffix is a tool result that has an equation number but no result id; any other entry is an equation the model wrote. Change it in all three places.",
   "component_suffix": ", a component of an earlier result",
   "examples": {
     "model_written": "equation (2)",
-    "list_component": "equation (3), a component of an earlier result"
-  }
+    "list_component": "equation (3), a component of an earlier result",
+    "no_result_id": "equation (4), a tool result with no result id"
+  },
+  "no_result_id_suffix": ", a tool result with no result id"
 }

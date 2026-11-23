@@ -4,6 +4,9 @@ import provenance from "../../../../../packages/ui/fixtures/input-provenance.jso
 /** Ends an entry of `unverified_inputs` that names one row of an earlier card's list (see refs.py). */
 export const COMPONENT_SUFFIX: string = provenance.component_suffix;
 
+/** Ends an entry that names a tool result with an equation number but no result id (see refs.py). */
+export const NO_ID_SUFFIX: string = provenance.no_result_id_suffix;
+
 export interface Provenance {
   inherited_restrictions_latex?: string[] | null;
   unverified_inputs?: string[] | null;
@@ -16,9 +19,16 @@ export interface Provenance {
 export function ProvenanceNotes({ data }: { data: Provenance }) {
   const restrictions = data.inherited_restrictions_latex ?? [];
   const inputs = data.unverified_inputs ?? [];
-  const written = inputs.filter((s) => !s.endsWith(COMPONENT_SUFFIX));
+  const written = inputs.filter((s) => !s.endsWith(COMPONENT_SUFFIX) && !s.endsWith(NO_ID_SUFFIX));
   const parts = inputs.filter((s) => s.endsWith(COMPONENT_SUFFIX));
-  if (restrictions.length === 0 && written.length === 0 && parts.length === 0) return null;
+  const unnumbered = inputs.filter((s) => s.endsWith(NO_ID_SUFFIX));
+  if (
+    restrictions.length === 0 &&
+    written.length === 0 &&
+    parts.length === 0 &&
+    unnumbered.length === 0
+  )
+    return null;
   return (
     <div className="min-w-0 space-y-2">
       {written.length > 0 && (
@@ -50,6 +60,23 @@ export function ProvenanceNotes({ data }: { data: Provenance }) {
           </p>
           <ul className="mt-1 list-disc pl-5 text-xs">
             {parts.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </aside>
+      )}
+      {unnumbered.length > 0 && (
+        <aside
+          className="rounded border border-rule bg-warn-soft p-3 text-sm"
+          aria-label="Input without a result id"
+        >
+          <p className="font-medium">Input without a result id</p>
+          <p className="mt-1">
+            A tool computed this equation and its formula is exact, but reusing it by number does
+            not carry that tool&apos;s verification or restrictions.
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-xs">
+            {unnumbered.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>

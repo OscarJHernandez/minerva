@@ -60,3 +60,32 @@ def test_the_component_suffix_the_web_app_splits_on_is_the_one_refs_writes() -> 
     assert "Input not verified" in note and "Input taken from a list" in note
     assert fixture["examples"]["list_component"].endswith(refs.COMPONENT_SUFFIX)
     assert not fixture["examples"]["model_written"].endswith(refs.COMPONENT_SUFFIX)
+
+
+def test_the_no_result_id_class_is_shared_and_has_its_own_sentence() -> None:
+    fixture = json.loads(PROVENANCE.read_text())
+    assert fixture["no_result_id_suffix"] == refs.NO_ID_SUFFIX
+    example = fixture["examples"]["no_result_id"]
+    assert example.endswith(refs.NO_ID_SUFFIX)
+    assert not example.endswith(refs.COMPONENT_SUFFIX)
+    assert refs.NO_ID_SUFFIX != refs.COMPONENT_SUFFIX
+    everything = [
+        fixture["examples"]["model_written"],
+        fixture["examples"]["list_component"],
+        example,
+    ]
+    note = refs.unverified_note(everything)
+    # three separate sentences, each naming only its own entry
+    sentences = {
+        "Input not verified": fixture["examples"]["model_written"],
+        "Input taken from a list": fixture["examples"]["list_component"],
+        "Input without a result id": example,
+    }
+    for head in sentences:
+        assert note.count(head) == 1
+    for head, entry in sentences.items():
+        start = note.index(head)
+        ends = [note.index(h) for h in sentences if note.index(h) > start]
+        chunk = note[start : min(ends)] if ends else note[start:]
+        assert entry in chunk
+        assert all(other not in chunk for h, other in sentences.items() if h != head)
