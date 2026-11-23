@@ -27,7 +27,7 @@ from minerva_api.agent.params import (
 from minerva_api.agent.prompts import SYSTEM_PROMPT
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import TOOLS, ToolContext
-from minerva_api.routers_chat import _history
+from minerva_api.agent.turn_context import _history
 from minerva_api.settings import Settings
 from minerva_engine import Engine
 from minerva_engine.testing import budget_limits

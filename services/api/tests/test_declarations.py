@@ -359,7 +359,7 @@ def _rows(*pairs: tuple[str, str]) -> list[_Row]:
 
 
 def test_the_polar_kepler_conversation_declares_no_vector_and_no_matrix() -> None:
-    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+    from minerva_api.agent.turn_context import _declaration_inputs, declarations_of
 
     rows = _rows(
         ("user", "Give the Kepler Lagrangian in vector and polar form."),
@@ -372,7 +372,7 @@ def test_the_polar_kepler_conversation_declares_no_vector_and_no_matrix() -> Non
 
 
 def test_a_vector_name_goes_to_the_vector_list_not_to_the_matrix_list() -> None:
-    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+    from minerva_api.agent.turn_context import _declaration_inputs, declarations_of
 
     rows = _rows(("user", r"Let $\mathbf{E}$ be a vector field and let A and B be matrices."))
     found = declarations_of(*_declaration_inputs(rows, ""))  # type: ignore[arg-type]
@@ -381,7 +381,7 @@ def test_a_vector_name_goes_to_the_vector_list_not_to_the_matrix_list() -> None:
 
 
 def test_a_scalar_the_user_named_stays_a_scalar_when_the_model_repeats_the_vector() -> None:
-    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+    from minerva_api.agent.turn_context import _declaration_inputs, declarations_of
 
     again = r"Here the position vector $\mathbf{r}$ is used again."
     rows = _rows(
@@ -398,7 +398,7 @@ def test_a_scalar_the_user_named_stays_a_scalar_when_the_model_repeats_the_vecto
 
 
 def test_a_user_sentence_about_one_name_does_not_hold_the_other_names_of_the_sentence() -> None:
-    from minerva_api.routers_chat import _declaration_inputs, declarations_of
+    from minerva_api.agent.turn_context import _declaration_inputs, declarations_of
 
     rows = _rows(
         ("user", "Let A and B be matrices."),

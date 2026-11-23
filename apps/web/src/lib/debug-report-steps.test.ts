@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Card, StoredMessage } from "./chat-types";
-import { buildDebugReport } from "./debug-report";
+import { JSON_END, JSON_START, buildDebugReport } from "./debug-report";
 import { diagnostics, isolateResult, stepResult } from "@/test/fixtures";
 
 function turn(card: Card) {
@@ -39,6 +39,25 @@ function turn(card: Card) {
 }
 
 describe("debug report for controlled steps", () => {
+  it("keeps the card as stored in the data a replay reads (format 4), not only its summary", () => {
+    const report = turn({
+      id: "t1",
+      tool: "substitute",
+      type: "step",
+      title: "Substitute",
+      data: { operation: "substitute", result: stepResult({ restrictions_latex: ["x \\neq 1"] }) },
+    });
+    const json = JSON.parse(
+      report
+        .slice(report.indexOf(JSON_START) + JSON_START.length, report.indexOf(JSON_END))
+        .replace(/`{3,}(json)?/g, ""),
+    );
+    const card = json.messages[1].blocks[0].card;
+    expect(card.id).toBe("t1");
+    expect(card.type).toBe("step");
+    expect(card.data.result.restrictions_latex).toEqual(["x \\neq 1"]);
+  });
+
   it("summarises a substitution with its evidence class and the diagnostics counters", () => {
     const report = turn({
       id: "t1",

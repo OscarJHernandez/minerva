@@ -26,7 +26,11 @@ It re-runs each recorded tool call through `tools.execute` (sandboxed, no model,
 means a result changed. `--llm` rebuilds the model's replies of one turn from the recorded events and runs the
 real loop on them (tools, `@rN` references, formula marks, claim check, stop reason): use it when the question
 is what the agent did with the model's output, not what the model said. Calls that were never run (repeats, calls
-over a limit) are skipped. The script
+over a limit) are skipped. For a follow-up turn it restores the stored context the chat route builds (constants of
+earlier discovery cards, `@rN` results and restrictions, evidence, the equation table) from a format 4 report; for an
+older report, or a "Copy this turn" report, it prints `missing <category>` and `NOT FAITHFUL`/`NOT COMPARABLE`
+(exit 3): that is not a pass and not a regression, ask for a full format 4 report. A difference that missing
+context may explain is printed apart from one in what the engine did. The script
 works from a file: do not pipe Python through stdin to the engine, because its sandbox starts child
 processes that need a real `__main__` file.
 

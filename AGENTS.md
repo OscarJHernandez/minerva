@@ -240,6 +240,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   is streamed, stored and replayed, wherever in the reply it sits; a call that ends inside it shows nothing. A
   message sent after a reply that was never stored is merged with the unreplied one (the model never sees two user messages in a row).
   The composer gives the text back when a send failed before anything was sent; the address `/c/<id>` names the open conversation.
+- Turn context (`agent/turn_context.py`, `turn_context(previous, text, counter=...)`, pinned by `test_turn_context_pin.py`): what a
+  turn is given from the conversation before it (rebuilt history, verified and quoted formulas, `@rN` results and their
+  restrictions, the equation table and what "equation 3" means, unverified inputs, claim relations, assumptions and evidence,
+  declarations in words, tool groups, the verified constants of earlier discovery cards, the user's messages) is built by this
+  one pure function from stored rows (`role`, `content`), never a database or a model. The chat route, `agent/evaluation/runner.py`
+  and `scripts/replay_trace.py` all call it; do not assemble any of it anywhere else. A change to what it returns is a change of
+  the live chat: the pin test compares what the route hands `run_agent` over a retry and an edit with a file written before the
+  function existed, and must not be edited to make a change pass.
 - The reply is a server-sent stream and must reach the browser as it is written. Through the web app's proxy Next.js gzips it
   and delivers the whole reply in one piece at the end (no live text; Stop keeps nothing), which is why `apps/web/next.config.ts`
   sets `compress: false` (the CDN or nginx in front compresses). Do not turn it back on; if a deployment puts another buffering
@@ -319,7 +327,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `print` that bypasses it, and keep `--no-access-log` on the API's uvicorn command.
 - Restrictions travel with a verified result (`ResultStore.restrictions`): when a later call reuses `@rN`, its card gets
   `inherited_restrictions_latex` and its tool message names them ("Inherited from @r1"); they are rebuilt from stored cards
-  for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `routers_chat._history` (V-015).
+  for the next turn. Do not drop them when changing `refs.py`, `loop.py` or `turn_context._history` (V-015).
 - A turn ends with a stop reason (`completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`, `model_error`,
   `malformed_output`, `internal_error`). A last model call that reaches the model's length limit with no tool call is
   `output_limit` (stored as cut off, with a plain sentence), never `completed`. An identical call in a turn is not run twice; a model call that failed before any
@@ -368,13 +376,22 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - A turn is bounded: `AgentLimits` caps steps, total tool calls (12) and seconds, enforced during model streaming, between
   tool calls and around the claim check; a failing or hanging tool becomes an error card with fixed text, never its cause.
 - Debug mode (chat footer checkbox, or `?debug=1`): shows a timeline (`apps/web/src/lib/trace-timeline.ts`) and each tool
-  call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 2) to
+  call's arguments and results under the reply, and copies a report (`apps/web/src/lib/debug-report.ts`, format 4) to
   paste to an agent; use the `chat-trace-triage` skill on it. The data comes from `AssistantMessage.trace/debug` stored with
   the message (failed turns too). The server log gets counters, `request_id` and `trace_id` only, never content. See
   `docs/observability.md`. With thinking requested (`MINERVA_LLM_THINK`, off by default), the model's reasoning is
   stored per model call in `debug.llm_calls[i].thinking` and shown only in debug mode (collapsed, and in the copied
   report); it is never reply text, never replayed to the model, never checked, and only its length (`thinking_chars`)
   reaches a trace event or the log.
+  A follow-up turn is replayed offline with its stored context (`scripts/replay_trace.py --llm`, `ReplayLLM` only, never a model host):
+  the report's earlier messages go through `turn_context`, the function the chat route calls. Format 4 adds each assistant message's
+  `blocks` (the cards as stored, with their equation numbers), each user message's `equations` and `references`, and `conversation`
+  (the equation-number high-water mark and which messages the report holds); with them the constants, `@rN` results and their
+  restrictions, unverified inputs, evidence and the equation table are restored, and numbers given out once are not reused. Formats 2
+  and 3 have no cards: the script names what it cannot restore (`missing`) and says the follow-up cannot be faithfully replayed; a
+  difference that missing context may explain is listed apart from one in what the engine established, and a replay with anything
+  missing is never "same" (exit status 3, not 0). A new kind of stored context the route reads must go into `turn_context`, into the
+  report (`reportData`) and into `replay_trace.missing_context`.
 
 ## Mathematical correctness (non-negotiable)
 
@@ -583,7 +600,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   would otherwise be read as a positive symbol). `noncommutative` and unknown assumptions are removed from the
   assumptions the checker parses with (`clean_assumptions`): they used to stop the whole check. The scalar tools
   (`simplify`, `differentiate`, `integrate`, `series`, `approximation`, `isolate_variable`, `solve_polynomial`, `find_identities`,
-  `distribution`, `check_identity`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`; `substitute` and `rewrite_part` too, unless the call declares the name `noncommutative`, `NONCOMMUTATIVE_AWARE_TOOLS`; `sums` and the Lagrangian tools too, but for a declared matrix only, not a vector: `MATRIX_ONLY_TOOLS`, `ToolContext.vector_names`); a new tool must be classified in `tools.py` (`MATRIX_SAFE` needs a reason; `test_tool_matrix_classes.py`), and the chat route and the evaluation harness read declarations through one function, `routers_chat.declarations_of`, so a scalar result about
+  `distribution`, `check_identity`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`; `substitute` and `rewrite_part` too, unless the call declares the name `noncommutative`, `NONCOMMUTATIVE_AWARE_TOOLS`; `sums` and the Lagrangian tools too, but for a declared matrix only, not a vector: `MATRIX_ONLY_TOOLS`, `ToolContext.vector_names`); a new tool must be classified in `tools.py` (`MATRIX_SAFE` needs a reason; `test_tool_matrix_classes.py`), and the chat route and the evaluation harness read declarations through one function, `turn_context.declarations_of`, so a scalar result about
   matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
   Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one (every symbol of a
   sentence that says "vector") feeds the claim checker, where a wrong name only leaves a claim unchecked. The strict one

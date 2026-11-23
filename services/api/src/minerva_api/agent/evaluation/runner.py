@@ -9,24 +9,15 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
 
-from ...routers_chat import (
-    _claim_context,
-    _conversation_events,
-    _declaration_inputs,
-    _history,
-    _prior_evidence,
-    declarations_of,
-)
-from ..constants import constants_of_blocks
 from ..llm import LLMClient
 from ..loop import AgentLimits, TurnInfo, run_agent
 from ..params import EffectiveParams
-from ..segments import split_segments
 from ..tools import ToolContext
-from ..toolsets import conversation_groups
+from ..turn_context import HISTORY_MESSAGES, declarations_of, turn_context
 from .cases import EvalCase
 from .score import CaseResult, FailureClass, Observation, combine, score_case
 
@@ -38,9 +29,17 @@ _CONVERSATION_ENDERS = frozenset({FailureClass.MODEL_HOST, FailureClass.NO_REPLY
 
 def plain_declarations(history: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """The declarations the loop gets for a conversation of plain messages (a case without stored turns), by the
-    function the chat route uses (`routers_chat.declarations_of`); `test_declaration_parity.py` compares the two."""
+    function the chat route uses (`turn_context.declarations_of`); `test_declaration_parity.py` compares the two."""
     entries = [(str(m["role"]), str(m.get("content", ""))) for m in history]
     return declarations_of([], entries)._asdict()
+
+
+def _plain_messages(history: Sequence[Mapping[str, Any]]) -> list[Any]:
+    """A case's plain-text history as stored messages: text only, no tool calls, cards or numbers."""
+    return [
+        SimpleNamespace(role=str(m["role"]), content={"text": str(m.get("content", ""))})
+        for m in history
+    ]
 
 
 async def observe(
@@ -60,50 +59,22 @@ async def observe(
     hand it for the next turn: the rebuilt history, verified results (`@r1`) and their restrictions,
     declared matrices and assumptions. Without it the case's own plain-text `history` is used.
     """
-    history = [*case.history, {"role": "user", "content": case.prompt}]
-    carried: dict[str, Any] = {}
-    if stored:
-        messages = list(stored)
-        rebuilt, known, quoted, results, restrictions = _history(
-            messages,
-            max_messages=params.history_messages if params else 20,
-            max_tokens=params.history_tokens if params else None,
-        )
-        prior_relations, prior_assumptions = _claim_context(messages, case.prompt)
-        history = [*rebuilt, {"role": "user", "content": case.prompt}]
-        carried = {
-            "prior_known": known,
-            "prior_quoted": quoted,
-            "prior_results": results,
-            "prior_restrictions": restrictions,
-            "prior_assumptions": prior_assumptions,
-            # the same function the chat route calls: the generous reading (claims), the strict one (what refuses a
-            # tool) and which of those names are vectors
-            **declarations_of(*_declaration_inputs(messages, case.prompt))._asdict(),
-            "prior_groups": conversation_groups(_conversation_events(messages, case.prompt)),
-            # what the chat route hands the claim check: the verified results of the earlier turns
-            "prior_evidence": _prior_evidence(messages),
-        }
-        # ... and `time_derivative` the constants of earlier discovery results (set on the context, as the route does)
-        ctx.constants = tuple(
-            constants_of_blocks(
-                m.content.get("blocks", []) for m in messages if m.role == "assistant"
-            )
-        )
-    else:
-        # The chat route always tells the claim checker which names the conversation declared as matrices
-        # or vectors ("A and B are 2x2 matrices"), the current message included. A single-turn case has no
-        # stored messages, so read them from the plain history the same way; without this the harness
-        # checked a matrix identity by sampling numbers where the real chat would have left it unchecked.
-        carried = plain_declarations(history)
-        # What the chat route passes the loop from earlier turns: the formulas written so far, which the
-        # claim checker uses as definitions. (Case histories are plain text: no earlier tool calls.)
-        prior_relations = [
-            seg.value
-            for message in history
-            for seg in split_segments(str(message.get("content", "")), set())
-            if seg.type != "text" and len(seg.value) <= 500
-        ][-60:]
+    # The chat route's own function: what the loop is handed for a turn is built from the earlier messages in
+    # one place (`turn_context`), so a measurement is a measurement of what users get. A case without stored
+    # turns has only plain text history: its messages stand in as stored messages with no tool calls.
+    messages = list(stored) if stored else _plain_messages(case.history)
+    turn = turn_context(
+        messages,
+        case.prompt,
+        max_messages=params.history_messages if params else HISTORY_MESSAGES,
+        max_tokens=params.history_tokens if params else None,
+    )
+    # This turn's own copy: a case run alongside must not see its messages or constants. `replace` is shallow: the
+    # mutable fields (`matrices`, `matrix_sources`, `notation`, `numeric`, `statmech_answers`) are shared with the
+    # caller's context. Only whole fields of the copy are assigned (`apply_to`); never edit one of those in place.
+    ctx = replace(ctx)
+    turn.apply_to(ctx)
+    history = turn.history
     obs = Observation()
     started = time.monotonic()
 
@@ -113,10 +84,9 @@ async def observe(
             history,
             ctx,
             limits,
-            prior_relations=prior_relations,
             params=params,
             info=TurnInfo(routing=routing),
-            **carried,
+            **turn.agent_kwargs(),
         ):
             kind, data = event["event"], event["data"]
             if kind == "tool_call":

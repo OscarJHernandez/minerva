@@ -55,6 +55,8 @@ export function ChatApp({
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<StoredMessage[]>([]);
+  // The server's equation-number high-water mark when the conversation was opened, for the debug report.
+  const [equationCounter, setEquationCounter] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +199,7 @@ export function ChatApp({
     activeIdRef.current = id;
     setActiveId(id);
     setMessages([]);
+    setEquationCounter(null);
     pendingRef.current = null;
     setPending(null);
     if (!options.keepError) {
@@ -208,6 +211,7 @@ export function ChatApp({
       const detail = await chatApi.get(id, controller.signal);
       if (viewGeneration.current !== generation) return;
       setMessages(detail.messages);
+      setEquationCounter(detail.equation_counter ?? null);
       setPending(null);
     } catch (e) {
       if (viewGeneration.current !== generation) return;
@@ -256,6 +260,7 @@ export function ChatApp({
     activeIdRef.current = null;
     setActiveId(null);
     setMessages([]);
+    setEquationCounter(null);
     setPending(null);
     setError(null);
     setLastError(null);
@@ -755,7 +760,7 @@ export function ChatApp({
                         }
                         getReport={
                           debugOn && m.role === "assistant"
-                            ? () => buildTurnReport({ title, status }, messages, i)
+                            ? () => buildTurnReport({ title, status, equationCounter }, messages, i)
                             : undefined
                         }
                       />
@@ -850,7 +855,14 @@ export function ChatApp({
                     <CopyButton
                       label="Copy debug report"
                       getText={() =>
-                        buildDebugReport({ title, messages, status, lastError, replying: busy })
+                        buildDebugReport({
+                          title,
+                          messages,
+                          status,
+                          lastError,
+                          replying: busy,
+                          equationCounter,
+                        })
                       }
                     />
                   )}

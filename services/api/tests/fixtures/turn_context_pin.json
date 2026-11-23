@@ -1,0 +1,1799 @@
+{
+ "counter1": 10,
+ "counter2": 12,
+ "counter3": 13,
+ "counter4": 13,
+ "recorded": [
+  {
+   "ctx": {
+    "constants": [
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "\\mu r^{2} \\dot{\\theta}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_1",
+      "system": "lagrangian",
+      "verified": true
+     },
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_2",
+      "system": "lagrangian",
+      "verified": true
+     }
+    ],
+    "matrices": [],
+    "user_messages": [
+     "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "Now differentiate equation 3 with respect to $x$.",
+     "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "Let v be a vector. Differentiate @r2 again. Compare equation 7 with equation 2, equation 3, equation 1 and equation 99. Take $$w = x + 1$$ as given."
+    ]
+   },
+   "declared_for_tools": {
+    "A": "your message: \u00abLet A and B be matrices.\u00bb",
+    "B": "your message: \u00abLet A and B be matrices.\u00bb",
+    "v": "your message: \u00abLet v be a vector.\u00bb"
+   },
+   "equations": {
+    "counter": 9,
+    "index": {
+     "2x+y": 4,
+     "3x^2": 5,
+     "C_1=\\mu r^2\\dot{\\theta}": 7,
+     "C_2=-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2": 8,
+     "L=\\frac{\\mu}2(\\dotr^2+r^2\\dot{\\theta}^2)+\\frac{GM\\mu}r": 6,
+     "\\frac{x^3-y^3}{x-y}": 1,
+     "w=x+1": 9,
+     "x^2+xy+y^2": 2,
+     "y=x^3+1": 3
+    },
+    "items": {
+     "1": [
+      "\\frac{x^3-y^3}{x-y}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "2": [
+      "x^{2} + x y + y^{2}",
+      "from_tool",
+      "r1",
+      null,
+      null
+     ],
+     "3": [
+      "y = x^{3} + 1",
+      "written_by_model",
+      null,
+      null,
+      null
+     ],
+     "4": [
+      "2 x + y",
+      "from_tool",
+      "r2",
+      null,
+      null
+     ],
+     "5": [
+      "3 x^{2}",
+      "from_tool",
+      "r3",
+      null,
+      null
+     ],
+     "6": [
+      "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "7": [
+      "C_{1} = \\mu r^{2} \\dot{\\theta}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "8": [
+      "C_{2} = - \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "9": [
+      "w = x + 1",
+      "yours",
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "history": [
+    {
+     "content": "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "assumptions": {
+         "x": [
+          "positive"
+         ]
+        },
+        "expression": "\\frac{x^3-y^3}{x-y}"
+       },
+       "id": "call_s1",
+       "name": "simplify"
+      }
+     ]
+    },
+    {
+     "content": "line 0 of an earlier result, long enough to be shortened\nline 1 of an earlier result, long enough to be shortened\nline 2 of an earlier result, long enough to be shortened\nline 3 of an earlier result, long enough to be shortened\nline 4 of an earlier result, long enough to be shortened\nline 5 of an earlier result, long enough to be shortened\nline 6 of an earlier result, long enough to be shortened\nline 7 of an earlier result, long enough to be shortened\nline 8 of an earlier result, long enough to be shortened\nline 9 of an earlier result, long enough to be shortened\n[shortened: an earlier result]\nequation_number=(2) (the user sees this result as equation (2); @e2 reuses it exactly)\nresult_id=r1 (write @r1 in a later call to reuse this result exactly)",
+     "name": "simplify",
+     "role": "tool",
+     "tool_call_id": "call_s1"
+    },
+    {
+     "content": "The result is $$x^{2} + x y + y^{2}$$ (2) and, say, $$y = x^{3} + 1$$ (3).",
+     "role": "assistant"
+    },
+    {
+     "content": "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{2} + x y + y^{2}",
+        "variable": "x"
+       },
+       "id": "call_s2",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: 2 x + y\nequation_number=(4) (the user sees this result as equation (4); @e4 reuses it exactly)\nresult_id=r2 (write @r2 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s2"
+    },
+    {
+     "content": "Done: $$2 x + y$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Now differentiate equation 3 with respect to $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{3} + 1",
+        "variable": "x"
+       },
+       "id": "call_s3",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: $3 x^{2}$\nequation_number=(5) (the user sees this result as equation (5); @e5 reuses it exactly)\nresult_id=r3 (write @r3 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s3"
+    },
+    {
+     "content": "That is $$3 x^{2}$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "coordinates": [
+         "r",
+         "theta"
+        ],
+        "lagrangian": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}"
+       },
+       "id": "call_s4",
+       "name": "find_conserved_quantities"
+      }
+     ]
+    },
+    {
+     "content": "found two constants of motion",
+     "name": "find_conserved_quantities",
+     "role": "tool",
+     "tool_call_id": "call_s4"
+    },
+    {
+     "content": "Two constants were found.",
+     "role": "assistant"
+    },
+    {
+     "content": "Let v be a vector. Differentiate @r2 again. Compare equation 7 with equation 2, equation 3, equation 1 and equation 99. Take $$w = x + 1$$ as given.\n\n[notice from Minerva, not from the user] The user's message refers to numbered equations of this conversation: (7) = $C_{1} = \\mu r^{2} \\dot{\\theta}$, one row of a discovery tool result (@e7 reuses its LaTeX exactly; the tool's verification and restrictions are not carried over, so say that). (2) = $x^{2} + x y + y^{2}$, a verified result (write @r1 or @e2 in a tool call to reuse it exactly). (3) = $y = x^{3} + 1$, written by the model and NOT verified by Minerva (@e3 reuses it exactly; say that it was not verified). (1) = $\\frac{x^3-y^3}{x-y}$, written by the user (write @e1 in a tool call to reuse it exactly). (99) does not exist in this conversation (equations: (1) to (8)).\n[notice from Minerva, not from the user] The displayed formulas of the user's message are, in the order written: @e9. In a tool call, write the handle (for example `@e9`) as the whole formula argument instead of copying the formula: Minerva substitutes the user's exact text.",
+     "role": "user"
+    }
+   ],
+   "params": {
+    "history_messages": 20,
+    "history_tokens": null,
+    "num_ctx": 32768,
+    "num_predict": null,
+    "temperature": 0.2,
+    "think": false,
+    "toolset": "auto",
+    "top_k": null,
+    "top_p": null
+   },
+   "prior_assumptions": {
+    "x": [
+     "positive"
+    ]
+   },
+   "prior_evidence": [
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "x^{2} + x y + y^{2}": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r1",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "x^{2} + x y + y^{2}"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "2 x + y": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r2",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "2 x + y"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "symbolic_zero",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 0,
+      "restrictions_complete": null,
+      "symbolic_zero": true
+     },
+     "formula_roles": {
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}": "conserved",
+      "\\mu r^{2} \\dot{\\theta}": "conserved"
+     },
+     "repeated": false,
+     "restrictions": [],
+     "result_id": null,
+     "status": "ok",
+     "variables": [
+      "r",
+      "theta"
+     ],
+     "verified_latex": [
+      "\\mu r^{2} \\dot{\\theta}",
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}"
+     ]
+    }
+   ],
+   "prior_groups": [
+    "matrix",
+    "mechanics"
+   ],
+   "prior_known": [
+    "-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2",
+    "2x+y",
+    "\\mu r^2\\dot{\\theta}",
+    "x^2+xy+y^2"
+   ],
+   "prior_matrices": [
+    "A",
+    "B"
+   ],
+   "prior_quoted": {
+    "3x^2": "from an earlier tool result; how it was verified was not recorded",
+    "\\frac{x^3-y^3}{x-y}": "the expression as you wrote it"
+   },
+   "prior_relations": [
+    "\\frac{x^3-y^3}{x-y}",
+    "x",
+    "x^{2} + x y + y^{2}",
+    "y = x^{3} + 1",
+    "x",
+    "2 x + y",
+    "x",
+    "3 x^{2}",
+    "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+    "w = x + 1"
+   ],
+   "prior_restrictions": {
+    "r1": [
+     "x - y \\neq 0"
+    ],
+    "r2": [
+     "x - y \\neq 0"
+    ]
+   },
+   "prior_results": {
+    "r1": "x^{2} + x y + y^{2}",
+    "r2": "2 x + y",
+    "r3": "3 x^{2}"
+   },
+   "prior_unverified": {
+    "r3": [
+     "equation (3), written by the model and not verified by Minerva"
+    ]
+   },
+   "prior_vectors": [],
+   "routing": false,
+   "scalar_names": [],
+   "vector_kind_names": [
+    "v"
+   ]
+  },
+  {
+   "ctx": {
+    "constants": [
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "\\mu r^{2} \\dot{\\theta}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_1",
+      "system": "lagrangian",
+      "verified": true
+     },
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_2",
+      "system": "lagrangian",
+      "verified": true
+     }
+    ],
+    "matrices": [],
+    "user_messages": [
+     "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "Now differentiate equation 3 with respect to $x$.",
+     "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "Let v be a vector. Differentiate @r2 again. Compare equation 7 with equation 2, equation 3, equation 1 and equation 99. Take $$w = x + 1$$ as given."
+    ]
+   },
+   "declared_for_tools": {
+    "A": "your message: \u00abLet A and B be matrices.\u00bb",
+    "B": "your message: \u00abLet A and B be matrices.\u00bb",
+    "v": "your message: \u00abLet v be a vector.\u00bb"
+   },
+   "equations": {
+    "counter": 11,
+    "index": {
+     "2x+y": 4,
+     "3x^2": 5,
+     "C_1=\\mu r^2\\dot{\\theta}": 7,
+     "C_2=-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2": 8,
+     "L=\\frac{\\mu}2(\\dotr^2+r^2\\dot{\\theta}^2)+\\frac{GM\\mu}r": 6,
+     "\\frac{x^3-y^3}{x-y}": 1,
+     "w=x+1": 11,
+     "x^2+xy+y^2": 2,
+     "y=x^3+1": 3
+    },
+    "items": {
+     "1": [
+      "\\frac{x^3-y^3}{x-y}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "2": [
+      "x^{2} + x y + y^{2}",
+      "from_tool",
+      "r1",
+      null,
+      null
+     ],
+     "3": [
+      "y = x^{3} + 1",
+      "written_by_model",
+      null,
+      null,
+      null
+     ],
+     "4": [
+      "2 x + y",
+      "from_tool",
+      "r2",
+      null,
+      null
+     ],
+     "5": [
+      "3 x^{2}",
+      "from_tool",
+      "r3",
+      null,
+      null
+     ],
+     "6": [
+      "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "7": [
+      "C_{1} = \\mu r^{2} \\dot{\\theta}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "8": [
+      "C_{2} = - \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "11": [
+      "w = x + 1",
+      "yours",
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "history": [
+    {
+     "content": "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "assumptions": {
+         "x": [
+          "positive"
+         ]
+        },
+        "expression": "\\frac{x^3-y^3}{x-y}"
+       },
+       "id": "call_s1",
+       "name": "simplify"
+      }
+     ]
+    },
+    {
+     "content": "line 0 of an earlier result, long enough to be shortened\nline 1 of an earlier result, long enough to be shortened\nline 2 of an earlier result, long enough to be shortened\nline 3 of an earlier result, long enough to be shortened\nline 4 of an earlier result, long enough to be shortened\nline 5 of an earlier result, long enough to be shortened\nline 6 of an earlier result, long enough to be shortened\nline 7 of an earlier result, long enough to be shortened\nline 8 of an earlier result, long enough to be shortened\nline 9 of an earlier result, long enough to be shortened\n[shortened: an earlier result]\nequation_number=(2) (the user sees this result as equation (2); @e2 reuses it exactly)\nresult_id=r1 (write @r1 in a later call to reuse this result exactly)",
+     "name": "simplify",
+     "role": "tool",
+     "tool_call_id": "call_s1"
+    },
+    {
+     "content": "The result is $$x^{2} + x y + y^{2}$$ (2) and, say, $$y = x^{3} + 1$$ (3).",
+     "role": "assistant"
+    },
+    {
+     "content": "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{2} + x y + y^{2}",
+        "variable": "x"
+       },
+       "id": "call_s2",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: 2 x + y\nequation_number=(4) (the user sees this result as equation (4); @e4 reuses it exactly)\nresult_id=r2 (write @r2 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s2"
+    },
+    {
+     "content": "Done: $$2 x + y$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Now differentiate equation 3 with respect to $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{3} + 1",
+        "variable": "x"
+       },
+       "id": "call_s3",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: $3 x^{2}$\nequation_number=(5) (the user sees this result as equation (5); @e5 reuses it exactly)\nresult_id=r3 (write @r3 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s3"
+    },
+    {
+     "content": "That is $$3 x^{2}$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "coordinates": [
+         "r",
+         "theta"
+        ],
+        "lagrangian": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}"
+       },
+       "id": "call_s4",
+       "name": "find_conserved_quantities"
+      }
+     ]
+    },
+    {
+     "content": "found two constants of motion",
+     "name": "find_conserved_quantities",
+     "role": "tool",
+     "tool_call_id": "call_s4"
+    },
+    {
+     "content": "Two constants were found.",
+     "role": "assistant"
+    },
+    {
+     "content": "Let v be a vector. Differentiate @r2 again. Compare equation 7 with equation 2, equation 3, equation 1 and equation 99. Take $$w = x + 1$$ as given.\n\n[notice from Minerva, not from the user] The user's message refers to numbered equations of this conversation: (7) = $C_{1} = \\mu r^{2} \\dot{\\theta}$, one row of a discovery tool result (@e7 reuses its LaTeX exactly; the tool's verification and restrictions are not carried over, so say that). (2) = $x^{2} + x y + y^{2}$, a verified result (write @r1 or @e2 in a tool call to reuse it exactly). (3) = $y = x^{3} + 1$, written by the model and NOT verified by Minerva (@e3 reuses it exactly; say that it was not verified). (1) = $\\frac{x^3-y^3}{x-y}$, written by the user (write @e1 in a tool call to reuse it exactly). (99) does not exist in this conversation (equations: (1) to (10)).\n[notice from Minerva, not from the user] The displayed formulas of the user's message are, in the order written: @e11. In a tool call, write the handle (for example `@e11`) as the whole formula argument instead of copying the formula: Minerva substitutes the user's exact text.",
+     "role": "user"
+    }
+   ],
+   "params": {
+    "history_messages": 20,
+    "history_tokens": null,
+    "num_ctx": 32768,
+    "num_predict": null,
+    "temperature": 0.2,
+    "think": false,
+    "toolset": "auto",
+    "top_k": null,
+    "top_p": null
+   },
+   "prior_assumptions": {
+    "x": [
+     "positive"
+    ]
+   },
+   "prior_evidence": [
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "x^{2} + x y + y^{2}": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r1",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "x^{2} + x y + y^{2}"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "2 x + y": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r2",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "2 x + y"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "symbolic_zero",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 0,
+      "restrictions_complete": null,
+      "symbolic_zero": true
+     },
+     "formula_roles": {
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}": "conserved",
+      "\\mu r^{2} \\dot{\\theta}": "conserved"
+     },
+     "repeated": false,
+     "restrictions": [],
+     "result_id": null,
+     "status": "ok",
+     "variables": [
+      "r",
+      "theta"
+     ],
+     "verified_latex": [
+      "\\mu r^{2} \\dot{\\theta}",
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}"
+     ]
+    }
+   ],
+   "prior_groups": [
+    "matrix",
+    "mechanics"
+   ],
+   "prior_known": [
+    "-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2",
+    "2x+y",
+    "\\mu r^2\\dot{\\theta}",
+    "x^2+xy+y^2"
+   ],
+   "prior_matrices": [
+    "A",
+    "B"
+   ],
+   "prior_quoted": {
+    "3x^2": "from an earlier tool result; how it was verified was not recorded",
+    "\\frac{x^3-y^3}{x-y}": "the expression as you wrote it"
+   },
+   "prior_relations": [
+    "\\frac{x^3-y^3}{x-y}",
+    "x",
+    "x^{2} + x y + y^{2}",
+    "y = x^{3} + 1",
+    "x",
+    "2 x + y",
+    "x",
+    "3 x^{2}",
+    "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+    "w = x + 1"
+   ],
+   "prior_restrictions": {
+    "r1": [
+     "x - y \\neq 0"
+    ],
+    "r2": [
+     "x - y \\neq 0"
+    ]
+   },
+   "prior_results": {
+    "r1": "x^{2} + x y + y^{2}",
+    "r2": "2 x + y",
+    "r3": "3 x^{2}"
+   },
+   "prior_unverified": {
+    "r3": [
+     "equation (3), written by the model and not verified by Minerva"
+    ]
+   },
+   "prior_vectors": [],
+   "routing": false,
+   "scalar_names": [],
+   "vector_kind_names": [
+    "v"
+   ]
+  },
+  {
+   "ctx": {
+    "constants": [
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "\\mu r^{2} \\dot{\\theta}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_1",
+      "system": "lagrangian",
+      "verified": true
+     },
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_2",
+      "system": "lagrangian",
+      "verified": true
+     }
+    ],
+    "matrices": [],
+    "user_messages": [
+     "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "Now differentiate equation 3 with respect to $x$.",
+     "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "Use equation 10 again, and equation 11. Let C be a scalar."
+    ]
+   },
+   "declared_for_tools": {
+    "A": "your message: \u00abLet A and B be matrices.\u00bb",
+    "B": "your message: \u00abLet A and B be matrices.\u00bb"
+   },
+   "equations": {
+    "counter": 12,
+    "index": {
+     "2x+y": 4,
+     "3x^2": 5,
+     "C_1=\\mu r^2\\dot{\\theta}": 7,
+     "C_2=-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2": 8,
+     "L=\\frac{\\mu}2(\\dotr^2+r^2\\dot{\\theta}^2)+\\frac{GM\\mu}r": 6,
+     "\\frac{x^3-y^3}{x-y}": 1,
+     "x^2+xy+y^2": 2,
+     "y=x^3+1": 3
+    },
+    "items": {
+     "1": [
+      "\\frac{x^3-y^3}{x-y}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "2": [
+      "x^{2} + x y + y^{2}",
+      "from_tool",
+      "r1",
+      null,
+      null
+     ],
+     "3": [
+      "y = x^{3} + 1",
+      "written_by_model",
+      null,
+      null,
+      null
+     ],
+     "4": [
+      "2 x + y",
+      "from_tool",
+      "r2",
+      null,
+      null
+     ],
+     "5": [
+      "3 x^{2}",
+      "from_tool",
+      "r3",
+      null,
+      null
+     ],
+     "6": [
+      "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "7": [
+      "C_{1} = \\mu r^{2} \\dot{\\theta}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "8": [
+      "C_{2} = - \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ]
+    }
+   },
+   "history": [
+    {
+     "content": "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "assumptions": {
+         "x": [
+          "positive"
+         ]
+        },
+        "expression": "\\frac{x^3-y^3}{x-y}"
+       },
+       "id": "call_s1",
+       "name": "simplify"
+      }
+     ]
+    },
+    {
+     "content": "line 0 of an earlier result, long enough to be shortened\nline 1 of an earlier result, long enough to be shortened\nline 2 of an earlier result, long enough to be shortened\nline 3 of an earlier result, long enough to be shortened\nline 4 of an earlier result, long enough to be shortened\nline 5 of an earlier result, long enough to be shortened\nline 6 of an earlier result, long enough to be shortened\nline 7 of an earlier result, long enough to be shortened\nline 8 of an earlier result, long enough to be shortened\nline 9 of an earlier result, long enough to be shortened\n[shortened: an earlier result]\nequation_number=(2) (the user sees this result as equation (2); @e2 reuses it exactly)\nresult_id=r1 (write @r1 in a later call to reuse this result exactly)",
+     "name": "simplify",
+     "role": "tool",
+     "tool_call_id": "call_s1"
+    },
+    {
+     "content": "The result is $$x^{2} + x y + y^{2}$$ (2) and, say, $$y = x^{3} + 1$$ (3).",
+     "role": "assistant"
+    },
+    {
+     "content": "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{2} + x y + y^{2}",
+        "variable": "x"
+       },
+       "id": "call_s2",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: 2 x + y\nequation_number=(4) (the user sees this result as equation (4); @e4 reuses it exactly)\nresult_id=r2 (write @r2 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s2"
+    },
+    {
+     "content": "Done: $$2 x + y$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Now differentiate equation 3 with respect to $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{3} + 1",
+        "variable": "x"
+       },
+       "id": "call_s3",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: $3 x^{2}$\nequation_number=(5) (the user sees this result as equation (5); @e5 reuses it exactly)\nresult_id=r3 (write @r3 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s3"
+    },
+    {
+     "content": "That is $$3 x^{2}$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "coordinates": [
+         "r",
+         "theta"
+        ],
+        "lagrangian": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}"
+       },
+       "id": "call_s4",
+       "name": "find_conserved_quantities"
+      }
+     ]
+    },
+    {
+     "content": "found two constants of motion",
+     "name": "find_conserved_quantities",
+     "role": "tool",
+     "tool_call_id": "call_s4"
+    },
+    {
+     "content": "Two constants were found.",
+     "role": "assistant"
+    },
+    {
+     "content": "Use equation 10 again, and equation 11. Let C be a scalar.\n\n[notice from Minerva, not from the user] The user's message refers to numbered equations of this conversation: (10) no longer exists: the message that had it was replaced. (11) no longer exists: the message that had it was replaced.",
+     "role": "user"
+    }
+   ],
+   "params": {
+    "history_messages": 20,
+    "history_tokens": null,
+    "num_ctx": 32768,
+    "num_predict": null,
+    "temperature": 0.2,
+    "think": false,
+    "toolset": "auto",
+    "top_k": null,
+    "top_p": null
+   },
+   "prior_assumptions": {
+    "x": [
+     "positive"
+    ]
+   },
+   "prior_evidence": [
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "x^{2} + x y + y^{2}": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r1",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "x^{2} + x y + y^{2}"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "2 x + y": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r2",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "2 x + y"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "symbolic_zero",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 0,
+      "restrictions_complete": null,
+      "symbolic_zero": true
+     },
+     "formula_roles": {
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}": "conserved",
+      "\\mu r^{2} \\dot{\\theta}": "conserved"
+     },
+     "repeated": false,
+     "restrictions": [],
+     "result_id": null,
+     "status": "ok",
+     "variables": [
+      "r",
+      "theta"
+     ],
+     "verified_latex": [
+      "\\mu r^{2} \\dot{\\theta}",
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}"
+     ]
+    }
+   ],
+   "prior_groups": [
+    "matrix",
+    "mechanics"
+   ],
+   "prior_known": [
+    "-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2",
+    "2x+y",
+    "\\mu r^2\\dot{\\theta}",
+    "x^2+xy+y^2"
+   ],
+   "prior_matrices": [
+    "A",
+    "B"
+   ],
+   "prior_quoted": {
+    "3x^2": "from an earlier tool result; how it was verified was not recorded",
+    "\\frac{x^3-y^3}{x-y}": "the expression as you wrote it"
+   },
+   "prior_relations": [
+    "\\frac{x^3-y^3}{x-y}",
+    "x",
+    "x^{2} + x y + y^{2}",
+    "y = x^{3} + 1",
+    "x",
+    "2 x + y",
+    "x",
+    "3 x^{2}",
+    "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}"
+   ],
+   "prior_restrictions": {
+    "r1": [
+     "x - y \\neq 0"
+    ],
+    "r2": [
+     "x - y \\neq 0"
+    ]
+   },
+   "prior_results": {
+    "r1": "x^{2} + x y + y^{2}",
+    "r2": "2 x + y",
+    "r3": "3 x^{2}"
+   },
+   "prior_unverified": {
+    "r3": [
+     "equation (3), written by the model and not verified by Minerva"
+    ]
+   },
+   "prior_vectors": [],
+   "routing": false,
+   "scalar_names": [
+    "C"
+   ],
+   "vector_kind_names": []
+  },
+  {
+   "ctx": {
+    "constants": [
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "\\mu r^{2} \\dot{\\theta}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_1",
+      "system": "lagrangian",
+      "verified": true
+     },
+     {
+      "card": "s4",
+      "coordinates": [
+       "r",
+       "theta"
+      ],
+      "expression": "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "function": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "name": "C_2",
+      "system": "lagrangian",
+      "verified": true
+     }
+    ],
+    "matrices": [],
+    "user_messages": [
+     "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "Now differentiate equation 3 with respect to $x$.",
+     "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "Use equation 10 again, and equation 11. Let C be a scalar.",
+     "Thanks. And now?"
+    ]
+   },
+   "declared_for_tools": {
+    "A": "your message: \u00abLet A and B be matrices.\u00bb",
+    "B": "your message: \u00abLet A and B be matrices.\u00bb"
+   },
+   "equations": {
+    "counter": 13,
+    "index": {
+     "2x+y": 4,
+     "3x^2": 5,
+     "C_1=\\mu r^2\\dot{\\theta}": 7,
+     "C_2=-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2": 8,
+     "L=\\frac{\\mu}2(\\dotr^2+r^2\\dot{\\theta}^2)+\\frac{GM\\mu}r": 6,
+     "\\frac{x^3-y^3}{x-y}": 1,
+     "u=2": 13,
+     "x^2+xy+y^2": 2,
+     "y=x^3+1": 3
+    },
+    "items": {
+     "1": [
+      "\\frac{x^3-y^3}{x-y}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "2": [
+      "x^{2} + x y + y^{2}",
+      "from_tool",
+      "r1",
+      null,
+      null
+     ],
+     "3": [
+      "y = x^{3} + 1",
+      "written_by_model",
+      null,
+      null,
+      null
+     ],
+     "4": [
+      "2 x + y",
+      "from_tool",
+      "r2",
+      null,
+      null
+     ],
+     "5": [
+      "3 x^{2}",
+      "from_tool",
+      "r3",
+      null,
+      null
+     ],
+     "6": [
+      "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+      "yours",
+      null,
+      null,
+      null
+     ],
+     "7": [
+      "C_{1} = \\mu r^{2} \\dot{\\theta}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "8": [
+      "C_{2} = - \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}",
+      "from_tool",
+      null,
+      "discovery",
+      null
+     ],
+     "13": [
+      "u = 2",
+      "written_by_model",
+      null,
+      null,
+      null
+     ]
+    }
+   },
+   "history": [
+    {
+     "content": "Simplify $$\\frac{x^3-y^3}{x-y}$$ for positive $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "assumptions": {
+         "x": [
+          "positive"
+         ]
+        },
+        "expression": "\\frac{x^3-y^3}{x-y}"
+       },
+       "id": "call_s1",
+       "name": "simplify"
+      }
+     ]
+    },
+    {
+     "content": "line 0 of an earlier result, long enough to be shortened\nline 1 of an earlier result, long enough to be shortened\nline 2 of an earlier result, long enough to be shortened\nline 3 of an earlier result, long enough to be shortened\nline 4 of an earlier result, long enough to be shortened\nline 5 of an earlier result, long enough to be shortened\nline 6 of an earlier result, long enough to be shortened\nline 7 of an earlier result, long enough to be shortened\nline 8 of an earlier result, long enough to be shortened\nline 9 of an earlier result, long enough to be shortened\n[shortened: an earlier result]\nequation_number=(2) (the user sees this result as equation (2); @e2 reuses it exactly)\nresult_id=r1 (write @r1 in a later call to reuse this result exactly)",
+     "name": "simplify",
+     "role": "tool",
+     "tool_call_id": "call_s1"
+    },
+    {
+     "content": "The result is $$x^{2} + x y + y^{2}$$ (2) and, say, $$y = x^{3} + 1$$ (3).",
+     "role": "assistant"
+    },
+    {
+     "content": "Differentiate that result with respect to $x$. Let A and B be matrices.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{2} + x y + y^{2}",
+        "variable": "x"
+       },
+       "id": "call_s2",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: 2 x + y\nequation_number=(4) (the user sees this result as equation (4); @e4 reuses it exactly)\nresult_id=r2 (write @r2 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s2"
+    },
+    {
+     "content": "Done: $$2 x + y$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Now differentiate equation 3 with respect to $x$.",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "expression": "x^{3} + 1",
+        "variable": "x"
+       },
+       "id": "call_s3",
+       "name": "differentiate"
+      }
+     ]
+    },
+    {
+     "content": "derivative: $3 x^{2}$\nequation_number=(5) (the user sees this result as equation (5); @e5 reuses it exactly)\nresult_id=r3 (write @r3 in a later call to reuse this result exactly)",
+     "name": "differentiate",
+     "role": "tool",
+     "tool_call_id": "call_s3"
+    },
+    {
+     "content": "That is $$3 x^{2}$$.",
+     "role": "assistant"
+    },
+    {
+     "content": "Find the constants of motion of $$L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}$$",
+     "role": "user"
+    },
+    {
+     "content": "",
+     "role": "assistant",
+     "tool_calls": [
+      {
+       "arguments": {
+        "coordinates": [
+         "r",
+         "theta"
+        ],
+        "lagrangian": "\\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}"
+       },
+       "id": "call_s4",
+       "name": "find_conserved_quantities"
+      }
+     ]
+    },
+    {
+     "content": "found two constants of motion",
+     "name": "find_conserved_quantities",
+     "role": "tool",
+     "tool_call_id": "call_s4"
+    },
+    {
+     "content": "Two constants were found.",
+     "role": "assistant"
+    },
+    {
+     "content": "Use equation 10 again, and equation 11. Let C be a scalar.",
+     "role": "user"
+    },
+    {
+     "content": "Understood. $$u = 2$$ (13)",
+     "role": "assistant"
+    },
+    {
+     "content": "Thanks. And now?",
+     "role": "user"
+    }
+   ],
+   "params": {
+    "history_messages": 20,
+    "history_tokens": null,
+    "num_ctx": 32768,
+    "num_predict": null,
+    "temperature": 0.2,
+    "think": false,
+    "toolset": "auto",
+    "top_k": null,
+    "top_p": null
+   },
+   "prior_assumptions": {
+    "x": [
+     "positive"
+    ]
+   },
+   "prior_evidence": [
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "x^{2} + x y + y^{2}": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r1",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "x^{2} + x y + y^{2}"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "numeric",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 1,
+      "restrictions_complete": null,
+      "symbolic_zero": null
+     },
+     "formula_roles": {
+      "2 x + y": "result"
+     },
+     "repeated": false,
+     "restrictions": [
+      "x - y \\neq 0"
+     ],
+     "result_id": "r2",
+     "status": "ok",
+     "variables": [
+      "x",
+      "y"
+     ],
+     "verified_latex": [
+      "2 x + y"
+     ]
+    },
+    {
+     "evidence": {
+      "accepted": true,
+      "check": "symbolic_zero",
+      "points_agreed": null,
+      "points_checked": null,
+      "reason": "verified",
+      "restrictions": 0,
+      "restrictions_complete": null,
+      "symbolic_zero": true
+     },
+     "formula_roles": {
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}": "conserved",
+      "\\mu r^{2} \\dot{\\theta}": "conserved"
+     },
+     "repeated": false,
+     "restrictions": [],
+     "result_id": null,
+     "status": "ok",
+     "variables": [
+      "r",
+      "theta"
+     ],
+     "verified_latex": [
+      "\\mu r^{2} \\dot{\\theta}",
+      "- \\frac{G M \\mu}{r} + \\frac{\\mu r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\mu \\dot{r}^{2}}{2}"
+     ]
+    }
+   ],
+   "prior_groups": [
+    "matrix",
+    "mechanics"
+   ],
+   "prior_known": [
+    "-\\frac{GM\\mu}r+\\frac{\\mu r^2\\dot{\\theta}^2}2+\\frac{\\mu\\dotr^2}2",
+    "2x+y",
+    "\\mu r^2\\dot{\\theta}",
+    "x^2+xy+y^2"
+   ],
+   "prior_matrices": [
+    "A",
+    "B"
+   ],
+   "prior_quoted": {
+    "3x^2": "from an earlier tool result; how it was verified was not recorded",
+    "\\frac{x^3-y^3}{x-y}": "the expression as you wrote it"
+   },
+   "prior_relations": [
+    "\\frac{x^3-y^3}{x-y}",
+    "x",
+    "x^{2} + x y + y^{2}",
+    "y = x^{3} + 1",
+    "x",
+    "2 x + y",
+    "x",
+    "3 x^{2}",
+    "L = \\frac{\\mu}{2}(\\dot{r}^2 + r^2 \\dot{\\theta}^2) + \\frac{G M \\mu}{r}",
+    "u = 2"
+   ],
+   "prior_restrictions": {
+    "r1": [
+     "x - y \\neq 0"
+    ],
+    "r2": [
+     "x - y \\neq 0"
+    ]
+   },
+   "prior_results": {
+    "r1": "x^{2} + x y + y^{2}",
+    "r2": "2 x + y",
+    "r3": "3 x^{2}"
+   },
+   "prior_unverified": {
+    "r3": [
+     "equation (3), written by the model and not verified by Minerva"
+    ]
+   },
+   "prior_vectors": [],
+   "routing": false,
+   "scalar_names": [
+    "C"
+   ],
+   "vector_kind_names": []
+  }
+ ],
+ "stored1": {
+  "equations": [
+   {
+    "latex": "w = x + 1",
+    "number": 9
+   }
+  ],
+  "references": [
+   {
+    "latex": "C_{1} = \\mu r^{2} \\dot{\\theta}",
+    "number": 7,
+    "source": "from_tool"
+   },
+   {
+    "latex": "x^{2} + x y + y^{2}",
+    "number": 2,
+    "source": "from_tool"
+   },
+   {
+    "latex": "y = x^{3} + 1",
+    "number": 3,
+    "source": "written_by_model"
+   },
+   {
+    "latex": "\\frac{x^3-y^3}{x-y}",
+    "number": 1,
+    "source": "yours"
+   },
+   {
+    "latex": null,
+    "number": 99,
+    "source": "unknown"
+   }
+  ],
+  "text": "Let v be a vector. Differentiate @r2 again. Compare equation 7 with equation 2, equation 3, equation 1 and equation 99. Take $$w = x + 1$$ as given."
+ },
+ "stored2": {
+  "equations": [
+   {
+    "latex": "w = x + 1",
+    "number": 11
+   }
+  ],
+  "references": [
+   {
+    "latex": "C_{1} = \\mu r^{2} \\dot{\\theta}",
+    "number": 7,
+    "source": "from_tool"
+   },
+   {
+    "latex": "x^{2} + x y + y^{2}",
+    "number": 2,
+    "source": "from_tool"
+   },
+   {
+    "latex": "y = x^{3} + 1",
+    "number": 3,
+    "source": "written_by_model"
+   },
+   {
+    "latex": "\\frac{x^3-y^3}{x-y}",
+    "number": 1,
+    "source": "yours"
+   },
+   {
+    "latex": null,
+    "number": 99,
+    "source": "unknown"
+   }
+  ],
+  "text": "Let v be a vector. Differentiate @r2 again. Compare equation 7 with equation 2, equation 3, equation 1 and equation 99. Take $$w = x + 1$$ as given."
+ },
+ "stored3": {
+  "references": [
+   {
+    "latex": null,
+    "number": 10,
+    "source": "unknown"
+   },
+   {
+    "latex": null,
+    "number": 11,
+    "source": "unknown"
+   }
+  ],
+  "text": "Use equation 10 again, and equation 11. Let C be a scalar."
+ },
+ "tools": [
+  [
+   "search_handbook",
+   "get_entry",
+   "simplify",
+   "find_identities",
+   "isolate_variable",
+   "solve_polynomial",
+   "differentiate",
+   "series",
+   "integrate",
+   "creative_telescoping",
+   "substitute",
+   "rewrite_part",
+   "load_tools",
+   "matrix_calculus",
+   "analyze_lagrangian",
+   "time_derivative",
+   "integrate_motion",
+   "expand_motion",
+   "perturbation_solve",
+   "search_invariants",
+   "find_conserved_quantities"
+  ],
+  [
+   "search_handbook",
+   "get_entry",
+   "simplify",
+   "find_identities",
+   "isolate_variable",
+   "solve_polynomial",
+   "differentiate",
+   "series",
+   "integrate",
+   "creative_telescoping",
+   "substitute",
+   "rewrite_part",
+   "load_tools",
+   "matrix_calculus",
+   "analyze_lagrangian",
+   "time_derivative",
+   "integrate_motion",
+   "expand_motion",
+   "perturbation_solve",
+   "search_invariants",
+   "find_conserved_quantities"
+  ],
+  [
+   "search_handbook",
+   "get_entry",
+   "simplify",
+   "find_identities",
+   "isolate_variable",
+   "solve_polynomial",
+   "differentiate",
+   "series",
+   "integrate",
+   "creative_telescoping",
+   "substitute",
+   "rewrite_part",
+   "load_tools",
+   "matrix_calculus",
+   "analyze_lagrangian",
+   "time_derivative",
+   "integrate_motion",
+   "expand_motion",
+   "perturbation_solve",
+   "search_invariants",
+   "find_conserved_quantities"
+  ],
+  [
+   "search_handbook",
+   "get_entry",
+   "simplify",
+   "find_identities",
+   "isolate_variable",
+   "solve_polynomial",
+   "differentiate",
+   "series",
+   "integrate",
+   "creative_telescoping",
+   "substitute",
+   "rewrite_part",
+   "load_tools",
+   "matrix_calculus",
+   "analyze_lagrangian",
+   "time_derivative",
+   "integrate_motion",
+   "expand_motion",
+   "perturbation_solve",
+   "search_invariants",
+   "find_conserved_quantities"
+  ]
+ ]
+}

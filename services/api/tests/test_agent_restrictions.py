@@ -14,7 +14,7 @@ from minerva_api.agent.loop import AgentLimits, run_agent
 from minerva_api.agent.refs import ResultStore, inherited_note
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import ToolContext
-from minerva_api.routers_chat import _history
+from minerva_api.agent.turn_context import _history
 from minerva_engine import Engine
 from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase

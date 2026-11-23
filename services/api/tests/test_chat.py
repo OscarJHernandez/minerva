@@ -238,7 +238,7 @@ def test_assistant_message_stores_a_debug_record(chat_client: tuple[TestClient, 
 
 
 def test_messages_stored_before_debug_existed_still_work() -> None:
-    from minerva_api.routers_chat import _history
+    from minerva_api.agent.turn_context import _history
 
     class Row:
         role = "assistant"
@@ -574,7 +574,7 @@ def test_matrix_turn_blocked_merge_asks_about_commutation(
 
 
 def test_claim_context_collects_earlier_formulas_and_assumptions() -> None:
-    from minerva_api.routers_chat import _claim_context
+    from minerva_api.agent.turn_context import _claim_context
 
     class Row:
         def __init__(self, role: str, content: dict[str, object]) -> None:

@@ -223,6 +223,14 @@ prompt and tool schemas it was sent, also on `llm.request`) and the tool groups 
 is the catalogue fingerprint. The timeline shows `tool.failed` and `tool.declined` events with their reason
 code and category.
 
+## Report format 4 and follow-up turns
+
+Format 4 adds what a later turn is rebuilt from: each assistant message's `blocks` (the cards as stored: their
+data, `number` and `numbers`), each user message's `equations` and `references`, and `conversation`
+(`equation_counter`: the server's high-water mark, never below the numbers shown; `messages_total`,
+`first_message_index` and `messages_included`, because "Copy this turn" holds only one exchange). Formats 2 and 3
+are still read. The report holds conversation content, as before.
+
 ## Replaying a report
 
 ```bash
@@ -236,6 +244,25 @@ references, formula marks, the claim check and stop reasons are real; only the m
 reproduces what the agent did with those replies, not the model. Reports of format 1 (before tracing) can
 be replayed call by call. `--llm` also compares the arguments that were executed and the evidence verdict
 (check, accepted, reason) of each step, not only tool names and statuses.
+
+A follow-up is given the context the live chat gave it, by the same function (`agent/turn_context.py`): the history,
+the verified constants of earlier discovery cards (`time_derivative` inserts them), `@rN` results and the
+restrictions they carry, the equation table and what "equation 3" meant, the equations a result was computed from
+that Minerva never verified, the claim checker's relations, assumptions and verified evidence, the declarations in
+words and the tool groups. Numbering is replayed from the report's high-water mark: the smallest mark under which
+the numbers and references recorded on the user's message come out again, so a number that vanished (a retry or an
+edit) is not handed out again and a reference to it is not recreated; when the report cannot say which, it says so.
+Only a `ReplayLLM` is used: no model host is contacted, ever.
+
+What a report cannot give back is listed as `missing` (`earlier messages`, `constants`, `result handles`,
+`restrictions`, `unverified inputs`, `equation table`): formats 2 and 3 hold the trace but not the cards, and a
+per-turn copy holds only one exchange. The verdict is then `NOT FAITHFUL`, or `NOT COMPARABLE` when a call that
+depends on the missing part (a reference to an earlier result or equation, a total derivative, formula marks and
+the reply text) came out differently: those are listed as "differences that missing context may explain", apart
+from a difference in what the engine did, which stays `DIFFERENT`. Exit status: 0 the replay was faithful and
+unchanged, 1 a difference the missing context cannot explain, 2 the report could not be read, 3 not faithful (not
+a pass). A replay with a first assistant turn, or earlier turns that had no tool results and no numbered
+formulas, misses nothing and says nothing about earlier turns.
 
 ```bash
 uv run python scripts/replay_trace.py report.md --to-fixture /tmp/failure.json   # outside the repository

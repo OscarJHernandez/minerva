@@ -33,7 +33,7 @@ from minerva_api.agent.refs import (
 )
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import LONG_RESULT, ToolContext, ToolOutput, execute
-from minerva_api.routers_chat import _history
+from minerva_api.agent.turn_context import _history
 from minerva_engine import Engine
 from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
