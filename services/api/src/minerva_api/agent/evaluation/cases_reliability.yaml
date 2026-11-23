@@ -284,6 +284,36 @@
       order: 2
   source: "`expand_motion` expands in every coordinate at once, so it cannot express one small angle; a Taylor series in theta_1 only (series) or a question is the faithful answer (issue 137)"
 
+# Issue 137, the whole chat: the three earlier turns are the stored text of the reported conversation (plain history, no
+# tool calls), the last one is the user's own wording. "l1 moving as a small angle" names a rod length, not an angle: the
+# reply may ask or use the first angle only, and must say which regime it uses; both angles small is a different regime.
+- id: double-pendulum-chat-one-small-angle-in-the-users-words
+  category: ambiguous
+  prompt: 'Can we approximate system if the l1 is moving as a small angle thing'
+  history:
+    - {role: user, content: 'Whats the lagrangian for a double pendulum'}
+    - {role: assistant, content: 'For two point masses $m_1$, $m_2$ on rods of length $l_1$, $l_2$ with angles $\theta_1$, $\theta_2$ from the vertical: $$L = \frac{1}{2}(m_1 + m_2)l_1^2\dot{\theta}_1^2 + \frac{1}{2}m_2l_2^2\dot{\theta}_2^2 + m_2l_1l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) + (m_1+m_2)gl_1\cos\theta_1 + m_2gl_2\cos\theta_2$$ (1)'}
+    - {role: user, content: 'What are the symmetries of Equation (1)'}
+    - {role: assistant, content: 'L does not depend on time explicitly, so the energy is conserved. It depends on both angles, so neither is cyclic and there is no conserved angular momentum.'}
+    - {role: user, content: 'Are there any hidden symmetries?'}
+    - {role: assistant, content: 'Within the families searched no further constant of motion was found; that does not show there is none.'}
+  expected_tool: series
+  also_ok: [approximation]
+  forbid: [expand_motion]
+  tools_optional: true
+  max_calls: 4
+  expect_card: {status: ok}
+  reply_matches: 'theta_1|first angle|first rod|l_1|only|which'
+  reply_forbids: '(?i)both (angles|\$?\\theta)'
+  reference:
+    tool: series
+    arguments:
+      latex: '\frac{1}{2}(m_1 + m_2)l_1^2\dot{\theta}_1^2 + \frac{1}{2}m_2l_2^2\dot{\theta}_2^2 + m_2l_1l_2\dot{\theta}_1\dot{\theta}_2\cos(\theta_1-\theta_2) + (m_1+m_2)gl_1\cos\theta_1 + m_2gl_2\cos\theta_2'
+      variable: theta_1
+      point: '0'
+      order: 2
+  source: "issue 137 trace: `expand_motion` expands every coordinate at once (both angles small), the user named one small angle; a Taylor series in theta_1 only, or a question about the regime, is the faithful answer"
+
 - id: answer-without-thinking-aloud
   category: ambiguous
   prompt: 'Whats the tautochrone problem, in two sentences?'
