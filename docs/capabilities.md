@@ -2765,6 +2765,7 @@ The derivative with respect to time of a momentum, an energy or any candidate co
 - It is not a partial derivative; `differentiate` by t of an expression that contains velocities is refused and points here.
 - A zero is a statement about the Lagrangian given (on its equations of motion), never about other systems, and the nonzero case is worded as an exact substitution of the verified accelerations.
 - Expressions that already contain accelerations need third derivatives and are not supported.
+- The names `C_{1}`... of constants an earlier search found are replaced by their verified expressions by the server, never by the model, and only when each name has exactly one verified definition in one Lagrangian system; otherwise the call is refused with the reason. The derivative and its check are of the expression with them inserted.
 
 #### Angular momentum, by the product rule
 
@@ -2786,6 +2787,21 @@ The derivative with respect to time of a momentum, an energy or any candidate co
 - **Check:** central difference of the input along random motions agreed at 10 of 10 points
 - Total time derivative along a motion; verified against a central difference of the input along random motions.
 - Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.
+- Zero on the equations of motion of the Lagrangian given (confirmed numerically; also a symbolic zero). That is a statement about this Lagrangian's motions, not about other systems.
+
+#### A relation among the four Kepler constants is zero on the motion
+
+- **Input:** `2 C_{1}^{2} C_{2} - C_{3}^{2} \mu^{3} - C_{4}^{2} \mu^{3} + G^{2} M^{2} \mu^{3}` (LaTeX)
+- **Status:** `ok`
+- **Constant of motion, as found earlier:** $C_{1} = \mu r^{2} \dot{\theta}$
+- **Constant of motion, as found earlier:** $C_{2} = - \frac{G M \mu}{r} + \frac{\mu r^{2} \dot{\theta}^{2}}{2} + \frac{\mu \dot{r}^{2}}{2}$
+- **Constant of motion, as found earlier:** $C_{3} = - G M \cos{\left(\theta \right)} + r^{3} \dot{\theta}^{2} \cos{\left(\theta \right)} + r^{2} \dot{r} \dot{\theta} \sin{\left(\theta \right)}$
+- **Constant of motion, as found earlier:** $C_{4} = G M \sin{\left(\theta \right)} - r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} + r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}$
+- **On the equations of motion (zero):** $0$
+- **Check:** central difference of the input along random motions agreed at 10 of 10 points
+- Total time derivative along a motion; verified against a central difference of the input along random motions.
+- Total derivative along a motion q(t): velocities and accelerations are the first and second time derivatives of the coordinates (chain rule); this is not a partial derivative.
+- Inserted, as given: $C_{1}$, $C_{2}$, $C_{3}$, $C_{4}$. The derivative and its check are of the expression with these replaced.
 - Zero on the equations of motion of the Lagrangian given (confirmed numerically; also a symbolic zero). That is a statement about this Lagrangian's motions, not about other systems.
 
 #### A quantity that is not constant on those motions

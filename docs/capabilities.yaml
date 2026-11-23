@@ -12,7 +12,8 @@
 # fields that op needs:
 #   simplify     input, assumptions, goal (simplify | expand | factor | rewrite), target [function names]
 #   differentiate input, variables [{name, order}], assumptions
-#   time_derivative input, coordinates, lagrangian (optional, as an expression), time, assumptions
+#   time_derivative input, coordinates, lagrangian (optional, as an expression), time, assumptions, definitions
+#                {name: expression} (verified constants of motion of an earlier result; in chat the server fills them)
 #   series       input, variable, point, order, assumptions
 #   matrix       input, matrices [{name, rows, cols | entries, depends_on}], action (evaluate | simplify |
 #                differentiate | integrate | evolve), variable, lower, upper, commuting [[A, B]],
@@ -2162,6 +2163,10 @@ capabilities:
       - A zero is a statement about the Lagrangian given (on its equations of motion), never about other
         systems, and the nonzero case is worded as an exact substitution of the verified accelerations.
       - Expressions that already contain accelerations need third derivatives and are not supported.
+      - The names `C_{1}`... of constants an earlier search found are replaced by their verified expressions
+        by the server, never by the model, and only when each name has exactly one verified definition in one
+        Lagrangian system; otherwise the call is refused with the reason. The derivative and its check are of
+        the expression with them inserted.
     examples:
       - id: time-derivative-angular-momentum
         title: Angular momentum, by the product rule
@@ -2176,6 +2181,17 @@ capabilities:
         coordinates: [r, theta]
         lagrangian: '\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
         assumptions: { mu: [positive], k: [positive], r: [positive] }
+      - id: time-derivative-kepler-relation
+        title: A relation among the four Kepler constants is zero on the motion
+        op: time_derivative
+        input: '2 C_{1}^{2} C_{2} - C_{3}^{2} \mu^{3} - C_{4}^{2} \mu^{3} + G^{2} M^{2} \mu^{3}'
+        coordinates: [r, theta]
+        lagrangian: '\frac{\mu}{2} (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{G M \mu}{r}'
+        definitions:
+          C_1: '\mu r^{2} \dot{\theta}'
+          C_2: '- \frac{G M \mu}{r} + \frac{\mu r^{2} \dot{\theta}^{2}}{2} + \frac{\mu \dot{r}^{2}}{2}'
+          C_3: '- G M \cos{\theta} + r^{3} \dot{\theta}^{2} \cos{\theta} + r^{2} \dot{r} \dot{\theta} \sin{\theta}'
+          C_4: 'G M \sin{\theta} - r^{3} \dot{\theta}^{2} \sin{\theta} + r^{2} \dot{r} \dot{\theta} \cos{\theta}'
       - id: time-derivative-not-constant
         title: A quantity that is not constant on those motions
         op: time_derivative

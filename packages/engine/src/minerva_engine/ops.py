@@ -245,6 +245,7 @@ def op_time_derivative(payload: dict[str, Any]) -> dict[str, Any]:
         str(payload.get("time", "t")),
         payload.get("lagrangian"),
         Limits(**payload["limits"]),
+        payload.get("definitions") or None,
     )
     return result.model_dump(mode="json")
 

@@ -46,7 +46,7 @@ from minerva_engine import (
 from minerva_engine.claims import mentions_name
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_engine.integration_strategy.models import StrategyName
-from minerva_engine.notation.models import Normalization
+from minerva_engine.notation.models import InputDiagnostic, Normalization
 from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
 from minerva_knowledge.identities import (
@@ -70,6 +70,7 @@ from ..search_log import log_search_events
 from ..variation_log import log_variation
 from ..vector_log import log_vector
 from .choice import numbers_in
+from .constants import KnownConstant, Refusal, expand_constants
 from .events import Card, Evidence
 from .evidence import evidence_for
 from .mathinput import (
@@ -125,6 +126,10 @@ class ToolContext:
     # Set by the loop for one call (and cleared after it): what `mathinput.prepare_arguments` removed from
     # the model's arguments (markdown escapes, a `$` wrapper, `L =`...). `execute` shows it with the result.
     input_notes: tuple[Normalization, ...] = ()
+    # The constants of motion earlier results of this conversation found and verified (set by the chat route
+    # from the stored discovery cards, never by the model): `time_derivative` inserts their expressions for
+    # the names `C_{1}`... that its quantity uses (`agent/constants.py`).
+    constants: tuple[KnownConstant, ...] = ()
 
 
 @dataclass
@@ -1063,6 +1068,7 @@ def _error(
 
 # --- tool implementations ----------------------------------------------------------------------
 MAX_STEPS_FOR_MODEL = 6
+LONG_RESULT = 800  # characters of LaTeX; a longer total derivative stays on the card
 
 
 NOT_APPLIED = "a handbook identity that was not applied: its conditions are not established"
@@ -1238,8 +1244,30 @@ def run_differentiate(args: DifferentiateArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, text, known, result.status.value)
 
 
+def _constants_refusal(refusal: Refusal) -> ToolOutput:
+    out = _error("time_derivative", refusal.message, "unsupported")
+    diagnostic = InputDiagnostic(
+        code=refusal.code, field="latex", symbols=list(refusal.symbols), recoverable=False
+    )
+    out.card.data["diagnostic"] = diagnostic.model_dump(mode="json")
+    out.reason_code = refusal.code.value
+    return out
+
+
 def run_time_derivative(args: TimeDerivativeArgs, ctx: ToolContext) -> ToolOutput:
-    result = ctx.engine.time_derivative(_expr(args), args.coordinates, args.time, args.lagrangian)
+    expansion = expand_constants(args.latex, ctx.constants)
+    if isinstance(expansion, Refusal):
+        return _constants_refusal(expansion)
+    # The system of the constants is the one whose equations of motion the zero is decided on, unless the
+    # call names its own Lagrangian.
+    lagrangian = args.lagrangian or (expansion.function if expansion else None)
+    result = ctx.engine.time_derivative(
+        _expr(args),
+        args.coordinates,
+        args.time,
+        lagrangian,
+        expansion.definitions if expansion else None,
+    )
     card = Card(
         id=uuid.uuid4().hex[:8],
         tool="time_derivative",
@@ -1250,7 +1278,22 @@ def run_time_derivative(args: TimeDerivativeArgs, ctx: ToolContext) -> ToolOutpu
     v = result.verification
     text = (
         f"status={result.status.value}; {_as_read(result.input_latex)}"
-        + (f"total time derivative=${result.result_latex}$; " if result.result_latex else "")
+        + (
+            "constants replaced by their verified expressions from the earlier result: "
+            + "; ".join(f"${d}$" for d in result.definitions_used)
+            + "; "
+            if result.definitions_used
+            else ""
+        )
+        + (
+            f"total time derivative=${result.result_latex}$; "
+            if result.result_latex and len(result.result_latex) <= LONG_RESULT
+            else (
+                "total time derivative: a long expression, on the card and not repeated here; "
+                if result.result_latex
+                else ""
+            )
+        )
         + (
             f"numerically checked along random motions: {v.points_agreed}/{v.points_checked} points; "
             if v

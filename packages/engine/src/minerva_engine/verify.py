@@ -75,10 +75,15 @@ def _sample(
 _POLE = object()  # sentinel: the expression is genuinely undefined here (zoo, oo, nan)
 
 
-def _evaluate_ex(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | object | None:
+DIGITS = 30
+
+
+def _evaluate_ex(
+    expr: sp.Expr, values: dict[sp.Symbol, sp.Expr], digits: int = DIGITS
+) -> complex | object | None:
     """A complex value, `_POLE` for a genuine pole, or None when evaluation failed or overflowed."""
     try:
-        number = expr.xreplace(values).evalf(30)
+        number = expr.xreplace(values).evalf(digits)
         if number.has(sp.zoo, sp.oo, sp.nan, -sp.oo):
             return _POLE
         if not number.is_number:
@@ -93,6 +98,46 @@ def _evaluate_ex(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | o
     return value
 
 
+def _exact(value: sp.Expr) -> tuple[mpmath.mpf, mpmath.mpf]:
+    """(re, im) of a sample at the working precision, taking each float as the exact rational it is."""
+    re_part, im_part = value.xreplace(
+        {f: sp.Rational(f) for f in value.atoms(sp.Float)}
+    ).as_real_imag()
+    return (
+        mpmath.mpf(re_part.p) / re_part.q if re_part != 0 else mpmath.mpf(0),
+        mpmath.mpf(im_part.p) / im_part.q if im_part != 0 else mpmath.mpf(0),
+    )
+
+
+def _high_precision(
+    expr: sp.Expr, symbols: Sequence[sp.Symbol], digits: int
+) -> Callable[[dict[sp.Symbol, sp.Expr]], complex | object | None]:
+    """An evaluator that runs `expr` once through mpmath at `digits` digits, on the samples as exact
+    rationals. SymPy's `evalf` checks an expression made of large cancelling terms again and again
+    (seconds per point), and a 53-bit float sample caps the precision of everything it touches, so the
+    default evaluation cannot tell a true zero of such an expression from noise at 1e-9."""
+    function = sp.lambdify(list(symbols), expr, modules="mpmath", cse=True)
+
+    def evaluate(values: dict[sp.Symbol, sp.Expr]) -> complex | object | None:
+        try:
+            with mpmath.workdps(digits):
+                args = []
+                for symbol in symbols:
+                    re_part, im_part = _exact(values[symbol])
+                    args.append(mpmath.mpc(re_part, im_part) if im_part != 0 else re_part)
+                out = function(*args)
+                value = complex(out)
+        except ZeroDivisionError:
+            return _POLE
+        except (TypeError, ValueError, OverflowError, AttributeError):
+            return None
+        if value != value or abs(value) == float("inf"):
+            return None
+        return value
+
+    return evaluate
+
+
 def _evaluate(expr: sp.Expr, values: dict[sp.Symbol, sp.Expr]) -> complex | None:
     value = _evaluate_ex(expr, values)
     return None if value is _POLE else value  # type: ignore[return-value]
@@ -103,7 +148,7 @@ WIDE_POINTS = 8
 
 
 def numeric_detail(
-    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12
+    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12, digits: int = DIGITS
 ) -> tuple[int, int, int]:
     """Return (points_checked, points_agreed, points_skipped).
 
@@ -116,6 +161,17 @@ def numeric_detail(
     symbols = sorted(a.free_symbols | b.free_symbols, key=lambda s: s.name)
     rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
     checked = agreed = skipped = 0
+    if digits > DIGITS:
+        evaluate_a = _high_precision(a, symbols, digits)
+        evaluate_b = _high_precision(b, symbols, digits)
+    else:
+
+        def evaluate_a(values: dict[sp.Symbol, sp.Expr]) -> complex | object | None:
+            return _evaluate_ex(a, values)
+
+        def evaluate_b(values: dict[sp.Symbol, sp.Expr]) -> complex | object | None:
+            return _evaluate_ex(b, values)
+
     if max_points >= NARROW_POINTS:
         tranches = ((False, NARROW_POINTS), (True, WIDE_POINTS))
     else:  # a screening check: split the smaller budget between both regions
@@ -124,8 +180,8 @@ def numeric_detail(
         got = 0
         for _ in range(SAMPLE_ATTEMPTS):
             values = {s: _sample(s, rng, wide=wide, spread=max(1, len(symbols))) for s in symbols}
-            va = _evaluate_ex(a, values)
-            vb = _evaluate_ex(b, values)
+            va = evaluate_a(values)
+            vb = evaluate_b(values)
             if (va is _POLE) != (vb is _POLE):
                 checked += 1  # defined on one side only: different domains
                 got += 1
@@ -144,10 +200,12 @@ def numeric_detail(
 
 
 def numeric_check(
-    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12
+    a: sp.Expr, b: sp.Expr, *, seed: int = 20260101, max_points: int = 12, digits: int = DIGITS
 ) -> tuple[int, int]:
-    """Return (points_checked, points_agreed) over random assumption-respecting points."""
-    checked, agreed, _ = numeric_detail(a, b, seed=seed, max_points=max_points)
+    """Return (points_checked, points_agreed) over random assumption-respecting points. More `digits`
+    only evaluates the same expressions more precisely (terms that cancel exactly leave less noise);
+    the tolerance does not change."""
+    checked, agreed, _ = numeric_detail(a, b, seed=seed, max_points=max_points, digits=digits)
     return checked, agreed
 
 
