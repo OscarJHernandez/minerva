@@ -241,9 +241,12 @@ tells), and it is not a measure of the model.
   with the fix). `find_conserved_quantities` takes `format` since issue 131 and refuses more than three coordinates with
   the typed code `too_many_coordinates` (the limit, what a user may do by hand, and that reduction and a larger search
   are not available yet); the coordinate cap of its schema is 8 so that this reason, not a generic length error, is shown.
-* A coordinate named `t` clashes with the default time symbol `t`: `analyze_lagrangian` then answers `not_verified`
-  (the Euler-Lagrange check cannot separate the two). The `time` argument says so and the reliability case
-  `schwarzschild-chat-conserved-quantities-are-scoped` uses `time: s`. A typed refusal for the clash is not built.
+* A coordinate named `t` clashes with the default time symbol `t` (Schwarzschild in `(t, r, theta, phi)`). Every tool
+  with both `coordinates` and `time` (`analyze_lagrangian`, `find_conserved_quantities`, `search_invariants`,
+  `expand_motion`, `perturbation_solve`, `integrate_motion`, `time_derivative`) refuses it with `parse_error` and the typed,
+  recoverable code `time_symbol_is_coordinate` (field `time`, the clashing name, free names to use such as `s`; checked
+  in `derive`, `hamiltonian_flow` and `time_derivative` through `notation/time_symbol.py`). Nothing is renamed and no
+  time symbol is chosen; the call with `time: s` is a different call and runs.
 * Inline formulas have no handle (only displayed ones); distinct verification marks and the per-call prompt size are
   still open (see "Not done" above).
 * A coordinate named like a derivative spelling (`xdot` with `x`) is kept as declared, but the LaTeX printer shows a

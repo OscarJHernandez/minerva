@@ -44,6 +44,9 @@ class InputCode(StrEnum):
     CONSTANT_NOT_VERIFIED = "constant_not_verified"
     # The discovery of conserved quantities supports at most `flow.MAX_COORDINATES` coordinates.
     TOO_MANY_COORDINATES = "too_many_coordinates"
+    # The `time` symbol of a mechanics tool is also the name of a coordinate (or momentum): nothing is
+    # renamed; the diagnostic lists free names (`notation/time_symbol.py`).
+    TIME_SYMBOL_IS_COORDINATE = "time_symbol_is_coordinate"
 
 
 class NormalizationKind(StrEnum):
