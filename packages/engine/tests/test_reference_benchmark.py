@@ -55,6 +55,22 @@ def test_outcomes_match_the_committed_report(rows: list[dict[str, object]]) -> N
     assert all(f"`{r['id']}`" in report for r in rows)
 
 
+@pytest.mark.parametrize("ambient_dps", [15, 20, 25])
+def test_a_judge_does_not_depend_on_the_precision_a_previous_test_left_behind(
+    engine: Engine, ambient_dps: int
+) -> None:
+    # Regression (nightly 2026-11-20 onward): the Pythagorean oracle's 1e-25 threshold failed at 20 digits.
+    problem = next(p for p in PROBLEMS if p.id == "simplify-pythagorean-identity")
+    before = mp.mp.dps
+    mp.mp.dps = ambient_dps
+    try:
+        outcome, detail = problem.judge(engine)
+        assert mp.mp.dps == ambient_dps  # the judge restores what it found
+    finally:
+        mp.mp.dps = before
+    assert outcome == "correct", detail
+
+
 def test_the_corpus_covers_the_requested_domains_with_both_kinds_of_problem() -> None:
     categories = {p.category for p in PROBLEMS}
     assert categories >= {
