@@ -21,7 +21,16 @@ from minerva_api.agent.equations import (
 )
 from minerva_api.agent.events import Block, Card
 from minerva_api.agent.loop import run_agent
-from minerva_api.agent.refs import NO_ID_SUFFIX, ResultStore
+from minerva_api.agent.refs import (
+    COMPONENT_SUFFIX,
+    NO_ID_SUFFIX,
+    UNLINKED_INPUT,
+    UNNUMBERED_INPUT,
+    UNVERIFIED_INPUT,
+    ResultStore,
+    quote_reason,
+    unverified_note,
+)
 from minerva_api.agent.replay import ReplayLLM, call, say
 from minerva_api.agent.tools import LONG_RESULT, ToolContext, ToolOutput, execute
 from minerva_api.routers_chat import _history
@@ -312,3 +321,27 @@ def test_an_over_limit_handle_is_refused_by_the_receiving_tool(
     step = msg["trace"][0]
     assert step["status"] != "ok" and step["result_id"] is None
     assert step["verified_latex"] == []
+
+
+def test_the_three_provenance_classes_have_their_own_sentences_and_reasons() -> None:
+    written, part = "equation (2)", f"equation (3){COMPONENT_SUFFIX}"
+    unnumbered = f"equation (4){NO_ID_SUFFIX}"
+    assert "which the model wrote and Minerva never verified" in unverified_note([written])
+    list_note = unverified_note([part])
+    assert (
+        list_note.startswith("Input taken from a list:")
+        and "reusing one component by number" in list_note
+    )
+    no_id = unverified_note([unnumbered])
+    assert no_id.startswith("Input without a result id:") and "taken from a list" not in no_id
+    assert "component" not in no_id
+    both = unverified_note([part, unnumbered])  # each class keeps its own sentence
+    assert (
+        both.count("Input taken from a list") == 1 and both.count("Input without a result id") == 1
+    )
+    assert "equation (4)" not in list_note + unverified_note([written])
+    assert quote_reason([part]) == UNLINKED_INPUT
+    assert quote_reason([unnumbered]) == UNNUMBERED_INPUT
+    assert quote_reason([written, part, unnumbered]) == UNVERIFIED_INPUT
+    assert quote_reason([part, unnumbered]) == UNLINKED_INPUT
+    assert len({UNLINKED_INPUT, UNNUMBERED_INPUT, UNVERIFIED_INPUT}) == 3
