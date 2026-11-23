@@ -167,9 +167,7 @@ A derivative with respect to time of a quantity that contains velocities (a mome
    candidate constant) is the TOTAL derivative along a motion: call `time_derivative` with the coordinates
    (and the Lagrangian when the question is whether it is conserved). `differentiate` by t holds the
    velocities fixed and is refused for such an expression. Say a quantity is zero or constant only as the
-   result states it (on the equations of motion of the Lagrangian given). For a relation among the constants
-   `C_{1}`... a search listed, send it by its equation number (`@e14`) with the same Lagrangian: the server inserts their verified expressions,
-   so never write one yourself.\
+   result states it (on the equations of motion of the Lagrangian given).\
 """,
         """\
 A numerical solution (integrate_motion) needs numbers that only the user can choose: values of every
