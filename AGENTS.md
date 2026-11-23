@@ -432,6 +432,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   Lagrangian it is also evaluated on the equations of motion (`derive`, confirmed by `check_equations`) and a zero is
   decided as for a constant of motion; "zero on the equations of motion of this Lagrangian" is the only wording, the
   nonzero formula is quoted (never `known_latex`), and accelerations in the input are `unsupported`.
+  Handles (issue #149): `time_derivative` is in `refs.REFERENCEABLE_TOOLS`, so a verified total derivative has an
+  `@rN` and, as a tool card's single result, an equation number **whatever its length** (`number_for(any_length=True)`;
+  the 500-character limit stays for the model's prose and the user's formulas, and list rows). The id names
+  `result_latex`, the derivative before any equations of motion are used, with inherited restrictions and unverified
+  inputs carried as for every tool. The conclusion on the equations of motion (`zero_on_motion`, `on_motion_latex`) gets
+  **no handle** and a plain `0` is never registered (it would drop the system); the tool text says so
+  (`TOTAL_DERIVATIVE_HANDLE_NOTE`) and a nonzero on-motion formula stays `quoted_latex`. Above `LONG_RESULT` the text
+  points to the result id instead of "not repeated here". Receiving tools keep their input limits: an over-limit handle
+  is refused there. A card equation `@eN` with no result id is substituted but carries `NO_ID_SUFFIX` provenance (no
+  verification or restrictions carried over), like a list row. Tests: `test_total_derivative_handles.py`.
   Names of constants of motion an earlier `find_conserved_quantities` listed (`C_{1}`...: "the derivative of Equation 14
   with respect to time") are bare symbols with no dependence on the motion (`unsupported`, `no_dynamic_dependence`, never a
   retry). The SERVER inserts their verified expressions (`agent/constants.py`, `ToolContext.constants` read from the

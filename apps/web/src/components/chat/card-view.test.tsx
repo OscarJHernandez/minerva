@@ -64,6 +64,7 @@ describe("CardView, qualifications stored on a card", () => {
   const restrictions = ["x \\neq 1"];
   const written = "equation (2)";
   const part = "equation (3), a component of an earlier result";
+  const noId = "equation (4), a tool result with no result id";
 
   it("shows inherited restrictions alone, as the stored formula", () => {
     render(<CardView card={card({ inherited_restrictions_latex: restrictions })} />);
@@ -91,6 +92,31 @@ describe("CardView, qualifications stored on a card", () => {
     expect(box).toHaveTextContent("verification and restrictions were not carried forward");
     expect(box).not.toHaveTextContent(/never verified/i);
     expect(screen.queryByLabelText("Input not verified")).not.toBeInTheDocument();
+  });
+
+  it("says a tool result without a result id was computed by a tool but its verification and restrictions were not carried, never that the model wrote it", () => {
+    render(<CardView card={card({ unverified_inputs: [noId] })} />);
+    const box = screen.getByLabelText("Input without a result id");
+    expect(box).toHaveTextContent(noId);
+    expect(box).toHaveTextContent("A tool computed this equation");
+    expect(box).toHaveTextContent("does not carry that tool's verification or restrictions");
+    expect(box).not.toHaveTextContent(/model wrote/i);
+    expect(box).not.toHaveTextContent(/never verified/i);
+    expect(screen.queryByLabelText("Input not verified")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Input taken from a list")).not.toBeInTheDocument();
+  });
+
+  it("shows all three input kinds together, each entry under its own heading only", () => {
+    render(<CardView card={card({ unverified_inputs: [written, part, noId] })} />);
+    const w = screen.getByLabelText("Input not verified");
+    const p = screen.getByLabelText("Input taken from a list");
+    const n = screen.getByLabelText("Input without a result id");
+    expect(w).toHaveTextContent("equation (2)");
+    expect(w).not.toHaveTextContent("equation (4)");
+    expect(p).toHaveTextContent("equation (3)");
+    expect(p).not.toHaveTextContent("equation (4)");
+    expect(n).toHaveTextContent("equation (4)");
+    expect(n).not.toHaveTextContent("equation (2)");
   });
 
   it("shows every kind together, each entry under its own heading", () => {
@@ -121,6 +147,7 @@ describe("CardView, qualifications stored on a card", () => {
       expect(screen.queryByLabelText("Inherited conditions")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Input not verified")).not.toBeInTheDocument();
       expect(screen.queryByLabelText("Input taken from a list")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Input without a result id")).not.toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Total time derivative" })).toBeVisible();
       unmount();
     }

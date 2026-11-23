@@ -1069,6 +1069,13 @@ def _error(
 # --- tool implementations ----------------------------------------------------------------------
 MAX_STEPS_FOR_MODEL = 6
 LONG_RESULT = 800  # characters of LaTeX; a longer total derivative stays on the card
+# What a result id of `time_derivative` names. The conclusion on the equations of motion has no id (a plain 0
+# would drop the system it was decided on), so the model is told, never left to guess.
+TOTAL_DERIVATIVE_HANDLE_NOTE = (
+    "reuse: the result id below names the total derivative as computed, before any equations of motion are "
+    "used; the conclusion on the equations of motion is a separate statement about the Lagrangian given and "
+    "has no result id, so it cannot be reused by @rN or @eN (state it in words); "
+)
 
 
 NOT_APPLIED = "a handbook identity that was not applied: its conditions are not established"
@@ -1289,10 +1296,16 @@ def run_time_derivative(args: TimeDerivativeArgs, ctx: ToolContext) -> ToolOutpu
             f"total time derivative=${result.result_latex}$; "
             if result.result_latex and len(result.result_latex) <= LONG_RESULT
             else (
-                "total time derivative: a long expression, on the card and not repeated here; "
+                "total time derivative: a long expression, on the card and not repeated here "
+                "(reuse it exactly by its result id, given below, never by retyping it); "
                 if result.result_latex
                 else ""
             )
+        )
+        + (
+            TOTAL_DERIVATIVE_HANDLE_NOTE
+            if result.result_latex and result.status.value == "ok"
+            else ""
         )
         + (
             f"numerically checked along random motions: {v.points_agreed}/{v.points_checked} points; "
