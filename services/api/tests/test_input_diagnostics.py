@@ -150,13 +150,20 @@ def test_text_in_the_default_format_of_find_conserved_quantities_is_read_as_text
     assert out.status == "ok"
 
 
-def test_four_coordinates_are_refused_with_the_limit_and_what_to_do(ctx: ToolContext) -> None:
-    lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2)"
-    arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d"]}
+def test_four_coordinates_are_searched(ctx: ToolContext) -> None:
+    lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2) - 1/2*(a^2 + b^2 + c^2 + d^2)"
+    arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d"], "budget": "quick"}
+    out = execute("find_conserved_quantities", arguments, ctx)
+    assert out.status == "ok" and out.reason_code != "too_many_coordinates"
+
+
+def test_five_coordinates_are_refused_with_the_limit_and_what_to_do(ctx: ToolContext) -> None:
+    lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2 + e_dot^2)"
+    arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d", "e"]}
     out = execute("find_conserved_quantities", arguments, ctx)
     assert out.status == "unsupported"
     assert out.reason_code == "too_many_coordinates"
-    assert "at most 3 coordinates" in out.for_model and "not available yet" in out.for_model
+    assert "at most 4 coordinates" in out.for_model and "not available" in out.for_model
     assert "List should have" not in out.for_model
     (line,) = [x for x in out.for_model.splitlines() if x.startswith("diagnostic: ")]
     payload = json.loads(line.removeprefix("diagnostic: "))
