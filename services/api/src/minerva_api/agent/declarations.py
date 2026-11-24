@@ -140,7 +140,7 @@ _NOT_A_NAME = frozenset(
     ]
 )
 # "Component of the Laplace-Runge-Lenz vector ($C_3$)": a component is a scalar, whatever it is a component of.
-_COMPONENT = re.compile(r"\bcomponents?\b", re.IGNORECASE)
+_COMPONENT = re.compile(r"\bcomponents?\s+of\b|\bvector\s+components?\s*[(:*\s]*\$", re.IGNORECASE)
 
 
 def _name_of(match: re.Match[str]) -> str | None:

@@ -231,3 +231,11 @@ def test_the_right_side_of_a_printed_row_is_known_even_with_left_right_brackets(
     ]
     assert _right_side(r"x \leq 2") == [] and _right_side(r"x \neq 2") == []
     assert _right_side(r"A = 0") == [] and _right_side(r"a = b = c") == []
+
+
+def test_a_vector_field_described_by_its_components_is_still_declared() -> None:
+    text = "Let $E$ be a vector field with components $E_x, E_y, E_z$."
+    assert "E" in declared_vectors([text])
+    # while a sentence that says its formula is a component *of* a vector declares nothing
+    assert declared_vectors(["$C_3$ is a component of the Laplace-Runge-Lenz vector."]) == set()
+    assert declared_vectors(["Laplace-Runge-Lenz Vector component ($C_3$):"]) == set()
