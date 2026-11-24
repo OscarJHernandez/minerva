@@ -1733,7 +1733,20 @@ def test_limits_commands_are_spelling_not_meaning() -> None:
     assert normalize(r"\int_0^1 x\,dx") != normalize(r"\int_0^2 x\,dx")
 
 
-# -- V-017: the evidence line says when the probes were cut short by the clock ------------------------------------
+# -- V-017: a check whose probes the clock cut short is incomplete, and the tool text says so ---------------------
+def _cut_verification() -> Any:
+    from minerva_engine.models import Verification
+
+    return Verification(
+        numeric_points_checked=20,
+        numeric_points_agreed=20,
+        probes_cut_short=True,
+        probe_outcome="cut_short",
+        passed=False,
+        note="the check is incomplete",
+    )
+
+
 def test_the_evidence_line_says_when_the_targeted_probes_were_cut_short() -> None:
     from types import SimpleNamespace
 
@@ -1741,8 +1754,58 @@ def test_the_evidence_line_says_when_the_targeted_probes_were_cut_short() -> Non
     from minerva_engine.models import Verification
 
     whole = Verification(numeric_points_checked=20, numeric_points_agreed=20, passed=True)
-    cut = whole.model_copy(update={"probes_cut_short": True})
+    cut = _cut_verification()
     assert "cut short" not in _evidence_clause(SimpleNamespace(verification=whole))
     said = _evidence_clause(SimpleNamespace(verification=cut))
-    assert "cut short by the time limit" in said and "no disagreement found" in said
+    assert "cut short by the time limit" in said and "check incomplete" in said
+    assert "not a disagreement" in said and "not verified" in said
+    assert "no disagreement found" not in said  # the old wording read as a pass
     assert said.startswith("checked numerically at 20/20 points")  # the usual wording is unchanged
+
+
+def test_the_simplify_tool_text_says_the_whole_check_was_incomplete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from minerva_api.agent import tools
+    from minerva_engine.models import Status
+    from minerva_knowledge.identities import TransformResponse
+
+    response = TransformResponse(
+        status=Status.NOT_VERIFIED,
+        goal="simplify",
+        input_latex="x",
+        verification=_cut_verification(),
+        message="",
+    )
+    monkeypatch.setattr(tools, "simplify_expression", lambda *a, **k: response)
+    out = tools.run_simplify(
+        tools.SimplifyToolArgs(latex="x"), SimpleNamespace(kb=None, engine=None)
+    )
+    assert "end to end: numeric 20/20" in out.for_model
+    assert "check incomplete: the targeted probes were cut short by the time limit" in out.for_model
+    assert out.status == "not_verified"
+
+
+def test_the_identity_tool_text_says_the_check_was_incomplete() -> None:
+    from types import SimpleNamespace
+
+    from minerva_api.agent import tools
+    from minerva_engine.identity_check import INCOMPLETE_MESSAGE, IdentityResult
+    from minerva_engine.models import Status
+
+    result = IdentityResult(
+        status=Status.NOT_VERIFIED,
+        lhs_latex=r"\log(1/z)",
+        rhs_latex=r"-\log(z)",
+        verification=_cut_verification(),
+        message=INCOMPLETE_MESSAGE,
+    )
+    engine = SimpleNamespace(check_identity=lambda latex, assumptions: result)
+    out = tools.run_check_identity(
+        tools.CheckIdentityArgs(latex=r"\log(1/z) = -\log(z)"), SimpleNamespace(engine=engine)
+    )
+    assert "verdict=" not in out.for_model and out.known_latex == []  # never `numerically_equal`
+    assert "check incomplete: the targeted probes were cut short by the time limit" in out.for_model
+    assert out.card.data["verification"]["probes_cut_short"] is True  # the card shows the line

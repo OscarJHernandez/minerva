@@ -19,6 +19,7 @@ import type {
   VectorRequest,
   VectorResult,
   SumsResult,
+  Verification,
 } from "./types";
 import type { OdeAnalysis, OdeInput, OdeNumericReport, OdeSolution } from "./ode-types";
 import type { FunctionalRequest, VariationReport } from "./variation-types";
@@ -462,6 +463,8 @@ export interface IdentityReport {
   lhs_latex: string | null;
   rhs_latex: string | null;
   condition: string | null;
+  /** How the equation was checked; absent on cards stored before it was sent. */
+  verification?: Verification | null;
   counterexample: {
     substitution: Record<string, string>;
     lhs_value: string;

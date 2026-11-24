@@ -15,6 +15,33 @@ const base: IdentityReport = {
 };
 
 describe("IdentityCard", () => {
+  it("says the check was incomplete when the probes were cut short (V-017)", () => {
+    render(
+      <IdentityCard
+        report={{
+          ...base,
+          status: "not_verified",
+          verification: {
+            symbolic_zero: false,
+            numeric_points_checked: 12,
+            numeric_points_agreed: 12,
+            probes_cut_short: true,
+            probe_outcome: "cut_short",
+            passed: false,
+            note: "",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByTestId("probes-cut-short")).toHaveTextContent(/check incomplete/);
+    expect(screen.queryByText(/Equal/)).not.toBeInTheDocument();
+  });
+
+  it("adds no probe line to a card without one", () => {
+    render(<IdentityCard report={base} />);
+    expect(screen.queryByTestId("probes-cut-short")).not.toBeInTheDocument();
+  });
+
   it("shows the exact point where a false identity fails", () => {
     render(
       <IdentityCard

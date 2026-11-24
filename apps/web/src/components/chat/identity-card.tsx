@@ -1,6 +1,6 @@
 import { CopyMath as Math } from "@/components/copyable-math";
 import type { IdentityReport } from "@/lib/chat-types";
-import { StatusPill } from "../result-panel";
+import { PROBES_CUT_SHORT, StatusPill } from "../result-panel";
 
 const VERDICT: Record<NonNullable<IdentityReport["verdict"]>, { label: string; tone: string }> = {
   proved_equal: { label: "Equal: proved", tone: "bg-ok-soft text-ok" },
@@ -34,6 +34,11 @@ export function IdentityCard({ report }: { report: IdentityReport }) {
         <Math latex={`${report.lhs_latex} = ${report.rhs_latex}`} display />
       )}
       <p className="text-sm text-muted">{report.message}</p>
+      {report.verification?.probes_cut_short && (
+        <p className="mt-2 text-sm text-warn" data-testid="probes-cut-short">
+          {PROBES_CUT_SHORT}
+        </p>
+      )}
       {report.verdict === "conditional" && report.condition && (
         <p className="mt-2 text-sm" data-testid="identity-condition">
           {report.condition}

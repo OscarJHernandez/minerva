@@ -37,8 +37,11 @@ export interface Verification {
   symbolic_zero: boolean;
   numeric_points_checked: number;
   numeric_points_agreed: number;
-  /** The targeted probes were stopped by the time limit before their usual number of points (a loaded server). */
+  /** The targeted probes were stopped by the time limit before their point cap (a loaded server): the check is
+   * incomplete and did not pass (V-017). */
   probes_cut_short?: boolean;
+  /** How the targeted probe search ended; absent on results stored before it was sent. */
+  probe_outcome?: "not_run" | "completed" | "cap" | "cut_short" | "unsupported" | "found";
   passed: boolean;
   note: string;
 }

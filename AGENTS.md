@@ -470,6 +470,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (removable singularities). Do not widen `REL_TOL` or shrink the wide tranche to compensate, do not catch exceptions
   around the search, and keep `Counterexample` (it holds expressions) out of every log field and trace event. A pass
   still means "no disagreement found"; `docs/verification-testing.md` lists what sampling cannot find (V-014).
+  **Load may turn an answer into a refusal, never a refusal into an answer** (V-017): the point cap (`PROBE_POINTS`, 24)
+  decides the search and the clock (`verify.PROBE_SECONDS`, a fixed 5 s, never a share of the time left) is a safety
+  stop checked only between points. A search the clock ends is *incomplete*: `passed=False`, `probes_cut_short=True`,
+  `probe_outcome="cut_short"` (closed: `not_run|completed|cap|cut_short|unsupported|found`), and the note says it is not
+  a disagreement. A caller that does not read `.passed` must handle it: `claims._compare` gives `unverified`
+  (`INCOMPLETE_DETAIL`), `check_identity` gives `not_verified` (never `numerically_equal` or `not_identity`), a cut
+  unconditional check in `substitute` gives `conditional` (never `identity`). Tests force the stop to zero
+  (`test_probe_cutoff_callers.py`); a new caller gets such a test.
 - Numeric agreement is evidence, not proof. `verify_equal` samples two tranches (ordinary region and a wide one,
   |x| up to 50, |Im| up to 10, high precision) and counts a point where only one side is a pole as a disagreement;
   `Verification.symbolic_zero` is the only symbolic evidence. UI and tool text say "proved equal" only with a symbolic
