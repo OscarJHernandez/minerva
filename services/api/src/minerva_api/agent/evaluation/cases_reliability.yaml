@@ -472,3 +472,38 @@
         tool: find_conserved_quantities
         arguments: {lagrangian: '\frac12 m \dot{x}^2 - \frac12 k x^2', coordinates: [x]}
       reply_forbids: 'no other|has no more|completely integrable|fully integrable'
+
+# Issue #184: "what are the units of C_3?" had no tool path. The model sent the quantity being asked about as
+# `{"name": "C_3", "unit": null}` and a kind that is not in the table, was refused, repeated the call and ended at
+# `repeated_calls`. Now the asked-for names go in `unknown`, the dimension is found from the equation and the units of
+# the other symbols, and a unit the user never stated is labelled "assumed". The names C_1..C_4 are fixed by the
+# first prompt, as in the Kepler case above.
+- id: kepler-constant-then-its-units
+  category: followup
+  prompt: 'Find the hidden conserved quantities of the Kepler system $L = \frac12 m (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}$ with coordinates r and theta. List them as C_1, C_2, C_3, C_4.'
+  expected_tool: find_conserved_quantities
+  args: {includes: {coordinates: [r, theta]}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: find_conserved_quantities
+    arguments:
+      lagrangian: '\frac12 m (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
+      coordinates: [r, theta]
+      budget: thorough
+  source: "Kepler: energy, angular momentum and two components of the Laplace-Runge-Lenz vector (Goldstein, Classical Mechanics, ch. 3)"
+  followups:
+    - prompt: 'What are the units of C_3? in Equation (3)'
+      expected_tool: check_units
+      forbid: [dimensional_analysis]
+      args: {present: [unknown], includes: {unknown: [C_3]}}
+      expect_card: {status: ok}
+      # By hand: m r^3 thetadot^2 is kg m^3 s^-2 (radians are dimensionless), and C_3 and k are terms of one sum.
+      # The user gave no units, so the reply must say they were assumed.
+      reply_matches: '(?is)(?=.*assum)(?=.*kg.{0,25}m.{0,8}3.{0,25}s.{0,8}-2)'
+      reference:
+        tool: check_units
+        arguments:
+          equation: 'C_{3} = - k \cos{\theta} + m r^{3} \dot{\theta}^{2} \cos{\theta} + m r^{2} \dot{r} \dot{\theta} \sin{\theta}'
+          quantities: [{name: m, unit: kg}, {name: r, unit: m}, {name: theta, unit: rad}]
+          unknown: [C_3, k]

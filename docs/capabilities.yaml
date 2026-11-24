@@ -43,6 +43,7 @@
 #                electrostatics: problem {kind: field | multipole | boundary_value | check_solution, ...}, constants
 #   tensor       input, tensors {name: {rank, symmetry}}, dimension
 #   solve        equation, variable
+#   units        equation, quantities [{name, unit | kind}], unknown [names whose dimension is found; no entry in quantities]
 #   lagrangian   input, coordinates   (text: velocities are written r_dot, theta_dot; LaTeX: \dot{r})
 #   invariants   input, coordinates, angles, degree, power_bound, harmonics
 #   variation    input, variable (default t), functions, given_functions [{name, args}], lower, upper, lower_term, upper_term, conditions
@@ -2079,6 +2080,41 @@ capabilities:
         op: solve
         equation: "x^5 - x - 1 = 0"
         variable: x
+
+  - id: unit-finding
+    title: Units of a quantity
+    status: available
+    group: physics
+    where: [chat]
+    summary: >-
+      Finds the dimension of a quantity from the equation it is in and the units of the other symbols, or checks
+      an equation for dimensional consistency. Dimensions are exponent vectors; products, rational powers, sums,
+      function arguments and the two sides give linear equations that are solved exactly. The answer is a unique
+      dimension, inconsistent, or not determined, and it is shown only if the ordinary dimension check accepts the
+      equation with it put in.
+    limits:
+      - A dimension is "given these inputs". A unit the user did not state is the assistant's, and the card says so.
+      - A matching dimension does not prove an equation correct. Coherent SI units only, and an unknown in an exponent or a symbolic power is refused.
+      - "`x_dot` and `x_ddot` are read as the dimension of `x` over s and s^2 unless a unit is given for them."
+    examples:
+      - id: units-of-a-conserved-quantity
+        title: The units of a constant of the Kepler problem
+        op: units
+        equation: "C_{3} = - k \\cos{\\theta} + m r^{3} \\dot{\\theta}^{2} \\cos{\\theta} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\theta}"
+        quantities: [{name: m, unit: kg}, {name: r, unit: m}, {name: theta, unit: rad}]
+        unknown: [C_3, k]
+      - id: units-underdetermined
+        title: A product fixes only a combination of its factors
+        op: units
+        equation: "F = a b"
+        quantities: [{name: F, unit: N}]
+        unknown: [a, b]
+      - id: units-inconsistent
+        title: A sum of unlike terms
+        op: units
+        equation: "F = a + m"
+        quantities: [{name: F, unit: N}, {name: m, unit: kg}]
+        unknown: [a]
 
   - id: lagrangian
     title: Lagrangian mechanics

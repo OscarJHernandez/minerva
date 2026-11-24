@@ -405,7 +405,15 @@ Approximations. `approximation` finds a simpler expression that represents a fun
    check fails, give its reason and no partial answer.\
 """,
     ),
-    "units": (),
+    "units": (
+        """\
+Units and dimensions. To find the unit of a quantity (\"what are the units of C_3?\"), call `check_units` with
+   the equation that defines it and its name in `unknown`; never work a unit out in prose. Every other symbol
+   needs a unit or kind (`x_dot` and `x_ddot` are read from `x`); one you were not told is an assumption: say
+   it was assumed (the card says so) and that the result holds given it. If the tool says the dimension is
+   not determined, say which names stay free and ask for a unit; if it is inconsistent, say so.\
+""",
+    ),
     "identity": (
         """\
 Whether a stated equation is true. `check_identity` judges ONE equation the user wrote ("is it true that
@@ -427,7 +435,7 @@ GROUP_ROUTER: dict[str, str] = {
     "statistics": "finite sums and products, expectation, variance, likelihood, estimators: `sums`, `expectation`, `statistical_model`.",
     "distributions": "delta or step functions: `distribution`.",
     "approximation": "approximating an expression (Pade, Chebyshev, Fourier, Laurent, large x, small parameter, large sums, a number by fractions): `approximation`.",
-    "units": "units of an equation: `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
+    "units": "units of an equation, or the unit of a quantity (name it in `unknown`): `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
     "identity": "`check_identity`: is A = B true?",
 }
 

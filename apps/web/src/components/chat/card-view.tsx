@@ -234,7 +234,13 @@ function CardContent({ card }: { card: Card }) {
     case "dimensional":
       return <DimensionalCard report={card.data.report} methods={card.data.methods} />;
     case "units":
-      return <UnitsCard report={card.data.report} methods={card.data.methods} />;
+      return (
+        <UnitsCard
+          report={card.data.report}
+          methods={card.data.methods}
+          assumed={card.data.assumed_units ?? []}
+        />
+      );
     case "tensor":
       return (
         <section className="rounded-lg border border-rule bg-raised p-4" aria-label={card.title}>

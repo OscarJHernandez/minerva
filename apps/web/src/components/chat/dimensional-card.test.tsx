@@ -172,4 +172,71 @@ describe("UnitsCard", () => {
     expect(screen.queryByText(/dimensionally consistent/i)).not.toBeInTheDocument();
     expect(screen.getByText("no unit for y")).toBeInTheDocument();
   });
+
+  it("shows a derived dimension, the assumed inputs and the time-derivative reading", () => {
+    render(
+      <UnitsCard
+        report={{
+          ...report,
+          unknown: ["C_3"],
+          outcome: "determined",
+          consistent: true,
+          missing_factor_latex: null,
+          derived: [
+            {
+              name: "C_3",
+              latex: "C_{3}",
+              dimension_text: "kg m^3 s^-2",
+              dimension_latex: "\\mathrm{kg\\,m^{3}\\,s^{-2}}",
+            },
+          ],
+          quantities: [
+            {
+              name: "r",
+              latex: "r",
+              meaning: "",
+              given: "m",
+              dimension_text: "m",
+              dimension_latex: "\\mathrm{m}",
+            },
+            {
+              name: "r_dot",
+              latex: "\\dot{r}",
+              meaning: "",
+              given: "time derivative of r (order 1)",
+              dimension_text: "m s^-1",
+              dimension_latex: "\\mathrm{m\\,s^{-1}}",
+              origin: "time_derivative",
+            },
+          ],
+        }}
+        methods={[]}
+        assumed={["r"]}
+      />,
+    );
+    expect(screen.getByLabelText("Derived dimensions")).toHaveTextContent("given these inputs");
+    expect(screen.getByRole("note")).toHaveTextContent("Assumed by the assistant: r");
+    expect(screen.getByText(/assumed by the assistant\)/)).toBeInTheDocument();
+    expect(screen.getByText(/read from the quantity it differentiates/)).toBeInTheDocument();
+  });
+
+  it("says which names stay free when the equation does not fix them", () => {
+    render(
+      <UnitsCard
+        report={{
+          ...report,
+          outcome: "underdetermined",
+          undetermined: ["a", "b"],
+          consistent: null,
+          sides: [],
+          missing_factor_latex: null,
+          message: "not determined",
+        }}
+        methods={[]}
+      />,
+    );
+    expect(screen.getByText("Not determined")).toBeInTheDocument();
+    expect(screen.getByText(/Still free: a, b/)).toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
 });

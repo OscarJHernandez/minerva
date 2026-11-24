@@ -8,15 +8,24 @@ import { StatusPill } from "../result-panel";
 export function UnitsCard({
   report,
   methods,
+  assumed = [],
 }: {
   report: UnitsCheckReport;
   methods: EntrySummary[];
+  /** Quantities whose unit the assistant chose; the user did not state it. */
+  assumed?: string[];
 }) {
+  const undetermined = report.outcome === "underdetermined";
+  const derived = report.derived ?? [];
   return (
     <section className="rounded-lg border border-rule bg-raised p-5" aria-label="Unit check">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-serif text-xl">Unit check</h3>
-        {report.consistent === null ? (
+        {undetermined ? (
+          <span className="inline-block rounded-full bg-warn-soft px-2.5 py-0.5 text-xs font-medium text-warn">
+            Not determined
+          </span>
+        ) : report.consistent === null ? (
           <StatusPill status={report.status} />
         ) : (
           <span
@@ -30,6 +39,32 @@ export function UnitsCard({
       </div>
       {report.equation_latex && <Math latex={report.equation_latex} display />}
       <p className="text-sm text-muted">{report.message}</p>
+
+      {derived.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm" aria-label="Derived dimensions">
+          {derived.map((d) => (
+            <li key={d.name}>
+              <span className="text-muted">Dimension of</span> <Math latex={d.latex} />{" "}
+              <span className="text-muted">given these inputs:</span>{" "}
+              <Math latex={d.dimension_latex} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {undetermined && (report.undetermined ?? []).length > 0 && (
+        <p className="mt-3 rounded border border-warn p-3 text-sm">
+          Still free: {(report.undetermined ?? []).join(", ")}. Dimensions alone fix only a
+          combination of them; give a unit for one to settle the rest.
+        </p>
+      )}
+
+      {assumed.length > 0 && (
+        <p className="mt-3 rounded border border-rule p-3 text-sm" role="note">
+          <span className="font-medium">Assumed by the assistant:</span> {assumed.join(", ")}. You
+          did not state these units, so the result holds only given them.
+        </p>
+      )}
 
       {report.sides.length > 0 && (
         <ul className="mt-3 space-y-1 text-sm">
@@ -71,6 +106,12 @@ export function UnitsCard({
               <li key={q.name}>
                 <Math latex={q.latex} /> <span className="text-muted">{q.given} =</span>{" "}
                 <Math latex={q.dimension_latex} />
+                {q.origin === "time_derivative" && (
+                  <span className="text-muted"> (read from the quantity it differentiates)</span>
+                )}
+                {assumed.includes(q.name) && (
+                  <span className="text-muted"> (assumed by the assistant)</span>
+                )}
               </li>
             ))}
           </ul>

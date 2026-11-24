@@ -518,6 +518,21 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   dimensionless; a mismatch proves an equation wrong as written, a match proves nothing more; the missing-quantity
   report is "the unknown's dimension is not a product of powers of the knowns'", not a claim about the physics.
   Units are coherent SI only (no conversion).
+  `check_units` takes `unknown` (at most 4 names, no entry in `quantities`) to find a unit: `dimension_solver.py`
+  treats a dimension as an exponent vector affine in the unknowns' vectors (products and rational powers are linear),
+  every sum, function argument and the two sides give linear equations solved exactly over the rationals, and the
+  outcome is `determined` (one dimension each), `inconsistent` (the first condition that breaks it is named) or
+  `underdetermined` (which names stay free: nothing is guessed). An unknown under a symbolic power or in an exponent is
+  `unsupported`. The solver only proposes: the dimensions are shown only if `dimensions.dimension_of`, which shares no code
+  with it, accepts both sides with them put in (else `not_verified`; its test injects an exponent off by one). A symbol
+  with neither a unit nor a place in `unknown` is refused, never assumed; an undeclared `x_dot`/`x_ddot` is read as
+  `dim(x)/s`, `dim(x)/s^2` (listed on the card) and a declared unit wins. The result is worded "given these inputs", and a
+  unit the user did not state (`unit_statements.py`: one sentence of a user message must tie the name directly to a kind
+  word or a unit reading to the same dimension, e.g. `mass m`, `m in kg`; a name and a unit letter merely in one sentence
+  do not count) is labelled "assumed by the assistant" on the card and in the tool text. The label errs towards "assumed"
+  and never changes the computation. `{"name": X, "unit": null}` with no kind is repaired to `unknown: [X]`
+  (`arguments._unit_null_is_unknown`, shown as a normalization), and a kind outside the table is refused with the typed
+  code `unknown_quantity_kind` (its text names both ways out: a unit, or `unknown`). A derived dimension gets no equation number.
 - Derivatives (`differentiate.py`) are verified by an independent numerical derivative, one order at a
   time, and along the imaginary direction too for variables not declared real. A derivative with no
   complex derivative (`|z|`, `re`, `im`, conjugate) is `unsupported`, never a formula. Do not add a

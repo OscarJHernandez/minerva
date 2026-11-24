@@ -2660,6 +2660,47 @@ Derivations from the field equations a user adopts as premises (Maxwell's equati
 - Residual of laplacian(phi) + source: not zero: the candidate does not satisfy the equation.
 - the candidate does NOT satisfy every requirement: see which; a check of this candidate, not a proof that it is the only solution (uniqueness needs the boundary conditions to determine it)
 
+### Units of a quantity
+
+*Available in:* chat.
+
+Finds the dimension of a quantity from the equation it is in and the units of the other symbols, or checks an equation for dimensional consistency. Dimensions are exponent vectors; products, rational powers, sums, function arguments and the two sides give linear equations that are solved exactly. The answer is a unique dimension, inconsistent, or not determined, and it is shown only if the ordinary dimension check accepts the equation with it put in.
+
+**Limits**
+
+- A dimension is "given these inputs". A unit the user did not state is the assistant's, and the card says so.
+- A matching dimension does not prove an equation correct. Coherent SI units only, and an unknown in an exponent or a symbolic power is refused.
+- `x_dot` and `x_ddot` are read as the dimension of `x` over s and s^2 unless a unit is given for them.
+
+#### The units of a constant of the Kepler problem
+
+- **Equation:** `C_{3} = - k \cos{\theta} + m r^{3} \dot{\theta}^{2} \cos{\theta} + m r^{2} \dot{r} \dot{\theta} \sin{\theta}`
+- **Given:** m: kg; r: m; theta: rad; r_dot read from its coordinate, theta_dot read from its coordinate
+- **Unknown:** C_3, k
+- **Status:** `ok`
+- **Dimension of C_3:** $\mathrm{kg\,m^{3}\,s^{-2}}$ — given these inputs
+- **Dimension of k:** $\mathrm{kg\,m^{3}\,s^{-2}}$ — given these inputs
+- **Check:** dimensionally consistent
+- Both sides have dimension kg m^3 s^-2. C_3 has dimension kg m^3 s^-2; k has dimension kg m^3 s^-2, given the dimensions of the other quantities.
+
+#### A product fixes only a combination of its factors
+
+- **Equation:** `F = a b`
+- **Given:** F: N
+- **Unknown:** a, b
+- **Status:** `ok`
+- **Not determined:** a, b
+- The dimensions of a, b are not determined by this equation and the others given: more than one assignment makes it consistent. Nothing is guessed; give a unit for one of them.
+
+#### A sum of unlike terms
+
+- **Equation:** `F = a + m`
+- **Given:** F: N; m: kg
+- **Unknown:** a
+- **Status:** `ok`
+- **Check:** not dimensionally consistent
+- Not dimensionally consistent: no dimensions for the unknowns make this equation consistent; the conditions up to this one cannot all hold (both sides must have one dimension).
+
 ### Lagrangian mechanics
 
 *Available in:* chat.

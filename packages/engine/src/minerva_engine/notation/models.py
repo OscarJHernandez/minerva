@@ -51,6 +51,9 @@ class InputCode(StrEnum):
     # The `time` symbol of a mechanics tool is also the name of a coordinate (or momentum): nothing is
     # renamed; the diagnostic lists free names (`notation/time_symbol.py`).
     TIME_SYMBOL_IS_COORDINATE = "time_symbol_is_coordinate"
+    # `check_units` was given a quantity kind that is not in the table of kinds. Nothing is guessed: the two ways
+    # out are a unit, or the name listed under `unknown` (to have its dimension found).
+    UNKNOWN_QUANTITY_KIND = "unknown_quantity_kind"
 
 
 class NormalizationKind(StrEnum):

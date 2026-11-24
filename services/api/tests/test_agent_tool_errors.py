@@ -244,15 +244,20 @@ def test_every_hint_example_validates_against_the_field_it_is_shown_for() -> Non
 
 
 def test_a_derivative_symbol_without_a_unit_is_refused_by_name(ctx: ToolContext) -> None:
-    # `\dot{u}` and `\ddot{u}` are read as the symbols `u_dot` and `u_ddot`; the unit check must refuse
-    # them with that name (so the model can declare them), never guess a dimension for a derivative.
+    # `\dot{u}` and `\ddot{u}` are read as the symbols `u_dot` and `u_ddot`. When `u` itself has no unit the unit check
+    # must refuse them with that name (so the model can declare them), never guess a dimension for a derivative.
+    # (Issue #184: when `u` has a unit they are read as dim(u)/s and dim(u)/s^2 and listed, unless declared.)
     base = [
-        {"name": "u", "unit": "1/m"},
         {"name": "k", "unit": "N m^2"},
         {"name": "m", "unit": "kg"},
     ]
     out = execute("check_units", {"equation": r"\ddot{u} = - k u^2 / m", "quantities": base}, ctx)
     assert out.status == "parse_error" and "u_ddot" in out.for_model
+    declared = [{"name": "u", "unit": "1/m"}, *base]
+    read = execute(
+        "check_units", {"equation": r"\ddot{u} = - k u^2 / m", "quantities": declared}, ctx
+    )
+    assert read.status == "ok" and "read u_ddot as" in read.for_model
 
 
 # --- a union-typed argument: what the model reads back when it invents the keys ---------------------------

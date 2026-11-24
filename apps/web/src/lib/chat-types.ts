@@ -332,6 +332,8 @@ export interface QuantityReading {
   given: string;
   dimension_text: string;
   dimension_latex: string;
+  /** `time_derivative`: `x_dot` / `x_ddot` read from the entry of `x`. */
+  origin?: "given" | "time_derivative";
 }
 
 export interface DimensionalReport {
@@ -380,9 +382,21 @@ export interface SideReading {
   dimension_latex: string;
 }
 
+export interface DerivedDimension {
+  name: string;
+  latex: string;
+  dimension_text: string;
+  dimension_latex: string;
+}
+
 export interface UnitsCheckReport {
   status: Status;
   equation_latex: string | null;
+  /** The names whose dimension was asked for, and how that ended. */
+  unknown?: string[];
+  outcome?: "determined" | "inconsistent" | "underdetermined" | null;
+  derived?: DerivedDimension[];
+  undetermined?: string[];
   consistent: boolean | null;
   sides: SideReading[];
   missing_factor_text: string | null;
@@ -698,7 +712,12 @@ type CardBody =
       tool: string;
       type: "units";
       title: string;
-      data: { report: UnitsCheckReport; methods: EntrySummary[] };
+      data: {
+        report: UnitsCheckReport;
+        methods: EntrySummary[];
+        /** Quantities whose unit the user did not state (the assistant's choice). */
+        assumed_units?: string[];
+      };
     }
   | {
       id: string;
