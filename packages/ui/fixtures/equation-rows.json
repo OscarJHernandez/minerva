@@ -4055,6 +4055,815 @@
       "quantity:mean_E": "\\langle E \\rangle = \\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
     }
   },
+  "vector_scalar": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof",
+        "action": "evaluate",
+        "coordinates": "cylindrical",
+        "to": null,
+        "result_kind": "scalar",
+        "input_latex": "\\nabla \\cdot \\mathbf{A}",
+        "result_latex": "\\frac{\\partial}{\\partial \\rho} A_{\\rho} + \\frac{\\partial}{\\partial z} A_{z} + \\frac{A_{\\rho}}{\\rho} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{\\phi}}{\\rho}",
+        "result_text": "Derivative(A_rho(rho, phi, z), rho) + Derivative(A_z(rho, phi, z), z) + A_rho(rho, phi, z)/rho + Derivative(A_phi(rho, phi, z), phi)/rho",
+        "components_latex": [],
+        "components_text": [],
+        "basis_latex": [],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_finite_difference",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 4.0540404603204904e-20,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_finite_difference",
+              "passed": true,
+              "note": "agreed at 6 points on 2 random field assignments"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Cylindrical coordinates (rho, phi, z), rho > 0, phi the azimuth; physical components along the right-handed unit vectors (rho, phi, z); scale factors (1, rho, 1).",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "every field is differentiable as often as the expression differentiates it"
+        ],
+        "restrictions_latex": ["\\rho \\neq 0"],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "evaluate",
+          "coordinates": "cylindrical",
+          "result_kind": "scalar",
+          "operator_depth": 1,
+          "abstract_fields": 1,
+          "explicit_fields": 0,
+          "stages": [
+            {
+              "name": "parse",
+              "duration_ms": 0
+            },
+            {
+              "name": "lower",
+              "duration_ms": 5
+            },
+            {
+              "name": "tidy",
+              "duration_ms": 70
+            },
+            {
+              "name": "verify",
+              "duration_ms": 140
+            },
+            {
+              "name": "render",
+              "duration_ms": 4
+            }
+          ],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 3146
+      },
+      "request": {
+        "expression": "\\nabla\\cdot\\mathbf{A}",
+        "format": "latex",
+        "coordinates": "cylindrical",
+        "fields": [
+          {
+            "name": "A",
+            "kind": "vector",
+            "components": null,
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "evaluate",
+        "to": null,
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": ["result"],
+    "rows": {
+      "result": "\\frac{\\partial}{\\partial \\rho} A_{\\rho} + \\frac{\\partial}{\\partial z} A_{z} + \\frac{A_{\\rho}}{\\rho} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{\\phi}}{\\rho}"
+    }
+  },
+  "vector_components": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof",
+        "action": "evaluate",
+        "coordinates": "cylindrical",
+        "to": null,
+        "result_kind": "vector",
+        "input_latex": "\\nabla \\times \\mathbf{A}",
+        "result_latex": "\\left(- \\frac{\\partial}{\\partial z} A_{\\phi} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{z}}{\\rho}\\right)\\,\\hat{\\rho} + \\left(\\frac{\\partial}{\\partial z} A_{\\rho} - \\frac{\\partial}{\\partial \\rho} A_{z}\\right)\\,\\hat{\\phi} + \\frac{\\rho \\frac{\\partial}{\\partial \\rho} A_{\\phi} + A_{\\phi} - \\frac{\\partial}{\\partial \\phi} A_{\\rho}}{\\rho}\\,\\hat{z}",
+        "result_text": "(-Derivative(A_phi(rho, phi, z), z) + Derivative(A_z(rho, phi, z), phi)/rho, Derivative(A_rho(rho, phi, z), z) - Derivative(A_z(rho, phi, z), rho), (rho*Derivative(A_phi(rho, phi, z), rho) + A_phi(rho, phi, z) - Derivative(A_rho(rho, phi, z), phi))/rho)",
+        "components_latex": [
+          "- \\frac{\\partial}{\\partial z} A_{\\phi} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{z}}{\\rho}",
+          "\\frac{\\partial}{\\partial z} A_{\\rho} - \\frac{\\partial}{\\partial \\rho} A_{z}",
+          "\\frac{\\rho \\frac{\\partial}{\\partial \\rho} A_{\\phi} + A_{\\phi} - \\frac{\\partial}{\\partial \\phi} A_{\\rho}}{\\rho}"
+        ],
+        "components_text": [
+          "-Derivative(A_phi(rho, phi, z), z) + Derivative(A_z(rho, phi, z), phi)/rho",
+          "Derivative(A_rho(rho, phi, z), z) - Derivative(A_z(rho, phi, z), rho)",
+          "(rho*Derivative(A_phi(rho, phi, z), rho) + A_phi(rho, phi, z) - Derivative(A_rho(rho, phi, z), phi))/rho"
+        ],
+        "basis_latex": ["\\hat{\\rho}", "\\hat{\\phi}", "\\hat{z}"],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_finite_difference",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 9.10137390261176e-20,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_finite_difference",
+              "passed": true,
+              "note": "agreed at 6 points on 2 random field assignments"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Cylindrical coordinates (rho, phi, z), rho > 0, phi the azimuth; physical components along the right-handed unit vectors (rho, phi, z); scale factors (1, rho, 1).",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "every field is differentiable as often as the expression differentiates it"
+        ],
+        "restrictions_latex": ["\\rho \\neq 0"],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "evaluate",
+          "coordinates": "cylindrical",
+          "result_kind": "vector",
+          "operator_depth": 1,
+          "abstract_fields": 1,
+          "explicit_fields": 0,
+          "stages": [
+            {
+              "name": "parse",
+              "duration_ms": 0
+            },
+            {
+              "name": "lower",
+              "duration_ms": 6
+            },
+            {
+              "name": "tidy",
+              "duration_ms": 88
+            },
+            {
+              "name": "verify",
+              "duration_ms": 169
+            },
+            {
+              "name": "render",
+              "duration_ms": 6
+            }
+          ],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 397
+      },
+      "request": {
+        "expression": "\\nabla\\times\\mathbf{A}",
+        "format": "latex",
+        "coordinates": "cylindrical",
+        "fields": [
+          {
+            "name": "A",
+            "kind": "vector",
+            "components": null,
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "evaluate",
+        "to": null,
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": ["component:0", "component:1", "component:2"],
+    "rows": {
+      "component:0": "\\hat{\\rho}:\\quad - \\frac{\\partial}{\\partial z} A_{\\phi} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{z}}{\\rho}",
+      "component:1": "\\hat{\\phi}:\\quad \\frac{\\partial}{\\partial z} A_{\\rho} - \\frac{\\partial}{\\partial \\rho} A_{z}",
+      "component:2": "\\hat{z}:\\quad \\frac{\\rho \\frac{\\partial}{\\partial \\rho} A_{\\phi} + A_{\\phi} - \\frac{\\partial}{\\partial \\phi} A_{\\rho}}{\\rho}"
+    }
+  },
+  "vector_convert": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "converted from cartesian to spherical and checked numerically by an independent route (through Cartesian coordinates); this is evidence, not a proof",
+        "action": "convert",
+        "coordinates": "spherical",
+        "to": "spherical",
+        "result_kind": "vector",
+        "input_latex": "\\mathbf{F}",
+        "result_latex": "r\\,\\hat{r}",
+        "result_text": "(r, 0, 0)",
+        "components_latex": ["r", "0", "0"],
+        "components_text": ["r", "0", "0"],
+        "basis_latex": ["\\hat{r}", "\\hat{\\theta}", "\\hat{\\phi}"],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_roundtrip",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 5.236355457127075e-52,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_roundtrip",
+              "passed": true,
+              "note": "agreed at 6 points"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Spherical coordinates (r, theta, phi), r > 0, theta the polar angle, phi the azimuth; physical components along the right-handed unit vectors (r, theta, phi); scale factors (1, r, r sin(theta)).",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": ["the change of coordinates holds where both systems are regular"],
+        "restrictions_latex": ["r \\neq 0", "\\sin{\\left(\\theta \\right)} \\neq 0"],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "convert",
+          "coordinates": "cartesian",
+          "result_kind": "vector",
+          "operator_depth": 0,
+          "abstract_fields": 0,
+          "explicit_fields": 1,
+          "stages": [
+            {
+              "name": "parse",
+              "duration_ms": 0
+            },
+            {
+              "name": "lower",
+              "duration_ms": 118
+            },
+            {
+              "name": "verify",
+              "duration_ms": 17
+            }
+          ],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 245
+      },
+      "request": {
+        "expression": "\\mathbf{F}",
+        "format": "latex",
+        "coordinates": "cartesian",
+        "fields": [
+          {
+            "name": "F",
+            "kind": "vector",
+            "components": ["x", "y", "z"],
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "convert",
+        "to": "spherical",
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": ["component:0", "component:1", "component:2"],
+    "rows": {
+      "component:0": "\\hat{r}:\\quad r",
+      "component:1": "\\hat{\\theta}:\\quad 0",
+      "component:2": "\\hat{\\phi}:\\quad 0"
+    }
+  },
+  "vector_identity": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "vector.curl_curl applied; the two expressions were compared by the exact components (difference identically zero) and by an independent Cartesian evaluation. It holds for fields of the smoothness you declared.",
+        "action": "apply_identity",
+        "coordinates": "cartesian",
+        "to": null,
+        "result_kind": "vector",
+        "input_latex": "\\nabla \\times \\left(\\nabla \\times \\mathbf{A}\\right)",
+        "result_latex": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}",
+        "result_text": "Grad(Div(A)) - Lap(A)",
+        "components_latex": [],
+        "components_text": [],
+        "basis_latex": [],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_finite_difference",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 0.0,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_finite_difference",
+              "passed": true,
+              "note": "agreed at 6 points on 2 random field assignments"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Cartesian coordinates (x, y, z); components along the unit vectors x, y, z.",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [],
+        "restrictions_latex": [],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [
+          {
+            "action": "apply_identity",
+            "title": "vector.curl_curl",
+            "before_latex": "\\nabla \\times \\left(\\nabla \\times \\mathbf{A}\\right)",
+            "after_latex": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}",
+            "rule_id": "vector.curl_curl",
+            "reverse": false,
+            "path": [],
+            "part_latex": "\\nabla \\times \\left(\\nabla \\times \\mathbf{A}\\right)",
+            "evidence": "identity",
+            "given": [],
+            "needs": ["c2"],
+            "verification": {
+              "method": "cartesian_finite_difference",
+              "numeric_passed": true,
+              "points_checked": 6,
+              "points_agreed": 6,
+              "points_skipped": 0,
+              "max_residual": 0.0,
+              "symbolic_zero": null,
+              "checks": [
+                {
+                  "name": "cartesian_finite_difference",
+                  "passed": true,
+                  "note": "agreed at 6 points on 2 random field assignments"
+                }
+              ],
+              "note": ""
+            },
+            "symbolic_zero": true,
+            "chain": null
+          }
+        ],
+        "applicable": [],
+        "evidence": "identity",
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "apply_identity",
+          "coordinates": "cartesian",
+          "result_kind": "vector",
+          "operator_depth": 2,
+          "abstract_fields": 1,
+          "explicit_fields": 0,
+          "stages": [],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 557
+      },
+      "request": {
+        "expression": "\\nabla\\times(\\nabla\\times\\mathbf{A})",
+        "format": "latex",
+        "coordinates": "cartesian",
+        "fields": [
+          {
+            "name": "A",
+            "kind": "vector",
+            "components": null,
+            "depends_on": null,
+            "smoothness": "c2"
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "apply_identity",
+        "to": null,
+        "rule_id": "vector.curl_curl",
+        "path": [],
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": ["step:0"],
+    "rows": {
+      "step:0": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}"
+    }
+  },
+  "vector_singular": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "equal as distributions, not pointwise: the classical value is 0 away from the source and the distributional one is a point mass. Derived by the shrinking-sphere argument for this kernel (each hypothesis checked exactly) and confirmed by 4 independent pairings and 2 flux checks; the numerical pairings are supporting evidence, not a proof.",
+        "action": "distributional",
+        "coordinates": "cartesian",
+        "to": null,
+        "result_kind": "scalar",
+        "input_latex": "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right)",
+        "result_latex": "4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)",
+        "result_text": "4*pi*PointDelta(0, 0, 0)",
+        "components_latex": [],
+        "components_text": [],
+        "basis_latex": [],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "distributional_weak_form",
+          "numeric_passed": true,
+          "points_checked": 14,
+          "points_agreed": 14,
+          "points_skipped": 0,
+          "max_residual": 3.907985046680551e-14,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "classical divergence is zero away from the source (finite differences)",
+              "passed": true,
+              "note": ""
+            },
+            {
+              "name": "hypotheses of the shrinking-sphere argument (exact)",
+              "passed": true,
+              "note": ""
+            },
+            {
+              "name": "Cartesian reading of the field against the input expression",
+              "passed": true,
+              "note": "8 points"
+            },
+            {
+              "name": "pairings with test functions (independent quadrature)",
+              "passed": true,
+              "note": "4 test functions, tolerance 1e-7"
+            },
+            {
+              "name": "flux through spheres (independent quadrature)",
+              "passed": true,
+              "note": "2 radii"
+            },
+            {
+              "name": "regularised field (reported, supporting evidence only)",
+              "passed": null,
+              "note": "not part of the decision"
+            }
+          ],
+          "note": "derived by the shrinking-sphere argument; independent pairings are supporting evidence"
+        },
+        "conventions": [
+          "Cartesian coordinates (x, y, z); components along the unit vectors x, y, z.",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "the coordinates are real and the source position is a real point",
+          "test functions are smooth and rapidly decreasing; constants are sampled as real numbers"
+        ],
+        "restrictions_latex": ["\\left(x, y, z\\right) \\neq \\left(0, 0, 0\\right)"],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [
+          "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)"
+        ],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": {
+          "family": "divergence",
+          "classical_latex": "0",
+          "classical_domain_latex": "\\left(x, y, z\\right) \\neq \\left(0, 0, 0\\right)",
+          "distributional_latex": "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)",
+          "strength_latex": "4 \\pi",
+          "source_latex": "\\left(0, 0, 0\\right)",
+          "support": "the single point where the kernel is singular",
+          "derivation": [
+            {
+              "title": "Classical divergence away from the source",
+              "latex": "\\nabla\\cdot\\mathbf F = 0 \\quad (\\mathbf r\\neq\\mathbf a)",
+              "status": "established",
+              "note": "exact symbolic zero of the sum of the partial derivatives of the input field"
+            },
+            {
+              "title": "Flux density on a small sphere",
+              "latex": "\\mathbf F\\cdot\\hat{\\mathbf n}=\\frac{1}{\\varepsilon^{2}}\\ \\text{on }|\\mathbf r-\\mathbf a|=\\varepsilon",
+              "status": "established",
+              "note": "exact: F . (r - a) = C/|r - a|, computed from the input field"
+            },
+            {
+              "title": "Local integrability",
+              "latex": "(\\mathbf F\\cdot\\mathbf F)\\,|\\mathbf r-\\mathbf a|^{4}=C^{2}",
+              "status": "established",
+              "note": "exact; so |F| = |C|/|r - a|^2 is integrable near the source and the excised ball contributes at most 4 pi |C| sup|grad phi| eps, which tends to 0"
+            },
+            {
+              "title": "Weak form",
+              "latex": "\\langle\\nabla\\cdot\\mathbf F,\\varphi\\rangle=-\\int_{\\mathbb R^{3}}\\mathbf F\\cdot\\nabla\\varphi\\,d^{3}r",
+              "status": "established",
+              "note": "the definition of the distributional derivative (a test function phi is smooth and decays fast)"
+            },
+            {
+              "title": "Punctured domain and the divergence theorem",
+              "latex": "-\\int_{|\\mathbf r-\\mathbf a|>\\varepsilon}\\mathbf F\\cdot\\nabla\\varphi\\,d^{3}r=\\oint_{|\\mathbf r-\\mathbf a|=\\varepsilon}\\varphi\\,\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS",
+              "status": "established",
+              "note": "the outward normal of the punctured domain points toward the source, so the inner boundary enters with the opposite sign and the volume term vanishes by the first step"
+            },
+            {
+              "title": "Shrinking the sphere",
+              "latex": "\\oint\\varphi\\,\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS=1\\oint\\varphi(\\mathbf a+\\varepsilon\\hat{\\mathbf n})\\,d\\Omega\\ \\xrightarrow{\\varepsilon\\to0}\\ 4\\pi\\,1\\,\\varphi(\\mathbf a)",
+              "status": "established",
+              "note": "phi is continuous at the source; the excised ball contributes nothing (local integrability)"
+            }
+          ],
+          "flux_latex": "\\oint_{|\\mathbf r-\\mathbf a|=\\varepsilon}\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS=4 \\pi",
+          "weak_checks": [
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "e^{-|\\mathbf r-\\mathbf a|^2/2.42}",
+              "expected": 12.566370614359172,
+              "measured": 12.566370614359156,
+              "error": 1.5987211554602254e-14,
+              "passed": true
+            },
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "\\left(2+\\tfrac12 u-\\tfrac3{10}v+\\tfrac25 uw\\right)e^{-|\\mathbf r-\\mathbf a|^2/1.62}",
+              "expected": 25.132741228718345,
+              "measured": 25.132741228718384,
+              "error": 3.907985046680551e-14,
+              "passed": true
+            },
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "\\left(1+\\tfrac3{10}(z-c_z)\\right)e^{-|\\mathbf r-\\mathbf c|^2/1.28},\\ \\mathbf c=\\mathbf a+(0.5,-0.4,0.3)",
+              "expected": 7.737576829789694,
+              "measured": 7.7375768297896945,
+              "error": 8.881784197001252e-16,
+              "passed": true
+            },
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "u\\,e^{-|\\mathbf r-\\mathbf a|^2/2}",
+              "expected": 0.0,
+              "measured": 1.5429764206305514e-18,
+              "error": 1.5429764206305514e-18,
+              "passed": true
+            }
+          ],
+          "flux_checks": [
+            {
+              "label": "outward flux through the sphere of radius 0.7",
+              "test_function_latex": "",
+              "expected": 12.566370614359172,
+              "measured": 12.566370614359172,
+              "error": 0.0,
+              "passed": true
+            },
+            {
+              "label": "outward flux through the sphere of radius 1.9",
+              "test_function_latex": "",
+              "expected": 12.566370614359172,
+              "measured": 12.566370614359174,
+              "error": 1.7763568394002505e-15,
+              "passed": true
+            }
+          ],
+          "regularisation": [
+            {
+              "eps": 0.4,
+              "value": 18.444914217894915,
+              "expected": 25.132741228718345,
+              "error": 6.68782701082343
+            },
+            {
+              "eps": 0.2,
+              "value": 22.37051306505613,
+              "expected": 25.132741228718345,
+              "error": 2.762228163662215
+            },
+            {
+              "eps": 0.1,
+              "value": 24.138764890668032,
+              "expected": 25.132741228718345,
+              "error": 0.993976338050313
+            }
+          ],
+          "proof_status": "derived",
+          "scope": "Derived for one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength C and a constant real source a, against smooth rapidly decreasing test functions. Not covered: any other singular field, several sources, products, derivatives or compositions of the delta.",
+          "unresolved": [
+            "behaviour at infinity is assumed rapidly decreasing through the test functions"
+          ],
+          "claim": null
+        },
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "distributional",
+          "coordinates": "cartesian",
+          "result_kind": "scalar",
+          "operator_depth": 0,
+          "abstract_fields": 0,
+          "explicit_fields": 1,
+          "stages": [
+            {
+              "name": "singular",
+              "duration_ms": 498
+            }
+          ],
+          "reason": null,
+          "points": 14,
+          "trace_id": null
+        },
+        "duration_ms": 635
+      },
+      "request": {
+        "expression": "\\nabla\\cdot\\frac{\\mathbf{r}}{|\\mathbf{r}|^3}",
+        "format": "latex",
+        "coordinates": "cartesian",
+        "fields": [
+          {
+            "name": "r",
+            "kind": "vector",
+            "components": ["x", "y", "z"],
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "distributional",
+        "to": null,
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": ["distributional"],
+    "rows": {
+      "distributional": "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)"
+    }
+  },
   "routh": {
     "data": {
       "diagnostic": null,

@@ -1,6 +1,7 @@
 "use client";
 
 import { Math } from "@minerva/ui/math";
+import { Numbered } from "./chat/equation-number";
 import type { VectorResult, VectorSingular } from "@/lib/types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -54,12 +55,14 @@ export function SingularSection({
           Distributional result (as a distribution on ℝ³)
         </div>
         <div className="overflow-x-auto">
-          <Math
-            latex={singular.distributional_latex}
-            display
-            className="text-xl"
-            label="Distributional"
-          />
+          <Numbered k="distributional">
+            <Math
+              latex={singular.distributional_latex}
+              display
+              className="text-xl"
+              label="Distributional"
+            />
+          </Numbered>
         </div>
         <p className="text-xs text-muted" data-testid="singular-status">
           {singular.proof_status === "derived"

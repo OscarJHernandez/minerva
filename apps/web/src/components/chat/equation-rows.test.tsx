@@ -6,6 +6,7 @@ import { MatrixPanel } from "../matrix-panel";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 import { StatisticsPanel } from "../statistics-panel";
+import { VectorPanel } from "../vector-panel";
 import { StatMechPanel, quantityKey, quantitySymbol } from "../statmech-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { PerturbationCard } from "./perturbation-card";
@@ -109,6 +110,7 @@ const NEW_ENTRIES: Record<
   | "ode_analysis"
   | "matrix"
   | "routh"
+  | "vector"
 > = {
   variation: "variation",
   variation_second: "variation",
@@ -129,6 +131,11 @@ const NEW_ENTRIES: Record<
   matrix_gradient: "matrix",
   matrix_integral: "matrix",
   routh: "routh",
+  vector_scalar: "vector",
+  vector_components: "vector",
+  vector_convert: "vector",
+  vector_identity: "vector",
+  vector_singular: "vector",
 };
 
 function rowCard(name: string, numbers: Record<string, number>) {
@@ -322,5 +329,31 @@ describe("row numbers of the matrix card: steps and alternative conventions", ()
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
     expect(document.body.textContent).toContain("Steps");
     expect(document.body.textContent).toContain("Entrywise form");
+  });
+});
+
+describe("row numbers of the vector card", () => {
+  it("the vector panel renders unchanged without a provider (the workbench)", () => {
+    for (const name of [
+      "vector_scalar",
+      "vector_components",
+      "vector_identity",
+      "vector_singular",
+    ]) {
+      const entry = rowEntries[name] as RowEntry;
+      const { unmount } = render(
+        <VectorPanel result={entry.data.result as Parameters<typeof VectorPanel>[0]["result"]} />,
+      );
+      expect(screen.queryByTestId("equation-number"), name).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("a conditional result, an integral and the classical value of a point source show no number", () => {
+    // the server lists none of them, so the card carries no numbers and the panel draws none
+    const entry = rowEntries.vector_scalar as RowEntry;
+    render(<CardView card={rowCard("vector_scalar", {})} />);
+    expect(entry.keys).toEqual(["result"]);
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
   });
 });

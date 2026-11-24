@@ -734,6 +734,103 @@ def matrix(data: dict[str, Any]) -> Listed:
     return out
 
 
+# ----------------------------------------------------------------------------------------------------------
+# vector calculus rows (#166)
+
+# Actions whose result is never numbered, with the reason (the reader checks `action`; a test pins this table).
+VECTOR_NOT_NUMBERED = {
+    "jacobian": "a matrix of the map to Cartesian coordinates, not an evaluated expression of the user's field",
+    "substitute": "holds only given the user's premises",
+    "apply": "an implication from an equation the user supplied",
+    "em_derive": "rests on premises the user adopted; Minerva never checks them",
+    "em_compute": "numerical electrostatics: an approximation checked against a second method",
+    "integrate": "a value, often a numerical approximation, and theorems whose hypotheses are only scanned",
+    "identities": "a list of identities that could be applied, none of them applied",
+}
+
+
+def _vector_verified(result: dict[str, Any]) -> bool:
+    """The card's own check accepted the result: status ok, no premise, and no leg of the check failed."""
+    if result.get("status") != "ok" or result.get("evidence") == "conditional":
+        return False
+    if result.get("given") or result.get("needs_premises") or result.get("blocked"):
+        return False
+    if result.get("integral") or result.get("em"):
+        return False
+    verification = result.get("verification")
+    if not isinstance(verification, dict):
+        return False
+    return (
+        verification.get("numeric_passed") is True
+        and verification.get("symbolic_zero") is not False
+    )
+
+
+def _vector_step(step: object) -> str | None:
+    """The formula of one residual-checked, premise-free step, or None."""
+    if not isinstance(step, dict) or step.get("evidence") != "identity" or step.get("given"):
+        return None
+    verification = step.get("verification")
+    if isinstance(verification, dict) and (
+        verification.get("numeric_passed") is False or verification.get("symbolic_zero") is False
+    ):
+        return None
+    return _text(step.get("after_latex"))
+
+
+def vector(data: dict[str, Any]) -> Listed:
+    """`result`, `component:i`, `step:i` or `distributional` of an accepted, premise-free `vector` card.
+
+    Only what the panel draws as a formula, and only when the card's own check accepted it with no premise:
+    `evaluate` and `convert` (the scalar result, or each component as the row shows it, `basis:\\quad value`,
+    in the order the coordinate system fixes), the steps of `apply_identity` and `derive` when the whole result
+    is an identity (every step residual-checked, no premise), and the `distributional` point-source result
+    when `proof_status` is `derived` and every pairing and flux agreed (the delta statement only; the classical
+    value and the user's own statement stay unnumbered). Never numbered (`VECTOR_NOT_NUMBERED`): anything that
+    rests on a premise, a blocked or unaccepted result, integrals and theorems, electromagnetic derivations
+    and electrostatics, the Jacobian, a list of applicable identities, `restrictions_latex`, and the classical
+    value of a field with a point source (`singular_hint`: it is 0 away from the source and a number would
+    present it as the divergence). A number is a name, not a verification: rows are quoted, never `known_latex`.
+    """
+    result = data.get("result")
+    if not isinstance(result, dict) or not _vector_verified(result):
+        return []
+    action = result.get("action")
+    if action in VECTOR_NOT_NUMBERED:
+        return []
+    out: Listed = []
+    if action == "distributional":
+        singular = result.get("singular")
+        if not isinstance(singular, dict) or singular.get("proof_status") != "derived":
+            return []
+        checks = [*(singular.get("weak_checks") or []), *(singular.get("flux_checks") or [])]
+        if not checks or not all(isinstance(c, dict) and c.get("passed") is True for c in checks):
+            return []
+        latex = _text(singular.get("distributional_latex"))
+        return [("distributional", latex)] if latex else []
+    if action in ("evaluate", "convert"):
+        if result.get("singular_hint") or result.get("singular"):
+            return []
+        kind = result.get("result_kind")
+        if kind == "scalar":
+            if (latex := _text(result.get("result_latex"))) is not None:
+                out.append(("result", latex))
+        elif kind == "vector":
+            components = result.get("components_latex")
+            basis = result.get("basis_latex")
+            basis = basis if isinstance(basis, list) else []
+            for i, c in enumerate(components if isinstance(components, list) else []):
+                if _text(c) is not None:
+                    b = basis[i] if i < len(basis) and isinstance(basis[i], str) else ""
+                    out.append((f"component:{i}", f"{b}:\\quad {c}"))
+        return out
+    if action in ("apply_identity", "derive") and result.get("evidence") == "identity":
+        for i, step in enumerate(result.get("steps") or []):
+            if (latex := _vector_step(step)) is not None:
+                out.append((f"step:{i}", latex))
+    return out
+
+
 # Card types whose listed equations are numbered one by one.
 LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
@@ -751,6 +848,7 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "perturbation": perturbation,
     "dimensional": dimensional,
     "matrix": matrix,
+    "vector": vector,
 }
 
 # One primary result (`result_latex`, numbered as a whole) or no formula of its own to refer to.
@@ -780,12 +878,7 @@ SINGLE_RESULT = frozenset(
 
 # Cards that do list several formulas and are NOT numbered one by one yet. Listing a type here is a
 # statement of what is missing, not a claim that it has no list: move it to LIST_READERS with a reader.
-LIST_NOT_YET_NUMBERED = frozenset(
-    {
-        # Deferred, with the reason: `vector` (its rows are field expressions of several actions).
-        "vector",
-    }
-)
+LIST_NOT_YET_NUMBERED: frozenset[str] = frozenset()
 
 # Card types that are deliberately not numbered, each with the reason a test pins. Not a gap: a number would
 # present something that is not a displayed equation, or a numerical approximation, as a result to refer to.
