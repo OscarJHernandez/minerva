@@ -381,8 +381,12 @@ def statistics(data: dict[str, Any]) -> Listed:
     draws next to its label (an expression); an expression row is the log-likelihood or a score. Nothing is
     listed when the result holds given a premise (`evidence == "conditional"` or any premise: the iid
     assumption, a prior) or rests on a condition that was assumed and not established, and an estimate that
-    exists only under a condition that was not established is left out. Not numbered: the steps, the Fisher
-    information matrix and the posterior (one joined formula), the dropped factors, the checks, the conditions.
+    exists only under a condition that was not established is left out. `fisher` is the information matrix of a
+    single observation, as one formula (it passed both of its own checks: the variance of the score by
+    quadrature and a zero expected score); with several observations it holds given iid and is not numbered.
+    Not numbered: the steps, the posterior (every posterior holds given the prior, which is an assumption and
+    is among the card's premises, so the rule above never lists it), the dropped factors, the checks, the
+    conditions.
     """
     result = data.get("result") or {}
     if (
@@ -404,7 +408,24 @@ def statistics(data: dict[str, Any]) -> Listed:
         for name, latex in found.items() if isinstance(found, dict) else []:
             if (text := _text(latex)) is not None:
                 out.append((f"{prefix}:{name}", text))
+    if (matrix := _matrix_latex(result.get("matrix_latex"))) is not None:
+        out.append(("fisher", matrix))
     return out
+
+
+def _matrix_latex(rows: object) -> str | None:
+    """The Fisher information matrix as the statistics panel draws it (`matrixLatex`): one `pmatrix`.
+
+    Only a non-empty rectangular list of non-empty strings; anything else is not a matrix the card draws.
+    """
+    if not isinstance(rows, list) or not rows:
+        return None
+    if not all(isinstance(r, list) and r and len(r) == len(rows[0]) for r in rows):
+        return None
+    if not all(isinstance(c, str) and c.strip() for r in rows for c in r):
+        return None
+    body = " \\\\ ".join(" & ".join(r) for r in rows)
+    return f"\\begin{{pmatrix}}{body}\\end{{pmatrix}}"
 
 
 def canonical_modes(items: object) -> list[dict[str, Any]]:

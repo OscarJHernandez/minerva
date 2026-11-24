@@ -56,13 +56,14 @@ from .test_equation_rows_contract import FIXTURE, card_from, number
 from .test_total_derivative_handles import Row, card_of, play
 
 NEW = ("variation", "variation_second", "statistics_moments", "statistics_estimate",
-       "statistics_expressions", "expansion", "expansion_two_modes")  # fmt: skip
+       "statistics_expressions", "statistics_fisher", "expansion", "expansion_two_modes")  # fmt: skip
 CARD_TYPE = {
     "variation": "variation",
     "variation_second": "variation",
     "statistics_moments": "statistics",
     "statistics_estimate": "statistics",
     "statistics_expressions": "statistics",
+    "statistics_fisher": "statistics",
     "expansion": "expansion",
     "expansion_two_modes": "expansion",
 }
@@ -93,6 +94,10 @@ REQUESTS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "statistics_estimate": ("statistical_model", {**NORMAL, "action": "mle"}),
     "statistics_expressions": ("statistical_model", {**NORMAL, "action": "score"}),
+    "statistics_fisher": (
+        "statistical_model",
+        {**NORMAL, "estimate": ["mu", "v"], "action": "fisher_information"},
+    ),
     "expansion": (
         "expand_motion",
         {
@@ -122,6 +127,7 @@ EXPECTED_KEYS = {
     "statistics_moments": ["moment:mean", "moment:variance", "moment:second"],
     "statistics_estimate": ["estimate:mu"],
     "statistics_expressions": ["expr:loglik", "expr:score:mu"],
+    "statistics_fisher": ["fisher"],
     "expansion": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega", "mode:0:vector"],
     "expansion_two_modes": [
         "equil:x",
@@ -345,9 +351,8 @@ def test_an_estimate_that_exists_only_under_an_unestablished_condition_is_left_o
     assert statistics(data) == []
 
 
-def test_the_matrix_the_posterior_and_the_steps_are_never_numbered(fixture: dict[str, Any]) -> None:
+def test_the_posterior_and_the_steps_are_never_numbered(fixture: dict[str, Any]) -> None:
     data = copy.deepcopy(fixture["statistics_moments"]["data"])
-    data["result"]["matrix_latex"] = [["a", "b"], ["b", "c"]]
     data["result"]["posterior"] = {
         "family": "beta",
         "parameters": {},
@@ -356,6 +361,80 @@ def test_the_matrix_the_posterior_and_the_steps_are_never_numbered(fixture: dict
     }
     data["result"]["steps"] = [{"title": "s", "before_latex": "a", "after_latex": "b = c"}]
     assert [k for k, _ in statistics(data)] == EXPECTED_KEYS["statistics_moments"]
+
+
+def test_the_fisher_matrix_of_one_observation_is_one_formula_the_panel_draws(
+    fixture: dict[str, Any],
+) -> None:
+    data = fixture["statistics_fisher"]["data"]
+    assert data["result"]["evidence"] == "identity" and data["result"]["premises"] == []
+    assert dict(statistics(data)) == {
+        "fisher": r"\begin{pmatrix}\frac{1}{v} & 0 \\ 0 & \frac{1}{2 v^{2}}\end{pmatrix}"
+    }
+    # the panel's own `matrixLatex` writes the same text (rows joined by ` \\ `, cells by ` & `)
+    source = Path(FIXTURE.parents[3], "apps/web/src/components/statistics-panel.tsx").read_text()
+    assert (
+        '`\\\\begin{pmatrix}${rows.map((r) => r.join(" & ")).join(" \\\\\\\\ ")}\\\\end{pmatrix}`'
+        in source
+    )
+    assert '<Numbered k="fisher">' in source
+
+
+def test_a_fisher_matrix_that_holds_given_iid_or_was_not_accepted_is_not_numbered(
+    fixture: dict[str, Any],
+) -> None:
+    base = fixture["statistics_fisher"]["data"]
+    for edit in (
+        {"evidence": "conditional"},
+        {"premises": ["the observations are independent and identically distributed"]},
+        {"conditions": [{"latex": "v > 0", "established": False, "how": "assumed"}]},
+        {"status": "not_verified"},
+        {"status": "unsupported"},
+    ):
+        data = copy.deepcopy(base)
+        data["result"].update(edit)
+        assert statistics(data) == [], edit
+
+
+def test_a_matrix_that_is_not_a_rectangle_of_formulas_is_not_numbered(
+    fixture: dict[str, Any],
+) -> None:
+    for bad in ([], [[]], [["a", "b"], ["c"]], [["a", ""]], [["a", 1]], "a", None):
+        data = copy.deepcopy(fixture["statistics_fisher"]["data"])
+        data["result"]["matrix_latex"] = bad
+        assert statistics(data) == [], bad
+
+
+def test_a_live_iid_fisher_matrix_and_every_live_posterior_are_unnumbered(ctx: ToolContext) -> None:
+    out = execute(
+        "statistical_model",
+        {**NORMAL, "action": "fisher_information", "sample_size": "n", "iid": True},
+        ctx,
+    )
+    assert out.status == "ok" and out.card.data["result"]["evidence"] == "conditional"
+    assert statistics(out.card.data) == []
+    post = execute(
+        "statistical_model",
+        {
+            "family": "binomial",
+            "parameters": {"n": "n"},
+            "observation": "k",
+            "estimate": ["p"],
+            "action": "posterior",
+            "prior": {"family": "beta", "parameters": {"alpha": "alpha", "beta": "beta"}},
+            "assumptions": {
+                "n": ["integer", "positive"],
+                "k": ["integer", "nonnegative"],
+                "alpha": ["positive"],
+                "beta": ["positive"],
+            },
+        },
+        ctx,
+    )
+    assert post.status == "ok" and post.card.data["result"]["posterior"]["parameters_latex"]
+    # the prior is an assumption and is always among the premises: a posterior holds given it
+    assert post.card.data["result"]["premises"]
+    assert statistics(post.card.data) == []
 
 
 def test_statistics_rows_are_numbered_persist_and_a_conversation_from_before_gets_them(

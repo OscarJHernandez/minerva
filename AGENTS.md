@@ -287,8 +287,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   the decimal eigenvalues or the interpretation, which is the user's own input; variation: `el:<function>` (none for a null Lagrangian), `first`,
   `stationarity:i`, `natural:<end>:<function>:<order>` and `second`, only for a report that is `ok` with its first-variation
   verification (or its second variation's own deciding check) passed; statistics: `estimate:<parameter>` (the row is
-  `\hat{p} = value`, as the panel draws it), `moment:<name>` and `expr:<name>`, nothing when the result holds given a premise
-  (`evidence == "conditional"`, any premise) or an assumed condition; expansion: `equil:<name>`, `eq:<coordinate>` and `char`
+  `\hat{p} = value`, as the panel draws it), `moment:<name>`, `expr:<name>` and `fisher` (the information matrix of one observation, one `pmatrix` formula as the panel
+  draws it), nothing when the result holds given a premise (`evidence == "conditional"`, any premise: iid, so a Fisher matrix of
+  `n` observations has none) or an assumed condition; a posterior is never numbered, because the prior it holds given is always
+  among its premises (the panel joins its parameters into one line; no split rule exists or is needed); expansion: `equil:<name>`, `eq:<coordinate>` and `char`
   and `mode:<i>:omega2` / `mode:<i>:omega` / `mode:<i>:vector` (`v = ...`, only when the engine's own residual check
   `(A + omega^2 I) v = 0` passed, the only case in which it sends a vector; a vector is fixed only up to a scale, so the number names the
   formula as drawn), each only when its own check passed, never the terms or the matrices A and B; `i` is the position in the canonical

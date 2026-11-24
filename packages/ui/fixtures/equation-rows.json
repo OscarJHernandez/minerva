@@ -1371,6 +1371,96 @@
       "expr:score:mu": "- \\frac{\\mu}{v} + \\frac{x}{v}"
     }
   },
+  "statistics_fisher": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "fisher_information",
+        "reason": null,
+        "steps": [
+          {
+            "title": "Fisher information, as minus the expected second derivative of the log density",
+            "before_latex": "",
+            "after_latex": "\\left[\\begin{matrix}\\frac{1}{v} & 0\\\\0 & \\frac{1}{2 v^{2}}\\end{matrix}\\right]",
+            "after_text": "[['1/v', '0'], ['0', '1/(2*v**2)']]",
+            "evidence": "identity"
+          }
+        ],
+        "moments": {},
+        "moments_latex": {},
+        "expressions": {},
+        "expressions_latex": {},
+        "estimates": [],
+        "matrix_text": [
+          ["1/v", "0"],
+          ["0", "1/(2*v**2)"]
+        ],
+        "matrix_latex": [
+          ["\\frac{1}{v}", "0"],
+          ["0", "\\frac{1}{2 v^{2}}"]
+        ],
+        "posterior": null,
+        "checks": [
+          {
+            "kind": "information",
+            "method": "the information against the variance of the score (quadrature or summation, numerically differentiated log density)",
+            "points_checked": 5,
+            "points_agreed": 5,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "information",
+            "method": "the expected score is 0 (regularity), by quadrature or summation",
+            "points_checked": 5,
+            "points_agreed": 5,
+            "passed": true,
+            "note": ""
+          }
+        ],
+        "premises": [],
+        "conditions": [
+          {
+            "latex": "\\mu is a real number",
+            "established": true,
+            "how": "from the declared assumptions"
+          },
+          {
+            "latex": "v > 0",
+            "established": true,
+            "how": "from the declared assumptions"
+          }
+        ],
+        "evidence": "identity",
+        "message": "equal to the variance of the score by quadrature, and the expected score is 0; numerical agreement is evidence, not a proof",
+        "duration_ms": 4204.0
+      },
+      "request": {
+        "family": "normal",
+        "parametrization": "variance",
+        "parameters": {
+          "v": "v"
+        },
+        "observation": "x",
+        "sample_size": null,
+        "iid": null,
+        "estimate": ["mu", "v"],
+        "action": "fisher_information",
+        "prior": null,
+        "data": null,
+        "candidate": null,
+        "assumptions": {
+          "x": ["real"],
+          "v": ["positive"],
+          "n": ["integer", "positive"]
+        }
+      }
+    },
+    "keys": ["fisher"],
+    "rows": {
+      "fisher": "\\begin{pmatrix}\\frac{1}{v} & 0 \\\\ 0 & \\frac{1}{2 v^{2}}\\end{pmatrix}"
+    }
+  },
   "expansion": {
     "data": {
       "report": {

@@ -114,6 +114,7 @@ const NEW_ENTRIES: Record<
   statistics_moments: "statistics",
   statistics_estimate: "statistics",
   statistics_expressions: "statistics",
+  statistics_fisher: "statistics",
   expansion: "expansion",
   expansion_two_modes: "expansion",
   statmech: "statmech",
