@@ -6,7 +6,7 @@ import { MatrixPanel } from "../matrix-panel";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 import { StatisticsPanel } from "../statistics-panel";
-import { StatMechPanel, quantityKey } from "../statmech-panel";
+import { StatMechPanel, quantityKey, quantitySymbol } from "../statmech-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { PerturbationCard } from "./perturbation-card";
 import { CardView } from "./card-view";
@@ -118,6 +118,10 @@ const NEW_ENTRIES: Record<
   expansion: "expansion",
   expansion_two_modes: "expansion",
   statmech: "statmech",
+  statmech_grand: "statmech",
+  statmech_micro: "statmech",
+  statmech_variance_N: "statmech",
+  statmech_mean_E: "statmech",
   perturbation: "perturbation",
   dimensional: "dimensional",
   ode_equilibria: "ode_analysis",
@@ -214,6 +218,18 @@ describe("row numbers of the variation, statistics and expansion cards", () => {
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
     expect(document.body.textContent).toContain("Dimensionless groups");
     expect(document.body.textContent).toContain("Perturbation solution");
+  });
+
+  it("the panel draws the quantities outside the old table as LaTeX symbols, and a user label as named", () => {
+    const base = { variable: null };
+    expect(quantitySymbol({ name: "Xi", ...base })).toBe("\\Xi");
+    expect(quantitySymbol({ name: "lnXi", ...base })).toBe("\\ln \\Xi");
+    expect(quantitySymbol({ name: "Omega", ...base })).toBe("\\Omega");
+    expect(quantitySymbol({ name: "N", ...base })).toBe("\\langle N \\rangle");
+    expect(quantitySymbol({ name: "variance_N", ...base })).toBe("\\operatorname{Var}(N)");
+    // a name the table does not have, and a label the user chose that equals a table name, stay as named
+    expect(quantitySymbol({ name: "occupations", ...base })).toBe("occupations");
+    expect(quantitySymbol({ name: "S", variable: "beta" })).toBe("S");
   });
 
   it("a repeated quantity name gets a distinct key, as on the server", () => {

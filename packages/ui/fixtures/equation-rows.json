@@ -3062,5 +3062,997 @@
       "mode:1:omega": "\\omega = 2",
       "mode:1:vector": "v = \\left[\\begin{matrix}-1\\\\1\\end{matrix}\\right]"
     }
+  },
+  "statmech_grand": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "derive",
+        "ensemble": "grand_canonical",
+        "reason": null,
+        "state_variables": ["beta", "mu"],
+        "steps": [
+          {
+            "name": "levels",
+            "title": "Single-particle levels (classical (Boltzmann) counting)",
+            "latex": "\\varepsilon_{1} = 0,\\ g_{1} = 1\\qquad \\varepsilon_{2} = eps,\\ g_{2} = 1",
+            "text": "",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "partition_function",
+            "title": "Grand partition function",
+            "latex": "\\ln\\Xi = \\sum_i g_i\\, \\mathrm{e}^{-\\beta(\\varepsilon_i - \\mu)} = \\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "",
+            "result_kind": "exact",
+            "conditions": [
+              {
+                "latex": "\\beta > 0,\\ k_B > 0",
+                "established": true,
+                "how": "positive by the definition of an ensemble temperature"
+              },
+              {
+                "latex": "\\Xi = \\exp\\left(\\mathrm{e}^{\\beta\\mu} Z_1\\right)",
+                "established": true,
+                "how": "classical counting: the occupation of each state is Poisson distributed; it is the limit of low occupation, not an exact quantum statistic"
+              }
+            ]
+          },
+          {
+            "name": "Xi",
+            "title": "Grand partition function",
+            "latex": "\\Xi = \\mathrm{e}^{\\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}}",
+            "text": "exp(exp(beta*mu) + exp(-beta*(eps - mu)))",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "lnXi",
+            "title": "Logarithm of the grand partition function",
+            "latex": "\\ln \\Xi = \\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "exp(beta*mu) + exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "Omega",
+            "title": "Grand potential",
+            "latex": "\\Omega = -\\frac{1}{\\beta}\\ln \\Xi = \\frac{- \\mathrm{e}^{\\beta \\mu} - \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}}{\\beta}",
+            "text": "(-exp(beta*mu) - exp(-beta*(eps - mu)))/beta",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "N",
+            "title": "Mean particle number",
+            "latex": "\\langle N \\rangle = \\frac{1}{\\beta}\\frac{\\partial \\ln \\Xi}{\\partial \\mu} = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "Var_N",
+            "title": "Particle-number variance",
+            "latex": "\\operatorname{Var}(N) = \\frac{1}{\\beta^{2}}\\frac{\\partial^2 \\ln \\Xi}{\\partial \\mu^{2}} = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "U",
+            "title": "Internal energy",
+            "latex": "U = -\\frac{\\partial \\ln \\Xi}{\\partial \\beta} + \\mu N = eps \\mathrm{e}^{\\beta \\left(- eps + \\mu\\right)}",
+            "text": "eps*exp(beta*(-eps + mu))",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "partial",
+            "title": "Partial derivative of internal energy with respect to beta",
+            "latex": "- eps \\left(eps - \\mu\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "-eps*(eps - mu)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "conditions": []
+          }
+        ],
+        "quantities": [
+          {
+            "name": "Xi",
+            "title": "Grand partition function",
+            "latex": "\\mathrm{e}^{\\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}}",
+            "text": "exp(exp(beta*mu) + exp(-beta*(eps - mu)))",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "exponential of ln Xi",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "Xi",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "occupation numbers of every single-particle state enumerated directly"
+              }
+            ]
+          },
+          {
+            "name": "lnXi",
+            "title": "Logarithm of the grand partition function",
+            "latex": "\\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "exp(beta*mu) + exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "sum over single-particle states of the logarithm of their occupation sum",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "lnXi",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "occupation numbers of every single-particle state enumerated directly"
+              }
+            ]
+          },
+          {
+            "name": "Omega",
+            "title": "Grand potential",
+            "latex": "\\frac{- \\mathrm{e}^{\\beta \\mu} - \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}}{\\beta}",
+            "text": "(-exp(beta*mu) - exp(-beta*(eps - mu)))/beta",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "Omega = -(1/beta) ln Xi",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "Omega",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "occupation numbers of every single-particle state enumerated directly"
+              }
+            ]
+          },
+          {
+            "name": "N",
+            "title": "Mean particle number",
+            "latex": "\\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "held_fixed": ["mu"],
+            "variable": null,
+            "route": "N = (1/beta) d ln Xi / d mu",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "N",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "occupation numbers of every single-particle state enumerated directly"
+              },
+              {
+                "name": "finite_difference",
+                "subject": "N",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "minus the numerical derivative of the enumerated grand potential with respect to mu"
+              }
+            ]
+          },
+          {
+            "name": "Var_N",
+            "title": "Particle-number variance",
+            "latex": "\\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "held_fixed": ["mu"],
+            "variable": null,
+            "route": "Var(N) = (1/beta^2) d^2 ln Xi / d mu^2",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "Var_N",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "occupation numbers of every single-particle state enumerated directly"
+              },
+              {
+                "name": "finite_difference",
+                "subject": "Var_N",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "the second numerical derivative of ln Xi with respect to mu, divided by beta^2"
+              },
+              {
+                "name": "nonnegative_variance",
+                "subject": "Var_E",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "a variance cannot be negative"
+              }
+            ]
+          },
+          {
+            "name": "U",
+            "title": "Internal energy",
+            "latex": "eps \\mathrm{e}^{\\beta \\left(- eps + \\mu\\right)}",
+            "text": "eps*exp(beta*(-eps + mu))",
+            "result_kind": "exact",
+            "held_fixed": ["mu"],
+            "variable": null,
+            "route": "U = -d ln Xi / d beta + mu N",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "U",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "occupation numbers of every single-particle state enumerated directly"
+              },
+              {
+                "name": "finite_difference",
+                "subject": "U",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "U - mu N = -d ln Xi / d beta at fixed mu, differentiated numerically"
+              }
+            ]
+          },
+          {
+            "name": "S",
+            "title": "Partial derivative of internal energy with respect to beta",
+            "latex": "- eps \\left(eps - \\mu\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "-eps*(eps - mu)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "held_fixed": ["mu"],
+            "variable": "beta",
+            "route": "dU/dbeta at fixed mu, times 1",
+            "checks": [
+              {
+                "name": "finite_difference",
+                "subject": "S",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "numerical derivative of the enumerated quantity, the other state variables fixed"
+              }
+            ]
+          }
+        ],
+        "conditions": [
+          {
+            "latex": "\\beta > 0,\\ k_B > 0",
+            "established": true,
+            "how": "positive by the definition of an ensemble temperature"
+          },
+          {
+            "latex": "\\Xi = \\exp\\left(\\mathrm{e}^{\\beta\\mu} Z_1\\right)",
+            "established": true,
+            "how": "classical counting: the occupation of each state is Poisson distributed; it is the limit of low occupation, not an exact quantum statistic"
+          }
+        ],
+        "methods": [],
+        "not_supported": [],
+        "questions": [],
+        "table": null,
+        "approximation": null,
+        "verification": {
+          "method": "mpmath enumeration of the microstates with log-sum-exp, and numerical differentiation of that enumeration, at sampled assumption-respecting points",
+          "points_checked": 8,
+          "points_agreed": 8,
+          "symbolic_zero": null,
+          "passed": true,
+          "note": "numerical agreement is evidence, not a proof"
+        },
+        "diagnostics": {
+          "levels": 2,
+          "parameters": 0,
+          "points_checked": 8,
+          "points_agreed": 8,
+          "reason": null,
+          "events": [
+            {
+              "stage": "parse",
+              "status": "ok",
+              "duration_ms": 2.911,
+              "reason": null
+            },
+            {
+              "stage": "symbolic",
+              "status": "ok",
+              "duration_ms": 12365.205,
+              "reason": null
+            },
+            {
+              "stage": "verify",
+              "status": "ok",
+              "duration_ms": 0.053,
+              "reason": null
+            }
+          ]
+        },
+        "notes": [
+          "classical (Boltzmann) counting: independent particles; each of the g_i states of a level is counted separately.",
+          "Every result above agreed with an independent numerical evaluation."
+        ],
+        "message": "Verified against an independent numerical evaluation.",
+        "duration_ms": 14201.0
+      },
+      "args": {
+        "action": "derive",
+        "system": {
+          "kind": "occupation",
+          "statistics": "boltzmann",
+          "levels": [
+            {
+              "energy": "0",
+              "degeneracy": "1"
+            },
+            {
+              "energy": "eps",
+              "degeneracy": "1"
+            }
+          ],
+          "mu": "mu"
+        },
+        "ensemble": "grand_canonical",
+        "total_energy": null,
+        "copies_count": null,
+        "temperature": "beta",
+        "parameters": [],
+        "assumptions": {
+          "eps": ["positive"]
+        },
+        "quantities": ["Xi", "lnXi", "Omega", "N", "Var_N", "U"],
+        "partials": [
+          {
+            "of": "U",
+            "variable": "beta",
+            "held_fixed": ["mu"],
+            "order": 1,
+            "scale": "1",
+            "label": "S"
+          }
+        ],
+        "method": null,
+        "observable": "E",
+        "statistic": "mean",
+        "order": 1,
+        "other_observable": null,
+        "coupling": null
+      },
+      "answers": {
+        "identical": false
+      },
+      "inputs": [
+        {
+          "input_latex": "\\varepsilon_{1} = 0,\\ g_{1} = 1\\qquad \\varepsilon_{2} = eps,\\ g_{2} = 1"
+        }
+      ]
+    },
+    "keys": [
+      "quantity:Xi",
+      "quantity:lnXi",
+      "quantity:Omega",
+      "quantity:N",
+      "quantity:Var_N",
+      "quantity:U"
+    ],
+    "rows": {
+      "quantity:Xi": "\\Xi = \\mathrm{e}^{\\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}}",
+      "quantity:lnXi": "\\ln \\Xi = \\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+      "quantity:Omega": "\\Omega = \\frac{- \\mathrm{e}^{\\beta \\mu} - \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}}{\\beta}",
+      "quantity:N": "\\langle N \\rangle = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+      "quantity:Var_N": "\\operatorname{Var}(N) = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+      "quantity:U": "U = eps \\mathrm{e}^{\\beta \\left(- eps + \\mu\\right)}"
+    }
+  },
+  "statmech_micro": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "partition",
+        "ensemble": "microcanonical",
+        "reason": null,
+        "state_variables": ["beta"],
+        "steps": [
+          {
+            "name": "levels",
+            "title": "Levels, copies and fixed energy",
+            "latex": "\\varepsilon_{1} = 0,\\ g_{1} = 1\\qquad \\varepsilon_{2} = 1,\\ g_{2} = 1\\qquad N = 10,\\quad E = 4",
+            "text": "",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "multiplicity",
+            "title": "Number of microstates",
+            "latex": "\\Omega(E) = 210",
+            "text": "210",
+            "result_kind": "exact",
+            "conditions": [
+              {
+                "latex": "\\text{finite count}",
+                "established": true,
+                "how": "an exact integer count of microstates; no thermodynamic limit is assumed"
+              }
+            ]
+          },
+          {
+            "name": "entropy",
+            "title": "Microcanonical entropy",
+            "latex": "S = k_{B} \\ln \\Omega = k_{B}\\,\\ln\\left(210\\right)",
+            "text": "k_B*log(210)",
+            "result_kind": "exact",
+            "conditions": []
+          }
+        ],
+        "quantities": [
+          {
+            "name": "Omega",
+            "title": "Number of microstates",
+            "latex": "210",
+            "text": "210",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "generating function over the levels, N! [x^N] prod_k sum_n (g_k x)^n / n!",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "Omega",
+                "passed": true,
+                "points": 1,
+                "agreed": 1,
+                "detail": "occupation vectors with multinomial weights, a different algorithm from the generating function"
+              },
+              {
+                "name": "enumeration",
+                "subject": "Omega",
+                "passed": true,
+                "points": 1,
+                "agreed": 1,
+                "detail": "all 1024 assignments of a level to each labelled copy, counted directly"
+              },
+              {
+                "name": "normalisation",
+                "subject": "Omega",
+                "passed": true,
+                "points": 1,
+                "agreed": 1,
+                "detail": "the counts over all energies add up to (sum of degeneracies)^N"
+              }
+            ]
+          },
+          {
+            "name": "S",
+            "title": "Microcanonical entropy",
+            "latex": "k_{B} \\ln \\left(210\\right)",
+            "text": "k_B*log(210)",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "S = k_B ln Omega",
+            "checks": []
+          },
+          {
+            "name": "beta_estimate",
+            "title": "Temperature estimate and canonical comparison (a measurement)",
+            "latex": "\\beta \\approx \\frac{\\Delta \\ln \\Omega}{\\Delta E}",
+            "text": "beta (finite difference over the neighbouring energies) = 0.37096867; canonical beta with the same mean energy per copy = 0.40546511; relative difference 0.0851",
+            "result_kind": "numeric",
+            "held_fixed": [],
+            "variable": null,
+            "route": "a finite difference over the neighbouring attainable energies, not a derivative; the canonical value solves U(beta) = E/N. Their agreement is measured, never assumed",
+            "checks": []
+          }
+        ],
+        "conditions": [
+          {
+            "latex": "E \\in \\{\\textstyle\\sum_i n_i \\varepsilon_i\\}",
+            "established": true,
+            "how": "the fixed energy is attainable: some microstate has it"
+          }
+        ],
+        "methods": [],
+        "not_supported": [],
+        "questions": [],
+        "table": null,
+        "approximation": null,
+        "verification": {
+          "method": "mpmath enumeration of the microstates with log-sum-exp, and numerical differentiation of that enumeration, at sampled assumption-respecting points",
+          "points_checked": 1,
+          "points_agreed": 1,
+          "symbolic_zero": null,
+          "passed": true,
+          "note": "numerical agreement is evidence, not a proof"
+        },
+        "diagnostics": {
+          "levels": 2,
+          "parameters": 0,
+          "points_checked": 1,
+          "points_agreed": 1,
+          "reason": null,
+          "events": [
+            {
+              "stage": "parse",
+              "status": "ok",
+              "duration_ms": 0.456,
+              "reason": null
+            },
+            {
+              "stage": "symbolic",
+              "status": "ok",
+              "duration_ms": 6.886,
+              "reason": null
+            },
+            {
+              "stage": "verify",
+              "status": "ok",
+              "duration_ms": 0.068,
+              "reason": null
+            }
+          ]
+        },
+        "notes": ["Every result above agreed with an independent numerical evaluation."],
+        "message": "Verified against an independent numerical evaluation.",
+        "duration_ms": 90.0
+      },
+      "args": {
+        "action": "partition",
+        "system": {
+          "kind": "levels",
+          "levels": [
+            {
+              "energy": "0",
+              "degeneracy": "1",
+              "observables": {}
+            },
+            {
+              "energy": "1",
+              "degeneracy": "1",
+              "observables": {}
+            }
+          ]
+        },
+        "ensemble": "microcanonical",
+        "total_energy": "4",
+        "copies_count": "10",
+        "temperature": "beta",
+        "parameters": [],
+        "assumptions": {},
+        "quantities": [],
+        "partials": [],
+        "method": null,
+        "observable": "E",
+        "statistic": "mean",
+        "order": 1,
+        "other_observable": null,
+        "coupling": null
+      },
+      "answers": {
+        "identical": false
+      },
+      "inputs": [
+        {
+          "input_latex": "\\varepsilon_{1} = 0,\\ g_{1} = 1\\qquad \\varepsilon_{2} = 1,\\ g_{2} = 1\\qquad N = 10,\\quad E = 4"
+        }
+      ]
+    },
+    "keys": ["quantity:Omega", "quantity:S"],
+    "rows": {
+      "quantity:Omega": "\\Omega = 210",
+      "quantity:S": "S = k_{B} \\ln \\left(210\\right)"
+    }
+  },
+  "statmech_variance_N": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "expectation",
+        "ensemble": "grand_canonical",
+        "reason": null,
+        "state_variables": ["beta", "mu"],
+        "steps": [
+          {
+            "name": "levels",
+            "title": "Single-particle levels (classical (Boltzmann) counting)",
+            "latex": "\\varepsilon_{1} = 0,\\ g_{1} = 1\\qquad \\varepsilon_{2} = eps,\\ g_{2} = 1",
+            "text": "",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "partition_function",
+            "title": "Grand partition function",
+            "latex": "\\ln\\Xi = \\sum_i g_i\\, \\mathrm{e}^{-\\beta(\\varepsilon_i - \\mu)} = \\mathrm{e}^{\\beta \\mu} + \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "",
+            "result_kind": "exact",
+            "conditions": [
+              {
+                "latex": "\\beta > 0,\\ k_B > 0",
+                "established": true,
+                "how": "positive by the definition of an ensemble temperature"
+              },
+              {
+                "latex": "\\Xi = \\exp\\left(\\mathrm{e}^{\\beta\\mu} Z_1\\right)",
+                "established": true,
+                "how": "classical counting: the occupation of each state is Poisson distributed; it is the limit of low occupation, not an exact quantum statistic"
+              }
+            ]
+          },
+          {
+            "name": "expectation",
+            "title": "Variance of N",
+            "latex": "\\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "conditions": [
+              {
+                "latex": "\\beta > 0,\\ k_B > 0",
+                "established": true,
+                "how": "positive by the definition of an ensemble temperature"
+              },
+              {
+                "latex": "\\Xi = \\exp\\left(\\mathrm{e}^{\\beta\\mu} Z_1\\right)",
+                "established": true,
+                "how": "classical counting: the occupation of each state is Poisson distributed; it is the limit of low occupation, not an exact quantum statistic"
+              }
+            ]
+          }
+        ],
+        "quantities": [
+          {
+            "name": "variance_N",
+            "title": "Variance of N",
+            "latex": "\\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
+            "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "cumulants of N as derivatives of ln Xi with respect to mu at fixed beta",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "variance",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "cumulants of N from the enumerated occupation distributions"
+              },
+              {
+                "name": "nonnegative_variance",
+                "subject": "Var_E",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "a variance cannot be negative"
+              },
+              {
+                "name": "fluctuation_response",
+                "subject": "kappa_2(N)",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "cumulant as beta^-2 times the 2-th numerical derivative of ln Xi with respect to mu"
+              }
+            ]
+          }
+        ],
+        "conditions": [
+          {
+            "latex": "\\beta > 0,\\ k_B > 0",
+            "established": true,
+            "how": "positive by the definition of an ensemble temperature"
+          },
+          {
+            "latex": "\\Xi = \\exp\\left(\\mathrm{e}^{\\beta\\mu} Z_1\\right)",
+            "established": true,
+            "how": "classical counting: the occupation of each state is Poisson distributed; it is the limit of low occupation, not an exact quantum statistic"
+          }
+        ],
+        "methods": [],
+        "not_supported": [],
+        "questions": [],
+        "table": null,
+        "approximation": null,
+        "verification": {
+          "method": "mpmath enumeration of the microstates with log-sum-exp, and numerical differentiation of that enumeration, at sampled assumption-respecting points",
+          "points_checked": 8,
+          "points_agreed": 8,
+          "symbolic_zero": null,
+          "passed": true,
+          "note": "numerical agreement is evidence, not a proof"
+        },
+        "diagnostics": {
+          "levels": 2,
+          "parameters": 0,
+          "points_checked": 8,
+          "points_agreed": 8,
+          "reason": null,
+          "events": [
+            {
+              "stage": "parse",
+              "status": "ok",
+              "duration_ms": 2.896,
+              "reason": null
+            },
+            {
+              "stage": "symbolic",
+              "status": "ok",
+              "duration_ms": 4838.987,
+              "reason": null
+            },
+            {
+              "stage": "verify",
+              "status": "ok",
+              "duration_ms": 0.046,
+              "reason": null
+            }
+          ]
+        },
+        "notes": [
+          "classical (Boltzmann) counting: independent particles; each of the g_i states of a level is counted separately.",
+          "Every result above agreed with an independent numerical evaluation."
+        ],
+        "message": "Verified against an independent numerical evaluation.",
+        "duration_ms": 4925.0
+      },
+      "args": {
+        "action": "expectation",
+        "system": {
+          "kind": "occupation",
+          "statistics": "boltzmann",
+          "levels": [
+            {
+              "energy": "0",
+              "degeneracy": "1"
+            },
+            {
+              "energy": "eps",
+              "degeneracy": "1"
+            }
+          ],
+          "mu": "mu"
+        },
+        "ensemble": "grand_canonical",
+        "total_energy": null,
+        "copies_count": null,
+        "temperature": "beta",
+        "parameters": [],
+        "assumptions": {
+          "eps": ["positive"]
+        },
+        "quantities": [],
+        "partials": [],
+        "method": null,
+        "observable": "N",
+        "statistic": "variance",
+        "order": 1,
+        "other_observable": null,
+        "coupling": null
+      },
+      "answers": {
+        "identical": false
+      },
+      "inputs": [
+        {
+          "input_latex": "\\varepsilon_{1} = 0,\\ g_{1} = 1\\qquad \\varepsilon_{2} = eps,\\ g_{2} = 1"
+        }
+      ]
+    },
+    "keys": ["quantity:variance_N"],
+    "rows": {
+      "quantity:variance_N": "\\operatorname{Var}(N) = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}"
+    }
+  },
+  "statmech_mean_E": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "expectation",
+        "ensemble": "canonical",
+        "reason": null,
+        "state_variables": ["beta"],
+        "steps": [
+          {
+            "name": "levels",
+            "title": "Energy levels and degeneracies",
+            "latex": "E_{1} = 0,\\ g_{1} = 1\\qquad E_{2} = \\epsilon,\\ g_{2} = 1",
+            "text": "",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "partition_function",
+            "title": "Partition function",
+            "latex": "Z = \\sum_i g_i\\, e^{-\\beta E_i} = 1 + \\mathrm{e}^{- \\beta \\epsilon}",
+            "text": "1 + exp(-beta*epsilon)",
+            "result_kind": "exact",
+            "conditions": [
+              {
+                "latex": "\\beta > 0,\\ k_B > 0",
+                "established": true,
+                "how": "positive by the definition of an ensemble temperature"
+              },
+              {
+                "latex": "\\text{finite sum}",
+                "established": true,
+                "how": "a finite sum of exponentials always converges; derivatives pass through it exactly"
+              }
+            ]
+          },
+          {
+            "name": "probabilities",
+            "title": "Probability of each level",
+            "latex": "P_{1} = \\frac{\\mathrm{e}^{\\beta \\epsilon}}{\\mathrm{e}^{\\beta \\epsilon} + 1},\\quad P_{2} = \\frac{1}{\\mathrm{e}^{\\beta \\epsilon} + 1}",
+            "text": "P_i = g_i exp(-beta E_i) / Z",
+            "result_kind": "exact",
+            "conditions": []
+          },
+          {
+            "name": "expectation",
+            "title": "Mean of E",
+            "latex": "\\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}",
+            "text": "epsilon/(exp(beta*epsilon) + 1)",
+            "result_kind": "exact",
+            "conditions": [
+              {
+                "latex": "\\text{finite sum}",
+                "established": true,
+                "how": "a finite sum of exponentials always converges"
+              },
+              {
+                "latex": "\\kappa_1(E) = (-1)^1\\,\\partial_\\beta^1\\ln Z",
+                "established": true,
+                "how": "the levels do not depend on beta, and a finite sum can be differentiated term by term"
+              }
+            ]
+          }
+        ],
+        "quantities": [
+          {
+            "name": "mean_E",
+            "title": "Mean of E",
+            "latex": "\\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}",
+            "text": "epsilon/(exp(beta*epsilon) + 1)",
+            "result_kind": "exact",
+            "held_fixed": [],
+            "variable": null,
+            "route": "weighted sum over the levels with the Boltzmann probabilities",
+            "checks": [
+              {
+                "name": "enumeration",
+                "subject": "mean",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "direct weighted sum over the levels, log-sum-exp"
+              },
+              {
+                "name": "fluctuation_response",
+                "subject": "kappa_1(E)",
+                "passed": true,
+                "points": 8,
+                "agreed": 8,
+                "detail": "cumulant of E as (-1)^n times the n-th derivative of the enumerated ln Z with respect to beta"
+              }
+            ]
+          }
+        ],
+        "conditions": [
+          {
+            "latex": "\\text{finite sum}",
+            "established": true,
+            "how": "a finite sum of exponentials always converges"
+          },
+          {
+            "latex": "\\kappa_1(E) = (-1)^1\\,\\partial_\\beta^1\\ln Z",
+            "established": true,
+            "how": "the levels do not depend on beta, and a finite sum can be differentiated term by term"
+          }
+        ],
+        "methods": [],
+        "not_supported": [],
+        "questions": [],
+        "table": null,
+        "approximation": null,
+        "verification": {
+          "method": "mpmath enumeration of the microstates with log-sum-exp, and numerical differentiation of that enumeration, at sampled assumption-respecting points",
+          "points_checked": 8,
+          "points_agreed": 8,
+          "symbolic_zero": null,
+          "passed": true,
+          "note": "numerical agreement is evidence, not a proof"
+        },
+        "diagnostics": {
+          "levels": 2,
+          "parameters": 0,
+          "points_checked": 8,
+          "points_agreed": 8,
+          "reason": null,
+          "events": [
+            {
+              "stage": "parse",
+              "status": "ok",
+              "duration_ms": 0.447,
+              "reason": null
+            },
+            {
+              "stage": "symbolic",
+              "status": "ok",
+              "duration_ms": 102.847,
+              "reason": null
+            },
+            {
+              "stage": "verify",
+              "status": "ok",
+              "duration_ms": 0.087,
+              "reason": null
+            }
+          ]
+        },
+        "notes": ["Every result above agreed with an independent numerical evaluation."],
+        "message": "Verified against an independent numerical evaluation.",
+        "duration_ms": 188.0
+      },
+      "args": {
+        "action": "expectation",
+        "system": {
+          "kind": "levels",
+          "levels": [
+            {
+              "energy": "0",
+              "degeneracy": "1",
+              "observables": {}
+            },
+            {
+              "energy": "epsilon",
+              "degeneracy": "1",
+              "observables": {}
+            }
+          ]
+        },
+        "ensemble": "canonical",
+        "total_energy": null,
+        "copies_count": null,
+        "temperature": "beta",
+        "parameters": [],
+        "assumptions": {
+          "epsilon": ["positive"]
+        },
+        "quantities": [],
+        "partials": [],
+        "method": null,
+        "observable": "E",
+        "statistic": "mean",
+        "order": 1,
+        "other_observable": null,
+        "coupling": null
+      },
+      "answers": {
+        "identical": false
+      },
+      "inputs": [
+        {
+          "input_latex": "E_{1} = 0,\\ g_{1} = 1\\qquad E_{2} = \\epsilon,\\ g_{2} = 1"
+        }
+      ]
+    },
+    "keys": ["quantity:mean_E"],
+    "rows": {
+      "quantity:mean_E": "\\langle E \\rangle = \\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
+    }
   }
 }

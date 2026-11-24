@@ -297,10 +297,15 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   order of the modes (`canonical_modes`, by the text of omega^2, then of the vector, then of omega; the solver's `sympy.roots` order
   is not canonical; repeated by `apps/web/src/lib/expansion-modes.ts`, both pinned by the `expansion_two_modes` fixture, where the
   solver's order is the reverse of the canonical one); statmech: `quantity:<name>` (`SYMBOL = formula`, as the panel draws
-  it; `quantity:<name>:<k>` for the k-th repeat of a name) for an exact base quantity (Z, lnZ, F, U, S, Var_E: the panel's
-  own table, read from the TSX by a test) of an `ok` result with no failed check, never a representation, a numerical value,
-  an asymptotic result, a quantity named outside that table (Xi, Omega, occupations, means, the user's own partial-derivative
-  labels), the user's `levels` step, the table or the error tables; perturbation: `omega0`, `omega`, `ratio` and `solution` only for an
+  it; `quantity:<name>:<k>` for the k-th repeat of a name) for an exact base quantity of an `ok` result with no failed check, whose name is in the ONE closed table
+  `packages/ui/fixtures/statmech-symbols.json` (Z, lnZ, F, U, S, Var_E; Xi, lnXi, Omega, N = `\langle N \rangle`, Var_N of the grand
+  canonical and microcanonical cards; mean_E, variance_E, mean_N, variance_N), which the panel imports (`quantitySymbol`) and
+  `card_equations.STATMECH_SYMBOL` repeats, pinned equal by a test; the symbol is always the engine's own quantity, never a
+  different one. Never numbered: a representation, a numerical value, an asymptotic result, any quantity with `variable` set
+  (a partial derivative the USER labelled: its label may equal a table name, `S`, and is never entropy), a name outside the table
+  (occupations, which is one joined formula, a cumulant of unstated order, the approximation quantities, other labels), the
+  statmech steps (they repeat the quantities with their derivation or are the user's input), the user's `levels` step, the table
+  or the error tables; perturbation: `omega0`, `omega`, `ratio` and `solution` only for an
   `ok` report whose verification passed; `solution` is the first relation of `solution_latex` only (`u(t) = ... + O(...)`, split
   at its one top-level `,\quad` by `split_solution`, repeated by `apps/web/src/lib/perturbation-solution.ts`, both pinned by
   `perturbation-solution-split.json`: the second relation, `\omega t = \tau`, is notation no check covers and stays unnumbered, and a
