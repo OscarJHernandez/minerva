@@ -11,6 +11,7 @@ import { StatMechPanel, quantityKey, quantitySymbol } from "../statmech-panel";
 import { DimensionalCard } from "./dimensional-card";
 import { PerturbationCard } from "./perturbation-card";
 import { CardView } from "./card-view";
+import { RowNumbersProvider } from "./equation-number";
 
 /**
  * The keys the server numbers (`services/api/.../card_equations.py`) are pinned by the same fixture in
@@ -239,6 +240,40 @@ describe("row numbers of the variation, statistics and expansion cards", () => {
     // a name the table does not have, and a label the user chose that equals a table name, stay as named
     expect(quantitySymbol({ name: "occupations", ...base })).toBe("occupations");
     expect(quantitySymbol({ name: "S", variable: "beta" })).toBe("S");
+  });
+
+  it("the occupation list is drawn and numbered per state, and an unsplittable one as before", () => {
+    const grand = (rowEntries.statmech_grand as RowEntry).data.result as Parameters<
+      typeof StatMechPanel
+    >[0]["result"];
+    const result = (latex: string) => ({
+      ...grand,
+      steps: [],
+      quantities: [
+        {
+          ...grand.quantities[0]!,
+          name: "occupations",
+          variable: null,
+          checks: [],
+          latex,
+        },
+      ],
+    });
+    const two = String.raw`\langle n\rangle_{1} = a,\quad \langle n\rangle_{2} = b`;
+    const panel = (latex: string) => (
+      <RowNumbersProvider value={{ "occupation:1": 4, "occupation:2": 5 }}>
+        <StatMechPanel result={result(latex)} needs={{ cell: false, identical: false }} />
+      </RowNumbersProvider>
+    );
+    const { unmount } = render(panel(two));
+    expect(screen.queryAllByTestId("equation-number").map((e) => e.textContent)).toEqual([
+      "(4)",
+      "(5)",
+    ]);
+    unmount();
+    // a text that does not split exactly shows no number, whatever the provider holds
+    render(panel(String.raw`n_{1} = a,\quad n_{2} = b`));
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
   });
 
   it("a repeated quantity name gets a distinct key, as on the server", () => {

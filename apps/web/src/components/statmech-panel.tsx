@@ -11,6 +11,7 @@ import type {
   StatStep,
 } from "@/lib/statmech-types";
 import symbols from "../../../../packages/ui/fixtures/statmech-symbols.json";
+import { occupationKey, splitOccupations } from "@/lib/statmech-occupations";
 import { Numbered } from "./chat/equation-number";
 import { LinePlot, type PlotSeries } from "./chat/line-plot";
 import { StatusPill } from "./result-panel";
@@ -60,6 +61,21 @@ export function quantityKey(quantities: { name: string }[], i: number): string {
   return k === 1 ? `quantity:${name}` : `quantity:${name}:${k}`;
 }
 
+/**
+ * The rows of the occupation list, each under the key the server numbers it by (`card_equations.occupation_key`);
+ * null for any other quantity, for a user-labelled one and for a text that does not split exactly.
+ */
+function occupationRows(
+  quantities: StatQuantity[],
+  i: number,
+): { key: string; latex: string }[] | null {
+  const q = quantities[i];
+  if (q === undefined || q.name !== "occupations" || q.variable !== null) return null;
+  const pieces = splitOccupations(q.latex);
+  if (pieces === null) return null;
+  return pieces.map((latex, j) => ({ key: occupationKey(quantities, i, j + 1), latex }));
+}
+
 function checkLabel(c: StatCheck): string {
   const state = c.passed === true ? "agreed" : c.passed === false ? "DISAGREED" : "undecided";
   const count = c.points > 0 ? ` (${c.agreed}/${c.points} points)` : "";
@@ -96,7 +112,16 @@ function Step({ step }: { step: StatStep }) {
   );
 }
 
-function Quantity({ q, k }: { q: StatQuantity; k: string }) {
+function Quantity({
+  q,
+  k,
+  occupationKeys,
+}: {
+  q: StatQuantity;
+  k: string;
+  /** Row keys of the per-state occupations, when this quantity is the occupation list and it splits exactly. */
+  occupationKeys: { key: string; latex: string }[] | null;
+}) {
   return (
     <section
       aria-label={q.title}
@@ -107,11 +132,21 @@ function Quantity({ q, k }: { q: StatQuantity; k: string }) {
         <h3 className="text-sm font-medium">{q.title}</h3>
         <span className="text-xs text-muted">{KIND_LABEL[q.result_kind]}</span>
       </div>
-      <Numbered k={k}>
-        <div className="overflow-x-auto">
-          <Math latex={`${quantitySymbol(q)} = ${q.latex}`} display label={q.title} />
-        </div>
-      </Numbered>
+      {occupationKeys !== null ? (
+        occupationKeys.map((row) => (
+          <Numbered key={row.key} k={row.key}>
+            <div className="overflow-x-auto">
+              <Math latex={row.latex} display label={q.title} />
+            </div>
+          </Numbered>
+        ))
+      ) : (
+        <Numbered k={k}>
+          <div className="overflow-x-auto">
+            <Math latex={`${quantitySymbol(q)} = ${q.latex}`} display label={q.title} />
+          </div>
+        </Numbered>
+      )}
       {q.held_fixed.length > 0 && (
         <p className="text-xs text-muted">Held fixed: {q.held_fixed.join(", ")}</p>
       )}
@@ -281,7 +316,12 @@ export function StatMechPanel({
       {ok && result.quantities.length > 0 && (
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           {result.quantities.map((q, i) => (
-            <Quantity key={`${q.name}-${i}`} q={q} k={quantityKey(result.quantities, i)} />
+            <Quantity
+              key={`${q.name}-${i}`}
+              q={q}
+              k={quantityKey(result.quantities, i)}
+              occupationKeys={occupationRows(result.quantities, i)}
+            />
           ))}
         </div>
       )}

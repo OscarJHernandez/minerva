@@ -1,0 +1,58 @@
+{
+  "comment": "Cases of `card_equations.split_occupations` and `splitOccupations` (apps/web/src/lib/statmech-occupations.ts): the two must agree. `rows` is null when the text does not split exactly.",
+  "cases": [
+    {
+      "name": "engine output, two levels",
+      "latex": "\\langle n\\rangle_{1} = \\frac{1}{e^{\\beta \\left(\\epsilon_{1} - \\mu\\right)} + 1},\\quad \\langle n\\rangle_{2} = \\frac{1}{e^{\\beta \\left(\\epsilon_{2} - \\mu\\right)} + 1}",
+      "rows": [
+        "\\langle n\\rangle_{1} = \\frac{1}{e^{\\beta \\left(\\epsilon_{1} - \\mu\\right)} + 1}",
+        "\\langle n\\rangle_{2} = \\frac{1}{e^{\\beta \\left(\\epsilon_{2} - \\mu\\right)} + 1}"
+      ]
+    },
+    {
+      "name": "one level",
+      "latex": "\\langle n\\rangle_{1} = e^{- \\beta \\epsilon}",
+      "rows": ["\\langle n\\rangle_{1} = e^{- \\beta \\epsilon}"]
+    },
+    {
+      "name": "skipped index",
+      "latex": "\\langle n\\rangle_{1} = a,\\quad \\langle n\\rangle_{3} = b",
+      "rows": null
+    },
+    {
+      "name": "repeated index",
+      "latex": "\\langle n\\rangle_{1} = a,\\quad \\langle n\\rangle_{1} = b",
+      "rows": null
+    },
+    {
+      "name": "starts at two",
+      "latex": "\\langle n\\rangle_{2} = a",
+      "rows": null
+    },
+    {
+      "name": "empty right side",
+      "latex": "\\langle n\\rangle_{1} = a,\\quad \\langle n\\rangle_{2} = ",
+      "rows": null
+    },
+    {
+      "name": "unbalanced braces",
+      "latex": "\\langle n\\rangle_{1} = \\frac{1}{x",
+      "rows": null
+    },
+    {
+      "name": "separator inside braces is not a cut",
+      "latex": "\\langle n\\rangle_{1} = f{a,\\quad b}",
+      "rows": ["\\langle n\\rangle_{1} = f{a,\\quad b}"]
+    },
+    {
+      "name": "not an occupation list",
+      "latex": "n_{1} = a,\\quad n_{2} = b",
+      "rows": null
+    },
+    {
+      "name": "empty",
+      "latex": "",
+      "rows": null
+    }
+  ]
+}
