@@ -582,9 +582,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   relation; `None`: undecided, for another relation sign, a multi-row environment or unbalanced brackets, and for an
   equation stored without one). `FIELD_POLICY` says per (tool, formula field) whether the tool takes only an expression
   (`simplify`, `differentiate`, `series`, `integrate`, `distribution`, `time_derivative.latex`, `find_identities`, `sums`,
-  `expectation`, `creative_telescoping`, `approximation`, `substitute`, `rewrite_part`, `variation.integrand`), requires an
+  `expectation`, `creative_telescoping`, `approximation`, `substitute`, `rewrite_part`, `variation.integrand`, `tensor_canonicalize.expression`, and the `lagrangian` field of `time_derivative`,
+  `expand_motion`, `perturbation_solve` and `integrate_motion`, which refuse even `L = ...`), requires an
   equation (`solve_polynomial`, `isolate_variable`, `check_identity`, `check_units`) or is unclassified with a stated reason
-  (matrix and vector calculus, the Lagrangian and Hamiltonian fields, `tensor_canonicalize`). An entry exists only where the
+  (`matrix_calculus` and `vector_calculus`, whose other actions read relations; the `lagrangian`/`hamiltonian` fields of
+  `analyze_lagrangian`, `search_invariants` and `find_conserved_quantities`, which read off a leading `L =` / `H =`). An entry exists only where the
   real tool was shown to refuse (or require) a relation (`test_reference_types.py` runs every one). `@eN` of a kind the
   field cannot take is refused with a typed diagnostic (`InputCode.EQUATION_REFERENCE_NOT_EXPRESSION`,
   `EXPRESSION_REFERENCE_NOT_EQUATION`; symbols hold `@eN`, never a formula; only the code is logged) and the call is not
