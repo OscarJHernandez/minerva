@@ -63,7 +63,8 @@ def affine_text(a: Affine) -> str:
     """`kg m [k]^2`: the constant part, then the unknowns' dimensions in brackets with their powers."""
     parts = [] if a.constant == ZERO else [dim_text(a.constant)]
     for name, c in a.coefficients:
-        parts.append(f"[{name}]" if c == 1 else f"[{name}]^{c}")
+        power = str(c) if c.denominator == 1 else f"({c})"
+        parts.append(f"[{name}]" if c == 1 else f"[{name}]^{power}")
     return " ".join(parts) or "1"
 
 

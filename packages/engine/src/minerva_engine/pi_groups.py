@@ -646,11 +646,14 @@ _TIME = read_unit("s")
 
 
 def _time_derivatives(
-    symbols: set[str], units: dict[str, Dim], readings: list[QuantityReading]
+    symbols: set[str],
+    units: dict[str, Dim],
+    readings: list[QuantityReading],
+    unknown: list[str],
 ) -> None:
     """An undeclared `x_dot` / `x_ddot` whose `x` has a dimension is `dim(x)/s` / `dim(x)/s^2`; a name the
     caller declared is never touched. Added to `units` and listed in `readings`."""
-    for name in sorted(symbols - units.keys()):
+    for name in sorted(symbols - units.keys() - set(unknown)):
         match = _VELOCITY.match(name)
         if match is None or match["base"] not in units:
             continue
@@ -726,7 +729,7 @@ def check_units(
         return fail(Status.PARSE_ERROR, str(exc))
     units = {n: d for n, d in zip(names, dims, strict=True)}
     symbols = {s.name for p in parsed for s in p.free_symbols}
-    _time_derivatives(symbols, units, readings)
+    _time_derivatives(symbols, units, readings, unknown)
     lacking = sorted(symbols - units.keys() - set(unknown))
     if lacking:
         return fail(
@@ -764,10 +767,13 @@ def check_units(
         if solution.outcome == "inconsistent" and solution.conflict is not None:
             c = solution.conflict
             report.consistent = False
+            about_unknowns = bool(c.difference().coefficients)
             report.problem = (
-                "no dimensions for the unknowns make this equation consistent; the conditions up "
-                f"to this one cannot all hold ({_CONDITION_TEXT[c.kind]})"
-            )
+                "no dimensions for the unknowns make this equation consistent; the conditions "
+                "up to this one cannot all hold"
+                if about_unknowns
+                else "these terms have different dimensions whatever the unknowns are"
+            ) + f" ({_CONDITION_TEXT[c.kind]})"
             terms = [(c.left_expr, c.left)]
             if c.right_expr is not None and c.kind != "function":
                 terms.append((c.right_expr, c.right))

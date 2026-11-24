@@ -156,3 +156,15 @@ def test_the_solver_runs_in_the_sandbox_like_every_operation() -> None:
     engine = Engine(budget_limits(max_concurrency=1))
     report = engine.check_units("F = m a", [q("m", "kg"), q("a", "m/s^2")], ["F"])
     assert report.status is Status.OK and derived(report) == {"F": "kg m s^-2"}
+
+
+def test_a_name_listed_as_unknown_is_not_read_as_a_time_derivative() -> None:
+    report = run(r"W = \frac12 m \dot{x}^2", [q("m", "kg"), q("x", "m"), q("W", "J")], ["x_dot"])
+    assert derived(report) == {"x_dot": "m s^-1"}
+    assert all(r.origin == "given" for r in report.quantities)
+
+
+def test_a_conflict_among_known_terms_is_not_blamed_on_the_unknowns() -> None:
+    report = run("F c = m + t", [q("F", "N"), q("m", "kg"), q("t", "s")], ["c"])
+    assert report.outcome == "inconsistent"
+    assert "whatever the unknowns are" in (report.problem or "")

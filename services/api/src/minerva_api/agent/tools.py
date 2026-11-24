@@ -4087,7 +4087,9 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "check_units",
             "Check an equation for dimensional consistency given the unit of each symbol: reports whether "
-            "all terms and both sides agree, and the dimension of the factor missing when they do not.",
+            "all terms and both sides agree, and the dimension of the factor missing when they do not. To find "
+            'the unit of a quantity ("what are the units of C_3?"), give its equation and put the name in '
+            "`unknown`; its dimension is derived from the other symbols' units, never worked out in prose.",
             UnitsCheckArgs,
             run_units_check,
         ),
