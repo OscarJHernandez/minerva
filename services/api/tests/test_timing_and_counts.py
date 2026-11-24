@@ -91,6 +91,18 @@ def test_verify_ms_is_the_engine_measured_time_or_none(ctx: ToolContext) -> None
     assert measured_verify_ms(out.card.data) == measured  # the engine's own number, not engine_ms
 
 
+def test_the_event_carries_the_measured_verify_ms_of_a_measuring_tool(ctx: ToolContext) -> None:
+    args = {"latex": "x^2 + y^2 + z", "relations": ["y^2 = 1 - x^2"]}
+    msg = play(ReplayLLM([call("substitute", args), say("Done.")]), ctx)
+    tool_v = next(e for e in events(msg, "verification.completed") if e["scope"] == "tool")
+    card = next(b["card"] for b in msg["blocks"] if b["kind"] == "card")
+    measured = card["data"]["result"]["diagnostics"]["verify_ms"]
+    assert tool_v["verify_ms"] == measured and tool_v["verify_ms"] is not None
+    assert (
+        measured <= events(msg, "tool.completed")[0]["engine_ms"]
+    )  # a part of the operation, not all
+
+
 def test_an_operation_that_measures_no_verification_has_verify_ms_none(ctx: ToolContext) -> None:
     msg = play(ReplayLLM([call("simplify", SIMPLIFY), say("It is $x + 1$.")]), ctx)
     tool_v = next(e for e in events(msg, "verification.completed") if e["scope"] == "tool")

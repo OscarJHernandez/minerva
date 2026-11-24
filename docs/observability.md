@@ -363,7 +363,7 @@ report shows both.
   a slot is bounded by the sandbox's default timeout, not by a longer per-call one.
 - Counts: `steps` is the number of model calls (`len(debug.llm_calls)`); a call the router made without
   asking the model is a tool call with no model call, counted in `routed_calls` and marked "routed" in
-  the timeline and the report. The debug report says "N model call(s), M tool call(s) (K routed)".
+  the timeline and the report. The debug report says "N model call(s) · M tool call(s) (K routed: no model call before it)".
 
 ## Limits
 
