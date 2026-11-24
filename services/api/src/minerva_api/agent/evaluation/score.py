@@ -592,7 +592,8 @@ def _claim_mark_notes(case: EvalCase, obs: Observation, flags: dict[str, bool]) 
             continue
         got = {str(s.get("status")) for s in marks}
         if got != {want.status}:
-            flags["claim_mark_verified" if got & set(VERIFIED_MARKS) else "claim_mark"] = True
+            false_mark = bool(got & set(VERIFIED_MARKS)) and want.status not in VERIFIED_MARKS
+            flags["claim_mark_verified" if false_mark else "claim_mark"] = True
             notes.append(f"a formula is marked {sorted(got)}, not {want.status!r}")
         if want.evidence_rule is not None:
             rules = {
