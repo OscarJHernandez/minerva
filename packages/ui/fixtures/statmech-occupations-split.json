@@ -12,9 +12,7 @@
     {
       "name": "one level",
       "latex": "\\langle n\\rangle_{1} = e^{- \\beta \\epsilon}",
-      "rows": [
-        "\\langle n\\rangle_{1} = e^{- \\beta \\epsilon}"
-      ]
+      "rows": ["\\langle n\\rangle_{1} = e^{- \\beta \\epsilon}"]
     },
     {
       "name": "skipped index",
@@ -44,9 +42,7 @@
     {
       "name": "separator inside braces is not a cut",
       "latex": "\\langle n\\rangle_{1} = f{a,\\quad b}",
-      "rows": [
-        "\\langle n\\rangle_{1} = f{a,\\quad b}"
-      ]
+      "rows": ["\\langle n\\rangle_{1} = f{a,\\quad b}"]
     },
     {
       "name": "not an occupation list",
