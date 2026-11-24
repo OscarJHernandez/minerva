@@ -12,6 +12,7 @@ import type {
   TransformStep,
   Verification,
 } from "@/lib/types";
+import { Numbered } from "./chat/equation-number";
 import { VerificationBadge } from "./verification-badge";
 
 const GOAL: Record<SimplifyGoal, { heading: string; done: string }> = {
@@ -145,9 +146,11 @@ function Steps({ result }: { result: SimplifyResult }) {
               </span>
               <Evidence v={step.verification} />
             </div>
-            <div className="overflow-x-auto">
-              <Math latex={`${step.before_latex} = ${step.after_latex}`} display />
-            </div>
+            <Numbered k={`step:${i}`}>
+              <div className="overflow-x-auto">
+                <Math latex={`${step.before_latex} = ${step.after_latex}`} display />
+              </div>
+            </Numbered>
           </li>
         ))}
       </ol>

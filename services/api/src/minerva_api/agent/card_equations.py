@@ -801,6 +801,41 @@ def matrix(data: dict[str, Any]) -> Listed:
 
 
 # ----------------------------------------------------------------------------------------------------------
+# simplify chain steps (#166)
+
+
+def simplify(data: dict[str, Any]) -> Listed:
+    """`step:i` of an accepted `simplify` card: the equation `before = after` the step's own check passed.
+
+    Every step of a chain is checked on its own (`TransformStep.verification`: the numeric comparison of the
+    step's before and after forms, run by the engine's sampler and symbolic zero test, which share no code with the
+    matcher that proposed the move) and the chain is re-verified end to end; a step is numbered only when its
+    check ran and passed. The row is the equation the panel draws for the step (`before = after`, one formula, kind
+    `equation`), in the order the engine produced the chain, keyed by position. A SymPy move is as checked as a
+    handbook rule. Numbered rows are names: the check is numerical evidence (`symbolic_zero` is reported
+    separately on the card and never upgrades the wording), the restrictions of the whole result do not travel
+    with `@eN` of a row, so the result carries `unverified_inputs` like every list row. Not numbered: the card's
+    other forms (`alternatives`, a collapsed list that is not drawn as rows), a step whose check did not pass or
+    did not run, and everything of a card whose status is not `ok`. The whole result keeps its own number
+    (`result_latex`); a step whose equation is the result's is a different formula (an equation) and gets its own.
+    """
+    if data.get("status") != "ok":
+        return []
+    steps = data.get("steps")
+    out: Listed = []
+    for i, step in enumerate(steps if isinstance(steps, list) else []):
+        if not isinstance(step, dict):
+            continue
+        check = step.get("verification")
+        if not isinstance(check, dict) or check.get("passed") is not True:
+            continue
+        before, after = _text(step.get("before_latex")), _text(step.get("after_latex"))
+        if before and after:
+            out.append((f"step:{i}", f"{before} = {after}"))
+    return out
+
+
+# ----------------------------------------------------------------------------------------------------------
 # vector calculus rows (#166)
 
 # Actions whose result is never numbered, with the reason (the reader checks `action`; a test pins this table).
@@ -914,13 +949,13 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "perturbation": perturbation,
     "dimensional": dimensional,
     "matrix": matrix,
+    "simplify": simplify,
     "vector": vector,
 }
 
 # One primary result (`result_latex`, numbered as a whole) or no formula of its own to refer to.
 SINGLE_RESULT = frozenset(
     {
-        "simplify",
         "identity",
         "differentiate",
         "series",

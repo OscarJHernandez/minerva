@@ -5015,5 +5015,192 @@
       "held:t": "p_{t} = - \\dot{t} \\left(- \\frac{2 M}{r} + 1\\right)",
       "velocity:t": "\\dot{t} = \\frac{p_{t} r}{2 M - r}"
     }
+  },
+  "simplify": {
+    "data": {
+      "diagnostic": null,
+      "reading": null,
+      "status": "ok",
+      "goal": "simplify",
+      "input_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+      "result_latex": "2",
+      "result_text": "2",
+      "steps": [
+        {
+          "kind": "rule",
+          "name": "hyp.pythagorean",
+          "direction": "forward",
+          "matched_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+          "before_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+          "after_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1",
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 24,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "cap",
+            "passed": true,
+            "note": "numeric check agreed at all sampled points"
+          }
+        },
+        {
+          "kind": "rule",
+          "name": "trig.pythagorean",
+          "direction": "forward",
+          "matched_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1",
+          "before_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1",
+          "after_latex": "2",
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 20,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "completed",
+            "passed": true,
+            "note": "numeric check agreed at all sampled points"
+          }
+        }
+      ],
+      "verification": {
+        "symbolic_zero": true,
+        "numeric_points_checked": 20,
+        "numeric_points_agreed": 20,
+        "numeric_points_skipped": 0,
+        "numeric_points_probed": 24,
+        "probe_kind": null,
+        "probes_cut_short": false,
+        "probe_outcome": "cap",
+        "passed": true,
+        "note": "numeric check agreed at all sampled points"
+      },
+      "alternatives": [
+        {
+          "result_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1",
+          "result_text": "sin(x)**2 + cos(x)**2 + 1",
+          "steps": [
+            {
+              "kind": "rule",
+              "name": "hyp.pythagorean",
+              "direction": "forward",
+              "matched_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+              "before_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+              "after_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1",
+              "verification": {
+                "symbolic_zero": true,
+                "numeric_points_checked": 20,
+                "numeric_points_agreed": 20,
+                "numeric_points_skipped": 0,
+                "numeric_points_probed": 24,
+                "probe_kind": null,
+                "probes_cut_short": false,
+                "probe_outcome": "cap",
+                "passed": true,
+                "note": "numeric check agreed at all sampled points"
+              }
+            }
+          ],
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 24,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "cap",
+            "passed": true,
+            "note": "numeric check agreed at all sampled points"
+          }
+        },
+        {
+          "result_latex": "- \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)} + 1",
+          "result_text": "-sinh(y)**2 + cosh(y)**2 + 1",
+          "steps": [
+            {
+              "kind": "rule",
+              "name": "trig.pythagorean",
+              "direction": "forward",
+              "matched_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+              "before_latex": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)}",
+              "after_latex": "- \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)} + 1",
+              "verification": {
+                "symbolic_zero": true,
+                "numeric_points_checked": 20,
+                "numeric_points_agreed": 20,
+                "numeric_points_skipped": 0,
+                "numeric_points_probed": 24,
+                "probe_kind": null,
+                "probes_cut_short": false,
+                "probe_outcome": "cap",
+                "passed": true,
+                "note": "numeric check agreed at all sampled points"
+              }
+            }
+          ],
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 24,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "cap",
+            "passed": true,
+            "note": "numeric check agreed at all sampled points"
+          }
+        }
+      ],
+      "blocked": [],
+      "candidates_tried": 39,
+      "discarded_not_verified": 0,
+      "search_complete": true,
+      "restrictions_latex": [],
+      "restrictions_complete": true,
+      "message": "2 verified step(s). Each step was checked numerically at assumption-respecting sample points (numerical evidence, not a proof); the symbolic zero test is reported separately. Steps are equalities where both sides are defined: removable singularities and branch choices outside the declared assumptions are not tracked.",
+      "duration_ms": 1538,
+      "entries": {
+        "hyp.pythagorean": {
+          "id": "hyp.pythagorean",
+          "title": "Hyperbolic Pythagorean identity",
+          "kind": "identity",
+          "chapter": "math.hyperbolic",
+          "statement_latex": "- \\sinh^{2}{\\left(a \\right)} + \\cosh^{2}{\\left(a \\right)} = 1",
+          "validity": "",
+          "verification": "symbolic",
+          "reference": {
+            "source": "DLMF",
+            "locator": "§4.35",
+            "url": "https://dlmf.nist.gov/4.35"
+          }
+        },
+        "trig.pythagorean": {
+          "id": "trig.pythagorean",
+          "title": "Pythagorean identity",
+          "kind": "identity",
+          "chapter": "math.trigonometry",
+          "statement_latex": "\\sin^{2}{\\left(a \\right)} + \\cos^{2}{\\left(a \\right)} = 1",
+          "validity": "All complex a.",
+          "verification": "symbolic",
+          "reference": {
+            "source": "DLMF",
+            "locator": "§4.21",
+            "url": "https://dlmf.nist.gov/4.21"
+          }
+        }
+      },
+      "candidates_considered": 60
+    },
+    "keys": ["step:0", "step:1"],
+    "rows": {
+      "step:0": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} - \\sinh^{2}{\\left(y \\right)} + \\cosh^{2}{\\left(y \\right)} = \\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1",
+      "step:1": "\\sin^{2}{\\left(x \\right)} + \\cos^{2}{\\left(x \\right)} + 1 = 2"
+    }
   }
 }
