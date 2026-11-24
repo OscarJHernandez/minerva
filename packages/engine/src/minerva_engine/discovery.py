@@ -650,7 +650,9 @@ def discover(
 
     gens: list[_Gen] = []
     for item, expr in flow.known:
-        converted = sp.expand(sp.expand_trig(sp.sympify(expr)).subs(setup.trig_sub))
+        converted = sp.expand(
+            sp.expand_trig(_reciprocal_trig(sp.sympify(expr))).subs(setup.trig_sub)
+        )
         if any(flow.q[i] in converted.free_symbols for i in setup.angle_idx):
             continue
         gens.append(
