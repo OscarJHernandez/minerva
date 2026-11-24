@@ -28,6 +28,7 @@ from minerva_api.agent.card_equations import (
     dimensional,
     listed_equations,
     perturbation,
+    split_occupations,
     split_solution,
     statmech,
     statmech_key,
@@ -285,7 +286,7 @@ def test_a_quantity_with_a_name_outside_the_panels_table_or_a_failed_check_gets_
     fixture: dict[str, Any],
 ) -> None:
     data = copy.deepcopy(fixture["statmech"]["data"])
-    for name in ("occupations", "cumulant_N", "lnZ_series", "xi", "dU/dbeta"):
+    for name in ("cumulant_N", "lnZ_series", "xi", "dU/dbeta"):
         extra = {**data["result"]["quantities"][0], "name": name}
         data["result"]["quantities"].append(extra)
     assert [k for k, _ in statmech(data)] == EXPECTED_KEYS["statmech"]
@@ -640,15 +641,85 @@ def test_a_grand_quantity_with_a_failed_check_or_not_exact_gets_no_row(
     assert f"quantity:{name}" not in [k for k, _ in statmech(other)]
 
 
-def test_occupations_and_cumulants_of_unstated_order_stay_unnumbered(
-    fixture: dict[str, Any],
+OCCUPATIONS = json.loads(
+    (FIXTURE.parent / "statmech-occupations-split.json").read_text(encoding="utf-8")
+)["cases"]
+
+
+@pytest.mark.parametrize("case", OCCUPATIONS, ids=[c["name"] for c in OCCUPATIONS])
+def test_the_occupation_split_is_closed_and_shared_with_the_panel(case: dict[str, Any]) -> None:
+    assert split_occupations(case["latex"]) == case["rows"]
+
+
+def _occupations(fixture: dict[str, Any], text: str, **changes: Any) -> dict[str, Any]:
+    data = copy.deepcopy(fixture["statmech_grand"]["data"])
+    base = data["result"]["quantities"][0]
+    data["result"]["quantities"] = [
+        {**base, "name": "occupations", "latex": text, "variable": None, "checks": [], **changes}
+    ]
+    return data
+
+
+TWO = r"\langle n\rangle_{1} = a,\quad \langle n\rangle_{2} = \frac{1}{b}"
+
+
+def test_each_occupation_is_numbered_in_level_order(fixture: dict[str, Any]) -> None:
+    assert statmech(_occupations(fixture, TWO)) == [
+        ("occupation:1", r"\langle n\rangle_{1} = a"),
+        ("occupation:2", r"\langle n\rangle_{2} = \frac{1}{b}"),
+    ]
+    both = _occupations(fixture, TWO)
+    both["result"]["quantities"].append(both["result"]["quantities"][0])
+    assert [k for k, _ in statmech(both)] == [
+        "occupation:1",
+        "occupation:2",
+        "occupation:1:2",
+        "occupation:2:2",
+    ]
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"latex": r"\langle n\rangle_{1} = a,\quad \langle n\rangle_{3} = b"},
+        {"result_kind": "numeric"},
+        {"variable": "beta"},
+        {"checks": [{"name": "enumeration", "subject": "n_1", "passed": False}]},
+    ],
+)
+def test_occupations_that_do_not_split_or_were_not_accepted_get_no_number(
+    fixture: dict[str, Any], changes: dict[str, Any]
 ) -> None:
-    """The occupation list is one joined formula; `cumulant_N` does not say which order it is."""
+    assert statmech(_occupations(fixture, TWO, **changes)) == []
+    data = _occupations(fixture, TWO)
+    data["result"]["status"] = "not_verified"
+    assert statmech(data) == []
+
+
+def test_a_live_occupation_card_is_numbered_row_by_row(ctx: ToolContext) -> None:
+    args = {
+        "action": "partition",
+        "ensemble": "grand_canonical",
+        "system": {**GAS, "statistics": "fermi"},
+        "assumptions": {"eps": ["positive"]},
+    }
+    out = execute("statistical_mechanics", args, ctx)
+    assert out.status == "ok"
+    rows = listed_equations(out.card.type, out.card.data)
+    occupations = [(k, f) for k, f in rows if k.startswith("occupation:")]
+    assert [k for k, _ in occupations] == ["occupation:1", "occupation:2"]
+    assert all(
+        f.startswith(rf"\langle n\rangle_{{{i}}} = ") for i, (_, f) in enumerate(occupations, 1)
+    )
+
+
+def test_cumulants_state_no_order_and_stay_unnumbered(fixture: dict[str, Any]) -> None:
+    """`cumulant_N` / `cumulant_E` carry no order in the result (the request is not echoed), so no row exists."""
     data = copy.deepcopy(fixture["statmech_variance_N"]["data"])
     base = data["result"]["quantities"][0]
     data["result"]["quantities"] = [
-        {**base, "name": "occupations", "latex": r"n_{1} = a,\quad n_{2} = b"},
         {**base, "name": "cumulant_N"},
+        {**base, "name": "cumulant_E"},
     ]
     assert statmech(data) == []
 

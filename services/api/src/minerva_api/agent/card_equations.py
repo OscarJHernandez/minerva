@@ -18,6 +18,7 @@ Every card type must be classified in exactly one of the three sets below
 from __future__ import annotations
 
 from collections.abc import Callable
+from itertools import pairwise
 from typing import Any
 
 Listed = list[tuple[str, str]]
@@ -497,8 +498,8 @@ def expansion(data: dict[str, Any]) -> Listed:
 # statmech, perturbation, dimensional (#133, part 2 and 3, PR 3 of 3)
 
 # How the statistical-mechanics panel writes a base quantity: ONE closed table, `packages/ui/fixtures/statmech-symbols.json`,
-# read by the panel (`statmech-panel.tsx`, `quantitySymbol`) and pinned here by a test. A name not in it (an
-# occupation list, a cumulant of unstated order, a quantity of the approximation or numeric kinds, anything the user
+# read by the panel (`statmech-panel.tsx`, `quantitySymbol`) and pinned here by a test. A name not in it (a
+# cumulant of unstated order, a quantity of the approximation or numeric kinds, anything the user
 # labelled) is drawn as the engine named it and is not numbered; so is any quantity with `variable` set, which is a
 # user-labelled partial derivative whose label may equal a table name.
 STATMECH_SYMBOL: dict[str, str] = {
@@ -531,13 +532,67 @@ def statmech_key(names: list[str], i: int) -> str:
     return f"quantity:{name}" if k == 1 else f"quantity:{name}:{k}"
 
 
+_OCCUPATION_SEPARATOR = r",\quad "
+
+
+def split_occupations(latex: str) -> list[str] | None:
+    """The per-state formulas of the `occupations` quantity, or None when the text is not exactly that shape.
+
+    The engine joins `\\langle n\\rangle_{k} = ...` for k = 1, 2, ... with `,\\quad ` (`grand.partition_grand`) and has no
+    structured form of it. The text is cut at the separators outside every brace and `\\left`/`\\right` pair; each
+    piece must start with its own consecutive index and have a non-empty right side. Anything else (unbalanced
+    brackets, a skipped or repeated index, an empty side) is not split and gets no number. The panel repeats the
+    rule (`splitOccupations` in `apps/web/src/lib/statmech-occupations.ts`); both are pinned by
+    `packages/ui/fixtures/statmech-occupations-split.json`.
+    """
+    depth = 0
+    cuts: list[int] = []
+    i = 0
+    while i < len(latex):
+        if latex.startswith(r"\left", i):
+            depth += 1
+            i += len(r"\left")
+            continue
+        if latex.startswith(r"\right", i):
+            depth -= 1
+            i += len(r"\right")
+            continue
+        ch = latex[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+        elif depth == 0 and latex.startswith(_OCCUPATION_SEPARATOR, i):
+            cuts.append(i)
+        if depth < 0:
+            return None
+        i += 1
+    if depth != 0:
+        return None
+    bounds = [-len(_OCCUPATION_SEPARATOR), *cuts, len(latex)]
+    pieces = [latex[a + len(_OCCUPATION_SEPARATOR) : b] for a, b in pairwise(bounds)]
+    for k, piece in enumerate(pieces, start=1):
+        head = rf"\langle n\rangle_{{{k}}} = "
+        if not piece.startswith(head) or not piece[len(head) :].strip():
+            return None
+    return pieces
+
+
+def occupation_key(names: list[str], i: int, k: int) -> str:
+    """`occupation:<k>` (the k-th state in the engine's level order), `occupation:<k>:<m>` for the m-th repeat."""
+    m = names[: i + 1].count("occupations")
+    return f"occupation:{k}" if m == 1 else f"occupation:{k}:{m}"
+
+
 def statmech(data: dict[str, Any]) -> Listed:
     """`quantity:<name>` of an accepted `statistical_mechanics` card: `SYMBOL = formula`, exact results only.
 
     Only a quantity of the closed symbol table with no `variable` (a user-labelled partial derivative never is
     one). Not numbered: unevaluated representations, numerical values and asymptotic results (`result_kind`), a
     quantity one of whose independent checks disagreed, the `levels` step (the user's own input, quoted), the
-    other steps, the table, the error tables, the methods and the notes. A result that is not `ok` (a
+    other steps, the table, the error tables, the methods and the notes. The `occupations` quantity is numbered
+    row by row (`occupation:<k>`, `split_occupations`) under the same gate. `cumulant_<X>` is not numbered: the
+    result states no order for it. A result that is not `ok` (a
     convention still to be confirmed, a refusal) lists nothing.
     """
     result = data.get("result") or {}
@@ -550,6 +605,17 @@ def statmech(data: dict[str, Any]) -> Listed:
         symbol = STATMECH_SYMBOL.get(names[i]) if q.get("variable") is None else None
         latex = _text(q.get("latex"))
         checks = [c for c in q.get("checks") or [] if isinstance(c, dict)]
+        if names[i] == "occupations" and q.get("variable") is None and latex is not None:
+            pieces = split_occupations(latex)
+            if (
+                pieces is not None
+                and q.get("result_kind", "exact") == "exact"
+                and not any(c.get("passed") is False for c in checks)
+            ):
+                out.extend(
+                    (occupation_key(names, i, k), piece) for k, piece in enumerate(pieces, start=1)
+                )
+            continue
         if (
             symbol is None
             or latex is None

@@ -301,9 +301,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `packages/ui/fixtures/statmech-symbols.json` (Z, lnZ, F, U, S, Var_E; Xi, lnXi, Omega, N = `\langle N \rangle`, Var_N of the grand
   canonical and microcanonical cards; mean_E, variance_E, mean_N, variance_N), which the panel imports (`quantitySymbol`) and
   `card_equations.STATMECH_SYMBOL` repeats, pinned equal by a test; the symbol is always the engine's own quantity, never a
-  different one. Never numbered: a representation, a numerical value, an asymptotic result, any quantity with `variable` set
+  different one. The `occupations` quantity (one joined `\langle n\rangle_{k} = ...,\quad ...` text; the engine has no structured form) is
+  numbered per state, `occupation:<k>` in the engine's level order (`occupation:<k>:<m>` for a repeat), under the same gate, only
+  when `split_occupations` cuts it exactly (balanced braces, consecutive indices from 1, non-empty right sides), repeated by
+  `apps/web/src/lib/statmech-occupations.ts` and pinned by `packages/ui/fixtures/statmech-occupations-split.json`; the row is the
+  piece as drawn, a name and not a verification. Never numbered: a representation, a numerical value, an asymptotic result, any quantity with `variable` set
   (a partial derivative the USER labelled: its label may equal a table name, `S`, and is never entropy), a name outside the table
-  (occupations, which is one joined formula, a cumulant of unstated order, the approximation quantities, other labels), the
+  (a cumulant of unstated order: `cumulant_N` / `cumulant_E` do not carry the order and the result does not state it, the approximation quantities, other labels), the
   statmech steps (they repeat the quantities with their derivation or are the user's input), the user's `levels` step, the table
   or the error tables; perturbation: `omega0`, `omega`, `ratio` and `solution` only for an
   `ok` report whose verification passed; `solution` is the first relation of `solution_latex` only (`u(t) = ... + O(...)`, split
