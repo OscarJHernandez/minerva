@@ -41,6 +41,13 @@ CONVENTIONS = [
     "non-degenerate",
 ]
 
+
+def geodesic_lagrangian(geo: Geometry) -> sp.Expr:
+    """`g_{ij} v^i v^j / 2`, whose Euler-Lagrange equations are the geodesic equations (affine parameter)."""
+    n, g, v = geo.n, geo.g, geo.velocities
+    return sum((g[i, j] * v[i] * v[j] for i in range(n) for j in range(n)), sp.S.Zero) / 2
+
+
 _TRIG = (sp.sin, sp.cos, sp.tan, sp.cot, sp.sec, sp.csc, sp.sinh, sp.cosh, sp.tanh, sp.coth)
 
 
@@ -414,7 +421,7 @@ def _measure(value: Any) -> tuple[int | None, int | None]:
     if isinstance(value, sp.MatrixBase):
         items = [e for e in value if e != 0]
         return sum(int(sp.count_ops(v)) for v in items), len(items)
-    if isinstance(value, list):
+    if isinstance(value, list) and all(isinstance(v, sp.Basic) for v in value):
         return sum(int(sp.count_ops(v)) for v in value), len(value)
     if isinstance(value, sp.Basic):
         return int(sp.count_ops(value)), 1

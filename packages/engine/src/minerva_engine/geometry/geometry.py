@@ -21,7 +21,7 @@ from ..errors import LimitError, MinervaMathError, UnsupportedInput
 from ..latexprint import to_latex
 from ..models import Limits, Status
 from ..notation.models import InputDiagnostic
-from . import field
+from . import field, killing
 from .compute import CONVENTIONS, Workspace
 from .domain import restrictions, signature
 from .field import FIELD_CONVENTIONS, FIELD_QUANTITIES, FieldVerifier
@@ -32,6 +32,7 @@ from .models import (
     GeometryInput,
     GeometryResult,
     GeometryVerification,
+    KillingSummary,
     QuantityResult,
     StageDiagnostic,
 )
@@ -60,6 +61,8 @@ TITLES = {
     "antisymmetric_divergence": "Divergence of an antisymmetric tensor, J^nu = nabla_mu F^(mu nu)",
     "field_invariant": "Invariant F_(mu nu) F^(mu nu)",
     "hodge_dual": "Hodge dual of a 2-form in four dimensions",
+    "killing_vectors": "Killing vectors (symmetries of the metric) within a stated family",
+    "geodesic_constants": "Conserved charges of the geodesics from the Killing vectors",
 }
 
 
@@ -194,6 +197,8 @@ def _compute(kind: str, data: GeometryInput, ws: Workspace) -> Any:
         "antisymmetric_divergence": lambda: field.antisymmetric_divergence(ws),
         "field_invariant": lambda: field.field_invariant(ws),
         "hodge_dual": lambda: field.hodge_dual(ws),
+        "killing_vectors": lambda: killing.found(ws),
+        "geodesic_constants": lambda: killing.charges(ws),
     }
     return table[kind]()
 
@@ -219,6 +224,8 @@ def _verify(
         "antisymmetric_divergence": FieldVerifier(verifier).antisymmetric_divergence,
         "field_invariant": FieldVerifier(verifier).field_invariant,
         "hodge_dual": FieldVerifier(verifier).hodge_dual,
+        "killing_vectors": lambda: killing.vector_verification(verifier),
+        "geodesic_constants": lambda: killing.charge_verification(verifier),
     }
     start = time.perf_counter()
     try:
@@ -269,6 +276,11 @@ def _present(
 
     def latex(e: sp.Expr) -> str:
         return str(to_latex(e, symbol_names=names))
+
+    if kind == "killing_vectors":
+        return _present_vectors(out, value, ws, latex)
+    if kind == "geodesic_constants":
+        return _present_charges(out, value, ws, latex)
 
     if kind in {"determinant", "ricci_scalar", "kretschmann", "ricci_squared", "field_invariant"}:
         out.scalar_latex = latex(value)
@@ -329,6 +341,81 @@ def _present(
     out.symmetry_note = _symmetry_note(kind)
     if kind == "covariant_derivative":
         out.notes.append("The first index is the derivative index.")
+    return out
+
+
+def _summary_of(ws: Workspace, found: killing.KillingSearch, rule: str = "") -> KillingSummary:
+    n = ws.geo.n
+    return KillingSummary(
+        count=len(found.raised),
+        bound=n * (n + 1) // 2,
+        complete=found.complete,
+        searched=found.searched,
+        not_searched=found.not_searched,
+        largest_system=found.unknowns,
+        quadratic_rule=rule,
+    )
+
+
+def _present_vectors(
+    out: QuantityResult,
+    found: killing.KillingSearch,
+    ws: Workspace,
+    latex: Callable[[sp.Expr], str],
+) -> QuantityResult:
+    for k, up in enumerate(found.raised, start=1):
+        for mu, value in enumerate(up):
+            if value == 0:
+                continue
+            out.components.append(
+                Component(
+                    indices=[k, mu],
+                    label_latex=rf"\xi_{{({k})}}^{{{ws.coord_latex[mu]}}}",
+                    latex=latex(value),
+                    text=str(value),
+                )
+            )
+    out.all_zero = not found.raised
+    out.symmetry_note = (
+        "Components xi^mu of each vector field xi = xi^mu d/dx^mu; components not listed are zero. Any constant "
+        "linear combination is also a Killing vector."
+    )
+    for k, axis in enumerate(found.cyclic, start=1):
+        if axis is not None:
+            name = ws.geo.coords[axis]
+            out.notes.append(f"xi_({k}) = d/d{name}: the metric does not depend on {name}.")
+    out.notes.extend(killing.describe_search(found, ws.geo))
+    out.killing = _summary_of(ws, found)
+    return out
+
+
+def _present_charges(
+    out: QuantityResult, items: killing.Charges, ws: Workspace, latex: Callable[[sp.Expr], str]
+) -> QuantityResult:
+    found = killing.found(ws)
+    for k, charge in enumerate(items.items, start=1):
+        if not charge.passed:
+            out.notes.append(
+                f"{charge.label} ({charge.origin}) failed its check on the geodesic equations and is not shown."
+            )
+            continue
+        out.components.append(
+            Component(
+                indices=[k],
+                label_latex=charge.label,
+                latex=latex(charge.expr),
+                text=str(charge.expr),
+                origin=charge.origin,
+            )
+        )
+    out.symmetry_note = (
+        "Q_k = xi_(k)^mu g_(mu nu) dx^nu/ds for each Killing vector, quadratic invariant combinations of them, and "
+        "the normalisation g_(mu nu) dx^mu/ds dx^nu/ds; dots are derivatives with respect to an affine parameter s."
+    )
+    out.notes.append(f"quadratic combinations: {items.rule}")
+    out.notes.extend(items.notes)
+    out.notes.extend(killing.describe_search(found, ws.geo))
+    out.killing = _summary_of(ws, found, items.rule)
     return out
 
 

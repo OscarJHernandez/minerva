@@ -345,12 +345,15 @@ def verify_zero_derivative(derivative: sp.Expr, digits: int = 30) -> tuple[bool,
     return bool(passed), verification
 
 
-def verify_constant(d: Derivation, quantity: sp.Expr) -> tuple[bool, Verification | None]:
+def verify_constant(
+    d: Derivation, quantity: sp.Expr, digits: int = 30
+) -> tuple[bool, Verification | None]:
     """Is `quantity` constant on the motion? d/dt on the accelerations must be zero: symbolically and
-    at random numerical points (the numeric check decides `passed`, as everywhere in the engine)."""
+    at random numerical points (the numeric check decides `passed`, as everywhere in the engine).
+    `digits` is the precision of the evaluation, never the tolerance (see `verify_zero_derivative`)."""
     if not d.solution:
         return False, None
-    return verify_zero_derivative(d.total_derivative(quantity).subs(d.solution))
+    return verify_zero_derivative(d.total_derivative(quantity).subs(d.solution), digits=digits)
 
 
 def find_conserved(d: Derivation) -> ConservedSearch:
@@ -530,7 +533,9 @@ def analyze_lagrangian(
         "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. "
         "Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden "
         "symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; "
-        "the separate search for more constants of motion looks for them in a declared family."
+        "the separate search for more constants of motion looks for them in a declared family. The symmetries of "
+        "a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's "
+        "killing_vectors and geodesic_constants."
     )
     unverified = [c for c in report.conserved if not c.verified]
     report.message = (

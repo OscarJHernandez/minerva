@@ -754,7 +754,9 @@ export type GeometryQuantity =
   | "exterior_derivative"
   | "antisymmetric_divergence"
   | "field_invariant"
-  | "hodge_dual";
+  | "hodge_dual"
+  | "killing_vectors"
+  | "geodesic_constants";
 
 export type GeometryVariance = "up" | "down";
 
@@ -785,6 +787,24 @@ export interface GeometryComponent {
   label_latex: string;
   latex: string;
   text: string;
+  /** Where a conserved charge of the geodesics comes from (`geodesic_constants` rows only). */
+  origin?:
+    | "cyclic coordinate"
+    | "Killing vector"
+    | "quadratic combination of Killing charges"
+    | "normalisation"
+    | null;
+}
+
+/** What the Killing search covered: the families searched and not, and what the count means. */
+export interface KillingSummary {
+  count: number;
+  bound: number;
+  complete: boolean;
+  searched: string[];
+  not_searched: string[];
+  largest_system: number;
+  quadratic_rule: string;
 }
 
 export interface GeometryCheck {
@@ -817,6 +837,7 @@ export interface GeometryQuantityResult {
   verification: GeometryVerification | null;
   notes: string[];
   message: string;
+  killing?: KillingSummary | null;
 }
 
 export interface GeometryStage {

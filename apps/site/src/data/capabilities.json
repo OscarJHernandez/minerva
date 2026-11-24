@@ -3025,13 +3025,14 @@
         "HTTP API"
       ],
       "needs_model": false,
-      "summary": "Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed.",
+      "summary": "Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed. The Killing vectors (symmetries of the metric) are found by an exact search within a stated family of functions and shown only if the Lie derivative of the metric, by finite differences, vanishes; the conserved charges of the geodesics built from them (one per vector, quadratic combinations invariant under all of them, and g(v, v)) are each checked on the geodesic equations.",
       "limits": [
         "Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.",
         "Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.",
         "The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.",
         "Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.",
-        "Geodesic equations are symbolic; they are not integrated numerically."
+        "Geodesic equations are symbolic; they are not integrated numerically.",
+        "Killing vectors are searched within a stated family (powers of the coordinates, polynomials in the sine and cosine of angles, and low powers or first harmonics of coordinates absent from the metric), at most 300 unknowns per linear system; \"none found\" means none within that family, and the list is called complete only when it reaches n(n+1)/2. Metrics with declared functions, roots, logarithms or exponentials are refused. Parameters are generic. Killing tensors are not searched."
       ],
       "examples": [
         {
@@ -3444,6 +3445,194 @@
             "Signature (-, +, +, +), decided from the declared assumptions.",
             "Assumes: coordinates are real: t, x, y, z.",
             "0 of 1 quantities computed; not shown: field_invariant (parse_error)."
+          ]
+        },
+        {
+          "id": "geometry-killing-schwarzschild",
+          "title": "Killing vectors of Schwarzschild and the conserved charges of its geodesics",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, r, \\theta, \\phi",
+              "syntax": "latex"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-(1-2M/r),  0,  0,  0",
+              "syntax": "latex"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  (1-2M/r)^{-1},  0,  0",
+              "syntax": "latex"
+            },
+            {
+              "label": "Metric row 3",
+              "source": "0,  0,  r^2,  0",
+              "syntax": "latex"
+            },
+            {
+              "label": "Metric row 4",
+              "source": "0,  0,  0,  r^2 \\sin^2\\theta",
+              "syntax": "latex"
+            }
+          ],
+          "assumptions": "M positive; r positive",
+          "outputs": [
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(1)}^{t} = 1"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(2)}^{\\phi} = 1"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(3)}^{\\theta} = \\sin{\\left(\\phi \\right)}"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(3)}^{\\phi} = \\cos{\\left(\\phi \\right)} \\cot{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(4)}^{\\theta} = \\cos{\\left(\\phi \\right)}"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(4)}^{\\phi} = - \\sin{\\left(\\phi \\right)} \\cot{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Conserved charges of the geodesics from the Killing vectors",
+              "latex": "Q_{1} = - \\frac{\\dot{t} \\left(- 2 M + r\\right)}{r}"
+            },
+            {
+              "label": "Conserved charges of the geodesics from the Killing vectors",
+              "latex": "Q_{2} = \\dot{\\phi} r^{2} \\sin^{2}{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "Conserved charges of the geodesics from the Killing vectors",
+              "latex": "Q_{3} = r^{2} \\left(\\dot{\\phi} \\sin{\\left(\\theta \\right)} \\cos{\\left(\\phi \\right)} \\cos{\\left(\\theta \\right)} + \\dot{\\theta} \\sin{\\left(\\phi \\right)}\\right)"
+            },
+            {
+              "label": "Conserved charges of the geodesics from the Killing vectors",
+              "latex": "Q_{4} = r^{2} \\left(- \\dot{\\phi} \\sin{\\left(\\phi \\right)} \\sin{\\left(\\theta \\right)} \\cos{\\left(\\theta \\right)} + \\dot{\\theta} \\cos{\\left(\\phi \\right)}\\right)"
+            },
+            {
+              "label": "Conserved charges of the geodesics from the Killing vectors",
+              "latex": "Q_{5} = r^{4} \\left(\\dot{\\phi}^{2} \\sin^{2}{\\left(\\theta \\right)} + \\dot{\\theta}^{2}\\right)"
+            },
+            {
+              "label": "Conserved charges of the geodesics from the Killing vectors",
+              "latex": "Q_{6} = \\dot{\\phi}^{2} r^{2} \\sin^{2}{\\left(\\theta \\right)} + r^{2} \\dot{\\theta}^{2} + \\frac{r \\dot{r}^{2}}{- 2 M + r} + \\frac{\\dot{t}^{2} \\left(2 M - r\\right)}{r}"
+            }
+          ],
+          "checks": [
+            "killing_vectors: 4 independent numeric checks passed; symbolic proof proved",
+            "geodesic_constants: 10 independent numeric checks passed; symbolic proof not proved"
+          ],
+          "notes": [
+            "Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).",
+            "Valid only where $- 2 M + r \\neq 0$, $\\sin{\\left(\\theta \\right)} \\neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).",
+            "Assumes: coordinates are real: t, r, theta, phi.",
+            "Assumes: M: positive.",
+            "Assumes: r: positive.",
+            "2 of 2 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-killing-polar",
+          "title": "The plane in polar coordinates has the full n(n+1)/2 = 3 Killing vectors",
+          "op": "geometry",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "r, phi",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "1,  0",
+              "syntax": "text"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  r^2",
+              "syntax": "text"
+            }
+          ],
+          "assumptions": "r positive",
+          "outputs": [
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(1)}^{\\phi} = 1"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(2)}^{r} = \\sin{\\left(\\phi \\right)}"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(2)}^{\\phi} = \\frac{\\cos{\\left(\\phi \\right)}}{r}"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(3)}^{r} = \\cos{\\left(\\phi \\right)}"
+            },
+            {
+              "label": "Killing vectors",
+              "latex": "\\xi_{(3)}^{\\phi} = - \\frac{\\sin{\\left(\\phi \\right)}}{r}"
+            }
+          ],
+          "checks": [
+            "killing_vectors: 3 independent numeric checks passed; symbolic proof proved"
+          ],
+          "notes": [
+            "Signature (+, +), decided from the declared assumptions.",
+            "Assumes: coordinates are real: r, phi.",
+            "Assumes: r: positive.",
+            "1 of 1 requested quantities computed and numerically verified."
+          ]
+        },
+        {
+          "id": "geometry-killing-declared-function",
+          "title": "A metric with an unspecified function is refused by the Killing search",
+          "op": "geometry",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Coordinates",
+              "source": "t, r",
+              "syntax": "latex"
+            },
+            {
+              "label": "Metric row 1",
+              "source": "-f(r),  0",
+              "syntax": "latex"
+            },
+            {
+              "label": "Metric row 2",
+              "source": "0,  1/f(r)",
+              "syntax": "latex"
+            },
+            {
+              "label": "Functions",
+              "source": "f(r)"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "killing_vectors: unsupported. The metric contains a declared function such as f(r); the Killing search needs explicit components (a family of candidate functions cannot be stated for an unspecified function), so nothing was searched.",
+            "Valid only where $f\\left(r\\right) \\neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).",
+            "Assumes: coordinates are real: t, r.",
+            "Assumes: f(r) is an unspecified real function.",
+            "0 of 1 quantities computed; not shown: killing_vectors (unsupported)."
           ]
         },
         {
@@ -7329,7 +7518,7 @@
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants."
           ]
         },
         {
@@ -7375,7 +7564,7 @@
           ],
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants."
           ]
         },
         {
@@ -7426,7 +7615,7 @@
           ],
           "notes": [
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants."
           ]
         },
         {
@@ -7457,7 +7646,7 @@
           "notes": [
             "cyclic coordinates: none (every coordinate appears in L)",
             "energy function: not conserved (L depends explicitly on time)",
-            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family."
+            "Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants."
           ]
         }
       ]
@@ -8580,7 +8769,7 @@
       "summary": "Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva derives the equations of motion (confirmed by numerical differentiation), then searches a deterministic ladder of larger and larger families of candidates: polynomials in the velocities or momenta times powers of the coordinates, cos and sin of angles (declared, detected, or cyclic) and powers of t. In each family the conservation condition is solved exactly; a candidate is shown only if it is verified on the equations of motion, and products of what is already known are not counted as discoveries. It then reports which constants are functionally independent (an exact Jacobian rank, with the algebraic relations that tie the rest to them) and exactly which families were and were not searched. You do not choose an ansatz, a power bound or the angles.",
       "limits": [
         "Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.",
-        "Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported. At most 3 coordinates.",
+        "Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos and sin. At most 3 coordinates.",
         "Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.",
         "Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.",
         "Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.",
@@ -8766,6 +8955,44 @@
             "7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).",
             "Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)",
             "Only the energy is known; nothing else is found. This says nothing about families that were not searched."
+          ]
+        },
+        {
+          "id": "discovery-kepler-spherical",
+          "title": "Kepler in spherical coordinates, with tan(theta) in the equations",
+          "op": "discovery",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Lagrangian",
+              "source": "\\frac12(\\dot{r}^2 + r^2\\dot{\\theta}^2 + r^2\\sin^2\\theta\\,\\dot{\\phi}^2) + \\frac{k}{r}"
+            },
+            {
+              "label": "Coordinates",
+              "text": "r, theta, phi"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "C1, momentum conjugate to phi",
+              "latex": "C_{1} = \\dot{\\phi} r^{2} \\sin^{2}{\\left(\\theta \\right)}"
+            },
+            {
+              "label": "C2, energy function",
+              "latex": "C_{2} = - \\frac{k}{r} + \\frac{\\dot{\\phi}^{2} r^{2} \\sin^{2}{\\left(\\theta \\right)}}{2} + \\frac{r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\dot{r}^{2}}{2}"
+            },
+            {
+              "label": "Result",
+              "text": "no additional constant within the explored families"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "Functionally independent: 2 (proved).",
+            "2 families searched, from d1p1h1t0 to d1p1h1t0c1 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).",
+            "Not searched: raising the momentum degree to 2 needs 270 unknown coefficients (limit 150)",
+            "The azimuthal equation has tan(theta); the search reads it through cos and sin and searches the smallest families. The square of the total angular momentum (degree 2 in the velocities, with r^4) lies outside the families the quick budget allows, and the larger families are listed as not searched."
           ]
         },
         {
