@@ -1,6 +1,7 @@
 import { CopyMath as Math } from "@/components/copyable-math";
 import type { PerturbationReport, PerturbationRequest } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
+import { Numbered } from "./equation-number";
 import { LinePlot } from "./line-plot";
 import { PerturbationForm } from "./perturbation-form";
 
@@ -40,13 +41,19 @@ export function PerturbationCard({
           </p>
           <div className="mt-2 space-y-1 overflow-x-auto">
             {report.linear_frequency_latex && (
-              <Math latex={report.linear_frequency_latex} display />
+              <Numbered k="omega0">
+                <Math latex={report.linear_frequency_latex} display />
+              </Numbered>
             )}
             {report.frequency_latex && (
-              <Math latex={report.frequency_latex} display label="Frequency" />
+              <Numbered k="omega">
+                <Math latex={report.frequency_latex} display label="Frequency" />
+              </Numbered>
             )}
             {report.period_ratio_latex && (
-              <Math latex={report.period_ratio_latex} display label="Period ratio" />
+              <Numbered k="ratio">
+                <Math latex={report.period_ratio_latex} display label="Period ratio" />
+              </Numbered>
             )}
           </div>
           {report.solution_latex && (

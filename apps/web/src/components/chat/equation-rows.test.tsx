@@ -5,6 +5,9 @@ import fixture from "../../../../../packages/ui/fixtures/equation-rows.json";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 import { StatisticsPanel } from "../statistics-panel";
+import { StatMechPanel, quantityKey } from "../statmech-panel";
+import { DimensionalCard } from "./dimensional-card";
+import { PerturbationCard } from "./perturbation-card";
 import { CardView } from "./card-view";
 
 /**
@@ -94,13 +97,19 @@ type RowEntry = {
   rows: Record<string, string>;
 };
 const rowEntries = fixture as unknown as Record<string, RowEntry>;
-const NEW_ENTRIES: Record<string, "variation" | "statistics" | "expansion"> = {
+const NEW_ENTRIES: Record<
+  string,
+  "variation" | "statistics" | "expansion" | "statmech" | "perturbation" | "dimensional"
+> = {
   variation: "variation",
   variation_second: "variation",
   statistics_moments: "statistics",
   statistics_estimate: "statistics",
   statistics_expressions: "statistics",
   expansion: "expansion",
+  statmech: "statmech",
+  perturbation: "perturbation",
+  dimensional: "dimensional",
 };
 
 function rowCard(name: string, numbers: Record<string, number>) {
@@ -168,6 +177,40 @@ describe("row numbers of the variation, statistics and expansion cards", () => {
     );
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
     expect(document.body.textContent).toContain("Moments");
+  });
+
+  it("the statmech, perturbation and dimensional panels render unchanged without a provider", () => {
+    const stat = rowEntries.statmech as RowEntry;
+    const pert = rowEntries.perturbation as RowEntry;
+    const dim = rowEntries.dimensional as RowEntry;
+    render(
+      <>
+        <StatMechPanel
+          result={stat.data.result as Parameters<typeof StatMechPanel>[0]["result"]}
+          needs={{ cell: false, identical: false }}
+        />
+        <PerturbationCard
+          report={pert.data.report as Parameters<typeof PerturbationCard>[0]["report"]}
+        />
+        <DimensionalCard
+          report={dim.data.report as Parameters<typeof DimensionalCard>[0]["report"]}
+          methods={[]}
+        />
+      </>,
+    );
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
+    expect(document.body.textContent).toContain("Dimensionless groups");
+    expect(document.body.textContent).toContain("Perturbation solution");
+  });
+
+  it("a repeated quantity name gets a distinct key, as on the server", () => {
+    const names = ["Z", "U", "Z", "Z"].map((name) => ({ name }));
+    expect(names.map((_, i) => quantityKey(names, i))).toEqual([
+      "quantity:Z",
+      "quantity:U",
+      "quantity:Z:2",
+      "quantity:Z:3",
+    ]);
   });
 
   it("a sums card shows the number of its whole result", () => {

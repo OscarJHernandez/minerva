@@ -3,6 +3,7 @@ import type { DimensionalReport } from "@/lib/chat-types";
 import type { EntrySummary } from "@/lib/types";
 import { EntryCard } from "../entry-card";
 import { StatusPill } from "../result-panel";
+import { Numbered } from "./equation-number";
 
 const CLOSURE: Record<string, string> = {
   determined: "Fixed by dimensions, up to a constant",
@@ -73,12 +74,14 @@ export function DimensionalCard({
             </span>
           </h4>
           <ul className="mt-2 space-y-2">
-            {report.groups.map((g) => (
+            {report.groups.map((g, i) => (
               <li
                 key={g.label}
                 className="flex flex-wrap items-center gap-x-3 rounded border border-rule px-3"
               >
-                <Math latex={`${g.label} = ${g.latex}`} display />
+                <Numbered k={`group:${i}`}>
+                  <Math latex={`${g.label} = ${g.latex}`} display />
+                </Numbered>
                 {g.dimensionless_verified && (
                   <span className="rounded-full bg-ok-soft px-2 py-0.5 text-xs font-medium text-ok">
                     dimensionless: checked

@@ -10,6 +10,7 @@ import type {
   StatQuantity,
   StatStep,
 } from "@/lib/statmech-types";
+import { Numbered } from "./chat/equation-number";
 import { LinePlot, type PlotSeries } from "./chat/line-plot";
 import { StatusPill } from "./result-panel";
 
@@ -45,6 +46,16 @@ const SYMBOL: Record<string, string> = {
   S: "S",
   Var_E: "\\operatorname{Var}(E)",
 };
+
+/**
+ * The key the server numbers a quantity under (`card_equations.statmech_key`): `quantity:<name>`, and
+ * `quantity:<name>:<k>` for the k-th occurrence of a name (k >= 2).
+ */
+export function quantityKey(quantities: { name: string }[], i: number): string {
+  const name = quantities[i]?.name ?? "";
+  const k = quantities.slice(0, i + 1).filter((q) => q.name === name).length;
+  return k === 1 ? `quantity:${name}` : `quantity:${name}:${k}`;
+}
 
 function checkLabel(c: StatCheck): string {
   const state = c.passed === true ? "agreed" : c.passed === false ? "DISAGREED" : "undecided";
@@ -82,7 +93,7 @@ function Step({ step }: { step: StatStep }) {
   );
 }
 
-function Quantity({ q }: { q: StatQuantity }) {
+function Quantity({ q, k }: { q: StatQuantity; k: string }) {
   return (
     <section
       aria-label={q.title}
@@ -93,9 +104,11 @@ function Quantity({ q }: { q: StatQuantity }) {
         <h3 className="text-sm font-medium">{q.title}</h3>
         <span className="text-xs text-muted">{KIND_LABEL[q.result_kind]}</span>
       </div>
-      <div className="overflow-x-auto">
-        <Math latex={`${SYMBOL[q.name] ?? q.name} = ${q.latex}`} display label={q.title} />
-      </div>
+      <Numbered k={k}>
+        <div className="overflow-x-auto">
+          <Math latex={`${SYMBOL[q.name] ?? q.name} = ${q.latex}`} display label={q.title} />
+        </div>
+      </Numbered>
       {q.held_fixed.length > 0 && (
         <p className="text-xs text-muted">Held fixed: {q.held_fixed.join(", ")}</p>
       )}
@@ -265,7 +278,7 @@ export function StatMechPanel({
       {ok && result.quantities.length > 0 && (
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           {result.quantities.map((q, i) => (
-            <Quantity key={`${q.name}-${i}`} q={q} />
+            <Quantity key={`${q.name}-${i}`} q={q} k={quantityKey(result.quantities, i)} />
           ))}
         </div>
       )}
