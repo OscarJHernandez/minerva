@@ -495,21 +495,25 @@ def test_reciprocal_trig_functions_are_written_through_cos_and_sin() -> None:
 def test_kepler_in_spherical_coordinates_is_searched_and_its_constants_pass_the_flow_check() -> (
     None
 ):
+    # One pinned family (the first of the ladder, 108 unknowns) under the thorough budget's deadline: the
+    # quick budget's 8 s deadline could end the tier on a loaded runner before it started (`outcome
+    # 'deadline'`), which made the test depend on the machine's speed, not on the mathematics.
     report = discover_invariants(
         "lagrangian",
         KEPLER_SPHERICAL,
         ["r", "theta", "phi"],
         None,
         [],
-        "quick",
-        None,
+        "thorough",
+        Pins(degree=1, power_bound=1, harmonics=1, time_degree=0),
         "t",
         {"k": ["positive"]},
         budget_limits(),
         "text",
     )
     assert report.status is Status.OK  # was `unsupported` before issue #191
-    assert report.tiers and all(t.outcome == "searched" for t in report.tiers)
+    assert [t.code for t in report.tiers] == ["d1p1h1t0"] and report.tiers[0].unknowns == 108
+    assert all(t.outcome == "searched" for t in report.tiers)
     assert "theta" in report.angles
     flow = lagrangian_flow(
         KEPLER_SPHERICAL, ["r", "theta", "phi"], "t", {"k": ["positive"]}, budget_limits(), "text"
