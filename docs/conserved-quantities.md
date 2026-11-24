@@ -22,6 +22,10 @@ Kepler problem, oscillators and the rest are regression benchmarks, never specia
 3. **Exact determining equations.** The derivative of every basis function is cleared of denominators and expanded once
    (cached across families, with cos²+sin²=1 reduced); the coefficients of each monomial are linear equations in `cᵢ`,
    solved by an exact nullspace over the rational functions of the parameters. No floating point.
+   `tan`, `cot`, `sec` and `csc` of an angle (in the equations of motion and in the known constants) are first written
+   as ratios of its cos and sin (`discovery._reciprocal_trig`, a closed rule of four heads, issue #191); their
+   denominators are cleared like the others. The equations every candidate is verified on are unchanged, so Kepler in
+   spherical coordinates, whose azimuthal equation has `tan(theta)`, is searched instead of `unsupported`.
 4. **No trivial discoveries.** The nullspace is taken modulo the algebra of the constants already known (cyclic momenta,
    energy, rotations) or found: products of up to four of them, including combinations of higher degree that cancel down
    into the family. Directions are taken one at a time, simplest first, so `x − p t/m` is reported and its multiples are
