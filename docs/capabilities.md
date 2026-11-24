@@ -3209,8 +3209,7 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - **Result:** no additional constant within the explored families
 - The families searched are families of the reduced system; every constant was mapped back and verified on the whole system.
 - Functionally independent: 3 (proved).
-- 7 families searched, from d1p1h1t0 to d4p1h2t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
-- Not searched: raising the power bound to 4 needs 450 unknown coefficients (limit 350)
+- 1 families searched, from d2p2h1t0 to d2p2h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
 - t and phi are cyclic, so their momenta are held fixed and the Routhian of r and theta is searched. The momenta of t and phi and the energy function are reported, each verified on the whole four-coordinate system. The square of the total angular momentum needs sin(theta) in a denominator once the momentum of phi is a parameter, so it is outside the searched families.
 
 #### A square root is refused

@@ -2701,6 +2701,7 @@ capabilities:
           phi is a parameter, so it is outside the searched families.
         op: discovery
         budget: standard
+        pins: { degree: 2, power_bound: 2, harmonics: 1, time_degree: 0 }
         time: s
         assumptions: { M: [positive] }
         input: '\frac12\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2 + \frac{\dot{r}^2}{1-\frac{2M}{r}} + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2\right)'
