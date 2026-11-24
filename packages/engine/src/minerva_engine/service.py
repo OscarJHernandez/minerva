@@ -56,6 +56,7 @@ from .pi_groups import (
     QuantitySpec,
     UnitsCheckReport,
 )
+from .routh import RouthReport
 from .sandbox import Outcome, Sandbox, SandboxResult
 from .series import SeriesResult
 from .solve import SolveReport
@@ -806,6 +807,35 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return LagrangianReport(status=status, message=message, duration_ms=ms)
         report = LagrangianReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def routh_reduce(
+        self,
+        lagrangian: str,
+        coordinates: list[str],
+        cyclic: list[str],
+        time: str = "t",
+        assumptions: dict[str, list[str]] | None = None,
+        format: Literal["latex", "text"] = "latex",
+    ) -> RouthReport:
+        """Routh reduction of the named cyclic coordinates: each momentum is verified conserved and held
+        fixed as the symbol `p_{c}`, and the Routhian is checked against the motion of L."""
+        outcome, ms = self._run(
+            "routh_reduce",
+            {
+                "lagrangian": lagrangian,
+                "coordinates": coordinates,
+                "cyclic": cyclic,
+                "time": time,
+                "assumptions": assumptions or {},
+                "format": format,
+            },
+        )
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return RouthReport(status=status, message=message, duration_ms=ms)
+        report = RouthReport(**outcome.value)
         report.duration_ms = ms
         return report
 

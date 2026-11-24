@@ -111,8 +111,8 @@
       {
         "source": "reference",
         "domain": "mechanics",
-        "problems": 5,
-        "correct": 4,
+        "problems": 6,
+        "correct": 5,
         "refused_as_expected": 1,
         "false_accepts": 0,
         "incorrect_accepted": 0,
@@ -318,8 +318,8 @@
       }
     ],
     "totals": {
-      "problems": 247,
-      "correct": 138,
+      "problems": 248,
+      "correct": 139,
       "refused_as_expected": 106,
       "false_accepts": 0,
       "incorrect_accepted": 0,
@@ -329,7 +329,7 @@
       "counterexamples": 22
     },
     "evidence_of_accepted_reference_results": {
-      "symbolic_proof": 5,
+      "symbolic_proof": 6,
       "numeric_agreement": 54,
       "structural": 9,
       "conditional": 3,
@@ -345,8 +345,8 @@
     },
     "agent_suite": {
       "core_cases": 163,
-      "reliability_cases": 26,
-      "reliability_turns": 39,
+      "reliability_cases": 27,
+      "reliability_turns": 40,
       "failure_classes": [
         "arguments",
         "claim_checker_false_positive",
@@ -367,10 +367,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.64,
-    "adversarial_median_ms": 16.7,
-    "adversarial_max_ms": 136.3,
-    "report_wall_s": 4.62,
-    "peak_rss_mb": 198.3
+    "adversarial_total_s": 1.32,
+    "adversarial_median_ms": 12.1,
+    "adversarial_max_ms": 108.8,
+    "report_wall_s": 2.44,
+    "peak_rss_mb": 190.9
   }
 }

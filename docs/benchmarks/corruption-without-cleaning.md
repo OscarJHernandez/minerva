@@ -2,36 +2,39 @@
 
 Every known model mistake applied to every reference call of the benchmark, through the same pipeline a model's call takes. Each corrupted call must give the clean call's result or fail with a typed reason; anything else is a defect.
 
-222 corrupted calls over 133 reference calls (33 tools), mode `pr (without the cleaning layer)`: **0 different verified results**, 131 untyped failures; 26 recovered without a model call (11.7%), 65 diagnosed.
+253 corrupted calls over 162 reference calls (35 tools), mode `pr (without the cleaning layer)`: **0 different verified results**, 145 untyped failures; 31 recovered without a model call (12.2%), 77 diagnosed.
 
 | Operator | Applied | Same | Same after cleaning | Diagnosed | Untyped | Different |
 | --- | --- | --- | --- | --- | --- | --- |
-| derivative:joined | 1 | 1 | 0 | 0 | 0 | 0 |
-| derivative:latex_letter_run | 4 | 0 | 0 | 4 | 0 | 0 |
-| derivative:leibniz | 1 | 1 | 0 | 0 | 0 | 0 |
-| derivative:spaced | 1 | 1 | 0 | 0 | 0 | 0 |
-| derivative:upper | 1 | 1 | 0 | 0 | 0 | 0 |
-| shape:assignment_prefix | 5 | 1 | 0 | 4 | 0 | 0 |
-| shape:formula_alias | 20 | 0 | 0 | 20 | 0 | 0 |
-| shape:json_as_string | 25 | 0 | 0 | 25 | 0 | 0 |
-| shape:list_as_string | 12 | 0 | 0 | 12 | 0 | 0 |
+| derivative:joined | 2 | 2 | 0 | 0 | 0 | 0 |
+| derivative:latex_letter_run | 6 | 0 | 0 | 6 | 0 | 0 |
+| derivative:leibniz | 2 | 0 | 0 | 2 | 0 | 0 |
+| derivative:spaced | 2 | 2 | 0 | 0 | 0 | 0 |
+| derivative:upper | 2 | 2 | 0 | 0 | 0 | 0 |
+| shape:assignment_prefix | 7 | 3 | 0 | 4 | 0 | 0 |
+| shape:formula_alias | 22 | 0 | 0 | 22 | 0 | 0 |
+| shape:json_as_string | 27 | 0 | 0 | 27 | 0 | 0 |
+| shape:kind_wrapped | 1 | 0 | 0 | 1 | 0 | 0 |
+| shape:list_as_string | 14 | 0 | 0 | 14 | 0 | 0 |
 | shape:number_as_string | 5 | 5 | 0 | 0 | 0 | 0 |
-| transport:code_fence | 27 | 1 | 0 | 0 | 26 | 0 |
-| transport:dollar_wrapper | 27 | 1 | 0 | 0 | 26 | 0 |
-| transport:doubled_backslash | 21 | 1 | 0 | 0 | 20 | 0 |
-| transport:markdown_escape | 21 | 0 | 0 | 0 | 21 | 0 |
-| transport:trailing_period | 25 | 4 | 0 | 0 | 21 | 0 |
-| transport:unicode_look_alikes | 26 | 9 | 0 | 0 | 17 | 0 |
+| syntax:braced_exponent | 2 | 2 | 0 | 0 | 0 | 0 |
+| transport:code_fence | 29 | 1 | 0 | 0 | 28 | 0 |
+| transport:dollar_wrapper | 29 | 1 | 0 | 0 | 28 | 0 |
+| transport:doubled_backslash | 23 | 1 | 0 | 0 | 22 | 0 |
+| transport:markdown_escape | 26 | 0 | 0 | 1 | 25 | 0 |
+| transport:trailing_period | 26 | 4 | 0 | 0 | 22 | 0 |
+| transport:unicode_look_alikes | 28 | 8 | 0 | 0 | 20 | 0 |
 
 ## Defects
 
 * `untyped_failure`: transport:code_fence on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:code_fence on approximation (approximation-interval-is-not-invented)
+* `untyped_failure`: transport:code_fence on check_identity (identity-check-false-binomial)
 * `untyped_failure`: transport:code_fence on check_units (false-energy-units)
 * `untyped_failure`: transport:code_fence on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:code_fence on differentiate (differentiate-first)
 * `untyped_failure`: transport:code_fence on distribution (delta-integral-uses-the-tool)
-* `untyped_failure`: transport:code_fence on expand_motion (expand-pendulum)
+* `untyped_failure`: transport:code_fence on expand_motion (double-pendulum-both-angles-small-uses-expand-motion)
 * `untyped_failure`: transport:code_fence on expectation (variance-of-a-sum-keeps-the-covariance)
 * `untyped_failure`: transport:code_fence on find_conserved_quantities (conserved-quantities-oscillator)
 * `untyped_failure`: transport:code_fence on find_identities (followup-uses-context)
@@ -43,21 +46,23 @@ Every known model mistake applied to every reference call of the benchmark, thro
 * `untyped_failure`: transport:code_fence on ode_solve_numerical (numbers-handed-over-are-chosen-and-said)
 * `untyped_failure`: transport:code_fence on ode_solve_symbolic (ode-bare-equation-asks-which-method#2)
 * `untyped_failure`: transport:code_fence on perturbation_solve (perturbation-duffing)
-* `untyped_failure`: transport:code_fence on series (series-tan)
-* `untyped_failure`: transport:code_fence on simplify (assumptions-carried)
+* `untyped_failure`: transport:code_fence on routh_reduce (schwarzschild-routh-reduction-by-time)
+* `untyped_failure`: transport:code_fence on series (double-pendulum-chat-one-small-angle-in-the-users-words)
+* `untyped_failure`: transport:code_fence on simplify (assumption-added-then-dropped-in-followups)
 * `untyped_failure`: transport:code_fence on solve_polynomial (solve-quintic)
 * `untyped_failure`: transport:code_fence on substitute (premise-stays-conditional)
 * `untyped_failure`: transport:code_fence on tensor_canonicalize (tensor-contraction)
 * `untyped_failure`: transport:code_fence on time_derivative (kepler-conserved-quantities-then-total-time-derivative#2)
 * `untyped_failure`: transport:code_fence on variation (brachistochrone-euler-lagrange-leibniz-form)
-* `untyped_failure`: transport:code_fence on vector_calculus (integral-flux-through-a-sphere)
+* `untyped_failure`: transport:code_fence on vector_calculus (distributional-classical-versus-distributional)
 * `untyped_failure`: transport:dollar_wrapper on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:dollar_wrapper on approximation (approximation-interval-is-not-invented)
+* `untyped_failure`: transport:dollar_wrapper on check_identity (identity-check-false-binomial)
 * `untyped_failure`: transport:dollar_wrapper on check_units (false-energy-units)
 * `untyped_failure`: transport:dollar_wrapper on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:dollar_wrapper on differentiate (differentiate-first)
 * `untyped_failure`: transport:dollar_wrapper on distribution (delta-integral-uses-the-tool)
-* `untyped_failure`: transport:dollar_wrapper on expand_motion (expand-pendulum)
+* `untyped_failure`: transport:dollar_wrapper on expand_motion (double-pendulum-both-angles-small-uses-expand-motion)
 * `untyped_failure`: transport:dollar_wrapper on expectation (variance-of-a-sum-keeps-the-covariance)
 * `untyped_failure`: transport:dollar_wrapper on find_conserved_quantities (conserved-quantities-oscillator)
 * `untyped_failure`: transport:dollar_wrapper on find_identities (followup-uses-context)
@@ -69,20 +74,23 @@ Every known model mistake applied to every reference call of the benchmark, thro
 * `untyped_failure`: transport:dollar_wrapper on ode_solve_numerical (numbers-handed-over-are-chosen-and-said)
 * `untyped_failure`: transport:dollar_wrapper on ode_solve_symbolic (ode-bare-equation-asks-which-method#2)
 * `untyped_failure`: transport:dollar_wrapper on perturbation_solve (perturbation-duffing)
-* `untyped_failure`: transport:dollar_wrapper on series (series-tan)
-* `untyped_failure`: transport:dollar_wrapper on simplify (assumptions-carried)
+* `untyped_failure`: transport:dollar_wrapper on routh_reduce (schwarzschild-routh-reduction-by-time)
+* `untyped_failure`: transport:dollar_wrapper on series (double-pendulum-chat-one-small-angle-in-the-users-words)
+* `untyped_failure`: transport:dollar_wrapper on simplify (assumption-added-then-dropped-in-followups)
 * `untyped_failure`: transport:dollar_wrapper on solve_polynomial (solve-quintic)
 * `untyped_failure`: transport:dollar_wrapper on substitute (premise-stays-conditional)
 * `untyped_failure`: transport:dollar_wrapper on tensor_canonicalize (tensor-contraction)
 * `untyped_failure`: transport:dollar_wrapper on time_derivative (kepler-conserved-quantities-then-total-time-derivative#2)
 * `untyped_failure`: transport:dollar_wrapper on variation (brachistochrone-euler-lagrange-leibniz-form)
-* `untyped_failure`: transport:dollar_wrapper on vector_calculus (integral-flux-through-a-sphere)
+* `untyped_failure`: transport:dollar_wrapper on vector_calculus (distributional-classical-versus-distributional)
 * `untyped_failure`: transport:doubled_backslash on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:doubled_backslash on approximation (approximation-interval-is-not-invented)
+* `untyped_failure`: transport:doubled_backslash on check_identity (identity-check-true-hyperbolic)
+* `untyped_failure`: transport:doubled_backslash on check_units (kepler-constant-then-its-units#2)
 * `untyped_failure`: transport:doubled_backslash on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:doubled_backslash on differentiate (differentiate-product)
 * `untyped_failure`: transport:doubled_backslash on distribution (delta-integral-uses-the-tool)
-* `untyped_failure`: transport:doubled_backslash on expand_motion (expand-pendulum)
+* `untyped_failure`: transport:doubled_backslash on expand_motion (double-pendulum-both-angles-small-uses-expand-motion)
 * `untyped_failure`: transport:doubled_backslash on expectation (variance-of-a-sum-keeps-the-covariance)
 * `untyped_failure`: transport:doubled_backslash on find_conserved_quantities (conserved-quantities-oscillator)
 * `untyped_failure`: transport:doubled_backslash on find_identities (followup-uses-context)
@@ -91,33 +99,37 @@ Every known model mistake applied to every reference call of the benchmark, thro
 * `untyped_failure`: transport:doubled_backslash on isolate_variable (isolate-gives-both-roots)
 * `untyped_failure`: transport:doubled_backslash on matrix_calculus (declared-matrices-no-invented-commutation#2)
 * `untyped_failure`: transport:doubled_backslash on perturbation_solve (perturbation-duffing)
-* `untyped_failure`: transport:doubled_backslash on series (series-tan)
-* `untyped_failure`: transport:doubled_backslash on simplify (assumptions-carried)
+* `untyped_failure`: transport:doubled_backslash on series (double-pendulum-chat-one-small-angle-in-the-users-words)
+* `untyped_failure`: transport:doubled_backslash on simplify (assumption-added-then-dropped-in-followups)
 * `untyped_failure`: transport:doubled_backslash on solve_polynomial (unsupported-transcendental)
 * `untyped_failure`: transport:doubled_backslash on time_derivative (kepler-conserved-quantities-then-total-time-derivative#2)
 * `untyped_failure`: transport:doubled_backslash on variation (brachistochrone-euler-lagrange-leibniz-form)
-* `untyped_failure`: transport:doubled_backslash on vector_calculus (vector-curl-curl-rewrite)
+* `untyped_failure`: transport:doubled_backslash on vector_calculus (distributional-classical-versus-distributional)
 * `untyped_failure`: transport:markdown_escape on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:markdown_escape on approximation (approximation-large-x)
+* `untyped_failure`: transport:markdown_escape on check_identity (identity-check-false-binomial)
+* `untyped_failure`: transport:markdown_escape on check_units (kepler-constant-then-its-units#2)
 * `untyped_failure`: transport:markdown_escape on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:markdown_escape on differentiate (differentiate-first)
 * `untyped_failure`: transport:markdown_escape on distribution (delta-integral-uses-the-tool)
-* `untyped_failure`: transport:markdown_escape on expand_motion (expand-pendulum)
+* `untyped_failure`: transport:markdown_escape on expand_motion (double-pendulum-both-angles-small-uses-expand-motion)
 * `untyped_failure`: transport:markdown_escape on find_conserved_quantities (conserved-quantities-oscillator)
 * `untyped_failure`: transport:markdown_escape on find_identities (followup-uses-context)
-* `untyped_failure`: transport:markdown_escape on integrate (integrate-gaussian)
+* `untyped_failure`: transport:markdown_escape on integrate (homepage-integral-by-symmetry)
 * `untyped_failure`: transport:markdown_escape on integrate_motion (motion-values-given)
 * `untyped_failure`: transport:markdown_escape on isolate_variable (isolate-gives-both-roots)
 * `untyped_failure`: transport:markdown_escape on matrix_calculus (declared-matrices-then-false-expansion)
 * `untyped_failure`: transport:markdown_escape on ode_analyze (ode-analyze-before-solving)
 * `untyped_failure`: transport:markdown_escape on ode_solve_symbolic (ode-no-closed-form-is-not-impossibility)
 * `untyped_failure`: transport:markdown_escape on perturbation_solve (perturbation-duffing)
-* `untyped_failure`: transport:markdown_escape on simplify (chain-hyperbolic-trig)
+* `untyped_failure`: transport:markdown_escape on series (double-pendulum-chat-one-small-angle-in-the-users-words)
+* `untyped_failure`: transport:markdown_escape on simplify (assumption-added-then-dropped-in-followups)
 * `untyped_failure`: transport:markdown_escape on solve_polynomial (solve-quintic)
 * `untyped_failure`: transport:markdown_escape on substitute (premise-stays-conditional)
 * `untyped_failure`: transport:markdown_escape on tensor_canonicalize (tensor-contraction)
 * `untyped_failure`: transport:markdown_escape on time_derivative (kepler-conserved-quantities-then-total-time-derivative#2)
 * `untyped_failure`: transport:markdown_escape on variation (brachistochrone-euler-lagrange-leibniz-form)
+* `untyped_failure`: transport:markdown_escape on vector_calculus (distributional-classical-versus-distributional)
 * `untyped_failure`: transport:trailing_period on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:trailing_period on approximation (approximation-interval-is-not-invented)
 * `untyped_failure`: transport:trailing_period on creative_telescoping (telescoping-gaussian-parameter)
@@ -132,25 +144,29 @@ Every known model mistake applied to every reference call of the benchmark, thro
 * `untyped_failure`: transport:trailing_period on ode_analyze (ode-bare-equation-asks-which-method)
 * `untyped_failure`: transport:trailing_period on ode_solve_numerical (ode-boundary-value-problem)
 * `untyped_failure`: transport:trailing_period on ode_solve_symbolic (ode-bare-equation-asks-which-method#2)
+* `untyped_failure`: transport:trailing_period on routh_reduce (schwarzschild-routh-reduction-by-time)
 * `untyped_failure`: transport:trailing_period on series (series-tan)
-* `untyped_failure`: transport:trailing_period on simplify (assumptions-carried)
+* `untyped_failure`: transport:trailing_period on simplify (assumption-added-then-dropped-in-followups)
 * `untyped_failure`: transport:trailing_period on substitute (premise-stays-conditional)
 * `untyped_failure`: transport:trailing_period on tensor_canonicalize (tensor-contraction)
 * `untyped_failure`: transport:trailing_period on time_derivative (kepler-conserved-quantities-then-total-time-derivative#2)
 * `untyped_failure`: transport:trailing_period on variation (brachistochrone-euler-lagrange-leibniz-form)
-* `untyped_failure`: transport:trailing_period on vector_calculus (integral-flux-through-a-sphere)
+* `untyped_failure`: transport:trailing_period on vector_calculus (distributional-classical-versus-distributional)
 * `untyped_failure`: transport:unicode_look_alikes on analyze_lagrangian (lagrangian-kepler)
+* `untyped_failure`: transport:unicode_look_alikes on check_identity (identity-check-false-binomial)
 * `untyped_failure`: transport:unicode_look_alikes on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:unicode_look_alikes on differentiate (differentiate-mixed)
 * `untyped_failure`: transport:unicode_look_alikes on distribution (delta-integral-uses-the-tool)
-* `untyped_failure`: transport:unicode_look_alikes on expand_motion (expand-pendulum)
+* `untyped_failure`: transport:unicode_look_alikes on expand_motion (double-pendulum-both-angles-small-uses-expand-motion)
 * `untyped_failure`: transport:unicode_look_alikes on find_conserved_quantities (conserved-quantities-oscillator)
 * `untyped_failure`: transport:unicode_look_alikes on find_identities (followup-uses-context)
 * `untyped_failure`: transport:unicode_look_alikes on integrate_motion (motion-values-given)
 * `untyped_failure`: transport:unicode_look_alikes on isolate_variable (isolate-gives-both-roots)
 * `untyped_failure`: transport:unicode_look_alikes on matrix_calculus (declared-matrices-then-false-expansion)
 * `untyped_failure`: transport:unicode_look_alikes on perturbation_solve (perturbation-duffing)
-* `untyped_failure`: transport:unicode_look_alikes on simplify (chain-hyperbolic-trig)
+* `untyped_failure`: transport:unicode_look_alikes on routh_reduce (schwarzschild-routh-reduction-by-time)
+* `untyped_failure`: transport:unicode_look_alikes on series (double-pendulum-chat-one-small-angle-in-the-users-words)
+* `untyped_failure`: transport:unicode_look_alikes on simplify (assumption-added-then-dropped-in-followups)
 * `untyped_failure`: transport:unicode_look_alikes on solve_polynomial (solve-quintic)
 * `untyped_failure`: transport:unicode_look_alikes on substitute (premise-stays-conditional)
 * `untyped_failure`: transport:unicode_look_alikes on tensor_canonicalize (tensor-contraction)

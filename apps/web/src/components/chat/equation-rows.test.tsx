@@ -110,6 +110,7 @@ const NEW_ENTRIES: Record<
   | "dimensional"
   | "ode_analysis"
   | "matrix"
+  | "routh"
   | "vector"
 > = {
   variation: "variation",
@@ -130,6 +131,7 @@ const NEW_ENTRIES: Record<
   ode_equilibria: "ode_analysis",
   matrix_gradient: "matrix",
   matrix_integral: "matrix",
+  routh: "routh",
   vector_scalar: "vector",
   vector_components: "vector",
   vector_convert: "vector",

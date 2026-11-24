@@ -49,6 +49,7 @@ Operator = Callable[[str, Arguments], Arguments | None]
 DEPENDENT_TOOLS = frozenset(
     {
         "analyze_lagrangian",
+        "routh_reduce",
         "search_invariants",
         "time_derivative",
         "expand_motion",
