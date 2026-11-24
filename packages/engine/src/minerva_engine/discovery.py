@@ -212,6 +212,27 @@ def _peak_mb() -> float:
     return round(peak / (1024 * 1024 if sys.platform == "darwin" else 1024), 1)
 
 
+# The other four trigonometric functions, as ratios of cos and sin (issue #191). `derive` writes
+# `tan(theta)` in the azimuthal equation of spherical coordinates; read as cos/sin, the angle is an ordinary
+# angle of the search and the new denominators are cleared like every other one. A closed rule: these four
+# heads only, nothing else is rewritten, and the equations the candidates are verified on are unchanged.
+_RECIPROCAL_TRIG: dict[type[sp.Function], Any] = {
+    sp.tan: lambda a: sp.sin(a) / sp.cos(a),
+    sp.cot: lambda a: sp.cos(a) / sp.sin(a),
+    sp.sec: lambda a: 1 / sp.cos(a),
+    sp.csc: lambda a: 1 / sp.sin(a),
+}
+
+
+def _reciprocal_trig(expr: sp.Expr) -> sp.Expr:
+    """`expr` with tan, cot, sec and csc written through cos and sin of the same argument."""
+    swap = {
+        atom: _RECIPROCAL_TRIG[type(atom)](atom.args[0])
+        for atom in expr.atoms(sp.tan, sp.cot, sp.sec, sp.csc)
+    }
+    return expr.xreplace(swap) if swap else expr
+
+
 class _Unsupported(Exception):
     def __init__(self, message: str, cause: Cause = "unsupported_function") -> None:
         super().__init__(message)
@@ -242,7 +263,9 @@ class _Setup:
         self.n = n
         q, v = flow.q, flow.v
         index = {s: i for i, s in enumerate(q)}
-        rates = [sp.together(sp.expand_trig(r)) for r in [*flow.q_rate, *flow.v_rate]]
+        rates = [
+            sp.together(sp.expand_trig(_reciprocal_trig(r))) for r in [*flow.q_rate, *flow.v_rate]
+        ]
 
         trig_args: set[sp.Symbol] = set()
         for e in rates:
@@ -635,7 +658,9 @@ def discover(
 
     gens: list[_Gen] = []
     for item, expr in flow.known:
-        converted = sp.expand(sp.expand_trig(sp.sympify(expr)).subs(setup.trig_sub))
+        converted = sp.expand(
+            sp.expand_trig(_reciprocal_trig(sp.sympify(expr))).subs(setup.trig_sub)
+        )
         if any(flow.q[i] in converted.free_symbols for i in setup.angle_idx):
             continue
         gens.append(

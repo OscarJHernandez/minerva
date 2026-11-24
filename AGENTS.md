@@ -689,7 +689,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`packages/engine/tests/bench`, fixtures regenerate from seeds) are separate from the discovery code and never
   hand it an expected invariant. Names such as Laplace–Runge–Lenz are for the model to offer afterwards. Events
   (`invariant_search.*`) carry counters and fixed labels only; the API logs them with the request id as trace id
-  (`search_log.py`), expressions stay in the user's private card. Square roots, logarithms and non-polynomial time
+  (`search_log.py`), expressions stay in the user's private card. `tan`, `cot`, `sec` and `csc` of an angle are read as
+  ratios of its cos and sin (`discovery._reciprocal_trig`, a closed rule of four heads, issue #191; the equations a candidate
+  is verified on are unchanged). Square roots, logarithms and non-polynomial time
   dependence are `unsupported`; more than 4 coordinates is `unsupported` with the typed code `too_many_coordinates` (the limit, removing a
   cyclic coordinate by hand only with the user's own stated momentum, and that a larger search is not available;
   nothing is searched and no coordinate is dropped; the tool schema allows 8 so that this reason, not a length error, reaches the model); families above the unknown cap are listed as not searched.

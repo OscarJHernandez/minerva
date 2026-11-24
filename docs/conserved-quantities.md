@@ -22,6 +22,10 @@ Kepler problem, oscillators and the rest are regression benchmarks, never specia
 3. **Exact determining equations.** The derivative of every basis function is cleared of denominators and expanded once
    (cached across families, with cos²+sin²=1 reduced); the coefficients of each monomial are linear equations in `cᵢ`,
    solved by an exact nullspace over the rational functions of the parameters. No floating point.
+   `tan`, `cot`, `sec` and `csc` of an angle (in the equations of motion and in the known constants) are first written
+   as ratios of its cos and sin (`discovery._reciprocal_trig`, a closed rule of four heads, issue #191); their
+   denominators are cleared like the others. The equations every candidate is verified on are unchanged, so Kepler in
+   spherical coordinates, whose azimuthal equation has `tan(theta)`, is searched instead of `unsupported`.
 4. **No trivial discoveries.** The nullspace is taken modulo the algebra of the constants already known (cyclic momenta,
    energy, rotations) or found: products of up to four of them, including combinations of higher degree that cancel down
    into the family. Directions are taken one at a time, simplest first, so `x − p t/m` is reported and its multiples are
@@ -54,7 +58,9 @@ power bound 2, 1215 unknowns, is listed as not searched, so the four single ener
 families). A system whose smallest family is already over the cap (every coordinate in a denominator: 5 x 3^4 = 405
 unknowns at `standard`) is `resource_limit`, with that family and its size as the reason, and nothing is searched.
 Measured on a shared workstation (load ~7): the fixed cost before the ladder (derive, numerical check of the
-equations, Noether constants) is 0.1 s for the oscillator and 2.5 s for Schwarzschild; the oscillator at `standard`
+equations, Noether constants) is 0.1 s for the oscillator and 2.5 s for Schwarzschild (a third of the quick budget is 2.67 s: close, worth
+watching under CI load); Schwarzschild's smallest family has 405 unknowns (t and phi cyclic, r in a denominator,
+theta an angle), so it is `resource_limit` at `quick` and `standard` and searched only at `thorough`; the oscillator at `standard`
 takes 10 s, 5.8 s of it in the relation search of the independence analysis (rank 7, proved), peak 223 MB. The
 relation search of the independence analysis has its own deadline (the exact Jacobian rank does not): when it ends
 first, every constant is still shown (each verified) and the rank is the proved lower bound, never estimated from a
@@ -64,9 +70,7 @@ smaller system.
 
 Square roots and other non-rational equations of motion (Cartesian Kepler is `unsupported` until an adjoined algebraic
 element `ρ² = x²+y²` is implemented), logarithms, non-polynomial time dependence, singular Hessians, more than four
-coordinates (typed refusal `too_many_coordinates`), `tan` in the equations of motion (spherical coordinates give
-`tan(theta)` in the azimuthal equation, so 3D Kepler in `(r, theta, phi)` and Schwarzschild are `unsupported`),
-arbitrary Killing-tensor PDEs. The symmetries of a metric are a separate tool: `geometry` with
+coordinates (typed refusal `too_many_coordinates`), arbitrary Killing-tensor PDEs. The symmetries of a metric are a separate tool: `geometry` with
 `killing_vectors` searches the Killing equation exactly within a stated family (lowered components; at most 300 unknowns
 per linear system) and `geodesic_constants` builds the conserved charges of the geodesics from the vectors found, each
 checked by `Flow.verify` on the geodesic Lagrangian `g(v, v)/2` (any number of coordinates up to the geometry limit of

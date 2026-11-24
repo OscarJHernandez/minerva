@@ -2579,8 +2579,9 @@ capabilities:
       - Complete within each family searched and nothing more. No additional constant always means within the
         explored families, never that the system has none.
       - Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial
-        time dependence are reported as unsupported. At most 4 coordinates; a four-coordinate family is searched only
-        if it fits the unknown cap, otherwise the smallest family and its size are reported as a resource limit.
+        time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos
+        and sin. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap,
+        otherwise the smallest family and its size are reported as a resource limit.
       - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
       - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found
         only when those values are given.
@@ -2631,6 +2632,16 @@ capabilities:
         budget: quick
         input: '\frac12(\dot{a}^2 + \dot{b}^2 + \dot{c}^2 + \dot{d}^2) - \frac12(a^2 + b^2 + c^2 + d^2)'
         coordinates: [a, b, c, d]
+      - id: discovery-kepler-spherical
+        title: Kepler in spherical coordinates, with tan(theta) in the equations
+        note: >-
+          The azimuthal equation has tan(theta); the search reads it through cos and sin and searches the smallest
+          families. The square of the total angular momentum (degree 2 in the velocities, with r^4) lies outside the
+          families the quick budget allows, and the larger families are listed as not searched.
+        op: discovery
+        budget: quick
+        input: '\frac12(\dot{r}^2 + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2) + \frac{k}{r}'
+        coordinates: [r, theta, phi]
       - id: discovery-cartesian-kepler
         title: A square root is refused
         op: discovery

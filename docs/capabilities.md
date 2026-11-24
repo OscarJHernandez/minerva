@@ -3037,7 +3037,7 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 **Limits**
 
 - Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.
-- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap, otherwise the smallest family and its size are reported as a resource limit.
+- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos and sin. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap, otherwise the smallest family and its size are reported as a resource limit.
 - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
 - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.
 - Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.
@@ -3124,6 +3124,19 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - 1 families searched, from d1p1h1t0 to d1p1h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
 - Not searched: raising the momentum degree to 2 needs 240 unknown coefficients (limit 150)
 - The quick budget searches the first family (80 unknown coefficients) and finds nothing beyond the energy and the six rotations; it lists the larger families it did not search. Their rank is 6, not 7: one exact relation ties the six rotations together.
+
+#### Kepler in spherical coordinates, with tan(theta) in the equations
+
+- **Lagrangian:** `\frac12(\dot{r}^2 + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2) + \frac{k}{r}`
+- **Coordinates:** r, theta, phi
+- **Status:** `ok`
+- **C1, momentum conjugate to phi:** $C_{1} = \dot{\phi} r^{2} \sin^{2}{\left(\theta \right)}$
+- **C2, energy function:** $C_{2} = - \frac{k}{r} + \frac{\dot{\phi}^{2} r^{2} \sin^{2}{\left(\theta \right)}}{2} + \frac{r^{2} \dot{\theta}^{2}}{2} + \frac{\dot{r}^{2}}{2}$
+- **Result:** no additional constant within the explored families
+- Functionally independent: 2 (proved).
+- 2 families searched, from d1p1h1t0 to d1p1h1t0c1 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 2 needs 270 unknown coefficients (limit 150)
+- The azimuthal equation has tan(theta); the search reads it through cos and sin and searches the smallest families. The square of the total angular momentum (degree 2 in the velocities, with r^4) lies outside the families the quick budget allows, and the larger families are listed as not searched.
 
 #### A square root is refused
 
