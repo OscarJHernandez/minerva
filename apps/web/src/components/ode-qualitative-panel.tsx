@@ -1,4 +1,5 @@
 import { Math as Formula } from "@minerva/ui/math";
+import { canonicalEigenvalues, canonicalEquilibria } from "@/lib/ode-equilibria";
 import type { Classification, OdeQualitative } from "@/lib/ode-types";
 import { Numbered } from "./chat/equation-number";
 import { PhasePlot, type Marker } from "./chat/phase-plot";
@@ -56,7 +57,9 @@ export function OdeQualitativePanel({
       </div>
     );
   }
-  const markers: Marker[] = q.equilibria
+  // The server numbers the rows by position in this canonical order, never the solver's.
+  const equilibria = canonicalEquilibria(q.equilibria);
+  const markers: Marker[] = equilibria
     .filter((e) => e.point_numeric.length === 2)
     .map((e) => ({
       x: e.point_numeric[0] ?? 0,
@@ -79,25 +82,24 @@ export function OdeQualitativePanel({
           </li>
         ))}
       </ul>
-      {q.equilibria.length === 0 ? (
+      {equilibria.length === 0 ? (
         <p className="mt-2 text-sm text-muted">No equilibrium was found.</p>
       ) : (
         <ul className="mt-2 space-y-2">
-          {q.equilibria.map((e) => (
+          {equilibria.map((e, k) => (
             <li
               key={e.point_latex.join("|")}
               className="rounded border border-rule bg-paper p-3"
               data-classification={e.classification}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm">
+                <div className="text-sm">
                   {e.point_latex.map((p, i) => (
-                    <span key={p}>
-                      {i > 0 && ", "}
+                    <Numbered key={p} k={`equil:${k}:point:${i}`}>
                       <Formula latex={p} />
-                    </span>
+                    </Numbered>
                   ))}
-                </span>
+                </div>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[TONE[e.classification]]}`}
                 >
@@ -107,27 +109,31 @@ export function OdeQualitativePanel({
               <p className="mt-1 text-sm">{e.classification_text}.</p>
               <details className="mt-2 text-xs">
                 <summary className="cursor-pointer text-muted">Jacobian and eigenvalues</summary>
-                <div className="mt-2 overflow-x-auto">
-                  <Formula latex={e.jacobian_latex} />
-                </div>
+                <Numbered k={`equil:${k}:jacobian`}>
+                  <div className="mt-2 overflow-x-auto">
+                    <Formula latex={e.jacobian_latex} />
+                  </div>
+                </Numbered>
                 {e.eigenvalues_latex.length > 0 && (
-                  <p className="mt-1">
-                    Exact eigenvalues:{" "}
-                    {e.eigenvalues_latex.map((l, i) => (
-                      <span key={l}>
-                        {i > 0 && ", "}
+                  <div className="mt-1">
+                    Exact eigenvalues:
+                    {canonicalEigenvalues(e.eigenvalues_latex).map((l, i) => (
+                      <Numbered key={l} k={`equil:${k}:eig:${i}`}>
                         <Formula latex={l} />
-                      </span>
+                      </Numbered>
                     ))}
-                  </p>
+                  </div>
                 )}
                 {e.eigenvalues_numeric.length > 0 && (
                   <p className="mt-1">Numerical eigenvalues: {e.eigenvalues_numeric.join(", ")}</p>
                 )}
                 {e.characteristic_latex && (
-                  <p className="mt-1 overflow-x-auto">
-                    Characteristic polynomial: <Formula latex={e.characteristic_latex} />
-                  </p>
+                  <div className="mt-1">
+                    Characteristic polynomial:
+                    <Numbered k={`equil:${k}:char`}>
+                      <Formula latex={e.characteristic_latex} />
+                    </Numbered>
+                  </div>
                 )}
               </details>
             </li>

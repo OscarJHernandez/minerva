@@ -25,9 +25,10 @@ Listed = list[tuple[str, str]]
 # Cards that keep their whole tool result under `data["result"]` (a step, a matrix calculation) instead of at the
 # top of `data`. Before `result_formula` the numbering and the reference table read only the top level, so a
 # successful `substitute` or `rewrite_part` never got a number although `step` is a single-result card (#133).
-# `sums`, `expectation` and `distribution` are the same case (`data["result"]`); `approximation` keeps its result
-# under `data["report"]`, a different shape, and is not handled here.
+# `sums`, `expectation` and `distribution` are the same case (`data["result"]`). `approximation` keeps its result
+# under `data["report"]` (`_REPORT_RESULT_CARDS`), a different shape with its own gate (`_approximation_formula`).
 NESTED_RESULT_CARDS = frozenset({"step", "matrix", "sums", "expectation", "distribution"})
+_REPORT_RESULT_CARDS = frozenset({"approximation"})
 # `result_kind` values of a matrix card that are not an evaluated expression: an equation, a representation, or a
 # numerical approximation. Such a result is never numbered or given an id as if it were a closed form.
 _NOT_EVALUATED_KINDS = frozenset({"equation", "representation", "numeric"})
@@ -51,6 +52,8 @@ def result_formula(card_type: object, data: dict[str, Any]) -> str | None:
     top = _text(data.get("result_latex"))
     if top is not None:
         return top
+    if card_type in _REPORT_RESULT_CARDS:
+        return _approximation_formula(data.get("report"))
     inner = _nested(card_type, data)
     if inner is None or inner.get("status") != "ok":
         return None
@@ -65,6 +68,27 @@ def result_formula(card_type: object, data: dict[str, Any]) -> str | None:
     ):
         return None
     return _text(inner.get("result_latex"))
+
+
+def _approximation_formula(report: object) -> str | None:
+    """The approximation of an accepted `approximation` card, or None.
+
+    Accepted means `status == "ok"` (the engine shows a candidate only after a check that does not use the route
+    that built it), evidence of a kind (`none` is never a result), and no check that failed. A candidate that was
+    not verified, an unsupported request, a question to the user and an unchanged input list nothing. The number
+    names the formula; the card says what was measured (an error is a measurement on sampled points, never a
+    bound) and `@eN` of it carries no verification (a result with no result id, `refs.NO_ID_SUFFIX`).
+    """
+    if not isinstance(report, dict) or report.get("status") != "ok":
+        return None
+    if report.get("evidence") in (None, "none"):
+        return None
+    checks = report.get("checks")
+    if isinstance(checks, list) and any(
+        isinstance(c, dict) and c.get("passed") is False for c in checks
+    ):
+        return None
+    return _text(report.get("result_latex"))
 
 
 def result_restrictions(card_type: object, data: dict[str, Any]) -> list[str]:
@@ -213,22 +237,71 @@ def ode_solution(data: dict[str, Any]) -> Listed:
     return out
 
 
-def ode_analysis(data: dict[str, Any]) -> Listed:
-    """`solved:i` (an equation solved for its highest derivative) and `field:i` (a direction-field formula).
+def canonical_equilibria(items: object) -> list[dict[str, Any]]:
+    """The equilibria of a qualitative analysis in one canonical order, whatever order the solver found them in.
 
-    Not numbered: the equilibria (their order is not canonical, deferred), the interpretation (the user's own
-    input, quoted), restrictions and notes.
+    SymPy returns the solutions of `f = 0` in a dictionary order that depends on the version and the input, so a
+    position in that list is not a name. Sorted by the text of the point (`y = 0`, `y' = 0`), then by the Jacobian
+    and the characteristic polynomial; the sort is stable, so equal points keep their order. Plain code-point
+    comparison, which the panel repeats exactly (`ode-equilibria.ts`).
+    """
+    found = [e for e in items if isinstance(e, dict)] if isinstance(items, list) else []
+    return sorted(
+        found,
+        key=lambda e: (
+            [str(p) for p in e.get("point_latex") or []],
+            str(e.get("jacobian_latex") or ""),
+            str(e.get("characteristic_latex") or ""),
+        ),
+    )
+
+
+def canonical_eigenvalues(items: object) -> list[str]:
+    """The exact eigenvalues of one equilibrium, sorted by their text (the solver's order is not canonical)."""
+    return sorted(str(x) for x in items if _text(x)) if isinstance(items, list) else []
+
+
+def _equilibrium_rows(items: object) -> Listed:
+    out: Listed = []
+    for i, e in enumerate(canonical_equilibria(items)):
+        for j, point in enumerate(e.get("point_latex") or []):
+            if (text := _text(point)) is not None:
+                out.append((f"equil:{i}:point:{j}", text))
+        if (text := _text(e.get("jacobian_latex"))) is not None:
+            out.append((f"equil:{i}:jacobian", text))
+        for j, eig in enumerate(canonical_eigenvalues(e.get("eigenvalues_latex"))):
+            out.append((f"equil:{i}:eig:{j}", eig))
+        if (text := _text(e.get("characteristic_latex"))) is not None:
+            out.append((f"equil:{i}:char", text))
+    return out
+
+
+def ode_analysis(data: dict[str, Any]) -> Listed:
+    """`solved:i`, `field:i` and, per equilibrium, `equil:i:point:j`, `equil:i:jacobian`, `equil:i:eig:j`, `equil:i:char`.
+
+    `solved:i` is an equation solved for its highest derivative, `field:i` a direction-field formula. The
+    equilibria are sorted first (`canonical_equilibria`; i is the position in that order, the eigenvalues of
+    one equilibrium likewise), because the solver's order is not canonical. An equilibrium was confirmed by
+    substituting it back, so its point rows are numbered; its Jacobian, eigenvalues and characteristic
+    polynomial only when the qualitative part says the Jacobian was checked against numerical differences of the
+    field (`jacobian_checked`). Not numbered: the numerical eigenvalues (decimals), the classification text, the
+    interpretation (the user's own input, quoted), restrictions and notes. A card that was not accepted lists nothing.
     """
     report = data.get("report") or {}
     if report.get("status") != "ok":
         return []
     qualitative = report.get("qualitative")
     field = None
+    equilibria: Listed = []
     if isinstance(qualitative, dict) and qualitative.get("status") == "ok":
         field = qualitative.get("field_latex")
+        equilibria = _equilibrium_rows(qualitative.get("equilibria"))
+        if qualitative.get("jacobian_checked") is not True:
+            equilibria = [(k, v) for k, v in equilibria if ":point:" in k]
     return [
         *_rows([{"latex": e} for e in report.get("solved_latex") or []], "latex", "solved"),
         *_rows([{"latex": e} for e in field or []], "latex", "field"),
+        *equilibria,
     ]
 
 

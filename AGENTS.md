@@ -267,8 +267,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   a quantity as the row shows it, or its scalar; Lagrangian: equations of motion, momenta, accelerations, constants; invariants
   and discovery: the constants found and the relations; solve: `factor:i`, `root:i:j`, `rootrow:k`; ode_solution: `solution:s:j`
   for an evaluated explicit or implicit closed form only (an unevaluated integral, a series and a perturbation expansion are
-  representations and get no row); ode_analysis: `solved:i` and `field:i`, not the equilibria (their order is not canonical) and
-  never the interpretation, which is the user's own input; variation: `el:<function>` (none for a null Lagrangian), `first`,
+  representations and get no row); ode_analysis: `solved:i`, `field:i` and per equilibrium `equil:i:point:j` (one number per component, as the panel draws it), and, only when
+  the qualitative part says the Jacobian was checked (`jacobian_checked`), `equil:i:jacobian`, `equil:i:eig:j` (exact) and `equil:i:char`;
+  the equilibria and each one's eigenvalues are sorted first (`canonical_equilibria`, `canonical_eigenvalues`, code-point order, repeated
+  by `apps/web/src/lib/ode-equilibria.ts`) because the solver's order is not canonical, and `i`/`j` are positions in that order; never
+  the decimal eigenvalues or the interpretation, which is the user's own input; variation: `el:<function>` (none for a null Lagrangian), `first`,
   `stationarity:i`, `natural:<end>:<function>:<order>` and `second`, only for a report that is `ok` with its first-variation
   verification (or its second variation's own deciding check) passed; statistics: `estimate:<parameter>` (the row is
   `\hat{p} = value`, as the panel draws it), `moment:<name>` and `expr:<name>`, nothing when the result holds given a premise
@@ -286,13 +289,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). A card that was not accepted lists
   nothing. `sums`, `expectation` and `distribution` keep their result under `data["result"]` and are numbered as a whole through
   `NESTED_RESULT_CARDS` (status `ok`; an expectation that holds given an independence has no number, because the card has no
-  result id to carry the premise to a later `@eN`); `approximation` keeps its result under `data["report"]` and is not yet. Each card type must be in exactly one of `LIST_READERS`, `SINGLE_RESULT`,
+  result id to carry the premise to a later `@eN`); `approximation` keeps its result under `data["report"]` and is numbered as a whole only when accepted (status `ok`, an evidence kind other than `none`, no failed check; a number names the formula, the measured error stays a measurement, and `@eN` of it says it has no result id). Each card type must be in exactly one of `LIST_READERS`, `SINGLE_RESULT`,
   `LIST_NOT_YET_NUMBERED` or `EXCLUDED_WITH_REASON` (a test); `tensor` is a single result (its one canonical form, numbered
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
   equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
   list formulas without numbers (matrix list rows and vector; also deferred inside cards that are otherwise numbered:
-  the ode_analysis equilibria, the statistics posterior, step lists, expansion eigenvectors, the perturbation solution,
-  the dimensional relation, and approximation's nested result): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
+  the statistics posterior, step lists, expansion eigenvectors, the perturbation solution and
+  the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,
   `test_equation_rows_variation_stats_expansion.py`, `test_equation_rows_statmech_perturbation_dimensional.py` and `equation-rows.test.tsx`, which also checks that each number sits next to the

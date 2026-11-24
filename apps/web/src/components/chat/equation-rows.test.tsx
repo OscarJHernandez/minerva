@@ -99,7 +99,13 @@ type RowEntry = {
 const rowEntries = fixture as unknown as Record<string, RowEntry>;
 const NEW_ENTRIES: Record<
   string,
-  "variation" | "statistics" | "expansion" | "statmech" | "perturbation" | "dimensional"
+  | "variation"
+  | "statistics"
+  | "expansion"
+  | "statmech"
+  | "perturbation"
+  | "dimensional"
+  | "ode_analysis"
 > = {
   variation: "variation",
   variation_second: "variation",
@@ -110,6 +116,7 @@ const NEW_ENTRIES: Record<
   statmech: "statmech",
   perturbation: "perturbation",
   dimensional: "dimensional",
+  ode_equilibria: "ode_analysis",
 };
 
 function rowCard(name: string, numbers: Record<string, number>) {
@@ -234,5 +241,41 @@ describe("row numbers of the variation, statistics and expansion cards", () => {
     } as unknown as Card;
     render(<CardView card={card} />);
     expect(shown()).toEqual(["(7)"]);
+  });
+});
+
+describe("row numbers of the equilibria of an ODE analysis and the whole number of an approximation", () => {
+  type Equilibria = { report: { qualitative: { equilibria: { eigenvalues_latex: string[] }[] } } };
+
+  it("the rows are numbered by position in the canonical order, whatever order the solver gave", () => {
+    const { keys, rows } = rowEntries.ode_equilibria as RowEntry;
+    const numbers = numbersFor(keys);
+    const reference = rowCard("ode_equilibria", numbers);
+    const shuffled = structuredClone(reference) as Card;
+    const q = (shuffled.data as unknown as Equilibria).report.qualitative;
+    q.equilibria.reverse();
+    for (const e of q.equilibria) e.eigenvalues_latex.reverse();
+    render(<CardView card={shuffled} />);
+    expect(shown()).toHaveLength(keys.length);
+    for (const key of keys.filter((k) => k.startsWith("equil:"))) {
+      expect(texNextTo(numbers[key] as number), key).toEqual([rows[key]]);
+    }
+  });
+
+  it("an approximation shows the number of its whole result", () => {
+    const entry = fixture as unknown as Record<string, { data: Record<string, unknown> }>;
+    const card = {
+      id: "a",
+      tool: "approximation",
+      type: "approximation",
+      title: "Approximation",
+      data: { ...entry.approximation?.data },
+      number: 9,
+    } as unknown as Card;
+    const { unmount } = render(<CardView card={card} />);
+    expect(shown()).toEqual(["(9)"]);
+    unmount();
+    render(<CardView card={{ ...card, number: undefined }} />);
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
   });
 });
