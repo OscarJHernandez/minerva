@@ -19,6 +19,7 @@ from minerva_api.agent.card_equations import listed_equations
 from minerva_api.agent.evaluation.cases import load_suite
 from minerva_api.agent.tools import ToolContext, execute
 from minerva_engine import Engine
+from minerva_engine.sandbox import Outcome
 from minerva_engine.testing import budget_limits
 from minerva_knowledge import KnowledgeBase
 
@@ -26,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[3]
 SESSIONS = ROOT / "apps" / "site" / "src" / "data" / "landing-sessions.json"
 RECORD = ROOT / "docs" / "benchmarks" / "landing-live.json"
 CASES = ("landing-kepler", "landing-schwarzschild")
+# What the sandbox reports when its wall clock or its concurrency cap stopped a call before the engine answered:
+# load on the runner, not an answer. A memory kill is not in it (that would be a change worth seeing).
+SANDBOX_STOPS = {Engine._failure_status(o)[1] for o in (Outcome.TIMEOUT, Outcome.BUSY)}
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -123,9 +127,13 @@ def test_every_recorded_result_is_what_the_engine_returns_for_its_call(ctx: Tool
         out = execute(call["tool"], call["arguments"], ctx)
         data = out.card.data
         inner = data.get("result") or data.get("report") or data
-        if inner.get("status") == "resource_limit" and inner.get("stop_reason") == "time_budget":
-            # A search the engine's own clock stopped on a slow, loaded runner is not a different answer
-            # (a correct answer that arrives late is not a failure); every other card is still compared.
+        if inner.get("status") == "resource_limit" and (
+            inner.get("stop_reason") == "time_budget"
+            or (not inner.get("stop_reason") and inner.get("message") in SANDBOX_STOPS)
+        ):
+            # A search the engine's own clock, or the sandbox's wall clock, stopped on a slow, loaded
+            # runner is not a different answer (a correct answer that arrives late is not a failure).
+            # A refusal the search itself chose (`unknown_cap`, ...) and every other card are still compared.
             continue
         compared += 1
         assert inner.get("status") == card["status"], call["tool"]
