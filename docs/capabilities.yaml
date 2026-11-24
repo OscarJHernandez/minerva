@@ -2101,19 +2101,19 @@ capabilities:
         title: The units of a constant of the Kepler problem
         op: units
         equation: "C_{3} = - k \\cos{\\theta} + m r^{3} \\dot{\\theta}^{2} \\cos{\\theta} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\theta}"
-        quantities: [{name: m, unit: kg}, {name: r, unit: m}, {name: theta, unit: rad}]
+        quantities: [{ name: m, unit: kg }, { name: r, unit: m }, { name: theta, unit: rad }]
         unknown: [C_3, k]
       - id: units-underdetermined
         title: A product fixes only a combination of its factors
         op: units
         equation: "F = a b"
-        quantities: [{name: F, unit: N}]
+        quantities: [{ name: F, unit: N }]
         unknown: [a, b]
       - id: units-inconsistent
         title: A sum of unlike terms
         op: units
         equation: "F = a + m"
-        quantities: [{name: F, unit: N}, {name: m, unit: kg}]
+        quantities: [{ name: F, unit: N }, { name: m, unit: kg }]
         unknown: [a]
 
   - id: lagrangian
