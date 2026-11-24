@@ -159,6 +159,24 @@ def test_four_coordinates_are_searched(ctx: ToolContext) -> None:
     assert out.status == "ok" and out.reason_code != "too_many_coordinates"
 
 
+def test_four_coordinates_with_cyclic_ones_are_searched_after_a_routh_reduction(
+    ctx: ToolContext,
+) -> None:
+    """Issue #152: the model is told that the families are those of the reduced system, and the Routhian, held
+    momenta and restrictions are the reduction's own verified results."""
+    lagrangian = "(x_dot^2 + y_dot^2 + z_dot^2 + w_dot^2)/2 + x*z_dot - y^2/2"
+    arguments = {"lagrangian": lagrangian, "coordinates": ["x", "y", "z", "w"], "budget": "quick"}
+    out = execute("find_conserved_quantities", arguments, ctx)
+    assert out.status == "ok"
+    assert "reduced first by the cyclic coordinates z, w" in out.for_model
+    assert "families of the reduced system" in out.for_model
+    reduction = out.card.data["report"]["reduction"]
+    assert reduction["cyclic"] == ["z", "w"] and reduction["remaining"] == ["x", "y"]
+    assert reduction["routhian_latex"] in out.known_latex
+    assert all(h["latex"] in out.known_latex for h in reduction["held_fixed"])
+    assert "#" not in out.for_model
+
+
 def test_five_coordinates_are_refused_with_the_limit_and_what_to_do(ctx: ToolContext) -> None:
     lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2 + e_dot^2)"
     arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d", "e"]}

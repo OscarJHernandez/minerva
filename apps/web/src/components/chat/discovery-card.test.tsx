@@ -123,6 +123,38 @@ describe("DiscoveryCard", () => {
     expect(screen.getByText(/only the lower bound is proved/)).toBeInTheDocument();
   });
 
+  it("states the Routh reduction a search ran on, its held momenta and restrictions", () => {
+    render(
+      <DiscoveryCard
+        report={{
+          ...report,
+          reduction: {
+            cyclic: ["t", "phi"],
+            remaining: ["r", "theta"],
+            routhian_latex: "\\frac{r^{2} \\dot{\\theta}^{2}}{2}",
+            held_fixed: [
+              { coordinate: "t", symbol_latex: "p_{t}", latex: "p_{t} = - \\dot{t}", reason: "" },
+            ],
+            restrictions_latex: ["r \\neq 0"],
+            restrictions_complete: true,
+            rejected_on_full_system: 0,
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText(/Searched after a Routh reduction of t, phi/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/families listed are families of the reduced system/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/verified on the whole system/)).toBeInTheDocument();
+    expect(screen.getByText(/Holds only where/)).toBeInTheDocument();
+  });
+
+  it("shows no reduction for a card stored without one", () => {
+    render(<DiscoveryCard report={report} />);
+    expect(screen.queryByText(/Routh reduction/)).not.toBeInTheDocument();
+  });
+
   it("shows a refusal without inventing constants", () => {
     render(
       <DiscoveryCard

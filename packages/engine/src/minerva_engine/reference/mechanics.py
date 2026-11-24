@@ -7,6 +7,7 @@ import re
 import mpmath as mp
 import sympy as sp
 
+from ..discovery import Pins
 from ..latexparse import parse_latex
 from ..service import Engine
 from .core import Problem, verdict
@@ -212,6 +213,56 @@ def _kepler_routhian(engine: Engine) -> tuple[str, str]:
     )
 
 
+def _schwarzschild_geodesic_constants(engine: Engine) -> tuple[str, str]:
+    """Constants of motion of geodesics of the Schwarzschild metric, found by the search after the Routh
+    reduction of the cyclic t and phi (issue #152).
+
+    Wald, General Relativity, section 6.3, and Carroll, Spacetime and Geometry, section 5.4: the Killing vectors
+    of t and phi give E = (1 - 2M/r) t_dot and L = r^2 sin^2(theta) phi_dot, and the normalisation g(v, v) is
+    constant. Written here by hand; each reported constant must be a nonzero constant multiple of exactly one of
+    them, each of them must be reported, and nothing else may be (the squared total angular momentum is not a
+    polynomial family of the reduced system).
+    """
+    report = engine.discover_invariants(
+        r"\frac{1}{2}\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2+\frac{\dot{r}^2}{1-\frac{2M}{r}}"
+        r"+r^2\dot{\theta}^2+r^2\sin^2(\theta)\dot{\phi}^2\right)",
+        ["t", "r", "theta", "phi"],
+        budget="standard",
+        # One family of the reduced system (90 unknowns), so the problem measures the reduction and the
+        # mapping back, not the speed of the whole ladder (about 11 s against the sandbox's 30 s otherwise).
+        pins=Pins(degree=2, power_bound=2, harmonics=1, time_degree=0),
+        time="s",
+        assumptions={"M": ["positive"]},
+    )
+    if report.status.value != "ok" or report.reduction is None:
+        return verdict("correct", False, None, f"status {report.status.value}")
+    m, r, theta = sp.symbols("M r theta")
+    t_dot, r_dot, theta_dot, phi_dot = sp.symbols("t_dot r_dot theta_dot phi_dot")
+    f = 1 - 2 * m / r
+    expected = [
+        f * t_dot,
+        r**2 * sp.sin(theta) ** 2 * phi_dot,
+        -f * t_dot**2 + r_dot**2 / f + r**2 * theta_dot**2 + r**2 * sp.sin(theta) ** 2 * phi_dot**2,
+    ]
+
+    def plain(latex: str) -> sp.Expr:
+        value = parse_latex(latex.split("=", 1)[1])
+        return value.xreplace({s: sp.Symbol(s.name) for s in value.free_symbols})
+
+    def multiple(found: sp.Expr, target: sp.Expr) -> bool:
+        ratio = sp.simplify(found / target)
+        return bool(ratio.is_number and ratio != 0)
+
+    found = [plain(c.expression_latex) for c in report.constants]
+    matched = [[multiple(c, e) for e in expected] for c in found]
+    ok = (
+        len(found) == len(expected)
+        and all(sum(row) == 1 for row in matched)
+        and all(sum(row[j] for row in matched) == 1 for j in range(len(expected)))
+    )
+    return verdict("correct", True, ok, "E, L and g(v, v) vs the hand-written Killing constants")
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "duffing-frequency-shift",
@@ -255,6 +306,16 @@ PROBLEMS: list[Problem] = [
         "Classical Mechanics, section 8.3",
         "correct",
         _kepler_routhian,
+        oracle="closed_form",
+        evidence="symbolic_proof",
+    ),
+    Problem(
+        "discovery-schwarzschild-after-routh-reduction",
+        "mechanics",
+        "Wald, General Relativity, section 6.3; Carroll, Spacetime and Geometry, section 5.4 (geodesic "
+        "constants of the Schwarzschild metric)",
+        "correct",
+        _schwarzschild_geodesic_constants,
         oracle="closed_form",
         evidence="symbolic_proof",
     ),

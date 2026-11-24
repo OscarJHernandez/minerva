@@ -765,11 +765,24 @@ def run_discovery(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> di
         spec.get("momenta"),
         spec.get("angles", []),
         spec.get("budget", "standard"),
+        time=spec.get("time", "t"),
+        assumptions=spec.get("assumptions"),
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     notes: list[str] = []
     if r.status.value == "ok":
+        if r.reduction is not None:
+            outputs.append(
+                {
+                    "label": "Searched after reducing " + ", ".join(r.reduction.cyclic),
+                    "latex": f"R = {r.reduction.routhian_latex}",
+                }
+            )
+            notes.append(
+                "The families searched are families of the reduced system; every constant was mapped back "
+                "and verified on the whole system."
+            )
         for c in r.constants:
             outputs.append(
                 {

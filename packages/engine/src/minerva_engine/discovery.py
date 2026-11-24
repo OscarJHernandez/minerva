@@ -51,19 +51,25 @@ from .flow import (
     MAX_COORDINATES,
     Flow,
     coordinate_limit_error,
+    derivation_flow,
     hamiltonian_flow,
     lagrangian_flow,
 )
 from .independence import IndependenceReport, PolyContext, analyze_independence, point_rank
 from .invariants import _new_directions
-from .lagrangian import DerivationError
+from .lagrangian import Derivation, DerivationError, derive_expr
 from .models import Limits, Status, Verification
 from .notation.models import InputAware
+from .routh import CONVENTION as ROUTH_CONVENTION
+from .routh import HeldMomentum, _read_back, momentum_symbol, reduce
 
 MAX_FACTORS_IN_PRODUCT = 4
 MAX_PRODUCTS = 400
 MAX_PER_TIER = 16
 DEADLINE_FRACTION = 0.85
+# Issue #152: a Lagrangian with more coordinates than this and a cyclic coordinate is searched after a
+# verified Routh reduction of its cyclic coordinates (`_discover_reduced`); three or fewer are searched whole.
+REDUCE_ABOVE = 3
 
 Cause = Literal[
     "",
@@ -153,6 +159,21 @@ class DiscoveredConstant(BaseModel):
     reason: str = ""
 
 
+class ReductionRecord(BaseModel):
+    """The Routh reduction the search ran on (issue #152): the families searched are those of the reduced
+    system, and every constant reported was verified again on the whole system."""
+
+    cyclic: list[str]
+    remaining: list[str]
+    routhian_latex: str  # R as printed by the reduction and read back (the one it verified)
+    held_fixed: list[HeldMomentum] = Field(default_factory=list)
+    restrictions_latex: list[str] = Field(default_factory=list)
+    restrictions_complete: bool = True
+    verification: Verification | None = None  # the reduction's own check
+    convention: str = ROUTH_CONVENTION
+    rejected_on_full_system: int = 0  # reduced-system constants that failed on the whole system
+
+
 class DiscoveryReport(InputAware):
     status: Status
     system: Literal["lagrangian", "hamiltonian"] = "lagrangian"
@@ -171,6 +192,7 @@ class DiscoveryReport(InputAware):
     notes: list[str] = Field(default_factory=list)
     events: list[SearchEvent] = Field(default_factory=list)
     features: list[str] = Field(default_factory=list)
+    reduction: ReductionRecord | None = None
     message: str = ""
     peak_memory_mb: float = 0.0
     duration_ms: int = 0
@@ -252,6 +274,17 @@ class _Gen:
     degree: int
     verification: Verification | None
     reason: str = ""
+
+
+@dataclass
+class _Lift:
+    """The whole system a search of its Routh-reduced system answers to (issue #152)."""
+
+    # The original flow: every constant is verified on it, and independence is computed on it.
+    full: Flow
+    momenta: dict[sp.Symbol, sp.Expr]  # held momentum p_c -> dL/d(c_dot) in the original variables
+    record: ReductionRecord
+    angles: list[str]  # the declared angles, among the original coordinates
 
 
 class _Setup:
@@ -620,17 +653,24 @@ def discover(
     pins: Pins | None,
     limits: Limits,
     started: float | None = None,
+    lift: _Lift | None = None,
 ) -> DiscoveryReport:
+    """Search `flow`. With `lift`, `flow` is the Routh-reduced system of `lift.full`: the families are
+    those of the reduced system, a constant found there is mapped back (each held momentum replaced by its
+    expression in the original variables) and shown only if it is verified again on the whole system, and
+    the known constants, independence and report are those of the whole system."""
     started = time.monotonic() if started is None else started
     budget = BUDGETS[budget_name]
     deadline = started + DEADLINE_FRACTION * min(limits.timeout_seconds, budget.seconds * 1.2)
     rec = _Recorder(started)
+    whole = flow if lift is None else lift.full
     base: dict[str, Any] = {
-        "system": flow.system,
-        "function_latex": flow.function_latex,
-        "coordinates": flow.coordinates,
+        "system": whole.system,
+        "function_latex": whole.function_latex,
+        "coordinates": whole.coordinates,
         "budget": budget_name,
         "limitations": list(LIMITATIONS),
+        "reduction": None if lift is None else lift.record,
     }
     rec.emit(
         "started",
@@ -843,6 +883,25 @@ def discover(
                 rejected += 1
                 algebra.append(vector)  # excluded from further consideration, counted
                 continue
+            if lift is not None:
+                # Back to the original variables, and verified again on the whole system: a constant of
+                # the reduced system is a constant of the original one only through this check.
+                shown = sp.expand(shown.xreplace(lift.momenta))
+                ok, ver = lift.full.verify(shown)
+                symbolic = bool(ver and ver.symbolic_zero)
+                rec.emit(
+                    "lift_verified",
+                    index,
+                    passed=bool(ok and symbolic),
+                    numeric_passed=bool(ok),
+                    symbolic_zero=symbolic,
+                    points=ver.numeric_points_checked if ver else 0,
+                )
+                if not (ok and symbolic):
+                    rejected += 1
+                    lift.record.rejected_on_full_system += 1
+                    algebra.append(vector)
+                    continue
             accepted += 1
             for cond in conditions:
                 for factor, _ in sp.factor_list(cond)[1]:
@@ -873,8 +932,9 @@ def discover(
         ):
             maximum_noted = True
             notes.append(
-                f"The maximum number of functionally independent constants of an autonomous "
-                f"system ({autonomous_cap}) was reached in family {index + 1}."
+                "The maximum number of functionally independent constants of an autonomous "
+                + ("reduced " if lift is not None else "")
+                + f"system ({autonomous_cap}) was reached in family {index + 1}."
             )
             rec.emit("family_expanded", index, reason="maximum_rank_reached", rank=autonomous_cap)
         if accepted or rejected:
@@ -886,10 +946,32 @@ def discover(
         stop_reason = "unknown_cap"
 
     # -- independence ----------------------------------------------------------------------------------
-    ctx = setup.context(gens)
-    report_ind = analyze_independence(
-        [g.poly for g in gens], ctx, max_possible, deadline + 0.1 * budget.seconds
-    )
+    show = flow.show
+    if lift is None:
+        ctx: PolyContext | None = setup.context(gens)
+    else:
+        # The whole system's known constants and the lifted ones, in its own polynomial setting: the rank
+        # of the reduced system's constants says nothing about the original phase space.
+        show = lift.full.show
+        whole_time = lift.full.time_dependent or setup.use_time
+        max_possible = 2 * lift.full.n if whole_time else 2 * lift.full.n - 1
+        gens, ctx = _whole_system(lift, gens, budget, pins)
+    if ctx is None:
+        report_ind = IndependenceReport(
+            constants=len(gens),
+            rank_upper=min(len(gens), max_possible),
+            max_possible=max_possible,
+            status=["unresolved"] * len(gens),
+            method="not analysed",
+            notes=[
+                "The constants are not polynomial in the phase variables of the whole system and the "
+                "cos and sin of its angles, so their functional independence was not established."
+            ],
+        )
+    else:
+        report_ind = analyze_independence(
+            [g.poly for g in gens], ctx, max_possible, deadline + 0.1 * budget.seconds
+        )
     rec.emit(
         "independence_checked",
         constants=len(gens),
@@ -903,7 +985,7 @@ def discover(
         DiscoveredConstant(
             id=g.id,
             name=g.name,
-            expression_latex=f"{_latex_name(g.id)} = {flow.show(g.shown)}",
+            expression_latex=f"{_latex_name(g.id)} = {show(g.shown)}",
             kind=g.kind,
             source=g.source,
             tier=g.tier,
@@ -924,6 +1006,8 @@ def discover(
             cause = "resource_limit"
         elif stop_reason == "ladder_exhausted":
             cause = "ansatz_exhausted"
+    if lift is not None:
+        notes = _reduction_notes(lift, bool(setup.angle_idx)) + notes
     if flow.params:
         notes.append(
             "Parameters are generic symbols: constants that exist only at special values (for example "
@@ -936,7 +1020,12 @@ def discover(
             + "), assumed nonzero; where one vanishes the solution space can differ and was not examined."
         )
     status = Status.OK
-    message = _message(len(new), len(tiers), stop_reason, report_ind)
+    message = _message(len(new), len(tiers), stop_reason, report_ind, reduced=lift is not None)
+    if lift is not None:
+        message = (
+            f"Searched the system reduced by the cyclic coordinates {', '.join(lift.record.cyclic)} "
+            "(their momenta held fixed); each constant verified on the whole system. " + message
+        )
     rec.emit(
         "completed",
         stop=stop_reason,
@@ -970,7 +1059,188 @@ def discover(
     )
 
 
-def _message(new: int, tiers: int, stop: str, ind: IndependenceReport) -> str:
+def _whole_system(
+    lift: _Lift, gens: list[_Gen], budget: Budget, pins: Pins | None
+) -> tuple[list[_Gen], PolyContext | None]:
+    """The constants a reduced search reports: the whole system's known constants (each verified on it when
+    its flow was built) and the lifted new ones, numbered again, in the whole system's polynomial setting.
+    No context (independence not analysed) when a constant is not polynomial there."""
+    full = lift.full
+    try:
+        setup: _Setup | None = _Setup(full, lift.angles, budget, pins)
+    except _Unsupported:
+        setup = None
+
+    def convert(expr: sp.Expr) -> sp.Expr:
+        rewritten = sp.expand_trig(_reciprocal_trig(sp.sympify(expr)))
+        return sp.expand(rewritten.subs(setup.trig_sub) if setup is not None else rewritten)
+
+    out = [
+        _Gen(
+            id="",
+            name=item.name,
+            shown=sp.sympify(expr),
+            poly=convert(expr),
+            kind="known",
+            source=item.kind,
+            tier=None,
+            degree=0,
+            verification=item.verification,
+            reason=item.reason,
+        )
+        for item, expr in full.known
+    ]
+    out += [replace(g, poly=convert(g.shown)) for g in gens if g.kind == "new"]
+    for k, g in enumerate(out):
+        g.id = f"C{k + 1}"
+        if setup is not None:
+            g.degree = _momentum_degree(setup, g.poly)
+    if setup is None or any(full.q[i] in g.poly.free_symbols for g in out for i in setup.angle_idx):
+        return out, None
+    return out, setup.context(out)
+
+
+def _reduction_notes(lift: _Lift, reduced_angles: bool) -> list[str]:
+    """What a reduced search established and what it did not, in words (the formulas are in `reduction`)."""
+    r = lift.record
+    one = len(r.cyclic) == 1
+    notes = [
+        f"Searched after a Routh reduction: {', '.join(r.cyclic)} {'is' if one else 'are'} cyclic, so "
+        f"{'its conjugate momentum was' if one else 'their conjugate momenta were'} held fixed (verified "
+        "to be conserved on the equations of motion) and the reduced Lagrangian (Routhian) of "
+        f"{', '.join(r.remaining)} was searched. The families listed are families of the reduced system, in "
+        "its variables, with the held momenta as parameters. Every constant reported was mapped back to the "
+        "original variables and verified again on the equations of motion of the whole system, and the "
+        "functional independence is that of the whole system.",
+    ]
+    if r.restrictions_latex:
+        notes.append(
+            "The reduction holds where its stated restrictions hold (the momenta must determine the cyclic "
+            "velocities there)."
+            + ("" if r.restrictions_complete else " Not every restriction could be analysed.")
+        )
+    if r.rejected_on_full_system:
+        n = r.rejected_on_full_system
+        notes.append(
+            f"{n} constant{'' if n == 1 else 's'} of the reduced system failed the check on the whole "
+            f"system and {'was' if n == 1 else 'were'} dropped."
+        )
+    if reduced_angles:
+        notes.append(
+            "No searched family has a cos or sin of an angle in a denominator. Once a momentum is held fixed, "
+            "a constant that is polynomial in the original velocities can need one in the reduced variables; "
+            "such a constant is outside the searched families."
+        )
+    return notes
+
+
+def _held_values(
+    d: Derivation, index: list[int], momenta: list[sp.Symbol]
+) -> dict[sp.Symbol, sp.Expr]:
+    """Each held momentum `p_c` and its value `dL/d(c_dot)` in the original variables (the back-substitution
+    of a reduced constant; a test injects a wrong sign here and the check on the whole system must drop it)."""
+    return {p: d.momenta[i] for p, i in zip(momenta, index, strict=True)}
+
+
+def _cyclic_coordinates(d: Derivation) -> list[str]:
+    """The coordinates L does not contain (a symbolic zero, as `routh.reduce` decides it)."""
+    return [d.coordinates[i] for i in range(d.n) if sp.simplify(sp.diff(d.lagrangian, d.q[i])) == 0]
+
+
+def _discover_reduced(
+    flow: Flow,
+    cyclic: list[str],
+    angles: list[str],
+    budget_name: str,
+    pins: Pins | None,
+    assumptions: dict[str, list[str]],
+    limits: Limits,
+    started: float,
+) -> DiscoveryReport:
+    """Issue #152: reduce the cyclic coordinates (`routh.reduce`, with its own verification), search the
+    reduced system, and answer for the whole one (`discover` with a `_Lift`)."""
+    d = flow.derivation
+    assert d is not None  # noqa: S101 - the caller checked
+    base: dict[str, Any] = {
+        "system": flow.system,
+        "function_latex": flow.function_latex,
+        "coordinates": flow.coordinates,
+        "budget": budget_name,
+        "limitations": list(LIMITATIONS),
+    }
+    report = reduce(d, cyclic, assumptions=assumptions, limits=limits)
+    if report.status is Status.NOT_VERIFIED:
+        return DiscoveryReport(
+            status=Status.NOT_VERIFIED,
+            message=(
+                f"The Routh reduction by the cyclic coordinates ({', '.join(cyclic)}) did not pass its own "
+                f"verification, so nothing was searched. {report.message}"
+            ),
+            cause="verification_failed",
+            stop_reason="reduction_not_verified",
+            duration_ms=int((time.monotonic() - started) * 1000),
+            peak_memory_mb=_peak_mb(),
+            **base,
+        )
+    if report.status is not Status.OK or report.result_latex is None:
+        # The reduction does not apply (all coordinates cyclic, a momentum not linear in the velocities, a
+        # name clash...): the whole system is searched as it would be without it.
+        whole = discover(flow, angles, budget_name, pins, limits, started)
+        whole.notes.append(
+            f"The cyclic coordinates ({', '.join(cyclic)}) were not reduced, so the whole system was "
+            f"searched: {report.message}"
+        )
+        return whole
+    index = [d.coordinates.index(c) for c in cyclic]
+    keep = [i for i in range(d.n) if i not in index]
+    momenta = [momentum_symbol(d.q[i]) for i in index]
+    record = ReductionRecord(
+        cyclic=list(cyclic),
+        remaining=list(report.remaining),
+        routhian_latex=report.result_latex,
+        held_fixed=report.held_fixed,
+        restrictions_latex=report.restrictions_latex,
+        restrictions_complete=report.restrictions_complete,
+        verification=report.verification,
+        convention=report.convention,
+    )
+    try:
+        # The Routhian as printed and read back: the expression the reduction verified.
+        routhian = _read_back(
+            report.result_latex, d, momenta, report.remaining, assumptions, limits
+        )
+        reduced = derivation_flow(
+            derive_expr(
+                routhian,
+                report.remaining,
+                d.t.name,
+                q=[d.q[i] for i in keep],
+                qd=[d.qd[i] for i in keep],
+                t=d.t,
+            ),
+            report.result_latex,
+        )
+    except DerivationError as exc:
+        return DiscoveryReport(
+            status=exc.status,
+            message=f"The reduced system could not be searched: {exc.message}",
+            reduction=record,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            **base,
+        )
+    lift = _Lift(
+        full=flow,
+        momenta=_held_values(d, index, momenta),
+        record=record,
+        angles=list(angles),
+    )
+    reduced_angles = [a for a in angles if a in report.remaining]
+    return discover(reduced, reduced_angles, budget_name, pins, limits, started, lift)
+
+
+def _message(
+    new: int, tiers: int, stop: str, ind: IndependenceReport, *, reduced: bool = False
+) -> str:
     s = "" if new == 1 else "s"
     head = f"{new} new verified constant{s} of motion in the searched families ({tiers} searched)."
     rank = (
@@ -979,7 +1249,11 @@ def _message(new: int, tiers: int, stop: str, ind: IndependenceReport) -> str:
         + (" (proved)." if ind.rank_proved else " (lower bound proved).")
     )
     tail = {
-        "maximal_independent_set": " The maximum possible number of independent constants was reached.",
+        "maximal_independent_set": (
+            " The maximum possible number of independent constants of the reduced system was reached."
+            if reduced
+            else " The maximum possible number of independent constants was reached."
+        ),
         "ladder_exhausted": " Every family in the ladder was searched; nothing outside them was.",
         "unknown_cap": " Larger families exceeded the size limit and were not searched.",
         "time_budget": " The time budget ended the search; larger families were not searched.",
@@ -1088,6 +1362,12 @@ def discover_invariants(
     except DerivationError as exc:
         return DiscoveryReport(status=exc.status, message=exc.message, diagnostic=exc.diagnostic)
     try:
+        if flow.system == "lagrangian" and flow.n > REDUCE_ABOVE and flow.derivation is not None:
+            cyclic = _cyclic_coordinates(flow.derivation)
+            if cyclic:
+                return _discover_reduced(
+                    flow, cyclic, angles, budget, pins, assumptions, limits, started
+                )
         return discover(flow, angles, budget, pins, limits, started)
     except (sp.PolynomialError, sp.polys.polyerrors.BasePolynomialError):
         return DiscoveryReport(
@@ -1102,6 +1382,7 @@ __all__ = [
     "DiscoveredConstant",
     "DiscoveryReport",
     "Pins",
+    "ReductionRecord",
     "SearchEvent",
     "TierRecord",
     "discover",

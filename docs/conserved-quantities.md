@@ -59,12 +59,44 @@ families). A system whose smallest family is already over the cap (every coordin
 unknowns at `standard`) is `resource_limit`, with that family and its size as the reason, and nothing is searched.
 Measured on a shared workstation (load ~7): the fixed cost before the ladder (derive, numerical check of the
 equations, Noether constants) is 0.1 s for the oscillator and 2.5 s for Schwarzschild (a third of the quick budget is 2.67 s: close, worth
-watching under CI load); Schwarzschild's smallest family has 405 unknowns (t and phi cyclic, r in a denominator,
-theta an angle), so it is `resource_limit` at `quick` and `standard` and searched only at `thorough`; the oscillator at `standard`
+watching under CI load); the oscillator at `standard`
 takes 10 s, 5.8 s of it in the relation search of the independence analysis (rank 7, proved), peak 223 MB. The
 relation search of the independence analysis has its own deadline (the exact Jacobian rank does not): when it ends
 first, every constant is still shown (each verified) and the rank is the proved lower bound, never estimated from a
 smaller system.
+
+**Routh reduction first** (issue #152 with #153, `discovery._discover_reduced`). A Lagrangian with more than three
+coordinates and a cyclic one (L does not contain it: a symbolic zero) is not searched whole. Its cyclic coordinates are
+reduced by `routh.reduce`, which verifies the reduction itself (the Routhian `R = L - Σ p_c ċ` as printed and read back,
+against the motion of L; each held momentum verified conserved). If that check fails the result is `not_verified` and
+nothing is searched. If the reduction does not apply (a momentum not linear in the cyclic velocities, a singular block,
+no coordinate left, a name clash with `p_c`) the whole system is searched as before and a note says why. Otherwise:
+
+1. the Routhian is a Lagrangian of the remaining coordinates, with each held momentum `p_c` a parameter; its flow is built
+   like any other (equations confirmed by numerical differentiation of R, its own known constants verified on it);
+2. the ladder runs on the reduced system, so **the families are families of the reduced system**, in its variables,
+   and the products of its known constants are factored out there (with the momenta as parameters);
+3. each constant found is mapped back (`p_c` replaced by `dL/dċ` in the original variables, `_held_values`) and shown
+   only if `Flow.verify` passes on the **whole** system (symbolic zero and numerical points); one that fails is
+   dropped and counted (`reduction.rejected_on_full_system`, a note, `lift_verified` events);
+4. the constants reported are the whole system's known constants (cyclic momenta, energy, rotations, each verified on
+   it) and the lifted ones; functional independence is computed on the whole system (rank at most `2n - 1` of the
+   whole system), never estimated from the reduced one, with the same deadline as before.
+
+The report carries the reduction (`reduction`: cyclic and remaining coordinates, the Routhian, each held momentum and
+its value, the restrictions where the momenta determine the cyclic velocities, the reduction's own verification), and
+notes that say what was held fixed and that the families are those of the reduced system. A constant that is
+polynomial in the original velocities can stop being polynomial once a momentum is a parameter: for Schwarzschild,
+`J^2 = r^4 θ̇^2 + p_φ^2 / sin^2 θ` needs `sin θ` in a denominator, which no family has, so it is outside the searched
+families (the note says so without naming it). Three or fewer coordinates, Hamiltonians and four coordinates with no
+cyclic one are searched exactly as before; budgets, unknown caps and sandbox seconds are unchanged.
+
+Measured (load ~4): Schwarzschild in four coordinates, reduced by t and phi, returns `p_t`, `p_φ` and the energy
+function, each verified on the whole system, rank 3 proved: 5.4 s at `quick` (4 families, all of the quick ladder;
+its deadline is 6.8 s) and 10.5 s at `standard` (7 families, peak 204 MB). The whole system's smallest family (405
+unknowns) is never built. A four-coordinate system with no cyclic coordinate (every coordinate in a denominator) is
+still `resource_limit` at `standard` with that family and its size as the reason, and so is one whose only cyclic
+coordinate the reduction refuses (`p_w = ẇ^3`).
 
 ## Not supported (reported, never guessed)
 

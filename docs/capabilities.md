@@ -3095,6 +3095,7 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 
 - Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.
 - Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos and sin. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap, otherwise the smallest family and its size are reported as a resource limit.
+- With four coordinates and a cyclic one, the cyclic coordinates are first removed by a verified Routh reduction and the reduced system is searched. The families are then those of the reduced system, with the held momenta as parameters, and each constant is verified again on the whole system. A reduction that fails its own check means nothing is searched.
 - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
 - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.
 - Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.
@@ -3194,6 +3195,23 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - 2 families searched, from d1p1h1t0 to d1p1h1t0c1 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
 - Not searched: raising the momentum degree to 2 needs 270 unknown coefficients (limit 150)
 - The azimuthal equation has tan(theta); the search reads it through cos and sin and searches the smallest families. The square of the total angular momentum (degree 2 in the velocities, with r^4) lies outside the families the quick budget allows, and the larger families are listed as not searched.
+
+#### Schwarzschild geodesics in four coordinates, after a Routh reduction
+
+- **Lagrangian:** `\frac12\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2 + \frac{\dot{r}^2}{1-\frac{2M}{r}} + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2\right)`
+- **Coordinates:** t, r, theta, phi
+- **Assumptions:** M positive
+- **Status:** `ok`
+- **Searched after reducing t, phi:** $R = - \frac{p_{\phi}^{2}}{2 r^{2} \sin^{2}{\left(\theta \right)}} + \frac{p_{t}^{2} r}{2 \left(- 2 M + r\right)} + \frac{r^{2} \dot{\theta}^{2}}{2} + \frac{r \dot{r}^{2}}{2 \left(- 2 M + r\right)}$
+- **C1, momentum conjugate to t:** $C_{1} = - \dot{t} \left(- \frac{2 M}{r} + 1\right)$
+- **C2, momentum conjugate to phi:** $C_{2} = \dot{\phi} r^{2} \sin^{2}{\left(\theta \right)}$
+- **C3, energy function:** $C_{3} = \frac{M \dot{t}^{2}}{r} + \frac{\dot{\phi}^{2} r^{2} \sin^{2}{\left(\theta \right)}}{2} + \frac{r^{2} \dot{\theta}^{2}}{2} + \frac{\dot{r}^{2}}{- \frac{4 M}{r} + 2} - \frac{\dot{t}^{2}}{2}$
+- **Result:** no additional constant within the explored families
+- The families searched are families of the reduced system; every constant was mapped back and verified on the whole system.
+- Functionally independent: 3 (proved).
+- 7 families searched, from d1p1h1t0 to d4p1h2t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the power bound to 4 needs 450 unknown coefficients (limit 350)
+- t and phi are cyclic, so their momenta are held fixed and the Routhian of r and theta is searched. The momenta of t and phi and the energy function are reported, each verified on the whole four-coordinate system. The square of the total angular momentum needs sin(theta) in a denominator once the momentum of phi is a parameter, so it is outside the searched families.
 
 #### A square root is refused
 

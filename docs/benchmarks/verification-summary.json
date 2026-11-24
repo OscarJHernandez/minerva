@@ -111,8 +111,8 @@
       {
         "source": "reference",
         "domain": "mechanics",
-        "problems": 6,
-        "correct": 5,
+        "problems": 7,
+        "correct": 6,
         "refused_as_expected": 1,
         "false_accepts": 0,
         "incorrect_accepted": 0,
@@ -318,8 +318,8 @@
       }
     ],
     "totals": {
-      "problems": 248,
-      "correct": 139,
+      "problems": 249,
+      "correct": 140,
       "refused_as_expected": 106,
       "false_accepts": 0,
       "incorrect_accepted": 0,
@@ -329,7 +329,7 @@
       "counterexamples": 22
     },
     "evidence_of_accepted_reference_results": {
-      "symbolic_proof": 6,
+      "symbolic_proof": 7,
       "numeric_agreement": 54,
       "structural": 9,
       "conditional": 3,
@@ -367,10 +367,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.32,
+    "adversarial_total_s": 1.43,
     "adversarial_median_ms": 12.1,
-    "adversarial_max_ms": 108.8,
-    "report_wall_s": 2.44,
-    "peak_rss_mb": 190.9
+    "adversarial_max_ms": 111.5,
+    "report_wall_s": 2.26,
+    "peak_rss_mb": 185.0
   }
 }
