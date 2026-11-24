@@ -265,6 +265,38 @@ def test_lagrangian_followup_reads_the_question_and_the_earlier_call(message: st
     assert route.arguments == {"lagrangian": OSC, "coordinates": ["x"]}
 
 
+SCHWARZSCHILD = (
+    r"\frac{1}{2}\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2+\frac{\dot{r}^2}{1-\frac{2M}{r}}"
+    r"+r^2\dot{\theta}^2+r^2\sin^2\theta\,\dot{\phi}^2\right)"
+)
+
+
+def test_lagrangian_followup_carries_the_time_symbol_and_the_syntax_of_the_earlier_call() -> None:
+    """Issue #152: with a coordinate `t` the earlier call named the time `s`; the follow-up search must use
+    the same time symbol (the default `t` would clash with the coordinate) and the same syntax."""
+    earlier = (
+        "analyze_lagrangian",
+        {
+            "lagrangian": SCHWARZSCHILD,
+            "coordinates": ["t", "r", "theta", "phi"],
+            "time": "s",
+            "format": "latex",
+            "assumptions": {"M": ["positive"]},
+        },
+    )
+    route = lagrangian_followup("What is conserved?", analysed(earlier))
+    assert route is not None and route.tool == "find_conserved_quantities"
+    assert route.arguments == {
+        "lagrangian": SCHWARZSCHILD,
+        "coordinates": ["t", "r", "theta", "phi"],
+        "time": "s",
+        "format": "latex",
+    }
+    # Nothing is invented when the earlier call did not name them.
+    plain = lagrangian_followup("What is conserved?", analysed(EOM))
+    assert plain is not None and "time" not in plain.arguments and "format" not in plain.arguments
+
+
 @pytest.mark.parametrize(
     ("message", "context"),
     [

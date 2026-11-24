@@ -517,11 +517,14 @@ def lagrangian_followup(text: str, context: RouteContext = NO_CONTEXT) -> Route 
         or not all(isinstance(c, str) for c in coordinates)
     ):
         return None
-    return Route(
-        "find_conserved_quantities",
-        {"lagrangian": lagrangian, "coordinates": list(coordinates)},
-        reason="lagrangian_followup",
-    )
+    arguments: dict[str, object] = {"lagrangian": lagrangian, "coordinates": list(coordinates)}
+    # The time symbol and the syntax are part of the system as the earlier call read it: without them a
+    # Lagrangian with a coordinate `t` (Schwarzschild, time `s`) clashes with the default time symbol.
+    for name in ("time", "format"):
+        value = analysed[0].get(name)
+        if isinstance(value, str) and value:
+            arguments[name] = value
+    return Route("find_conserved_quantities", arguments, reason="lagrangian_followup")
 
 
 RULES: tuple[Rule, ...] = (

@@ -47,14 +47,19 @@ import sympy as sp
 from pydantic import BaseModel, Field
 from sympy.polys.matrices import DomainMatrix
 
-from .flow import Flow, coordinate_limit_error, hamiltonian_flow, lagrangian_flow
+from .flow import (
+    MAX_COORDINATES,
+    Flow,
+    coordinate_limit_error,
+    hamiltonian_flow,
+    lagrangian_flow,
+)
 from .independence import IndependenceReport, PolyContext, analyze_independence, point_rank
 from .invariants import _new_directions
 from .lagrangian import DerivationError
 from .models import Limits, Status, Verification
 from .notation.models import InputAware
 
-MAX_COORDINATES = 3
 MAX_FACTORS_IN_PRODUCT = 4
 MAX_PRODUCTS = 400
 MAX_PER_TIER = 16
@@ -528,7 +533,10 @@ def _chain(setup: _Setup, budget: Budget, pins: Pins | None) -> tuple[list[TierK
         return None
 
     if setup.unknowns(key) > budget.max_unknowns:
-        return [], [f"the smallest family already has {setup.unknowns(key)} unknown coefficients"]
+        return [], [
+            f"the smallest family ({setup.describe(key)}) already has {setup.unknowns(key)} unknown "
+            f"coefficients (limit {budget.max_unknowns})"
+        ]
     for step in schedule:
         nxt = bump(key, step)
         if nxt is None:

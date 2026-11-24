@@ -42,7 +42,10 @@ from .notation.models import InputCode, InputDiagnostic
 from .notation.time_symbol import time_clash, time_clash_message
 from .textparse import parse_text
 
-MAX_COORDINATES = 3
+# The discovery search (`discovery.py`) takes at most this many coordinates. Four since issue #152: a
+# four-coordinate family is searched only when it fits the budget's unknown cap (otherwise `resource_limit`
+# with the family and its size). `invariants.py` keeps its own limit of 3 (the fixed-ansatz baseline).
+MAX_COORDINATES = 4
 
 
 @dataclass
@@ -89,16 +92,16 @@ def coordinate_limit_error(count: int, coordinates: list[str] | None = None) -> 
     """The typed refusal of a system with more coordinates than the search supports.
 
     Nothing is searched and no coordinate is dropped: a coordinate removed without the user's own stated
-    conserved momentum would change the system, and the search of four coordinates is not implemented.
+    conserved momentum would change the system, and a search of more coordinates is not implemented.
     """
     return DerivationError(
         Status.UNSUPPORTED,
         f"The search of conserved quantities supports at most {MAX_COORDINATES} coordinates; "
         f"{count} were given, so nothing was searched and no coordinate was dropped. A cyclic "
         "coordinate can be removed by hand only with a conserved momentum the user states themselves "
-        "(then search the remaining coordinates as a new system and say so). Automatic reduction and "
-        "a search of more coordinates are not available yet. Tell the user this; do not drop a "
-        "coordinate or retry with a different list on your own.",
+        "(then search the remaining coordinates as a new system and say so). A search of more "
+        "coordinates is not available. Tell the user this; do not drop a coordinate or retry with a "
+        "different list on your own.",
         InputDiagnostic(
             code=InputCode.TOO_MANY_COORDINATES,
             field="coordinates",

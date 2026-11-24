@@ -4,11 +4,13 @@ The expected invariants below are written out here, by hand, and compared with w
 they are never given to the engine.
 """
 
+import pytest
 import sympy as sp
 from minerva_engine.discovery import DiscoveryReport, Pins, discover_invariants
 from minerva_engine.flow import lagrangian_flow
 from minerva_engine.latexparse import parse_latex
 from minerva_engine.models import Limits, Status
+from minerva_engine.testing import budget_limits
 
 LIMITS = Limits(timeout_seconds=120)
 KEPLER = r"\frac{1}{2}m(\dot{r}^2+r^2\dot{\theta}^2)+\frac{k}{r}"
@@ -250,7 +252,7 @@ def test_resource_limit_when_nothing_fits() -> None:
 
 def test_bad_arguments_are_refused() -> None:
     assert run(KEPLER, ["r", "theta"], angles=["phi"]).status is Status.PARSE_ERROR
-    assert run(KEPLER, ["a", "b", "c", "d"]).status is Status.UNSUPPORTED
+    assert run(KEPLER, ["a", "b", "c", "d", "e"]).status is Status.UNSUPPORTED  # above the cap of 4
     assert run(KEPLER, ["r", "theta"], budget="huge").status is Status.UNSUPPORTED
     missing = run(r"\frac{p_x^2}{2m}+x^2", ["x"], system="hamiltonian", momenta=["q"])
     assert missing.status is Status.UNSUPPORTED and "momentum" in missing.message
@@ -342,14 +344,117 @@ def test_text_syntax_is_read_by_the_strict_text_parser() -> None:
     assert hamiltonian.status is Status.OK and hamiltonian.constants
 
 
-def test_more_than_three_coordinates_is_a_typed_refusal_that_names_the_limit() -> None:
+def test_more_than_four_coordinates_is_a_typed_refusal_that_names_the_limit() -> None:
     from minerva_engine.notation.models import InputCode
 
-    report = run(r"\frac{1}{2}(\dot{a}^2+\dot{b}^2+\dot{c}^2+\dot{d}^2)", ["a", "b", "c", "d"])
+    report = run(
+        r"\frac{1}{2}(\dot{a}^2+\dot{b}^2+\dot{c}^2+\dot{d}^2+\dot{e}^2)", ["a", "b", "c", "d", "e"]
+    )
     assert report.status is Status.UNSUPPORTED
     assert report.diagnostic is not None
     assert report.diagnostic.code is InputCode.TOO_MANY_COORDINATES
     assert report.diagnostic.field == "coordinates" and not report.diagnostic.recoverable
-    assert "at most 3 coordinates" in report.message and "4 were given" in report.message
-    assert "not available yet" in report.message
+    assert "at most 4 coordinates" in report.message and "5 were given" in report.message
+    assert "not available" in report.message
     assert not report.constants  # nothing was searched and nothing was dropped
+
+
+# -- four coordinates (issue #152) -------------------------------------------------------------------------
+# The isotropic oscillator in four Cartesian coordinates. Its quadratic constants are written here by hand,
+# from outside Minerva (the U(4) symmetry of the isotropic oscillator; Fradkin, Am. J. Phys. 33 (1965) 207):
+# the four energies (x_i^2 + v_i^2)/2, the six rotations x_i v_j - x_j v_i and the six x_i x_j + v_i v_j.
+OSCILLATOR_4D = "(a_dot^2+b_dot^2+c_dot^2+d_dot^2)/2 - (a^2+b^2+c^2+d^2)/2"
+
+
+def _oscillator_4d_reference() -> tuple[list[sp.Expr], list[sp.Expr], list[sp.Expr]]:
+    x = sp.symbols("a b c d")
+    v = sp.symbols("a_dot b_dot c_dot d_dot")  # the names the LaTeX parser gives the velocities
+    energies = [(x[i] ** 2 + v[i] ** 2) / 2 for i in range(4)]
+    pairs = [(i, j) for i in range(4) for j in range(i + 1, 4)]
+    rotations = [x[i] * v[j] - x[j] * v[i] for i, j in pairs]
+    products = [x[i] * x[j] + v[i] * v[j] for i, j in pairs]
+    return energies, rotations, products
+
+
+def run_4d(budget: str) -> DiscoveryReport:
+    return discover_invariants(
+        "lagrangian",
+        OSCILLATOR_4D,
+        ["a", "b", "c", "d"],
+        None,
+        [],
+        budget,
+        None,
+        "t",
+        {},
+        budget_limits(),
+        "text",
+    )
+
+
+def _rename(found: list[sp.Expr], reference: list[sp.Expr]) -> list[sp.Expr]:
+    by_name = {s.name: s for e in reference for s in e.free_symbols}
+    return [e.xreplace({s: by_name.get(s.name, s) for s in e.free_symbols}) for e in found]
+
+
+def test_four_coordinates_are_searched_and_every_constant_lies_in_the_reference_span() -> None:
+    report = run_4d("quick")
+    assert report.status is Status.OK
+    energies, rotations, products = _oscillator_4d_reference()
+    reference = energies + rotations + products
+    known = _rename(parsed(report, "known"), reference)
+    assert len(known) == 7  # the energy and the six rotations (Noether), each verified on the flow
+    assert all(c.verification and c.verification.passed for c in report.constants)
+    for found in known:
+        assert in_span(reference, found)
+    for rotation in rotations:
+        assert in_span(known, rotation)
+    assert in_span(known, sum(energies, sp.Integer(0)))
+    # The family searched at four coordinates is stated, and the larger ones are listed as not searched.
+    assert [t.code for t in report.tiers] == ["d1p1h1t0"] and report.tiers[0].unknowns == 80
+    assert any("needs 240 unknown coefficients (limit 150)" in u for u in report.unexplored)
+    # One relation between the six rotations (the Pfaffian) makes the rank 6, proved.
+    assert report.independence is not None and report.independence.rank_lower == 6
+
+
+@pytest.mark.extended
+def test_four_coordinates_at_the_standard_budget_find_the_products_and_not_the_single_energies() -> (
+    None
+):
+    report = run_4d("standard")
+    assert report.status is Status.OK
+    energies, rotations, products = _oscillator_4d_reference()
+    reference = energies + rotations + products
+    found = _rename(parsed(report, "known") + parsed(report, "new"), reference)
+    assert all(c.verification and c.verification.symbolic_zero for c in report.new_constants)
+    for constant in found:
+        assert in_span(reference, constant)
+    for product in products:
+        assert in_span(found, product)
+    # The single energies need the power bound 2 (1215 unknowns): outside the searched families, and said so.
+    assert not in_span(found, energies[0])
+    assert any("power bound to 2 needs 1215" in u for u in report.unexplored)
+    assert report.independence is not None and report.independence.rank_lower == 7
+
+
+def test_a_four_coordinate_system_whose_smallest_family_is_too_large_is_a_resource_limit() -> None:
+    """Must still fail: every coordinate in a denominator gives 5 * 3^4 = 405 unknowns in the smallest
+    family, above the standard cap of 350. Nothing is searched and the family and its size are the reason."""
+    report = discover_invariants(
+        "lagrangian",
+        "(a_dot^2+b_dot^2+c_dot^2+d_dot^2)/2 - 1/a - 1/b - 1/c - 1/d",
+        ["a", "b", "c", "d"],
+        None,
+        [],
+        "standard",
+        None,
+        "t",
+        {},
+        budget_limits(),
+        "text",
+    )
+    assert report.status is Status.RESOURCE_LIMIT and report.cause == "resource_limit"
+    assert not report.tiers and not report.new_constants
+    assert "the smallest family (" in report.message
+    assert "405 unknown coefficients (limit 350)" in report.message
+    assert report.unexplored and "405" in report.unexplored[0]

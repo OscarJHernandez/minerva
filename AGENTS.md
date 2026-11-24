@@ -680,7 +680,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   discovery. **Search completeness is not global completeness**: a tier is complete within its family only, and
   "no additional constant" is always worded "within the explored families", never "the system has none". Cyclic
   and cos/sin-only coordinates are treated as angles because conservation does not depend on periodicity. Parameters
-  are generic; the report says so and lists the factors assumed nonzero. Functional independence
+  are generic; the report says so and lists the factors assumed nonzero. At most 4 coordinates (issue #152; the budgets,
+  unknown caps and sandbox seconds are unchanged, so a four-coordinate family is searched only if it fits the cap, and a
+  system whose smallest family does not is `resource_limit` naming that family and its size). Functional independence
   (`independence.py`) is the exact Jacobian rank at rational points, a **proved lower bound**; it is called exact
   only when an upper bound from exact polynomial relations (implicit function theorem) meets it, and sampling never
   proves independence or dependence. Do not add physics-specific shortcuts or hardcoded invariants: the benchmarks
@@ -688,9 +690,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   hand it an expected invariant. Names such as Laplace–Runge–Lenz are for the model to offer afterwards. Events
   (`invariant_search.*`) carry counters and fixed labels only; the API logs them with the request id as trace id
   (`search_log.py`), expressions stay in the user's private card. Square roots, logarithms and non-polynomial time
-  dependence are `unsupported`; more than 3 coordinates is `unsupported` with the typed code `too_many_coordinates` (the limit, removing a
-  cyclic coordinate by hand only with the user's own stated momentum, and that automatic reduction and a larger search are not available
-  yet; nothing is searched and no coordinate is dropped; the tool schema allows 8 so that this reason, not a length error, reaches the model); families above the unknown cap are listed as not searched.
+  dependence are `unsupported`; more than 4 coordinates is `unsupported` with the typed code `too_many_coordinates` (the limit, removing a
+  cyclic coordinate by hand only with the user's own stated momentum, and that a larger search is not available;
+  nothing is searched and no coordinate is dropped; the tool schema allows 8 so that this reason, not a length error, reaches the model); families above the unknown cap are listed as not searched.
   The original `search_invariants` is kept unchanged as the fixed-ansatz baseline of `docs/invariant-benchmark.md`.
 - Chains of identities (`transform.py`, tool and endpoint `simplify`) are shown only if every step passed the
   numeric check and the whole chain was re-verified with the symbolic zero test added; the two are reported

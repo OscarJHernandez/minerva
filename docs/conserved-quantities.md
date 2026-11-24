@@ -47,11 +47,25 @@ Budgets: `quick` (8 s, 150 unknowns, stops once the maximum number of independen
 (30 s, 350), `thorough` (90 s, 600, adds powers of t for autonomous systems; time-dependent systems always get them).
 Advanced callers can pin one family (`degree`, `power_bound`, `harmonics`, `time_degree`).
 
+**Four coordinates** (issue #152). The search takes up to four coordinates with the same budgets, unknown caps and
+sandbox seconds as before; nothing was raised. A four-coordinate family is searched only when it fits the cap: the
+isotropic oscillator in four Cartesian coordinates searches 80 unknowns at `quick` and 80 + 240 at `standard` (the
+power bound 2, 1215 unknowns, is listed as not searched, so the four single energies are outside the searched
+families). A system whose smallest family is already over the cap (every coordinate in a denominator: 5 x 3^4 = 405
+unknowns at `standard`) is `resource_limit`, with that family and its size as the reason, and nothing is searched.
+Measured on a shared workstation (load ~7): the fixed cost before the ladder (derive, numerical check of the
+equations, Noether constants) is 0.1 s for the oscillator and 2.5 s for Schwarzschild; the oscillator at `standard`
+takes 10 s, 5.8 s of it in the relation search of the independence analysis (rank 7, proved), peak 223 MB. The
+independence analysis has its own deadline: when it ends first, every constant is still shown (each verified) and the
+rank is reported as a lower bound, never estimated from a smaller system.
+
 ## Not supported (reported, never guessed)
 
 Square roots and other non-rational equations of motion (Cartesian Kepler is `unsupported` until an adjoined algebraic
-element `ρ² = x²+y²` is implemented), logarithms, non-polynomial time dependence, singular Hessians, more than three
-coordinates, arbitrary Killing-tensor PDEs. The symmetries of a metric are a separate tool: `geometry` with
+element `ρ² = x²+y²` is implemented), logarithms, non-polynomial time dependence, singular Hessians, more than four
+coordinates (typed refusal `too_many_coordinates`), `tan` in the equations of motion (spherical coordinates give
+`tan(theta)` in the azimuthal equation, so 3D Kepler in `(r, theta, phi)` and Schwarzschild are `unsupported`),
+arbitrary Killing-tensor PDEs. The symmetries of a metric are a separate tool: `geometry` with
 `killing_vectors` searches the Killing equation exactly within a stated family (lowered components; at most 300 unknowns
 per linear system) and `geodesic_constants` builds the conserved charges of the geodesics from the vectors found, each
 checked by `Flow.verify` on the geodesic Lagrangian `g(v, v)/2` (any number of coordinates up to the geometry limit of

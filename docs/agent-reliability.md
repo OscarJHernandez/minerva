@@ -251,9 +251,11 @@ tells), and it is not a measure of the model.
 * **The ODE and variational readers keep their own derivative spellings**; `ydot` is read only where the Lagrangian
   reader is used.
 * `expand_motion`, `perturbation_solve`, `integrate_motion` read LaTeX only (a spelled velocity in LaTeX is refused
-  with the fix). `find_conserved_quantities` takes `format` since issue 131 and refuses more than three coordinates with
-  the typed code `too_many_coordinates` (the limit, what a user may do by hand, and that reduction and a larger search
-  are not available yet); the coordinate cap of its schema is 8 so that this reason, not a generic length error, is shown.
+  with the fix). `find_conserved_quantities` takes `format` since issue 131 and refuses more than four coordinates
+  (three before issue 152) with the typed code `too_many_coordinates` (the limit, what a user may do by hand, and that a
+  larger search is not available); the coordinate cap of its schema is 8 so that this reason, not a generic length error,
+  is shown. The `lagrangian_followup` route carries the earlier `analyze_lagrangian` call's `time` and `format`, so a
+  Schwarzschild follow-up (coordinate `t`, time `s`) does not clash with the default time symbol.
 * A coordinate named `t` clashes with the default time symbol `t` (Schwarzschild in `(t, r, theta, phi)`). Every tool
   with both `coordinates` and `time` (`analyze_lagrangian`, `find_conserved_quantities`, `search_invariants`,
   `expand_motion`, `perturbation_solve`, `integrate_motion`, `time_derivative`) refuses it with `parse_error` and the typed,
