@@ -49,6 +49,11 @@ Advanced callers can pin one family (`degree`, `power_bound`, `harmonics`, `time
 
 ## Not supported (reported, never guessed)
 
+(Read, since issue #191: `tan`, `cot`, `sec` and `csc` of an angle in the equations of motion. They are written as
+ratios of its cos and sin, and the new denominators are cleared like the others; a closed rule of four heads,
+`discovery._reciprocal_trig`. The equations every candidate is verified on are unchanged, so Kepler in spherical
+coordinates, whose azimuthal equation has `tan(theta)`, is now searched instead of `unsupported`.)
+
 Square roots and other non-rational equations of motion (Cartesian Kepler is `unsupported` until an adjoined algebraic
 element `ρ² = x²+y²` is implemented), logarithms, non-polynomial time dependence, singular Hessians, more than three
 coordinates, arbitrary Killing-tensor PDEs. Naming a constant (Laplace–Runge–Lenz, Fradkin) is left to the model after
