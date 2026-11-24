@@ -289,8 +289,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   verification (or its second variation's own deciding check) passed; statistics: `estimate:<parameter>` (the row is
   `\hat{p} = value`, as the panel draws it), `moment:<name>` and `expr:<name>`, nothing when the result holds given a premise
   (`evidence == "conditional"`, any premise) or an assumed condition; expansion: `equil:<name>`, `eq:<coordinate>` and `char`
-  and `mode:<i>:omega2` / `mode:<i>:omega`, each only when its own check passed, never the terms, the matrices A and B or the
-  eigenvectors (the mode order is the solver's: deferred); statmech: `quantity:<name>` (`SYMBOL = formula`, as the panel draws
+  and `mode:<i>:omega2` / `mode:<i>:omega` / `mode:<i>:vector` (`v = ...`, only when the engine's own residual check
+  `(A + omega^2 I) v = 0` passed, the only case in which it sends a vector; a vector is fixed only up to a scale, so the number names the
+  formula as drawn), each only when its own check passed, never the terms or the matrices A and B; `i` is the position in the canonical
+  order of the modes (`canonical_modes`, by the text of omega^2, then of the vector, then of omega; the solver's `sympy.roots` order
+  is not canonical; repeated by `apps/web/src/lib/expansion-modes.ts`, both pinned by the `expansion_two_modes` fixture, where the
+  solver's order is the reverse of the canonical one); statmech: `quantity:<name>` (`SYMBOL = formula`, as the panel draws
   it; `quantity:<name>:<k>` for the k-th repeat of a name) for an exact base quantity (Z, lnZ, F, U, S, Var_E: the panel's
   own table, read from the TSX by a test) of an `ok` result with no failed check, never a representation, a numerical value,
   an asymptotic result, a quantity named outside that table (Xi, Omega, occupations, means, the user's own partial-derivative
@@ -307,7 +311,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
   equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
   list formulas without numbers (vector; also deferred inside cards that are otherwise numbered:
-  the statistics posterior, step lists, expansion eigenvectors, the perturbation solution and
+  the statistics posterior, step lists, the perturbation solution and
   the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,

@@ -115,6 +115,7 @@ const NEW_ENTRIES: Record<
   statistics_estimate: "statistics",
   statistics_expressions: "statistics",
   expansion: "expansion",
+  expansion_two_modes: "expansion",
   statmech: "statmech",
   perturbation: "perturbation",
   dimensional: "dimensional",

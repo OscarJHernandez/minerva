@@ -1467,13 +1467,14 @@
         }
       }
     },
-    "keys": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega"],
+    "keys": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega", "mode:0:vector"],
     "rows": {
       "equil:x": "x = 0",
       "eq:x": "\\ddot{\\delta x} = - \\frac{\\delta x k}{m} + O\\left(\\delta^{4}\\right)",
       "char": "\\frac{k + \\lambda^{2} m}{m} = 0",
       "mode:0:omega2": "\\omega^2 = \\frac{k}{m}",
-      "mode:0:omega": "\\omega = \\frac{\\sqrt{k}}{\\sqrt{m}}"
+      "mode:0:omega": "\\omega = \\frac{\\sqrt{k}}{\\sqrt{m}}",
+      "mode:0:vector": "v = \\left[\\begin{matrix}1\\end{matrix}\\right]"
     }
   },
   "statmech": {
@@ -2801,6 +2802,174 @@
     "keys": ["step:2"],
     "rows": {
       "step:2": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]"
+    }
+  },
+  "expansion_two_modes": {
+    "data": {
+      "report": {
+        "diagnostic": null,
+        "reading": null,
+        "status": "ok",
+        "lagrangian_latex": "- \\frac{3 x^{2}}{2} + x y + \\frac{\\dot{x}^{2}}{2} - \\frac{3 y^{2}}{2} + \\frac{\\dot{y}^{2}}{2}",
+        "coordinates": ["x", "y"],
+        "equilibrium": [
+          {
+            "name": "x",
+            "latex": "0",
+            "name_latex": "x"
+          },
+          {
+            "name": "y",
+            "latex": "0",
+            "name_latex": "y"
+          }
+        ],
+        "order": 2,
+        "equilibrium_verification": {
+          "symbolic_zero": true,
+          "numeric_points_checked": 20,
+          "numeric_points_agreed": 20,
+          "numeric_points_skipped": 0,
+          "numeric_points_probed": 0,
+          "probe_kind": null,
+          "probes_cut_short": false,
+          "probe_outcome": "not_run",
+          "passed": true,
+          "note": "every acceleration vanishes at the point, at zero velocity"
+        },
+        "equations": [
+          {
+            "coordinate": "x",
+            "full_latex": "\\ddot{\\delta x} = \\delta y - 3 \\delta x + O\\left(\\delta^{3}\\right)",
+            "terms": [
+              {
+                "degree": 1,
+                "latex": "- 3 \\delta x + \\delta y"
+              }
+            ],
+            "verification": {
+              "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
+              "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
+              "directions": ["real", "imaginary"],
+              "parameter_sets_checked": 4,
+              "coefficients_passed": true,
+              "remainder_passed": true,
+              "radius": 1.0,
+              "passed": true,
+              "note": "coefficients agree with a Cauchy-integral estimate and the remainder shrinks at the claimed order"
+            }
+          },
+          {
+            "coordinate": "y",
+            "full_latex": "\\ddot{\\delta y} = \\delta x - 3 \\delta y + O\\left(\\delta^{3}\\right)",
+            "terms": [
+              {
+                "degree": 1,
+                "latex": "\\delta x - 3 \\delta y"
+              }
+            ],
+            "verification": {
+              "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
+              "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
+              "directions": ["real", "imaginary"],
+              "parameter_sets_checked": 4,
+              "coefficients_passed": true,
+              "remainder_passed": true,
+              "radius": 1.0,
+              "passed": true,
+              "note": "coefficients agree with a Cauchy-integral estimate and the remainder shrinks at the claimed order"
+            }
+          }
+        ],
+        "stiffness_latex": "\\left[\\begin{matrix}-3 & 1\\\\1 & -3\\end{matrix}\\right]",
+        "velocity_latex": null,
+        "characteristic_latex": "\\left(\\lambda^{2} + 2\\right) \\left(\\lambda^{2} + 4\\right) = 0",
+        "modes": [
+          {
+            "omega_squared_latex": "\\omega^2 = 4",
+            "sign": "positive",
+            "omega_latex": "\\omega = 2",
+            "multiplicity": 1,
+            "eigenvector_latex": "\\left[\\begin{matrix}-1\\\\1\\end{matrix}\\right]",
+            "verified": true,
+            "verification": {
+              "symbolic_zero": true,
+              "numeric_points_checked": 20,
+              "numeric_points_agreed": 20,
+              "numeric_points_skipped": 0,
+              "numeric_points_probed": 0,
+              "probe_kind": null,
+              "probes_cut_short": false,
+              "probe_outcome": "not_run",
+              "passed": true,
+              "note": "det(A + omega^2 I) is zero at this omega^2"
+            }
+          },
+          {
+            "omega_squared_latex": "\\omega^2 = 2",
+            "sign": "positive",
+            "omega_latex": "\\omega = \\sqrt{2}",
+            "multiplicity": 1,
+            "eigenvector_latex": "\\left[\\begin{matrix}1\\\\1\\end{matrix}\\right]",
+            "verified": true,
+            "verification": {
+              "symbolic_zero": true,
+              "numeric_points_checked": 20,
+              "numeric_points_agreed": 20,
+              "numeric_points_skipped": 0,
+              "numeric_points_probed": 0,
+              "probe_kind": null,
+              "probes_cut_short": false,
+              "probe_outcome": "not_run",
+              "passed": true,
+              "note": "det(A + omega^2 I) is zero at this omega^2"
+            }
+          }
+        ],
+        "notes": [
+          "Characteristic polynomial of the linearised system: each root λ gives solutions proportional to exp(λ t)."
+        ],
+        "message": "2 accelerations expanded to order 2 about the equilibrium; the Euler-Lagrange equations, the equilibrium and each expansion were checked independently of SymPy's series.",
+        "duration_ms": 817,
+        "stages": {
+          "prepare": 70,
+          "expand": 52,
+          "linear": 3,
+          "modes": 3
+        }
+      },
+      "request": {
+        "lagrangian": "\\frac12 (\\dot{x}^2 + \\dot{y}^2) - \\frac12 (3 x^2 + 3 y^2 - 2 x y)",
+        "coordinates": ["x", "y"],
+        "time": "t",
+        "assumptions": {}
+      }
+    },
+    "keys": [
+      "equil:x",
+      "equil:y",
+      "eq:x",
+      "eq:y",
+      "char",
+      "mode:0:omega2",
+      "mode:0:omega",
+      "mode:0:vector",
+      "mode:1:omega2",
+      "mode:1:omega",
+      "mode:1:vector"
+    ],
+    "rows": {
+      "equil:x": "x = 0",
+      "equil:y": "y = 0",
+      "eq:x": "\\ddot{\\delta x} = \\delta y - 3 \\delta x + O\\left(\\delta^{3}\\right)",
+      "eq:y": "\\ddot{\\delta y} = \\delta x - 3 \\delta y + O\\left(\\delta^{3}\\right)",
+      "char": "\\left(\\lambda^{2} + 2\\right) \\left(\\lambda^{2} + 4\\right) = 0",
+      "mode:0:omega2": "\\omega^2 = 2",
+      "mode:0:omega": "\\omega = \\sqrt{2}",
+      "mode:0:vector": "v = \\left[\\begin{matrix}1\\\\1\\end{matrix}\\right]",
+      "mode:1:omega2": "\\omega^2 = 4",
+      "mode:1:omega": "\\omega = 2",
+      "mode:1:vector": "v = \\left[\\begin{matrix}-1\\\\1\\end{matrix}\\right]"
     }
   }
 }
