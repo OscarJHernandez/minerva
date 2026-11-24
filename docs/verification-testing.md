@@ -127,8 +127,12 @@ extended tier are what search for classes nobody thought of; they have found no 
 
 Documented, not hidden:
 
-- **Narrow features at arbitrary points** (V-014): `exp(-10⁶ (x − 1/7)²) = 0` has no boundary and no simple value to
-  probe. Sampling cannot find it. The strict-xfail row `precision.bump_at_arbitrary_point` pins it.
+- **Narrow features at arbitrary points** (V-014): a peak has no boundary and no simple value to probe, so sampling
+  cannot find it. One bounded structural probe (`extremum`) tries the exact centre of `exp(g)` where `g` is a degree-2
+  polynomial in one symbol (other symbols drawn): `exp(-10⁶ (x − 1/7)²) = 0` is now rejected, at any centre and scale,
+  by a point confirmed at 60 and 120 digits. It can only veto. Not found, pinned by strict-xfail rows
+  (`precision.bump_two_variables`, `precision.bump_quartic_exponent`): peaks in several variables at once, exponents of
+  other degrees, and peaks that are not `exp` of a polynomial. Agreement is still "no disagreement found".
 - **Distributions** are never verified by sampling (`verify_equal` refuses them); the distribution operation's exact
   conditions and pairing apply, and its result is "supporting evidence, not a proof".
 - **The three-dimensional point delta** (`vector_calculus`, action `distributional`, [singular-fields.md](singular-fields.md))

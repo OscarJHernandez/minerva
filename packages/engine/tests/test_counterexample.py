@@ -174,3 +174,35 @@ def test_the_clock_stop_is_reported_apart_from_the_point_cap() -> None:
     assert by_cap.exhausted and not by_cap.clock_cut
     found = find_counterexample(a, b, budget=Budget(points=96, seconds=60.0), kinds=TARGETED)
     assert found.counterexample is not None and not found.clock_cut
+
+
+# -- V-014: the centre of a quadratic exponent -----------------------------------------------------------------------
+@pytest.mark.parametrize("centre", [sp.Rational(1, 7), sp.Rational(22, 7), -sp.Rational(355, 113)])
+@pytest.mark.parametrize("scale", [10**4, 10**8])
+def test_the_extremum_probe_finds_a_narrow_peak_at_its_exact_centre(
+    centre: sp.Rational, scale: int
+) -> None:
+    result = find_counterexample(
+        sp.exp(-scale * (xr - centre) ** 2), sp.Integer(0), kinds=("extremum",)
+    )
+    assert result.counterexample is not None
+    assert result.counterexample.probe == "extremum"
+    if scale >= 10**8:  # a peak this narrow is only hit at its centre (minimisation keeps it)
+        assert result.counterexample.values[xr] == centre
+
+
+def test_the_extremum_probe_never_rejects_the_same_peak_written_expanded() -> None:
+    c = sp.Rational(1, 7)
+    a = sp.exp(-(10**6) * (xr - c) ** 2)
+    b = sp.exp(-(10**6) * xr**2 + 2 * 10**6 * c * xr - 10**6 * c**2)
+    assert find_counterexample(a, b).counterexample is None
+
+
+def test_the_extremum_probe_skips_other_shapes_and_stays_within_its_cap() -> None:
+    from minerva_engine.counterexample import EXTREMUM_DRAWS, EXTREMUM_NODES, EXTREMUM_OFFSETS
+
+    quartic = sp.exp(-(10**12) * (xr - sp.Rational(1, 7)) ** 4)
+    assert find_counterexample(quartic, sp.Integer(0), kinds=("extremum",)).probes_tried == 0
+    many = sum(sp.exp(-(10**6) * (xr - sp.Rational(k, 7)) ** 2) for k in range(1, 9))
+    tried = find_counterexample(many, many + 1, kinds=("extremum",)).probes_tried
+    assert tried <= EXTREMUM_NODES * EXTREMUM_DRAWS * (1 + EXTREMUM_OFFSETS)
