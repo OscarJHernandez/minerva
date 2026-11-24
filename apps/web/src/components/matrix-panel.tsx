@@ -8,6 +8,7 @@ import type {
   MatrixDiagnostics,
   MatrixResultKind,
 } from "@/lib/types";
+import { Numbered } from "./chat/equation-number";
 import { EntryCard } from "./entry-card";
 import { StatusPill } from "./result-panel";
 
@@ -200,15 +201,17 @@ export function MatrixPanel({
 
       {shown && result.derivative && result.derivative.alternatives.length > 0 && (
         <div className="mt-2" data-testid="entrywise-alternative">
-          {result.derivative.alternatives.map((alt) => (
+          {result.derivative.alternatives.map((alt, j) => (
             <div key={alt.convention}>
               <div className="text-xs uppercase tracking-wide text-muted">
                 Entrywise form, labelled (partial derivatives with respect to the independent
                 entries; not the result above)
               </div>
-              <div className="overflow-x-auto">
-                <Math latex={alt.latex} display label="Entrywise form" />
-              </div>
+              <Numbered k={`alt:${j}`}>
+                <div className="overflow-x-auto">
+                  <Math latex={alt.latex} display label="Entrywise form" />
+                </div>
+              </Numbered>
               <p className="text-xs text-muted">
                 {alt.points_agreed} of {alt.points_checked} sample points agree · {alt.note}
               </p>
@@ -249,9 +252,14 @@ export function MatrixPanel({
                   </div>
                 )}
                 {step.after_latex && (
-                  <div className="overflow-x-auto">
-                    <Math latex={`\\Rightarrow\\; ${step.after_latex}`} display />
-                  </div>
+                  <Numbered k={`step:${i}`}>
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                      <span aria-hidden="true" className="text-muted">
+                        &#8658;
+                      </span>
+                      <Math latex={step.after_latex} display />
+                    </div>
+                  </Numbered>
                 )}
               </li>
             ))}

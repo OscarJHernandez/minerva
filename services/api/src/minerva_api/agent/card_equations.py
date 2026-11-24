@@ -545,6 +545,59 @@ def dimensional(data: dict[str, Any]) -> Listed:
     return out
 
 
+# ----------------------------------------------------------------------------------------------------------
+# matrix list rows (#166)
+
+
+def _matrix_accepted(data: dict[str, Any]) -> dict[str, Any] | None:
+    """The `result` of a matrix card when it is an accepted, evaluated one: the same gate as the whole-card number.
+
+    Status ok, `evaluated`, and a `result_kind` that is not an equation, a representation or a numerical
+    approximation (`_NOT_EVALUATED_KINDS`): those are never presented as an evaluated formula, so none of their
+    rows is numbered either.
+    """
+    inner = data.get("result")
+    if (
+        not isinstance(inner, dict)
+        or inner.get("status") != "ok"
+        or inner.get("evaluated") is not True
+        or inner.get("result_kind") in _NOT_EVALUATED_KINDS
+    ):
+        return None
+    return inner
+
+
+def matrix(data: dict[str, Any]) -> Listed:
+    """`step:i` (the formula step i produced) and `alt:j` (an alternative convention) of an accepted matrix card.
+
+    The result itself keeps its whole-card number (`result_formula`); a row whose formula is the result's gets
+    that number back (one formula, one number). Both lists are in the order the engine produced them (a
+    derivation is a sequence and the alternatives are listed by convention), so a position is a stable key, and
+    the key is the index in the card's own list (a step that produced no formula leaves a gap, as the panel
+    counts). An alternative is a separately checked entrywise form of a derivative, a labelled convention, not
+    the result. Numbered rows are names only: only the whole result was verified, an intermediate step was not,
+    so `@eN` of a row carries no verification (`Equation.part_of`). Not numbered: the formula a step started
+    from (the input as read, or the previous step's own row), a step whose formula is a relation (the Sylvester
+    equation: its `X` is defined only by the card's words), the equation and the entries, and everything of a
+    result that is an equation, a representation or a numerical approximation or that was not accepted.
+    """
+    inner = _matrix_accepted(data)
+    if inner is None:
+        return []
+    out: Listed = []
+    steps = inner.get("steps")
+    for i, step in enumerate(steps if isinstance(steps, list) else []):
+        latex = _text(step.get("after_latex")) if isinstance(step, dict) else None
+        # A relation (`A X - X B = ...`, the Sylvester equation of an integral) names a symbol that only the
+        # card's own words define (`X` is the integral): a number would carry the formula without that sentence.
+        if latex and "=" not in latex:
+            out.append((f"step:{i}", latex))
+    derivative = inner.get("derivative")
+    alternatives = derivative.get("alternatives") if isinstance(derivative, dict) else None
+    out += _rows(alternatives, "latex", "alt")
+    return out
+
+
 # Card types whose listed equations are numbered one by one.
 LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
@@ -560,6 +613,7 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "statmech": statmech,
     "perturbation": perturbation,
     "dimensional": dimensional,
+    "matrix": matrix,
 }
 
 # One primary result (`result_latex`, numbered as a whole) or no formula of its own to refer to.
@@ -591,12 +645,7 @@ SINGLE_RESULT = frozenset(
 # statement of what is missing, not a claim that it has no list: move it to LIST_READERS with a reader.
 LIST_NOT_YET_NUMBERED = frozenset(
     {
-        # `matrix`: its primary EVALUATED result is numbered as a whole (`result_formula`); the rows it lists
-        # (alternative conventions, steps) are not numbered yet. An equation, a representation or a numerical
-        # approximation has no number at all: a number would present it as an evaluated result.
-        "matrix",
-        # Deferred, with the reason: `vector` (its rows are field expressions of several actions),
-        # `matrix` list rows (above).
+        # Deferred, with the reason: `vector` (its rows are field expressions of several actions).
         "vector",
     }
 )

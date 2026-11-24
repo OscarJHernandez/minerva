@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Card } from "@/lib/chat-types";
 import fixture from "../../../../../packages/ui/fixtures/equation-rows.json";
+import { MatrixPanel } from "../matrix-panel";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
 import { StatisticsPanel } from "../statistics-panel";
@@ -106,6 +107,7 @@ const NEW_ENTRIES: Record<
   | "perturbation"
   | "dimensional"
   | "ode_analysis"
+  | "matrix"
 > = {
   variation: "variation",
   variation_second: "variation",
@@ -117,6 +119,8 @@ const NEW_ENTRIES: Record<
   perturbation: "perturbation",
   dimensional: "dimensional",
   ode_equilibria: "ode_analysis",
+  matrix_gradient: "matrix",
+  matrix_integral: "matrix",
 };
 
 function rowCard(name: string, numbers: Record<string, number>) {
@@ -277,5 +281,26 @@ describe("row numbers of the equilibria of an ODE analysis and the whole number 
     unmount();
     render(<CardView card={{ ...card, number: undefined }} />);
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
+  });
+});
+
+describe("row numbers of the matrix card: steps and alternative conventions", () => {
+  it("the whole number of the card and the row numbers sit side by side", () => {
+    const { keys, rows } = rowEntries.matrix_gradient as RowEntry;
+    const numbers = numbersFor(keys);
+    const card = { ...rowCard("matrix_gradient", numbers), number: 99 } as unknown as Card;
+    render(<CardView card={card} />);
+    expect(shown()).toHaveLength(keys.length + 1);
+    expect(texNextTo(numbers["alt:0"] as number)).toEqual([rows["alt:0"]]);
+  });
+
+  it("the workbench renders the matrix panel unchanged without a provider", () => {
+    const entry = rowEntries.matrix_gradient as RowEntry;
+    render(
+      <MatrixPanel result={entry.data.result as Parameters<typeof MatrixPanel>[0]["result"]} />,
+    );
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
+    expect(document.body.textContent).toContain("Steps");
+    expect(document.body.textContent).toContain("Entrywise form");
   });
 });
