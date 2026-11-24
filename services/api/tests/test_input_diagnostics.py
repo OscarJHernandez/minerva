@@ -121,21 +121,23 @@ def test_the_router_declines_an_ambiguous_or_second_order_spelling(message: str)
 
 # -- find_conserved_quantities: `format`, and the coordinate limit (#131) ---------------------------------------
 
-KEPLER_TEXT = "1/2*m*(r_dot^2 + r^2*theta_dot^2) + k/r"
+# A one-dimensional oscillator: these tests check how `format` is read, not the search, and a Kepler search takes
+# several seconds per call, which ran out of the discovery time budget on shared CI runners.
+OSCILLATOR_TEXT = "1/2*m*x_dot^2 - 1/2*k*x^2"
 
 
 def test_find_conserved_quantities_takes_a_format_like_its_siblings(ctx: ToolContext) -> None:
     for syntax in ("text", "auto"):
         out = execute(
             "find_conserved_quantities",
-            {"lagrangian": KEPLER_TEXT, "coordinates": ["r", "theta"], "format": syntax},
+            {"lagrangian": OSCILLATOR_TEXT, "coordinates": ["x"], "format": syntax},
             ctx,
         )
         assert out.status == "ok", out.for_model[:300]
         assert "constants of motion" in out.for_model
     latex = execute(
         "find_conserved_quantities",
-        {"lagrangian": KEPLER_TEXT, "coordinates": ["r", "theta"], "format": "latex"},
+        {"lagrangian": OSCILLATOR_TEXT, "coordinates": ["x"], "format": "latex"},
         ctx,
     )
     assert latex.status == "parse_error" and latex.reason_code == "unrecognized_derivative"
@@ -145,18 +147,25 @@ def test_text_in_the_default_format_of_find_conserved_quantities_is_read_as_text
     ctx: ToolContext,
 ) -> None:
     out = execute(
-        "find_conserved_quantities", {"lagrangian": KEPLER_TEXT, "coordinates": ["r", "theta"]}, ctx
+        "find_conserved_quantities", {"lagrangian": OSCILLATOR_TEXT, "coordinates": ["x"]}, ctx
     )
     assert out.status == "ok"
 
 
-def test_four_coordinates_are_refused_with_the_limit_and_what_to_do(ctx: ToolContext) -> None:
-    lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2)"
-    arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d"]}
+def test_four_coordinates_are_searched(ctx: ToolContext) -> None:
+    lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2) - 1/2*(a^2 + b^2 + c^2 + d^2)"
+    arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d"], "budget": "quick"}
+    out = execute("find_conserved_quantities", arguments, ctx)
+    assert out.status == "ok" and out.reason_code != "too_many_coordinates"
+
+
+def test_five_coordinates_are_refused_with_the_limit_and_what_to_do(ctx: ToolContext) -> None:
+    lagrangian = "1/2*(a_dot^2 + b_dot^2 + c_dot^2 + d_dot^2 + e_dot^2)"
+    arguments = {"lagrangian": lagrangian, "coordinates": ["a", "b", "c", "d", "e"]}
     out = execute("find_conserved_quantities", arguments, ctx)
     assert out.status == "unsupported"
     assert out.reason_code == "too_many_coordinates"
-    assert "at most 3 coordinates" in out.for_model and "not available yet" in out.for_model
+    assert "at most 4 coordinates" in out.for_model and "not available" in out.for_model
     assert "List should have" not in out.for_model
     (line,) = [x for x in out.for_model.splitlines() if x.startswith("diagnostic: ")]
     payload = json.loads(line.removeprefix("diagnostic: "))
@@ -169,8 +178,8 @@ def test_a_hamiltonian_in_text_syntax_is_searched(ctx: ToolContext) -> None:
     out = execute(
         "find_conserved_quantities",
         {
-            "hamiltonian": "p_r^2/(2*m) + p_theta^2/(2*m*r^2) - k/r",
-            "coordinates": ["r", "theta"],
+            "hamiltonian": "p_x^2/(2*m) + k*x^2/2",
+            "coordinates": ["x"],
             "format": "text",
         },
         ctx,

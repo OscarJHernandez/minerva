@@ -24,6 +24,13 @@ A fourth kind exists for Taylor series and only for them (`SeriesEvidence`, `Ser
 centre, the order, every coefficient of the polynomial and the order of the remainder all agree with that
 result (see "Taylor series" at the end). It is never a rule for other asymptotic statements.
 
+A fifth kind is for components of tensors and connections a tool listed row by row (`\\Gamma^{r}{}_{t t} = ...`
+of a `geometry` card): the left side is an *index label*, not an expression (read as one it is a parse error or
+a power, `T^{ab}` = T**(a*b), which would make `T^{ab}` and `T^{ba}` the same). A claim with the same label,
+compared exactly as a kernel and its index groups in order, and an equivalent right side is the same statement
+(`same_indexed_label`, see "Indexed labels" below). No index symmetry is used: `\\Gamma^{r}{}_{\\theta t}` is not
+the row printed `t \\theta`, even where the connection is symmetric.
+
 A match says "the same statement a verified result made". It does not verify the claim by itself and never
 widens what the tool established: the restrictions of the result travel with the match. Anything else (a
 rearranged form, terms moved across the equals sign, solved for another symbol) is not matched and stays
@@ -33,6 +40,7 @@ exactly as unchecked as before.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from typing import Literal
 
 import sympy as sp
@@ -85,7 +93,9 @@ class SeriesEvidence(BaseModel):
 
 class EvidenceMatch(BaseModel):
     source: str
-    rule: Literal["same_left_side", "proportional_residual", "named_quantity", "series"]
+    rule: Literal[
+        "same_left_side", "proportional_residual", "named_quantity", "same_indexed_label", "series"
+    ]
     basis: Literal["symbolic", "numeric"]
     restrictions: list[str] = []
     detail: str = ""
@@ -132,9 +142,17 @@ class EvidenceIndex:
         self, evidence: list[ClaimEvidence], assumptions: dict[str, list[str]], limits: Limits
     ) -> None:
         self.items: list[tuple[ClaimEvidence, sp.Expr, sp.Expr]] = []
+        # rows whose left side is an index label: (row, canonical label, parsed right side)
+        self.indexed: list[tuple[ClaimEvidence, IndexLabel, sp.Expr]] = []
         for item in evidence:
             sides = _split(item.latex)
             if sides is None:
+                continue
+            label = read_index_label(sides[0])
+            if label is not None and is_index_label(label, sides[0], assumptions, limits):
+                right = _parse(sides[1], assumptions, limits)
+                if right is not None:
+                    self.indexed.append((item, label, right))
                 continue
             try:
                 left, right = (parse_latex(s, assumptions, limits) for s in sides)
@@ -155,6 +173,34 @@ class EvidenceIndex:
                 found = self._proportional(a, b, item, c, d)
                 if found is not None:
                     return found
+        return None
+
+    @property
+    def kernels(self) -> frozenset[str]:
+        """The kernels (`\\Gamma`, `R`, `T`) of the verified indexed rows."""
+        return frozenset(label.kernel for _, label, _ in self.indexed)
+
+    def indexed_rows(self, label: IndexLabel) -> list[ClaimEvidence]:
+        """The verified rows with exactly this label, newest first."""
+        return [item for item, own, _ in reversed(self.indexed) if own == label]
+
+    def match_indexed(self, label: IndexLabel, value: sp.Expr) -> EvidenceMatch | None:
+        """`label = value` against the verified rows with exactly this label, newest first: the same statement if
+        the value is equivalent to the row's (rule 1's check). Index symmetries are not used."""
+        for item, own, right in reversed(self.indexed):
+            if own != label:
+                continue
+            ok, symbolic = _agree(value, right, item.basis == "symbolic")
+            if not ok:
+                continue
+            return EvidenceMatch(
+                source=item.source,
+                rule="same_indexed_label",
+                basis=self._basis(item, symbolic),
+                restrictions=item.restrictions,
+                detail="the same component as the verified result (same label, indices in the same order), "
+                "with an equivalent value",
+            )
         return None
 
     def mismatch(self, claim: list[sp.Expr]) -> EvidenceMismatch | None:
@@ -258,6 +304,183 @@ class EvidenceIndex:
             ],
             detail="the same equation as the verified result up to a nonzero factor of the parameters",
         )
+
+
+# --- Indexed labels --------------------------------------------------------------------------------------
+#
+# A row of a tensor or connection is printed `\\Gamma^{r}{}_{t t} = <value>` (`geometry.tensors.index_label`). The
+# label is a closed shape: a kernel (one Latin letter or a Greek command) followed by index groups, each `^` or `_`
+# with one index or a braced run of indices (a Latin letter or a Greek command each, spaces between them
+# ignored), and `{}` spacers where the position flips. Consecutive groups of the same position are one run
+# (`_{t}{}_{r}` is `_{t r}`): the spacer is typography, the order of the indices is not. Digits are not indices, so
+# `x^{2}` is never a label. Two labels are the same only if the kernel and every index, in order and position, are.
+#
+# A label the parser reads as one symbol (`R_{t t}`, `C_{4}`) is not treated here: it already is a name (`R_tt`), and
+# rules 1 and 3 compare it as one. Without a spacer and without an upper index followed by a lower one, a label is
+# ambiguous with a power (`e^{i\\pi}`, `x^{n}`, `x_i^n`): a claim is then read as a label only when the parser cannot
+# read it at all or a verified row has the same kernel.
+
+_GREEK_INDEX = frozenset(
+    [
+        "alpha",
+        "beta",
+        "gamma",
+        "delta",
+        "epsilon",
+        "varepsilon",
+        "zeta",
+        "eta",
+        "theta",
+        "vartheta",
+        "iota",
+        "kappa",
+        "lambda",
+        "mu",
+        "nu",
+        "xi",
+        "omicron",
+        "pi",
+        "varpi",
+        "rho",
+        "varrho",
+        "sigma",
+        "varsigma",
+        "tau",
+        "upsilon",
+        "phi",
+        "varphi",
+        "chi",
+        "psi",
+        "omega",
+        "Gamma",
+        "Delta",
+        "Theta",
+        "Lambda",
+        "Xi",
+        "Pi",
+        "Sigma",
+        "Upsilon",
+        "Phi",
+        "Psi",
+        "Omega",
+    ]
+)
+_COMMAND = re.compile(r"\\([A-Za-z]+)")
+_SPACER = re.compile(r"\{\s*\}")
+_THIN_SPACE = re.compile(r"\\[,;:! ]")
+
+
+@dataclass(frozen=True)
+class IndexLabel:
+    """`\\Gamma^{r}{}_{t t}` read as ("\\Gamma", (("^", ("r",)), ("_", ("t", "t")))), and whether it is
+    unambiguously a label (a spacer, or an upper index followed by a lower one). Equality is the kernel and the
+    groups only."""
+
+    kernel: str
+    groups: tuple[tuple[str, tuple[str, ...]], ...]
+    unambiguous: bool = field(default=False, compare=False)
+
+
+def _symbol_at(text: str, at: int) -> tuple[str, int] | None:
+    """A Latin letter or a Greek command at `at`: (its text, the position after it)."""
+    if at < len(text) and text[at].isascii() and text[at].isalpha():
+        return text[at], at + 1
+    found = _COMMAND.match(text, at)
+    if found is not None and found.group(1) in _GREEK_INDEX:
+        return "\\" + found.group(1), found.end()
+    return None
+
+
+def _indices(body: str) -> tuple[str, ...] | None:
+    body = _THIN_SPACE.sub(" ", body)
+    out: list[str] = []
+    at = 0
+    while at < len(body):
+        if body[at].isspace():
+            at += 1
+            continue
+        found = _symbol_at(body, at)
+        if found is None:
+            return None
+        out.append(found[0])
+        at = found[1]
+    return tuple(out) or None
+
+
+def read_index_label(side: str) -> IndexLabel | None:
+    """The canonical label of `side` if it is exactly an index label (see above), else None."""
+    text = side.strip()
+    head = _symbol_at(text, 0)
+    if head is None:
+        return None
+    kernel, at = head
+    groups: list[tuple[str, tuple[str, ...]]] = []
+    spacer = False
+    while at < len(text):
+        if text[at].isspace():
+            at += 1
+            continue
+        thin = _THIN_SPACE.match(text, at)
+        if thin is not None:
+            at = thin.end()
+            continue
+        empty = _SPACER.match(text, at)
+        if empty is not None:
+            spacer, at = True, empty.end()
+            continue
+        mark = text[at]
+        if mark not in "^_":
+            return None
+        at += 1
+        while at < len(text) and text[at].isspace():
+            at += 1
+        if at < len(text) and text[at] == "{":
+            close = text.find("}", at)
+            if close < 0 or "{" in text[at + 1 : close]:
+                return None
+            indices = _indices(text[at + 1 : close])
+            at = close + 1
+        else:
+            one = _symbol_at(text, at)
+            if one is None:
+                return None
+            indices, at = (one[0],), one[1]
+        if indices is None:
+            return None
+        if groups and groups[-1][0] == mark:
+            groups[-1] = (mark, groups[-1][1] + indices)
+        else:
+            groups.append((mark, indices))
+    if not groups:
+        return None
+    marks = [mark for mark, _ in groups]
+    # `x_i^n` is a power of the symbol x_i; an upper index followed by a lower one is a label
+    raised_then_lowered = "^" in marks and "_" in marks[marks.index("^") :]
+    return IndexLabel(
+        kernel=kernel, groups=tuple(groups), unambiguous=spacer or raised_then_lowered
+    )
+
+
+def is_index_label(
+    label: IndexLabel,
+    side: str,
+    assumptions: dict[str, list[str]],
+    limits: Limits,
+    kernels: frozenset[str] | None = None,
+) -> bool:
+    """Whether `side`, which has the shape of `label`, is to be read as a label.
+
+    Always when it is unambiguous or the parser cannot read it; never when the parser reads it as one symbol
+    (`R_{t t}` is the name `R_tt`). Otherwise (a power such as `T^{ab}`) for a verified row always, and for a
+    claim only when a verified row has the same kernel (`kernels`)."""
+    if label.unambiguous:
+        return True
+    parsed = _parse(side, assumptions, limits)
+    if parsed is None:
+        return True
+    if parsed.is_Symbol:
+        return False
+    return kernels is None or label.kernel in kernels
 
 
 # --- Taylor series ----------------------------------------------------------------------------------------

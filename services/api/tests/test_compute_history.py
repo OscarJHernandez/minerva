@@ -617,9 +617,20 @@ def test_conserved_quantities_endpoint_and_search_logs(capsys) -> None:  # type:
         assert body["status"] == "ok"
         assert sum(k["kind"] == "new" for k in body["constants"]) == 2
         assert body["independence"]["rank_lower"] == 3
+        # Four coordinates are searched since issue #152; five are a validation error.
+        four = c.post(
+            "/v1/compute/conserved",
+            json={
+                "function": r"\frac{1}{2}(\dot{a}^2+\dot{b}^2+\dot{c}^2+\dot{d}^2-a^2-b^2-c^2-d^2)",
+                "coordinates": ["a", "b", "c", "d"],
+                "budget": "quick",
+            },
+        )
+        assert four.status_code == 200, four.text
+        assert four.json()["status"] == "ok" and len(four.json()["constants"]) == 7
         bad = c.post(
             "/v1/compute/conserved",
-            json={"function": "x", "coordinates": ["a", "b", "c", "d"]},
+            json={"function": "x", "coordinates": ["a", "b", "c", "d", "e"]},
         )
         assert bad.status_code == 422
     out = capsys.readouterr().out

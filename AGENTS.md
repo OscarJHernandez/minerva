@@ -142,8 +142,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   strict parser, never rewriting input; for `geometry` one syntax for the whole metric, decided over every entry). A new expression field states its syntax in its description (a test).
 - Evidence for the model's equations (`engine/claim_evidence.py`, `loop.claim_evidence`): a claim is linked to a verified
   tool equation only by (1) the same left side and an equivalent right side, (2) residuals proportional by a factor free
-  of the system's coordinates/velocities/accelerations (zeros of the factor become conditions) or (3) its own name for a
-  verified conserved quantity or momentum. The result's restrictions travel with the match; it is never "proved" unless
+  of the system's coordinates/velocities/accelerations (zeros of the factor become conditions), (3) its own name for a
+  verified conserved quantity or momentum, or the series and indexed-row kinds described below. The result's restrictions travel with the match; it is never "proved" unless
   both the tool's check and the link were symbolic zeros; matrices, vectors, distributions and sums are never linked;
   a wrong equation stays unchecked (not contradicted). Lone symbols are not claims. Add a wrong twin to
   `test_claim_evidence.py` for every new rule. One outcome is not a match and not a contradiction: a claim that reuses a
@@ -161,6 +161,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   remainder stay unchecked, never contradicted. It is worded as the tool's series result (numerical evidence; the remainder
   order a measurement), never proved and never a bound; `known_latex` only gains the `P + O(...)` form the tool itself
   printed.
+  A fifth kind is an indexed row (`claim_evidence.read_index_label`, `EvidenceIndex.indexed`, issue #146 part 4): a verified
+  row whose left side is an index label (`\\Gamma^{r}{}_{t t} = ...` of a `geometry` card: a kernel letter or Greek command,
+  `^`/`_` index groups of letters and Greek commands, `{}` spacers; not a label the parser reads as one name, such as `R_{t t}`
+  or `C_{4}`) links a claim with the same label (kernel and indices in order, never an index symmetry) and an equivalent
+  right side (`evidence_rule: "same_indexed_label"`, proved only with a symbolic zero, restrictions carried). A label no row
+  lists is `unverified` with a plain reason, never `unparsed`; a wrong value stays unchecked (never contradicted). A label
+  that could be a power (`e^{i\\pi}`, `x_i^n`: no spacer, no upper index followed by a lower one) is read as one only if the
+  parser cannot read it or a verified row has its kernel; digits are never indices. Wrong twins in `test_claim_evidence.py`.
   Because discovery constants now carry the `conserved` role, rule (3) also links `K = <the C_4 expression>`; its wrong
   twins (a sign, a 1e-6 factor, a dropped term) are in `test_claim_evidence.py`. The evaluation harness hands the claim
   check the earlier turns' verified results (`prior_evidence`) as the chat route does.
@@ -323,10 +331,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   result id to carry the premise to a later `@eN`); `approximation` keeps its result under `data["report"]` and is numbered as a whole only when accepted (status `ok`, an evidence kind other than `none`, no failed check; a number names the formula, the measured error stays a measurement, and `@eN` of it says it has no result id). Each card type must be in exactly one of `LIST_READERS`, `SINGLE_RESULT`,
   `LIST_NOT_YET_NUMBERED` or `EXCLUDED_WITH_REASON` (a test); `tensor` is a single result (its one canonical form, numbered
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
-  equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
-  list formulas without numbers (vector; also deferred inside cards that are otherwise numbered:
+  equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` (now empty) names cards that still
+  list formulas without numbers (also deferred inside cards that are otherwise numbered:
   the statistics posterior, step lists and
-  the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
+  the dimensional relation): move one to `LIST_READERS` with a reader and a test. `vector` is numbered per action
+  (`card_equations.vector`; keys `result`, `component:i` as the row shows it `basis:\\quad value` in the coordinate system's order,
+  `step:i`, `distributional`) only for an `ok` result the card's own numeric check accepted with no premise: `evaluate`,
+  `convert`, the steps of `apply_identity`/`derive` when the whole result is an `identity`, and a `derived` point-source
+  statement whose pairings and fluxes all agreed. Never numbered (`VECTOR_NOT_NUMBERED`): anything `conditional` or with `given`,
+  `jacobian`, `integrate`, `em_derive`, `em_compute`, `identities`, `restrictions_latex`, and the classical value of a field
+  with a point source (`singular_hint`). A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,
   `test_equation_rows_variation_stats_expansion.py`, `test_equation_rows_statmech_perturbation_dimensional.py` and `equation-rows.test.tsx`, which also checks that each number sits next to the
@@ -586,9 +600,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   relation; `None`: undecided, for another relation sign, a multi-row environment or unbalanced brackets, and for an
   equation stored without one). `FIELD_POLICY` says per (tool, formula field) whether the tool takes only an expression
   (`simplify`, `differentiate`, `series`, `integrate`, `distribution`, `time_derivative.latex`, `find_identities`, `sums`,
-  `expectation`, `creative_telescoping`, `approximation`, `substitute`, `rewrite_part`, `variation.integrand`), requires an
+  `expectation`, `creative_telescoping`, `approximation`, `substitute`, `rewrite_part`, `variation.integrand`, `tensor_canonicalize.expression`, and the `lagrangian` field of `time_derivative`,
+  `expand_motion`, `perturbation_solve` and `integrate_motion`, which refuse even `L = ...`), requires an
   equation (`solve_polynomial`, `isolate_variable`, `check_identity`, `check_units`) or is unclassified with a stated reason
-  (matrix and vector calculus, the Lagrangian and Hamiltonian fields, `tensor_canonicalize`). An entry exists only where the
+  (`matrix_calculus` and `vector_calculus`, whose other actions read relations; the `lagrangian`/`hamiltonian` fields of
+  `analyze_lagrangian`, `search_invariants` and `find_conserved_quantities`, which read off a leading `L =` / `H =`). An entry exists only where the
   real tool was shown to refuse (or require) a relation (`test_reference_types.py` runs every one). `@eN` of a kind the
   field cannot take is refused with a typed diagnostic (`InputCode.EQUATION_REFERENCE_NOT_EXPRESSION`,
   `EXPRESSION_REFERENCE_NOT_EQUATION`; symbols hold `@eN`, never a formula; only the code is logged) and the call is not
@@ -684,7 +700,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   discovery. **Search completeness is not global completeness**: a tier is complete within its family only, and
   "no additional constant" is always worded "within the explored families", never "the system has none". Cyclic
   and cos/sin-only coordinates are treated as angles because conservation does not depend on periodicity. Parameters
-  are generic; the report says so and lists the factors assumed nonzero. Functional independence
+  are generic; the report says so and lists the factors assumed nonzero. At most 4 coordinates (issue #152; the budgets,
+  unknown caps and sandbox seconds are unchanged, so a four-coordinate family is searched only if it fits the cap, and a
+  system whose smallest family does not is `resource_limit` naming that family and its size). Functional independence
   (`independence.py`) is the exact Jacobian rank at rational points, a **proved lower bound**; it is called exact
   only when an upper bound from exact polynomial relations (implicit function theorem) meets it, and sampling never
   proves independence or dependence. Do not add physics-specific shortcuts or hardcoded invariants: the benchmarks
@@ -694,9 +712,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`search_log.py`), expressions stay in the user's private card. `tan`, `cot`, `sec` and `csc` of an angle are read as
   ratios of its cos and sin (`discovery._reciprocal_trig`, a closed rule of four heads, issue #191; the equations a candidate
   is verified on are unchanged). Square roots, logarithms and non-polynomial time
-  dependence are `unsupported`; more than 3 coordinates is `unsupported` with the typed code `too_many_coordinates` (the limit, removing a
-  cyclic coordinate by hand only with the user's own stated momentum, and that automatic reduction and a larger search are not available
-  yet; nothing is searched and no coordinate is dropped; the tool schema allows 8 so that this reason, not a length error, reaches the model); families above the unknown cap are listed as not searched.
+  dependence are `unsupported`; more than 4 coordinates is `unsupported` with the typed code `too_many_coordinates` (the limit, removing a
+  cyclic coordinate by hand only with the user's own stated momentum, and that a larger search is not available;
+  nothing is searched and no coordinate is dropped; the tool schema allows 8 so that this reason, not a length error, reaches the model); families above the unknown cap are listed as not searched.
   The original `search_invariants` is kept unchanged as the fixed-ansatz baseline of `docs/invariant-benchmark.md`.
 - Chains of identities (`transform.py`, tool and endpoint `simplify`) are shown only if every step passed the
   numeric check and the whole chain was re-verified with the symbolic zero test added; the two are reported

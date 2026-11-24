@@ -109,7 +109,7 @@ def test_regenerate_the_missing_fixture_entries(ctx: ToolContext) -> None:
 def test_matrix_is_a_list_reader_and_the_remaining_sets_are_unchanged() -> None:
     assert "matrix" in LIST_READERS and "matrix" not in LIST_NOT_YET_NUMBERED
     assert "matrix" not in SINGLE_RESULT
-    assert {"vector"} == LIST_NOT_YET_NUMBERED
+    assert not LIST_NOT_YET_NUMBERED
 
 
 def test_the_fixture_keys_and_rows_are_the_readers_and_the_ones_written_by_hand(
