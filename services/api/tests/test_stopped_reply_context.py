@@ -114,6 +114,27 @@ def test_a_tool_that_finished_before_the_client_left_is_kept_with_its_trace_and_
         )
 
 
+def test_a_stopped_reply_counts_the_routed_step_it_kept() -> None:
+    # The loop sets `routed_calls` only when the turn ends; a stopped reply is stored from the snapshot,
+    # which must count the routed steps it holds (it used to store 0 beside a routed trace step).
+    for client, cid, _ in start(agent_routing=True):
+        llm = _hanging(client, [say("It simplifies to $x + 1$, and this goes on")], at=0)
+        _abandon(client, cid, SIMPLIFY_TEXT, llm)
+        content = stored(client, cid)[1]["content"]
+        assert content["stop_reason"] == StopReason.STOPPED.value
+        (step,) = content["trace"]
+        assert step["name"] == "simplify" and step["routed"] is True and step["status"] == "ok"
+        assert content["debug"]["routed_calls"] == 1
+
+
+def test_a_stopped_reply_with_no_routed_step_counts_none() -> None:
+    for client, cid, _ in start():
+        _leave_after_the_tool(client, cid)
+        content = stored(client, cid)[1]["content"]
+        assert content["trace"][0]["routed"] is False
+        assert content["debug"]["routed_calls"] == 0
+
+
 def test_a_follow_up_reuses_the_result_with_its_restrictions() -> None:
     for client, cid, _ in start():
         _leave_after_the_tool(client, cid)
