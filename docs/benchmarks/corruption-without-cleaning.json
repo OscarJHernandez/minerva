@@ -1,5 +1,5 @@
 {
-  "applied": 250,
+  "applied": 253,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -65,7 +65,7 @@
       "untyped_failure": 0
     },
     "shape:list_as_string": {
-      "diagnosed": 13,
+      "diagnosed": 14,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
@@ -104,14 +104,14 @@
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
-      "untyped_failure": 21
+      "untyped_failure": 22
     },
     "transport:markdown_escape": {
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
-      "untyped_failure": 24
+      "untyped_failure": 25
     },
     "transport:trailing_period": {
       "diagnosed": 0,
@@ -151,11 +151,11 @@
       "untyped_failure": 5
     },
     "check_units": {
-      "diagnosed": 2,
+      "diagnosed": 3,
       "different_verified_result": 0,
       "same": 2,
       "same_after_cleaning": 0,
-      "untyped_failure": 2
+      "untyped_failure": 4
     },
     "creative_telescoping": {
       "diagnosed": 2,
@@ -717,6 +717,12 @@
       "tool": "check_identity"
     },
     {
+      "case": "kepler-constant-then-its-units#2",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "check_units"
+    },
+    {
       "case": "telescoping-gaussian-parameter",
       "operator": "transport:doubled_backslash",
       "outcome": "untyped_failure",
@@ -841,6 +847,12 @@
       "operator": "transport:markdown_escape",
       "outcome": "untyped_failure",
       "tool": "check_identity"
+    },
+    {
+      "case": "kepler-constant-then-its-units#2",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "check_units"
     },
     {
       "case": "telescoping-gaussian-parameter",
@@ -1224,18 +1236,18 @@
   "format": 1,
   "mode": "pr (without the cleaning layer)",
   "not_applicable": {
-    "derivative:joined": 157,
-    "derivative:latex_letter_run": 149,
-    "derivative:leibniz": 157,
-    "derivative:spaced": 157,
-    "derivative:upper": 157,
-    "shape:assignment_prefix": 143,
-    "shape:formula_alias": 57,
+    "derivative:joined": 159,
+    "derivative:latex_letter_run": 150,
+    "derivative:leibniz": 159,
+    "derivative:spaced": 159,
+    "derivative:upper": 159,
+    "shape:assignment_prefix": 144,
+    "shape:formula_alias": 58,
     "shape:json_as_string": 67,
-    "shape:kind_wrapped": 151,
+    "shape:kind_wrapped": 153,
     "shape:list_as_string": 125,
-    "shape:number_as_string": 150,
-    "syntax:braced_exponent": 157,
+    "shape:number_as_string": 152,
+    "syntax:braced_exponent": 159,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
     "transport:doubled_backslash": 60,
@@ -1244,14 +1256,14 @@
     "transport:unicode_look_alikes": 55
   },
   "recovered_without_a_model_call": 31,
-  "recovery_rate": 0.124,
-  "references": 160,
+  "recovery_rate": 0.1225,
+  "references": 162,
   "tools_covered": 35,
   "totals": {
-    "diagnosed": 76,
+    "diagnosed": 77,
     "different_verified_result": 0,
     "same": 31,
     "same_after_cleaning": 0,
-    "untyped_failure": 143
+    "untyped_failure": 145
   }
 }

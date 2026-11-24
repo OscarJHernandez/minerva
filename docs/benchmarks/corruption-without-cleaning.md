@@ -2,7 +2,7 @@
 
 Every known model mistake applied to every reference call of the benchmark, through the same pipeline a model's call takes. Each corrupted call must give the clean call's result or fail with a typed reason; anything else is a defect.
 
-250 corrupted calls over 160 reference calls (35 tools), mode `pr (without the cleaning layer)`: **0 different verified results**, 143 untyped failures; 31 recovered without a model call (12.4%), 76 diagnosed.
+253 corrupted calls over 162 reference calls (35 tools), mode `pr (without the cleaning layer)`: **0 different verified results**, 145 untyped failures; 31 recovered without a model call (12.2%), 77 diagnosed.
 
 | Operator | Applied | Same | Same after cleaning | Diagnosed | Untyped | Different |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -15,13 +15,13 @@ Every known model mistake applied to every reference call of the benchmark, thro
 | shape:formula_alias | 22 | 0 | 0 | 22 | 0 | 0 |
 | shape:json_as_string | 27 | 0 | 0 | 27 | 0 | 0 |
 | shape:kind_wrapped | 1 | 0 | 0 | 1 | 0 | 0 |
-| shape:list_as_string | 13 | 0 | 0 | 13 | 0 | 0 |
+| shape:list_as_string | 14 | 0 | 0 | 14 | 0 | 0 |
 | shape:number_as_string | 5 | 5 | 0 | 0 | 0 | 0 |
 | syntax:braced_exponent | 2 | 2 | 0 | 0 | 0 | 0 |
 | transport:code_fence | 29 | 1 | 0 | 0 | 28 | 0 |
 | transport:dollar_wrapper | 29 | 1 | 0 | 0 | 28 | 0 |
-| transport:doubled_backslash | 22 | 1 | 0 | 0 | 21 | 0 |
-| transport:markdown_escape | 25 | 0 | 0 | 1 | 24 | 0 |
+| transport:doubled_backslash | 23 | 1 | 0 | 0 | 22 | 0 |
+| transport:markdown_escape | 26 | 0 | 0 | 1 | 25 | 0 |
 | transport:trailing_period | 26 | 4 | 0 | 0 | 22 | 0 |
 | transport:unicode_look_alikes | 28 | 8 | 0 | 0 | 20 | 0 |
 
@@ -86,6 +86,7 @@ Every known model mistake applied to every reference call of the benchmark, thro
 * `untyped_failure`: transport:doubled_backslash on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:doubled_backslash on approximation (approximation-interval-is-not-invented)
 * `untyped_failure`: transport:doubled_backslash on check_identity (identity-check-true-hyperbolic)
+* `untyped_failure`: transport:doubled_backslash on check_units (kepler-constant-then-its-units#2)
 * `untyped_failure`: transport:doubled_backslash on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:doubled_backslash on differentiate (differentiate-product)
 * `untyped_failure`: transport:doubled_backslash on distribution (delta-integral-uses-the-tool)
@@ -107,6 +108,7 @@ Every known model mistake applied to every reference call of the benchmark, thro
 * `untyped_failure`: transport:markdown_escape on analyze_lagrangian (lagrangian-kepler)
 * `untyped_failure`: transport:markdown_escape on approximation (approximation-large-x)
 * `untyped_failure`: transport:markdown_escape on check_identity (identity-check-false-binomial)
+* `untyped_failure`: transport:markdown_escape on check_units (kepler-constant-then-its-units#2)
 * `untyped_failure`: transport:markdown_escape on creative_telescoping (telescoping-gaussian-parameter)
 * `untyped_failure`: transport:markdown_escape on differentiate (differentiate-first)
 * `untyped_failure`: transport:markdown_escape on distribution (delta-integral-uses-the-tool)

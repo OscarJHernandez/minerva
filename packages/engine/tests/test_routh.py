@@ -266,3 +266,13 @@ def test_engine_entry_point_runs_in_the_sandbox() -> None:
     )
     assert report.status == Status.OK, report.message
     assert report.duration_ms > 0
+
+
+def test_restrictions_follow_the_declared_assumptions() -> None:
+    """The block determinant -(1 - 2M/r) = (2M - r)/r: its factor r is reported only when nothing says r > 0."""
+    declared = schwarzschild(["t"])
+    bare = routh_reduce(SCHWARZSCHILD, SCHWARZSCHILD_COORDS, "s", {}, ["t"], LIMITS)
+    assert declared.status == bare.status == Status.OK
+    assert not any(x.replace(" ", "") == r"r\neq0" for x in declared.restrictions_latex)
+    assert any(x.replace(" ", "") == r"r\neq0" for x in bare.restrictions_latex)
+    assert sp.simplify(read(declared.result_latex) - read(bare.result_latex)) == 0
