@@ -2502,7 +2502,7 @@ def _right_side(latex: str) -> list[str]:
     right side of a row the tool verified is as known as the row (the same as `run_geometry`). Text match only
     (`normalize`): a reordered or re-typed expression stays unchecked. Rows whose right side is a plain number
     (`... = 0`) give nothing: a lone `0` would be known for every statement."""
-    if latex.count("=") != 1 or any(c in latex for c in ("<", ">", "\\le", "\\ge", "\\neq")):
+    if latex.count("=") != 1 or re.search(r"[<>]|\\(?:le|ge|neq)(?![A-Za-z])", latex):
         return []
     left, right = (part.strip() for part in latex.split("=", 1))
     if not left or re.fullmatch(r"-?[0-9.]*", right):

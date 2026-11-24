@@ -221,3 +221,13 @@ def test_typed_scalar_names_read_roles_and_variables_of_accepted_results_only() 
     assert typed_scalar_names([{**DISCOVERY_STEP, "repeated": True}]) == set()
     other = {**DISCOVERY_STEP, "formula_roles": {"x = 1": "equation_of_motion"}, "variables": []}
     assert typed_scalar_names([other]) == set()
+
+
+def test_the_right_side_of_a_printed_row_is_known_even_with_left_right_brackets() -> None:
+    from minerva_api.agent.tools import _right_side
+
+    assert _right_side(r"C_{3} = - k \cos{\left(\theta \right)}") == [
+        r"- k \cos{\left(\theta \right)}"
+    ]
+    assert _right_side(r"x \leq 2") == [] and _right_side(r"x \neq 2") == []
+    assert _right_side(r"A = 0") == [] and _right_side(r"a = b = c") == []
