@@ -321,7 +321,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
   equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
   list formulas without numbers (vector; also deferred inside cards that are otherwise numbered:
-  the statistics posterior, step lists and
+  the statistics posterior, the statistics and statmech step lists and
   the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,
@@ -577,6 +577,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   equation: its `X` is defined only by the card's words), the input as read, the entries. A row whose formula is the result's
   keeps the result's number (one formula, one number); a row is a name of an intermediate formula, so `@eN` of it carries
   `unverified_inputs` as for every list row.
+  Simplify chain steps (#166, `card_equations.simplify`): `step:i` of an `ok` simplify card is the equation the panel draws,
+  `before = after`, numbered only when that step's own `verification.passed` (the sampler and symbolic zero test of the step, run
+  by the engine, not the matcher that proposed it). The whole result keeps its number; `alternatives`, a step whose check did not
+  pass and every non-`ok` card list nothing. A row is a name: `@eN` of it carries `unverified_inputs` and the result's restrictions
+  do not travel with it. Other step lists (statistics, statmech: derivation text with no per-step check; vector: needs a decision
+  per action; `step` and matrix: one move or already numbered) are unchanged.
   Typed references (issue #133, part 3; `agent/reference_types.py`, `equations.relation_kind`, `refs.ResultStore.resolve(args, tool)`):
   every numbered formula records a kind read off its text by one rule (`equation`: a top-level `=`; `expression`: no
   relation; `None`: undecided, for another relation sign, a multi-row environment or unbalanced brackets, and for an

@@ -108,6 +108,7 @@ const NEW_ENTRIES: Record<
   | "dimensional"
   | "ode_analysis"
   | "matrix"
+  | "simplify"
 > = {
   variation: "variation",
   variation_second: "variation",
@@ -127,6 +128,7 @@ const NEW_ENTRIES: Record<
   ode_equilibria: "ode_analysis",
   matrix_gradient: "matrix",
   matrix_integral: "matrix",
+  simplify: "simplify",
 };
 
 function rowCard(name: string, numbers: Record<string, number>) {
@@ -320,5 +322,16 @@ describe("row numbers of the matrix card: steps and alternative conventions", ()
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
     expect(document.body.textContent).toContain("Steps");
     expect(document.body.textContent).toContain("Entrywise form");
+  });
+});
+
+describe("row numbers of the simplify card's steps", () => {
+  it("the whole number of the card and the step numbers sit side by side", () => {
+    const { keys, rows } = rowEntries.simplify as RowEntry;
+    const numbers = numbersFor(keys);
+    const card = { ...rowCard("simplify", numbers), number: 99 } as unknown as Card;
+    render(<CardView card={card} />);
+    expect(shown()).toHaveLength(keys.length + 1);
+    expect(texNextTo(numbers["step:1"] as number)).toEqual([rows["step:1"]]);
   });
 });
