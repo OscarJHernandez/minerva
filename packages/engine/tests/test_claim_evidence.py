@@ -263,6 +263,7 @@ def gamma(claims: list[str], evidence: list[ClaimEvidence] = GAMMA_EVIDENCE):  #
         r"\Gamma^{\phi}{}_{\theta\,\phi} = \frac{\cos\theta}{\sin\theta}",
         r"\Gamma^{\phi}_{r}{}_{\phi} = \frac{1}{r}",
         r"\frac{1}{r} = \Gamma^{\phi}_{r\phi}",
+        r"\Gamma^{r}\,_{tt} = \frac{M(r-2M)}{r^3}",
     ],
 )
 def test_a_restated_christoffel_row_with_reordered_algebra_is_supported(claim: str) -> None:

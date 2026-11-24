@@ -420,6 +420,10 @@ def read_index_label(side: str) -> IndexLabel | None:
         if text[at].isspace():
             at += 1
             continue
+        thin = _THIN_SPACE.match(text, at)
+        if thin is not None:
+            at = thin.end()
+            continue
         empty = _SPACER.match(text, at)
         if empty is not None:
             spacer, at = True, empty.end()
