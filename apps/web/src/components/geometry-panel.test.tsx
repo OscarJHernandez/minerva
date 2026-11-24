@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { christoffel, ricciScalar, sphere } from "@/test/geometry-fixtures";
+import type { GeometryQuantityResult } from "@/lib/types";
 import { GeometryPanel } from "./geometry-panel";
 
 describe("GeometryPanel", () => {
@@ -64,5 +65,42 @@ describe("GeometryPanel", () => {
   it("offers no follow-up buttons outside a conversation", () => {
     render(<GeometryPanel result={sphere} />);
     expect(screen.queryByText(/Also compute/)).not.toBeInTheDocument();
+  });
+
+  it("labels each conserved charge with where it comes from and keeps the search's wording", () => {
+    const charges: GeometryQuantityResult = {
+      kind: "geodesic_constants",
+      status: "ok",
+      title: "Conserved charges of the geodesics from the Killing vectors",
+      variance: [],
+      components: [
+        {
+          indices: [1],
+          label_latex: "Q_{1}",
+          latex: "\\dot{\\phi} r^{2}",
+          text: "phi_dot*r**2",
+          origin: "cyclic coordinate",
+        },
+        {
+          indices: [2],
+          label_latex: "Q_{2}",
+          latex: "\\dot{\\phi}^{2} r^{2} + \\dot{r}^{2}",
+          text: "phi_dot**2*r**2 + r_dot**2",
+          origin: "normalisation",
+        },
+      ],
+      all_zero: false,
+      scalar_latex: null,
+      scalar_text: null,
+      symmetry_note: "",
+      verification: null,
+      notes: ["Killing tensors (hidden quadratic symmetries) are not searched."],
+      message: "",
+    };
+    render(<GeometryPanel result={{ ...sphere, quantities: [charges] }} />);
+    const block = screen.getByTestId("quantity-geodesic_constants");
+    const origins = within(block).getAllByTestId("charge-origin");
+    expect(origins.map((o) => o.textContent)).toEqual(["cyclic coordinate", "normalisation"]);
+    expect(block).toHaveTextContent(/Killing tensors .* are not searched/);
   });
 });

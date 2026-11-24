@@ -354,8 +354,11 @@ class GeometryArgs(BaseModel):
         "covariant_derivative, raise_index, lower_index, and for electromagnetic fields on a metric you give: "
         "exterior_derivative (F = dA from a 1-form, or dF of a 2-form), antisymmetric_divergence "
         "(J^nu = nabla_mu F^(mu nu)), field_invariant (F_(mu nu) F^(mu nu)), hodge_dual (four dimensions). "
-        "Everything from covariant_derivative on needs `tensor` (covariant components for the "
-        "electromagnetic ones). The metric, signature and units are the user's; never assume them.",
+        "Everything from covariant_derivative to hodge_dual needs `tensor` (covariant components for the "
+        "electromagnetic ones). Symmetries: killing_vectors (Killing vectors found by an exact search within a "
+        "stated family of functions; the result says which family, and 'none within it' never means none exists) "
+        "and geodesic_constants (the conserved charges of the geodesics built from them, each checked on the "
+        "geodesic equations). The metric, signature and units are the user's; never assume them.",
     )
     tensor: TensorField | None = Field(
         default=None,
@@ -1628,6 +1631,7 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
             lines.append("- domain restrictions could not be fully determined")
         if result.signature is None and result.signature_note:
             lines.append(f"- signature: {result.signature_note}")
+    roles: dict[str, str] = {}
     for q in result.quantities:
         evidence = ""
         v = q.verification
@@ -1652,8 +1656,11 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
             lines.append("  every component is zero")
         for c in q.components[:40]:
             statement = c.latex if q.kind == "geodesics" else f"{c.label_latex} = {c.latex}"
-            lines.append(f"  ${statement}$")
+            lines.append(f"  ${statement}$" + (f" ({c.origin})" if c.origin else ""))
             known.extend([statement, c.latex.split(" = ")[-1]])
+            if q.kind == "geodesic_constants":
+                # a restated charge is linked to this verified one (claim evidence, rule 3)
+                roles[statement] = "conserved"
         if len(q.components) > 40:
             lines.append(f"  ... and {len(q.components) - 40} more components (see the card)")
         if q.symmetry_note and q.kind != "geodesics":
@@ -1662,10 +1669,25 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
     slow = [d for d in result.diagnostics if d.status == "failed"]
     if slow:
         lines.append("- failed stage(s): " + ", ".join(f"{d.stage} ({d.failure})" for d in slow))
+    if roles:
+        lines.append(
+            "the Q_k are conserved along every geodesic (dots: derivatives with respect to an affine parameter); "
+            "physical names such as energy or angular momentum are yours to offer, as an interpretation."
+        )
     lines.append(
         "to compute more about THIS geometry, call geometry again with the same coordinates, metric, "
         "assumptions and functions."
     )
+    if roles:
+        names = [c.strip().lstrip("\\").replace("{", "").replace("}", "") for c in request.coordinates]
+        return ToolOutput(
+            card,
+            "\n".join(lines),
+            known,
+            result.status.value,
+            formula_roles=roles,
+            variables=tuple(names),
+        )
     return ToolOutput(card, "\n".join(lines), known, result.status.value)
 
 

@@ -58,6 +58,11 @@ function Quantity({ q }: { q: GeometryQuantityResult }) {
               <Numbered k={`${q.kind}:${c.indices.join(",")}`}>
                 <Math latex={q.kind === "geodesics" ? c.latex : `${c.label_latex} = ${c.latex}`} />
               </Numbered>
+              {c.origin ? (
+                <span className="ml-2 text-xs text-muted" data-testid="charge-origin">
+                  {c.origin}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

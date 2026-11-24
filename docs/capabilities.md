@@ -893,7 +893,7 @@ Simplify, integrate and differentiate expressions with Dirac delta and Heaviside
 
 *Available in:* workbench, chat, HTTP API.
 
-Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed.
+Give the coordinates and a metric once and ask for the inverse metric, the Christoffel symbols of the Levi-Civita connection, the Riemann, Ricci and Einstein tensors, the Ricci scalar and other curvature invariants, symbolic geodesic equations, and the covariant derivative or index raising of a tensor field. Functions of the coordinates (f(r), a(t)) may be declared. The conventions are stated with every result. A quantity is shown only if independent numerical checks pass: the connection is checked for metric compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is reported separately, and the signature is never assumed. The Killing vectors (symmetries of the metric) are found by an exact search within a stated family of functions and shown only if the Lie derivative of the metric, by finite differences, vanishes; the conserved charges of the geodesics built from them (one per vector, quadratic combinations invariant under all of them, and g(v, v)) are each checked on the geodesic equations.
 
 **Limits**
 
@@ -902,6 +902,7 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
 - Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
 - Geodesic equations are symbolic; they are not integrated numerically.
+- Killing vectors are searched within a stated family (powers of the coordinates, polynomials in the sine and cosine of angles, and low powers or first harmonics of coordinates absent from the metric), at most 300 unknowns per linear system; "none found" means none within that family, and the list is called complete only when it reaches n(n+1)/2. Metrics with declared functions, roots, logarithms or exponentials are refused. Parameters are generic. Killing tensors are not searched.
 
 #### The 2-sphere, with its curvature invariants
 
@@ -1041,6 +1042,67 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - Signature (-, +, +, +), decided from the declared assumptions.
 - Assumes: coordinates are real: t, x, y, z.
 - 0 of 1 quantities computed; not shown: field_invariant (parse_error).
+
+#### Killing vectors of Schwarzschild and the conserved charges of its geodesics
+
+- **Coordinates:** `t, r, \theta, \phi` (LaTeX)
+- **Metric row 1:** `-(1-2M/r),  0,  0,  0` (LaTeX)
+- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0` (LaTeX)
+- **Metric row 3:** `0,  0,  r^2,  0` (LaTeX)
+- **Metric row 4:** `0,  0,  0,  r^2 \sin^2\theta` (LaTeX)
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Killing vectors:** $\xi_{(1)}^{t} = 1$
+- **Killing vectors:** $\xi_{(2)}^{\phi} = 1$
+- **Killing vectors:** $\xi_{(3)}^{\theta} = \sin{\left(\phi \right)}$
+- **Killing vectors:** $\xi_{(3)}^{\phi} = \cos{\left(\phi \right)} \cot{\left(\theta \right)}$
+- **Killing vectors:** $\xi_{(4)}^{\theta} = \cos{\left(\phi \right)}$
+- **Killing vectors:** $\xi_{(4)}^{\phi} = - \sin{\left(\phi \right)} \cot{\left(\theta \right)}$
+- **Conserved charges of the geodesics from the Killing vectors:** $Q_{1} = - \frac{\dot{t} \left(- 2 M + r\right)}{r}$
+- **Conserved charges of the geodesics from the Killing vectors:** $Q_{2} = \dot{\phi} r^{2} \sin^{2}{\left(\theta \right)}$
+- **Conserved charges of the geodesics from the Killing vectors:** $Q_{3} = r^{2} \left(\dot{\phi} \sin{\left(\theta \right)} \cos{\left(\phi \right)} \cos{\left(\theta \right)} + \dot{\theta} \sin{\left(\phi \right)}\right)$
+- **Conserved charges of the geodesics from the Killing vectors:** $Q_{4} = r^{2} \left(- \dot{\phi} \sin{\left(\phi \right)} \sin{\left(\theta \right)} \cos{\left(\theta \right)} + \dot{\theta} \cos{\left(\phi \right)}\right)$
+- **Conserved charges of the geodesics from the Killing vectors:** $Q_{5} = r^{4} \left(\dot{\phi}^{2} \sin^{2}{\left(\theta \right)} + \dot{\theta}^{2}\right)$
+- **Conserved charges of the geodesics from the Killing vectors:** $Q_{6} = \dot{\phi}^{2} r^{2} \sin^{2}{\left(\theta \right)} + r^{2} \dot{\theta}^{2} + \frac{r \dot{r}^{2}}{- 2 M + r} + \frac{\dot{t}^{2} \left(2 M - r\right)}{r}$
+- **Check:** killing_vectors: 4 independent numeric checks passed; symbolic proof proved
+- **Check:** geodesic_constants: 10 independent numeric checks passed; symbolic proof not proved
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $- 2 M + r \neq 0$, $\sin{\left(\theta \right)} \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- Assumes: M: positive.
+- Assumes: r: positive.
+- 2 of 2 requested quantities computed and numerically verified.
+
+#### The plane in polar coordinates has the full n(n+1)/2 = 3 Killing vectors
+
+- **Coordinates:** `r, phi` (plain text)
+- **Metric row 1:** `1,  0` (plain text)
+- **Metric row 2:** `0,  r^2` (plain text)
+- **Assumptions:** r positive
+- **Status:** `ok`
+- **Killing vectors:** $\xi_{(1)}^{\phi} = 1$
+- **Killing vectors:** $\xi_{(2)}^{r} = \sin{\left(\phi \right)}$
+- **Killing vectors:** $\xi_{(2)}^{\phi} = \frac{\cos{\left(\phi \right)}}{r}$
+- **Killing vectors:** $\xi_{(3)}^{r} = \cos{\left(\phi \right)}$
+- **Killing vectors:** $\xi_{(3)}^{\phi} = - \frac{\sin{\left(\phi \right)}}{r}$
+- **Check:** killing_vectors: 3 independent numeric checks passed; symbolic proof proved
+- Signature (+, +), decided from the declared assumptions.
+- Assumes: coordinates are real: r, phi.
+- Assumes: r: positive.
+- 1 of 1 requested quantities computed and numerically verified.
+
+#### A metric with an unspecified function is refused by the Killing search
+
+- **Coordinates:** `t, r` (LaTeX)
+- **Metric row 1:** `-f(r),  0` (LaTeX)
+- **Metric row 2:** `0,  1/f(r)` (LaTeX)
+- **Functions:** `f(r)`
+- **Status:** `unsupported`
+- killing_vectors: unsupported. The metric contains a declared function such as f(r); the Killing search needs explicit components (a family of candidate functions cannot be stated for an unspecified function), so nothing was searched.
+- Valid only where $f\left(r\right) \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r.
+- Assumes: f(r) is an unspecified real function.
+- 0 of 1 quantities computed; not shown: killing_vectors (unsupported).
 
 #### A degenerate metric is declined
 
@@ -2724,7 +2786,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants.
 
 #### The same problem in Cartesian coordinates
 
@@ -2738,7 +2800,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** rotation: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - cyclic coordinates: none (every coordinate appears in L)
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants.
 
 #### Velocities written Xdot, Ydot, sdot are read as the velocities of X, Y, s
 
@@ -2753,7 +2815,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Check:** cyclic: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - **Check:** energy: time derivative is zero on the equations of motion (symbolic zero; 20 of 20 points)
 - rotations of each pair of coordinates (as Cartesian): none leaves L unchanged
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants.
 
 #### Explicit time dependence removes the energy
 
@@ -2763,7 +2825,7 @@ From a Lagrangian and its coordinates, derives the Euler–Lagrange equations, m
 - **Equation of motion (x):** $k t x + m \ddot{x} = 0$
 - cyclic coordinates: none (every coordinate appears in L)
 - energy function: not conserved (L depends explicitly on time)
-- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family.
+- Symmetries tested: cyclic coordinates, time translation, and rotations of coordinate pairs. Symmetries that hold only up to a total time derivative (for example Galilean boosts) and hidden symmetries (for example the Runge-Lenz vector of the Kepler problem) are not searched for here; the separate search for more constants of motion looks for them in a declared family. The symmetries of a metric (Killing vectors, and the conserved charges of its geodesics) are the geometry tool's killing_vectors and geodesic_constants.
 
 ### Small oscillations about an equilibrium
 
