@@ -44,6 +44,7 @@ from sympy.core.function import AppliedUndef
 from sympy.polys.domains import QQ
 from sympy.polys.matrices import DomainMatrix
 
+from ..errors import LimitError
 from ..flow import Flow
 from ..lagrangian import DerivationError, check_equations, derive_expr, verify_constant
 from ..models import Status
@@ -349,6 +350,11 @@ def search(ws: Workspace) -> KillingSearch:
         found[fam.mode] = vectors  # nested: a higher level of the same mode replaces the lower one
         if sum(len(v) for v in found.values()) >= bound:
             complete = True
+    if systems == 0:
+        # never word an empty result as "none within the searched family" when nothing was searched
+        raise LimitError(
+            "The time budget ran out before any family of the Killing search was solved; nothing was searched."
+        )
     not_searched = [] if complete else _group_skipped(skipped, names, roles)
     lowered = [v for mode in sorted(found, key=_mode_order) for v in found[mode]]
     ginv = ws.inverse()
@@ -1145,17 +1151,19 @@ def describe_search(result: KillingSearch, geo: Geometry) -> list[str]:
             "connected region: the list is complete."
         )
     else:
-        found_ = (
-            "No Killing vector"
-            if count == 0
-            else f"{count} Killing vector{'s' if count != 1 else ''}"
-        )
-        lines.append(
-            f"{found_} within the searched family; no further Killing vector within it. This does not say the "
-            f"metric has no other symmetry (at most {bound} are possible in {n} dimensions)."
-        )
+        if count == 0:
+            lines.append(
+                "No Killing vector within the searched family. This does not say the metric has no symmetry "
+                f"(at most {bound} are possible in {n} dimensions)."
+            )
+        else:
+            lines.append(
+                f"{count} Killing vector{'s' if count != 1 else ''} within the searched family; no further Killing "
+                f"vector within it. This does not say the metric has no other symmetry (at most {bound} are "
+                f"possible in {n} dimensions)."
+            )
         lines.extend(f"not searched: {s}" for s in result.not_searched)
-    if geo.params:
+    if geo.params and not result.complete:
         names = ", ".join(str(p) for p in geo.params)
         lines.append(
             f"The parameters ({names}) are treated as generic: at special values there may be more Killing vectors."

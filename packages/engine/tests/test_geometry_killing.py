@@ -12,6 +12,7 @@ import time
 
 import pytest
 import sympy as sp
+from minerva_engine.errors import LimitError
 from minerva_engine.geometry import benchmark as B
 from minerva_engine.geometry import killing
 from minerva_engine.geometry.compute import Workspace
@@ -126,10 +127,7 @@ def test_a_metric_without_symmetry_is_worded_within_the_family() -> None:
     result = _run(problem)
     vectors, charges = result.quantities
     assert vectors.status is Status.OK and vectors.all_zero and not vectors.components
-    assert any(
-        "No Killing vector within the searched family; no further Killing vector within it" in n
-        for n in vectors.notes
-    )
+    assert any("No Killing vector within the searched family." in n for n in vectors.notes)
     assert all("none exists" not in n for n in vectors.notes)
     assert [c.origin for c in charges.components] == ["normalisation"]
 
@@ -265,6 +263,27 @@ def test_the_family_ladder_is_nested_and_capped() -> None:
             assert high.degree >= low.degree and high.unknowns >= low.unknowns
             for i, (lo, hi) in low.powers.items():
                 assert high.powers[i][0] <= lo and high.powers[i][1] >= hi
+
+
+def test_a_search_that_solved_nothing_is_a_resource_limit_not_none_found() -> None:
+    limits = budget_limits()
+    geo = build_geometry(GeometryInput(**SCHWARZSCHILD, quantities=["christoffel"]), limits, 4)
+    now = time.monotonic()
+    ws = Workspace(geo, limits, now + limits.timeout_seconds, soft_deadline=now - 1)
+    ws.christoffel()
+    with pytest.raises(LimitError):
+        killing.search(ws)
+
+
+def test_a_complete_list_does_not_also_say_there_may_be_more() -> None:
+    problem = {
+        "coordinates": [r"\theta", r"\phi"],
+        "metric": [["a^2", "0"], ["0", r"a^2 \sin^2\theta"]],
+        "assumptions": {"a": ["positive"]},
+    }
+    q = _run(problem, ["killing_vectors"]).quantities[0]
+    assert q.killing is not None and q.killing.complete
+    assert not any("may be more" in n for n in q.notes)
 
 
 def test_the_geodesic_lagrangian_helper_is_g_v_v_over_two() -> None:

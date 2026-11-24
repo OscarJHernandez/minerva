@@ -897,7 +897,12 @@ def _killing_summary(result: GeometryResult) -> dict[str, Any] | None:
     if found.complete:
         worded = "the list is complete" in notes
     else:
-        worded = "no further Killing vector within it" in notes and "none exists" not in notes
+        within = (
+            "No Killing vector within the searched family" in notes
+            if found.count == 0
+            else "no further Killing vector within it" in notes
+        )
+        worded = within and "none exists" not in notes
     return {
         "vectors": found.count,
         "bound": found.bound,
