@@ -274,7 +274,15 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `\hat{p} = value`, as the panel draws it), `moment:<name>` and `expr:<name>`, nothing when the result holds given a premise
   (`evidence == "conditional"`, any premise) or an assumed condition; expansion: `equil:<name>`, `eq:<coordinate>` and `char`
   and `mode:<i>:omega2` / `mode:<i>:omega`, each only when its own check passed, never the terms, the matrices A and B or the
-  eigenvectors (the mode order is the solver's: deferred)) numbers each listed equation with the next whole number of the same
+  eigenvectors (the mode order is the solver's: deferred); statmech: `quantity:<name>` (`SYMBOL = formula`, as the panel draws
+  it; `quantity:<name>:<k>` for the k-th repeat of a name) for an exact base quantity (Z, lnZ, F, U, S, Var_E: the panel's
+  own table, read from the TSX by a test) of an `ok` result with no failed check, never a representation, a numerical value,
+  an asymptotic result, a quantity named outside that table (Xi, Omega, occupations, means, the user's own partial-derivative
+  labels), the user's `levels` step, the table or the error tables; perturbation: `omega0`, `omega` and `ratio` only for an
+  `ok` report whose verification passed, never the solution (two relations joined by `,\quad` with an `O()` remainder: one number
+  would name both, deferred) or the orders; dimensional: `group:<i>` (`label = formula`, by position) for a group rebuilt
+  and found dimensionless in an `ok` report, never the quantities, the relation (it holds only up to an undetermined function
+  of the groups, which a number would not carry) or the suggestions) numbers each listed equation with the next whole number of the same
   counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). A card that was not accepted lists
   nothing. `sums`, `expectation` and `distribution` keep their result under `data["result"]` and are numbered as a whole through
   `NESTED_RESULT_CARDS` (status `ok`; an expectation that holds given an independence has no number, because the card has no
@@ -282,11 +290,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `LIST_NOT_YET_NUMBERED` or `EXCLUDED_WITH_REASON` (a test); `tensor` is a single result (its one canonical form, numbered
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
   equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
-  list formulas without numbers (matrix rows, vector, statmech, perturbation, dimensional):
-  move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
+  list formulas without numbers (matrix list rows and vector; also deferred inside cards that are otherwise numbered:
+  the ode_analysis equilibria, the statistics posterior, step lists, expansion eigenvectors, the perturbation solution,
+  the dimensional relation, and approximation's nested result): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,
-  `test_equation_rows_variation_stats_expansion.py` and `equation-rows.test.tsx`, which also checks that each number sits next to the
+  `test_equation_rows_variation_stats_expansion.py`, `test_equation_rows_statmech_perturbation_dimensional.py` and `equation-rows.test.tsx`, which also checks that each number sits next to the
   exact formula the server numbered). **A number on a list row is a name, not a verification**:
   `@eN` on one substitutes its LaTeX exactly (`Equation.part_of`), but the tool's verification and the card's restrictions are
   not carried over, so the result carries `unverified_inputs` ("equation (7), a component of an earlier result"), its

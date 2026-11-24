@@ -375,6 +375,103 @@ def expansion(data: dict[str, Any]) -> Listed:
     return out
 
 
+# ----------------------------------------------------------------------------------------------------------
+# statmech, perturbation, dimensional (#133, part 2 and 3, PR 3 of 3)
+
+# How the statistical-mechanics panel writes a base quantity (`statmech-panel.tsx`, `SYMBOL`): a test reads the
+# table from the TSX source. A quantity whose name is not here (a grand-canonical `Xi`, an occupation, a mean or a
+# partial derivative with the user's own label) is drawn with its raw name, which the LaTeX reader would take
+# for a product of letters, so it is not numbered.
+STATMECH_SYMBOL = {
+    "Z": "Z",
+    "lnZ": r"\ln Z",
+    "F": "F",
+    "U": "U",
+    "S": "S",
+    "Var_E": r"\operatorname{Var}(E)",
+}
+
+
+def statmech_key(names: list[str], i: int) -> str:
+    """The key of quantity i: `quantity:<name>`, and `quantity:<name>:<k>` for its k-th occurrence (k >= 2).
+
+    A request may ask for the same base quantity twice; the key stays unique and stable, and the panel computes
+    it the same way (`quantityKey` in `statmech-panel.tsx`).
+    """
+    name = names[i]
+    k = names[: i + 1].count(name)
+    return f"quantity:{name}" if k == 1 else f"quantity:{name}:{k}"
+
+
+def statmech(data: dict[str, Any]) -> Listed:
+    """`quantity:<name>` of an accepted `statistical_mechanics` card: `SYMBOL = formula`, exact results only.
+
+    Not numbered: unevaluated representations, numerical values and asymptotic results (`result_kind`), a
+    quantity one of whose independent checks disagreed, the `levels` step (the user's own input, quoted), the
+    other steps, the table, the error tables, the methods and the notes. A result that is not `ok` (a
+    convention still to be confirmed, a refusal) lists nothing.
+    """
+    result = data.get("result") or {}
+    if result.get("status") != "ok":
+        return []
+    quantities = [q for q in result.get("quantities") or [] if isinstance(q, dict)]
+    names = [str(q.get("name")) for q in quantities]
+    out: Listed = []
+    for i, q in enumerate(quantities):
+        symbol = STATMECH_SYMBOL.get(names[i])
+        latex = _text(q.get("latex"))
+        checks = [c for c in q.get("checks") or [] if isinstance(c, dict)]
+        if (
+            symbol is None
+            or latex is None
+            or q.get("result_kind", "exact") != "exact"
+            or any(c.get("passed") is False for c in checks)
+        ):
+            continue
+        out.append((statmech_key(names, i), f"{symbol} = {latex}"))
+    return out
+
+
+def perturbation(data: dict[str, Any]) -> Listed:
+    """`omega0`, `omega` and `ratio` of an accepted `perturbation_solve` card, once its checks passed.
+
+    Not numbered: the solution (two relations joined by `,\\quad` with an `O()` remainder: one number would
+    name both, so it is deferred), each order's shape and frequency, and the comparison with the numerical run.
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok" or (report.get("verification") or {}).get("passed") is not True:
+        return []
+    out: Listed = []
+    for key, field in (
+        ("omega0", "linear_frequency_latex"),
+        ("omega", "frequency_latex"),
+        ("ratio", "period_ratio_latex"),
+    ):
+        if (latex := _text(report.get(field))) is not None:
+            out.append((key, latex))
+    return out
+
+
+def dimensional(data: dict[str, Any]) -> Listed:
+    """`group:<i>`: group i as the card draws it (`label = formula`), once rebuilt and found dimensionless.
+
+    Keyed by position (the labels are index based). Not numbered: the quantities and their dimensions (the
+    user's own reading), the relation (it holds only up to an undetermined function of the groups, which a
+    number would not carry), the suggestions, the tests and the notes. A card that was not accepted lists nothing.
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok":
+        return []
+    out: Listed = []
+    for i, g in enumerate(report.get("groups") or []):
+        if not isinstance(g, dict) or g.get("dimensionless_verified") is not True:
+            continue
+        label, latex = _text(g.get("label")), _text(g.get("latex"))
+        if label and latex:
+            out.append((f"group:{i}", f"{label} = {latex}"))
+    return out
+
+
 # Card types whose listed equations are numbered one by one.
 LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
@@ -387,6 +484,9 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "variation": variation,
     "statistics": statistics,
     "expansion": expansion,
+    "statmech": statmech,
+    "perturbation": perturbation,
+    "dimensional": dimensional,
 }
 
 # One primary result (`result_latex`, numbered as a whole) or no formula of its own to refer to.
@@ -422,10 +522,9 @@ LIST_NOT_YET_NUMBERED = frozenset(
         # (alternative conventions, steps) are not numbered yet. An equation, a representation or a numerical
         # approximation has no number at all: a number would present it as an evaluated result.
         "matrix",
+        # Deferred, with the reason: `vector` (its rows are field expressions of several actions),
+        # `matrix` list rows (above).
         "vector",
-        "statmech",
-        "perturbation",
-        "dimensional",
     }
 )
 
