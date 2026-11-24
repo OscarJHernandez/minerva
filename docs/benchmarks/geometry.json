@@ -143,6 +143,258 @@
         "signature_ok": true,
         "status": "ok"
       },
+      "killing_flat_spherical": {
+        "correct": true,
+        "correct_by_quantity": {
+          "geodesic_constants": true,
+          "killing_vectors": true
+        },
+        "dimension": 3,
+        "killing": {
+          "bound": 6,
+          "complete": true,
+          "families_not_searched": 0,
+          "families_searched": 2,
+          "killing_tensors_stated_not_searched": true,
+          "largest_system": 90,
+          "linear_charges": 6,
+          "normalisation": 1,
+          "quadratic_charges": 0,
+          "vectors": 6,
+          "worded_within_family": true
+        },
+        "quantities": {
+          "geodesic_constants": {
+            "numeric_checks": 13,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 13,
+            "symbolic_proved": false
+          },
+          "killing_vectors": {
+            "numeric_checks": 6,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 6,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 1,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "killing_minkowski": {
+        "correct": true,
+        "correct_by_quantity": {
+          "geodesic_constants": true,
+          "killing_vectors": true
+        },
+        "dimension": 4,
+        "killing": {
+          "bound": 10,
+          "complete": true,
+          "families_not_searched": 0,
+          "families_searched": 1,
+          "killing_tensors_stated_not_searched": true,
+          "largest_system": 20,
+          "linear_charges": 10,
+          "normalisation": 1,
+          "quadratic_charges": 0,
+          "vectors": 10,
+          "worded_within_family": true
+        },
+        "quantities": {
+          "geodesic_constants": {
+            "numeric_checks": 21,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 21,
+            "symbolic_proved": true
+          },
+          "killing_vectors": {
+            "numeric_checks": 10,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 10,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 0,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "killing_none": {
+        "correct": true,
+        "correct_by_quantity": {
+          "geodesic_constants": true,
+          "killing_vectors": true
+        },
+        "dimension": 2,
+        "killing": {
+          "bound": 3,
+          "complete": false,
+          "families_not_searched": 0,
+          "families_searched": 3,
+          "killing_tensors_stated_not_searched": true,
+          "largest_system": 60,
+          "linear_charges": 0,
+          "normalisation": 1,
+          "quadratic_charges": 0,
+          "vectors": 0,
+          "worded_within_family": true
+        },
+        "quantities": {
+          "geodesic_constants": {
+            "numeric_checks": 1,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 2,
+            "symbolic_proved": true
+          },
+          "killing_vectors": {
+            "numeric_checks": 0,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 1,
+            "symbolic_proved": null
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "killing_polar": {
+        "correct": true,
+        "correct_by_quantity": {
+          "geodesic_constants": true,
+          "killing_vectors": true
+        },
+        "dimension": 2,
+        "killing": {
+          "bound": 3,
+          "complete": true,
+          "families_not_searched": 0,
+          "families_searched": 2,
+          "killing_tensors_stated_not_searched": true,
+          "largest_system": 12,
+          "linear_charges": 3,
+          "normalisation": 1,
+          "quadratic_charges": 0,
+          "vectors": 3,
+          "worded_within_family": true
+        },
+        "quantities": {
+          "geodesic_constants": {
+            "numeric_checks": 7,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 7,
+            "symbolic_proved": true
+          },
+          "killing_vectors": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 3,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 0,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "killing_schwarzschild": {
+        "correct": true,
+        "correct_by_quantity": {
+          "geodesic_constants": true,
+          "killing_vectors": true
+        },
+        "dimension": 4,
+        "killing": {
+          "bound": 10,
+          "complete": false,
+          "families_not_searched": 2,
+          "families_searched": 3,
+          "killing_tensors_stated_not_searched": true,
+          "largest_system": 240,
+          "linear_charges": 4,
+          "normalisation": 1,
+          "quadratic_charges": 1,
+          "vectors": 4,
+          "worded_within_family": true
+        },
+        "quantities": {
+          "geodesic_constants": {
+            "numeric_checks": 10,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 10,
+            "symbolic_proved": false
+          },
+          "killing_vectors": {
+            "numeric_checks": 4,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 4,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 2,
+        "signature_ok": true,
+        "status": "ok"
+      },
+      "killing_sphere2": {
+        "correct": true,
+        "correct_by_quantity": {
+          "geodesic_constants": true,
+          "killing_vectors": true
+        },
+        "dimension": 2,
+        "killing": {
+          "bound": 3,
+          "complete": true,
+          "families_not_searched": 0,
+          "families_searched": 2,
+          "killing_tensors_stated_not_searched": true,
+          "largest_system": 20,
+          "linear_charges": 3,
+          "normalisation": 1,
+          "quadratic_charges": 0,
+          "vectors": 3,
+          "worded_within_family": true
+        },
+        "quantities": {
+          "geodesic_constants": {
+            "numeric_checks": 7,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 7,
+            "symbolic_proved": false
+          },
+          "killing_vectors": {
+            "numeric_checks": 3,
+            "numeric_passed": true,
+            "ops": null,
+            "status": "ok",
+            "symbolic_checks": 3,
+            "symbolic_proved": true
+          }
+        },
+        "restrictions": 1,
+        "signature_ok": true,
+        "status": "ok"
+      },
       "minkowski": {
         "correct": true,
         "correct_by_quantity": {
@@ -631,10 +883,10 @@
       }
     },
     "coverage": {
-      "computed_and_correct": 12,
-      "corpus": 12,
-      "refusal_cases": 8,
-      "refusals_as_expected": 8
+      "computed_and_correct": 18,
+      "corpus": 18,
+      "refusal_cases": 12,
+      "refusals_as_expected": 12
     },
     "refusals": {
       "asymmetric": {
@@ -646,6 +898,22 @@
         "status": "unsupported"
       },
       "hidden_degenerate": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "killing_declared_function": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "killing_irrational_constant": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "killing_mixed_angle": {
+        "as_expected": true,
+        "status": "unsupported"
+      },
+      "killing_non_rational": {
         "as_expected": true,
         "status": "unsupported"
       },
@@ -681,135 +949,201 @@
   "measurements": {
     "latency_ms": {
       "de_sitter": {
-        "median": 791.4,
-        "p95": 863.0,
+        "median": 957.1,
+        "p95": 1029.7,
         "runs": [
-          863.0,
-          799.6,
-          791.4,
-          762.3,
-          754.4
+          1029.7,
+          948.4,
+          1021.1,
+          947.1,
+          957.1
         ]
       },
       "euclid3": {
-        "median": 52.2,
-        "p95": 56.6,
+        "median": 58.9,
+        "p95": 65.4,
         "runs": [
-          56.6,
-          50.4,
-          52.2,
-          53.4,
-          51.5
+          65.4,
+          58.1,
+          58.9,
+          59.2,
+          58.9
         ]
       },
       "flrw": {
-        "median": 289.4,
-        "p95": 320.1,
+        "median": 328.6,
+        "p95": 360.0,
         "runs": [
-          320.1,
-          289.4,
-          288.2,
-          289.2,
-          299.2
+          360.0,
+          327.7,
+          321.5,
+          328.6,
+          328.8
+        ]
+      },
+      "killing_flat_spherical": {
+        "median": 1581.3,
+        "p95": 1678.7,
+        "runs": [
+          1665.8,
+          1581.3,
+          1678.7,
+          1573.4,
+          1575.1
+        ]
+      },
+      "killing_minkowski": {
+        "median": 1981.0,
+        "p95": 2017.6,
+        "runs": [
+          2017.6,
+          1973.1,
+          2009.0,
+          1981.0,
+          1978.2
+        ]
+      },
+      "killing_none": {
+        "median": 124.1,
+        "p95": 157.1,
+        "runs": [
+          157.1,
+          124.1,
+          125.4,
+          121.8,
+          119.2
+        ]
+      },
+      "killing_polar": {
+        "median": 113.3,
+        "p95": 135.6,
+        "runs": [
+          135.6,
+          113.3,
+          112.1,
+          112.9,
+          113.4
+        ]
+      },
+      "killing_schwarzschild": {
+        "median": 3119.9,
+        "p95": 3212.2,
+        "runs": [
+          3119.9,
+          3212.2,
+          3028.2,
+          3158.9,
+          2947.6
+        ]
+      },
+      "killing_sphere2": {
+        "median": 661.0,
+        "p95": 702.4,
+        "runs": [
+          702.4,
+          657.8,
+          656.1,
+          661.0,
+          661.4
         ]
       },
       "minkowski": {
-        "median": 165.0,
-        "p95": 189.1,
+        "median": 245.3,
+        "p95": 260.5,
         "runs": [
-          167.6,
-          165.0,
-          164.7,
-          189.1,
-          164.0
+          260.5,
+          245.3,
+          240.2,
+          247.7,
+          233.4
         ]
       },
       "polar": {
-        "median": 21.2,
-        "p95": 22.5,
+        "median": 23.1,
+        "p95": 25.7,
         "runs": [
-          22.5,
-          20.1,
-          19.4,
-          21.4,
-          21.2
+          25.7,
+          23.7,
+          22.4,
+          22.1,
+          23.1
         ]
       },
       "reissner_nordstrom": {
-        "median": 1118.3,
-        "p95": 1258.7,
+        "median": 1324.0,
+        "p95": 1450.6,
         "runs": [
-          1258.7,
-          1118.3,
-          1124.2,
-          1111.5,
-          1093.4
+          1423.6,
+          1450.6,
+          1324.0,
+          1226.1,
+          1218.1
         ]
       },
       "schwarzschild": {
-        "median": 1376.7,
-        "p95": 1465.8,
+        "median": 1844.3,
+        "p95": 2294.9,
         "runs": [
-          1465.8,
-          1348.2,
-          1376.7,
-          1343.3,
-          1410.4
+          2294.9,
+          2059.4,
+          1844.3,
+          1681.5,
+          1697.5
         ]
       },
       "skew_flat": {
-        "median": 36.8,
-        "p95": 39.0,
+        "median": 58.7,
+        "p95": 74.1,
         "runs": [
-          39.0,
-          35.9,
-          38.3,
-          36.8,
-          36.1
+          69.7,
+          74.1,
+          58.7,
+          54.3,
+          55.5
         ]
       },
       "sphere2": {
-        "median": 287.5,
-        "p95": 356.5,
+        "median": 342.7,
+        "p95": 484.1,
         "runs": [
-          356.5,
-          283.4,
-          286.7,
-          290.0,
-          287.5
+          484.1,
+          333.5,
+          343.3,
+          342.7,
+          334.5
         ]
       },
       "sphere3": {
-        "median": 728.5,
-        "p95": 790.7,
+        "median": 982.8,
+        "p95": 1223.9,
         "runs": [
-          790.7,
-          728.5,
-          728.4,
-          723.1,
-          736.8
+          974.3,
+          982.8,
+          961.4,
+          1223.9,
+          1197.1
         ]
       },
       "sphere_sheared": {
-        "median": 654.8,
-        "p95": 714.6,
+        "median": 794.1,
+        "p95": 820.1,
         "runs": [
-          714.6,
-          648.1,
-          642.5,
-          658.1,
-          654.8
+          820.1,
+          798.4,
+          771.3,
+          768.3,
+          794.1
         ]
       },
       "static_f": {
-        "median": 321.3,
-        "p95": 351.5,
+        "median": 356.4,
+        "p95": 397.9,
         "runs": [
-          351.5,
-          321.3,
-          323.0,
-          310.9,
-          320.4
+          397.9,
+          349.3,
+          392.4,
+          346.0,
+          356.4
         ]
       }
     },
@@ -817,9 +1151,15 @@
       "de_sitter": 0.8,
       "euclid3": 0.2,
       "flrw": 0.9,
+      "killing_flat_spherical": 1.8,
+      "killing_minkowski": 1.1,
+      "killing_none": 0.9,
+      "killing_polar": 0.4,
+      "killing_schwarzschild": 10.3,
+      "killing_sphere2": 0.8,
       "minkowski": 0.5,
       "polar": 0.2,
-      "reissner_nordstrom": 1.0,
+      "reissner_nordstrom": 0.9,
       "schwarzschild": 1.3,
       "skew_flat": 0.2,
       "sphere2": 0.6,
@@ -831,10 +1171,10 @@
       {
         "expected_ricci_scalar": "2/a**2",
         "failed_stage": null,
-        "median_ms": 86.7,
+        "median_ms": 89.4,
         "n": 2,
-        "p95_ms": 116.8,
-        "peak_traced_mb": 0.4,
+        "p95_ms": 115.2,
+        "peak_traced_mb": 0.3,
         "ricci_scalar": "2/a**2",
         "stage_ops": {
           "christoffel": 6,
@@ -849,9 +1189,9 @@
       {
         "expected_ricci_scalar": "6/a**2",
         "failed_stage": null,
-        "median_ms": 421.1,
+        "median_ms": 401.5,
         "n": 3,
-        "p95_ms": 435.0,
+        "p95_ms": 432.8,
         "peak_traced_mb": 0.6,
         "ricci_scalar": "6/a**2",
         "stage_ops": {
@@ -867,9 +1207,9 @@
       {
         "expected_ricci_scalar": "12/a**2",
         "failed_stage": null,
-        "median_ms": 1101.9,
+        "median_ms": 1126.9,
         "n": 4,
-        "p95_ms": 1154.4,
+        "p95_ms": 1155.6,
         "peak_traced_mb": 1.0,
         "ricci_scalar": "12/a**2",
         "stage_ops": {
@@ -885,9 +1225,9 @@
       {
         "expected_ricci_scalar": "20/a**2",
         "failed_stage": null,
-        "median_ms": 2778.9,
+        "median_ms": 2730.9,
         "n": 5,
-        "p95_ms": 2921.6,
+        "p95_ms": 2790.9,
         "peak_traced_mb": 3.2,
         "ricci_scalar": "20/a**2",
         "stage_ops": {
@@ -909,32 +1249,32 @@
           "stage": "setup"
         },
         {
-          "ms": 9,
+          "ms": 11,
           "ops": 5,
           "stage": "determinant"
         },
         {
-          "ms": 11,
+          "ms": 14,
           "ops": 17,
           "stage": "inverse_metric"
         },
         {
-          "ms": 37,
+          "ms": 47,
           "ops": 44,
           "stage": "christoffel"
         },
         {
-          "ms": 100,
+          "ms": 125,
           "ops": 120,
           "stage": "riemann"
         },
         {
-          "ms": 113,
+          "ms": 140,
           "ops": 22,
           "stage": "ricci"
         },
         {
-          "ms": 88,
+          "ms": 105,
           "ops": null,
           "stage": "ricci:verify"
         },
@@ -944,32 +1284,32 @@
           "stage": "ricci_scalar"
         },
         {
-          "ms": 20,
+          "ms": 25,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
         {
-          "ms": 15,
+          "ms": 19,
           "ops": 24,
           "stage": "einstein"
         },
         {
-          "ms": 24,
+          "ms": 28,
           "ops": null,
           "stage": "einstein:verify"
         },
         {
-          "ms": 156,
+          "ms": 205,
           "ops": 158,
           "stage": "riemann_lowered"
         },
         {
-          "ms": 443,
+          "ms": 577,
           "ops": 2,
           "stage": "kretschmann"
         },
         {
-          "ms": 24,
+          "ms": 28,
           "ops": null,
           "stage": "kretschmann:verify"
         }
@@ -996,7 +1336,7 @@
           "stage": "christoffel"
         },
         {
-          "ms": 6,
+          "ms": 7,
           "ops": null,
           "stage": "christoffel:verify"
         },
@@ -1006,7 +1346,7 @@
           "stage": "riemann"
         },
         {
-          "ms": 30,
+          "ms": 34,
           "ops": null,
           "stage": "riemann:verify"
         },
@@ -1016,7 +1356,7 @@
           "stage": "ricci"
         },
         {
-          "ms": 1,
+          "ms": 2,
           "ops": null,
           "stage": "ricci:verify"
         },
@@ -1036,7 +1376,7 @@
           "stage": "einstein"
         },
         {
-          "ms": 8,
+          "ms": 9,
           "ops": null,
           "stage": "einstein:verify"
         },
@@ -1051,7 +1391,7 @@
           "stage": "kretschmann"
         },
         {
-          "ms": 2,
+          "ms": 3,
           "ops": null,
           "stage": "kretschmann:verify"
         }
@@ -1063,49 +1403,361 @@
           "stage": "setup"
         },
         {
-          "ms": 10,
+          "ms": 11,
           "ops": 8,
           "stage": "determinant"
         },
         {
-          "ms": 12,
+          "ms": 13,
           "ops": 17,
           "stage": "inverse_metric"
         },
         {
-          "ms": 38,
+          "ms": 45,
           "ops": 58,
           "stage": "christoffel"
         },
         {
-          "ms": 97,
+          "ms": 108,
           "ops": 138,
           "stage": "riemann"
         },
         {
-          "ms": 118,
+          "ms": 132,
           "ops": 40,
           "stage": "ricci"
         },
         {
-          "ms": 120,
+          "ms": 134,
           "ops": 13,
           "stage": "ricci_scalar"
         },
         {
-          "ms": 84,
+          "ms": 92,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
         {
-          "ms": 25,
+          "ms": 27,
           "ops": 44,
           "stage": "einstein"
         },
         {
-          "ms": 42,
+          "ms": 44,
           "ops": null,
           "stage": "einstein:verify"
+        }
+      ],
+      "killing_flat_spherical": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 4,
+          "stage": "determinant"
+        },
+        {
+          "ms": 9,
+          "ops": 7,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 23,
+          "ops": 15,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 334,
+          "ops": null,
+          "stage": "killing_vectors"
+        },
+        {
+          "ms": 42,
+          "ops": null,
+          "stage": "killing_vectors:legs"
+        },
+        {
+          "ms": 42,
+          "ops": null,
+          "stage": "killing_vectors:verify"
+        },
+        {
+          "ms": 627,
+          "ops": null,
+          "stage": "geodesic_constants"
+        },
+        {
+          "ms": 153,
+          "ops": null,
+          "stage": "geodesic_flow"
+        },
+        {
+          "ms": 550,
+          "ops": null,
+          "stage": "geodesic_constants:verify"
+        }
+      ],
+      "killing_minkowski": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 0,
+          "ops": 1,
+          "stage": "determinant"
+        },
+        {
+          "ms": 0,
+          "ops": 1,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 1,
+          "ops": 0,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 22,
+          "ops": null,
+          "stage": "killing_vectors"
+        },
+        {
+          "ms": 47,
+          "ops": null,
+          "stage": "killing_vectors:legs"
+        },
+        {
+          "ms": 47,
+          "ops": null,
+          "stage": "killing_vectors:verify"
+        },
+        {
+          "ms": 1895,
+          "ops": null,
+          "stage": "geodesic_constants"
+        },
+        {
+          "ms": 8,
+          "ops": null,
+          "stage": "geodesic_flow"
+        },
+        {
+          "ms": 11,
+          "ops": null,
+          "stage": "geodesic_constants:verify"
+        }
+      ],
+      "killing_none": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 3,
+          "ops": 9,
+          "stage": "determinant"
+        },
+        {
+          "ms": 2,
+          "ops": 10,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 7,
+          "ops": 64,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 59,
+          "ops": null,
+          "stage": "killing_vectors"
+        },
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "killing_vectors:legs"
+        },
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "killing_vectors:verify"
+        },
+        {
+          "ms": 2,
+          "ops": null,
+          "stage": "geodesic_constants"
+        },
+        {
+          "ms": 42,
+          "ops": null,
+          "stage": "geodesic_flow"
+        },
+        {
+          "ms": 50,
+          "ops": null,
+          "stage": "geodesic_constants:verify"
+        }
+      ],
+      "killing_polar": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 0,
+          "ops": 1,
+          "stage": "determinant"
+        },
+        {
+          "ms": 0,
+          "ops": 2,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 1,
+          "ops": 3,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 27,
+          "ops": null,
+          "stage": "killing_vectors"
+        },
+        {
+          "ms": 7,
+          "ops": null,
+          "stage": "killing_vectors:legs"
+        },
+        {
+          "ms": 7,
+          "ops": null,
+          "stage": "killing_vectors:verify"
+        },
+        {
+          "ms": 59,
+          "ops": null,
+          "stage": "geodesic_constants"
+        },
+        {
+          "ms": 11,
+          "ops": null,
+          "stage": "geodesic_flow"
+        },
+        {
+          "ms": 19,
+          "ops": null,
+          "stage": "geodesic_constants:verify"
+        }
+      ],
+      "killing_schwarzschild": [
+        {
+          "ms": 1,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 5,
+          "stage": "determinant"
+        },
+        {
+          "ms": 11,
+          "ops": 14,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 34,
+          "ops": 35,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 1628,
+          "ops": null,
+          "stage": "killing_vectors"
+        },
+        {
+          "ms": 35,
+          "ops": null,
+          "stage": "killing_vectors:legs"
+        },
+        {
+          "ms": 35,
+          "ops": null,
+          "stage": "killing_vectors:verify"
+        },
+        {
+          "ms": 438,
+          "ops": null,
+          "stage": "geodesic_constants"
+        },
+        {
+          "ms": 457,
+          "ops": null,
+          "stage": "geodesic_flow"
+        },
+        {
+          "ms": 820,
+          "ops": null,
+          "stage": "geodesic_constants:verify"
+        }
+      ],
+      "killing_sphere2": [
+        {
+          "ms": 0,
+          "ops": null,
+          "stage": "setup"
+        },
+        {
+          "ms": 10,
+          "ops": 4,
+          "stage": "determinant"
+        },
+        {
+          "ms": 9,
+          "ops": 7,
+          "stage": "inverse_metric"
+        },
+        {
+          "ms": 15,
+          "ops": 6,
+          "stage": "christoffel"
+        },
+        {
+          "ms": 184,
+          "ops": null,
+          "stage": "killing_vectors"
+        },
+        {
+          "ms": 14,
+          "ops": null,
+          "stage": "killing_vectors:legs"
+        },
+        {
+          "ms": 14,
+          "ops": null,
+          "stage": "killing_vectors:verify"
+        },
+        {
+          "ms": 214,
+          "ops": null,
+          "stage": "geodesic_constants"
+        },
+        {
+          "ms": 56,
+          "ops": null,
+          "stage": "geodesic_flow"
+        },
+        {
+          "ms": 227,
+          "ops": null,
+          "stage": "geodesic_constants:verify"
         }
       ],
       "minkowski": [
@@ -1125,22 +1777,22 @@
           "stage": "inverse_metric"
         },
         {
-          "ms": 0,
+          "ms": 1,
           "ops": 0,
           "stage": "christoffel"
         },
         {
-          "ms": 13,
+          "ms": 18,
           "ops": null,
           "stage": "christoffel:verify"
         },
         {
-          "ms": 1,
+          "ms": 2,
           "ops": 0,
           "stage": "riemann"
         },
         {
-          "ms": 109,
+          "ms": 154,
           "ops": null,
           "stage": "riemann:verify"
         },
@@ -1160,7 +1812,7 @@
           "stage": "ricci_scalar"
         },
         {
-          "ms": 3,
+          "ms": 5,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
@@ -1170,7 +1822,7 @@
           "stage": "einstein"
         },
         {
-          "ms": 18,
+          "ms": 23,
           "ops": null,
           "stage": "einstein:verify"
         },
@@ -1195,7 +1847,7 @@
           "stage": "geodesics"
         },
         {
-          "ms": 11,
+          "ms": 20,
           "ops": null,
           "stage": "geodesics:verify"
         }
@@ -1232,7 +1884,7 @@
           "stage": "riemann"
         },
         {
-          "ms": 8,
+          "ms": 9,
           "ops": null,
           "stage": "riemann:verify"
         },
@@ -1277,7 +1929,7 @@
           "stage": "kretschmann"
         },
         {
-          "ms": 1,
+          "ms": 2,
           "ops": null,
           "stage": "kretschmann:verify"
         }
@@ -1289,52 +1941,52 @@
           "stage": "setup"
         },
         {
-          "ms": 9,
+          "ms": 10,
           "ops": 5,
           "stage": "determinant"
         },
         {
-          "ms": 12,
+          "ms": 13,
           "ops": 24,
           "stage": "inverse_metric"
         },
         {
-          "ms": 45,
+          "ms": 52,
           "ops": 73,
           "stage": "christoffel"
         },
         {
-          "ms": 153,
+          "ms": 170,
           "ops": 246,
           "stage": "riemann"
         },
         {
-          "ms": 170,
+          "ms": 187,
           "ops": 30,
           "stage": "ricci"
         },
         {
-          "ms": 170,
+          "ms": 188,
           "ops": 0,
           "stage": "ricci_scalar"
         },
         {
-          "ms": 69,
+          "ms": 75,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
         {
-          "ms": 269,
+          "ms": 295,
           "ops": 290,
           "stage": "riemann_lowered"
         },
         {
-          "ms": 805,
+          "ms": 900,
           "ops": 14,
           "stage": "kretschmann"
         },
         {
-          "ms": 22,
+          "ms": 24,
           "ops": null,
           "stage": "kretschmann:verify"
         }
@@ -1346,32 +1998,32 @@
           "stage": "setup"
         },
         {
-          "ms": 10,
+          "ms": 12,
           "ops": 5,
           "stage": "determinant"
         },
         {
-          "ms": 11,
+          "ms": 24,
           "ops": 14,
           "stage": "inverse_metric"
         },
         {
-          "ms": 33,
+          "ms": 63,
           "ops": 35,
           "stage": "christoffel"
         },
         {
-          "ms": 37,
+          "ms": 45,
           "ops": null,
           "stage": "christoffel:verify"
         },
         {
-          "ms": 62,
+          "ms": 76,
           "ops": 110,
           "stage": "riemann"
         },
         {
-          "ms": 167,
+          "ms": 190,
           "ops": null,
           "stage": "riemann:verify"
         },
@@ -1381,7 +2033,7 @@
           "stage": "ricci"
         },
         {
-          "ms": 36,
+          "ms": 46,
           "ops": null,
           "stage": "ricci:verify"
         },
@@ -1391,7 +2043,7 @@
           "stage": "ricci_scalar"
         },
         {
-          "ms": 17,
+          "ms": 24,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
@@ -1401,22 +2053,22 @@
           "stage": "einstein"
         },
         {
-          "ms": 22,
+          "ms": 26,
           "ops": null,
           "stage": "einstein:verify"
         },
         {
-          "ms": 162,
+          "ms": 182,
           "ops": 128,
           "stage": "riemann_lowered"
         },
         {
-          "ms": 485,
+          "ms": 537,
           "ops": 4,
           "stage": "kretschmann"
         },
         {
-          "ms": 18,
+          "ms": 20,
           "ops": null,
           "stage": "kretschmann:verify"
         },
@@ -1426,7 +2078,7 @@
           "stage": "geodesics"
         },
         {
-          "ms": 503,
+          "ms": 620,
           "ops": null,
           "stage": "geodesics:verify"
         }
@@ -1453,7 +2105,7 @@
           "stage": "christoffel"
         },
         {
-          "ms": 5,
+          "ms": 9,
           "ops": null,
           "stage": "christoffel:verify"
         },
@@ -1463,7 +2115,7 @@
           "stage": "riemann"
         },
         {
-          "ms": 12,
+          "ms": 18,
           "ops": null,
           "stage": "riemann:verify"
         },
@@ -1483,7 +2135,7 @@
           "stage": "ricci_scalar"
         },
         {
-          "ms": 2,
+          "ms": 3,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
@@ -1493,7 +2145,7 @@
           "stage": "einstein"
         },
         {
-          "ms": 6,
+          "ms": 10,
           "ops": null,
           "stage": "einstein:verify"
         },
@@ -1508,7 +2160,7 @@
           "stage": "kretschmann"
         },
         {
-          "ms": 2,
+          "ms": 4,
           "ops": null,
           "stage": "kretschmann:verify"
         }
@@ -1520,32 +2172,32 @@
           "stage": "setup"
         },
         {
-          "ms": 8,
+          "ms": 10,
           "ops": 4,
           "stage": "determinant"
         },
         {
-          "ms": 8,
+          "ms": 9,
           "ops": 7,
           "stage": "inverse_metric"
         },
         {
-          "ms": 13,
+          "ms": 15,
           "ops": 6,
           "stage": "christoffel"
         },
         {
-          "ms": 16,
+          "ms": 18,
           "ops": null,
           "stage": "christoffel:verify"
         },
         {
-          "ms": 12,
+          "ms": 15,
           "ops": 6,
           "stage": "riemann"
         },
         {
-          "ms": 20,
+          "ms": 21,
           "ops": null,
           "stage": "riemann:verify"
         },
@@ -1555,7 +2207,7 @@
           "stage": "ricci"
         },
         {
-          "ms": 17,
+          "ms": 20,
           "ops": null,
           "stage": "ricci:verify"
         },
@@ -1565,7 +2217,7 @@
           "stage": "ricci_scalar"
         },
         {
-          "ms": 11,
+          "ms": 13,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
@@ -1575,17 +2227,17 @@
           "stage": "einstein"
         },
         {
-          "ms": 4,
+          "ms": 5,
           "ops": null,
           "stage": "einstein:verify"
         },
         {
-          "ms": 32,
+          "ms": 37,
           "ops": 18,
           "stage": "riemann_lowered"
         },
         {
-          "ms": 93,
+          "ms": 108,
           "ops": 2,
           "stage": "kretschmann"
         },
@@ -1600,7 +2252,7 @@
           "stage": "geodesics"
         },
         {
-          "ms": 74,
+          "ms": 88,
           "ops": null,
           "stage": "geodesics:verify"
         }
@@ -1612,52 +2264,52 @@
           "stage": "setup"
         },
         {
-          "ms": 14,
+          "ms": 22,
           "ops": 7,
           "stage": "determinant"
         },
         {
-          "ms": 23,
+          "ms": 35,
           "ops": 15,
           "stage": "inverse_metric"
         },
         {
-          "ms": 51,
+          "ms": 86,
           "ops": 21,
           "stage": "christoffel"
         },
         {
-          "ms": 131,
+          "ms": 208,
           "ops": 34,
           "stage": "riemann"
         },
         {
-          "ms": 153,
+          "ms": 242,
           "ops": 9,
           "stage": "ricci"
         },
         {
-          "ms": 153,
+          "ms": 243,
           "ops": 2,
           "stage": "ricci_scalar"
         },
         {
-          "ms": 58,
+          "ms": 88,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
         {
-          "ms": 148,
+          "ms": 244,
           "ops": 78,
           "stage": "riemann_lowered"
         },
         {
-          "ms": 471,
+          "ms": 778,
           "ops": 2,
           "stage": "kretschmann"
         },
         {
-          "ms": 15,
+          "ms": 28,
           "ops": null,
           "stage": "kretschmann:verify"
         }
@@ -1669,52 +2321,52 @@
           "stage": "setup"
         },
         {
-          "ms": 9,
+          "ms": 13,
           "ops": 4,
           "stage": "determinant"
         },
         {
-          "ms": 22,
+          "ms": 26,
           "ops": 11,
           "stage": "inverse_metric"
         },
         {
-          "ms": 95,
+          "ms": 111,
           "ops": 33,
           "stage": "christoffel"
         },
         {
-          "ms": 207,
+          "ms": 245,
           "ops": 21,
           "stage": "riemann"
         },
         {
-          "ms": 231,
+          "ms": 271,
           "ops": 11,
           "stage": "ricci"
         },
         {
-          "ms": 240,
+          "ms": 282,
           "ops": 2,
           "stage": "ricci_scalar"
         },
         {
-          "ms": 95,
+          "ms": 115,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
         {
-          "ms": 68,
+          "ms": 82,
           "ops": 18,
           "stage": "riemann_lowered"
         },
         {
-          "ms": 268,
+          "ms": 340,
           "ops": 2,
           "stage": "kretschmann"
         },
         {
-          "ms": 6,
+          "ms": 7,
           "ops": null,
           "stage": "kretschmann:verify"
         },
@@ -1724,64 +2376,64 @@
           "stage": "einstein"
         },
         {
-          "ms": 13,
+          "ms": 7,
           "ops": null,
           "stage": "einstein:verify"
         }
       ],
       "static_f": [
         {
-          "ms": 0,
+          "ms": 1,
           "ops": null,
           "stage": "setup"
         },
         {
-          "ms": 9,
+          "ms": 10,
           "ops": 5,
           "stage": "determinant"
         },
         {
-          "ms": 10,
+          "ms": 11,
           "ops": 11,
           "stage": "inverse_metric"
         },
         {
-          "ms": 29,
+          "ms": 32,
           "ops": 40,
           "stage": "christoffel"
         },
         {
-          "ms": 39,
+          "ms": 43,
           "ops": null,
           "stage": "christoffel:verify"
         },
         {
-          "ms": 56,
+          "ms": 66,
           "ops": 137,
           "stage": "riemann"
         },
         {
-          "ms": 79,
+          "ms": 91,
           "ops": 38,
           "stage": "ricci"
         },
         {
-          "ms": 83,
+          "ms": 94,
           "ops": 15,
           "stage": "ricci_scalar"
         },
         {
-          "ms": 76,
+          "ms": 82,
           "ops": null,
           "stage": "ricci_scalar:verify"
         },
         {
-          "ms": 26,
+          "ms": 30,
           "ops": 42,
           "stage": "einstein"
         },
         {
-          "ms": 42,
+          "ms": 45,
           "ops": null,
           "stage": "einstein:verify"
         }
@@ -1789,28 +2441,28 @@
     },
     "vs_diffgeom": [
       {
-        "diffgeom_ms": 164.0,
+        "diffgeom_ms": 163.7,
         "id": "euclid3",
         "ours_symbolic_only_ms": 0,
-        "ours_verified_ms": 39.1
+        "ours_verified_ms": 43.5
       },
       {
-        "diffgeom_ms": 45.4,
+        "diffgeom_ms": 51.2,
         "id": "polar",
-        "ours_symbolic_only_ms": 0,
-        "ours_verified_ms": 13.7
+        "ours_symbolic_only_ms": 1,
+        "ours_verified_ms": 15.9
       },
       {
-        "diffgeom_ms": 50.1,
+        "diffgeom_ms": 99.9,
         "id": "sphere2",
-        "ours_symbolic_only_ms": 44,
-        "ours_verified_ms": 93.1
+        "ours_symbolic_only_ms": 51,
+        "ours_verified_ms": 108.9
       },
       {
-        "diffgeom_ms": 645.4,
+        "diffgeom_ms": 784.5,
         "id": "schwarzschild",
-        "ours_symbolic_only_ms": 118,
-        "ours_verified_ms": 358.4
+        "ours_symbolic_only_ms": 147,
+        "ours_verified_ms": 436.0
       }
     ]
   }

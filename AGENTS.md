@@ -863,6 +863,28 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   divergence as `|g|^{-1/2} d_m(|g|^{1/2} F^{mn})` against the Christoffel form, and `** = sign(det g)`. A 1e-6
   perturbed candidate is `not_verified` (test). Forms of other degrees, other connections and the Maxwell equations as
   covariant premises are not covered: say so.
+- Killing vectors and geodesic charges (`geometry/killing.py`, quantities `killing_vectors` and `geodesic_constants` of
+  the `geometry` tool, issue #151). The search only proposes: the unknowns are the LOWERED components as exact linear
+  combinations of a stated family (powers of a coordinate that enters rationally, negative only where it is in a
+  denominator; trigonometric polynomials of an angle that enters only through its own sin/cos; for a coordinate absent
+  from the metric, total degree <= 1 or the first harmonics of one of them, each such *mode* an invariant subspace solved
+  as its own system), the Killing equation is cleared of denominators, reduced modulo `s^2 + c^2 = 1` and solved by an
+  exact nullspace over `QQ(parameters)` (generic parameters, said so). A nested ladder runs cheapest first, at most
+  `MAX_UNKNOWNS` (300) per linear system, and every family not searched (cap or time) is listed. A vector is shown only if
+  the Lie derivative of the metric along it, by central differences of the metric and the candidate (no Christoffel
+  symbols, nothing from the search), vanishes against the size of its terms; the symbolic Lie derivative is a separate
+  leg. Wording: the family searched always; "no further Killing vector within it", never "none exists"; "complete" only
+  when the count reaches n(n+1)/2, stated as that bound; Killing tensors are not searched. Charges: `Q_k = xi^mu g v^nu`,
+  the quadratic combinations `c^{ab} Q_a Q_b` invariant under every found vector (structure constants from exact Lie
+  brackets, an exact nullspace, products of central charges factored out; zero ones and multiples of g(v, v) dropped
+  with a note) and `g(v, v)`, each shown only if it passes `Flow.verify` on the geodesic Lagrangian
+  (`compute.geodesic_lagrangian`, evaluated at 80 digits: precision, never the tolerance). Rows carry a closed origin
+  (`cyclic coordinate`, `Killing vector`, `quadratic combination of Killing charges`, `normalisation`) and are named
+  `Q_k`, never E or J; `run_geometry` gives them the role `conserved` over the coordinates (claim-evidence rule 3). A metric
+  with a declared function, a root, logarithm or exponential, a coordinate inside and outside sin/cos, or `i`/`pi` is
+  `unsupported` with a closed reason (`killing.REFUSALS`). Not covered: `agent/constants.py` reads discovery cards only,
+  so `time_derivative` does not insert these charges by name. Corpus and wrong twins: `benchmark.py` (`killing_*`,
+  compared up to a change of basis by a numerical rank) and `test_geometry_killing.py`.
 - Vector calculus (`vector/`, tool and endpoint `vector_calculus` / `POST /v1/compute/vector`) works on a typed expression
   that is an ordinary SymPy tree: vector fields are noncommutative symbols and the operators are inert heads
   (`Grad`, `Div`, `Curl`, `Lap`, `Dot`, `Cross`, `Pd`, `Adv`, `Pos`, `Unit` in `expressions.py`); `kind_of` types every node

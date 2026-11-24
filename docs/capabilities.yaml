@@ -1061,13 +1061,18 @@ capabilities:
       A quantity is shown only if independent numerical checks pass: the connection is checked for metric
       compatibility, the curvature for its symmetries and the Bianchi identities, the Einstein tensor for a
       vanishing divergence, the geodesic equations against the Euler-Lagrange equations. A symbolic proof is
-      reported separately, and the signature is never assumed.
+      reported separately, and the signature is never assumed. The Killing vectors (symmetries of the metric) are
+      found by an exact search within a stated family of functions and shown only if the Lie derivative of the
+      metric, by finite differences, vanishes; the conserved charges of the geodesics built from them (one per
+      vector, quadratic combinations invariant under all of them, and g(v, v)) are each checked on the geodesic
+      equations.
     limits:
       - Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
       - Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
       - The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
       - Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
       - Geodesic equations are symbolic; they are not integrated numerically.
+      - Killing vectors are searched within a stated family (powers of the coordinates, polynomials in the sine and cosine of angles, and low powers or first harmonics of coordinates absent from the metric), at most 300 unknowns per linear system; "none found" means none within that family, and the list is called complete only when it reaches n(n+1)/2. Metrics with declared functions, roots, logarithms or exponentials are refused. Parameters are generic. Killing tensors are not searched.
     examples:
       - id: geometry-sphere
         title: The 2-sphere, with its curvature invariants
@@ -1184,6 +1189,36 @@ capabilities:
           variance: [down, down]
           components:
             ["0", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
+      - id: geometry-killing-schwarzschild
+        title: Killing vectors of Schwarzschild and the conserved charges of its geodesics
+        op: geometry
+        coordinates: ["t", "r", '\theta', '\phi']
+        metric:
+          - ["-(1-2M/r)", "0", "0", "0"]
+          - ["0", "(1-2M/r)^{-1}", "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", 'r^2 \sin^2\theta']
+        assumptions: { M: [positive], r: [positive] }
+        quantities: [killing_vectors, geodesic_constants]
+      - id: geometry-killing-polar
+        title: The plane in polar coordinates has the full n(n+1)/2 = 3 Killing vectors
+        op: geometry
+        format: text
+        coordinates: [r, phi]
+        metric:
+          - ["1", "0"]
+          - ["0", "r^2"]
+        assumptions: { r: [positive] }
+        quantities: [killing_vectors]
+      - id: geometry-killing-declared-function
+        title: A metric with an unspecified function is refused by the Killing search
+        op: geometry
+        coordinates: ["t", "r"]
+        metric:
+          - ["-f(r)", "0"]
+          - ["0", "1/f(r)"]
+        functions: [{ name: f, args: [r] }]
+        quantities: [killing_vectors]
       - id: geometry-degenerate
         title: A degenerate metric is declined
         op: geometry

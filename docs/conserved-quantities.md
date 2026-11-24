@@ -51,7 +51,11 @@ Advanced callers can pin one family (`degree`, `power_bound`, `harmonics`, `time
 
 Square roots and other non-rational equations of motion (Cartesian Kepler is `unsupported` until an adjoined algebraic
 element `ρ² = x²+y²` is implemented), logarithms, non-polynomial time dependence, singular Hessians, more than three
-coordinates, arbitrary Killing-tensor PDEs. Naming a constant (Laplace–Runge–Lenz, Fradkin) is left to the model after
+coordinates, arbitrary Killing-tensor PDEs. The symmetries of a metric are a separate tool: `geometry` with
+`killing_vectors` searches the Killing equation exactly within a stated family (lowered components; at most 300 unknowns
+per linear system) and `geodesic_constants` builds the conserved charges of the geodesics from the vectors found, each
+checked by `Flow.verify` on the geodesic Lagrangian `g(v, v)/2` (any number of coordinates up to the geometry limit of
+four); Killing tensors are not searched there either. Naming a constant (Laplace–Runge–Lenz, Fradkin) is left to the model after
 the search; nothing in the search uses a name.
 
 ## Logging

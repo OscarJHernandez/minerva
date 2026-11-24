@@ -37,6 +37,8 @@ QuantityName = Literal[
     "antisymmetric_divergence",
     "field_invariant",
     "hodge_dual",
+    "killing_vectors",
+    "geodesic_constants",
 ]
 QUANTITIES: tuple[str, ...] = QuantityName.__args__  # type: ignore[attr-defined]
 TENSOR_QUANTITIES = frozenset(
@@ -87,6 +89,16 @@ class Component(BaseModel):
     label_latex: str
     latex: str
     text: str
+    # Where a conserved charge of the geodesics comes from (`geodesic_constants` rows only), a closed label.
+    origin: (
+        Literal[
+            "cyclic coordinate",
+            "Killing vector",
+            "quadratic combination of Killing charges",
+            "normalisation",
+        ]
+        | None
+    ) = None
 
 
 class Check(BaseModel):
@@ -110,6 +122,18 @@ class GeometryVerification(BaseModel):
     note: str = ""
 
 
+class KillingSummary(BaseModel):
+    """What the Killing search covered (`killing_vectors` and `geodesic_constants`). Words and counts only."""
+
+    count: int = 0
+    bound: int = 0  # n(n+1)/2, the most a connected n-dimensional metric can have
+    complete: bool = False  # True only when count == bound
+    searched: list[str] = Field(default_factory=list)  # the exact families searched
+    not_searched: list[str] = Field(default_factory=list)
+    largest_system: int = 0  # unknowns of the largest linear system solved
+    quadratic_rule: str = ""  # how the quadratic combinations were formed (geodesic_constants)
+
+
 class QuantityResult(BaseModel):
     kind: QuantityName
     status: Status
@@ -123,6 +147,7 @@ class QuantityResult(BaseModel):
     verification: GeometryVerification | None = None
     notes: list[str] = Field(default_factory=list)
     message: str = ""
+    killing: KillingSummary | None = None
 
 
 class StageDiagnostic(BaseModel):

@@ -293,9 +293,9 @@
       {
         "source": "geometry",
         "domain": "differential geometry",
-        "problems": 20,
-        "correct": 12,
-        "refused_as_expected": 8,
+        "problems": 30,
+        "correct": 18,
+        "refused_as_expected": 12,
         "false_accepts": 0,
         "incorrect_accepted": 0,
         "false_rejects": 0,
@@ -318,9 +318,9 @@
       }
     ],
     "totals": {
-      "problems": 237,
-      "correct": 132,
-      "refused_as_expected": 102,
+      "problems": 247,
+      "correct": 138,
+      "refused_as_expected": 106,
       "false_accepts": 0,
       "incorrect_accepted": 0,
       "false_rejects": 0,
@@ -367,10 +367,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.41,
-    "adversarial_median_ms": 12.3,
-    "adversarial_max_ms": 113.2,
-    "report_wall_s": 3.76,
-    "peak_rss_mb": 198.4
+    "adversarial_total_s": 1.64,
+    "adversarial_median_ms": 16.7,
+    "adversarial_max_ms": 136.3,
+    "report_wall_s": 4.62,
+    "peak_rss_mb": 198.3
   }
 }

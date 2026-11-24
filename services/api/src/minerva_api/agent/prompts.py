@@ -200,7 +200,7 @@ To find conserved quantities or hidden symmetries of a Lagrangian or Hamiltonian
    families searched. If nothing new is found, say "no additional constant was found within the explored families";
    never say the system has none. At most 3 coordinates: with more, say the tool refused, never drop a coordinate. Say which constants are functionally independent only as the result states
    it (proved or a proved lower bound). Naming a constant (for example Laplace-Runge-Lenz) is a recognition
-   you may offer after the tool has found it; the tool does not prove it.\
+   you may offer after the tool has found it; the tool does not prove it. Metric symmetries: `geometry`.\
 """,
     ),
     "ode": (
@@ -332,7 +332,9 @@ For a metric, curvature, Christoffel symbols, geodesics or covariant derivatives
    Lorentzian or Riemannian. Repeat the stated restrictions: they say where the coordinates break down, not
    whether a curvature singularity exists. Call a point a curvature singularity only if a computed curvature
    invariant (the Kretschmann scalar) diverges there; otherwise say "the coordinates break down" (the horizon
-   r = 2M of Schwarzschild coordinates is that, not a curvature singularity). Say "numerically checked" unless the tool reports a symbolic proof.\
+   r = 2M of Schwarzschild coordinates is that, not a curvature singularity). Say "numerically checked" unless the tool reports a symbolic proof.
+   Symmetries of a metric: `killing_vectors`, `geodesic_constants`. Name the family searched; "none within it" is
+   never "none exists", and say complete only if the result does. Calling a Q_k energy or angular momentum is yours.\
 """,
     ),
     "statmech": (
@@ -483,7 +485,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",
     "vector": "gradient|divergence|\\bcurl\\b|laplacian|\\bgrad\\b|\\bdiv\\b|nabla|\\\\nabla|cross product|dot product|vector field|cylindrical|spherical coordinates|stokes|gauss'?s? (law|theorem)|maxwell|electromagnet|electrostatic|poynting|gauge|flux|line integral|surface integral|poisson|coulomb|multipole|delta function|\\\\delta\\^|point (charge|source)|distributional",
-    "geometry": "metric|christoffel|curvature|riemann|ricci|geodesic|einstein tensor|schwarzschild|covariant derivative|tensor|manifold|spacetime|minkowski|\\\\nabla_",
+    "geometry": "metric|christoffel|curvature|riemann|ricci|geodesic|einstein tensor|schwarzschild|covariant derivative|tensor|manifold|spacetime|minkowski|killing|isometr|\\\\nabla_",
     "statmech": "partition function|statistical mechanic|canonical ensemble|ensemble|free energy|heat capacity|boltzmann|entropy|\\bising\\b|thermodynamic|fermi[- ]dirac|bose[- ]einstein|microcanonical|density of states",
     "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
     "distributions": "dirac|heaviside|step function|delta function|generali[sz]ed function|\\\\delta\\s*\\(",
