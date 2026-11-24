@@ -438,9 +438,11 @@ function StatBody({ result }: { result: StatModelResult }) {
           <div className="text-xs uppercase tracking-wide text-muted">
             Fisher information matrix
           </div>
-          <div className="overflow-x-auto">
-            <Math latex={matrixLatex(result.matrix_latex)} display label="Information matrix" />
-          </div>
+          <Numbered k="fisher">
+            <div className="overflow-x-auto">
+              <Math latex={matrixLatex(result.matrix_latex)} display label="Information matrix" />
+            </div>
+          </Numbered>
         </div>
       )}
       {result.posterior && (
