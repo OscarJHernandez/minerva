@@ -203,7 +203,7 @@ def test_a_live_engine_card_is_read_like_the_fixture(
 def test_the_three_types_are_list_readers_and_the_remaining_ones_are_still_listed() -> None:
     for kind in ("variation", "statistics", "expansion"):
         assert kind in LIST_READERS and kind not in LIST_NOT_YET_NUMBERED
-    assert {"vector"} == LIST_NOT_YET_NUMBERED  # the matrix rows came with #166
+    assert not LIST_NOT_YET_NUMBERED  # the matrix rows and the vector rows came with #166
 
 
 # --- variation ----------------------------------------------------------------------------------------------

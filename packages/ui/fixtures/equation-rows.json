@@ -15,7 +15,9 @@
             "degree": 1,
             "radicals": "yes",
             "radicals_reason": "linear",
-            "exact_roots_latex": ["1"]
+            "exact_roots_latex": [
+              "1"
+            ]
           },
           {
             "factor_latex": "x + 1",
@@ -23,7 +25,9 @@
             "degree": 1,
             "radicals": "yes",
             "radicals_reason": "linear",
-            "exact_roots_latex": ["-1"]
+            "exact_roots_latex": [
+              "-1"
+            ]
           },
           {
             "factor_latex": "x^{2} + x + 1",
@@ -70,7 +74,11 @@
           "vieta_holds": true,
           "exact_roots_match_numeric": true
         },
-        "features": ["poly", "poly:degree:4", "poly:numeric-roots"],
+        "features": [
+          "poly",
+          "poly:degree:4",
+          "poly:numeric-roots"
+        ],
         "notes": [],
         "message": "Degree 4: 4 roots found and verified by substitution and Vieta's relations.",
         "duration_ms": 2109
@@ -98,15 +106,21 @@
         "message": "",
         "method": "closed_form",
         "interpretation": {
-          "unknowns": ["y"],
+          "unknowns": [
+            "y"
+          ],
           "independent": "x",
           "parameters": [],
           "orders": {
             "y": 2
           },
-          "equations_latex": ["y'' = y"],
+          "equations_latex": [
+            "y'' = y"
+          ],
           "conditions_latex": [],
-          "notes": ["x is the independent variable, read as real unless you declared otherwise"]
+          "notes": [
+            "x is the independent variable, read as real unless you declared otherwise"
+          ]
         },
         "solutions": [
           {
@@ -115,8 +129,13 @@
             "equations_latex": [
               "y\\left(x\\right) = C_{1} \\mathrm{e}^{- x} + C_{2} \\mathrm{e}^{x}"
             ],
-            "rhs_text": ["C1*exp(-x) + C2*exp(x)"],
-            "constants": ["C1", "C2"],
+            "rhs_text": [
+              "C1*exp(-x) + C2*exp(x)"
+            ],
+            "constants": [
+              "C1",
+              "C2"
+            ],
             "family": "general",
             "evaluated": true,
             "verification": {
@@ -189,7 +208,9 @@
         "duration_ms": 268
       }
     },
-    "keys": ["solution:0:0"]
+    "keys": [
+      "solution:0:0"
+    ]
   },
   "ode_analysis": {
     "data": {
@@ -197,15 +218,21 @@
         "status": "ok",
         "message": "",
         "interpretation": {
-          "unknowns": ["y"],
+          "unknowns": [
+            "y"
+          ],
           "independent": "t",
           "parameters": [],
           "orders": {
             "y": 2
           },
-          "equations_latex": ["y^{3} + y + \\frac{y'}{5} + y'' = 0"],
+          "equations_latex": [
+            "y^{3} + y + \\frac{y'}{5} + y'' = 0"
+          ],
           "conditions_latex": [],
-          "notes": ["t is the independent variable, read as real unless you declared otherwise"]
+          "notes": [
+            "t is the independent variable, read as real unless you declared otherwise"
+          ]
         },
         "structure": {
           "kind": "ode",
@@ -224,9 +251,14 @@
           "position_only": false
         },
         "problem_kind": "general",
-        "conditions_needed": ["y(t_0)", "y'(t_0)"],
+        "conditions_needed": [
+          "y(t_0)",
+          "y'(t_0)"
+        ],
         "classes": [],
-        "solved_latex": ["y'' = - y^{3} - y - \\frac{y'}{5}"],
+        "solved_latex": [
+          "y'' = - y^{3} - y - \\frac{y'}{5}"
+        ],
         "restrictions_latex": [],
         "methods": [
           {
@@ -320,7 +352,10 @@
             "available": true,
             "rank": null,
             "reason": "the acceleration depends on the velocity (damping or a gyroscopic term)",
-            "requires": ["a small parameter named by you", "an equilibrium to oscillate about"],
+            "requires": [
+              "a small parameter named by you",
+              "an equilibrium to oscillate about"
+            ],
             "limitations": [
               "periodic solutions near a stable equilibrium only",
               "an asymptotic series"
@@ -335,7 +370,9 @@
             "available": true,
             "rank": null,
             "reason": "no symbolic parameter to expand in",
-            "requires": ["a small parameter named by you"],
+            "requires": [
+              "a small parameter named by you"
+            ],
             "limitations": [
               "valid for small values of that parameter and bounded intervals",
               "secular terms grow with time and can invalidate the expansion for long times"
@@ -377,18 +414,33 @@
         "qualitative": {
           "status": "ok",
           "message": "",
-          "states_latex": ["y", "y'"],
-          "field_latex": ["y' = y'", "y'' = - y^{3} - y - \\frac{y'}{5}"],
+          "states_latex": [
+            "y",
+            "y'"
+          ],
+          "field_latex": [
+            "y' = y'",
+            "y'' = - y^{3} - y - \\frac{y'}{5}"
+          ],
           "equilibria": [
             {
-              "point_latex": ["y = 0", "y' = 0"],
-              "point_numeric": [0.0, 0.0],
+              "point_latex": [
+                "y = 0",
+                "y' = 0"
+              ],
+              "point_numeric": [
+                0.0,
+                0.0
+              ],
               "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\-1 & - \\frac{1}{5}\\end{matrix}\\right]",
               "eigenvalues_latex": [
                 "- \\frac{1}{10} - \\frac{3 \\sqrt{11} \\mathrm{i}}{10}",
                 "- \\frac{1}{10} + \\frac{3 \\sqrt{11} \\mathrm{i}}{10}"
               ],
-              "eigenvalues_numeric": ["-0.1 - 0.99498744i", "-0.1 + 0.99498744i"],
+              "eigenvalues_numeric": [
+                "-0.1 - 0.99498744i",
+                "-0.1 + 0.99498744i"
+              ],
               "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} + 1",
               "classification": "stable_spiral",
               "classification_text": "linearly asymptotically stable (a sink: a spiral)",
@@ -482,8 +534,14 @@
               "appears": true
             }
           ],
-          "parameters": ["a", "b", "m"],
-          "given_functions": ["V"],
+          "parameters": [
+            "a",
+            "b",
+            "m"
+          ],
+          "given_functions": [
+            "V"
+          ],
           "highest_order": 1,
           "explicit_in_variable": false,
           "has_endpoint_terms": false,
@@ -528,28 +586,49 @@
             },
             {
               "id": "declare_conditions",
-              "needs": ["endpoint_conditions"]
+              "needs": [
+                "endpoint_conditions"
+              ]
             },
             {
               "id": "evaluate_action",
-              "needs": ["interval", "parameter_values", "trial_path"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "trial_path"
+              ]
             },
             {
               "id": "verify_variation",
-              "needs": ["interval", "parameter_values", "trial_path"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "trial_path"
+              ]
             },
             {
               "id": "solve_stationary",
-              "needs": ["interval", "parameter_values", "endpoint_conditions", "initial_guess"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "endpoint_conditions",
+                "initial_guess"
+              ]
             },
             {
               "id": "second_variation",
-              "needs": ["interval", "parameter_values", "trial_path"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "trial_path"
+              ]
             }
           ]
         },
         "first": {
-          "varied_latex": ["x \\to x + \\varepsilon\\,\\eta_{x}"],
+          "varied_latex": [
+            "x \\to x + \\varepsilon\\,\\eta_{x}"
+          ],
           "delta_integrand_latex": "- V'\\left(x\\right)\\,\\eta_{x} + m \\dot{x}\\,\\dot{\\eta}_{x}",
           "stages": [
             {
@@ -605,7 +684,9 @@
             }
           ],
           "first_variation_latex": "\\delta S = \\int_{a}^{b} \\left(\\left(- m \\ddot{x} - V'\\left(x\\right)\\right)\\,\\eta_{x}\\right)\\mathrm{d}t + \\left[m \\dot{x}\\,\\eta_{x}\\right]_{a}^{b}",
-          "stationarity_latex": ["- m \\ddot{x} - V'\\left(x\\right) = 0 \\quad (a < t < b)"],
+          "stationarity_latex": [
+            "- m \\ddot{x} - V'\\left(x\\right) = 0 \\quad (a < t < b)"
+          ],
           "notes": [
             "2 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it."
           ],
@@ -621,8 +702,8 @@
                   {
                     "step": "0.001",
                     "quotient": "(0.750936454607 + 0.0578330919941j)",
-                    "abs_error": 2.228014155833529e-9,
-                    "rel_error": 2.95659006004006e-9
+                    "abs_error": 2.228014155833529e-09,
+                    "rel_error": 2.95659006004006e-09
                   },
                   {
                     "step": "0.0005",
@@ -650,14 +731,14 @@
                   {
                     "step": "0.001",
                     "quotient": "(-0.105447897613 - 0.0710315081789j)",
-                    "abs_error": 1.5290086373260527e-8,
-                    "rel_error": 5.55277889047608e-9
+                    "abs_error": 1.5290086373260527e-08,
+                    "rel_error": 5.55277889047608e-09
                   },
                   {
                     "step": "0.0005",
                     "quotient": "(-0.105447909081 - 0.0710315081789j)",
-                    "abs_error": 3.822521470908974e-9,
-                    "rel_error": 1.3881946781657505e-9
+                    "abs_error": 3.822521470908974e-09,
+                    "rel_error": 1.3881946781657505e-09
                   },
                   {
                     "step": "0.00025",
@@ -679,14 +760,14 @@
                   {
                     "step": "0.001",
                     "quotient": "(-0.26785951366 - 0.0048607735782j)",
-                    "abs_error": 1.569205548192494e-9,
-                    "rel_error": 4.726447003576106e-9
+                    "abs_error": 1.569205548192494e-09,
+                    "rel_error": 4.726447003576106e-09
                   },
                   {
                     "step": "0.0005",
                     "quotient": "(-0.267859512483 - 0.0048607735782j)",
                     "abs_error": 3.923013792297909e-10,
-                    "rel_error": 1.1816117273452094e-9
+                    "rel_error": 1.1816117273452094e-09
                   },
                   {
                     "step": "0.00025",
@@ -708,14 +789,14 @@
                   {
                     "step": "0.001",
                     "quotient": "(-0.057153895422 - 0.0216262811896j)",
-                    "abs_error": 3.1051300831068118e-9,
-                    "rel_error": 1.2391260601051597e-8
+                    "abs_error": 3.1051300831068118e-09,
+                    "rel_error": 1.2391260601051597e-08
                   },
                   {
                     "step": "0.0005",
                     "quotient": "(-0.0571538977508 - 0.0216262811896j)",
                     "abs_error": 7.762824662872616e-10,
-                    "rel_error": 3.0978149328185897e-9
+                    "rel_error": 3.0978149328185897e-09
                   },
                   {
                     "step": "0.00025",
@@ -765,11 +846,15 @@
         "action": "first",
         "integrand": "\\frac{m}{2}\\dot{x}^2-V(x)",
         "variable": "t",
-        "functions": ["x"],
+        "functions": [
+          "x"
+        ],
         "given_functions": [
           {
             "name": "V",
-            "args": ["x"]
+            "args": [
+              "x"
+            ]
           }
         ],
         "lower": null,
@@ -781,7 +866,13 @@
       },
       "functional_latex": "S[x]=\\int_{a}^{b}\\left(\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)\\right)\\mathrm{d}t"
     },
-    "keys": ["el:x", "first", "stationarity:0", "natural:lower:x:0", "natural:upper:x:0"],
+    "keys": [
+      "el:x",
+      "first",
+      "stationarity:0",
+      "natural:lower:x:0",
+      "natural:upper:x:0"
+    ],
     "rows": {
       "el:x": "- m \\ddot{x} - V'\\left(x\\right) = 0",
       "first": "\\delta S = \\int_{a}^{b} \\left(\\left(- m \\ddot{x} - V'\\left(x\\right)\\right)\\,\\eta_{x}\\right)\\mathrm{d}t + \\left[m \\dot{x}\\,\\eta_{x}\\right]_{a}^{b}",
@@ -810,8 +901,14 @@
               "appears": true
             }
           ],
-          "parameters": ["a", "b", "m"],
-          "given_functions": ["V"],
+          "parameters": [
+            "a",
+            "b",
+            "m"
+          ],
+          "given_functions": [
+            "V"
+          ],
           "highest_order": 1,
           "explicit_in_variable": false,
           "has_endpoint_terms": false,
@@ -856,23 +953,42 @@
             },
             {
               "id": "declare_conditions",
-              "needs": ["endpoint_conditions"]
+              "needs": [
+                "endpoint_conditions"
+              ]
             },
             {
               "id": "evaluate_action",
-              "needs": ["interval", "parameter_values", "trial_path"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "trial_path"
+              ]
             },
             {
               "id": "verify_variation",
-              "needs": ["interval", "parameter_values", "trial_path"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "trial_path"
+              ]
             },
             {
               "id": "solve_stationary",
-              "needs": ["interval", "parameter_values", "endpoint_conditions", "initial_guess"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "endpoint_conditions",
+                "initial_guess"
+              ]
             },
             {
               "id": "second_variation",
-              "needs": ["interval", "parameter_values", "trial_path"]
+              "needs": [
+                "interval",
+                "parameter_values",
+                "trial_path"
+              ]
             }
           ]
         },
@@ -925,14 +1041,14 @@
                   {
                     "step": "0.005",
                     "quotient": "(-1.40172896752 + 0.968116010604j)",
-                    "abs_error": 8.19952381843979e-9,
-                    "rel_error": 4.8129580050677804e-9
+                    "abs_error": 8.19952381843979e-09,
+                    "rel_error": 4.8129580050677804e-09
                   },
                   {
                     "step": "0.0025",
                     "quotient": "(-1.40172896137 + 0.968116010604j)",
-                    "abs_error": 2.0498811385475077e-9,
-                    "rel_error": 1.2032396092346482e-9
+                    "abs_error": 2.0498811385475077e-09,
+                    "rel_error": 1.2032396092346482e-09
                   },
                   {
                     "step": "0.00125",
@@ -954,20 +1070,20 @@
                   {
                     "step": "0.005",
                     "quotient": "(0.280491129593 + 0.16429588617j)",
-                    "abs_error": 5.879951721318285e-7,
-                    "rel_error": 1.1341384583552022e-6
+                    "abs_error": 5.879951721318285e-07,
+                    "rel_error": 1.1341384583552022e-06
                   },
                   {
                     "step": "0.0025",
                     "quotient": "(0.280491570589 + 0.16429588617j)",
-                    "abs_error": 1.4699884491809234e-7,
-                    "rel_error": 2.8353471466602915e-7
+                    "abs_error": 1.4699884491809234e-07,
+                    "rel_error": 2.8353471466602915e-07
                   },
                   {
                     "step": "0.00125",
                     "quotient": "(0.280491680838 + 0.16429588617j)",
-                    "abs_error": 3.674971447234473e-8,
-                    "rel_error": 7.088368492133541e-8
+                    "abs_error": 3.674971447234473e-08,
+                    "rel_error": 7.088368492133541e-08
                   }
                 ],
                 "observed_order": 1.9999998726955301,
@@ -998,11 +1114,15 @@
         "action": "second",
         "integrand": "\\frac{m}{2}\\dot{x}^2-V(x)",
         "variable": "t",
-        "functions": ["x"],
+        "functions": [
+          "x"
+        ],
         "given_functions": [
           {
             "name": "V",
-            "args": ["x"]
+            "args": [
+              "x"
+            ]
           }
         ],
         "lower": null,
@@ -1014,7 +1134,9 @@
       },
       "functional_latex": "S[x]=\\int_{a}^{b}\\left(\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)\\right)\\mathrm{d}t"
     },
-    "keys": ["second"],
+    "keys": [
+      "second"
+    ],
     "rows": {
       "second": "\\delta^{2}S=\\int_{a}^{b}\\left(- \\eta_{x}^{2} V''\\left(x\\right) + \\dot{\\eta}_{x}^{2} m\\right)\\mathrm{d}t"
     }
@@ -1131,12 +1253,20 @@
         "data": null,
         "candidate": null,
         "assumptions": {
-          "alpha": ["positive"],
-          "beta": ["positive"]
+          "alpha": [
+            "positive"
+          ],
+          "beta": [
+            "positive"
+          ]
         }
       }
     },
-    "keys": ["moment:mean", "moment:variance", "moment:second"],
+    "keys": [
+      "moment:mean",
+      "moment:variance",
+      "moment:second"
+    ],
     "rows": {
       "moment:mean": "\\frac{\\alpha}{\\beta}",
       "moment:variance": "\\frac{\\alpha}{\\beta^{2}}",
@@ -1256,19 +1386,30 @@
         "observation": "x",
         "sample_size": null,
         "iid": null,
-        "estimate": ["mu"],
+        "estimate": [
+          "mu"
+        ],
         "action": "mle",
         "prior": null,
         "data": null,
         "candidate": null,
         "assumptions": {
-          "x": ["real"],
-          "v": ["positive"],
-          "n": ["integer", "positive"]
+          "x": [
+            "real"
+          ],
+          "v": [
+            "positive"
+          ],
+          "n": [
+            "integer",
+            "positive"
+          ]
         }
       }
     },
-    "keys": ["estimate:mu"],
+    "keys": [
+      "estimate:mu"
+    ],
     "rows": {
       "estimate:mu": "\\hat{\\mu} = x"
     }
@@ -1353,19 +1494,31 @@
         "observation": "x",
         "sample_size": null,
         "iid": null,
-        "estimate": ["mu"],
+        "estimate": [
+          "mu"
+        ],
         "action": "score",
         "prior": null,
         "data": null,
         "candidate": null,
         "assumptions": {
-          "x": ["real"],
-          "v": ["positive"],
-          "n": ["integer", "positive"]
+          "x": [
+            "real"
+          ],
+          "v": [
+            "positive"
+          ],
+          "n": [
+            "integer",
+            "positive"
+          ]
         }
       }
     },
-    "keys": ["expr:loglik", "expr:score:mu"],
+    "keys": [
+      "expr:loglik",
+      "expr:score:mu"
+    ],
     "rows": {
       "expr:loglik": "- \\frac{\\mu^{2}}{2 v} + \\frac{\\mu x}{v} - \\frac{\\log{\\left(v \\right)}}{2} - \\frac{\\log{\\left(\\pi \\right)}}{2} - \\frac{\\log{\\left(2 \\right)}}{2} - \\frac{x^{2}}{2 v}",
       "expr:score:mu": "- \\frac{\\mu}{v} + \\frac{x}{v}"
@@ -1392,12 +1545,24 @@
         "expressions_latex": {},
         "estimates": [],
         "matrix_text": [
-          ["1/v", "0"],
-          ["0", "1/(2*v**2)"]
+          [
+            "1/v",
+            "0"
+          ],
+          [
+            "0",
+            "1/(2*v**2)"
+          ]
         ],
         "matrix_latex": [
-          ["\\frac{1}{v}", "0"],
-          ["0", "\\frac{1}{2 v^{2}}"]
+          [
+            "\\frac{1}{v}",
+            "0"
+          ],
+          [
+            "0",
+            "\\frac{1}{2 v^{2}}"
+          ]
         ],
         "posterior": null,
         "checks": [
@@ -1444,19 +1609,31 @@
         "observation": "x",
         "sample_size": null,
         "iid": null,
-        "estimate": ["mu", "v"],
+        "estimate": [
+          "mu",
+          "v"
+        ],
         "action": "fisher_information",
         "prior": null,
         "data": null,
         "candidate": null,
         "assumptions": {
-          "x": ["real"],
-          "v": ["positive"],
-          "n": ["integer", "positive"]
+          "x": [
+            "real"
+          ],
+          "v": [
+            "positive"
+          ],
+          "n": [
+            "integer",
+            "positive"
+          ]
         }
       }
     },
-    "keys": ["fisher"],
+    "keys": [
+      "fisher"
+    ],
     "rows": {
       "fisher": "\\begin{pmatrix}\\frac{1}{v} & 0 \\\\ 0 & \\frac{1}{2 v^{2}}\\end{pmatrix}"
     }
@@ -1468,7 +1645,9 @@
         "reading": null,
         "status": "ok",
         "lagrangian_latex": "- \\frac{k x^{2}}{2} + \\frac{m \\dot{x}^{2}}{2}",
-        "coordinates": ["x"],
+        "coordinates": [
+          "x"
+        ],
         "equilibrium": [
           {
             "name": "x",
@@ -1501,7 +1680,10 @@
             "verification": {
               "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
               "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
-              "directions": ["real", "imaginary"],
+              "directions": [
+                "real",
+                "imaginary"
+              ],
               "parameter_sets_checked": 4,
               "coefficients_passed": true,
               "remainder_passed": true,
@@ -1549,15 +1731,28 @@
       },
       "request": {
         "lagrangian": "\\frac{1}{2}m\\dot{x}^2-\\frac{1}{2}kx^2",
-        "coordinates": ["x"],
+        "coordinates": [
+          "x"
+        ],
         "time": "t",
         "assumptions": {
-          "m": ["positive"],
-          "k": ["positive"]
+          "m": [
+            "positive"
+          ],
+          "k": [
+            "positive"
+          ]
         }
       }
     },
-    "keys": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega", "mode:0:vector"],
+    "keys": [
+      "equil:x",
+      "eq:x",
+      "char",
+      "mode:0:omega2",
+      "mode:0:omega",
+      "mode:0:vector"
+    ],
     "rows": {
       "equil:x": "x = 0",
       "eq:x": "\\ddot{\\delta x} = - \\frac{\\delta x k}{m} + O\\left(\\delta^{4}\\right)",
@@ -1574,7 +1769,9 @@
         "action": "derive",
         "ensemble": "canonical",
         "reason": null,
-        "state_variables": ["beta"],
+        "state_variables": [
+          "beta"
+        ],
         "steps": [
           {
             "name": "levels",
@@ -1892,7 +2089,9 @@
             }
           ]
         },
-        "notes": ["Every result above agreed with an independent numerical evaluation."],
+        "notes": [
+          "Every result above agreed with an independent numerical evaluation."
+        ],
         "message": "Verified against an independent numerical evaluation.",
         "duration_ms": 1821.0
       },
@@ -1919,9 +2118,18 @@
         "temperature": "beta",
         "parameters": [],
         "assumptions": {
-          "epsilon": ["positive"]
+          "epsilon": [
+            "positive"
+          ]
         },
-        "quantities": ["Z", "U", "S", "Var_E", "F", "lnZ"],
+        "quantities": [
+          "Z",
+          "U",
+          "S",
+          "Var_E",
+          "F",
+          "lnZ"
+        ],
         "partials": [],
         "method": null,
         "observable": "E",
@@ -1961,7 +2169,9 @@
         "reading": null,
         "status": "ok",
         "lagrangian_latex": "- \\frac{b x^{4}}{4} - \\frac{x^{2}}{2} + \\frac{\\dot{x}^{2}}{2}",
-        "coordinates": ["x"],
+        "coordinates": [
+          "x"
+        ],
         "equilibrium": [
           {
             "name": "x",
@@ -2015,7 +2225,9 @@
           "expansion": {
             "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
             "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
-            "directions": ["real"],
+            "directions": [
+              "real"
+            ],
             "parameter_sets_checked": 4,
             "coefficients_passed": true,
             "remainder_passed": true,
@@ -2035,17 +2247,26 @@
       },
       "request": {
         "lagrangian": "\\frac12 \\dot{x}^2 - \\frac12 x^2 - \\frac14 b x^4",
-        "coordinates": ["x"],
+        "coordinates": [
+          "x"
+        ],
         "time": "t",
         "assumptions": {
-          "b": ["positive"]
+          "b": [
+            "positive"
+          ]
         },
         "small_parameter": "b",
         "equilibrium": "0",
         "order": 2
       }
     },
-    "keys": ["omega0", "omega", "ratio", "solution"],
+    "keys": [
+      "omega0",
+      "omega",
+      "ratio",
+      "solution"
+    ],
     "rows": {
       "omega0": "\\omega_0 = 1",
       "omega": "\\omega = 1 + \\frac{3 b A^{2}}{8} - \\frac{21 A^{4} b^{2}}{256}",
@@ -2093,7 +2314,11 @@
         ],
         "rank": 3,
         "target": "T",
-        "repeating": ["L", "g", "m"],
+        "repeating": [
+          "L",
+          "g",
+          "m"
+        ],
         "groups": [
           {
             "label": "\\Pi_{1}",
@@ -2109,19 +2334,26 @@
         ],
         "closure": "determined",
         "relation_latex": "T = C\\,\\sqrt{\\frac{L}{g}}",
-        "cannot_enter": ["m"],
+        "cannot_enter": [
+          "m"
+        ],
         "missing": null,
         "tested": [],
         "notes": [
           "Dimensional analysis fixes the groups, not the function of them or any dimensionless constant, and it cannot tell whether the list of quantities is complete.",
           "The choice of groups is not unique: products and powers of groups are also groups."
         ],
-        "features": ["dimensional:pi-groups", "dimensional:target"],
+        "features": [
+          "dimensional:pi-groups",
+          "dimensional:target"
+        ],
         "message": "The dimensions fix T up to a dimensionless constant.",
         "duration_ms": 65
       }
     },
-    "keys": ["group:0"],
+    "keys": [
+      "group:0"
+    ],
     "rows": {
       "group:0": "\\Pi_{1} = \\frac{T \\sqrt{g}}{\\sqrt{L}}"
     }
@@ -2201,7 +2433,9 @@
         ],
         "error_curve": [],
         "tolerance_met": null,
-        "warnings": ["local_only"],
+        "warnings": [
+          "local_only"
+        ],
         "candidates": [],
         "suggestions": [],
         "questions": [],
@@ -2253,15 +2487,21 @@
         "status": "ok",
         "message": "",
         "interpretation": {
-          "unknowns": ["y"],
+          "unknowns": [
+            "y"
+          ],
           "independent": "t",
           "parameters": [],
           "orders": {
             "y": 2
           },
-          "equations_latex": ["y^{3} - y + \\frac{y'}{5} + y'' = 0"],
+          "equations_latex": [
+            "y^{3} - y + \\frac{y'}{5} + y'' = 0"
+          ],
           "conditions_latex": [],
-          "notes": ["t is the independent variable, read as real unless you declared otherwise"]
+          "notes": [
+            "t is the independent variable, read as real unless you declared otherwise"
+          ]
         },
         "structure": {
           "kind": "ode",
@@ -2280,9 +2520,14 @@
           "position_only": false
         },
         "problem_kind": "general",
-        "conditions_needed": ["y(t_0)", "y'(t_0)"],
+        "conditions_needed": [
+          "y(t_0)",
+          "y'(t_0)"
+        ],
         "classes": [],
-        "solved_latex": ["y'' = - y^{3} + y - \\frac{y'}{5}"],
+        "solved_latex": [
+          "y'' = - y^{3} + y - \\frac{y'}{5}"
+        ],
         "restrictions_latex": [],
         "methods": [
           {
@@ -2376,7 +2621,10 @@
             "available": true,
             "rank": null,
             "reason": "the acceleration depends on the velocity (damping or a gyroscopic term)",
-            "requires": ["a small parameter named by you", "an equilibrium to oscillate about"],
+            "requires": [
+              "a small parameter named by you",
+              "an equilibrium to oscillate about"
+            ],
             "limitations": [
               "periodic solutions near a stable equilibrium only",
               "an asymptotic series"
@@ -2391,7 +2639,9 @@
             "available": true,
             "rank": null,
             "reason": "no symbolic parameter to expand in",
-            "requires": ["a small parameter named by you"],
+            "requires": [
+              "a small parameter named by you"
+            ],
             "limitations": [
               "valid for small values of that parameter and bounded intervals",
               "secular terms grow with time and can invalidate the expansion for long times"
@@ -2433,46 +2683,79 @@
         "qualitative": {
           "status": "ok",
           "message": "",
-          "states_latex": ["y", "y'"],
-          "field_latex": ["y' = y'", "y'' = - y^{3} + y - \\frac{y'}{5}"],
+          "states_latex": [
+            "y",
+            "y'"
+          ],
+          "field_latex": [
+            "y' = y'",
+            "y'' = - y^{3} + y - \\frac{y'}{5}"
+          ],
           "equilibria": [
             {
-              "point_latex": ["y = -1", "y' = 0"],
-              "point_numeric": [-1.0, 0.0],
+              "point_latex": [
+                "y = -1",
+                "y' = 0"
+              ],
+              "point_numeric": [
+                -1.0,
+                0.0
+              ],
               "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\-2 & - \\frac{1}{5}\\end{matrix}\\right]",
               "eigenvalues_latex": [
                 "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
                 "- \\frac{1}{10} + \\frac{\\sqrt{199} \\mathrm{i}}{10}"
               ],
-              "eigenvalues_numeric": ["-0.1 - 1.4106736i", "-0.1 + 1.4106736i"],
+              "eigenvalues_numeric": [
+                "-0.1 - 1.4106736i",
+                "-0.1 + 1.4106736i"
+              ],
               "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} + 2",
               "classification": "stable_spiral",
               "classification_text": "linearly asymptotically stable (a sink: a spiral)",
               "decided": true
             },
             {
-              "point_latex": ["y = 0", "y' = 0"],
-              "point_numeric": [0.0, 0.0],
+              "point_latex": [
+                "y = 0",
+                "y' = 0"
+              ],
+              "point_numeric": [
+                0.0,
+                0.0
+              ],
               "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\1 & - \\frac{1}{5}\\end{matrix}\\right]",
               "eigenvalues_latex": [
                 "- \\frac{\\sqrt{101}}{10} - \\frac{1}{10}",
                 "- \\frac{1}{10} + \\frac{\\sqrt{101}}{10}"
               ],
-              "eigenvalues_numeric": ["-1.1049876", "0.90498756"],
+              "eigenvalues_numeric": [
+                "-1.1049876",
+                "0.90498756"
+              ],
               "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} - 1",
               "classification": "saddle",
               "classification_text": "linearly unstable (a saddle: some directions attract, some repel)",
               "decided": true
             },
             {
-              "point_latex": ["y = 1", "y' = 0"],
-              "point_numeric": [1.0, 0.0],
+              "point_latex": [
+                "y = 1",
+                "y' = 0"
+              ],
+              "point_numeric": [
+                1.0,
+                0.0
+              ],
               "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\-2 & - \\frac{1}{5}\\end{matrix}\\right]",
               "eigenvalues_latex": [
                 "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
                 "- \\frac{1}{10} + \\frac{\\sqrt{199} \\mathrm{i}}{10}"
               ],
-              "eigenvalues_numeric": ["-0.1 - 1.4106736i", "-0.1 + 1.4106736i"],
+              "eigenvalues_numeric": [
+                "-0.1 - 1.4106736i",
+                "-0.1 + 1.4106736i"
+              ],
               "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} + 2",
               "classification": "stable_spiral",
               "classification_text": "linearly asymptotically stable (a sink: a spiral)",
@@ -2534,9 +2817,13 @@
         "duration_ms": 906
       },
       "request": {
-        "equations": ["y'' - y + y^3 + y'/5 = 0"],
+        "equations": [
+          "y'' - y + y^3 + y'/5 = 0"
+        ],
         "format": "text",
-        "unknowns": ["y"],
+        "unknowns": [
+          "y"
+        ],
         "independent": "t",
         "assumptions": {},
         "conditions": [],
@@ -2600,8 +2887,14 @@
         "result_text": "-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S)",
         "derivative": {
           "kind": "gradient",
-          "variable_shape": [3, 3],
-          "result_shape": [3, 3],
+          "variable_shape": [
+            3,
+            3
+          ],
+          "result_shape": [
+            3,
+            3
+          ],
           "layout": "shape_of_variable",
           "field": "real",
           "constraint": "positive_definite",
@@ -2721,7 +3014,10 @@
         "candidate": null
       }
     },
-    "keys": ["step:0", "alt:0"],
+    "keys": [
+      "step:0",
+      "alt:0"
+    ],
     "rows": {
       "step:0": "- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}",
       "alt:0": "- S^{-1} + S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1} - \\operatorname{diag}\\left(- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}\\right)"
@@ -2749,8 +3045,14 @@
         "result_kind": "explicit",
         "result_latex": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]",
         "result_entries": [
-          ["-1 + E", "-1"],
-          ["0", "-1/2 + exp(2)/2"]
+          [
+            "-1 + E",
+            "-1"
+          ],
+          [
+            "0",
+            "-1/2 + exp(2)/2"
+          ]
         ],
         "equation_latex": "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
         "evaluated": true,
@@ -2815,7 +3117,12 @@
               "outcome": "selected"
             }
           ],
-          "dimensions": [[2, 2]],
+          "dimensions": [
+            [
+              2,
+              2
+            ]
+          ],
           "matrices": 2,
           "explicit": 2,
           "time_dependent": 0,
@@ -2844,7 +3151,7 @@
             }
           ],
           "digits": 16,
-          "tolerance": 1e-9,
+          "tolerance": 1e-09,
           "max_residual": 8.688474537036675e-18,
           "points_checked": 4,
           "points_agreed": 4,
@@ -2860,8 +3167,14 @@
             "rows": null,
             "cols": null,
             "entries": [
-              ["1", "0"],
-              ["0", "2"]
+              [
+                "1",
+                "0"
+              ],
+              [
+                "0",
+                "2"
+              ]
             ],
             "depends_on": null,
             "symmetric": false,
@@ -2872,8 +3185,14 @@
             "rows": null,
             "cols": null,
             "entries": [
-              ["0", "1"],
-              ["0", "0"]
+              [
+                "0",
+                "1"
+              ],
+              [
+                "0",
+                "0"
+              ]
             ],
             "depends_on": null,
             "symmetric": false,
@@ -2890,7 +3209,9 @@
         "candidate": null
       }
     },
-    "keys": ["step:2"],
+    "keys": [
+      "step:2"
+    ],
     "rows": {
       "step:2": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]"
     }
@@ -2902,7 +3223,10 @@
         "reading": null,
         "status": "ok",
         "lagrangian_latex": "- \\frac{3 x^{2}}{2} + x y + \\frac{\\dot{x}^{2}}{2} - \\frac{3 y^{2}}{2} + \\frac{\\dot{y}^{2}}{2}",
-        "coordinates": ["x", "y"],
+        "coordinates": [
+          "x",
+          "y"
+        ],
         "equilibrium": [
           {
             "name": "x",
@@ -2941,7 +3265,10 @@
             "verification": {
               "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
               "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
-              "directions": ["real", "imaginary"],
+              "directions": [
+                "real",
+                "imaginary"
+              ],
               "parameter_sets_checked": 4,
               "coefficients_passed": true,
               "remainder_passed": true,
@@ -2962,7 +3289,10 @@
             "verification": {
               "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
               "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
-              "directions": ["real", "imaginary"],
+              "directions": [
+                "real",
+                "imaginary"
+              ],
               "parameter_sets_checked": 4,
               "coefficients_passed": true,
               "remainder_passed": true,
@@ -3031,7 +3361,10 @@
       },
       "request": {
         "lagrangian": "\\frac12 (\\dot{x}^2 + \\dot{y}^2) - \\frac12 (3 x^2 + 3 y^2 - 2 x y)",
-        "coordinates": ["x", "y"],
+        "coordinates": [
+          "x",
+          "y"
+        ],
         "time": "t",
         "assumptions": {}
       }
@@ -3070,7 +3403,10 @@
         "action": "derive",
         "ensemble": "grand_canonical",
         "reason": null,
-        "state_variables": ["beta", "mu"],
+        "state_variables": [
+          "beta",
+          "mu"
+        ],
         "steps": [
           {
             "name": "levels",
@@ -3223,7 +3559,9 @@
             "latex": "\\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
             "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
             "result_kind": "exact",
-            "held_fixed": ["mu"],
+            "held_fixed": [
+              "mu"
+            ],
             "variable": null,
             "route": "N = (1/beta) d ln Xi / d mu",
             "checks": [
@@ -3251,7 +3589,9 @@
             "latex": "\\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
             "text": "(exp(beta*eps) + 1)*exp(-beta*(eps - mu))",
             "result_kind": "exact",
-            "held_fixed": ["mu"],
+            "held_fixed": [
+              "mu"
+            ],
             "variable": null,
             "route": "Var(N) = (1/beta^2) d^2 ln Xi / d mu^2",
             "checks": [
@@ -3287,7 +3627,9 @@
             "latex": "eps \\mathrm{e}^{\\beta \\left(- eps + \\mu\\right)}",
             "text": "eps*exp(beta*(-eps + mu))",
             "result_kind": "exact",
-            "held_fixed": ["mu"],
+            "held_fixed": [
+              "mu"
+            ],
             "variable": null,
             "route": "U = -d ln Xi / d beta + mu N",
             "checks": [
@@ -3315,7 +3657,9 @@
             "latex": "- eps \\left(eps - \\mu\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}",
             "text": "-eps*(eps - mu)*exp(-beta*(eps - mu))",
             "result_kind": "exact",
-            "held_fixed": ["mu"],
+            "held_fixed": [
+              "mu"
+            ],
             "variable": "beta",
             "route": "dU/dbeta at fixed mu, times 1",
             "checks": [
@@ -3412,14 +3756,25 @@
         "temperature": "beta",
         "parameters": [],
         "assumptions": {
-          "eps": ["positive"]
+          "eps": [
+            "positive"
+          ]
         },
-        "quantities": ["Xi", "lnXi", "Omega", "N", "Var_N", "U"],
+        "quantities": [
+          "Xi",
+          "lnXi",
+          "Omega",
+          "N",
+          "Var_N",
+          "U"
+        ],
         "partials": [
           {
             "of": "U",
             "variable": "beta",
-            "held_fixed": ["mu"],
+            "held_fixed": [
+              "mu"
+            ],
             "order": 1,
             "scale": "1",
             "label": "S"
@@ -3465,7 +3820,9 @@
         "action": "partition",
         "ensemble": "microcanonical",
         "reason": null,
-        "state_variables": ["beta"],
+        "state_variables": [
+          "beta"
+        ],
         "steps": [
           {
             "name": "levels",
@@ -3605,7 +3962,9 @@
             }
           ]
         },
-        "notes": ["Every result above agreed with an independent numerical evaluation."],
+        "notes": [
+          "Every result above agreed with an independent numerical evaluation."
+        ],
         "message": "Verified against an independent numerical evaluation.",
         "duration_ms": 90.0
       },
@@ -3650,7 +4009,10 @@
         }
       ]
     },
-    "keys": ["quantity:Omega", "quantity:S"],
+    "keys": [
+      "quantity:Omega",
+      "quantity:S"
+    ],
     "rows": {
       "quantity:Omega": "\\Omega = 210",
       "quantity:S": "S = k_{B} \\ln \\left(210\\right)"
@@ -3663,7 +4025,10 @@
         "action": "expectation",
         "ensemble": "grand_canonical",
         "reason": null,
-        "state_variables": ["beta", "mu"],
+        "state_variables": [
+          "beta",
+          "mu"
+        ],
         "steps": [
           {
             "name": "levels",
@@ -3832,7 +4197,9 @@
         "temperature": "beta",
         "parameters": [],
         "assumptions": {
-          "eps": ["positive"]
+          "eps": [
+            "positive"
+          ]
         },
         "quantities": [],
         "partials": [],
@@ -3852,7 +4219,9 @@
         }
       ]
     },
-    "keys": ["quantity:variance_N"],
+    "keys": [
+      "quantity:variance_N"
+    ],
     "rows": {
       "quantity:variance_N": "\\operatorname{Var}(N) = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}"
     }
@@ -3864,7 +4233,9 @@
         "action": "expectation",
         "ensemble": "canonical",
         "reason": null,
-        "state_variables": ["beta"],
+        "state_variables": [
+          "beta"
+        ],
         "steps": [
           {
             "name": "levels",
@@ -4003,7 +4374,9 @@
             }
           ]
         },
-        "notes": ["Every result above agreed with an independent numerical evaluation."],
+        "notes": [
+          "Every result above agreed with an independent numerical evaluation."
+        ],
         "message": "Verified against an independent numerical evaluation.",
         "duration_ms": 188.0
       },
@@ -4030,7 +4403,9 @@
         "temperature": "beta",
         "parameters": [],
         "assumptions": {
-          "epsilon": ["positive"]
+          "epsilon": [
+            "positive"
+          ]
         },
         "quantities": [],
         "partials": [],
@@ -4050,9 +4425,871 @@
         }
       ]
     },
-    "keys": ["quantity:mean_E"],
+    "keys": [
+      "quantity:mean_E"
+    ],
     "rows": {
       "quantity:mean_E": "\\langle E \\rangle = \\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
+    }
+  },
+  "vector_scalar": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof",
+        "action": "evaluate",
+        "coordinates": "cylindrical",
+        "to": null,
+        "result_kind": "scalar",
+        "input_latex": "\\nabla \\cdot \\mathbf{A}",
+        "result_latex": "\\frac{\\partial}{\\partial \\rho} A_{\\rho} + \\frac{\\partial}{\\partial z} A_{z} + \\frac{A_{\\rho}}{\\rho} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{\\phi}}{\\rho}",
+        "result_text": "Derivative(A_rho(rho, phi, z), rho) + Derivative(A_z(rho, phi, z), z) + A_rho(rho, phi, z)/rho + Derivative(A_phi(rho, phi, z), phi)/rho",
+        "components_latex": [],
+        "components_text": [],
+        "basis_latex": [],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_finite_difference",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 4.0540404603204904e-20,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_finite_difference",
+              "passed": true,
+              "note": "agreed at 6 points on 2 random field assignments"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Cylindrical coordinates (rho, phi, z), rho > 0, phi the azimuth; physical components along the right-handed unit vectors (rho, phi, z); scale factors (1, rho, 1).",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "every field is differentiable as often as the expression differentiates it"
+        ],
+        "restrictions_latex": [
+          "\\rho \\neq 0"
+        ],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "evaluate",
+          "coordinates": "cylindrical",
+          "result_kind": "scalar",
+          "operator_depth": 1,
+          "abstract_fields": 1,
+          "explicit_fields": 0,
+          "stages": [
+            {
+              "name": "parse",
+              "duration_ms": 0
+            },
+            {
+              "name": "lower",
+              "duration_ms": 5
+            },
+            {
+              "name": "tidy",
+              "duration_ms": 70
+            },
+            {
+              "name": "verify",
+              "duration_ms": 140
+            },
+            {
+              "name": "render",
+              "duration_ms": 4
+            }
+          ],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 3146
+      },
+      "request": {
+        "expression": "\\nabla\\cdot\\mathbf{A}",
+        "format": "latex",
+        "coordinates": "cylindrical",
+        "fields": [
+          {
+            "name": "A",
+            "kind": "vector",
+            "components": null,
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "evaluate",
+        "to": null,
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": [
+      "result"
+    ],
+    "rows": {
+      "result": "\\frac{\\partial}{\\partial \\rho} A_{\\rho} + \\frac{\\partial}{\\partial z} A_{z} + \\frac{A_{\\rho}}{\\rho} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{\\phi}}{\\rho}"
+    }
+  },
+  "vector_components": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "numerically checked against an independent Cartesian finite-difference evaluation at 6 points; this is evidence, not a proof",
+        "action": "evaluate",
+        "coordinates": "cylindrical",
+        "to": null,
+        "result_kind": "vector",
+        "input_latex": "\\nabla \\times \\mathbf{A}",
+        "result_latex": "\\left(- \\frac{\\partial}{\\partial z} A_{\\phi} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{z}}{\\rho}\\right)\\,\\hat{\\rho} + \\left(\\frac{\\partial}{\\partial z} A_{\\rho} - \\frac{\\partial}{\\partial \\rho} A_{z}\\right)\\,\\hat{\\phi} + \\frac{\\rho \\frac{\\partial}{\\partial \\rho} A_{\\phi} + A_{\\phi} - \\frac{\\partial}{\\partial \\phi} A_{\\rho}}{\\rho}\\,\\hat{z}",
+        "result_text": "(-Derivative(A_phi(rho, phi, z), z) + Derivative(A_z(rho, phi, z), phi)/rho, Derivative(A_rho(rho, phi, z), z) - Derivative(A_z(rho, phi, z), rho), (rho*Derivative(A_phi(rho, phi, z), rho) + A_phi(rho, phi, z) - Derivative(A_rho(rho, phi, z), phi))/rho)",
+        "components_latex": [
+          "- \\frac{\\partial}{\\partial z} A_{\\phi} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{z}}{\\rho}",
+          "\\frac{\\partial}{\\partial z} A_{\\rho} - \\frac{\\partial}{\\partial \\rho} A_{z}",
+          "\\frac{\\rho \\frac{\\partial}{\\partial \\rho} A_{\\phi} + A_{\\phi} - \\frac{\\partial}{\\partial \\phi} A_{\\rho}}{\\rho}"
+        ],
+        "components_text": [
+          "-Derivative(A_phi(rho, phi, z), z) + Derivative(A_z(rho, phi, z), phi)/rho",
+          "Derivative(A_rho(rho, phi, z), z) - Derivative(A_z(rho, phi, z), rho)",
+          "(rho*Derivative(A_phi(rho, phi, z), rho) + A_phi(rho, phi, z) - Derivative(A_rho(rho, phi, z), phi))/rho"
+        ],
+        "basis_latex": [
+          "\\hat{\\rho}",
+          "\\hat{\\phi}",
+          "\\hat{z}"
+        ],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_finite_difference",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 9.10137390261176e-20,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_finite_difference",
+              "passed": true,
+              "note": "agreed at 6 points on 2 random field assignments"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Cylindrical coordinates (rho, phi, z), rho > 0, phi the azimuth; physical components along the right-handed unit vectors (rho, phi, z); scale factors (1, rho, 1).",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "every field is differentiable as often as the expression differentiates it"
+        ],
+        "restrictions_latex": [
+          "\\rho \\neq 0"
+        ],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "evaluate",
+          "coordinates": "cylindrical",
+          "result_kind": "vector",
+          "operator_depth": 1,
+          "abstract_fields": 1,
+          "explicit_fields": 0,
+          "stages": [
+            {
+              "name": "parse",
+              "duration_ms": 0
+            },
+            {
+              "name": "lower",
+              "duration_ms": 6
+            },
+            {
+              "name": "tidy",
+              "duration_ms": 88
+            },
+            {
+              "name": "verify",
+              "duration_ms": 169
+            },
+            {
+              "name": "render",
+              "duration_ms": 6
+            }
+          ],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 397
+      },
+      "request": {
+        "expression": "\\nabla\\times\\mathbf{A}",
+        "format": "latex",
+        "coordinates": "cylindrical",
+        "fields": [
+          {
+            "name": "A",
+            "kind": "vector",
+            "components": null,
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "evaluate",
+        "to": null,
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": [
+      "component:0",
+      "component:1",
+      "component:2"
+    ],
+    "rows": {
+      "component:0": "\\hat{\\rho}:\\quad - \\frac{\\partial}{\\partial z} A_{\\phi} + \\frac{\\frac{\\partial}{\\partial \\phi} A_{z}}{\\rho}",
+      "component:1": "\\hat{\\phi}:\\quad \\frac{\\partial}{\\partial z} A_{\\rho} - \\frac{\\partial}{\\partial \\rho} A_{z}",
+      "component:2": "\\hat{z}:\\quad \\frac{\\rho \\frac{\\partial}{\\partial \\rho} A_{\\phi} + A_{\\phi} - \\frac{\\partial}{\\partial \\phi} A_{\\rho}}{\\rho}"
+    }
+  },
+  "vector_convert": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "converted from cartesian to spherical and checked numerically by an independent route (through Cartesian coordinates); this is evidence, not a proof",
+        "action": "convert",
+        "coordinates": "spherical",
+        "to": "spherical",
+        "result_kind": "vector",
+        "input_latex": "\\mathbf{F}",
+        "result_latex": "r\\,\\hat{r}",
+        "result_text": "(r, 0, 0)",
+        "components_latex": [
+          "r",
+          "0",
+          "0"
+        ],
+        "components_text": [
+          "r",
+          "0",
+          "0"
+        ],
+        "basis_latex": [
+          "\\hat{r}",
+          "\\hat{\\theta}",
+          "\\hat{\\phi}"
+        ],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_roundtrip",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 5.236355457127075e-52,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_roundtrip",
+              "passed": true,
+              "note": "agreed at 6 points"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Spherical coordinates (r, theta, phi), r > 0, theta the polar angle, phi the azimuth; physical components along the right-handed unit vectors (r, theta, phi); scale factors (1, r, r sin(theta)).",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "the change of coordinates holds where both systems are regular"
+        ],
+        "restrictions_latex": [
+          "r \\neq 0",
+          "\\sin{\\left(\\theta \\right)} \\neq 0"
+        ],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "convert",
+          "coordinates": "cartesian",
+          "result_kind": "vector",
+          "operator_depth": 0,
+          "abstract_fields": 0,
+          "explicit_fields": 1,
+          "stages": [
+            {
+              "name": "parse",
+              "duration_ms": 0
+            },
+            {
+              "name": "lower",
+              "duration_ms": 118
+            },
+            {
+              "name": "verify",
+              "duration_ms": 17
+            }
+          ],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 245
+      },
+      "request": {
+        "expression": "\\mathbf{F}",
+        "format": "latex",
+        "coordinates": "cartesian",
+        "fields": [
+          {
+            "name": "F",
+            "kind": "vector",
+            "components": [
+              "x",
+              "y",
+              "z"
+            ],
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "convert",
+        "to": "spherical",
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": [
+      "component:0",
+      "component:1",
+      "component:2"
+    ],
+    "rows": {
+      "component:0": "\\hat{r}:\\quad r",
+      "component:1": "\\hat{\\theta}:\\quad 0",
+      "component:2": "\\hat{\\phi}:\\quad 0"
+    }
+  },
+  "vector_identity": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "vector.curl_curl applied; the two expressions were compared by the exact components (difference identically zero) and by an independent Cartesian evaluation. It holds for fields of the smoothness you declared.",
+        "action": "apply_identity",
+        "coordinates": "cartesian",
+        "to": null,
+        "result_kind": "vector",
+        "input_latex": "\\nabla \\times \\left(\\nabla \\times \\mathbf{A}\\right)",
+        "result_latex": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}",
+        "result_text": "Grad(Div(A)) - Lap(A)",
+        "components_latex": [],
+        "components_text": [],
+        "basis_latex": [],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "cartesian_finite_difference",
+          "numeric_passed": true,
+          "points_checked": 6,
+          "points_agreed": 6,
+          "points_skipped": 0,
+          "max_residual": 0.0,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "cartesian_finite_difference",
+              "passed": true,
+              "note": "agreed at 6 points on 2 random field assignments"
+            }
+          ],
+          "note": ""
+        },
+        "conventions": [
+          "Cartesian coordinates (x, y, z); components along the unit vectors x, y, z.",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [],
+        "restrictions_latex": [],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [
+          {
+            "action": "apply_identity",
+            "title": "vector.curl_curl",
+            "before_latex": "\\nabla \\times \\left(\\nabla \\times \\mathbf{A}\\right)",
+            "after_latex": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}",
+            "rule_id": "vector.curl_curl",
+            "reverse": false,
+            "path": [],
+            "part_latex": "\\nabla \\times \\left(\\nabla \\times \\mathbf{A}\\right)",
+            "evidence": "identity",
+            "given": [],
+            "needs": [
+              "c2"
+            ],
+            "verification": {
+              "method": "cartesian_finite_difference",
+              "numeric_passed": true,
+              "points_checked": 6,
+              "points_agreed": 6,
+              "points_skipped": 0,
+              "max_residual": 0.0,
+              "symbolic_zero": null,
+              "checks": [
+                {
+                  "name": "cartesian_finite_difference",
+                  "passed": true,
+                  "note": "agreed at 6 points on 2 random field assignments"
+                }
+              ],
+              "note": ""
+            },
+            "symbolic_zero": true,
+            "chain": null
+          }
+        ],
+        "applicable": [],
+        "evidence": "identity",
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": null,
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "apply_identity",
+          "coordinates": "cartesian",
+          "result_kind": "vector",
+          "operator_depth": 2,
+          "abstract_fields": 1,
+          "explicit_fields": 0,
+          "stages": [],
+          "reason": null,
+          "points": 6,
+          "trace_id": null
+        },
+        "duration_ms": 557
+      },
+      "request": {
+        "expression": "\\nabla\\times(\\nabla\\times\\mathbf{A})",
+        "format": "latex",
+        "coordinates": "cartesian",
+        "fields": [
+          {
+            "name": "A",
+            "kind": "vector",
+            "components": null,
+            "depends_on": null,
+            "smoothness": "c2"
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "apply_identity",
+        "to": null,
+        "rule_id": "vector.curl_curl",
+        "path": [],
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": [
+      "step:0"
+    ],
+    "rows": {
+      "step:0": "\\nabla \\left(\\nabla \\cdot \\mathbf{A}\\right) - \\nabla^{2} \\mathbf{A}"
+    }
+  },
+  "vector_singular": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "message": "equal as distributions, not pointwise: the classical value is 0 away from the source and the distributional one is a point mass. Derived by the shrinking-sphere argument for this kernel (each hypothesis checked exactly) and confirmed by 4 independent pairings and 2 flux checks; the numerical pairings are supporting evidence, not a proof.",
+        "action": "distributional",
+        "coordinates": "cartesian",
+        "to": null,
+        "result_kind": "scalar",
+        "input_latex": "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right)",
+        "result_latex": "4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)",
+        "result_text": "4*pi*PointDelta(0, 0, 0)",
+        "components_latex": [],
+        "components_text": [],
+        "basis_latex": [],
+        "scale_factors_latex": [],
+        "determinant_latex": null,
+        "verification": {
+          "method": "distributional_weak_form",
+          "numeric_passed": true,
+          "points_checked": 14,
+          "points_agreed": 14,
+          "points_skipped": 0,
+          "max_residual": 3.907985046680551e-14,
+          "symbolic_zero": null,
+          "checks": [
+            {
+              "name": "classical divergence is zero away from the source (finite differences)",
+              "passed": true,
+              "note": ""
+            },
+            {
+              "name": "hypotheses of the shrinking-sphere argument (exact)",
+              "passed": true,
+              "note": ""
+            },
+            {
+              "name": "Cartesian reading of the field against the input expression",
+              "passed": true,
+              "note": "8 points"
+            },
+            {
+              "name": "pairings with test functions (independent quadrature)",
+              "passed": true,
+              "note": "4 test functions, tolerance 1e-7"
+            },
+            {
+              "name": "flux through spheres (independent quadrature)",
+              "passed": true,
+              "note": "2 radii"
+            },
+            {
+              "name": "regularised field (reported, supporting evidence only)",
+              "passed": null,
+              "note": "not part of the decision"
+            }
+          ],
+          "note": "derived by the shrinking-sphere argument; independent pairings are supporting evidence"
+        },
+        "conventions": [
+          "Cartesian coordinates (x, y, z); components along the unit vectors x, y, z.",
+          "Fields and constants are real-valued when sampled; coordinates are real.",
+          "Square-root, logarithm and inverse-function branch domains are not analysed."
+        ],
+        "assumptions_used": [
+          "the coordinates are real and the source position is a real point",
+          "test functions are smooth and rapidly decreasing; constants are sampled as real numbers"
+        ],
+        "restrictions_latex": [
+          "\\left(x, y, z\\right) \\neq \\left(0, 0, 0\\right)"
+        ],
+        "restrictions_complete": true,
+        "blocked": [],
+        "undeclared": [],
+        "steps": [],
+        "applicable": [],
+        "evidence": null,
+        "given": [],
+        "search_complete": null,
+        "equations_latex": [
+          "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)"
+        ],
+        "needs_premises": [],
+        "model_check": null,
+        "derivation": null,
+        "integral": null,
+        "em": null,
+        "singular": {
+          "family": "divergence",
+          "classical_latex": "0",
+          "classical_domain_latex": "\\left(x, y, z\\right) \\neq \\left(0, 0, 0\\right)",
+          "distributional_latex": "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)",
+          "strength_latex": "4 \\pi",
+          "source_latex": "\\left(0, 0, 0\\right)",
+          "support": "the single point where the kernel is singular",
+          "derivation": [
+            {
+              "title": "Classical divergence away from the source",
+              "latex": "\\nabla\\cdot\\mathbf F = 0 \\quad (\\mathbf r\\neq\\mathbf a)",
+              "status": "established",
+              "note": "exact symbolic zero of the sum of the partial derivatives of the input field"
+            },
+            {
+              "title": "Flux density on a small sphere",
+              "latex": "\\mathbf F\\cdot\\hat{\\mathbf n}=\\frac{1}{\\varepsilon^{2}}\\ \\text{on }|\\mathbf r-\\mathbf a|=\\varepsilon",
+              "status": "established",
+              "note": "exact: F . (r - a) = C/|r - a|, computed from the input field"
+            },
+            {
+              "title": "Local integrability",
+              "latex": "(\\mathbf F\\cdot\\mathbf F)\\,|\\mathbf r-\\mathbf a|^{4}=C^{2}",
+              "status": "established",
+              "note": "exact; so |F| = |C|/|r - a|^2 is integrable near the source and the excised ball contributes at most 4 pi |C| sup|grad phi| eps, which tends to 0"
+            },
+            {
+              "title": "Weak form",
+              "latex": "\\langle\\nabla\\cdot\\mathbf F,\\varphi\\rangle=-\\int_{\\mathbb R^{3}}\\mathbf F\\cdot\\nabla\\varphi\\,d^{3}r",
+              "status": "established",
+              "note": "the definition of the distributional derivative (a test function phi is smooth and decays fast)"
+            },
+            {
+              "title": "Punctured domain and the divergence theorem",
+              "latex": "-\\int_{|\\mathbf r-\\mathbf a|>\\varepsilon}\\mathbf F\\cdot\\nabla\\varphi\\,d^{3}r=\\oint_{|\\mathbf r-\\mathbf a|=\\varepsilon}\\varphi\\,\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS",
+              "status": "established",
+              "note": "the outward normal of the punctured domain points toward the source, so the inner boundary enters with the opposite sign and the volume term vanishes by the first step"
+            },
+            {
+              "title": "Shrinking the sphere",
+              "latex": "\\oint\\varphi\\,\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS=1\\oint\\varphi(\\mathbf a+\\varepsilon\\hat{\\mathbf n})\\,d\\Omega\\ \\xrightarrow{\\varepsilon\\to0}\\ 4\\pi\\,1\\,\\varphi(\\mathbf a)",
+              "status": "established",
+              "note": "phi is continuous at the source; the excised ball contributes nothing (local integrability)"
+            }
+          ],
+          "flux_latex": "\\oint_{|\\mathbf r-\\mathbf a|=\\varepsilon}\\mathbf F\\cdot\\hat{\\mathbf n}\\,dS=4 \\pi",
+          "weak_checks": [
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "e^{-|\\mathbf r-\\mathbf a|^2/2.42}",
+              "expected": 12.566370614359172,
+              "measured": 12.566370614359156,
+              "error": 1.5987211554602254e-14,
+              "passed": true
+            },
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "\\left(2+\\tfrac12 u-\\tfrac3{10}v+\\tfrac25 uw\\right)e^{-|\\mathbf r-\\mathbf a|^2/1.62}",
+              "expected": 25.132741228718345,
+              "measured": 25.132741228718384,
+              "error": 3.907985046680551e-14,
+              "passed": true
+            },
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "\\left(1+\\tfrac3{10}(z-c_z)\\right)e^{-|\\mathbf r-\\mathbf c|^2/1.28},\\ \\mathbf c=\\mathbf a+(0.5,-0.4,0.3)",
+              "expected": 7.737576829789694,
+              "measured": 7.7375768297896945,
+              "error": 8.881784197001252e-16,
+              "passed": true
+            },
+            {
+              "label": "pairing with a test function",
+              "test_function_latex": "u\\,e^{-|\\mathbf r-\\mathbf a|^2/2}",
+              "expected": 0.0,
+              "measured": 1.5429764206305514e-18,
+              "error": 1.5429764206305514e-18,
+              "passed": true
+            }
+          ],
+          "flux_checks": [
+            {
+              "label": "outward flux through the sphere of radius 0.7",
+              "test_function_latex": "",
+              "expected": 12.566370614359172,
+              "measured": 12.566370614359172,
+              "error": 0.0,
+              "passed": true
+            },
+            {
+              "label": "outward flux through the sphere of radius 1.9",
+              "test_function_latex": "",
+              "expected": 12.566370614359172,
+              "measured": 12.566370614359174,
+              "error": 1.7763568394002505e-15,
+              "passed": true
+            }
+          ],
+          "regularisation": [
+            {
+              "eps": 0.4,
+              "value": 18.444914217894915,
+              "expected": 25.132741228718345,
+              "error": 6.68782701082343
+            },
+            {
+              "eps": 0.2,
+              "value": 22.37051306505613,
+              "expected": 25.132741228718345,
+              "error": 2.762228163662215
+            },
+            {
+              "eps": 0.1,
+              "value": 24.138764890668032,
+              "expected": 25.132741228718345,
+              "error": 0.993976338050313
+            }
+          ],
+          "proof_status": "derived",
+          "scope": "Derived for one point source of the Coulomb kernel C (r - a)/|r - a|^3 (or the Laplacian of C/|r - a|) with a constant strength C and a constant real source a, against smooth rapidly decreasing test functions. Not covered: any other singular field, several sources, products, derivatives or compositions of the delta.",
+          "unresolved": [
+            "behaviour at infinity is assumed rapidly decreasing through the test functions"
+          ],
+          "claim": null
+        },
+        "singular_hint": null,
+        "diagnostics": {
+          "action": "distributional",
+          "coordinates": "cartesian",
+          "result_kind": "scalar",
+          "operator_depth": 0,
+          "abstract_fields": 0,
+          "explicit_fields": 1,
+          "stages": [
+            {
+              "name": "singular",
+              "duration_ms": 498
+            }
+          ],
+          "reason": null,
+          "points": 14,
+          "trace_id": null
+        },
+        "duration_ms": 635
+      },
+      "request": {
+        "expression": "\\nabla\\cdot\\frac{\\mathbf{r}}{|\\mathbf{r}|^3}",
+        "format": "latex",
+        "coordinates": "cartesian",
+        "fields": [
+          {
+            "name": "r",
+            "kind": "vector",
+            "components": [
+              "x",
+              "y",
+              "z"
+            ],
+            "depends_on": null,
+            "smoothness": null
+          }
+        ],
+        "constants": [],
+        "assumptions": {},
+        "action": "distributional",
+        "to": null,
+        "rule_id": null,
+        "path": null,
+        "reverse": false,
+        "premises": [],
+        "premise": null,
+        "operator": null,
+        "target": null,
+        "template": null,
+        "em": null,
+        "integral": null,
+        "curve": null,
+        "surface": null,
+        "region": null,
+        "trace_id": null
+      }
+    },
+    "keys": [
+      "distributional"
+    ],
+    "rows": {
+      "distributional": "\\nabla \\cdot \\left(\\frac{\\mathbf{r}}{\\left(\\mathbf{r} \\cdot \\mathbf{r}\\right)^{\\frac{3}{2}}}\\right) = 4 \\pi \\delta^{(3)}\\left(\\mathbf{r}\\right)"
     }
   }
 }

@@ -216,7 +216,7 @@ def test_a_live_engine_card_is_read_like_the_fixture(
 def test_the_three_types_are_list_readers_and_each_remaining_type_is_in_exactly_one_set() -> None:
     for kind in set(CARD_TYPE.values()):
         assert kind in LIST_READERS and kind not in LIST_NOT_YET_NUMBERED
-    assert {"vector"} == LIST_NOT_YET_NUMBERED
+    assert not LIST_NOT_YET_NUMBERED
 
 
 # --- statmech -----------------------------------------------------------------------------------------------
