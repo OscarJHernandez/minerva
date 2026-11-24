@@ -41,7 +41,8 @@ turn started, from a monotonic clock) and `step` (the model call it belongs to).
 
 Stop reasons: `completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`
 (the last model call hit its length limit with no tool call; the reply is cut off and says so), `model_error`,
-`malformed_output`, `internal_error`. Error categories: `invalid_arguments`, `unknown_tool`,
+`malformed_output`, `internal_error`, `stopped` (the client left: Stop, a closed tab; only the chat route
+stores it, never the loop). Error categories: `invalid_arguments`, `unknown_tool`,
 `parse_error`, `conditions_not_satisfied`, `unsupported`, `not_verified`, `timeout`, `resource_limit`,
 `sandbox_killed`, `busy`, `tool_failure`, `model_host`, `malformed_model_output`, `repeated_call`,
 `limit_reached`.
@@ -189,6 +190,13 @@ returned, what was verified and why the result was accepted or rejected, and why
 retried or stopped. Below it are the raw arguments and results (conversation content). "Copy debug
 report" copies a Markdown report with the trace id, stage timings, status codes, the same timeline, and
 a JSON block for scripts. A turn that failed is stored too, so its trace survives a reload.
+
+A reply the client abandoned (`stop_reason: "stopped"`) keeps what had *finished* (A-006): the loop records, once per
+tool step and just before the step's card is sent (`loop.TurnSnapshot`), the trace steps, result ids, the debug record
+so far and the events; `routers_chat._store_stopped` stores them with the cards that arrived, so a reload shows the
+timeline and a later turn can reuse `@rN` with its restrictions and provenance. A call that was still running or never
+produced a card is not in it. The events end at the last finished step (there is no `agent.stopped` event, because the
+loop was cancelled); the prose that arrived is stored unchecked. Same access rules and no new log field.
 
 ### What the loop does
 

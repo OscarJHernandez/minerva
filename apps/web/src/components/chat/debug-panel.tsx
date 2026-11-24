@@ -52,8 +52,14 @@ export function DebugPanel({
   const stop = d?.stop_reason ?? content.stop_reason ?? null;
   const summary =
     `Trace · ${trace.length} tool call${trace.length === 1 ? "" : "s"}` +
-    (d ? ` · ${d.duration_ms} ms · ${d.model}` : " · no timing recorded") +
-    (stop && stop !== "completed" ? ` · stopped: ${stop.replaceAll("_", " ")}` : "");
+    (d
+      ? `${d.duration_ms > 0 ? ` · ${d.duration_ms} ms` : ""} · ${d.model || "model not recorded"}`
+      : " · no timing recorded") +
+    (stop === "stopped"
+      ? " · stopped before the reply was finished"
+      : stop && stop !== "completed"
+        ? ` · stopped: ${stop.replaceAll("_", " ")}`
+        : "");
   return (
     <details className="rounded border border-rule bg-sunk px-3 py-2 text-xs">
       <summary className="cursor-pointer text-muted">{summary}</summary>

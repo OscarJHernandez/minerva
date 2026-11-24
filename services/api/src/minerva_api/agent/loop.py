@@ -126,6 +126,36 @@ class AgentLimits:
 
 
 @dataclass
+class TurnSnapshot:
+    """What a turn had FINISHED when it was last updated, for a reply the client abandons (A-006).
+
+    The loop calls `record` once per tool step that ended with a card, just before the card is sent, so a
+    card the client received always has its trace step, result id and events here. A call that is still
+    running, or that failed before it produced a card, is never in it, so it can never become a result.
+    The values are copies: the loop goes on changing its own.
+    """
+
+    trace: list[TraceStep] = field(default_factory=list)
+    result_ids: dict[str, str] = field(default_factory=dict)
+    debug: TurnDebug | None = None
+    events: list[dict[str, Any]] = field(default_factory=list)
+    events_dropped: int = 0
+
+    def record(
+        self,
+        trace: Sequence[TraceStep],
+        result_ids: Mapping[str, str],
+        debug: TurnDebug,
+        tracer: Tracer,
+    ) -> None:
+        self.trace = [t.model_copy(deep=True) for t in trace]
+        self.result_ids = dict(result_ids)
+        self.debug = debug.model_copy(deep=True)
+        self.events = list(tracer.events)
+        self.events_dropped = tracer.dropped
+
+
+@dataclass
 class TurnInfo:
     """Facts about the request that the loop cannot know itself, copied into the debug record."""
 
@@ -137,6 +167,8 @@ class TurnInfo:
     # Run a tool without asking the model when the request leaves no doubt which (see routing.py). Off by
     # default so scripted tests see only what they scripted; the chat route turns it on from settings.
     routing: bool = False
+    # What the turn had finished so far (see `TurnSnapshot`); read by the chat route if the client leaves.
+    snapshot: TurnSnapshot = field(default_factory=lambda: TurnSnapshot())
 
 
 # What the user reads when a turn ends for a reason other than a finished answer. Fixed text: it names
@@ -1496,6 +1528,9 @@ async def _run_turn(
                         else unproductive + 1
                     )
                 )
+                info.snapshot.record(
+                    trace, result_ids, debug, tracer
+                )  # before the client can see it
                 yield {"event": "card", "data": output.card.model_dump(mode="json")}
                 content = output.for_model + (f"\n{store.note_for(result_id)}" if result_id else "")
                 if dropped:

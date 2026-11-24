@@ -247,6 +247,21 @@ describe("buildDebugReport", () => {
     expect(none).not.toContain("raised:");
   });
 
+  it("explains a stopped reply and keeps the trace it stored", () => {
+    const stopped: StoredMessage = {
+      ...assistant,
+      content: {
+        ...assistant.content,
+        truncated: true,
+        stop_reason: "stopped",
+        debug: { ...assistant.content.debug!, stop_reason: "stopped" },
+      },
+    };
+    const out = buildDebugReport({ ...input, messages: [user, stopped] });
+    expect(out).toContain("stop reason: stopped (the client left");
+    expect(out).toContain("the prose that arrived was not checked");
+  });
+
   it("contains no email or host name of the user", () => {
     expect(report).not.toMatch(/@|https?:\/\//);
   });

@@ -253,7 +253,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   and answer again); the reply after it is deleted and the user message is kept, never stored twice (equation numbers are not
   reused: the counter is a high-water mark, and a reference to a number whose message was replaced is told "no longer exists"). A
   client that leaves mid-reply (Stop, a closed tab) gets what had arrived stored as a `stop_reason: "stopped"` message
-  (`_store_stopped`; nothing arrived: nothing stored), a `phase` event tells the client when the formulas are being checked, and text
+  (`StopReason.STOPPED`, `_store_stopped`; nothing arrived: nothing stored) together with the tool steps that had FINISHED
+  (`TurnInfo.snapshot`, `loop.TurnSnapshot`, updated just before each card is sent: trace steps, result ids, debug so far, events;
+  a call still running or without a card is never in it), so a reload shows card, trace and debug and the next turn reuses `@rN` with
+  its restrictions through `turn_context` (stored trace joined to cards by id) unchanged; cards are numbered and the counter moves on,
+  prose stays unchecked; `replied` is set only after the reply is committed, so a cancel while it is being written stores one message, a `phase` event tells the client when the formulas are being checked, and text
   that starts like JSON or a code fence is held back until the model call ends so a tool call written as prose is never shown.
   Reasoning a model writes into its reply (`thought`, then a closing `<channel|>`; `agent/reasoning.py`) is dropped from what
   is streamed, stored and replayed, wherever in the reply it sits; a call that ends inside it shows nothing. A
