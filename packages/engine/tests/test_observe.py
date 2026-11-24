@@ -88,7 +88,8 @@ def test_a_resource_limit_is_reported_with_its_outcome() -> None:
 def test_the_record_holds_no_expression() -> None:
     fields = set(SandboxCall.__dataclass_fields__)
     # The last three are where an unexpected exception was raised: its class, and the module and line of
-    # our own code (never its message, which can hold an expression). Reviewed when they were added.
+    # our own code (never its message, which can hold an expression). Reviewed when they were added. `wait_ms`
+    # and `run_ms` are durations only (the split of `ms`; A-007).
     assert fields == {
         "operation",
         "outcome",
@@ -97,5 +98,7 @@ def test_the_record_holds_no_expression() -> None:
         "error_type",
         "error_module",
         "error_line",
+        "wait_ms",
+        "run_ms",
     }
     assert isinstance(Sandbox, type)
