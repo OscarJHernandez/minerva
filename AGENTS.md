@@ -327,10 +327,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   result id to carry the premise to a later `@eN`); `approximation` keeps its result under `data["report"]` and is numbered as a whole only when accepted (status `ok`, an evidence kind other than `none`, no failed check; a number names the formula, the measured error stays a measurement, and `@eN` of it says it has no result id). Each card type must be in exactly one of `LIST_READERS`, `SINGLE_RESULT`,
   `LIST_NOT_YET_NUMBERED` or `EXCLUDED_WITH_REASON` (a test); `tensor` is a single result (its one canonical form, numbered
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
-  equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
-  list formulas without numbers (vector; also deferred inside cards that are otherwise numbered:
+  equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` (now empty) names cards that still
+  list formulas without numbers (also deferred inside cards that are otherwise numbered:
   the statistics posterior, step lists and
-  the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
+  the dimensional relation): move one to `LIST_READERS` with a reader and a test. `vector` is numbered per action
+  (`card_equations.vector`; keys `result`, `component:i` as the row shows it `basis:\\quad value` in the coordinate system's order,
+  `step:i`, `distributional`) only for an `ok` result the card's own numeric check accepted with no premise: `evaluate`,
+  `convert`, the steps of `apply_identity`/`derive` when the whole result is an `identity`, and a `derived` point-source
+  statement whose pairings and fluxes all agreed. Never numbered (`VECTOR_NOT_NUMBERED`): anything `conditional` or with `given`,
+  `jacobian`, `integrate`, `em_derive`, `em_compute`, `identities`, `restrictions_latex`, and the classical value of a field
+  with a point source (`singular_hint`). A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,
   `test_equation_rows_variation_stats_expansion.py`, `test_equation_rows_statmech_perturbation_dimensional.py` and `equation-rows.test.tsx`, which also checks that each number sits next to the

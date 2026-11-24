@@ -3,6 +3,7 @@
 import { Math } from "@minerva/ui/math";
 import { useId } from "react";
 import type { VectorRequest, VectorResult } from "@/lib/types";
+import { Numbered } from "./chat/equation-number";
 import { StatusPill } from "./result-panel";
 import { SingularSection } from "./vector-singular";
 
@@ -107,7 +108,9 @@ export function VectorPanel({
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wide text-muted">Result</div>
             <div className="overflow-x-auto">
-              <Math latex={result.result_latex} display className="text-xl" label="Result" />
+              <Numbered k="result">
+                <Math latex={result.result_latex} display className="text-xl" label="Result" />
+              </Numbered>
             </div>
           </div>
         )}
@@ -120,7 +123,9 @@ export function VectorPanel({
           <ul className="mt-1 space-y-1" data-testid="components">
             {result.components_latex.map((c, i) => (
               <li key={result.basis_latex[i] ?? i} className="min-w-0 overflow-x-auto">
-                <Math latex={`${result.basis_latex[i] ?? ""}:\\quad ${c}`} label="Component" />
+                <Numbered k={`component:${i}`}>
+                  <Math latex={`${result.basis_latex[i] ?? ""}:\\quad ${c}`} label="Component" />
+                </Numbered>
               </li>
             ))}
           </ul>
@@ -158,7 +163,9 @@ export function VectorPanel({
                   </div>
                 )}
                 <div className="overflow-x-auto">
-                  <Math latex={step.after_latex} display label={`Step ${i + 1} result`} />
+                  <Numbered k={`step:${i}`}>
+                    <Math latex={step.after_latex} display label={`Step ${i + 1} result`} />
+                  </Numbered>
                 </div>
                 {step.needs.length > 0 && (
                   <p className="text-xs text-muted">
