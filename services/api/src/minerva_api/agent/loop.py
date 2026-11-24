@@ -152,6 +152,9 @@ class TurnSnapshot:
         self.trace = [t.model_copy(deep=True) for t in trace]
         self.result_ids = dict(result_ids)
         self.debug = debug.model_copy(deep=True)
+        # The loop sets this only when the turn ends; a stopped reply is stored from here, so count it now
+        # from the same steps the snapshot holds.
+        self.debug.routed_calls = sum(1 for t in self.trace if t.routed)
         self.events = list(tracer.events)
         self.events_dropped = tracer.dropped
 
