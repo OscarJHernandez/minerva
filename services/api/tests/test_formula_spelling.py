@@ -103,3 +103,12 @@ def test_a_conversation_numbered_before_the_greek_rule_keeps_every_number_and_ga
     # and a restated formula is found under its own number whatever the spelling
     assert table.number_for(r"y = \cos{\theta}", "written_by_model", mode="model") == 5
     assert table.counter >= 7
+
+
+def test_dot_spellings_are_still_two_keys_a_known_gap() -> None:
+    """Issue #146 part 3, left out on purpose: `\\dot{\\theta}` and `\\dot\\theta` key differently, because
+    unifying them changes the pinned `turn_context` output (`prior_known`). Named rows (`C_{4} = ...`) are still
+    rescued by evidence rule 1; only a bare restated expression is affected. If this ever fails because the
+    keys were unified, that is the deliberate pin change the maintainer approved: update it with the pin."""
+    assert normalize(r"\dot{\theta}") != normalize(r"\dot\theta")
+    assert normalize(r"\dot{x}") != normalize(r"\dot x")
