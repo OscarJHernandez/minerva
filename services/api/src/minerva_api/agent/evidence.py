@@ -87,6 +87,21 @@ def _first_int(source: dict[str, Any], *names: str) -> int | None:
     return None
 
 
+def measured_verify_ms(card_data: dict[str, Any]) -> int | None:
+    """The verification time the engine itself measured (`diagnostics.verify_ms` of a transformation
+    step), or None when this result's operation reports none. Never derived from another duration.
+
+    Read from the card for the trace event only: it is not part of the stored `Evidence` record (a stored
+    trace and the context rebuilt from it stay exactly as before)."""
+    for source in (_inner(card_data), card_data):
+        diagnostics = source.get("diagnostics")
+        if isinstance(diagnostics, dict) and diagnostics.get("verification_outcome") != "not_run":
+            value = _first_int(diagnostics, "verify_ms")
+            if value is not None:
+                return value
+    return None
+
+
 def evidence_for(tool: str, status: str, card_data: dict[str, Any]) -> Evidence:
     """The evidence record of one tool result; `status` is the tool's own status."""
     data = _inner(card_data)

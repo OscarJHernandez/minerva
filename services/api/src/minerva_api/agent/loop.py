@@ -41,6 +41,7 @@ from .events import (
     TraceStep,
     TurnDebug,
 )
+from .evidence import measured_verify_ms
 from .llm import LLMClient, LLMError, ToolCall, Usage
 from .mathinput import MATH_FIELDS, prepare_arguments
 from .params import EffectiveParams
@@ -836,6 +837,7 @@ async def _run_turn(
     failure_site: dict[str, Any] = {}  # class and code location of an unexpected exception
     failure_category: ErrorCategory | None = None
     tool_calls_made = repeats = unproductive = malformed_streak = 0
+    queue_total = 0  # ms the turn's sandbox calls waited for a slot (a total, not stored per step)
     # Differential equations: when the analysis offers several methods and the user's message named
     # none, a solver call is refused and the model asks which one (`needs_user_choice`).
     user_text, replying = _latest_user_message(history)
@@ -1366,6 +1368,8 @@ async def _run_turn(
                 if refusal is None and routed_now is not None and call.id == routed_now.call.id:
                     duration, sandbox = routed_now.duration_ms, routed_now.sandbox  # it ran earlier
                 engine_ms = sum(c.ms for c in sandbox) if sandbox else None
+                queue_ms = sum(c.wait_ms for c in sandbox) if sandbox else None
+                queue_total += queue_ms or 0
                 bad_outcome = next((c.outcome for c in sandbox if c.outcome != "ok"), None)
                 site = next((c for c in sandbox if c.error_type), None)
                 if site is not None and not output.error_site:
@@ -1470,6 +1474,7 @@ async def _run_turn(
                     status=tool_status(output.status),
                     duration_ms=duration,
                     engine_ms=engine_ms,
+                    queue_ms=queue_ms,
                     sandbox_calls=len(sandbox),
                     error_category=ErrorCategory(error_category) if error_category else None,
                     result_id=result_id,
@@ -1505,7 +1510,7 @@ async def _run_turn(
                         symbolic_zero=evidence.symbolic_zero,
                         restrictions=evidence.restrictions,
                         restrictions_complete=evidence.restrictions_complete,
-                        verify_ms=engine_ms,
+                        verify_ms=measured_verify_ms(output.card.data),
                     )
                 accepted = evidence.accepted if evidence else False
                 # An answer is not a stuck loop: "unchanged", "unsupported" and "conditions not
@@ -1648,7 +1653,7 @@ async def _run_turn(
     if _pending_claims(blocks):  # formulas the model wrote are about to be tested: tell the user
         yield {"event": "phase", "data": {"phase": "checking"}}
     claims_started = time.monotonic()
-    debug.claims, debug.claim_check = await _check_claims_in_budget(
+    debug.claims, debug.claim_check, debug.claim_check_site = await _check_claims_in_budget(
         blocks,
         ctx,
         trace,
@@ -1683,7 +1688,13 @@ async def _run_turn(
             scope="claims",
             check="claims",
             accepted=debug.claim_check == "ok",
-            reason="verified" if debug.claim_check == "ok" else "error",
+            reason=(
+                "verified"
+                if debug.claim_check == "ok"
+                else "timeout"
+                if debug.claim_check == "timeout"
+                else "error"
+            ),
             verify_ms=claims_ms,
             claims=len(debug.claims),
             claims_holding=statuses.count("holds") + statuses.count("supported"),
@@ -1691,8 +1702,10 @@ async def _run_turn(
             claims_contradicted=statuses.count("fails"),
             claims_unchecked=len(debug.claims)
             - sum(statuses.count(s) for s in ("holds", "supported", "conditional", "fails")),
+            **debug.claim_check_site,
         )
     debug.duration_ms = _ms(started)
+    debug.routed_calls = sum(1 for t in trace if t.routed)
     debug.error = failure
     debug.error_kind = failure_kind
     debug.error_site = failure_site
@@ -1705,6 +1718,7 @@ async def _run_turn(
         reason=stop,
         steps=len(debug.llm_calls),
         tool_calls=len(trace),
+        routed_calls=debug.routed_calls,
         error_category=failure_category,
         **failure_site,
     )
@@ -1714,12 +1728,14 @@ async def _run_turn(
         total_ms=debug.duration_ms,
         steps=len(debug.llm_calls),
         tool_calls=len(trace),
+        routed_calls=debug.routed_calls,
         tool_errors=sum(1 for t in trace if t.status == "error"),
         invalid_calls=sum(1 for t in trace if t.arguments_valid is False),
         repeated_calls=repeats,
         llm_ms=sum(c.ms for c in debug.llm_calls),
         tool_ms=sum(t.duration_ms or 0 for t in trace),
         engine_ms=sum(t.engine_ms or 0 for t in trace),
+        queue_ms=queue_total,
         verify_ms=claims_ms,
         tokens_in=sum(in_tokens) if in_tokens else None,
         tokens_out=sum(out_tokens) if out_tokens else None,
@@ -1946,14 +1962,16 @@ async def _check_claims_in_budget(
     prior_evidence: Sequence[Mapping[str, Any]] = (),
     prior_vectors: Sequence[str] = (),
     scalar_names: Collection[str] = (),
-) -> tuple[list[ClaimDebug], str]:
+) -> tuple[list[ClaimDebug], str, dict[str, Any]]:
     """Run the claim check inside what is left of the turn's time.
 
     On any failure the claims stay unchecked, and the reason is recorded: `none` (nothing to check),
-    `ok`, `timeout` or `error`. "Could not check" is never the same as "nothing to check".
+    `ok`, `timeout` or `error`. "Could not check" is never the same as "nothing to check". An `error`
+    also returns where it was raised (`error_fields`: class, module and line of our code, never the
+    message); the third value is empty otherwise.
     """
     if not _pending_claims(blocks):
-        return [], "none"
+        return [], "none", {}
     try:
         report = await _cancellable(
             max(seconds_left, CLAIM_CHECK_MIN_SECONDS),
@@ -1968,11 +1986,11 @@ async def _check_claims_in_budget(
             prior_vectors,
             scalar_names,
         )
-        return report, "ok"
+        return report, "ok", {}
     except TimeoutError:
-        return [], "timeout"
-    except Exception:
-        return [], "error"
+        return [], "timeout", {}
+    except Exception as exc:
+        return [], "error", error_fields(exc)
 
 
 def _pending_claims(blocks: list[Block]) -> list[Any]:

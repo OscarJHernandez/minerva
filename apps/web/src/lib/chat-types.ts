@@ -849,6 +849,10 @@ export interface TurnDebug {
   /** Equation labels the model wrote on its formulas and the server removed (debug mode only). */
   removed_labels?: string[];
   claim_check?: string | null;
+  /** When `claim_check` is "error": class and a line of our own code that raised it. Never the message. */
+  claim_check_site?: { error_type?: string; error_module?: string; error_line?: number };
+  /** Tool calls the router made with no model call before them (part of the tool calls, not of the model calls). */
+  routed_calls?: number;
   formulas?: number;
   formulas_with_evidence?: number;
   evidence_pct?: number | null;

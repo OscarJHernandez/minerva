@@ -112,11 +112,13 @@ class Engine:
                     SandboxCall(
                         op,
                         result.outcome.value,
-                        ms,
+                        result.ms,
                         current_trace_id(),
                         result.error_type,
                         result.error_module,
                         result.error_line,
+                        result.wait_ms,
+                        result.run_ms,
                     )
                 )
         return result, ms

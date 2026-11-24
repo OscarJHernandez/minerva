@@ -128,7 +128,8 @@ def test_event_fields_describe_what_happened(ctx: ToolContext) -> None:
     assert done["status"] == "ok" and done["total_ms"] >= done["llm_ms"] >= 0
     assert done["tool_calls"] == 1 and done["tool_errors"] == 0 and done["formulas"] == 1
     assert done["evidence_pct"] == 100.0 and done["stop_reason"] == "completed"
-    assert tool_v["verify_ms"] is not None
+    # `simplify` reports no verification time of its own: None, never the whole engine operation (A-007)
+    assert tool_v["verify_ms"] is None and completed["engine_ms"] is not None
 
 
 def test_a_refused_call_is_recorded_with_its_category(ctx: ToolContext) -> None:

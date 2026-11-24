@@ -527,6 +527,7 @@ def _run_tool_directly(
     elapsed = int((time.monotonic() - started) * 1000)
     sandbox = tracer.sandbox_since(0)
     engine_ms = sum(c.ms for c in sandbox) if sandbox else None
+    queue_ms = sum(c.wait_ms for c in sandbox) if sandbox else None
     category = output.error_category
     tracer.emit(
         ToolCompleted,
@@ -536,6 +537,7 @@ def _run_tool_directly(
         status=tool_status(output.status),
         duration_ms=elapsed,
         engine_ms=engine_ms,
+        queue_ms=queue_ms,
         sandbox_calls=len(sandbox),
         error_category=category,
     )

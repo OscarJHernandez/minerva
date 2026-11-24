@@ -241,6 +241,7 @@ class ToolCompleted(TraceEvent):
     status: ToolStatus = "other"
     duration_ms: int = 0
     engine_ms: int | None = None
+    queue_ms: int | None = None  # of engine_ms, the time spent waiting for a free sandbox slot
     sandbox_calls: int = 0
     error_category: ErrorCategory | None = None
     result_id: str | None = None
@@ -325,7 +326,7 @@ class ToolDeclined(ToolOutcome):
     outcome_kind: OutcomeKind = "answer"
 
 
-class VerificationCompleted(TraceEvent):
+class VerificationCompleted(TraceEvent, ErrorSite):
     event: Literal["verification.completed"] = "verification.completed"
     scope: Literal["tool", "claims"] = "tool"
     tool: str | None = None
@@ -337,6 +338,9 @@ class VerificationCompleted(TraceEvent):
     symbolic_zero: bool | None = None
     restrictions: int | None = None
     restrictions_complete: bool | None = None
+    # The verification's own measured time where the engine reports one (`StepDiagnostics.verify_ms`),
+    # `None` where it does not: it is never the whole engine operation (that is `engine_ms`). For the
+    # claims scope it is the time of the claim check itself.
     verify_ms: int | None = None
     claims: int | None = None
     claims_holding: int | None = None
@@ -361,8 +365,9 @@ class AgentRouted(TraceEvent):
 class AgentStopped(TraceEvent, ErrorSite):
     event: Literal["agent.stopped"] = "agent.stopped"
     reason: StopReason = StopReason.COMPLETED
-    steps: int = 0
-    tool_calls: int = 0
+    steps: int = 0  # model calls made (wrap-up and retried calls included)
+    tool_calls: int = 0  # of which `routed_calls` ran with no model call before them
+    routed_calls: int = 0
     error_category: ErrorCategory | None = None
 
 
@@ -370,14 +375,16 @@ class AgentCompleted(TraceEvent, ErrorSite):
     event: Literal["agent.completed"] = "agent.completed"
     status: Literal["ok", "error"] = "ok"
     total_ms: int = 0
-    steps: int = 0
-    tool_calls: int = 0
+    steps: int = 0  # model calls made (wrap-up and retried calls included), not tool calls
+    tool_calls: int = 0  # every tool call, routed ones included
+    routed_calls: int = 0  # tool calls the router made with no model call before them
     tool_errors: int = 0
     invalid_calls: int = 0
     repeated_calls: int = 0
     llm_ms: int = 0
     tool_ms: int = 0
     engine_ms: int = 0  # time inside the sandbox for tools (slot waits included)
+    queue_ms: int = 0  # of engine_ms, the time spent waiting for a free sandbox slot
     verify_ms: int = 0  # time spent checking the model's own formulas
     tokens_in: int | None = None
     tokens_out: int | None = None

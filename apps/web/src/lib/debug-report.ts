@@ -277,7 +277,8 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
   if (d) {
     lines.push(
       `trace ${d.trace_id || "-"} · request ${d.request_id || "-"} · ${d.duration_ms} ms · ` +
-        `${d.llm_calls.length} model call(s) · model ${d.model} · prompt ${d.prompt_sha}`,
+        `${d.llm_calls.length} model call(s) · ${(c.trace ?? []).length} tool call(s)` +
+        `${d.routed_calls ? ` (${d.routed_calls} routed: no model call before it)` : ""} · model ${d.model} · prompt ${d.prompt_sha}`,
     );
     const stop = d.stop_reason ?? c.stop_reason ?? null;
     if (stop)
@@ -343,7 +344,15 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
     if (d.removed_labels && d.removed_labels.length > 0) {
       lines.push(`equation labels removed from the reply: ${d.removed_labels.join(" ")}`);
     }
-    if (d.claim_check && d.claim_check !== "ok") lines.push(`claim check: ${d.claim_check}`);
+    if (d.claim_check && d.claim_check !== "ok") {
+      const cs = d.claim_check_site;
+      lines.push(
+        `claim check: ${d.claim_check}` +
+          (cs?.error_type
+            ? ` (raised ${cs.error_type}${cs.error_module ? ` at ${cs.error_module}:${cs.error_line ?? "?"}` : ""})`
+            : ""),
+      );
+    }
     if (d.diagnosis?.stage) {
       const g = d.diagnosis;
       lines.push(

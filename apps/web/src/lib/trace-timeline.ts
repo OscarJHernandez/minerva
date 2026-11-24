@@ -51,6 +51,7 @@ export const REASON_EXPLANATION: Record<string, string> = {
   internal_error: "the engine failed unexpectedly",
   no_results: "nothing matched",
   error: "the call was refused or failed",
+  timeout: "the check ran out of time",
 };
 
 const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
@@ -70,6 +71,7 @@ export function buildTimeline(
   const events = debug?.events ?? [];
   const byCall = new Map((trace ?? []).map((t) => [t.id, t]));
   const rows: TimelineRow[] = [];
+  let modelCalls = 0; // counted, not read from `step`: a routed call takes a step but makes no model call
   const startedTool = new Map<string, TraceEvent>();
   for (const e of events) {
     const base = { id: `${e.trace_id}-${e.seq}`, t_ms: e.t_ms, step: e.step ?? null };
@@ -81,7 +83,7 @@ export function buildTimeline(
           tone: "neutral",
           title: "Turn started",
           detail:
-            `model ${str(e.model) || "?"} · up to ${num(e.max_steps) ?? "?"} steps, ` +
+            `model ${str(e.model) || "?"} · up to ${num(e.max_steps) ?? "?"} model calls, ` +
             `${num(e.max_tool_calls) ?? "?"} tool calls, ${num(e.max_seconds) ?? "?"} s`,
         });
         break;
@@ -100,7 +102,7 @@ export function buildTimeline(
           ...base,
           kind: "model",
           tone: failed ? "bad" : "neutral",
-          title: `Model call ${base.step ?? ""}: ${failed ? `failed (${finish})` : calls > 0 ? `asked for ${calls} tool call${calls === 1 ? "" : "s"}` : "answered in words"}`,
+          title: `Model call ${++modelCalls}: ${failed ? `failed (${finish})` : calls > 0 ? `asked for ${calls} tool call${calls === 1 ? "" : "s"}` : "answered in words"}`,
           detail:
             `${num(e.latency_ms) ?? "?"} ms` +
             (num(e.first_token_ms) !== null
@@ -143,7 +145,7 @@ export function buildTimeline(
               : "") +
             (num(e.duration_ms) !== null ? ` · ${num(e.duration_ms)} ms` : "") +
             (num(e.engine_ms) !== null
-              ? ` (${num(e.engine_ms)} ms in the sandbox, ${num(e.sandbox_calls) ?? 0} call${num(e.sandbox_calls) === 1 ? "" : "s"})`
+              ? ` (${num(e.engine_ms)} ms in the sandbox${num(e.queue_ms) !== null ? `, ${num(e.queue_ms)} ms of it waiting for a slot` : ""}, ${num(e.sandbox_calls) ?? 0} call${num(e.sandbox_calls) === 1 ? "" : "s"})`
               : "") +
             (category ? ` · category ${category}` : "") +
             (str(e.result_id) ? ` · result id ${str(e.result_id)}` : "") +
@@ -164,7 +166,13 @@ export function buildTimeline(
             detail:
               `${num(e.claims_holding) ?? 0} hold, ${num(e.claims_conditional) ?? 0} conditional, ` +
               `${num(e.claims_contradicted) ?? 0} contradicted, ${num(e.claims_unchecked) ?? 0} unchecked` +
-              (num(e.verify_ms) !== null ? ` · ${num(e.verify_ms)} ms` : ""),
+              (num(e.verify_ms) !== null ? ` · ${num(e.verify_ms)} ms` : "") +
+              (str(e.reason) && str(e.reason) !== "verified"
+                ? ` · ${REASON_EXPLANATION[str(e.reason)] ?? str(e.reason)}`
+                : "") +
+              (str(e.error_type)
+                ? ` · ${str(e.error_type)} at ${str(e.error_module)}:${num(e.error_line) ?? "?"}`
+                : ""),
           });
           break;
         }
@@ -182,6 +190,9 @@ export function buildTimeline(
             (restrictions
               ? ` · ${restrictions} restriction${restrictions === 1 ? "" : "s"}${e.restrictions_complete === false ? " (list may be incomplete)" : ""}`
               : "") +
+            (num(e.verify_ms) !== null
+              ? ` · verification ${num(e.verify_ms)} ms`
+              : " · verification time not reported") +
             ` · ${REASON_EXPLANATION[reason] ?? reason}`,
         });
         break;
@@ -222,6 +233,9 @@ export function buildTimeline(
           title: `Stopped: ${reason.replaceAll("_", " ")}`,
           detail:
             `${STOP_EXPLANATION[reason] ?? ""} · ${num(e.steps) ?? 0} model call(s), ${num(e.tool_calls) ?? 0} tool call(s)` +
+            (num(e.routed_calls)
+              ? ` (${num(e.routed_calls)} routed: no model call before it)`
+              : "") +
             (str(e.error_category) ? ` · category ${str(e.error_category)}` : ""),
         });
         break;
@@ -233,7 +247,7 @@ export function buildTimeline(
           tone: e.status === "ok" ? "neutral" : "bad",
           title: `Finished in ${num(e.total_ms) ?? "?"} ms (${str(e.status)})`,
           detail:
-            `model ${num(e.llm_ms) ?? 0} ms · tools ${num(e.tool_ms) ?? 0} ms (sandbox ${num(e.engine_ms) ?? 0} ms) · ` +
+            `model ${num(e.llm_ms) ?? 0} ms · tools ${num(e.tool_ms) ?? 0} ms (sandbox ${num(e.engine_ms) ?? 0} ms, of which waiting for a slot ${num(e.queue_ms) ?? 0} ms) · ` +
             `claim check ${num(e.verify_ms) ?? 0} ms · formulas with engine evidence ` +
             `${num(e.formulas_with_evidence) ?? 0}/${num(e.formulas) ?? 0}` +
             (num(e.evidence_pct) !== null ? ` (${num(e.evidence_pct)}%)` : ""),
@@ -275,6 +289,7 @@ export function stageTimings(debug: TurnDebug | null | undefined): [string, numb
     ...pick("model calls", "llm_ms"),
     ...pick("tool calls", "tool_ms"),
     ...pick("  of which in the sandbox", "engine_ms"),
+    ...pick("  of which waiting for a sandbox slot", "queue_ms"),
     ...pick("claim check", "verify_ms"),
   ];
 }

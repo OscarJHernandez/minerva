@@ -56,7 +56,7 @@ Known and not fixed (ids in `docs/verification-defects.md`):
 | Risk | State |
 | --- | --- |
 | A turn stopped by a client that left stores no trace or result ids (A-006) | open; a later turn cannot reuse its results |
-| The failed wrap-up call, `steps` counts, claim-check error site, queue time and the tool-level `verify_ms` label are imprecise (A-007) | open; `test_tracing.py` pins the current `verify_ms` |
+| Recording gaps of A-007 (claim-check error site, queue time, tool-level `verify_ms`, meaning of `steps`) | fixed (issue #171): `verify_ms` is the engine's own measurement or `null`, `queue_ms` is reported, `steps` is defined as model calls with `routed_calls` beside it; the pin in `test_tracing.py` changed on purpose |
 | No engine adversarial corpora beyond `verify_equal`; no property tests for `stats/` and `approx/`; geometry, statistics and approximation lack `reference/` problems | not started |
 | No per-tool breakdown (selection, argument validity, recovery) in live reports | not started |
 | Few multi-turn cases (follow-ups, changed assumptions, correcting a mistake) in offline and live suites | not started |
