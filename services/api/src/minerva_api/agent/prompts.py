@@ -179,11 +179,6 @@ A numerical solution (integrate_motion) needs numbers that only the user can cho
    with the Lagrangian instead of rewriting the equations by hand.\
 """,
         """\
-To remove a cyclic coordinate (Routh reduction, an effective potential for the others), call
-   `routh_reduce` with the Lagrangian and the coordinates the user names. Each momentum stays the symbol
-   p_{c} in R: never give it a value or rename it (E = -p_t) unless the user asks; that is their `substitute`.\
-""",
-        """\
 To linearise about an equilibrium or a circular orbit (small oscillations), call `expand_motion` with the
    Lagrangian, the coordinates and the equilibrium written in text syntax (for example `p^2/(G*M*m^2)`).
    Never differentiate and substitute by hand: its expansion, frequencies and modes are checked.
@@ -429,10 +424,17 @@ Whether a stated equation is true. `check_identity` judges ONE equation the user
    never decide it from memory. A definition, an equation of motion, or a matrix statement is refused: say so.\
 """,
     ),
+    "reduction": (
+        """\
+To remove a cyclic coordinate (Routh reduction), call `routh_reduce` with the Lagrangian and the
+   coordinates the user names. Each momentum stays the symbol p_{c} in R: never give it a value or rename
+   it (E = -p_t) unless the user asks; that is their `substitute`.\
+""",
+    ),
 }
 
 GROUP_ROUTER: dict[str, str] = {
-    "mechanics": "a Lagrangian: `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; d/dt of a quantity along a motion: `time_derivative`; remove a cyclic coordinate: `routh_reduce`.",
+    "mechanics": "a Lagrangian: `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; d/dt of a quantity along a motion: `time_derivative`.",
     "ode": "a differential equation: `ode_analyze`, then `ode_solve_symbolic` or `ode_solve_numerical`.",
     "variation": "an action functional, its variations and boundary terms: `variation`.",
     "matrix": "matrices: `matrix_calculus`.",
@@ -444,6 +446,7 @@ GROUP_ROUTER: dict[str, str] = {
     "approximation": "approximating an expression (Pade, Chebyshev, Fourier, Laurent, large x, small parameter, large sums, a number by fractions): `approximation`.",
     "units": "units of an equation, or the unit of a quantity (name it in `unknown`): `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
     "identity": "`check_identity`: is A = B true?",
+    "reduction": "remove a cyclic coordinate of a Lagrangian (Routh reduction): `routh_reduce`.",
 }
 
 GROUP_SUMMARY: dict[str, str] = {
@@ -459,12 +462,12 @@ GROUP_SUMMARY: dict[str, str] = {
     "identity": "is an equation an identity",
     "units": "units and dimensions: dimensional consistency and dimensionless groups",
     "approximation": "approximations: Pade, Chebyshev, Fourier, Laurent, asymptotic and perturbation expansions, large sums, accuracy targets",
+    "reduction": "Routh reduction: remove cyclic coordinates of a Lagrangian by holding their momenta fixed",
 }
 
 GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "mechanics": (
         "analyze_lagrangian",
-        "routh_reduce",
         "time_derivative",
         "integrate_motion",
         "expand_motion",
@@ -483,10 +486,11 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "units": ("check_units", "dimensional_analysis"),
     "approximation": ("approximation",),
     "identity": ("check_identity",),
+    "reduction": ("routh_reduce",),
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
-    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|with respect to time|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge|routh|cyclic coordinate|effective potential",
+    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|with respect to time|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
     "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",
@@ -498,6 +502,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
     "identity": "is (it|that|this) (true|correct|right)|confirm that|does .{1,80}\\bhold\\b|\\bidentit(y|ies)\\b|is .{1,60} equal to|\\bfor (every|all|any)\\b|\\b(right|correct|true)\\?",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
+    "reduction": "\\brouth|\\bcyclic coordinates?\\b",
 }
 
 

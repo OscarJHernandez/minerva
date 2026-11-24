@@ -233,3 +233,51 @@ def test_the_fixture_the_browser_renders_is_the_reader_and_a_live_card() -> None
 def test_a_live_card_is_read_like_the_fixture(reduced: ToolOutput) -> None:
     entry = json.loads(FIXTURE.read_text())["routh"]
     assert [k for k, _ in listed_equations("routh", reduced.card.data)] == entry["keys"]
+
+
+# --- the tool group (maintainer's decision: a group of its own, so the mechanics group is unchanged) -----------
+def test_routh_reduce_is_in_its_own_group_and_not_in_mechanics() -> None:
+    from minerva_api.agent.prompts import GROUP_TOOLS
+    from minerva_api.agent.toolsets import group_of
+
+    assert group_of("routh_reduce") == "reduction"
+    assert GROUP_TOOLS["reduction"] == ("routh_reduce",)
+    assert "routh_reduce" not in GROUP_TOOLS["mechanics"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Reduce this Lagrangian by the cyclic coordinate t (Routh reduction).",
+        "What is the Routhian of the Kepler problem?",
+        "Remove the cyclic coordinates phi and t.",
+    ],
+)
+def test_a_keyword_loads_the_group(text: str) -> None:
+    from minerva_api.agent.toolsets import groups_in_text
+
+    assert "reduction" in groups_in_text(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Find the equations of motion of the pendulum Lagrangian.",
+        "Which quantities are conserved along the geodesics? The coordinates are t, r, theta, phi.",
+        "Is the angle coordinate cyclic here?",
+    ],
+)
+def test_an_unrelated_mechanics_message_does_not(text: str) -> None:
+    from minerva_api.agent.toolsets import groups_in_text
+
+    assert "reduction" not in groups_in_text(text)
+
+
+def test_load_tools_and_a_direct_call_load_it(ctx: ToolContext) -> None:
+    """Without a keyword, the model reaches the tool through `load_tools` (the group is listed by name) or by
+    calling it directly; the call runs and is answered."""
+    from minerva_api.agent.toolsets import requested_groups
+
+    assert requested_groups({"groups": ["reduction"]}) == ["reduction"]
+    msg = play(ctx, [call("routh_reduce", ARGS), say("done")])
+    assert msg["trace"][0]["status"] == "ok"

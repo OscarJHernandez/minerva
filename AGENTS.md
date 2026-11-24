@@ -631,6 +631,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   symbolic leg (R's Euler-Lagrange expressions on L's accelerations) is reported apart and is the only "proved". The
   block determinant's zeros are `restrictions_latex`. R is the single result (number and `@rN`, with the restrictions);
   `held:<c>` and `velocity:<c>` are numbered list rows (names). `routh.reduce(derivation, cyclic)` is the reusable entry.
+  The tool is alone in the group `reduction` (keywords `routh`, `cyclic coordinate(s)`, or `load_tools`), not in
+  `mechanics`: the maintainer's choice, so the mechanics group and the turn-context pin stay unchanged.
 - Expansion about an equilibrium (`expansion.py`, tool `expand_motion`) shows a formula only if the EL equations
   and the solved accelerations were confirmed, the point was shown to be an equilibrium, and every expansion
   passed `check_series`. A point that is not an equilibrium is `unsupported`, not expanded. The sign of ω² is
