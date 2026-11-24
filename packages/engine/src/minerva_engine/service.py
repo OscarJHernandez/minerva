@@ -8,7 +8,7 @@ import time
 from typing import Any, Literal
 
 from .approx.models import ApproximationInput, ApproximationReport
-from .claim_evidence import ClaimEvidence
+from .claim_evidence import ClaimEvidence, SeriesEvidence
 from .claims import ClaimCheck, clean_assumptions
 from .creative_telescoping.models import TelescopingInput, TelescopingResult
 from .differentiate import DifferentiateResult, DiffVariable
@@ -721,6 +721,7 @@ class Engine:
         matrices: list[str] | None = None,
         vectors: list[str] | None = None,
         evidence: list[ClaimEvidence] | None = None,
+        series: list[SeriesEvidence] | None = None,
     ) -> list[ClaimCheck]:
         """Numerically test equations written by the model. Failures leave claims unchecked.
 
@@ -742,6 +743,7 @@ class Engine:
                 "matrices": sorted({*(matrices or []), *noncommutative}),
                 "vectors": sorted(vectors or []),
                 "evidence": [e.model_dump() for e in evidence or []],
+                "series": [s.model_dump() for s in series or []],
             },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:

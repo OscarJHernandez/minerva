@@ -37,6 +37,9 @@ from minerva_engine import (
     OdeSolveInput,
     Pins,
     QuantitySpec,
+    SeriesEvidence,
+    SeriesResult,
+    SeriesTermEvidence,
     TensorInput,
     TensorSpec,
     VariationInput,
@@ -161,6 +164,10 @@ class ToolOutput:
     # (`claim_evidence.py`). Never read from the model.
     formula_roles: dict[str, str] = field(default_factory=dict)
     variables: tuple[str, ...] = ()
+    # A verified Taylor series as a typed record (`SeriesEvidence.model_dump()`), built from the engine's own result:
+    # the claim check links a model equation `f = P + O(...)` to it only if every part agrees, and reads the centre and
+    # the places where the error was measured as parameters of this call, not definitions.
+    series: dict[str, Any] | None = None
 
 
 # --- argument models (also the JSON schema the model sees) ------------------------------------
@@ -1422,7 +1429,37 @@ def run_series(args: SeriesArgs, ctx: ToolContext) -> ToolOutput:
     )
     known = [x for x in (result.input_latex, result.result_latex) if x]
     known += [t.coefficient_latex for t in result.terms]
-    return ToolOutput(card, text, known, result.status.value)
+    if result.result_latex and result.remainder_latex:
+        known.append(
+            f"{result.result_latex} + {result.remainder_latex}"
+        )  # printed in the text above
+    return ToolOutput(card, text, known, result.status.value, series=_series_record(result, args))
+
+
+def _series_record(result: SeriesResult, args: SeriesArgs) -> dict[str, Any] | None:
+    """The verified series as a typed record, or None unless the engine's checks passed."""
+    if (
+        result.status.value != "ok"
+        or result.verification is None
+        or not result.verification.passed
+        or not result.input_latex
+        or not result.variable
+        or result.point_latex is None
+        or not result.result_latex
+    ):
+        return None
+    return SeriesEvidence(
+        expression_latex=result.input_latex,
+        variable=result.variable,
+        centre_latex=result.point_latex,
+        order=result.order,
+        terms=[
+            SeriesTermEvidence(power=t.power, coefficient_latex=t.coefficient_latex)
+            for t in result.terms
+        ],
+        distances=[m.distance for m in result.measured_errors],
+        assumptions={k: list(v) for k, v in args.assumptions.items()},
+    ).model_dump()
 
 
 def run_integrate(args: IntegrateArgs, ctx: ToolContext) -> ToolOutput:

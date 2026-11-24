@@ -19,6 +19,11 @@ confirmed at 60 and 120 digits by `counterexample.find_counterexample`). It is r
 that result, never as a contradiction: the mark stays "unchecked" and the note says which verified equation it
 departs from. A mismatch needs the same name; a different name on the left is the model's own quantity.
 
+A fourth kind exists for Taylor series and only for them (`SeriesEvidence`, `SeriesIndex`): the model's
+`f(x) = P(x) + O((x-a)^{n+1})` is linked to a verified series result only if the function, the variable, the
+centre, the order, every coefficient of the polynomial and the order of the remainder all agree with that
+result (see "Taylor series" at the end). It is never a rule for other asymptotic statements.
+
 A match says "the same statement a verified result made". It does not verify the claim by itself and never
 widens what the tool established: the restrictions of the result travel with the match. Anything else (a
 rearranged form, terms moved across the equals sign, solved for another symbol) is not matched and stays
@@ -27,6 +32,7 @@ exactly as unchecked as before.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 import sympy as sp
@@ -55,9 +61,31 @@ class ClaimEvidence(BaseModel):
     restrictions: list[str] = []  # where the result is valid
 
 
+class SeriesTermEvidence(BaseModel):
+    power: int
+    coefficient_latex: str
+
+
+class SeriesEvidence(BaseModel):
+    """A Taylor series a tool verified, typed: what was expanded, about what, to which order, with what
+    result. Built by the tool from its own result, never from the model's prose (`ToolOutput.series`).
+
+    `distances` are the distances from the centre at which the tool measured its truncation error.
+    `assumptions` are the ones declared in the call; a claim is read under exactly those."""
+
+    source: str = ""
+    expression_latex: str
+    variable: str
+    centre_latex: str
+    order: int
+    terms: list[SeriesTermEvidence] = []
+    distances: list[float] = []
+    assumptions: dict[str, list[str]] = {}
+
+
 class EvidenceMatch(BaseModel):
     source: str
-    rule: Literal["same_left_side", "proportional_residual", "named_quantity"]
+    rule: Literal["same_left_side", "proportional_residual", "named_quantity", "series"]
     basis: Literal["symbolic", "numeric"]
     restrictions: list[str] = []
     detail: str = ""
@@ -230,3 +258,197 @@ class EvidenceIndex:
             ],
             detail="the same equation as the verified result up to a nonzero factor of the parameters",
         )
+
+
+# --- Taylor series ----------------------------------------------------------------------------------------
+#
+# The claim `f(x) = P(x) + O((x-a)^{n+1})` says three things: P is the Taylor polynomial of f of order n about
+# a, the remainder is of the next order, and `f` is the function that was expanded. A series tool result
+# establishes exactly that (coefficients against Cauchy-integral estimates of the original function, the
+# remainder order measured), so the claim is linked to it only when every part is the same:
+#
+# * the function: the left side is the expanded expression itself (an exact symbolic zero of the difference) or
+#   a label `g(x)` that an earlier formula of the conversation defined as that expression (`g(x) = \sin x`). An
+#   undefined label does not say which function is meant and is never linked;
+# * the variable and the centre: the polynomial is compared with `sum c_k (x - a)^k` built from the result's
+#   coefficients and the remainder must be `(x - a)^{n+1}`, so a changed centre changes both;
+# * the order and every coefficient: an exact symbolic zero of the difference, never a sampled agreement;
+# * the assumptions: the claim is read under the ones declared in the tool call.
+#
+# Anything else (another remainder order, a changed coefficient, another function, a label nobody defined) is not
+# linked, and a claim with Big-O notation that is not linked stays unchecked: pointwise sampling is never used
+# for an asymptotic statement. A match is worded as the tool's series result (numerical evidence, the remainder
+# order a measurement), never "proved" and never a bound.
+#
+# Locations. The centre and the places where the tool measured its error (`x = 0.5`, `|x| = 0.1`, `x = a + d`)
+# are parameters of that tool call, not definitions: `x = 0` in "about x = 0" must not make a later `|x| = 0.5`
+# "disagree" with it. `SeriesIndex.location` recognises exactly those restatements; the claim checker neither
+# learns them nor tests anything against them.
+
+_MAX_SERIES_OPS = 800
+_LABEL = re.compile(
+    r"([A-Za-z](?:_\{?[A-Za-z0-9,]+\}?)?)\s*(?:\\left)?\(\s*([^(),]+?)\s*(?:\\right)?\)"
+)
+_LOCATION_TOLERANCE = 1e-9
+
+
+def _plain(name: str) -> str:
+    return name.replace("{", "").replace("}", "").replace(",", "").replace(" ", "")
+
+
+def function_label(side: str) -> tuple[str, str] | None:
+    """`g(x)` -> ("g", "x"): a one-letter name applied to one argument, normalised for comparison."""
+    found = _LABEL.fullmatch(side.strip())
+    if found is None:
+        return None
+    return _plain(found.group(1)), _plain(found.group(2))
+
+
+def _parse(text: str, assumptions: dict[str, list[str]], limits: Limits) -> sp.Expr | None:
+    try:
+        return parse_latex(text, assumptions, limits)
+    except MinervaMathError:
+        return None
+
+
+def _same(a: sp.Expr, b: sp.Expr) -> bool:
+    """An exact symbolic zero of the difference (bounded); undecided is not the same."""
+    try:
+        if a == b or sp.expand(a - b) == 0:
+            return True
+        if sp.count_ops(a) + sp.count_ops(b) > _MAX_SERIES_OPS:
+            return False
+        return bool(sp.simplify(a - b) == 0)
+    except Exception:
+        return False
+
+
+class _Series:
+    """A series record, parsed once."""
+
+    def __init__(
+        self,
+        record: SeriesEvidence,
+        assumptions: dict[str, list[str]],
+        expression: sp.Expr,
+        variable: sp.Symbol,
+        centre: sp.Expr,
+        polynomial: sp.Expr,
+    ) -> None:
+        self.record = record
+        self.assumptions = assumptions
+        self.expression = expression
+        self.variable = variable
+        self.centre = centre
+        self.polynomial = polynomial
+
+
+class SeriesIndex:
+    """The verified series of a conversation, parsed once per check."""
+
+    def __init__(self, records: list[SeriesEvidence], limits: Limits) -> None:
+        from .claims import clean_assumptions
+
+        self.limits = limits
+        self.items: list[_Series] = []
+        for record in records:
+            clean, noncommutative = clean_assumptions(record.assumptions)
+            if noncommutative:
+                continue
+            expression = _parse(record.expression_latex, clean, limits)
+            centre = _parse(record.centre_latex, clean, limits)
+            if expression is None or centre is None or not centre.is_number:
+                continue
+            variable = next((s for s in expression.free_symbols if s.name == record.variable), None)
+            if not isinstance(variable, sp.Symbol):
+                continue
+            polynomial: sp.Expr = sp.Integer(0)
+            coefficients = [_parse(t.coefficient_latex, clean, limits) for t in record.terms]
+            if any(c is None for c in coefficients):
+                continue
+            for term, coefficient in zip(record.terms, coefficients, strict=True):
+                if coefficient is not None:
+                    polynomial += coefficient * (variable - centre) ** term.power
+            self.items.append(_Series(record, clean, expression, variable, centre, polynomial))
+
+    def location(self, sides: list[str]) -> SeriesEvidence | None:
+        """The series whose centre or measurement point this equation restates, if any: `x = a`,
+        `x = a + d`, `x = a - d` or `|x - a| = d` (`|x| = d` for a = 0) for a distance d the tool
+        measured, and nothing else."""
+        if len(sides) != 2 or not self.items:
+            return None
+        for item in self.items:
+            parsed = [_parse(side, item.assumptions, self.limits) for side in sides]
+            if parsed[0] is None or parsed[1] is None:
+                continue
+            for one, other in (parsed, parsed[::-1]):
+                if self._is_location(item, one, other):
+                    return item.record
+        return None
+
+    @staticmethod
+    def _is_location(item: _Series, one: sp.Expr, other: sp.Expr) -> bool:
+        if not other.is_number or other.is_real is not True:
+            return False
+        value = float(other)
+        centre = float(item.centre)
+        distances = item.record.distances
+        if one == item.variable:
+            return abs(value - centre) <= _LOCATION_TOLERANCE or any(
+                abs(value - (centre + sign * d)) <= _LOCATION_TOLERANCE
+                for d in distances
+                for sign in (1, -1)
+            )
+        if one == sp.Abs(item.variable - item.centre):
+            return any(abs(value - d) <= _LOCATION_TOLERANCE for d in distances)
+        return False
+
+    def match(
+        self,
+        function_side: str,
+        polynomial_text: str,
+        remainder_text: str,
+        definitions: dict[tuple[str, str], str],
+    ) -> EvidenceMatch | None:
+        """`function_side = polynomial_text + O(remainder_text)` against every verified series, newest first."""
+        for item in reversed(self.items):
+            if not self._same_function(item, function_side, definitions):
+                continue
+            polynomial = _parse(polynomial_text, item.assumptions, self.limits)
+            remainder = _parse(remainder_text, item.assumptions, self.limits)
+            if polynomial is None or remainder is None:
+                continue
+            order = item.record.order
+            if not _same(remainder, (item.variable - item.centre) ** (order + 1)):
+                continue
+            if not _same(polynomial, item.polynomial):
+                continue
+            declared = "; ".join(
+                f"{name} {', '.join(items)}" for name, items in sorted(item.assumptions.items())
+            )
+            return EvidenceMatch(
+                source=item.record.source,
+                rule="series",
+                basis="numeric",
+                detail=(
+                    f"the Taylor series the tool computed: order {order} about "
+                    f"{item.record.variable} = {item.record.centre_latex}, remainder of order {order + 1}; "
+                    "its coefficients were checked against Cauchy-integral estimates of the function and "
+                    "the remainder order was measured (numerical evidence, not a proof or a bound)"
+                    + (f"; assumptions of the call: {declared}" if declared else "")
+                ),
+            )
+        return None
+
+    def _same_function(
+        self, item: _Series, side: str, definitions: dict[tuple[str, str], str]
+    ) -> bool:
+        label = function_label(side)
+        if label is not None:
+            body = definitions.get(label)
+            if label[1] != _plain(item.record.variable) or body is None:
+                return False
+            expression = _parse(body, item.assumptions, self.limits)
+        else:
+            expression = _parse(side, item.assumptions, self.limits)
+        return expression is not None and _same(expression, item.expression)

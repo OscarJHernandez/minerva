@@ -1,7 +1,7 @@
 """Minerva symbolic computation engine."""
 
 from .approx import ApproximationInput, ApproximationReport
-from .claim_evidence import ClaimEvidence
+from .claim_evidence import ClaimEvidence, SeriesEvidence, SeriesTermEvidence
 from .claims import ClaimCheck, check_claim, check_claims, split_equation
 from .creative_telescoping import TelescopingInput, TelescopingResult
 from .differentiate import (
@@ -168,8 +168,10 @@ __all__ = [
     "RuleCondition",
     "SandboxCall",
     "SearchEvent",
+    "SeriesEvidence",
     "SeriesResult",
     "SeriesTerm",
+    "SeriesTermEvidence",
     "SeriesVerification",
     "SimplifyResult",
     "Solution",

@@ -152,6 +152,15 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   differs (`counterexample.find_counterexample`: a gap confirmed at 60 and 120 digits, never noise, a pole or an
   exception) stays `unchecked` with a note naming the verified equation and `evidence_rule: "mismatch"` in the debug
   claims (`EvidenceIndex.mismatch`). The name must be the same: another name on the left is the model's own quantity.
+  A Taylor series is the fourth kind and has its own typed record (`SeriesEvidence`, `claim_evidence.SeriesIndex`, built by
+  `run_series` from the engine's own result into `ToolOutput.series` / `TraceStep.series`, read by `loop.series_evidence`
+  and `turn_context._prior_evidence`): `f(x) = P(x) + O((x-a)^{n+1})` is `supported` (`evidence_rule: "series"`) only if
+  the function (the expanded expression, or a label `g(x)` an earlier formula defined as it), the variable, the centre,
+  every coefficient (an exact symbolic zero, never a sampled agreement) and the remainder order all equal the result's,
+  under the assumptions of the call. A changed coefficient, order, centre or function, an undefined label and a second
+  remainder stay unchecked, never contradicted. It is worded as the tool's series result (numerical evidence; the remainder
+  order a measurement), never proved and never a bound; `known_latex` only gains the `P + O(...)` form the tool itself
+  printed.
   Because discovery constants now carry the `conserved` role, rule (3) also links `K = <the C_4 expression>`; its wrong
   twins (a sign, a 1e-6 factor, a dropped term) are in `test_claim_evidence.py`. The evaluation harness hands the claim
   check the earlier turns' verified results (`prior_evidence`) as the chat route does.
@@ -467,6 +476,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   reading. The check is syntactic (zeros of denominators); square-root, logarithm and branch-cut domains are not covered
   and a denominator that cannot be analysed is reported, never dropped (`restrictions_complete`).
 - Claim classification (`claims.py`): `fails` (shown contradicted) only when the sides differ by a nonzero constant.
+  Two notations are never sampled because the permissive parser reads them as something else: Big-O/little-o (`O(t^3)` is
+  O*t^3; `_BIG_O`) and an applied function nobody declared (`g(t)` is g*t; `_APPLIED`: a letter or Greek name directly
+  followed by `(` that is not also a plain symbol of the same formula, so `x(x+1)`, `a(b+c) = ab + ac` and `m (a+b)` are still
+  tested). Such a claim is `unverified` with the reason, is never learned as a definition (it would define a symbol by a
+  statement about another expression) and is never `conditional` or `fails`; pointwise agreement never establishes an
+  asymptotic remainder. The expansion point and the places where a verified series measured its error (`x = a`,
+  `x = a \pm d`, `|x - a| = d`, read from the typed series record) are parameters of that call, not definitions: they are
+  neither learned (not from the reply and not from the conversation's earlier messages) nor tested against; every other
+  `symbol = value` is still a definition and still contradicts a wrong value. Without a series record (the call failed or
+  fell out of the evidence window) `x = 0` is still a definition (A-012).
   A false identity at generic points is `not_identity` (shown unchecked): Minerva cannot tell it from an equation to
   solve, a definition or an equation of motion, which are `unverified`. Do not map `not_identity` to contradicted.
   The one place a false identity is called false is `check_identity` (`identity_check.py`, tool and `Engine.check_identity`), and only
