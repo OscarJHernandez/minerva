@@ -168,3 +168,17 @@ def test_a_conflict_among_known_terms_is_not_blamed_on_the_unknowns() -> None:
     report = run("F c = m + t", [q("F", "N"), q("m", "kg"), q("t", "s")], ["c"])
     assert report.outcome == "inconsistent"
     assert "whatever the unknowns are" in (report.problem or "")
+
+
+def test_a_conflict_among_known_terms_that_the_checker_does_not_confirm_is_not_shown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The solver claims `m` and `m2` (both kg) conflict: the independent check disagrees, so nothing is shown."""
+    import sympy as sp
+    from minerva_engine.dimension_solver import Affine, Condition
+
+    m, m2 = sp.Symbol("m"), sp.Symbol("m2")
+    wrong = Solution("inconsistent", conflict=Condition("sum", m, Affine(), m2, Affine()))
+    monkeypatch.setattr(pi_groups, "solve_unknown_dimensions", lambda *a, **k: wrong)
+    report = run("F c = m + m2", [q("F", "N"), q("m", "kg"), q("m2", "kg")], ["c"])
+    assert report.status is Status.NOT_VERIFIED and report.consistent is None

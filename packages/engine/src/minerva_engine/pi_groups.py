@@ -30,7 +30,7 @@ import sympy as sp
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .claims import split_equation
-from .dimension_solver import affine_latex, affine_text, solve_unknown_dimensions
+from .dimension_solver import Condition, affine_latex, affine_text, solve_unknown_dimensions
 from .dimensions import (
     BASE_UNITS,
     ZERO,
@@ -768,6 +768,8 @@ def check_units(
             c = solution.conflict
             report.consistent = False
             about_unknowns = bool(c.difference().coefficients)
+            if not about_unknowns and not _conflict_confirmed(c, units):
+                return _not_verified(report)
             report.problem = (
                 "no dimensions for the unknowns make this equation consistent; the conditions "
                 "up to this one cannot all hold"
@@ -854,6 +856,20 @@ _CONDITION_TEXT = {
     "function": "the argument of a function, and an exponent, must be dimensionless",
     "sides": "both sides must have one dimension",
 }
+
+
+def _conflict_confirmed(c: Condition, units: dict[str, Dim]) -> bool:
+    """A conflict that involves no unknown is re-checked by the ordinary checker, which shares no code with
+    the solver: the terms must really differ (or a part of them already be inconsistent)."""
+    try:
+        left = dimension_of(c.left_expr, units)
+        if c.kind == "function" or c.right_expr is None:
+            return left != ZERO
+        return left != dimension_of(c.right_expr, units)
+    except DimensionError:
+        return True
+    except MinervaMathError:
+        return False
 
 
 def _not_verified(report: UnitsCheckReport) -> UnitsCheckReport:
