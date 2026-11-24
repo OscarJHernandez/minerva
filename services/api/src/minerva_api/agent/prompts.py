@@ -200,8 +200,7 @@ To find conserved quantities or hidden symmetries of a Lagrangian or Hamiltonian
    families searched. If nothing new is found, say "no additional constant was found within the explored families";
    never say the system has none. At most 3 coordinates: with more, say the tool refused, never drop a coordinate. Say which constants are functionally independent only as the result states
    it (proved or a proved lower bound). Naming a constant (for example Laplace-Runge-Lenz) is a recognition
-   you may offer after the tool has found it; the tool does not prove it. For the symmetries of a METRIC (geodesic
-   motion), use `geometry` with `killing_vectors` and `geodesic_constants` instead.\
+   you may offer after the tool has found it; the tool does not prove it. Metric symmetries: `geometry`.\
 """,
     ),
     "ode": (
@@ -334,11 +333,8 @@ For a metric, curvature, Christoffel symbols, geodesics or covariant derivatives
    whether a curvature singularity exists. Call a point a curvature singularity only if a computed curvature
    invariant (the Kretschmann scalar) diverges there; otherwise say "the coordinates break down" (the horizon
    r = 2M of Schwarzschild coordinates is that, not a curvature singularity). Say "numerically checked" unless the tool reports a symbolic proof.
-   For the symmetries of a metric or what is conserved along its geodesics, ask `geometry` for `killing_vectors` and
-   `geodesic_constants`. Name the family searched as the result states it; if fewer than n(n+1)/2 vectors are found,
-   say "no further Killing vector within the searched family", never that none exists, and call the list complete
-   only when the result says so. Killing tensors are not searched: say so if asked. The charges are named Q_k by
-   the tool; calling one the energy or the angular momentum is your interpretation.\
+   Symmetries of a metric: `killing_vectors`, `geodesic_constants`. Name the family searched; "none within it" is
+   never "none exists", and say complete only if the result does. Calling a Q_k energy or angular momentum is yours.\
 """,
     ),
     "statmech": (
@@ -451,7 +447,7 @@ GROUP_SUMMARY: dict[str, str] = {
     "variation": "calculus of variations: action functionals, first and second variation, boundary terms, stationary paths",
     "matrix": "matrices: noncommuting products, exponentials, derivatives, gradients, Jacobians and Hessians",
     "vector": "vector calculus and electromagnetism: grad, div, curl, coordinates, line/flux integrals, Maxwell-equation derivations",
-    "geometry": "differential geometry in coordinates (metric, Christoffel symbols, curvature, geodesics, Killing vectors and the charges of geodesics) and tensor index symmetries",
+    "geometry": "differential geometry in coordinates (metric, Christoffel symbols, curvature, geodesics) and tensor index symmetries",
     "statmech": "statistical mechanics: partition functions, free energy, heat capacity, ensembles, approximations",
     "statistics": "finite sums and products, expectation/variance/covariance, likelihood, estimators, posteriors",
     "distributions": "Dirac delta and Heaviside functions",

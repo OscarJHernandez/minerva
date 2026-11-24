@@ -1679,7 +1679,9 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
         "assumptions and functions."
     )
     if roles:
-        names = [c.strip().lstrip("\\").replace("{", "").replace("}", "") for c in request.coordinates]
+        names = [
+            c.strip().lstrip("\\").replace("{", "").replace("}", "") for c in request.coordinates
+        ]
         return ToolOutput(
             card,
             "\n".join(lines),

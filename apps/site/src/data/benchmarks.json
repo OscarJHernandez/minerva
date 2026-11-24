@@ -34,9 +34,9 @@
       "id": "geometry",
       "title": "Differential geometry",
       "what": "Christoffel symbols, curvature and geodesics of explicit metrics, compared with closed forms and with an independent numerical recomputation, plus malformed metrics that must be refused.",
-      "total": 20,
-      "correct": 12,
-      "refused": 8,
+      "total": 30,
+      "correct": 18,
+      "refused": 12,
       "rejected": 0,
       "pending": 0,
       "sources": [
@@ -152,9 +152,9 @@
     }
   ],
   "verification": {
-    "problems": 237,
-    "correct": 132,
-    "refused": 102,
+    "problems": 247,
+    "correct": 138,
+    "refused": 106,
     "false_accepts": 0,
     "false_rejects": 0,
     "counterexamples_found": 22,
