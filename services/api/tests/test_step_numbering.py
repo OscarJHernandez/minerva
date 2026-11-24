@@ -122,7 +122,7 @@ def test_only_an_ok_step_result_has_a_formula(conditional: ToolOutput) -> None:
 
 
 def test_the_classification_still_names_each_card_type_once() -> None:
-    assert "step" in SINGLE_RESULT and "matrix" in LIST_NOT_YET_NUMBERED
+    assert "step" in SINGLE_RESULT and "matrix" in LIST_READERS
     assert not (set(LIST_READERS) & SINGLE_RESULT) and "step" not in LIST_NOT_YET_NUMBERED
 
 

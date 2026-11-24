@@ -2499,5 +2499,308 @@
       "equil:2:eig:1": "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
       "equil:2:char": "\\lambda^{2} + \\frac{\\lambda}{5} + 2"
     }
+  },
+  "matrix_gradient": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "reason": null,
+        "result_text": "-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S)",
+        "derivative": {
+          "kind": "gradient",
+          "variable_shape": [3, 3],
+          "result_shape": [3, 3],
+          "layout": "shape_of_variable",
+          "field": "real",
+          "constraint": "positive_definite",
+          "convention": "symmetric_frobenius",
+          "alternatives": [
+            {
+              "convention": "symmetric_entrywise",
+              "latex": "- S^{-1} + S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1} - \\operatorname{diag}\\left(- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}\\right)",
+              "text": "-inv(S) + inv(S)*(x - mu)*transpose(x - mu)*inv(S) - diagpart(-1/2*inv(S) + 1/2*inv(S)*(x - mu)*transpose(x - mu)*inv(S))",
+              "points_checked": 4,
+              "points_agreed": 4,
+              "note": "the partial derivatives with respect to the independent entries (i <= j)"
+            }
+          ]
+        },
+        "action": "gradient",
+        "input_latex": "-\\frac{1}{2} \\log\\left|\\det\\left(S\\right)\\right| - \\frac{1}{2} \\left(x - \\mu\\right)^{\\top} S^{-1} \\left(x - \\mu\\right)",
+        "structure": "scalar function of the 3x3 matrix S, positive definite",
+        "features": [],
+        "method": "gradient_differential",
+        "method_title": "Gradient by differentials",
+        "result_kind": "gradient",
+        "result_latex": "- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}",
+        "result_entries": null,
+        "equation_latex": null,
+        "evaluated": true,
+        "assumptions_used": [],
+        "steps": [
+          {
+            "method": "gradient_differential",
+            "title": "Differential, brought to the form tr(G^T dV)",
+            "before_latex": "-\\frac{1}{2} \\log\\left|\\det\\left(S\\right)\\right| - \\frac{1}{2} \\left(x - \\mu\\right)^{\\top} S^{-1} \\left(x - \\mu\\right)",
+            "after_latex": "- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}",
+            "note": ""
+          }
+        ],
+        "blocked": [],
+        "verification": {
+          "method": "central finite differences of the function at random real matrices of the declared sizes; symmetry of the candidate is required",
+          "points_checked": 4,
+          "points_agreed": 4,
+          "passed": true,
+          "symbolic_zero": null,
+          "symbolic_method": "not run: the numerical derivative is the only leg here",
+          "note": "numerical agreement is evidence, not a proof"
+        },
+        "notes": [
+          "over the real numbers: a transpose, not a conjugate transpose",
+          "logdet is log |det|; its derivative is the same",
+          "for a symmetric variable this is the gradient within the symmetric matrices (Frobenius inner product); the entrywise form is given separately"
+        ],
+        "message": "verified against the numerical derivative; numerical agreement is evidence, not a proof",
+        "duration_ms": 1921,
+        "diagnostics": {
+          "trace_id": null,
+          "method": "gradient_differential",
+          "methods_tried": [],
+          "dimensions": [],
+          "matrices": 3,
+          "explicit": 0,
+          "time_dependent": 0,
+          "commutation": "not_used",
+          "invertibility": "not_used",
+          "stages": [
+            {
+              "name": "total",
+              "ms": 34.01
+            }
+          ],
+          "digits": null,
+          "tolerance": null,
+          "max_residual": null,
+          "points_checked": 4,
+          "points_agreed": 4,
+          "verification": "central_difference_real",
+          "fallbacks": [],
+          "failure_reason": null
+        }
+      },
+      "request": {
+        "matrices": [
+          {
+            "name": "x",
+            "rows": 3,
+            "cols": 1,
+            "entries": null,
+            "depends_on": null,
+            "symmetric": false,
+            "positive_definite": false
+          },
+          {
+            "name": "mu",
+            "rows": 3,
+            "cols": 1,
+            "entries": null,
+            "depends_on": null,
+            "symmetric": false,
+            "positive_definite": false
+          },
+          {
+            "name": "S",
+            "rows": 3,
+            "cols": null,
+            "entries": null,
+            "depends_on": null,
+            "symmetric": false,
+            "positive_definite": true
+          }
+        ],
+        "commuting": [],
+        "invertible": [],
+        "self_commuting": [],
+        "action": "gradient",
+        "variable": "S",
+        "lower": null,
+        "upper": null,
+        "candidate": null
+      }
+    },
+    "keys": ["step:0", "alt:0"],
+    "rows": {
+      "step:0": "- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}",
+      "alt:0": "- S^{-1} + S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1} - \\operatorname{diag}\\left(- \\frac{1}{2} S^{-1} + \\frac{1}{2} S^{-1} \\left(x - \\mu\\right) \\left(x - \\mu\\right)^{\\top} S^{-1}\\right)"
+    }
+  },
+  "matrix_integral": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "reason": null,
+        "result_text": null,
+        "derivative": null,
+        "action": "integrate",
+        "input_latex": "\\exp\\left(w A\\right) \\exp\\left(-w B\\right)",
+        "structure": "A single term in the matrices A, B, with 2 matrix exponentials, commutation is not assumed for AB. Sylvester form: the integrand is F(t) = e^((at+b)P) C e^((ct+d)Q) with P = A and Q = B, all constant, so X = integral of F satisfies aPX + cXQ = F(upper) - F(lower).",
+        "features": [
+          "matrix:integrate",
+          "matrix:exp",
+          "matrix:noncommuting",
+          "matrix:explicit",
+          "matrix:sylvester-form"
+        ],
+        "method": "sylvester_reduction",
+        "method_title": "Sylvester equation for ∫ e^{(at+b)P} C e^{(ct+d)Q} dt",
+        "result_kind": "explicit",
+        "result_latex": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]",
+        "result_entries": [
+          ["-1 + E", "-1"],
+          ["0", "-1/2 + exp(2)/2"]
+        ],
+        "equation_latex": "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+        "evaluated": true,
+        "assumptions_used": [
+          "the Sylvester operator X -> aPX + cXQ is invertible (its Kronecker determinant is nonzero)",
+          "A, B are constant in w"
+        ],
+        "steps": [
+          {
+            "method": "sylvester_reduction",
+            "title": "Recognise the form e^{(at+b)P} C e^{(ct+d)Q}",
+            "before_latex": "\\int_{0}^{1} \\exp\\left(w A\\right) \\exp\\left(-w B\\right)\\,dw",
+            "after_latex": null,
+            "note": "A, B constant; F' = aPF + cFQ"
+          },
+          {
+            "method": "sylvester_reduction",
+            "title": "Integrate F' = aPF + cFQ over the interval",
+            "before_latex": null,
+            "after_latex": "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+            "note": "a Sylvester equation for X = ∫F; it holds without assuming invertibility"
+          },
+          {
+            "method": "sylvester_reduction",
+            "title": "Solve the Sylvester equation",
+            "before_latex": "A X - X B = \\exp\\left(A\\right) \\exp\\left(-B\\right) - I",
+            "after_latex": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]",
+            "note": "the Kronecker operator has a nonzero determinant, so the solution is unique"
+          }
+        ],
+        "blocked": [],
+        "verification": {
+          "method": "adaptive quadrature (mpmath) of the integrand against the solved result, random parameter values",
+          "points_checked": 4,
+          "points_agreed": 4,
+          "passed": true,
+          "symbolic_zero": true,
+          "symbolic_method": "the explicit result substituted into the Sylvester equation: every entry of the residual simplifies to zero (exact)",
+          "note": ""
+        },
+        "notes": [],
+        "message": "Evaluated and verified.",
+        "duration_ms": 276,
+        "diagnostics": {
+          "trace_id": null,
+          "method": "sylvester_reduction",
+          "methods_tried": [
+            {
+              "id": "integrate_polynomial",
+              "outcome": "no_match"
+            },
+            {
+              "id": "exp_integral_invertible",
+              "outcome": "no_match"
+            },
+            {
+              "id": "duhamel",
+              "outcome": "no_match"
+            },
+            {
+              "id": "sylvester_reduction",
+              "outcome": "selected"
+            }
+          ],
+          "dimensions": [[2, 2]],
+          "matrices": 2,
+          "explicit": 2,
+          "time_dependent": 0,
+          "commutation": "not_used",
+          "invertibility": "declared",
+          "stages": [
+            {
+              "name": "parse",
+              "ms": 3.87
+            },
+            {
+              "name": "transform",
+              "ms": 100.43
+            },
+            {
+              "name": "verify_numeric",
+              "ms": 92.49
+            },
+            {
+              "name": "verify_exact",
+              "ms": 0.09
+            },
+            {
+              "name": "total",
+              "ms": 197.02
+            }
+          ],
+          "digits": 16,
+          "tolerance": 1e-9,
+          "max_residual": 8.688474537036675e-18,
+          "points_checked": 4,
+          "points_agreed": 4,
+          "verification": "quadrature+residual",
+          "fallbacks": [],
+          "failure_reason": null
+        }
+      },
+      "request": {
+        "matrices": [
+          {
+            "name": "A",
+            "rows": null,
+            "cols": null,
+            "entries": [
+              ["1", "0"],
+              ["0", "2"]
+            ],
+            "depends_on": null,
+            "symmetric": false,
+            "positive_definite": false
+          },
+          {
+            "name": "B",
+            "rows": null,
+            "cols": null,
+            "entries": [
+              ["0", "1"],
+              ["0", "0"]
+            ],
+            "depends_on": null,
+            "symmetric": false,
+            "positive_definite": false
+          }
+        ],
+        "commuting": [],
+        "invertible": [],
+        "self_commuting": [],
+        "action": "integrate",
+        "variable": "w",
+        "lower": "0",
+        "upper": "1",
+        "candidate": null
+      }
+    },
+    "keys": ["step:2"],
+    "rows": {
+      "step:2": "\\left[\\begin{matrix}-1 + \\mathrm{e} & -1\\\\0 & - \\frac{1}{2} + \\frac{\\mathrm{e}^{2}}{2}\\end{matrix}\\right]"
+    }
   }
 }

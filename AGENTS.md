@@ -302,7 +302,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `LIST_NOT_YET_NUMBERED` or `EXCLUDED_WITH_REASON` (a test); `tensor` is a single result (its one canonical form, numbered
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
   equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
-  list formulas without numbers (matrix list rows and vector; also deferred inside cards that are otherwise numbered:
+  list formulas without numbers (vector; also deferred inside cards that are otherwise numbered:
   the statistics posterior, step lists, expansion eigenvectors, the perturbation solution and
   the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
@@ -529,7 +529,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `evaluated` and not an `equation`, `representation` or `numeric` kind: those get **no number and no handle**, because
   a number would present a Sylvester equation, a block or integral form or a numerical approximation as an evaluated
   result. An evaluated matrix result is numbered (a name) but is not in `REFERENCEABLE_TOOLS` (matrices are
-  noncommutative; reuse by `@eN` carries `NO_ID_SUFFIX`); the rows it lists stay in `LIST_NOT_YET_NUMBERED`.
+  noncommutative; reuse by `@eN` carries `NO_ID_SUFFIX`). Its list rows are numbered too (`card_equations.matrix`, #166), only
+  for an accepted, evaluated result of the same gate: `step:i` (the formula step i produced, keyed by the index in the card's own
+  list; the engine fills it in a fixed order) and `alt:j` (an alternative convention of a derivative, separately checked and
+  labelled, not the result). Not numbered: the formula a step started from, a step whose formula is a relation (the Sylvester
+  equation: its `X` is defined only by the card's words), the input as read, the entries. A row whose formula is the result's
+  keeps the result's number (one formula, one number); a row is a name of an intermediate formula, so `@eN` of it carries
+  `unverified_inputs` as for every list row.
   Typed references (issue #133, part 3; `agent/reference_types.py`, `equations.relation_kind`, `refs.ResultStore.resolve(args, tool)`):
   every numbered formula records a kind read off its text by one rule (`equation`: a top-level `=`; `expression`: no
   relation; `None`: undecided, for another relation sign, a multi-row environment or unbalanced brackets, and for an
