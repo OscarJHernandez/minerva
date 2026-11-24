@@ -45,7 +45,10 @@ describe("buildConservedRequest", () => {
 
   it("refuses bad input with a message", () => {
     expect(buildConservedRequest({ ...base, fn: " " })).toMatch(/Enter the/);
-    expect(buildConservedRequest({ ...base, coordinates: "a,b,c,d" })).toMatch(/between 1 and 3/);
+    expect(buildConservedRequest({ ...base, coordinates: "a,b,c,d,e" })).toMatch(/between 1 and 4/);
+    expect(buildConservedRequest({ ...base, coordinates: "t, r, theta, phi" })).toMatchObject({
+      coordinates: ["t", "r", "theta", "phi"],
+    });
     expect(buildConservedRequest({ ...base, system: "hamiltonian", momenta: "p_r" })).toMatch(
       /one momentum name per coordinate/,
     );

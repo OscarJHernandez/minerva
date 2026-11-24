@@ -70,7 +70,7 @@ def test_regenerate_the_missing_fixture_entry(ctx: ToolContext) -> None:
 def test_simplify_is_a_list_reader_and_the_remaining_sets_are_unchanged() -> None:
     assert "simplify" in LIST_READERS and "simplify" not in LIST_NOT_YET_NUMBERED
     assert "simplify" not in SINGLE_RESULT
-    assert {"vector"} == LIST_NOT_YET_NUMBERED
+    assert set() == LIST_NOT_YET_NUMBERED
 
 
 def test_the_fixture_keys_and_rows(fixture: dict[str, Any]) -> None:

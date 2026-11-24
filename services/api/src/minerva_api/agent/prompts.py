@@ -198,7 +198,7 @@ To find conserved quantities or hidden symmetries of a Lagrangian or Hamiltonian
    bound or the angles, and never supply an expected invariant. The result lists the families that were
    searched. Never say it found "all" the conserved quantities or that the list is complete: name the
    families searched. If nothing new is found, say "no additional constant was found within the explored families";
-   never say the system has none. At most 3 coordinates: with more, say the tool refused, never drop a coordinate. Say which constants are functionally independent only as the result states
+   never say the system has none. At most 4 coordinates: with more, say the tool refused, never drop a coordinate. Say which constants are functionally independent only as the result states
    it (proved or a proved lower bound). Naming a constant (for example Laplace-Runge-Lenz) is a recognition
    you may offer after the tool has found it; the tool does not prove it. Metric symmetries: `geometry`.\
 """,

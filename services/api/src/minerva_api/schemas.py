@@ -315,14 +315,15 @@ class ConservedRequest(BaseModel):
 
     function: str = Field(min_length=1, max_length=2000)
     system: Literal["lagrangian", "hamiltonian"] = "lagrangian"
+    # At most `minerva_engine.flow.MAX_COORDINATES` (4, issue #152): five or more is a validation error here.
     coordinates: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
-        min_length=1, max_length=3
+        min_length=1, max_length=4
     )
     momenta: list[Annotated[str, Field(min_length=1, max_length=32)]] | None = Field(
-        default=None, max_length=3
+        default=None, max_length=4
     )
     angles: list[Annotated[str, Field(min_length=1, max_length=32)]] = Field(
-        default_factory=list, max_length=3
+        default_factory=list, max_length=4
     )
     budget: Literal["quick", "standard", "thorough"] = "standard"
     pins: Pins | None = None
