@@ -77,6 +77,7 @@ FIELD_POLICY: dict[tuple[str, str], tuple[Policy, str]] = {
         )
         for tool, name in (
             ("analyze_lagrangian", "lagrangian"),
+            ("routh_reduce", "lagrangian"),
             ("find_conserved_quantities", "lagrangian"),
             ("find_conserved_quantities", "hamiltonian"),
             ("search_invariants", "lagrangian"),

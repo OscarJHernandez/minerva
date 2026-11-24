@@ -110,6 +110,7 @@ const NEW_ENTRIES: Record<
   | "ode_analysis"
   | "matrix"
   | "simplify"
+  | "routh"
   | "vector"
 > = {
   variation: "variation",
@@ -131,6 +132,7 @@ const NEW_ENTRIES: Record<
   matrix_gradient: "matrix",
   matrix_integral: "matrix",
   simplify: "simplify",
+  routh: "routh",
   vector_scalar: "vector",
   vector_components: "vector",
   vector_convert: "vector",

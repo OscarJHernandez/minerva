@@ -49,8 +49,8 @@
       "id": "reference",
       "title": "Problems answered from outside Minerva",
       "what": "Differential equations, distributions, calculus and matrices whose expected answers come from other tools (mpmath, quadrature, plain arithmetic), written by hand and never regenerated from the code.",
-      "total": 103,
-      "correct": 71,
+      "total": 104,
+      "correct": 72,
       "refused": 31,
       "rejected": 0,
       "pending": 1,
@@ -152,8 +152,8 @@
     }
   ],
   "verification": {
-    "problems": 247,
-    "correct": 138,
+    "problems": 248,
+    "correct": 139,
     "refused": 106,
     "false_accepts": 0,
     "false_rejects": 0,
@@ -161,7 +161,7 @@
     "pending": 1,
     "known_open": 2,
     "evidence": {
-      "symbolic_proof": 5,
+      "symbolic_proof": 6,
       "numeric_agreement": 54,
       "structural": 9,
       "conditional": 3,

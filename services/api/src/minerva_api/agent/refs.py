@@ -44,6 +44,7 @@ REFERENCEABLE_TOOLS = frozenset(
         "time_derivative",
         "substitute",
         "rewrite_part",
+        "routh_reduce",
     }
 )
 # `substitute` and `rewrite_part` keep their result under `data["result"]` (`card_equations.result_formula`); the id
@@ -53,6 +54,8 @@ REFERENCEABLE_TOOLS = frozenset(
 # `time_derivative`: the id names `result_latex`, the total derivative before any equations of motion are used.
 # Its conclusion on the equations of motion (`zero_on_motion`, `on_motion_latex`) is a statement about a system
 # and never gets an id: a plain `0` would drop the system it was decided on.
+# `routh_reduce`: the id names the Routhian R (`result_latex`) with the block-determinant restrictions. The rows of
+# what was held fixed and of the rebuilt velocities are numbered list rows (names, no id).
 # Arguments that may contain references (the ones that hold a mathematical expression).
 EXPRESSION_ARGUMENTS = MATH_FIELDS
 

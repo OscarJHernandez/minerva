@@ -73,6 +73,7 @@ engine. "Oracle" is the independent check named in `AGENTS.md`.
 | `get_entry` | core | 1 / 1 | the same | `stated` entries are never applied | handbook `verify` |
 | `load_tools` | core | none (offline suite) | not mathematical | loads groups only | offline trajectories |
 | `analyze_lagrangian` | mechanics | 6 / 4 | numerical differentiation of L, confirmed equations | at most the stated coordinate count | reference case, corruption sweep |
+| `routh_reduce` | mechanics | 1 / 1 | momenta verified conserved; R read back and checked on motions of L (Euler-Lagrange residual, -dR/dp, R = L - Σ p ċ); symbolic leg reported apart | only coordinates the caller names; linear momenta, nonsingular block; p_c stays a symbol | wrong twins (sign, dropped 1/f, 1e-6, +C, +f(t), +dF/dt); reference problem; reliability case `schwarzschild-routh-reduction-by-time` |
 | `time_derivative` | mechanics | 2 / 2 | central difference along random motions | no accelerations in the input | wrong-candidate test; multi-turn case `kepler-discovery-then-derivative-of-a-relation-among-the-constants` and `test_conserved_quantity_multiturn.py` |
 | `expand_motion` | mechanics | 2 / 2 | `check_series` on every expansion | no stability claims | reference case |
 | `perturbation_solve` | mechanics | 1 / 1 | residual decay at the claimed order | one coordinate, no damping | wrong-frequency test |

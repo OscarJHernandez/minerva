@@ -510,6 +510,28 @@ class ScriptedLLM:
                     )
                 ]
             )
+        elif (
+            "routh" in lower
+            and latex
+            and (removed := re.search(r"\bby (?:the )?(?:cyclic )?(?:coordinate )?([a-z]+)", lower))
+        ):
+            names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
+            async for c in self._say(
+                "I will hold the momentum of the cyclic coordinate fixed and check the reduction. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "routh_reduce",
+                        {
+                            "lagrangian": latex,
+                            "coordinates": names or ["x"],
+                            "cyclic": [removed.group(1)],
+                        },
+                    )
+                ]
+            )
         elif "lagrangian" in lower and latex:
             names = list(dict.fromkeys(re.findall(r"\\dot\s*\{?\\?([A-Za-z]+)", latex)))
             async for c in self._say(
@@ -857,6 +879,11 @@ class ScriptedLLM:
                 )
             else:
                 text = "No handbook identity applies to this expression."
+        elif tool == "routh_reduce":
+            text = (
+                "The card shows the Routhian R for the remaining coordinates, the momentum held fixed as a "
+                "symbol, the velocity of the removed coordinate and where the reduction holds."
+            )
         elif tool == "analyze_lagrangian":
             text = (
                 "The card lists the equations of motion, the accelerations, and the constants of motion "

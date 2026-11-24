@@ -1,64 +1,71 @@
 {
-  "applied": 222,
+  "applied": 253,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 2,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "derivative:latex_letter_run": {
-      "diagnosed": 4,
+      "diagnosed": 6,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "derivative:leibniz": {
-      "diagnosed": 0,
+      "diagnosed": 2,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "derivative:spaced": {
       "diagnosed": 0,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 2,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "derivative:upper": {
       "diagnosed": 0,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 2,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "shape:assignment_prefix": {
       "diagnosed": 4,
       "different_verified_result": 0,
-      "same": 1,
+      "same": 3,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "shape:formula_alias": {
-      "diagnosed": 20,
+      "diagnosed": 22,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "shape:json_as_string": {
-      "diagnosed": 25,
+      "diagnosed": 27,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
+    "shape:kind_wrapped": {
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
     "shape:list_as_string": {
-      "diagnosed": 12,
+      "diagnosed": 14,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
@@ -71,52 +78,59 @@
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
+    "syntax:braced_exponent": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 2,
+      "same_after_cleaning": 0,
+      "untyped_failure": 0
+    },
     "transport:code_fence": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
-      "untyped_failure": 26
+      "untyped_failure": 28
     },
     "transport:dollar_wrapper": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
-      "untyped_failure": 26
+      "untyped_failure": 28
     },
     "transport:doubled_backslash": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
-      "untyped_failure": 20
+      "untyped_failure": 22
     },
     "transport:markdown_escape": {
-      "diagnosed": 0,
+      "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
-      "untyped_failure": 21
+      "untyped_failure": 25
     },
     "transport:trailing_period": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 4,
       "same_after_cleaning": 0,
-      "untyped_failure": 21
+      "untyped_failure": 22
     },
     "transport:unicode_look_alikes": {
       "diagnosed": 0,
       "different_verified_result": 0,
-      "same": 9,
+      "same": 8,
       "same_after_cleaning": 0,
-      "untyped_failure": 17
+      "untyped_failure": 20
     }
   },
   "by_tool": {
     "analyze_lagrangian": {
-      "diagnosed": 4,
+      "diagnosed": 5,
       "different_verified_result": 0,
       "same": 5,
       "same_after_cleaning": 0,
@@ -129,12 +143,19 @@
       "same_after_cleaning": 0,
       "untyped_failure": 5
     },
+    "check_identity": {
+      "diagnosed": 1,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 0,
+      "untyped_failure": 5
+    },
     "check_units": {
-      "diagnosed": 2,
+      "diagnosed": 3,
       "different_verified_result": 0,
       "same": 2,
       "same_after_cleaning": 0,
-      "untyped_failure": 2
+      "untyped_failure": 4
     },
     "creative_telescoping": {
       "diagnosed": 2,
@@ -188,7 +209,7 @@
     "find_conserved_quantities": {
       "diagnosed": 3,
       "different_verified_result": 0,
-      "same": 0,
+      "same": 1,
       "same_after_cleaning": 0,
       "untyped_failure": 6
     },
@@ -200,7 +221,7 @@
       "untyped_failure": 6
     },
     "integrate": {
-      "diagnosed": 1,
+      "diagnosed": 2,
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
@@ -262,12 +283,19 @@
       "same_after_cleaning": 0,
       "untyped_failure": 0
     },
+    "routh_reduce": {
+      "diagnosed": 5,
+      "different_verified_result": 0,
+      "same": 5,
+      "same_after_cleaning": 0,
+      "untyped_failure": 4
+    },
     "series": {
       "diagnosed": 1,
       "different_verified_result": 0,
-      "same": 2,
+      "same": 1,
       "same_after_cleaning": 0,
-      "untyped_failure": 4
+      "untyped_failure": 6
     },
     "simplify": {
       "diagnosed": 2,
@@ -284,7 +312,7 @@
       "untyped_failure": 5
     },
     "statistical_mechanics": {
-      "diagnosed": 2,
+      "diagnosed": 3,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
@@ -312,7 +340,7 @@
       "untyped_failure": 5
     },
     "time_derivative": {
-      "diagnosed": 2,
+      "diagnosed": 4,
       "different_verified_result": 0,
       "same": 0,
       "same_after_cleaning": 0,
@@ -330,7 +358,7 @@
       "different_verified_result": 0,
       "same": 1,
       "same_after_cleaning": 0,
-      "untyped_failure": 4
+      "untyped_failure": 5
     }
   },
   "defects": [
@@ -347,6 +375,12 @@
       "tool": "approximation"
     },
     {
+      "case": "identity-check-false-binomial",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "check_identity"
+    },
+    {
       "case": "false-energy-units",
       "operator": "transport:code_fence",
       "outcome": "untyped_failure",
@@ -371,7 +405,7 @@
       "tool": "distribution"
     },
     {
-      "case": "expand-pendulum",
+      "case": "double-pendulum-both-angles-small-uses-expand-motion",
       "operator": "transport:code_fence",
       "outcome": "untyped_failure",
       "tool": "expand_motion"
@@ -443,13 +477,19 @@
       "tool": "perturbation_solve"
     },
     {
-      "case": "series-tan",
+      "case": "schwarzschild-routh-reduction-by-time",
+      "operator": "transport:code_fence",
+      "outcome": "untyped_failure",
+      "tool": "routh_reduce"
+    },
+    {
+      "case": "double-pendulum-chat-one-small-angle-in-the-users-words",
       "operator": "transport:code_fence",
       "outcome": "untyped_failure",
       "tool": "series"
     },
     {
-      "case": "assumptions-carried",
+      "case": "assumption-added-then-dropped-in-followups",
       "operator": "transport:code_fence",
       "outcome": "untyped_failure",
       "tool": "simplify"
@@ -485,7 +525,7 @@
       "tool": "variation"
     },
     {
-      "case": "integral-flux-through-a-sphere",
+      "case": "distributional-classical-versus-distributional",
       "operator": "transport:code_fence",
       "outcome": "untyped_failure",
       "tool": "vector_calculus"
@@ -501,6 +541,12 @@
       "operator": "transport:dollar_wrapper",
       "outcome": "untyped_failure",
       "tool": "approximation"
+    },
+    {
+      "case": "identity-check-false-binomial",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "check_identity"
     },
     {
       "case": "false-energy-units",
@@ -527,7 +573,7 @@
       "tool": "distribution"
     },
     {
-      "case": "expand-pendulum",
+      "case": "double-pendulum-both-angles-small-uses-expand-motion",
       "operator": "transport:dollar_wrapper",
       "outcome": "untyped_failure",
       "tool": "expand_motion"
@@ -599,13 +645,19 @@
       "tool": "perturbation_solve"
     },
     {
-      "case": "series-tan",
+      "case": "schwarzschild-routh-reduction-by-time",
+      "operator": "transport:dollar_wrapper",
+      "outcome": "untyped_failure",
+      "tool": "routh_reduce"
+    },
+    {
+      "case": "double-pendulum-chat-one-small-angle-in-the-users-words",
       "operator": "transport:dollar_wrapper",
       "outcome": "untyped_failure",
       "tool": "series"
     },
     {
-      "case": "assumptions-carried",
+      "case": "assumption-added-then-dropped-in-followups",
       "operator": "transport:dollar_wrapper",
       "outcome": "untyped_failure",
       "tool": "simplify"
@@ -641,7 +693,7 @@
       "tool": "variation"
     },
     {
-      "case": "integral-flux-through-a-sphere",
+      "case": "distributional-classical-versus-distributional",
       "operator": "transport:dollar_wrapper",
       "outcome": "untyped_failure",
       "tool": "vector_calculus"
@@ -657,6 +709,18 @@
       "operator": "transport:doubled_backslash",
       "outcome": "untyped_failure",
       "tool": "approximation"
+    },
+    {
+      "case": "identity-check-true-hyperbolic",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "check_identity"
+    },
+    {
+      "case": "kepler-constant-then-its-units#2",
+      "operator": "transport:doubled_backslash",
+      "outcome": "untyped_failure",
+      "tool": "check_units"
     },
     {
       "case": "telescoping-gaussian-parameter",
@@ -677,7 +741,7 @@
       "tool": "distribution"
     },
     {
-      "case": "expand-pendulum",
+      "case": "double-pendulum-both-angles-small-uses-expand-motion",
       "operator": "transport:doubled_backslash",
       "outcome": "untyped_failure",
       "tool": "expand_motion"
@@ -731,13 +795,13 @@
       "tool": "perturbation_solve"
     },
     {
-      "case": "series-tan",
+      "case": "double-pendulum-chat-one-small-angle-in-the-users-words",
       "operator": "transport:doubled_backslash",
       "outcome": "untyped_failure",
       "tool": "series"
     },
     {
-      "case": "assumptions-carried",
+      "case": "assumption-added-then-dropped-in-followups",
       "operator": "transport:doubled_backslash",
       "outcome": "untyped_failure",
       "tool": "simplify"
@@ -761,7 +825,7 @@
       "tool": "variation"
     },
     {
-      "case": "vector-curl-curl-rewrite",
+      "case": "distributional-classical-versus-distributional",
       "operator": "transport:doubled_backslash",
       "outcome": "untyped_failure",
       "tool": "vector_calculus"
@@ -777,6 +841,18 @@
       "operator": "transport:markdown_escape",
       "outcome": "untyped_failure",
       "tool": "approximation"
+    },
+    {
+      "case": "identity-check-false-binomial",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "check_identity"
+    },
+    {
+      "case": "kepler-constant-then-its-units#2",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "check_units"
     },
     {
       "case": "telescoping-gaussian-parameter",
@@ -797,7 +873,7 @@
       "tool": "distribution"
     },
     {
-      "case": "expand-pendulum",
+      "case": "double-pendulum-both-angles-small-uses-expand-motion",
       "operator": "transport:markdown_escape",
       "outcome": "untyped_failure",
       "tool": "expand_motion"
@@ -815,7 +891,7 @@
       "tool": "find_identities"
     },
     {
-      "case": "integrate-gaussian",
+      "case": "homepage-integral-by-symmetry",
       "operator": "transport:markdown_escape",
       "outcome": "untyped_failure",
       "tool": "integrate"
@@ -857,7 +933,13 @@
       "tool": "perturbation_solve"
     },
     {
-      "case": "chain-hyperbolic-trig",
+      "case": "double-pendulum-chat-one-small-angle-in-the-users-words",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "series"
+    },
+    {
+      "case": "assumption-added-then-dropped-in-followups",
       "operator": "transport:markdown_escape",
       "outcome": "untyped_failure",
       "tool": "simplify"
@@ -891,6 +973,12 @@
       "operator": "transport:markdown_escape",
       "outcome": "untyped_failure",
       "tool": "variation"
+    },
+    {
+      "case": "distributional-classical-versus-distributional",
+      "operator": "transport:markdown_escape",
+      "outcome": "untyped_failure",
+      "tool": "vector_calculus"
     },
     {
       "case": "lagrangian-kepler",
@@ -977,13 +1065,19 @@
       "tool": "ode_solve_symbolic"
     },
     {
+      "case": "schwarzschild-routh-reduction-by-time",
+      "operator": "transport:trailing_period",
+      "outcome": "untyped_failure",
+      "tool": "routh_reduce"
+    },
+    {
       "case": "series-tan",
       "operator": "transport:trailing_period",
       "outcome": "untyped_failure",
       "tool": "series"
     },
     {
-      "case": "assumptions-carried",
+      "case": "assumption-added-then-dropped-in-followups",
       "operator": "transport:trailing_period",
       "outcome": "untyped_failure",
       "tool": "simplify"
@@ -1013,7 +1107,7 @@
       "tool": "variation"
     },
     {
-      "case": "integral-flux-through-a-sphere",
+      "case": "distributional-classical-versus-distributional",
       "operator": "transport:trailing_period",
       "outcome": "untyped_failure",
       "tool": "vector_calculus"
@@ -1023,6 +1117,12 @@
       "operator": "transport:unicode_look_alikes",
       "outcome": "untyped_failure",
       "tool": "analyze_lagrangian"
+    },
+    {
+      "case": "identity-check-false-binomial",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "check_identity"
     },
     {
       "case": "telescoping-gaussian-parameter",
@@ -1043,7 +1143,7 @@
       "tool": "distribution"
     },
     {
-      "case": "expand-pendulum",
+      "case": "double-pendulum-both-angles-small-uses-expand-motion",
       "operator": "transport:unicode_look_alikes",
       "outcome": "untyped_failure",
       "tool": "expand_motion"
@@ -1085,7 +1185,19 @@
       "tool": "perturbation_solve"
     },
     {
-      "case": "chain-hyperbolic-trig",
+      "case": "schwarzschild-routh-reduction-by-time",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "routh_reduce"
+    },
+    {
+      "case": "double-pendulum-chat-one-small-angle-in-the-users-words",
+      "operator": "transport:unicode_look_alikes",
+      "outcome": "untyped_failure",
+      "tool": "series"
+    },
+    {
+      "case": "assumption-added-then-dropped-in-followups",
       "operator": "transport:unicode_look_alikes",
       "outcome": "untyped_failure",
       "tool": "simplify"
@@ -1124,32 +1236,34 @@
   "format": 1,
   "mode": "pr (without the cleaning layer)",
   "not_applicable": {
-    "derivative:joined": 132,
-    "derivative:latex_letter_run": 127,
-    "derivative:leibniz": 132,
-    "derivative:spaced": 132,
-    "derivative:upper": 132,
-    "shape:assignment_prefix": 124,
-    "shape:formula_alias": 44,
-    "shape:json_as_string": 56,
-    "shape:list_as_string": 108,
-    "shape:number_as_string": 126,
+    "derivative:joined": 159,
+    "derivative:latex_letter_run": 150,
+    "derivative:leibniz": 159,
+    "derivative:spaced": 159,
+    "derivative:upper": 159,
+    "shape:assignment_prefix": 144,
+    "shape:formula_alias": 58,
+    "shape:json_as_string": 67,
+    "shape:kind_wrapped": 153,
+    "shape:list_as_string": 125,
+    "shape:number_as_string": 152,
+    "syntax:braced_exponent": 159,
     "transport:code_fence": 22,
     "transport:dollar_wrapper": 22,
-    "transport:doubled_backslash": 56,
-    "transport:markdown_escape": 74,
-    "transport:trailing_period": 43,
-    "transport:unicode_look_alikes": 47
+    "transport:doubled_backslash": 60,
+    "transport:markdown_escape": 78,
+    "transport:trailing_period": 50,
+    "transport:unicode_look_alikes": 55
   },
-  "recovered_without_a_model_call": 26,
-  "recovery_rate": 0.1171,
-  "references": 133,
-  "tools_covered": 33,
+  "recovered_without_a_model_call": 31,
+  "recovery_rate": 0.1225,
+  "references": 162,
+  "tools_covered": 35,
   "totals": {
-    "diagnosed": 65,
+    "diagnosed": 77,
     "different_verified_result": 0,
-    "same": 26,
+    "same": 31,
     "same_after_cleaning": 0,
-    "untyped_failure": 131
+    "untyped_failure": 145
   }
 }
