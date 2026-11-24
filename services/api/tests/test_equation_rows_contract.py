@@ -85,7 +85,17 @@ EXPECTED_KEYS = {
         "rootrow:3",
     ],
     "ode_solution": ["solution:0:0"],
-    "ode_analysis": ["solved:0", "field:0", "field:1"],
+    "ode_analysis": [
+        "solved:0",
+        "field:0",
+        "field:1",
+        "equil:0:point:0",
+        "equil:0:point:1",
+        "equil:0:jacobian",
+        "equil:0:eig:0",
+        "equil:0:eig:1",
+        "equil:0:char",
+    ],
 }
 
 
@@ -260,7 +270,9 @@ def test_a_solution_card_that_was_not_accepted_lists_nothing_and_notes_are_never
 
 
 # --- ode_analysis -------------------------------------------------------------------------------------------
-def test_an_analysis_numbers_the_solved_form_and_the_field_only(fixture: dict[str, Any]) -> None:
+def test_an_analysis_numbers_the_solved_form_the_field_and_the_equilibria(
+    fixture: dict[str, Any],
+) -> None:
     data = fixture["ode_analysis"]["data"]
     report = data["report"]
     rows = ode_analysis(data)
@@ -269,9 +281,9 @@ def test_an_analysis_numbers_the_solved_form_and_the_field_only(fixture: dict[st
     assert not texts & set(
         report["interpretation"]["equations_latex"]
     )  # the user's own input, quoted
-    assert report["qualitative"]["equilibria"] and not any(
-        p in texts for e in report["qualitative"]["equilibria"] for p in e["point_latex"]
-    )
+    equilibrium = report["qualitative"]["equilibria"][0]
+    assert set(equilibrium["point_latex"]) <= texts  # a point confirmed by substitution is numbered
+    assert not texts & set(equilibrium["eigenvalues_numeric"])  # decimals never are
 
 
 def test_an_analysis_that_was_not_accepted_or_a_failed_qualitative_part_lists_nothing(

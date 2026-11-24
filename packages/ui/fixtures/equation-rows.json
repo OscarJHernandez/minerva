@@ -450,7 +450,17 @@
         "duration_ms": 466
       }
     },
-    "keys": ["solved:0", "field:0", "field:1"]
+    "keys": [
+      "solved:0",
+      "field:0",
+      "field:1",
+      "equil:0:point:0",
+      "equil:0:point:1",
+      "equil:0:jacobian",
+      "equil:0:eig:0",
+      "equil:0:eig:1",
+      "equil:0:char"
+    ]
   },
   "variation": {
     "data": {
@@ -2022,6 +2032,472 @@
     "keys": ["group:0"],
     "rows": {
       "group:0": "\\Pi_{1} = \\frac{T \\sqrt{g}}{\\sqrt{L}}"
+    }
+  },
+  "approximation": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "reason": null,
+        "method": "taylor",
+        "message": "Expanded with SymPy; coefficients and remainder order verified numerically.",
+        "input_latex": "\\sin{\\left(x \\right)}",
+        "variable": "x",
+        "domain_latex": "x \\to 0",
+        "result_latex": "x - \\frac{x^{3}}{6} + \\frac{x^{5}}{120}",
+        "result_text": "x**5/120 - x**3/6 + x",
+        "remainder_latex": "O\\left(x^{6}\\right)",
+        "statement_latex": null,
+        "orders": [
+          {
+            "order": 1,
+            "coefficient_latex": "1",
+            "term_latex": "1\\,x^{1}"
+          },
+          {
+            "order": 3,
+            "coefficient_latex": "- \\frac{1}{6}",
+            "term_latex": "- \\frac{1}{6}\\,x^{3}"
+          },
+          {
+            "order": 5,
+            "coefficient_latex": "\\frac{1}{120}",
+            "term_latex": "\\frac{1}{120}\\,x^{5}"
+          }
+        ],
+        "extras": [],
+        "evidence": "series_checked",
+        "checks": [
+          {
+            "name": "coefficients",
+            "passed": true,
+            "points": 1,
+            "detail": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree"
+          },
+          {
+            "name": "remainder",
+            "passed": true,
+            "points": 1,
+            "detail": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction"
+          }
+        ],
+        "complexity": {
+          "degree": 5,
+          "numerator_degree": null,
+          "denominator_degree": null,
+          "modes": null,
+          "segments": null,
+          "coefficients": 3
+        },
+        "error": null,
+        "measured_errors": [
+          {
+            "distance": 0.5,
+            "absolute_error": "1.54e-6",
+            "relative_error": "3.22e-6"
+          },
+          {
+            "distance": 0.1,
+            "absolute_error": "1.98e-11",
+            "relative_error": "1.99e-10"
+          },
+          {
+            "distance": 0.01,
+            "absolute_error": "1.98e-18",
+            "relative_error": "1.98e-16"
+          }
+        ],
+        "error_curve": [],
+        "tolerance_met": null,
+        "warnings": ["local_only"],
+        "candidates": [],
+        "suggestions": [],
+        "questions": [],
+        "notes": [
+          "A local approximation: it describes the function near the stated point, and the measured errors are measurements at those distances, not a bound."
+        ],
+        "assumptions_stated": [],
+        "diagnostics": {
+          "method": "taylor",
+          "stages": 2,
+          "checks": 2,
+          "checks_passed": 2,
+          "warnings": 1,
+          "candidates": 0,
+          "duration_ms": 24.25158303231001
+        },
+        "duration_ms": 1821.0
+      },
+      "request": {
+        "latex": "\\sin x",
+        "assumptions": {},
+        "method": "taylor",
+        "variable": "x",
+        "point": "0",
+        "direction": null,
+        "order": 5,
+        "small": null,
+        "variables": [],
+        "points": [],
+        "lower": null,
+        "upper": null,
+        "degree": null,
+        "denominator_degree": null,
+        "period": null,
+        "modes": null,
+        "segments": null,
+        "kind": null,
+        "tolerance": null,
+        "tolerance_kind": null,
+        "max_terms": null,
+        "methods": []
+      }
+    },
+    "result_latex": "x - \\frac{x^{3}}{6} + \\frac{x^{5}}{120}"
+  },
+  "ode_equilibria": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "message": "",
+        "interpretation": {
+          "unknowns": ["y"],
+          "independent": "t",
+          "parameters": [],
+          "orders": {
+            "y": 2
+          },
+          "equations_latex": ["y^{3} - y + \\frac{y'}{5} + y'' = 0"],
+          "conditions_latex": [],
+          "notes": ["t is the independent variable, read as real unless you declared otherwise"]
+        },
+        "structure": {
+          "kind": "ode",
+          "n_unknowns": 1,
+          "n_equations": 1,
+          "orders": {
+            "y": 2
+          },
+          "order": 2,
+          "state_dimension": 2,
+          "linear": false,
+          "homogeneous": null,
+          "constant_coefficients": null,
+          "autonomous": true,
+          "solved_for_highest": true,
+          "position_only": false
+        },
+        "problem_kind": "general",
+        "conditions_needed": ["y(t_0)", "y'(t_0)"],
+        "classes": [],
+        "solved_latex": ["y'' = - y^{3} + y - \\frac{y'}{5}"],
+        "restrictions_latex": [],
+        "methods": [
+          {
+            "id": "numerical_ivp",
+            "title": "Numerical integration (initial-value problem)",
+            "applicable": true,
+            "available": true,
+            "rank": 1,
+            "reason": "the highest derivatives can be solved for, so it becomes a first-order system",
+            "requires": [
+              "initial values for every unknown and derivative below its order",
+              "no parameters",
+              "the interval of the independent variable"
+            ],
+            "limitations": [
+              "an approximation on the interval you choose; not exact and not valid beyond it",
+              "stiffness cannot be judged in advance: the integrator is chosen from measured behaviour",
+              "checked against an independent integrator, tolerance refinement and the equation's defect"
+            ],
+            "tool": "ode_solve_numerical",
+            "action": "ivp"
+          },
+          {
+            "id": "power_series",
+            "title": "Local power series about a regular point",
+            "applicable": true,
+            "available": true,
+            "rank": 2,
+            "reason": "the highest derivatives can be solved for, so a Taylor series can be built from the initial values",
+            "requires": [
+              "the expansion point",
+              "initial values for every unknown and derivative below its order",
+              "a truncation order"
+            ],
+            "limitations": [
+              "local: valid near the expansion point only, and a singular point is unsupported",
+              "the residual is checked through the claimed order"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "series"
+          },
+          {
+            "id": "equilibrium_analysis",
+            "title": "Equilibria and local linear stability",
+            "applicable": true,
+            "available": true,
+            "rank": 3,
+            "reason": "autonomous with few states: equilibria, the Jacobian and its eigenvalues",
+            "requires": [],
+            "limitations": [
+              "local and from the linearisation only; it says nothing about global stability",
+              "where the linearisation has eigenvalues on the imaginary axis it does not decide"
+            ],
+            "tool": "ode_analyze",
+            "action": "qualitative"
+          },
+          {
+            "id": "phase_plane",
+            "title": "Phase plane (direction field and trajectories)",
+            "applicable": true,
+            "available": true,
+            "rank": 4,
+            "reason": "autonomous with two states",
+            "requires": [],
+            "limitations": [
+              "trajectories are numerical approximations, each checked as in the IVP method"
+            ],
+            "tool": "ode_analyze",
+            "action": "qualitative"
+          },
+          {
+            "id": "symbolic_closed_form",
+            "title": "Closed-form solution (SymPy), verified by substitution",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "no solvable class was recognised, so Minerva does not attempt a closed form",
+            "requires": [],
+            "limitations": [
+              "SymPy may fail, or give an implicit or unevaluated form",
+              "shown only after substituting back into your equation and checking numerically",
+              "the solution may omit singular solutions and is valid only where its restrictions hold"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "closed_form"
+          },
+          {
+            "id": "poincare_lindstedt",
+            "title": "Poincaré-Lindstedt (periodic motion, one degree of freedom)",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "the acceleration depends on the velocity (damping or a gyroscopic term)",
+            "requires": ["a small parameter named by you", "an equilibrium to oscillate about"],
+            "limitations": [
+              "periodic solutions near a stable equilibrium only",
+              "an asymptotic series"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "perturbation"
+          },
+          {
+            "id": "regular_perturbation",
+            "title": "Regular perturbation expansion",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "no symbolic parameter to expand in",
+            "requires": ["a small parameter named by you"],
+            "limitations": [
+              "valid for small values of that parameter and bounded intervals",
+              "secular terms grow with time and can invalidate the expansion for long times"
+            ],
+            "tool": "ode_solve_symbolic",
+            "action": "perturbation"
+          },
+          {
+            "id": "numerical_bvp",
+            "title": "Numerical boundary-value solution",
+            "applicable": false,
+            "available": true,
+            "rank": null,
+            "reason": "needs conditions at two distinct points",
+            "requires": [
+              "numerical values for every parameter",
+              "a starting guess is chosen by Minerva"
+            ],
+            "limitations": [
+              "a solution may not exist, may not be unique, and the solver may converge to another one",
+              "shown only after the boundary conditions, the residual and a refined mesh agree"
+            ],
+            "tool": "ode_solve_numerical",
+            "action": "bvp"
+          },
+          {
+            "id": "multiple_scales",
+            "title": "Multiple scales",
+            "applicable": false,
+            "available": false,
+            "rank": null,
+            "reason": "not implemented in Minerva",
+            "requires": [],
+            "limitations": [],
+            "tool": null,
+            "action": null
+          }
+        ],
+        "qualitative": {
+          "status": "ok",
+          "message": "",
+          "states_latex": ["y", "y'"],
+          "field_latex": ["y' = y'", "y'' = - y^{3} + y - \\frac{y'}{5}"],
+          "equilibria": [
+            {
+              "point_latex": ["y = -1", "y' = 0"],
+              "point_numeric": [-1.0, 0.0],
+              "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\-2 & - \\frac{1}{5}\\end{matrix}\\right]",
+              "eigenvalues_latex": [
+                "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
+                "- \\frac{1}{10} + \\frac{\\sqrt{199} \\mathrm{i}}{10}"
+              ],
+              "eigenvalues_numeric": ["-0.1 - 1.4106736i", "-0.1 + 1.4106736i"],
+              "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} + 2",
+              "classification": "stable_spiral",
+              "classification_text": "linearly asymptotically stable (a sink: a spiral)",
+              "decided": true
+            },
+            {
+              "point_latex": ["y = 0", "y' = 0"],
+              "point_numeric": [0.0, 0.0],
+              "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\1 & - \\frac{1}{5}\\end{matrix}\\right]",
+              "eigenvalues_latex": [
+                "- \\frac{\\sqrt{101}}{10} - \\frac{1}{10}",
+                "- \\frac{1}{10} + \\frac{\\sqrt{101}}{10}"
+              ],
+              "eigenvalues_numeric": ["-1.1049876", "0.90498756"],
+              "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} - 1",
+              "classification": "saddle",
+              "classification_text": "linearly unstable (a saddle: some directions attract, some repel)",
+              "decided": true
+            },
+            {
+              "point_latex": ["y = 1", "y' = 0"],
+              "point_numeric": [1.0, 0.0],
+              "jacobian_latex": "\\left[\\begin{matrix}0 & 1\\\\-2 & - \\frac{1}{5}\\end{matrix}\\right]",
+              "eigenvalues_latex": [
+                "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
+                "- \\frac{1}{10} + \\frac{\\sqrt{199} \\mathrm{i}}{10}"
+              ],
+              "eigenvalues_numeric": ["-0.1 - 1.4106736i", "-0.1 + 1.4106736i"],
+              "characteristic_latex": "\\lambda^{2} + \\frac{\\lambda}{5} + 2",
+              "classification": "stable_spiral",
+              "classification_text": "linearly asymptotically stable (a sink: a spiral)",
+              "decided": true
+            }
+          ],
+          "complete": true,
+          "jacobian_checked": true,
+          "direction_field": null,
+          "notes": [],
+          "local_note": "Local and from the linearisation only: it describes orbits that start close to the point and says nothing about global behaviour or about orbits that start elsewhere."
+        },
+        "notes": [
+          "Classes marked by SymPy's classification are candidates: each solver verifies its own result."
+        ],
+        "diagnostics": {
+          "trace_id": null,
+          "stages": [
+            {
+              "name": "read",
+              "ms": 1.24
+            },
+            {
+              "name": "structure",
+              "ms": 44.4
+            },
+            {
+              "name": "classify",
+              "ms": 85.17
+            },
+            {
+              "name": "methods",
+              "ms": 0.1
+            },
+            {
+              "name": "qualitative",
+              "ms": 707.89
+            },
+            {
+              "name": "total",
+              "ms": 838.82
+            }
+          ],
+          "n_equations": 1,
+          "order": 2,
+          "state_dimension": 2,
+          "classes": [],
+          "method": null,
+          "methods_tried": [],
+          "steps": null,
+          "evaluations": null,
+          "candidates": null,
+          "verified": null,
+          "dropped": null,
+          "solution_kind": null,
+          "max_residual": null,
+          "failure_reason": null
+        },
+        "duration_ms": 906
+      },
+      "request": {
+        "equations": ["y'' - y + y^3 + y'/5 = 0"],
+        "format": "text",
+        "unknowns": ["y"],
+        "independent": "t",
+        "assumptions": {},
+        "conditions": [],
+        "detail": "qualitative",
+        "parameters": {},
+        "window": null
+      }
+    },
+    "keys": [
+      "solved:0",
+      "field:0",
+      "field:1",
+      "equil:0:point:0",
+      "equil:0:point:1",
+      "equil:0:jacobian",
+      "equil:0:eig:0",
+      "equil:0:eig:1",
+      "equil:0:char",
+      "equil:1:point:0",
+      "equil:1:point:1",
+      "equil:1:jacobian",
+      "equil:1:eig:0",
+      "equil:1:eig:1",
+      "equil:1:char",
+      "equil:2:point:0",
+      "equil:2:point:1",
+      "equil:2:jacobian",
+      "equil:2:eig:0",
+      "equil:2:eig:1",
+      "equil:2:char"
+    ],
+    "rows": {
+      "solved:0": "y'' = - y^{3} + y - \\frac{y'}{5}",
+      "field:0": "y' = y'",
+      "field:1": "y'' = - y^{3} + y - \\frac{y'}{5}",
+      "equil:0:point:0": "y = -1",
+      "equil:0:point:1": "y' = 0",
+      "equil:0:jacobian": "\\left[\\begin{matrix}0 & 1\\\\-2 & - \\frac{1}{5}\\end{matrix}\\right]",
+      "equil:0:eig:0": "- \\frac{1}{10} + \\frac{\\sqrt{199} \\mathrm{i}}{10}",
+      "equil:0:eig:1": "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
+      "equil:0:char": "\\lambda^{2} + \\frac{\\lambda}{5} + 2",
+      "equil:1:point:0": "y = 0",
+      "equil:1:point:1": "y' = 0",
+      "equil:1:jacobian": "\\left[\\begin{matrix}0 & 1\\\\1 & - \\frac{1}{5}\\end{matrix}\\right]",
+      "equil:1:eig:0": "- \\frac{1}{10} + \\frac{\\sqrt{101}}{10}",
+      "equil:1:eig:1": "- \\frac{\\sqrt{101}}{10} - \\frac{1}{10}",
+      "equil:1:char": "\\lambda^{2} + \\frac{\\lambda}{5} - 1",
+      "equil:2:point:0": "y = 1",
+      "equil:2:point:1": "y' = 0",
+      "equil:2:jacobian": "\\left[\\begin{matrix}0 & 1\\\\-2 & - \\frac{1}{5}\\end{matrix}\\right]",
+      "equil:2:eig:0": "- \\frac{1}{10} + \\frac{\\sqrt{199} \\mathrm{i}}{10}",
+      "equil:2:eig:1": "- \\frac{1}{10} - \\frac{\\sqrt{199} \\mathrm{i}}{10}",
+      "equil:2:char": "\\lambda^{2} + \\frac{\\lambda}{5} + 2"
     }
   }
 }
