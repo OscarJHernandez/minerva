@@ -53,8 +53,11 @@ an engine result. `unchanged`, `not_verified`, `unsupported`, `parse_error` and 
 never accepted, whatever the model says about them.
 
 The share of formulas in the model's prose that have engine evidence is recorded per turn
-(`evidence_pct`): formulas marked as coming from a verified result, or tested by the claim check. A lone
-symbol (`\theta`) asserts nothing and is not counted. A model equation that is the same statement as a verified
+(`evidence_pct`, worded "formulas in the reply with engine evidence" in the panel, the timeline and the report; the
+report and the panel also give `tool results verified: n/m`, counted from the trace statuses, which is a different
+thing: a turn can verify every tool result and still restate none of them): formulas marked as coming from a verified result, or tested by the claim check. A lone
+symbol (`\theta`) asserts nothing and is not counted. `claim check: none` in the report is not a failure: nothing was
+left to check (every formula was matched by text or is not a relation). A model equation that is the same statement as a verified
 result (equivalent right side, proportional residual, or its own name for a verified conserved quantity) is
 marked from the tool and its claim record names the result, the rule and whether the link was symbolic or
 sampled. Each model call also records the estimated tokens of the system prompt, tool schemas, earlier

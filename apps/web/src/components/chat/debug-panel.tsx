@@ -3,7 +3,12 @@
 import { useState } from "react";
 import type { AssistantContent } from "@/lib/chat-types";
 import { settingsSummary } from "@/lib/model-params";
-import { buildTimeline, stageTimings, STOP_EXPLANATION } from "@/lib/trace-timeline";
+import {
+  buildTimeline,
+  stageTimings,
+  STOP_EXPLANATION,
+  verifiedToolResults,
+} from "@/lib/trace-timeline";
 
 const TONE = {
   neutral: "text-muted",
@@ -70,7 +75,10 @@ export function DebugPanel({
             {d.llm_calls.length} model call{d.llm_calls.length === 1 ? "" : "s"} (
             {d.llm_calls.map((c) => `${c.ms} ms`).join(", ")})
             {d.evidence_pct != null
-              ? ` · ${d.formulas_with_evidence}/${d.formulas} formulas with engine evidence`
+              ? ` · ${d.formulas_with_evidence}/${d.formulas} formulas in the reply with engine evidence`
+              : ""}
+            {trace.length > 0
+              ? ` · ${verifiedToolResults(trace).verified}/${trace.length} tool results verified`
               : ""}
           </p>
         )}

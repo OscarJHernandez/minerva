@@ -29,7 +29,7 @@ from .arguments import repair_arguments
 from .budget import estimate_tokens, fit_history, message_chars, request_chars
 from .card_equations import result_formula, result_restrictions
 from .choice import delegation_active, names_a_method, numbers_in
-from .declarations import declared_in_reply
+from .declarations import declared_in_reply, typed_scalar_names
 from .diagnosis import diagnose
 from .equations import EquationTable, number_blocks, strip_equation_tags
 from .events import (
@@ -2041,6 +2041,10 @@ async def check_model_claims(
     # What the reply itself declares, minus what the conversation settled as scalars (`r = |\\mathbf{r}|`,
     # or the user's word): the reply repeating "the position vector" must not undo that for its own claims.
     said_matrices, said_vectors = declared_in_reply(_prose_of(blocks), scalar_names)
+    # A name a verified tool result typed as a scalar (`C_3` of a discovery result, a coordinate) is not a vector
+    # because the reply calls the constants "the Laplace-Runge-Lenz vector" (#146). Only the reply's own prose is
+    # corrected: a vector_calculus field, a user declaration and the notation test in `claims` are untouched.
+    said_vectors -= typed_scalar_names([*prior_evidence, *(s.model_dump() for s in trace)])
     matrices = matrix_names(trace) | set(prior_matrices) | said_matrices
     results = await run_in_threadpool(
         ctx.engine.check_claims,

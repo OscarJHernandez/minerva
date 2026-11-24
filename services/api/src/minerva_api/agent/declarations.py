@@ -17,8 +17,9 @@ an "unchecked" one, so the reading is deliberately generous. Nothing here comput
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 MAX_NAMES = 64
 
@@ -77,23 +78,170 @@ def declared_matrices(texts: Iterable[str]) -> set[str]:
     return names
 
 
+# A bare name inside a formula: an optional bold/arrow wrapper, one letter or one Greek command, an optional
+# subscript of letters/digits or one Greek command (`C_{4}`, `p_\\theta`, `\\mathbf{E}`).
+_GENEROUS_NAME = (
+    r"(?:\\(?:mathbf|vec|boldsymbol|bm|hat)\s*\{\s*)?(?P<base>\\[A-Za-z]+|[A-Za-z])\s*\}?"
+    r"(?:_(?:\{\s*(?P<sub1>\\[A-Za-z]+|[A-Za-z0-9]+)\s*\}|(?P<sub2>\\[A-Za-z]+|[A-Za-z0-9])))?\s*\}?"
+)
+_GENEROUS_PLAIN = re.sub(r"\?P<\w+>", "", _GENEROUS_NAME)
+_GENEROUS_LIST = re.compile(
+    rf"^\s*{_GENEROUS_PLAIN}(?:\s*(?:,|;|\\,|\band\b)\s*{_GENEROUS_PLAIN})*\s*$"
+)
+_GENEROUS_EACH = re.compile(_GENEROUS_NAME)
+# Commands that are never a vector's name: functions, accents and layout. A bare formula consisting of one of
+# them (`$\\cos$`) declares nothing, whatever the sentence says.
+_NOT_A_NAME = frozenset(
+    [
+        "sin",
+        "cos",
+        "tan",
+        "cot",
+        "sec",
+        "csc",
+        "sinh",
+        "cosh",
+        "tanh",
+        "exp",
+        "log",
+        "ln",
+        "arcsin",
+        "arccos",
+        "arctan",
+        "sqrt",
+        "frac",
+        "dot",
+        "ddot",
+        "left",
+        "right",
+        "times",
+        "cdot",
+        "nabla",
+        "partial",
+        "int",
+        "sum",
+        "prod",
+        "lim",
+        "det",
+        "tr",
+        "text",
+        "mathrm",
+        "mathbf",
+        "vec",
+        "hat",
+        "bar",
+        "tilde",
+        "quad",
+        "qquad",
+        "cross",
+        "dots",
+        "ldots",
+        "infty",
+    ]
+)
+# "Component of the Laplace-Runge-Lenz vector ($C_3$)": a component is a scalar, whatever it is a component of.
+_COMPONENT = re.compile(r"\bcomponents?\b", re.IGNORECASE)
+
+
+def _name_of(match: re.Match[str]) -> str | None:
+    base = match.group("base")
+    sub = match.group("sub1") or match.group("sub2")
+    if base.startswith("\\"):
+        base = base[1:]
+        if base in _NOT_A_NAME:
+            return None
+    if sub and sub.startswith("\\"):
+        sub = sub[1:]
+    return f"{base}_{sub}" if sub else base
+
+
+def _left_of_equation(fragment: str) -> str | None:
+    """The text before the first top-level `=` (not part of `<=`, `\\neq`, `:=` is fine), or None."""
+    depth = 0
+    for i, ch in enumerate(fragment):
+        if ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            depth -= 1
+        elif ch == "=" and depth == 0:
+            previous = fragment[i - 1] if i else ""
+            if previous in "<>!\\":
+                return None
+            return fragment[:i].rstrip(":").strip()
+    return None
+
+
+def formula_names(fragment: str) -> set[str]:
+    """The names a formula of a vector or matrix sentence declares under the generous reading: a bare name, a
+    list of bare names, or an equation whose left side is one bare name (`$C_3 = ...$`). Any other formula
+    (`$1/r$`, `$\\cos{\\theta}$`, `$H = T + V$`'s right side, `$(u+v)^2$`) declares nothing: its letters are the
+    parts of an expression, and reading each as a vector made `r` of `$1/r$` and `theta` of `\\cos{\\theta}` vectors."""
+    text = _SIZE.sub(" ", fragment).strip()
+    left = _left_of_equation(text)
+    if left is not None:
+        text = left
+    if not _GENEROUS_LIST.match(text):
+        return set()
+    found = {_name_of(m) for m in _GENEROUS_EACH.finditer(text)}
+    return {n for n in found if n}
+
+
+def bare_name(text: str) -> str | None:
+    """The one name `text` is, if it is exactly one bare name (`C_{4}`, `p_\\theta`, `r`), in the form the
+    declarations use (`C_4`, `p_theta`); None for anything else."""
+    match = re.fullmatch(rf"\s*{_GENEROUS_NAME}\s*", text)
+    return _name_of(match) if match else None
+
+
+def typed_scalar_names(rows: Iterable[Mapping[str, Any]]) -> set[str]:
+    """Names a *verified* tool result of this conversation typed as scalars (issue #146).
+
+    The left-side names of rows the tool gave the role `conserved` or `momentum`, and the variables of that
+    system with their `_dot` and `_ddot` (a coordinate and its velocities are scalars). Read from the same
+    stored data the claim evidence reads (`status`, `repeated`, `formula_roles`, `variables`), never from the
+    model's words; a result that was not accepted types nothing. The model's prose cannot make these names
+    vectors ("the Laplace-Runge-Lenz vector ($C_3$)"): the tool's own typing wins. A user's declaration, a
+    `vector_calculus` field and `noncommutative` are not touched here."""
+    names: set[str] = set()
+    for row in rows:
+        if row.get("status") not in ("ok", None) or row.get("repeated"):
+            continue
+        roles = row.get("formula_roles") or {}
+        typed = False
+        for latex, role in roles.items():
+            if role not in ("conserved", "momentum"):
+                continue
+            left = _left_of_equation(str(latex))
+            name = bare_name(left) if left is not None else None
+            if name:
+                names.add(name)
+                typed = True
+        if typed or roles:
+            for variable in row.get("variables") or []:
+                base = bare_name(str(variable)) or (
+                    str(variable).lstrip("\\")
+                    if re.fullmatch(r"\\?[A-Za-z]\w*", str(variable))
+                    else None
+                )
+                if base:
+                    names.update({base, f"{base}_dot", f"{base}_ddot"})
+    return names
+
+
 def declared_vectors(texts: Iterable[str]) -> set[str]:
-    """Names that `texts` describe as vectors or vector fields. Only the formulas of such a sentence
-    count (`$\\mathbf{E}$`, `$a$`): a bare word is not a name, so "vectors" cannot make `s` or `a`
-    of the surrounding prose a vector. A wrong name only leaves claims about it unchecked."""
+    """Names that `texts` describe as vectors or vector fields, read generously (the cautious direction for the
+    claim checker: a wrong name only leaves claims about it unchecked). Only the formulas of such a sentence
+    count, and only a formula that is a bare name, a list of names or an equation with a bare name on its left
+    (`$\\mathbf{E}$`, `$a$ and $b$`): `$1/r$` or `$\\cos{\\theta}$` declare nothing, and neither does a sentence
+    about the *components* of a vector (a component is a scalar). Accepted loss: "for vectors, $(u+v)^2 = u^2 +
+    2uv + v^2$" with `u`, `v` undeclared is tested as scalars; declare them ("let u and v be vectors") and it is not."""
     names: set[str] = set()
     for text in texts:
         for sentence in _SENTENCE.split(text):
-            if not _VECTOR_KEYWORD.search(sentence):
+            if not _VECTOR_KEYWORD.search(sentence) or _COMPONENT.search(sentence):
                 continue
             for match in _MATH.finditer(sentence):
-                fragment = next(g for g in match.groups() if g is not None)
-                for command, letter, subscript in _VECTOR_NAME.findall(_SIZE.sub(" ", fragment)):
-                    if command:
-                        if command not in {"times", "cdot", "nabla", "partial"}:
-                            names.add(command)
-                    elif letter:
-                        names.add(f"{letter}_{subscript}" if subscript else letter)
+                names |= formula_names(next(g for g in match.groups() if g is not None))
             if len(names) >= MAX_NAMES:
                 return set(sorted(names)[:MAX_NAMES])
     return names

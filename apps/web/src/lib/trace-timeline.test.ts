@@ -144,7 +144,7 @@ describe("buildTimeline", () => {
     expect(claims!.detail).toContain("1 contradicted");
     expect(stop!.title).toBe("Stopped: completed");
     expect(stop!.detail).toContain(STOP_EXPLANATION.completed);
-    expect(end!.detail).toContain("formulas with engine evidence 3/4 (75%)");
+    expect(end!.detail).toContain("formulas in the reply with engine evidence 3/4 (75%)");
   });
 
   it("explains a rejected result, a refused call, a retry and an early stop", () => {

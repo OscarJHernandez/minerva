@@ -520,7 +520,9 @@ describe("buildDebugReport, format 4", () => {
     );
     expect(report).toContain("25 ms in the sandbox");
     expect(report).toContain("tokens: 120 in, 9 out (as reported by the model host)");
-    expect(report).toContain("formulas with engine evidence: 1/2 (50%)");
+    // prose-formula coverage and the verified tool results are two different counts (issue #146)
+    expect(report).toContain("formulas in the reply with engine evidence: 1/2 (50%)");
+    expect(report).toContain("tool results verified: 1/1");
     expect(report).toContain("claim check: timeout");
     expect(report).toContain("equation labels removed from the reply: (1) \\tag{3}");
   });
@@ -902,5 +904,18 @@ describe("diagnosis and request fingerprints (format 3)", () => {
     expect(out).toContain("diagnosis: undetermined");
     expect(out).toContain("candidates: infrastructure, verifier");
     expect(out).toContain("replayable: no (timing_dependent)");
+  });
+});
+
+describe("claim check: none", () => {
+  it("explains that nothing was left to check", () => {
+    const quiet = {
+      ...traced,
+      content: { ...traced.content, debug: { ...traced.content.debug!, claim_check: "none" } },
+    };
+    const text = buildDebugReport({ ...input, messages: [user, quiet] });
+    expect(text).toContain(
+      "claim check: none (nothing left to check: every formula was matched by text or is not a relation)",
+    );
   });
 });

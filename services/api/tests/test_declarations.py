@@ -26,8 +26,11 @@ def strict(*texts: str, role: str = "user") -> set[str]:
 
 def test_the_kepler_reply_declares_nothing_under_the_strict_reading() -> None:
     assert strict(KEPLER_REPLY, role="assistant") == set()
-    # the generous reading (claims only) still takes the names, which is the cautious direction there
-    assert {"r"} <= declared_vectors([KEPLER_REPLY])
+    # Issue #146, deliberate change: the generous reading (claims only) used to take `r` from `$1/r$` and
+    # `theta` from `\cos{\theta}` in these sentences, and so made `C_3` and `C_4` vectors. It now takes only a
+    # formula that is a bare name, a list of names or an equation with a bare name on the left, and nothing
+    # from a sentence about the components of a vector.
+    assert declared_vectors([KEPLER_REPLY]) == set()
 
 
 @pytest.mark.parametrize(
@@ -131,8 +134,8 @@ def test_the_kepler_conversation_does_not_block_scalar_tools_on_r() -> None:
     ]
     current = "Please differentiate $C_1 = \\mu r^2 \\dot{\\theta}$ with respect to t"
     assert _declared_for_tools(rows, current) == {}  # type: ignore[arg-type]
-    # claims keep the cautious reading: the formulas about the "vector" stay unchecked
-    assert "r" in _prior_matrices(rows, current)  # type: ignore[arg-type]
+    # Issue #146, deliberate change: `$1/r$` in a sentence about a vector declares nothing, not even for claims
+    assert "r" not in _prior_matrices(rows, current)  # type: ignore[arg-type]
 
 
 def test_a_declared_name_is_refused_with_its_sentence_until_the_user_clears_it() -> None:

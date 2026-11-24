@@ -2495,6 +2495,21 @@ def run_solve(args: SolveArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def _right_side(latex: str) -> list[str]:
+    """The right side of a verified `name = expression` row, as a list of one (empty if there is none).
+
+    The model often writes the bare expression (`**Angular momentum ($C_1$):** $m r^2 \\dot{\\theta}$`), so the
+    right side of a row the tool verified is as known as the row (the same as `run_geometry`). Text match only
+    (`normalize`): a reordered or re-typed expression stays unchecked. Rows whose right side is a plain number
+    (`... = 0`) give nothing: a lone `0` would be known for every statement."""
+    if latex.count("=") != 1 or any(c in latex for c in ("<", ">", "\\le", "\\ge", "\\neq")):
+        return []
+    left, right = (part.strip() for part in latex.split("=", 1))
+    if not left or re.fullmatch(r"-?[0-9.]*", right):
+        return []
+    return [right]
+
+
 def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
     source = strip_assignment(args.lagrangian, "L")
     report = ctx.engine.analyze_lagrangian(
@@ -2545,16 +2560,19 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         lines.append(f"momentum: ${m.latex}$")
         known.append(m.latex)
         roles[m.latex] = "momentum"
+        known.extend(_right_side(m.latex))
     for a in report.accelerations:
         lines.append(f"acceleration: ${a.latex}$")
         known.append(a.latex)
         roles[a.latex] = "acceleration"
+        known.extend(_right_side(a.latex))
     for c in report.conserved:
         flag = "verified on the equations of motion" if c.verified else "NOT verified"
         lines.append(f"conserved ({c.kind}, {flag}): {c.name}: ${c.expression_latex}$; {c.reason}")
         if c.verified:
             known.append(c.expression_latex)
             roles[c.expression_latex] = "conserved"
+            known.extend(_right_side(c.expression_latex))
         else:
             quoted.append((c.expression_latex, NOT_VERIFIED))
     lines.extend(f"tested, not found: {t}" for t in report.tested)
@@ -2788,6 +2806,9 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
         known.append(c.expression_latex)
         if c.verified:  # the model's later `C_{4} = ...` is compared with it (claim_evidence)
             roles[c.expression_latex] = "conserved"
+            known.extend(
+                _right_side(c.expression_latex)
+            )  # the bare expression, as the model restates it
     if report.independence:
         ind = report.independence
         lines.append(
@@ -2856,6 +2877,7 @@ def run_invariants(args: InvariantArgs, ctx: ToolContext) -> ToolOutput:
         )
         known.append(c.expression_latex)
         roles[c.expression_latex] = "conserved"
+        known.extend(_right_side(c.expression_latex))
     lines.extend(f"note: {n}" for n in report.notes)
     if report.found:
         lines.append(

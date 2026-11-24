@@ -720,8 +720,22 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   (`simplify`, `differentiate`, `integrate`, `series`, `approximation`, `isolate_variable`, `solve_polynomial`, `find_identities`,
   `distribution`, `check_identity`) refuse an expression that mentions a declared matrix (`tools.SCALAR_TOOLS`; `substitute` and `rewrite_part` too, unless the call declares the name `noncommutative`, `NONCOMMUTATIVE_AWARE_TOOLS`; `sums` and the Lagrangian tools too, but for a declared matrix only, not a vector: `MATRIX_ONLY_TOOLS`, `ToolContext.vector_names`); a new tool must be classified in `tools.py` (`MATRIX_SAFE` needs a reason; `test_tool_matrix_classes.py`), and the chat route and the evaluation harness read declarations through one function, `turn_context.declarations_of`, so a scalar result about
   matrices is never marked `from_tool`. Do not narrow any of this to the last N messages or to parsed symbols.
-  Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one (every symbol of a
-  sentence that says "vector") feeds the claim checker, where a wrong name only leaves a claim unchecked. The strict one
+  Two readings of declarations in words exist on purpose (`agent/declarations.py`). The generous one feeds the claim
+  checker, where a wrong name only leaves a claim unchecked; it takes a name only from a formula of a sentence that says
+  "vector" that is a bare name, a list of names or an equation with a bare name on the left (`declarations.formula_names`),
+  never a function, accent or layout command (`cos`, `dot`, `left`) and nothing from a sentence about the components of a
+  vector, so `$1/r$` or the heading "Component of the Laplace-Runge-Lenz vector ($C_3$)" declares nothing. Accepted loss:
+  "for vectors, $(u+v)^2 = u^2 + 2uv + v^2$" with `u`, `v` undeclared is tested as scalars (declared, it is not). On top of
+  that, a name a *verified* tool result typed as a scalar (the left side of a `conserved` or `momentum` row, the system's
+  variables and their `_dot`/`_ddot`; `declarations.typed_scalar_names`, read from the same stored data as
+  `claim_evidence`) is removed from what the model's prose declared, in `loop.check_model_claims` and in
+  `turn_context.declarations_of` (names the model's prose declared only: a user declaration, a `vector_calculus` field and a
+  `noncommutative` assumption stay, and `claims.check` still tests "is a vector" before evidence). The model calling
+  discovered constants "the Laplace-Runge-Lenz vector" does not make them vectors. The bare right side of a verified
+  `name = expression` row of `analyze_lagrangian`, `find_conserved_quantities` and `search_invariants` is in `known_latex`
+  (text match; a reordered expression stays unchecked). `segments.normalize` reads one Greek-letter argument of a function
+  as one reading (`\cos{\theta}`, `\cos\theta`, `\cos(\theta)`, the printed form); `\dot{x}` and `\dot x` are still
+  two keys (unifying them changes the pinned `turn_context` output). The strict one
   (`read_declarations(strict=True)`: a bare name or list of names tied to the keyword by "is/are/be", "the vector r" or
   "do not commute", never `$1/r$` or `$H = T + V$`) feeds `ToolContext.matrices`, because there a wrong name blocks every
   scalar tool for the rest of the conversation (a reply mentioning "the Runge-Lenz vector, unique to $1/r$ potentials" once

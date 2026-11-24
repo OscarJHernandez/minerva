@@ -63,6 +63,27 @@ function points(e: TraceEvent): string {
   return checked === null ? "" : ` · ${agreed ?? "?"}/${checked} sample points agreed`;
 }
 
+/** What `debug.claim_check` says when it is not "ok": "none" is not a failure. */
+export const CLAIM_CHECK_EXPLANATION: Record<string, string> = {
+  none: "nothing left to check: every formula was matched by text or is not a relation",
+};
+
+/**
+ * Tool results of a turn that were verified (status `ok`, not a repeated call), out of the calls that ran.
+ * Counted from trace statuses only: it says nothing about the formulas in the reply, which
+ * `formulas_with_evidence` counts.
+ */
+export function verifiedToolResults(trace: TraceStep[] | undefined): {
+  verified: number;
+  total: number;
+} {
+  const steps = trace ?? [];
+  return {
+    verified: steps.filter((t) => t.status === "ok" && !t.repeated).length,
+    total: steps.length,
+  };
+}
+
 /** Rows in the order they happened; empty for messages stored before tracing existed. */
 export function buildTimeline(
   debug: TurnDebug | null | undefined,
@@ -248,7 +269,7 @@ export function buildTimeline(
           title: `Finished in ${num(e.total_ms) ?? "?"} ms (${str(e.status)})`,
           detail:
             `model ${num(e.llm_ms) ?? 0} ms · tools ${num(e.tool_ms) ?? 0} ms (sandbox ${num(e.engine_ms) ?? 0} ms, of which waiting for a slot ${num(e.queue_ms) ?? 0} ms) · ` +
-            `claim check ${num(e.verify_ms) ?? 0} ms · formulas with engine evidence ` +
+            `claim check ${num(e.verify_ms) ?? 0} ms · formulas in the reply with engine evidence ` +
             `${num(e.formulas_with_evidence) ?? 0}/${num(e.formulas) ?? 0}` +
             (num(e.evidence_pct) !== null ? ` (${num(e.evidence_pct)}%)` : ""),
         });

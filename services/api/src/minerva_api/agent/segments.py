@@ -53,6 +53,22 @@ _BARE_ARGUMENT = re.compile(rf"({_FUNCTION}(?:\^\w)?)\x01?([A-Za-z0-9])(?![A-Za-
 # gone by the time whitespace is removed, and `xdx` would then hide the boundary). Applied before whitespace goes.
 _SPACED_ARGUMENT = re.compile(rf"({_FUNCTION}(?:\^\w)?)[\x01\s]*([A-Za-z0-9])(?=\s)")
 _BRACED = re.compile(r"(?<!\\mathrm)\{(\w)\}")
+# One Greek-letter command is one token: `\cos{\theta}`, `\cos\theta` and the printer's `\cos{\left(\theta \right)}` are
+# one reading. (`\dot{x}` and `\dot x` are not unified here: that would change the pinned `turn_context` output.) Closed list; the argument must be exactly one
+# such command followed by something that cannot extend it, so `\cos\theta\phi`, `\cos 2\theta`, `\cos\theta^2` and
+# `\sin xy` keep their own keys (the same caution as above). `\ddot` is its own command and never becomes `\dot`.
+_GREEK_LIST = (
+    "alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|iota|kappa|lambda|mu|nu|xi|pi|"
+    "rho|varrho|sigma|varsigma|tau|upsilon|phi|varphi|chi|psi|omega|"
+    "Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega"
+)
+_GREEK = rf"\\(?:{_GREEK_LIST})(?![A-Za-z])"
+_FOLLOWED_BY_FACTOR = (
+    rf"(?=$|[^A-Za-z\\^_0-9]|{_FUNCTION}(?![A-Za-z])|\\(?:dot|ddot|frac|cdot|times)(?![A-Za-z]))"
+)
+_GREEK_ARGUMENT = re.compile(
+    rf"({_FUNCTION}(?:\^\w)?)(?:\{{({_GREEK})\}}|({_GREEK}){_FOLLOWED_BY_FACTOR})"
+)
 # `^{\pi}` and `^\pi`, `_{\theta}` and `_\theta` are one script: braces around a single command after a script mark.
 _BRACED_COMMAND = re.compile(r"(?<=[\^_])\{(\\[A-Za-z]+)\}")
 
@@ -77,6 +93,7 @@ def normalize(latex: str) -> str:
         text = reduced
     text = _PRINTED_CALL.sub(r"\1(\2)", text)
     text = _BARE_ARGUMENT.sub(r"\1(\2)", text)
+    text = _GREEK_ARGUMENT.sub(lambda m: f"{m.group(1)}({m.group(2) or m.group(3)})", text)
     return text.replace("\x01", " ")
 
 

@@ -136,7 +136,7 @@ describe("DebugPanel", () => {
       screen.getByText(/Trace · 1 tool call · 900 ms · some-model · stopped: repeated calls/),
     ).toBeInTheDocument();
     expect(screen.getByText(/trace trace1234/)).toBeInTheDocument();
-    expect(screen.getByText(/1\/2 formulas with engine evidence/)).toBeInTheDocument();
+    expect(screen.getByText(/1\/2 formulas in the reply with engine evidence/)).toBeInTheDocument();
     expect(screen.getByText(/are your conversation content/)).toBeInTheDocument();
     expect(screen.getByText("After replacing references to earlier results")).toBeInTheDocument();
   });
