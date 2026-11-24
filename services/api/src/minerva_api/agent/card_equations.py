@@ -25,7 +25,9 @@ Listed = list[tuple[str, str]]
 # Cards that keep their whole tool result under `data["result"]` (a step, a matrix calculation) instead of at the
 # top of `data`. Before `result_formula` the numbering and the reference table read only the top level, so a
 # successful `substitute` or `rewrite_part` never got a number although `step` is a single-result card (#133).
-NESTED_RESULT_CARDS = frozenset({"step", "matrix"})
+# `sums`, `expectation` and `distribution` are the same case (`data["result"]`); `approximation` keeps its result
+# under `data["report"]`, a different shape, and is not handled here.
+NESTED_RESULT_CARDS = frozenset({"step", "matrix", "sums", "expectation", "distribution"})
 # `result_kind` values of a matrix card that are not an evaluated expression: an equation, a representation, or a
 # numerical approximation. Such a result is never numbered or given an id as if it were a closed form.
 _NOT_EVALUATED_KINDS = frozenset({"equation", "representation", "numeric"})
@@ -54,6 +56,12 @@ def result_formula(card_type: object, data: dict[str, Any]) -> str | None:
         return None
     if card_type == "matrix" and (
         inner.get("evaluated") is not True or inner.get("result_kind") in _NOT_EVALUATED_KINDS
+    ):
+        return None
+    # An expectation that holds only given an independence the user declared. The number would be a name for
+    # the formula alone: a later `@eN` could not carry the premise (this card has no result id), so it gets none.
+    if card_type == "expectation" and (
+        inner.get("evidence") == "conditional" or inner.get("given")
     ):
         return None
     return _text(inner.get("result_latex"))
@@ -224,6 +232,149 @@ def ode_analysis(data: dict[str, Any]) -> Listed:
     ]
 
 
+# ----------------------------------------------------------------------------------------------------------
+# variation, statistics, expansion (#133, part 2 and 3, PR 2 of 3)
+
+_GREEK = frozenset(
+    {
+        *("alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa"),
+        *("lambda", "mu", "nu", "xi", "rho", "sigma", "tau", "phi", "chi", "psi", "omega"),
+    }
+)
+
+
+def name_latex(name: str) -> str:
+    """A parameter name as the statistics panel writes it (`mu` -> `\\mu`, `lam` -> `\\lambda`): the same table."""
+    if name == "lam":
+        return "\\lambda"
+    return f"\\{name}" if name in _GREEK else name
+
+
+def variation(data: dict[str, Any]) -> Listed:
+    """The first-variation rows of an accepted `variation` card, and its second variation.
+
+    `el:<function>` (an Euler-Lagrange equation `EL = 0`; none for a null Lagrangian, whose equations are the
+    identity `0 = 0`), `first` (the complete first variation), `stationarity:i`,
+    `natural:<end>:<function>:<order>` (the card's own row key) and `second` (the quadratic form).
+    A first-variation row needs the report to be `ok` and its finite-difference verification to have passed;
+    the second variation needs its own deciding check to have passed. Not numbered: the functional as read (the
+    user's input), the integrand of the variation, every integration by parts, the boundary form and endpoint
+    terms (bookkeeping the card shows to be checked), and every numerical table.
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok":
+        return []
+    out: Listed = []
+    first = report.get("first")
+    if isinstance(first, dict) and (first.get("verification") or {}).get("passed") is True:
+        if first.get("null_lagrangian") is not True:
+            for eq in first.get("equations") or []:
+                function = _text(eq.get("function")) if isinstance(eq, dict) else None
+                latex = _text(eq.get("equation_latex")) if isinstance(eq, dict) else None
+                if function and latex:
+                    out.append((f"el:{function}", latex))
+        if (latex := _text(first.get("first_variation_latex"))) is not None:
+            out.append(("first", latex))
+        if first.get("null_lagrangian") is not True:
+            out += _rows(
+                [{"latex": s} for s in first.get("stationarity_latex") or []],
+                "latex",
+                "stationarity",
+            )
+        for b in first.get("boundary") or []:
+            latex = _text(b.get("natural_condition_latex")) if isinstance(b, dict) else None
+            if latex:
+                out.append((f"natural:{b.get('end')}:{b.get('function')}:{b.get('order')}", latex))
+    second = report.get("second")
+    if (
+        isinstance(second, dict)
+        and (second.get("checks") or {}).get("deciding") == "passed"
+        and (latex := _text(second.get("quadratic_form_latex"))) is not None
+    ):
+        out.append(("second", latex))
+    return out
+
+
+def _conditions_established(items: object) -> bool:
+    if not isinstance(items, list):
+        return True
+    return all(isinstance(c, dict) and c.get("established") is True for c in items)
+
+
+def statistics(data: dict[str, Any]) -> Listed:
+    """`estimate:<parameter>`, `moment:<name>` and `expr:<name>` of an accepted `statistical_model` card.
+
+    The estimate row is `\\hat{p} = value`, exactly as the panel draws it; a moment row is the value the panel
+    draws next to its label (an expression); an expression row is the log-likelihood or a score. Nothing is
+    listed when the result holds given a premise (`evidence == "conditional"` or any premise: the iid
+    assumption, a prior) or rests on a condition that was assumed and not established, and an estimate that
+    exists only under a condition that was not established is left out. Not numbered: the steps, the Fisher
+    information matrix and the posterior (one joined formula), the dropped factors, the checks, the conditions.
+    """
+    result = data.get("result") or {}
+    if (
+        result.get("status") != "ok"
+        or result.get("evidence") == "conditional"
+        or result.get("premises")
+        or not _conditions_established(result.get("conditions"))
+    ):
+        return []
+    out: Listed = []
+    for e in result.get("estimates") or []:
+        if not isinstance(e, dict) or not _conditions_established(e.get("admissible_if")):
+            continue
+        parameter, latex = _text(e.get("parameter")), _text(e.get("latex"))
+        if parameter and latex:
+            out.append((f"estimate:{parameter}", rf"\hat{{{name_latex(parameter)}}} = {latex}"))
+    for key, prefix in (("moments_latex", "moment"), ("expressions_latex", "expr")):
+        found = result.get(key)
+        for name, latex in found.items() if isinstance(found, dict) else []:
+            if (text := _text(latex)) is not None:
+                out.append((f"{prefix}:{name}", text))
+    return out
+
+
+def expansion(data: dict[str, Any]) -> Listed:
+    """The verified rows of an accepted `expand_motion` card.
+
+    `equil:<name>` (`name = value`, once the equilibrium was shown to be one), `eq:<coordinate>` (an expansion
+    that passed its own series check; the equation carries `+ O(...)`, a truncation), `char` (the characteristic
+    polynomial of the verified linear part) and `mode:<i>:omega2` / `mode:<i>:omega` (a root that was checked by
+    substitution; `omega` only when omega^2 is provably positive). Not numbered: the individual terms, the
+    matrices `A` and `B` (drawn inside one combined formula), the eigenvectors (the order of the modes is the
+    solver's, not a canonical one, so a vector row is deferred), unverified equations or modes, and notes.
+    """
+    report = data.get("report") or {}
+    if report.get("status") != "ok":
+        return []
+    out: Listed = []
+    if (report.get("equilibrium_verification") or {}).get("passed") is True:
+        for e in report.get("equilibrium") or []:
+            name = _text(e.get("name")) if isinstance(e, dict) else None
+            latex = _text(e.get("latex")) if isinstance(e, dict) else None
+            if name and latex:
+                shown = _text(e.get("name_latex")) or name
+                out.append((f"equil:{name}", f"{shown} = {latex}"))
+    equations = [e for e in report.get("equations") or [] if isinstance(e, dict)]
+    verified = [e for e in equations if (e.get("verification") or {}).get("passed") is True]
+    for e in verified:
+        coordinate, latex = _text(e.get("coordinate")), _text(e.get("full_latex"))
+        if coordinate and latex:
+            out.append((f"eq:{coordinate}", latex))
+    if (char := _text(report.get("characteristic_latex"))) is not None and len(verified) == len(
+        equations
+    ):
+        out.append(("char", char))
+    for i, m in enumerate(report.get("modes") or []):
+        if not isinstance(m, dict) or m.get("verified") is not True:
+            continue
+        if (omega2 := _text(m.get("omega_squared_latex"))) is not None:
+            out.append((f"mode:{i}:omega2", omega2))
+        if (omega := _text(m.get("omega_latex"))) is not None:
+            out.append((f"mode:{i}:omega", omega))
+    return out
+
+
 # Card types whose listed equations are numbered one by one.
 LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
@@ -233,6 +384,9 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "solve": solve,
     "ode_solution": ode_solution,
     "ode_analysis": ode_analysis,
+    "variation": variation,
+    "statistics": statistics,
+    "expansion": expansion,
 }
 
 # One primary result (`result_latex`, numbered as a whole) or no formula of its own to refer to.
@@ -268,12 +422,9 @@ LIST_NOT_YET_NUMBERED = frozenset(
         # (alternative conventions, steps) are not numbered yet. An equation, a representation or a numerical
         # approximation has no number at all: a number would present it as an evaluated result.
         "matrix",
-        "statistics",
         "vector",
         "statmech",
-        "expansion",
         "perturbation",
-        "variation",
         "dimensional",
     }
 )

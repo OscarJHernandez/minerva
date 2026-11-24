@@ -4,6 +4,7 @@ import type { Card } from "@/lib/chat-types";
 import fixture from "../../../../../packages/ui/fixtures/equation-rows.json";
 import { OdeAnalysisPanel } from "../ode-analysis-panel";
 import { OdeSolutionPanel } from "../ode-solution-panel";
+import { StatisticsPanel } from "../statistics-panel";
 import { CardView } from "./card-view";
 
 /**
@@ -79,5 +80,116 @@ describe("row numbers of the solve and differential equation cards", () => {
     );
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
     expect(document.body.textContent).toContain("Closed form");
+  });
+});
+
+/**
+ * Variation, statistics and expansion. Each entry also carries `rows`: the LaTeX the server numbers under each
+ * key. Every key is given a distinct number and the number must sit next to exactly that formula (read from
+ * KaTeX's own TeX annotation), so a panel that numbers another formula under the right key fails here.
+ */
+type RowEntry = {
+  data: Record<string, unknown>;
+  keys: string[];
+  rows: Record<string, string>;
+};
+const rowEntries = fixture as unknown as Record<string, RowEntry>;
+const NEW_ENTRIES: Record<string, "variation" | "statistics" | "expansion"> = {
+  variation: "variation",
+  variation_second: "variation",
+  statistics_moments: "statistics",
+  statistics_estimate: "statistics",
+  statistics_expressions: "statistics",
+  expansion: "expansion",
+};
+
+function rowCard(name: string, numbers: Record<string, number>) {
+  const entry = rowEntries[name];
+  const type = NEW_ENTRIES[name];
+  return {
+    id: "c",
+    tool: type,
+    type,
+    title: type,
+    data: { methods: [], request: {}, ...entry?.data },
+    numbers,
+  } as unknown as Card;
+}
+
+function texNextTo(n: number): string[] {
+  return screen
+    .queryAllByTestId("equation-number")
+    .filter((e) => e.textContent === `(${n})`)
+    .map(
+      (e) =>
+        e.parentElement?.querySelector('annotation[encoding="application/x-tex"]')?.textContent ??
+        "",
+    );
+}
+
+describe("row numbers of the variation, statistics and expansion cards", () => {
+  it.each(Object.keys(NEW_ENTRIES))(
+    "%s: each key the server numbers marks exactly the formula the server numbered",
+    (name) => {
+      const { keys, rows } = rowEntries[name] as RowEntry;
+      const numbers = numbersFor(keys);
+      render(<CardView card={rowCard(name, numbers)} />);
+      expect(shown()).toHaveLength(keys.length);
+      for (const key of keys) {
+        expect(texNextTo(numbers[key] as number), key).toEqual([rows[key]]);
+      }
+    },
+  );
+
+  it.each(Object.keys(NEW_ENTRIES))(
+    "%s: a key the server did not number shows no number",
+    (name) => {
+      const { keys } = rowEntries[name] as RowEntry;
+      const numbers = numbersFor(keys);
+      delete numbers[keys[0] ?? ""];
+      render(<CardView card={rowCard(name, numbers)} />);
+      expect(shown()).toHaveLength(keys.length - 1);
+    },
+  );
+
+  it.each(Object.keys(NEW_ENTRIES))("%s: no number without any, as in an older card", (name) => {
+    render(<CardView card={rowCard(name, {})} />);
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
+  });
+
+  it("the shared statistics panel renders unchanged without a provider", () => {
+    const moments = rowEntries.statistics_moments as RowEntry;
+    render(
+      <StatisticsPanel
+        kind="statistics"
+        result={moments.data.result as Parameters<typeof StatisticsPanel>[0]["result"]}
+        headingId="s"
+      />,
+    );
+    expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
+    expect(document.body.textContent).toContain("Moments");
+  });
+
+  it("a sums card shows the number of its whole result", () => {
+    const card = {
+      id: "s",
+      tool: "sums",
+      type: "sums",
+      title: "sums",
+      data: {
+        result: {
+          status: "ok",
+          action: "expand",
+          result_latex: "n x",
+          steps: [],
+          conditions: [],
+          message: "",
+        },
+        request: {},
+      },
+      number: 7,
+    } as unknown as Card;
+    render(<CardView card={card} />);
+    expect(shown()).toEqual(["(7)"]);
   });
 });

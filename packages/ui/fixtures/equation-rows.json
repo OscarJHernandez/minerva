@@ -1,5 +1,5 @@
 {
-  "comment": "Real engine output of three cards and the row keys the server numbers. The Python test (test_equation_rows_contract.py) checks the keys against the reader; the vitest test checks that the panels put a number on exactly these rows. Regenerate with that test's helper, never by hand.",
+  "comment": "Real engine output of the cards below and the row keys the server numbers, with the LaTeX of each numbered row. The Python tests (test_equation_rows_contract.py, test_equation_rows_variation_stats_expansion.py) check the keys and the rows against the readers; the vitest test checks that the panels put each number on exactly that formula. The handbook `methods` of a card are left out. Regenerate with the helper in the second test file (MINERVA_REGEN_ROW_FIXTURE=1), which adds missing entries and never rewrites one.",
   "solve": {
     "data": {
       "report": {
@@ -451,5 +451,1019 @@
       }
     },
     "keys": ["solved:0", "field:0", "field:1"]
+  },
+  "variation": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "message": "First variation derived; every integration by parts is listed and nothing is dropped.",
+        "action": "first",
+        "input_latex": "\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)",
+        "analysis": {
+          "functional_latex": "S[x]=\\int_{a}^{b}\\left(\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)\\right)\\mathrm{d}t",
+          "variable": "t",
+          "lower_latex": "a",
+          "upper_latex": "b",
+          "functions": [
+            {
+              "name": "x",
+              "name_latex": "x",
+              "order": 1,
+              "appears": true
+            }
+          ],
+          "parameters": ["a", "b", "m"],
+          "given_functions": ["V"],
+          "highest_order": 1,
+          "explicit_in_variable": false,
+          "has_endpoint_terms": false,
+          "regularity": "conditional",
+          "hessian_det_latex": "m",
+          "conditions": [
+            {
+              "function": "x",
+              "order": 0,
+              "end": "lower",
+              "state": "unspecified",
+              "value_latex": null
+            },
+            {
+              "function": "x",
+              "order": 0,
+              "end": "upper",
+              "state": "unspecified",
+              "value_latex": null
+            }
+          ],
+          "unspecified": 2,
+          "conditions_needed_per_end": 1,
+          "reading": [
+            "x is an unknown function of t; derivatives are written \\dot{x}, \\ddot{x}, x^{(k)}, x_dot, x_ddot, x_d3 (derivatives used by the integrand: up to order 1)",
+            "V(x) is a given function, not unknown",
+            "parameters: a, b, m (complex unless declared otherwise)",
+            "the variable t and the unknown functions are real"
+          ],
+          "next_steps": [
+            {
+              "id": "first_variation",
+              "needs": []
+            },
+            {
+              "id": "euler_lagrange",
+              "needs": []
+            },
+            {
+              "id": "boundary_terms",
+              "needs": []
+            },
+            {
+              "id": "declare_conditions",
+              "needs": ["endpoint_conditions"]
+            },
+            {
+              "id": "evaluate_action",
+              "needs": ["interval", "parameter_values", "trial_path"]
+            },
+            {
+              "id": "verify_variation",
+              "needs": ["interval", "parameter_values", "trial_path"]
+            },
+            {
+              "id": "solve_stationary",
+              "needs": ["interval", "parameter_values", "endpoint_conditions", "initial_guess"]
+            },
+            {
+              "id": "second_variation",
+              "needs": ["interval", "parameter_values", "trial_path"]
+            }
+          ]
+        },
+        "first": {
+          "varied_latex": ["x \\to x + \\varepsilon\\,\\eta_{x}"],
+          "delta_integrand_latex": "- V'\\left(x\\right)\\,\\eta_{x} + m \\dot{x}\\,\\dot{\\eta}_{x}",
+          "stages": [
+            {
+              "index": 0,
+              "function": null,
+              "moved_order": null,
+              "integrand_latex": "- V'\\left(x\\right)\\,\\eta_{x} + m \\dot{x}\\,\\dot{\\eta}_{x}",
+              "boundary_latex": "0",
+              "needs_derivatives": 1,
+              "checked": null
+            },
+            {
+              "index": 1,
+              "function": "x",
+              "moved_order": 1,
+              "integrand_latex": "\\left(- m \\ddot{x} - V'\\left(x\\right)\\right)\\,\\eta_{x}",
+              "boundary_latex": "m \\dot{x}\\,\\eta_{x}",
+              "needs_derivatives": 2,
+              "checked": true
+            }
+          ],
+          "equations": [
+            {
+              "function": "x",
+              "equation_latex": "- m \\ddot{x} - V'\\left(x\\right) = 0",
+              "expression_latex": "- m \\ddot{x} - V'\\left(x\\right)",
+              "order": 2
+            }
+          ],
+          "null_lagrangian": false,
+          "boundary_form_latex": "\\left[m \\dot{x}\\,\\eta_{x}\\right]_{a}^{b}",
+          "endpoint_terms_latex": "",
+          "boundary": [
+            {
+              "end": "lower",
+              "function": "x",
+              "order": 0,
+              "perturbation_latex": "\\eta_{x}",
+              "coefficient_latex": "- m \\dot{x}",
+              "state": "unspecified",
+              "effect": "kept_unspecified",
+              "natural_condition_latex": "- m \\dot{x} = 0"
+            },
+            {
+              "end": "upper",
+              "function": "x",
+              "order": 0,
+              "perturbation_latex": "\\eta_{x}",
+              "coefficient_latex": "m \\dot{x}",
+              "state": "unspecified",
+              "effect": "kept_unspecified",
+              "natural_condition_latex": "m \\dot{x} = 0"
+            }
+          ],
+          "first_variation_latex": "\\delta S = \\int_{a}^{b} \\left(\\left(- m \\ddot{x} - V'\\left(x\\right)\\right)\\,\\eta_{x}\\right)\\mathrm{d}t + \\left[m \\dot{x}\\,\\eta_{x}\\right]_{a}^{b}",
+          "stationarity_latex": ["- m \\ddot{x} - V'\\left(x\\right) = 0 \\quad (a < t < b)"],
+          "notes": [
+            "2 boundary term(s) are kept because no condition was declared for that derivative at that end; nothing is assumed about it."
+          ],
+          "checks": {
+            "deciding": "passed",
+            "comparisons": [
+              {
+                "kind": "bubble",
+                "function": null,
+                "analytic": "(0.750936452379 + 0.0578330919941j)",
+                "scale": "0.753575609262",
+                "rows": [
+                  {
+                    "step": "0.001",
+                    "quotient": "(0.750936454607 + 0.0578330919941j)",
+                    "abs_error": 2.228014155833529e-9,
+                    "rel_error": 2.95659006004006e-9
+                  },
+                  {
+                    "step": "0.0005",
+                    "quotient": "(0.750936452936 + 0.0578330919941j)",
+                    "abs_error": 5.570035293906903e-10,
+                    "rel_error": 7.391475023136221e-10
+                  },
+                  {
+                    "step": "0.00025",
+                    "quotient": "(0.750936452518 + 0.0578330919941j)",
+                    "abs_error": 1.3925088174969183e-10,
+                    "rel_error": 1.8478687478488098e-10
+                  }
+                ],
+                "observed_order": 2.0000000061953207,
+                "richardson_rel_error": 1.0580327298896208e-18,
+                "verdict": "agree"
+              },
+              {
+                "kind": "generic",
+                "function": null,
+                "analytic": "(-0.105447912903 - 0.0710315081789j)",
+                "scale": "2.75359179158",
+                "rows": [
+                  {
+                    "step": "0.001",
+                    "quotient": "(-0.105447897613 - 0.0710315081789j)",
+                    "abs_error": 1.5290086373260527e-8,
+                    "rel_error": 5.55277889047608e-9
+                  },
+                  {
+                    "step": "0.0005",
+                    "quotient": "(-0.105447909081 - 0.0710315081789j)",
+                    "abs_error": 3.822521470908974e-9,
+                    "rel_error": 1.3881946781657505e-9
+                  },
+                  {
+                    "step": "0.00025",
+                    "quotient": "(-0.105447911947 - 0.0710315081789j)",
+                    "abs_error": 9.556303600768572e-10,
+                    "rel_error": 3.470486667631077e-10
+                  }
+                ],
+                "observed_order": 2.000000011549627,
+                "richardson_rel_error": 3.704439823410235e-18,
+                "verdict": "agree"
+              },
+              {
+                "kind": "bubble",
+                "function": null,
+                "analytic": "(-0.26785951209 - 0.0048607735782j)",
+                "scale": "0.332005319642",
+                "rows": [
+                  {
+                    "step": "0.001",
+                    "quotient": "(-0.26785951366 - 0.0048607735782j)",
+                    "abs_error": 1.569205548192494e-9,
+                    "rel_error": 4.726447003576106e-9
+                  },
+                  {
+                    "step": "0.0005",
+                    "quotient": "(-0.267859512483 - 0.0048607735782j)",
+                    "abs_error": 3.923013792297909e-10,
+                    "rel_error": 1.1816117273452094e-9
+                  },
+                  {
+                    "step": "0.00025",
+                    "quotient": "(-0.267859512188 - 0.0048607735782j)",
+                    "abs_error": 9.807534431880195e-11,
+                    "rel_error": 2.954029303645013e-10
+                  }
+                ],
+                "observed_order": 2.000000007188013,
+                "richardson_rel_error": 1.9624014069625596e-18,
+                "verdict": "agree"
+              },
+              {
+                "kind": "generic",
+                "function": null,
+                "analytic": "(-0.0571538985271 - 0.0216262811896j)",
+                "scale": "0.250590329998",
+                "rows": [
+                  {
+                    "step": "0.001",
+                    "quotient": "(-0.057153895422 - 0.0216262811896j)",
+                    "abs_error": 3.1051300831068118e-9,
+                    "rel_error": 1.2391260601051597e-8
+                  },
+                  {
+                    "step": "0.0005",
+                    "quotient": "(-0.0571538977508 - 0.0216262811896j)",
+                    "abs_error": 7.762824662872616e-10,
+                    "rel_error": 3.0978149328185897e-9
+                  },
+                  {
+                    "step": "0.00025",
+                    "quotient": "(-0.057153898333 - 0.0216262811896j)",
+                    "abs_error": 1.9407061316622538e-10,
+                    "rel_error": 7.744537196143783e-10
+                  }
+                ],
+                "observed_order": 2.0000000253167016,
+                "richardson_rel_error": 1.8120358885544995e-17,
+                "verdict": "agree"
+              }
+            ],
+            "pointwise_passed": true,
+            "stages_checked": 1,
+            "stages_passed": true,
+            "sympy_agrees": true,
+            "seed": 20260301,
+            "statement": "Numerical evidence: finite differences of the action along polynomial perturbations agree with the claimed first variation. It is not a proof."
+          },
+          "verification": {
+            "symbolic_zero": false,
+            "numeric_points_checked": 4,
+            "numeric_points_agreed": 4,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "passed": true,
+            "note": "finite differences of the action along polynomial perturbations (numerical evidence)"
+          }
+        },
+        "evaluation": null,
+        "verification": null,
+        "second": null,
+        "solution": null,
+        "notes": [],
+        "diagnostics": {
+          "functions": 1,
+          "highest_order": 1,
+          "stages": 2,
+          "duration_ms": 535.8537090942264
+        },
+        "duration_ms": 2146.0
+      },
+      "request": {
+        "action": "first",
+        "integrand": "\\frac{m}{2}\\dot{x}^2-V(x)",
+        "variable": "t",
+        "functions": ["x"],
+        "given_functions": [
+          {
+            "name": "V",
+            "args": ["x"]
+          }
+        ],
+        "lower": null,
+        "upper": null,
+        "lower_term": null,
+        "upper_term": null,
+        "conditions": [],
+        "assumptions": {}
+      },
+      "functional_latex": "S[x]=\\int_{a}^{b}\\left(\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)\\right)\\mathrm{d}t"
+    },
+    "keys": ["el:x", "first", "stationarity:0", "natural:lower:x:0", "natural:upper:x:0"],
+    "rows": {
+      "el:x": "- m \\ddot{x} - V'\\left(x\\right) = 0",
+      "first": "\\delta S = \\int_{a}^{b} \\left(\\left(- m \\ddot{x} - V'\\left(x\\right)\\right)\\,\\eta_{x}\\right)\\mathrm{d}t + \\left[m \\dot{x}\\,\\eta_{x}\\right]_{a}^{b}",
+      "stationarity:0": "- m \\ddot{x} - V'\\left(x\\right) = 0 \\quad (a < t < b)",
+      "natural:lower:x:0": "- m \\dot{x} = 0",
+      "natural:upper:x:0": "m \\dot{x} = 0"
+    }
+  },
+  "variation_second": {
+    "data": {
+      "report": {
+        "status": "ok",
+        "message": "Second variation derived and confirmed by second differences of the action.",
+        "action": "second",
+        "input_latex": "\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)",
+        "analysis": {
+          "functional_latex": "S[x]=\\int_{a}^{b}\\left(\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)\\right)\\mathrm{d}t",
+          "variable": "t",
+          "lower_latex": "a",
+          "upper_latex": "b",
+          "functions": [
+            {
+              "name": "x",
+              "name_latex": "x",
+              "order": 1,
+              "appears": true
+            }
+          ],
+          "parameters": ["a", "b", "m"],
+          "given_functions": ["V"],
+          "highest_order": 1,
+          "explicit_in_variable": false,
+          "has_endpoint_terms": false,
+          "regularity": "conditional",
+          "hessian_det_latex": "m",
+          "conditions": [
+            {
+              "function": "x",
+              "order": 0,
+              "end": "lower",
+              "state": "unspecified",
+              "value_latex": null
+            },
+            {
+              "function": "x",
+              "order": 0,
+              "end": "upper",
+              "state": "unspecified",
+              "value_latex": null
+            }
+          ],
+          "unspecified": 2,
+          "conditions_needed_per_end": 1,
+          "reading": [
+            "x is an unknown function of t; derivatives are written \\dot{x}, \\ddot{x}, x^{(k)}, x_dot, x_ddot, x_d3 (derivatives used by the integrand: up to order 1)",
+            "V(x) is a given function, not unknown",
+            "parameters: a, b, m (complex unless declared otherwise)",
+            "the variable t and the unknown functions are real"
+          ],
+          "next_steps": [
+            {
+              "id": "first_variation",
+              "needs": []
+            },
+            {
+              "id": "euler_lagrange",
+              "needs": []
+            },
+            {
+              "id": "boundary_terms",
+              "needs": []
+            },
+            {
+              "id": "declare_conditions",
+              "needs": ["endpoint_conditions"]
+            },
+            {
+              "id": "evaluate_action",
+              "needs": ["interval", "parameter_values", "trial_path"]
+            },
+            {
+              "id": "verify_variation",
+              "needs": ["interval", "parameter_values", "trial_path"]
+            },
+            {
+              "id": "solve_stationary",
+              "needs": ["interval", "parameter_values", "endpoint_conditions", "initial_guess"]
+            },
+            {
+              "id": "second_variation",
+              "needs": ["interval", "parameter_values", "trial_path"]
+            }
+          ]
+        },
+        "first": null,
+        "evaluation": null,
+        "verification": null,
+        "second": {
+          "convention_latex": "S[x+\\varepsilon\\eta]=S[x]+\\varepsilon\\,\\delta S+\\tfrac12\\varepsilon^{2}\\,\\delta^{2}S+\\cdots",
+          "quadratic_form_latex": "\\delta^{2}S=\\int_{a}^{b}\\left(- \\eta_{x}^{2} V''\\left(x\\right) + \\dot{\\eta}_{x}^{2} m\\right)\\mathrm{d}t",
+          "endpoint_form_latex": "",
+          "legendre_matrix_latex": "\\begin{pmatrix}m\\end{pmatrix}",
+          "checks": {
+            "deciding": "passed",
+            "comparisons": [
+              {
+                "kind": "bubble",
+                "function": null,
+                "analytic": "(-0.0742248615533 + 0.0506055084251j)",
+                "scale": "0.090026201938",
+                "rows": [
+                  {
+                    "step": "0.005",
+                    "quotient": "(-0.0742248615575 + 0.0506055084251j)",
+                    "abs_error": 4.162595812547558e-12,
+                    "rel_error": 4.623760330812523e-11
+                  },
+                  {
+                    "step": "0.0025",
+                    "quotient": "(-0.0742248615543 + 0.0506055084251j)",
+                    "abs_error": 1.040648954672249e-12,
+                    "rel_error": 1.1559400844085893e-11
+                  },
+                  {
+                    "step": "0.00125",
+                    "quotient": "(-0.0742248615536 + 0.0506055084251j)",
+                    "abs_error": 2.6016223876407203e-13,
+                    "rel_error": 2.8898502120879384e-12
+                  }
+                ],
+                "observed_order": 1.9999999994675903,
+                "richardson_rel_error": 1.4219537011947265e-21,
+                "verdict": "agree"
+              },
+              {
+                "kind": "generic",
+                "function": null,
+                "analytic": "(-1.40172895933 + 0.968116010604j)",
+                "scale": "1.70363502233",
+                "rows": [
+                  {
+                    "step": "0.005",
+                    "quotient": "(-1.40172896752 + 0.968116010604j)",
+                    "abs_error": 8.19952381843979e-9,
+                    "rel_error": 4.8129580050677804e-9
+                  },
+                  {
+                    "step": "0.0025",
+                    "quotient": "(-1.40172896137 + 0.968116010604j)",
+                    "abs_error": 2.0498811385475077e-9,
+                    "rel_error": 1.2032396092346482e-9
+                  },
+                  {
+                    "step": "0.00125",
+                    "quotient": "(-1.40172895984 + 0.968116010604j)",
+                    "abs_error": 5.124702961329752e-10,
+                    "rel_error": 3.008099090566439e-10
+                  }
+                ],
+                "observed_order": 1.9999999676364382,
+                "richardson_rel_error": 8.997309169190509e-18,
+                "verdict": "agree"
+              },
+              {
+                "kind": "generic",
+                "function": null,
+                "analytic": "(0.280491717588 + 0.16429588617j)",
+                "scale": "0.518450959669",
+                "rows": [
+                  {
+                    "step": "0.005",
+                    "quotient": "(0.280491129593 + 0.16429588617j)",
+                    "abs_error": 5.879951721318285e-7,
+                    "rel_error": 1.1341384583552022e-6
+                  },
+                  {
+                    "step": "0.0025",
+                    "quotient": "(0.280491570589 + 0.16429588617j)",
+                    "abs_error": 1.4699884491809234e-7,
+                    "rel_error": 2.8353471466602915e-7
+                  },
+                  {
+                    "step": "0.00125",
+                    "quotient": "(0.280491680838 + 0.16429588617j)",
+                    "abs_error": 3.674971447234473e-8,
+                    "rel_error": 7.088368492133541e-8
+                  }
+                ],
+                "observed_order": 1.9999998726955301,
+                "richardson_rel_error": 8.339770835828394e-15,
+                "verdict": "agree"
+              }
+            ],
+            "pointwise_passed": null,
+            "stages_checked": 0,
+            "stages_passed": null,
+            "sympy_agrees": null,
+            "seed": 20260501,
+            "statement": "Numerical evidence: second differences of the action along polynomial perturbations agree with the claimed quadratic form. It is not a proof."
+          },
+          "numeric": null
+        },
+        "solution": null,
+        "notes": [],
+        "diagnostics": {
+          "functions": 1,
+          "highest_order": 1,
+          "stages": 3,
+          "duration_ms": 376.50525011122227
+        },
+        "duration_ms": 438.0
+      },
+      "request": {
+        "action": "second",
+        "integrand": "\\frac{m}{2}\\dot{x}^2-V(x)",
+        "variable": "t",
+        "functions": ["x"],
+        "given_functions": [
+          {
+            "name": "V",
+            "args": ["x"]
+          }
+        ],
+        "lower": null,
+        "upper": null,
+        "lower_term": null,
+        "upper_term": null,
+        "conditions": [],
+        "assumptions": {}
+      },
+      "functional_latex": "S[x]=\\int_{a}^{b}\\left(\\frac{m \\dot{x}^{2}}{2} - V\\left(x\\right)\\right)\\mathrm{d}t"
+    },
+    "keys": ["second"],
+    "rows": {
+      "second": "\\delta^{2}S=\\int_{a}^{b}\\left(- \\eta_{x}^{2} V''\\left(x\\right) + \\dot{\\eta}_{x}^{2} m\\right)\\mathrm{d}t"
+    }
+  },
+  "statistics_moments": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "moments",
+        "reason": null,
+        "steps": [
+          {
+            "title": "Mean E[X]",
+            "before_latex": "",
+            "after_latex": "\\frac{\\alpha}{\\beta}",
+            "after_text": "alpha/beta",
+            "evidence": "identity"
+          },
+          {
+            "title": "Variance",
+            "before_latex": "",
+            "after_latex": "\\frac{\\alpha}{\\beta^{2}}",
+            "after_text": "alpha/beta**2",
+            "evidence": "identity"
+          },
+          {
+            "title": "Second moment E[X^2]",
+            "before_latex": "",
+            "after_latex": "\\frac{\\alpha \\left(\\alpha + 1\\right)}{\\beta^{2}}",
+            "after_text": "alpha*(alpha + 1)/beta**2",
+            "evidence": "identity"
+          }
+        ],
+        "moments": {
+          "mean": "alpha/beta",
+          "variance": "alpha/beta**2",
+          "second": "alpha*(alpha + 1)/beta**2"
+        },
+        "moments_latex": {
+          "mean": "\\frac{\\alpha}{\\beta}",
+          "variance": "\\frac{\\alpha}{\\beta^{2}}",
+          "second": "\\frac{\\alpha \\left(\\alpha + 1\\right)}{\\beta^{2}}"
+        },
+        "expressions": {},
+        "expressions_latex": {},
+        "estimates": [],
+        "matrix_text": null,
+        "matrix_latex": null,
+        "posterior": null,
+        "checks": [
+          {
+            "kind": "normalisation",
+            "method": "quadrature or summation of the density at sampled parameter values",
+            "points_checked": 5,
+            "points_agreed": 5,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "moment_quadrature",
+            "method": "mean: quadrature or summation of the density at sampled parameter values",
+            "points_checked": 5,
+            "points_agreed": 5,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "moment_quadrature",
+            "method": "variance: quadrature or summation of the density at sampled parameter values",
+            "points_checked": 5,
+            "points_agreed": 5,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "moment_quadrature",
+            "method": "second: quadrature or summation of the density at sampled parameter values",
+            "points_checked": 5,
+            "points_agreed": 5,
+            "passed": true,
+            "note": ""
+          }
+        ],
+        "premises": [],
+        "conditions": [
+          {
+            "latex": "\\alpha > 0",
+            "established": true,
+            "how": "from the declared assumptions"
+          },
+          {
+            "latex": "\\beta > 0",
+            "established": true,
+            "how": "from the declared assumptions"
+          }
+        ],
+        "evidence": "identity",
+        "message": "each moment agrees with quadrature or summation of the density at 5 parameter points; numerical agreement is evidence, not a proof",
+        "duration_ms": 369.0
+      },
+      "request": {
+        "family": "gamma",
+        "parametrization": null,
+        "parameters": {
+          "alpha": "alpha",
+          "beta": "beta"
+        },
+        "observation": null,
+        "sample_size": null,
+        "iid": null,
+        "estimate": [],
+        "action": "moments",
+        "prior": null,
+        "data": null,
+        "candidate": null,
+        "assumptions": {
+          "alpha": ["positive"],
+          "beta": ["positive"]
+        }
+      }
+    },
+    "keys": ["moment:mean", "moment:variance", "moment:second"],
+    "rows": {
+      "moment:mean": "\\frac{\\alpha}{\\beta}",
+      "moment:variance": "\\frac{\\alpha}{\\beta^{2}}",
+      "moment:second": "\\frac{\\alpha \\left(\\alpha + 1\\right)}{\\beta^{2}}"
+    }
+  },
+  "statistics_estimate": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "mle",
+        "reason": null,
+        "steps": [
+          {
+            "title": "Likelihood",
+            "before_latex": "",
+            "after_latex": "\\frac{\\sqrt{2} \\mathrm{e}^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 v}}}{2 \\sqrt{\\pi} \\sqrt{v}}",
+            "after_text": "",
+            "evidence": "definition"
+          },
+          {
+            "title": "Log-likelihood",
+            "before_latex": "",
+            "after_latex": "- \\frac{\\mu^{2}}{2 v} + \\frac{\\mu x}{v} - \\frac{\\log{\\left(v \\right)}}{2} - \\frac{\\log{\\left(\\pi \\right)}}{2} - \\frac{\\log{\\left(2 \\right)}}{2} - \\frac{x^{2}}{2 v}",
+            "after_text": "-mu**2/(2*v) + mu*x/v - log(v)/2 - log(pi)/2 - log(2)/2 - x**2/(2*v)",
+            "evidence": "identity"
+          },
+          {
+            "title": "Score for mu",
+            "before_latex": "",
+            "after_latex": "- \\frac{\\mu}{v} + \\frac{x}{v}",
+            "after_text": "-mu/v + x/v",
+            "evidence": "identity"
+          },
+          {
+            "title": "Estimator of mu",
+            "before_latex": "",
+            "after_latex": "x",
+            "after_text": "x",
+            "evidence": "identity"
+          }
+        ],
+        "moments": {},
+        "moments_latex": {},
+        "expressions": {},
+        "expressions_latex": {},
+        "estimates": [
+          {
+            "parameter": "mu",
+            "latex": "x",
+            "text": "x",
+            "optimum": "global",
+            "optimum_evidence": "proved",
+            "admissible_if": []
+          }
+        ],
+        "matrix_text": null,
+        "matrix_latex": null,
+        "posterior": null,
+        "checks": [
+          {
+            "kind": "score",
+            "method": "the expanded log-likelihood against the direct sum of log densities, on explicit data",
+            "points_checked": 8,
+            "points_agreed": 8,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "score",
+            "method": "the score against central differences of the direct log-likelihood, on explicit data",
+            "points_checked": 8,
+            "points_agreed": 8,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "score",
+            "method": "the direct log-likelihood has zero slope at the estimators, on explicit data",
+            "points_checked": 4,
+            "points_agreed": 4,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "second_order",
+            "method": "second differences of the direct log-likelihood: negative definite at the estimators",
+            "points_checked": 4,
+            "points_agreed": 4,
+            "passed": true,
+            "note": ""
+          }
+        ],
+        "premises": [],
+        "conditions": [
+          {
+            "latex": "\\mu is a real number",
+            "established": true,
+            "how": "from the declared assumptions"
+          },
+          {
+            "latex": "v > 0",
+            "established": true,
+            "how": "from the declared assumptions"
+          }
+        ],
+        "evidence": "identity",
+        "message": "the log-likelihood is concave on the whole parameter space; checked on 4 explicit data sets (numerical agreement is evidence, not a proof)",
+        "duration_ms": 166.0
+      },
+      "request": {
+        "family": "normal",
+        "parametrization": "variance",
+        "parameters": {
+          "v": "v"
+        },
+        "observation": "x",
+        "sample_size": null,
+        "iid": null,
+        "estimate": ["mu"],
+        "action": "mle",
+        "prior": null,
+        "data": null,
+        "candidate": null,
+        "assumptions": {
+          "x": ["real"],
+          "v": ["positive"],
+          "n": ["integer", "positive"]
+        }
+      }
+    },
+    "keys": ["estimate:mu"],
+    "rows": {
+      "estimate:mu": "\\hat{\\mu} = x"
+    }
+  },
+  "statistics_expressions": {
+    "data": {
+      "result": {
+        "status": "ok",
+        "action": "score",
+        "reason": null,
+        "steps": [
+          {
+            "title": "Log-likelihood",
+            "before_latex": "",
+            "after_latex": "- \\frac{\\mu^{2}}{2 v} + \\frac{\\mu x}{v} - \\frac{\\log{\\left(v \\right)}}{2} - \\frac{\\log{\\left(\\pi \\right)}}{2} - \\frac{\\log{\\left(2 \\right)}}{2} - \\frac{x^{2}}{2 v}",
+            "after_text": "-mu**2/(2*v) + mu*x/v - log(v)/2 - log(pi)/2 - log(2)/2 - x**2/(2*v)",
+            "evidence": "identity"
+          },
+          {
+            "title": "Score for mu",
+            "before_latex": "",
+            "after_latex": "- \\frac{\\mu}{v} + \\frac{x}{v}",
+            "after_text": "-mu/v + x/v",
+            "evidence": "identity"
+          }
+        ],
+        "moments": {},
+        "moments_latex": {},
+        "expressions": {
+          "loglik": "-mu**2/(2*v) + mu*x/v - log(v)/2 - log(pi)/2 - log(2)/2 - x**2/(2*v)",
+          "score:mu": "-mu/v + x/v"
+        },
+        "expressions_latex": {
+          "loglik": "- \\frac{\\mu^{2}}{2 v} + \\frac{\\mu x}{v} - \\frac{\\log{\\left(v \\right)}}{2} - \\frac{\\log{\\left(\\pi \\right)}}{2} - \\frac{\\log{\\left(2 \\right)}}{2} - \\frac{x^{2}}{2 v}",
+          "score:mu": "- \\frac{\\mu}{v} + \\frac{x}{v}"
+        },
+        "estimates": [],
+        "matrix_text": null,
+        "matrix_latex": null,
+        "posterior": null,
+        "checks": [
+          {
+            "kind": "score",
+            "method": "the expanded log-likelihood against the direct sum of log densities, on explicit data",
+            "points_checked": 8,
+            "points_agreed": 8,
+            "passed": true,
+            "note": ""
+          },
+          {
+            "kind": "score",
+            "method": "the score against central differences of the direct log-likelihood, on explicit data",
+            "points_checked": 8,
+            "points_agreed": 8,
+            "passed": true,
+            "note": ""
+          }
+        ],
+        "premises": [],
+        "conditions": [
+          {
+            "latex": "\\mu is a real number",
+            "established": true,
+            "how": "from the declared assumptions"
+          },
+          {
+            "latex": "v > 0",
+            "established": true,
+            "how": "from the declared assumptions"
+          }
+        ],
+        "evidence": "identity",
+        "message": "the score agrees with central differences of the direct log-likelihood on explicit data",
+        "duration_ms": 106.0
+      },
+      "request": {
+        "family": "normal",
+        "parametrization": "variance",
+        "parameters": {
+          "v": "v"
+        },
+        "observation": "x",
+        "sample_size": null,
+        "iid": null,
+        "estimate": ["mu"],
+        "action": "score",
+        "prior": null,
+        "data": null,
+        "candidate": null,
+        "assumptions": {
+          "x": ["real"],
+          "v": ["positive"],
+          "n": ["integer", "positive"]
+        }
+      }
+    },
+    "keys": ["expr:loglik", "expr:score:mu"],
+    "rows": {
+      "expr:loglik": "- \\frac{\\mu^{2}}{2 v} + \\frac{\\mu x}{v} - \\frac{\\log{\\left(v \\right)}}{2} - \\frac{\\log{\\left(\\pi \\right)}}{2} - \\frac{\\log{\\left(2 \\right)}}{2} - \\frac{x^{2}}{2 v}",
+      "expr:score:mu": "- \\frac{\\mu}{v} + \\frac{x}{v}"
+    }
+  },
+  "expansion": {
+    "data": {
+      "report": {
+        "diagnostic": null,
+        "reading": null,
+        "status": "ok",
+        "lagrangian_latex": "- \\frac{k x^{2}}{2} + \\frac{m \\dot{x}^{2}}{2}",
+        "coordinates": ["x"],
+        "equilibrium": [
+          {
+            "name": "x",
+            "latex": "0",
+            "name_latex": "x"
+          }
+        ],
+        "order": 3,
+        "equilibrium_verification": {
+          "symbolic_zero": true,
+          "numeric_points_checked": 20,
+          "numeric_points_agreed": 20,
+          "numeric_points_skipped": 0,
+          "numeric_points_probed": 0,
+          "probe_kind": null,
+          "probes_cut_short": false,
+          "passed": true,
+          "note": "every acceleration vanishes at the point, at zero velocity"
+        },
+        "equations": [
+          {
+            "coordinate": "x",
+            "full_latex": "\\ddot{\\delta x} = - \\frac{\\delta x k}{m} + O\\left(\\delta^{4}\\right)",
+            "terms": [
+              {
+                "degree": 1,
+                "latex": "- \\frac{\\delta x k}{m}"
+              }
+            ],
+            "verification": {
+              "coefficient_method": "Cauchy integral of the original function on circles around the point (trapezoid rule, 64 nodes, 80 digits), trusted where the estimates at r and r/2 agree",
+              "remainder_method": "|f - P| at h, h/2, h/4 must fall at least as h^(order+1) along each direction",
+              "directions": ["real", "imaginary"],
+              "parameter_sets_checked": 4,
+              "coefficients_passed": true,
+              "remainder_passed": true,
+              "radius": 1.0,
+              "passed": true,
+              "note": "coefficients agree with a Cauchy-integral estimate and the remainder shrinks at the claimed order"
+            }
+          }
+        ],
+        "stiffness_latex": "\\left[\\begin{matrix}- \\frac{k}{m}\\end{matrix}\\right]",
+        "velocity_latex": null,
+        "characteristic_latex": "\\frac{k + \\lambda^{2} m}{m} = 0",
+        "modes": [
+          {
+            "omega_squared_latex": "\\omega^2 = \\frac{k}{m}",
+            "sign": "positive",
+            "omega_latex": "\\omega = \\frac{\\sqrt{k}}{\\sqrt{m}}",
+            "multiplicity": 1,
+            "eigenvector_latex": "\\left[\\begin{matrix}1\\end{matrix}\\right]",
+            "verified": true,
+            "verification": {
+              "symbolic_zero": true,
+              "numeric_points_checked": 20,
+              "numeric_points_agreed": 20,
+              "numeric_points_skipped": 0,
+              "numeric_points_probed": 0,
+              "probe_kind": null,
+              "probes_cut_short": false,
+              "passed": true,
+              "note": "det(A + omega^2 I) is zero at this omega^2"
+            }
+          }
+        ],
+        "notes": [
+          "Characteristic polynomial of the linearised system: each root λ gives solutions proportional to exp(λ t)."
+        ],
+        "message": "1 acceleration expanded to order 3 about the equilibrium; the Euler-Lagrange equations, the equilibrium and each expansion were checked independently of SymPy's series.",
+        "duration_ms": 159,
+        "stages": {
+          "prepare": 56,
+          "expand": 30,
+          "linear": 4,
+          "modes": 3
+        }
+      },
+      "request": {
+        "lagrangian": "\\frac{1}{2}m\\dot{x}^2-\\frac{1}{2}kx^2",
+        "coordinates": ["x"],
+        "time": "t",
+        "assumptions": {
+          "m": ["positive"],
+          "k": ["positive"]
+        }
+      }
+    },
+    "keys": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega"],
+    "rows": {
+      "equil:x": "x = 0",
+      "eq:x": "\\ddot{\\delta x} = - \\frac{\\delta x k}{m} + O\\left(\\delta^{4}\\right)",
+      "char": "\\frac{k + \\lambda^{2} m}{m} = 0",
+      "mode:0:omega2": "\\omega^2 = \\frac{k}{m}",
+      "mode:0:omega": "\\omega = \\frac{\\sqrt{k}}{\\sqrt{m}}"
+    }
   }
 }
