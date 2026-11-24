@@ -142,8 +142,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   strict parser, never rewriting input; for `geometry` one syntax for the whole metric, decided over every entry). A new expression field states its syntax in its description (a test).
 - Evidence for the model's equations (`engine/claim_evidence.py`, `loop.claim_evidence`): a claim is linked to a verified
   tool equation only by (1) the same left side and an equivalent right side, (2) residuals proportional by a factor free
-  of the system's coordinates/velocities/accelerations (zeros of the factor become conditions) or (3) its own name for a
-  verified conserved quantity or momentum. The result's restrictions travel with the match; it is never "proved" unless
+  of the system's coordinates/velocities/accelerations (zeros of the factor become conditions), (3) its own name for a
+  verified conserved quantity or momentum, or the series and indexed-row kinds described below. The result's restrictions travel with the match; it is never "proved" unless
   both the tool's check and the link were symbolic zeros; matrices, vectors, distributions and sums are never linked;
   a wrong equation stays unchecked (not contradicted). Lone symbols are not claims. Add a wrong twin to
   `test_claim_evidence.py` for every new rule. One outcome is not a match and not a contradiction: a claim that reuses a
@@ -161,6 +161,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   remainder stay unchecked, never contradicted. It is worded as the tool's series result (numerical evidence; the remainder
   order a measurement), never proved and never a bound; `known_latex` only gains the `P + O(...)` form the tool itself
   printed.
+  A fifth kind is an indexed row (`claim_evidence.read_index_label`, `EvidenceIndex.indexed`, issue #146 part 4): a verified
+  row whose left side is an index label (`\\Gamma^{r}{}_{t t} = ...` of a `geometry` card: a kernel letter or Greek command,
+  `^`/`_` index groups of letters and Greek commands, `{}` spacers; not a label the parser reads as one name, such as `R_{t t}`
+  or `C_{4}`) links a claim with the same label (kernel and indices in order, never an index symmetry) and an equivalent
+  right side (`evidence_rule: "same_indexed_label"`, proved only with a symbolic zero, restrictions carried). A label no row
+  lists is `unverified` with a plain reason, never `unparsed`; a wrong value stays unchecked (never contradicted). A label
+  that could be a power (`e^{i\\pi}`, `x_i^n`: no spacer, no upper index followed by a lower one) is read as one only if the
+  parser cannot read it or a verified row has its kernel; digits are never indices. Wrong twins in `test_claim_evidence.py`.
   Because discovery constants now carry the `conserved` role, rule (3) also links `K = <the C_4 expression>`; its wrong
   twins (a sign, a 1e-6 factor, a dropped term) are in `test_claim_evidence.py`. The evaluation harness hands the claim
   check the earlier turns' verified results (`prior_evidence`) as the chat route does.
