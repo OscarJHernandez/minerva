@@ -243,8 +243,10 @@ def _prior_evidence(messages: Sequence[StoredMessage]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for m in messages:
         if m.role == "assistant":
-            rows.extend(
-                {
+            for step in m.content.get("trace", []):
+                if not step.get("verified_latex"):
+                    continue
+                row = {
                     k: step.get(k)
                     for k in (
                         "status",
@@ -257,9 +259,11 @@ def _prior_evidence(messages: Sequence[StoredMessage]) -> list[dict[str, Any]]:
                         "result_id",
                     )
                 }
-                for step in m.content.get("trace", [])
-                if step.get("verified_latex")
-            )
+                if step.get(
+                    "series"
+                ):  # a verified Taylor series (`SeriesEvidence`), only when there is one
+                    row["series"] = step["series"]
+                rows.append(row)
     return rows
 
 

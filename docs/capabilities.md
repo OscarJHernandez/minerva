@@ -293,6 +293,7 @@ Expands an expression in one variable about a finite real point, to order 12 at 
 - Only Taylor series about a finite point. A pole or branch point at the point (`1/x`, `\sqrt{x}`, `\ln x` at 0) is "unsupported"; Laurent, Puiseux and asymptotic series are not produced.
 - Functions with no complex derivative (`|x|`) are unsupported.
 - The error table is a measurement at a few distances for this expression, not a bound.
+- In the chat, a reply that restates the series as `f(x) = P(x) + O((x-a)^{n+1})` is marked as the tool's result only if the function, the centre, the order and every coefficient agree with it; Big-O notation is otherwise never tested by sampling and stays unchecked. The expansion point and the places where the error was measured are parameters of the call, not definitions the rest of the reply is tested against.
 
 #### Exponential about zero
 

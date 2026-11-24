@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SerializerFunctionWrapHandler, model_serializer
 
 from .identity import ModelInfo
 
@@ -165,6 +165,19 @@ class TraceStep(BaseModel):
     restrictions: list[str] = Field(
         default_factory=list
     )  # where the result is valid (own + inherited)
+    # A verified Taylor series as a typed record (`minerva_engine.SeriesEvidence`): what was expanded, about what,
+    # to which order, with which coefficients, under which assumptions. Kept so that a later turn links the model's
+    # `f = P + O(...)` to it and reads its centre and error locations as parameters (`claim_evidence.py`).
+    series: dict[str, Any] | None = None
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_series(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        """Only a series step stores the key: every other stored trace keeps exactly the shape it had (the
+        recorded pins of the chat route, `fixtures/turn_context_pin*.json`, compare stored rows)."""
+        data: dict[str, Any] = handler(self)
+        if data.get("series") is None:
+            data.pop("series", None)
+        return data
 
 
 class Block(BaseModel):

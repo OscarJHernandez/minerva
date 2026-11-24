@@ -20,7 +20,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
-from minerva_engine import ClaimEvidence, trace_scope
+from minerva_engine import ClaimEvidence, SeriesEvidence, trace_scope
 from minerva_engine.notation.models import Normalization
 from minerva_engine.sandbox import cancel_event
 
@@ -1427,6 +1427,7 @@ async def _run_turn(
                         assumptions_dropped=dropped,
                         verified_latex=list(output.known_latex),
                         quoted=dict(output.quoted_latex),
+                        series=output.series if output.status == "ok" else None,
                     )
                 )
                 tracer.emit(
@@ -1859,7 +1860,30 @@ def claim_evidence(
     return found[-MAX_EVIDENCE:]
 
 
+def series_evidence(
+    trace: Sequence[TraceStep], prior: Sequence[Mapping[str, Any]] = ()
+) -> list[SeriesEvidence]:
+    """The Taylor series the series tool verified in this conversation, newest last (`claim_evidence.SeriesIndex`).
+
+    Read from the typed record the tool stored (`TraceStep.series`), never from the model's text or the card."""
+    rows: list[Mapping[str, Any]] = [*prior, *(step.model_dump() for step in trace)]
+    found: list[SeriesEvidence] = []
+    for row in rows:
+        record = row.get("series")
+        if not isinstance(record, Mapping) or row.get("repeated"):
+            continue
+        if row.get("status") not in ("ok", None):
+            continue
+        try:
+            found.append(SeriesEvidence(**{**record, "source": str(row.get("result_id") or "")}))
+        except ValueError:
+            continue  # a malformed stored record contributes nothing
+    return found[-MAX_EVIDENCE:]
+
+
 def _supported_note(result: Any) -> str:
+    if result.evidence_rule == "series":
+        return f"{result.detail}."
     where = (
         " It holds where " + ", ".join(f"${r}$" for r in result.restrictions)
         if result.restrictions
@@ -1970,6 +1994,7 @@ async def check_model_claims(
         sorted(matrices),
         sorted(said_vectors | set(prior_vectors) | vector_names(trace)),
         claim_evidence(trace, prior_evidence),
+        series_evidence(trace, prior_evidence),
     )
     report: list[ClaimDebug] = []
     for segment, result in zip(pending, results, strict=True):

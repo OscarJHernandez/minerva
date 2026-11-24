@@ -13,6 +13,14 @@ A *relation* (a symbol on one side only, or a time derivative: `\\theta = \\phi 
 `m\\ddot x = -kx`) is not tested as an identity at all. It is checked only against definitions stated earlier in the
 conversation, by substitution, and the result names them (`given`); Minerva has not verified those definitions.
 A relation that disagrees with them after substitution `fails`; one they cannot decide stays `unverified`.
+
+Two kinds of notation are never sampled, because the permissive parser reads them as something else: Big-O
+(`O(t^3)` is the product of a symbol O and t^3) and an applied function that nobody declared (`g(t)` is g times t).
+A claim written with either is `unverified`, never learned as a definition, and never "holds given" or "fails";
+the one exception is `f(x) = P(x) + O((x-a)^{n+1})` that restates a series a tool verified, which is linked to
+that result only if every part agrees (`claim_evidence.SeriesIndex`). The expansion point and the places where the
+series tool measured its error are parameters of that call, not definitions (`x = 0` in "about x = 0"): they are
+neither learned nor tested against.
 """
 
 from __future__ import annotations
@@ -24,11 +32,17 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel
 
-from .claim_evidence import ClaimEvidence, EvidenceIndex
+from .claim_evidence import (
+    ClaimEvidence,
+    EvidenceIndex,
+    SeriesEvidence,
+    SeriesIndex,
+    function_label,
+)
 from .distributions.guard import contains_distribution
 from .errors import MinervaMathError
 from .indexed.guard import contains_indexed
-from .latexparse import parse_latex
+from .latexparse import _GREEK, parse_latex
 from .models import ALLOWED_ASSUMPTIONS, Limits
 from .restrictions import domain_restrictions
 from .verify import verify_equal
@@ -107,6 +121,7 @@ def check_claims(
     matrices: Sequence[str] = (),
     vectors: Sequence[str] = (),
     evidence: Sequence[ClaimEvidence] = (),
+    series: Sequence[SeriesEvidence] = (),
 ) -> list[ClaimCheck]:
     """Check equations in order. `relations` are formulas stated earlier in the conversation: the
     ones that are definitions (`\\theta = \\phi + \\omega t`) are used by substitution. Each checked
@@ -114,10 +129,12 @@ def check_claims(
     conversation declared as matrices: an equation that mentions one is never tested by sampling
     numbers (that would treat them as commuting scalars). `vectors` are names the conversation
     declared as vector fields: the same rule applies, and so does the notation (`\\nabla`, bold or
-    arrowed letters, `\\times` between non-numerals), which is never sampled whatever the names."""
+    arrowed letters, `\\times` between non-numerals), which is never sampled whatever the names. `series` are
+    the Taylor series tools verified in the conversation: a claim that restates one is linked to it, and the
+    centre and error locations of one are parameters, not definitions (see the module docstring)."""
     clean, noncommutative = clean_assumptions(assumptions)
     checker = ClaimChecker(
-        clean, limits, frozenset(matrices) | noncommutative, frozenset(vectors), evidence
+        clean, limits, frozenset(matrices) | noncommutative, frozenset(vectors), evidence, series
     )
     for relation in relations:
         checker.learn(relation)
@@ -289,6 +306,91 @@ _DIFFERENTIAL_DETAIL = (
 )
 
 
+# Big-O and little-o: `O(t^3)`, `O\left(t^3\right)`, `\mathcal{O}(...)`, `\operatorname{O}(...)`, `o(t)`. The parser reads
+# `O(t^3)` as the product O * t^3, and substituting a point into that tests another statement: pointwise agreement
+# never establishes an asymptotic remainder.
+_BIG_O = re.compile(
+    r"\\(?:mathcal|mathscr|mathrm|operatorname)\s*\{\s*[Oo]\s*\}"
+    r"|(?<![A-Za-z\\_])[Oo]\s*(?:\\left\s*)?\("
+)
+_BIG_O_DETAIL = (
+    "this uses Big-O notation (an asymptotic remainder); pointwise agreement cannot establish it, so it "
+    "is not tested unless it restates a Taylor series the series tool computed term for term"
+)
+# An applied function nobody declared: a letter (or a Greek command) directly followed by a parenthesis. The
+# permissive parser reads `g(t)` as g times t. It is a product only if the name is also used as a plain symbol in
+# the same formula (`x(x+1)`, `a(b+c) = ab + ac`, `n(n+1)`); otherwise the notation is not read at all.
+_GREEK_NAMES = "|".join(sorted(_GREEK, key=len, reverse=True))
+_APPLIED = re.compile(
+    rf"(?<![A-Za-z\\])(?P<name>\\(?:{_GREEK_NAMES})(?![A-Za-z])|[A-Za-z](?:_\{{[^{{}}]*\}}|_[A-Za-z0-9])?)"
+    r"(?:\\left\s*)?\("
+)
+_FUNCTION_DETAIL = (
+    "this applies a name to an argument (`g(t)`) that the conversation did not declare as a function; "
+    "Minerva would have to read it as a product, so it is not tested"
+)
+_LOCATION_DETAIL = (
+    "the expansion point or a place where the series tool measured its error: a parameter of that call, "
+    "not a definition; not tested"
+)
+_REMAINDER_HEAD = re.compile(
+    r"\+\s*(?:\\(?:mathcal|mathscr|mathrm|operatorname)\s*\{\s*O\s*\}|O)\s*(?:\\left\s*)?\("
+)
+
+
+def applied_function_notation(latex: str) -> bool:
+    """True if a name is applied to an argument without a space (`g(t)`) and is not also used as a plain
+    symbol elsewhere in the formula, so that reading it as a product would be a guess."""
+    text = _text(latex)
+    for match in _APPLIED.finditer(text):
+        name = match.group("name")
+        if name.startswith("\\"):
+            wanted = name[1:]
+        else:
+            letter, _, subscript = name.partition("_")
+            wanted = f"{letter}_{_norm(subscript)}" if subscript else letter
+        used_plain = False
+        for token in _SYMBOL_TOKEN.finditer(text):
+            if token.start() == match.start("name"):
+                continue
+            command, letter_, subscript_ = token.groups()
+            if command is not None:
+                key = command
+            else:
+                key = f"{letter_}_{_norm(subscript_)}" if subscript_ else letter_
+            if key != wanted:
+                continue
+            after = text[token.end() :]
+            if after.startswith(("(", "\\left(")):
+                continue
+            used_plain = True
+            break
+        if not used_plain:
+            return True
+    return False
+
+
+def split_remainder(side: str) -> tuple[str, str] | None:
+    """`P + O(arg)` -> (`P`, `arg`) when the side ends with one Big-O term; None otherwise."""
+    head = _REMAINDER_HEAD.search(side)
+    if head is None:
+        return None
+    body = side[head.end() :]
+    depth = 1
+    for i, ch in enumerate(body):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                if body[i + 1 :].strip():
+                    return None
+                argument = re.sub(r"\\right\s*$", "", body[:i]).strip()
+                polynomial = side[: head.start()].strip()
+                return (polynomial, argument) if polynomial and argument else None
+    return None
+
+
 class ClaimChecker:
     """Checks equations one after another against the definitions stated so far."""
 
@@ -299,12 +401,16 @@ class ClaimChecker:
         matrices: frozenset[str] = frozenset(),
         vectors: frozenset[str] = frozenset(),
         evidence: Sequence[ClaimEvidence] = (),
+        series: Sequence[SeriesEvidence] = (),
     ) -> None:
         self.assumptions = assumptions
         self.limits = limits
         self.matrices = matrices
         self.vectors = vectors
         self.evidence = EvidenceIndex(list(evidence), assumptions, limits) if evidence else None
+        self.series = SeriesIndex(list(series), limits) if series else None
+        # `g(x) = expression` as stated in the conversation (latest wins): only a series claim written `g(x) = ...` reads it
+        self.function_definitions: dict[tuple[str, str], str] = {}
         # symbol -> (right side with earlier definitions substituted, its text, texts it was built on)
         self.definitions: dict[sp.Symbol, tuple[sp.Expr, str, list[str]]] = {}
         # the definitions that were accepted, in order: a redefinition rebuilds the others without the old one
@@ -325,6 +431,11 @@ class ClaimChecker:
         one; one that would define a symbol in terms of itself is ignored."""
         if self._is_vector(latex):
             return  # a vector statement is never a scalar definition
+        self._remember_function(latex)
+        if _BIG_O.search(latex) or applied_function_notation(latex):
+            return  # read as a product, it would define a symbol by a statement about something else
+        if self.series is not None and self.series.location(split_equation(latex) or []):
+            return  # the centre or a measurement point of a series result: a parameter, not a definition
         if mentions_name(_text(latex), self.matrices) or _TRANSPOSE.search(latex):
             self._learn_alias(latex)
             return  # a definition of or by a matrix is not a scalar substitution
@@ -362,6 +473,15 @@ class ClaimChecker:
             (rhs,), used = self._substitute([raw])
         self.definitions[symbol] = (rhs, _text(latex), self._given(used))
         self._log.append((latex, symbol))
+
+    def _remember_function(self, latex: str) -> None:
+        """`g(x) = \\sin x`: what the conversation said `g` is. Read only to link a series claim written `g(x) = ...`."""
+        sides = split_equation(latex)
+        if sides is None or len(sides) != 2 or _BIG_O.search(latex):
+            return
+        label = function_label(sides[0])
+        if label is not None:
+            self.function_definitions[label] = sides[1]
 
     def _is_vector(self, latex: str) -> bool:
         text = _text(latex)
@@ -422,6 +542,14 @@ class ClaimChecker:
             return ClaimCheck(status="unverified", kind="relation", detail=_DIFFERENTIAL_DETAIL)
         if _IMPLICATION.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_IMPLICATION_DETAIL)
+        if self.series is not None:
+            if self.series.location(sides) is not None:
+                return ClaimCheck(status="unverified", kind="relation", detail=_LOCATION_DETAIL)
+            linked_series = self._match_series(sides)
+            if linked_series is not None:
+                return linked_series
+        if _BIG_O.search(latex):
+            return ClaimCheck(status="unverified", kind="relation", detail=_BIG_O_DETAIL)
         if self.evidence is not None and not _DISTRIBUTION_NOTATION.search(latex):
             linked = self._match_evidence(sides)
             if linked is not None:
@@ -432,6 +560,8 @@ class ClaimChecker:
             # \delta(x) and \theta(x) read as products here, which would make a true statement about
             # a delta or step function look false; a delta cannot be sampled at all.
             return ClaimCheck(status="unverified", detail=_DISTRIBUTION_DETAIL)
+        if applied_function_notation(latex):
+            return ClaimCheck(status="unverified", kind="relation", detail=_FUNCTION_DETAIL)
         denominators: list[sp.Expr] = []
         try:
             parsed = [
@@ -489,6 +619,29 @@ class ClaimChecker:
             detail=f"not an identity ({detail}); it may still be an equation to solve or a definition",
             kind="identity",
         )
+
+    def _match_series(self, sides: list[str]) -> ClaimCheck | None:
+        """`supported` if the claim is `f = P + O(...)` and every part is the series a tool verified."""
+        if self.series is None or len(sides) != 2:
+            return None
+        for function_side, remainder_side in (sides, sides[::-1]):
+            if _BIG_O.search(function_side):
+                continue
+            split = split_remainder(remainder_side)
+            if split is None:
+                continue
+            found = self.series.match(function_side, *split, self.function_definitions)
+            if found is not None:
+                where = f" ({found.source})" if found.source else ""
+                return ClaimCheck(
+                    status="supported",
+                    detail=f"{found.detail}{where}",
+                    kind="relation",
+                    evidence_source=found.source or None,
+                    evidence_rule=found.rule,
+                    evidence_basis=found.basis,
+                )
+        return None
 
     def _match_evidence(self, sides: list[str]) -> ClaimCheck | None:
         """`supported` if the claim is the same statement as a result a tool verified (never otherwise)."""
