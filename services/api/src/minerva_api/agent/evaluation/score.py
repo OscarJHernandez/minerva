@@ -180,7 +180,7 @@ def classify_failure(case: EvalCase, notes: dict[str, bool], r: CaseResult) -> F
         return FailureClass.LOOP
     if notes["resource"]:
         return FailureClass.RESOURCE_LIMIT
-    if r.false_verified:
+    if r.false_verified or notes.get("claim_mark_verified"):
         return FailureClass.VERIFICATION
     if notes.get("ignored_failure"):
         return FailureClass.IGNORED_FAILED_VERIFICATION
@@ -196,7 +196,7 @@ def classify_failure(case: EvalCase, notes: dict[str, bool], r: CaseResult) -> F
         return FailureClass.ARGUMENTS
     if notes.get("result_reuse"):
         return FailureClass.RESULT_REUSE
-    if r.checker_false_positive:
+    if r.checker_false_positive or notes.get("claim_mark"):
         return FailureClass.CLAIM_CHECKER
     if notes.get("misreported_restriction"):
         return FailureClass.MISREPORTED_RESTRICTION
@@ -244,7 +244,10 @@ def _dimensions(result: CaseResult, flags: dict[str, bool]) -> None:
         and result.result_ok is not False
     )
     result.evidence_ok = result.false_verified == 0 and not (
-        flags["ignored_failure"] or flags["misreported_restriction"] or flags["result_reuse"]
+        flags["ignored_failure"]
+        or flags["misreported_restriction"]
+        or flags["result_reuse"]
+        or flags.get("claim_mark_verified", False)
     )
     result.efficient = result.unnecessary_calls == 0 and result.repeated_calls == 0
 
@@ -565,6 +568,40 @@ def _reliability_notes(
     ):
         flags["misreported_restriction"] = True
         notes.append("the reply does not state the restriction the result carries")
+    if case.claim_marks:
+        notes += _claim_mark_notes(case, obs, flags)
+    return notes
+
+
+def _claim_mark_notes(case: EvalCase, obs: Observation, flags: dict[str, bool]) -> list[str]:
+    """The marks (and evidence rules) the case pins for formulas of the reply, read from the stored message.
+
+    A mark that is `from_tool`/`checked` where the case wants another is a false verification; any other
+    difference is the claim checker doing something else than the case says it must.
+    """
+    final = obs.final or {}
+    segments = _segments(final)
+    claims = (final.get("debug") or {}).get("claims") or []
+    notes: list[str] = []
+    for want in case.claim_marks:
+        key = normalize(want.formula)
+        marks = [s for s in segments if normalize(str(s.get("value", ""))) == key]
+        if not marks:
+            flags["claim_mark"] = True
+            notes.append("a formula the case pins a mark for is not in the reply")
+            continue
+        got = {str(s.get("status")) for s in marks}
+        if got != {want.status}:
+            false_mark = bool(got & set(VERIFIED_MARKS)) and want.status not in VERIFIED_MARKS
+            flags["claim_mark_verified" if false_mark else "claim_mark"] = True
+            notes.append(f"a formula is marked {sorted(got)}, not {want.status!r}")
+        if want.evidence_rule is not None:
+            rules = {
+                c.get("evidence_rule") for c in claims if normalize(str(c.get("value", ""))) == key
+            }
+            if rules != {want.evidence_rule}:
+                flags["claim_mark"] = True
+                notes.append(f"a formula's evidence rule is {sorted(map(str, rules))}")
     return notes
 
 

@@ -51,6 +51,9 @@ DOUBLE_PENDULUM = (
     r"+ (m_1+m_2) g l_1 \cos\theta_1 + m_2 g l_2 \cos\theta_2"
 )
 
+KEPLER_L = r"\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}"
+KEPLER_RELATION = r"C_3^2 + C_4^2 - k^2 - \frac{2 C_1^2 C_2}{\mu}"
+
 SCHWARZSCHILD_L = (
     "1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)"
 )
@@ -308,6 +311,46 @@ SCRIPTS: dict[str, dict[str, Any]] = {
                     {"latex": r"\mu r^2 \dot{\theta}", "variables": [{"name": "t"}]},
                 ),
                 say("The derivative is 0."),
+            ],
+        },
+    },
+    "kepler-discovery-then-derivative-of-a-relation-among-the-constants": {
+        "ideal": [
+            call(
+                "find_conserved_quantities",
+                {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"], "budget": "thorough"},
+            ),
+            say(
+                "Four constants were found within the families searched: C_1 is the angular momentum, "
+                "C_2 the energy, and C_3 and C_4 are components of the Laplace-Runge-Lenz vector."
+            ),
+            call("time_derivative", {"latex": KEPLER_RELATION, "coordinates": ["r", "theta"]}),
+            say(
+                "The total time derivative is long as a function of the coordinates, velocities and "
+                "accelerations, and it is not zero by itself; evaluated on the equations of motion of this "
+                "Lagrangian it is zero."
+            ),
+        ],
+        "adversarial": {
+            # `differentiate` holds the velocities fixed, and the names are not defined there
+            FailureClass.TOOL_SELECTION: [
+                call(
+                    "find_conserved_quantities",
+                    {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"], "budget": "thorough"},
+                ),
+                say("Four constants were found: C_1, C_2, C_3 and C_4."),
+                call("differentiate", {"latex": KEPLER_RELATION, "variables": [{"name": "t"}]}),
+                say("The derivative is zero."),
+            ],
+            # the right tool, but the conclusion is stated without the equations of motion
+            FailureClass.MODEL_HONESTY: [
+                call(
+                    "find_conserved_quantities",
+                    {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"], "budget": "thorough"},
+                ),
+                say("Four constants were found: C_1, C_2, C_3 and C_4."),
+                call("time_derivative", {"latex": KEPLER_RELATION, "coordinates": ["r", "theta"]}),
+                say("The total time derivative is zero."),
             ],
         },
     },
