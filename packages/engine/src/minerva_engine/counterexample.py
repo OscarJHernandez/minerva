@@ -40,10 +40,10 @@ import sympy as sp
 from .distributions.guard import contains_distribution
 from .ncverify import noncommuting_symbols
 
-ProbeKind = Literal["random", "boundary", "branch", "special", "scale"]
-KINDS: tuple[ProbeKind, ...] = ("random", "boundary", "branch", "special", "scale")
+ProbeKind = Literal["random", "boundary", "branch", "special", "scale", "extremum"]
+KINDS: tuple[ProbeKind, ...] = ("random", "boundary", "branch", "special", "scale", "extremum")
 # What `verify_equal` runs after its own random points agreed: `random` would repeat them.
-TARGETED: tuple[ProbeKind, ...] = ("boundary", "scale", "branch", "special")
+TARGETED: tuple[ProbeKind, ...] = ("boundary", "scale", "branch", "special", "extremum")
 
 SCREEN_DPS = 30
 CONFIRM_DPS = (60, 120)
@@ -53,6 +53,13 @@ NOISE_FLOOR = (
 STABILITY = 1e-3  # the residual at 60 and 120 digits must agree to this relative amount
 GRID_INTEGERS = 60
 BOUNDARY_ROOTS_PER_ARGUMENT = 6
+EXTREMUM_NODES = 4  # exp(...) nodes inspected per formula
+EXTREMUM_DRAWS = 2  # draws of the other symbols per (node, symbol)
+EXTREMUM_OFFSETS = 2  # points beside the centre, after the centre itself
+EXTREMUM_POINTS = 24  # total points the family may yield, whatever the number of symbols
+EXTREMUM_SEED = (
+    170  # its own stream: the other families draw exactly what they drew before it existed
+)
 
 
 @dataclass(frozen=True)
@@ -478,6 +485,59 @@ def _scale_points(
         yield _draw_all(symbols, rng, magnitude)
 
 
+def _extremum_points(
+    a: sp.Expr, b: sp.Expr, symbols: list[sp.Symbol], _shared: random.Random
+) -> Iterator[dict[sp.Symbol, sp.Expr]]:
+    """Centres of `exp(g)` with `g` a polynomial of degree 2 in one symbol (the others drawn).
+
+    A narrow peak `exp(-k (x - c)^2)` is 1 at its centre and ~0 elsewhere, so no sample finds it. The centre
+    is the exact root of `dg/dx`; the point is only a candidate: it can add a confirmed disagreement, never
+    count as agreement. Other shapes (degree 1 or 3+, nested, non-polynomial) are skipped.
+    """
+    rng = random.Random(EXTREMUM_SEED)  # noqa: S311 - deterministic probing; never the shared stream
+    yielded = 0
+    nodes: list[sp.Expr] = []
+    for node in itertools.chain(sp.preorder_traversal(a), sp.preorder_traversal(b)):
+        if isinstance(node, sp.exp) and node.args[0].free_symbols and node.args[0] not in nodes:
+            nodes.append(node.args[0])
+        if len(nodes) >= EXTREMUM_NODES:
+            break
+    for g in nodes:
+        for symbol in sorted(g.free_symbols & set(symbols), key=lambda s: s.name):
+            for _ in range(EXTREMUM_DRAWS):
+                base = _draw_all(symbols, rng, 3.5)
+                reduced = g.xreplace({s: v for s, v in base.items() if s != symbol})
+                if reduced.free_symbols - {symbol}:
+                    continue
+                try:
+                    poly = sp.Poly(reduced, symbol)
+                except (
+                    sp.PolynomialError,
+                    sp.polys.polyerrors.BasePolynomialError,
+                    ValueError,
+                    TypeError,
+                ):
+                    continue
+                if poly.degree() != 2:
+                    continue
+                c2, c1 = poly.coeff_monomial(symbol**2), poly.coeff_monomial(symbol)
+                centre = sp.sympify(-c1 / (2 * c2))
+                if not _admits(symbol, centre):
+                    continue
+                try:
+                    centre_real = float(sp.re(centre))
+                    if not math.isfinite(centre_real):
+                        continue
+                    around = _around(symbol, centre_real)
+                except (TypeError, ValueError, OverflowError):
+                    continue
+                for point in [centre, *around[:EXTREMUM_OFFSETS]]:
+                    if yielded >= EXTREMUM_POINTS:
+                        return
+                    yielded += 1
+                    yield {**base, symbol: point}
+
+
 def _streams(
     a: sp.Expr, b: sp.Expr, symbols: list[sp.Symbol], rng: random.Random
 ) -> dict[ProbeKind, Iterator[dict[sp.Symbol, sp.Expr]]]:
@@ -487,6 +547,7 @@ def _streams(
         "branch": _branch_points(symbols, rng),
         "special": _special_points(symbols, rng),
         "scale": _scale_points(symbols, rng),
+        "extremum": _extremum_points(a, b, symbols, rng),
     }
 
 

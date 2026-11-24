@@ -174,3 +174,62 @@ def test_the_clock_stop_is_reported_apart_from_the_point_cap() -> None:
     assert by_cap.exhausted and not by_cap.clock_cut
     found = find_counterexample(a, b, budget=Budget(points=96, seconds=60.0), kinds=TARGETED)
     assert found.counterexample is not None and not found.clock_cut
+
+
+# -- V-014: the centre of a quadratic exponent -----------------------------------------------------------------------
+@pytest.mark.parametrize("centre", [sp.Rational(1, 7), sp.Rational(22, 7), -sp.Rational(355, 113)])
+@pytest.mark.parametrize("scale", [10**4, 10**8])
+def test_the_extremum_probe_finds_a_narrow_peak_at_its_exact_centre(
+    centre: sp.Rational, scale: int
+) -> None:
+    result = find_counterexample(
+        sp.exp(-scale * (xr - centre) ** 2), sp.Integer(0), kinds=("extremum",)
+    )
+    assert result.counterexample is not None
+    assert result.counterexample.probe == "extremum"
+    if scale >= 10**8:  # a peak this narrow is only hit at its centre (minimisation keeps it)
+        assert result.counterexample.values[xr] == centre
+
+
+def test_the_extremum_probe_never_rejects_the_same_peak_written_expanded() -> None:
+    c = sp.Rational(1, 7)
+    a = sp.exp(-(10**6) * (xr - c) ** 2)
+    b = sp.exp(-(10**6) * xr**2 + 2 * 10**6 * c * xr - 10**6 * c**2)
+    assert find_counterexample(a, b).counterexample is None
+
+
+def test_the_extremum_probe_skips_other_shapes() -> None:
+    quartic = sp.exp(-(10**12) * (xr - sp.Rational(1, 7)) ** 4)
+    assert find_counterexample(quartic, sp.Integer(0), kinds=("extremum",)).probes_tried == 0
+
+
+def test_a_huge_centre_does_not_raise() -> None:
+    a = sp.exp(-(xr**2) + 10**400 * xr)
+    result = find_counterexample(a, a, kinds=("extremum",))
+    assert result.counterexample is None
+
+
+def test_the_extremum_probe_yields_at_most_its_total_cap() -> None:
+    from minerva_engine.counterexample import EXTREMUM_POINTS
+
+    a = sum(
+        sp.exp(-(10**6) * (xr - k * y) ** 2 - (10**6) * (y - sp.Rational(k, 7)) ** 2)
+        for k in range(1, 9)
+    )
+    result = find_counterexample(a, a, kinds=("extremum",), budget=Budget(points=500, seconds=60.0))
+    assert result.counterexample is None
+    assert 0 < result.probes_tried <= EXTREMUM_POINTS
+
+
+def test_the_extremum_probe_leaves_the_other_families_streams_unchanged() -> None:
+    import random
+
+    from minerva_engine.counterexample import _streams
+
+    a = sp.exp(-(xr**2)) + sp.Abs(xr - 5)
+    b = a + 1
+    with_ext = _streams(a, b, [xr], random.Random(5))
+    list(with_ext["extremum"])  # consuming it must not move the shared stream
+    ref = _streams(a, b, [xr], random.Random(5))
+    for kind in ("boundary", "branch", "special", "scale", "random"):
+        assert list(with_ext[kind]) == list(ref[kind])

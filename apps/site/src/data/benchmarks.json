@@ -152,14 +152,14 @@
     }
   ],
   "verification": {
-    "problems": 229,
-    "correct": 130,
-    "refused": 97,
+    "problems": 237,
+    "correct": 132,
+    "refused": 102,
     "false_accepts": 0,
     "false_rejects": 0,
-    "counterexamples_found": 17,
+    "counterexamples_found": 22,
     "pending": 1,
-    "known_open": 1,
+    "known_open": 2,
     "evidence": {
       "symbolic_proof": 5,
       "numeric_agreement": 54,
