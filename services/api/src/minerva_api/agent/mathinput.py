@@ -43,7 +43,9 @@ FORMAT_DESCRIPTION = (
 _TEXT_MARKERS = re.compile(rf"\*|{DERIVATIVE_NAME}|\b[A-Za-z]\w*\s*\(")
 
 # Tools that read `format: auto` by default, and tools whose expression field is text syntax by nature.
-AUTO_TOOLS = frozenset({"analyze_lagrangian", "search_invariants", "find_conserved_quantities"})
+AUTO_TOOLS = frozenset(
+    {"analyze_lagrangian", "routh_reduce", "search_invariants", "find_conserved_quantities"}
+)
 TEXT_TOOLS = frozenset({"tensor_canonicalize"})
 _ASSIGNED = {"lagrangian": "L", "hamiltonian": "H"}
 

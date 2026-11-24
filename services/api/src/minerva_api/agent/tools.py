@@ -824,6 +824,16 @@ class AnalyzeLagrangianArgs(LagrangianArgs):
     )
 
 
+class RouthReduceArgs(AnalyzeLagrangianArgs):
+    cyclic: list[str] = Field(
+        min_length=1,
+        max_length=7,
+        description="The coordinates to remove, each one the Lagrangian does not contain (cyclic), e.g. ['t'] "
+        "or ['phi']. Their momenta are held fixed as the symbols p_{t}, p_{\\phi}: there is no argument for a "
+        "value or another name.",
+    )
+
+
 class TimeDerivativeArgs(SimplifyArgs):
     format: SkipJsonSchema[SyntaxChoice] = "latex"
     latex: str = Field(
@@ -2646,6 +2656,85 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
     )
 
 
+# What the model is told about the held momentum and a renaming the user may want (#153: the maintainer's choice).
+ROUTH_SYMBOL_NOTE = (
+    "each momentum stays the symbol shown (p_{c}); a value or another name (for example E = -p_t) is the user's "
+    "own step: offer `substitute` with their relation, never rename it yourself; "
+)
+
+
+def run_routh_reduce(args: RouthReduceArgs, ctx: ToolContext) -> ToolOutput:
+    source = strip_assignment(args.lagrangian, "L")
+    syntax = resolve_syntax(source, args.format)
+    report = ctx.engine.routh_reduce(
+        source, args.coordinates, args.cyclic, args.time, args.assumptions, format=syntax
+    )
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="routh_reduce",
+        type="routh",
+        title="Routh reduction",
+        data={
+            **report.model_dump(mode="json"),
+            "request": {
+                "lagrangian": args.lagrangian if syntax == "latex" else report.lagrangian_latex,
+                "coordinates": args.coordinates,
+                "cyclic": args.cyclic,
+                "time": args.time,
+                "assumptions": args.assumptions,
+            },
+        },
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = []
+    if report.status.value == "ok" and report.result_latex:
+        lines.append(
+            f"Routhian (a Lagrangian for {', '.join(report.remaining)}, time {report.time}): "
+            f"$R = {report.result_latex}$"
+        )
+        known.append(report.result_latex)
+        for held in report.held_fixed:
+            lines.append(f"held fixed: ${held.latex}$ ({held.reason})")
+            known.append(held.latex)
+        for rebuilt in report.reconstruction:
+            lines.append(f"velocity of the removed coordinate: ${rebuilt.latex}$")
+            known.append(rebuilt.latex)
+        if report.restrictions_latex:
+            lines.append(
+                "valid only where "
+                + ", ".join(f"${r}$" for r in report.restrictions_latex)
+                + " (the momenta are solved for the velocities there)"
+            )
+            known.extend(report.restrictions_latex)
+        elif not report.restrictions_complete:
+            lines.append("domain restrictions could not be fully determined")
+        checks = report.checks
+        lines.append(
+            "evidence: Euler-Lagrange residual of R on motions of L at "
+            + ", ".join(
+                f"{v.numeric_points_agreed}/{v.numeric_points_checked}"
+                for v in checks.euler_lagrange
+            )
+            + " points, velocities rebuilt at "
+            + ", ".join(
+                f"{v.numeric_points_agreed}/{v.numeric_points_checked}"
+                for v in checks.reconstruction
+            )
+            + f"; symbolic leg: {checks.symbolic_note or 'not run'}"
+        )
+        lines.append(f"convention: {report.convention}")
+        lines.append(ROUTH_SYMBOL_NOTE + "the result id names R, with its restrictions.")
+    elif report.reason:
+        lines.append(f"reason: {report.reason}")
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        report.status.value,
+        variables=tuple(report.remaining),
+    )
+
+
 def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.expand_motion(
         args.lagrangian,
@@ -4008,6 +4097,16 @@ TOOLS: dict[str, Tool] = {
             run_lagrangian,
         ),
         Tool(
+            "routh_reduce",
+            "Routh reduction: remove cyclic coordinates the user names (for example t of a static metric, or "
+            "an angle) by holding their conserved momenta fixed as symbols p_{c}. Returns the Routhian R, a "
+            "Lagrangian for the remaining coordinates, what was held fixed, the velocities of the removed "
+            "coordinates, and where it is valid; each momentum is verified conserved and R is checked "
+            "against the motion of the original Lagrangian. Refuses a coordinate L depends on.",
+            RouthReduceArgs,
+            run_routh_reduce,
+        ),
+        Tool(
             "time_derivative",
             "The TOTAL time derivative of a quantity along a motion: coordinates, velocities and time all "
             "change (chain rule; accelerations appear). Use it for d/dt of a momentum, an energy, an "
@@ -4634,6 +4733,7 @@ MATRIX_ONLY_TOOLS = frozenset(
     {
         "sums",
         "analyze_lagrangian",
+        "routh_reduce",
         "expand_motion",
         "perturbation_solve",
         "find_conserved_quantities",

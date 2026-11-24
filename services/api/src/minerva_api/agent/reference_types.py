@@ -67,6 +67,7 @@ FIELD_POLICY: dict[tuple[str, str], tuple[Policy, str]] = {
         )
         for tool, name in (
             ("analyze_lagrangian", "lagrangian"),
+            ("routh_reduce", "lagrangian"),
             ("time_derivative", "lagrangian"),
             ("expand_motion", "lagrangian"),
             ("perturbation_solve", "lagrangian"),

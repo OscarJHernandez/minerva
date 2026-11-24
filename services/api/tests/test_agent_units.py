@@ -251,6 +251,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
         "tensor_canonicalize",
         "solve_polynomial",
         "analyze_lagrangian",
+        "routh_reduce",  # Routh reduction by cyclic coordinates the caller names
         "expand_motion",
         "perturbation_solve",
         "search_invariants",

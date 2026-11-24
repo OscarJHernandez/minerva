@@ -179,6 +179,11 @@ A numerical solution (integrate_motion) needs numbers that only the user can cho
    with the Lagrangian instead of rewriting the equations by hand.\
 """,
         """\
+To remove a cyclic coordinate (Routh reduction, an effective potential for the others), call
+   `routh_reduce` with the Lagrangian and the coordinates the user names. Each momentum stays the symbol
+   p_{c} in R: never give it a value or rename it (E = -p_t) unless the user asks; that is their `substitute`.\
+""",
+        """\
 To linearise about an equilibrium or a circular orbit (small oscillations), call `expand_motion` with the
    Lagrangian, the coordinates and the equilibrium written in text syntax (for example `p^2/(G*M*m^2)`).
    Never differentiate and substitute by hand: its expansion, frequencies and modes are checked.
@@ -427,7 +432,7 @@ Whether a stated equation is true. `check_identity` judges ONE equation the user
 }
 
 GROUP_ROUTER: dict[str, str] = {
-    "mechanics": "a Lagrangian: `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; d/dt of a quantity along a motion: `time_derivative`.",
+    "mechanics": "a Lagrangian: `analyze_lagrangian`; hidden constants of motion: `find_conserved_quantities`; d/dt of a quantity along a motion: `time_derivative`; remove a cyclic coordinate: `routh_reduce`.",
     "ode": "a differential equation: `ode_analyze`, then `ode_solve_symbolic` or `ode_solve_numerical`.",
     "variation": "an action functional, its variations and boundary terms: `variation`.",
     "matrix": "matrices: `matrix_calculus`.",
@@ -459,6 +464,7 @@ GROUP_SUMMARY: dict[str, str] = {
 GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "mechanics": (
         "analyze_lagrangian",
+        "routh_reduce",
         "time_derivative",
         "integrate_motion",
         "expand_motion",
@@ -480,7 +486,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
-    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|with respect to time|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge",
+    "mechanics": "lagrangian|hamiltonian|euler[- ]lagrange|equations? of motion|conserved|time derivative|total derivative|d/dt|with respect to t\\b|with respect to time|noether|oscillat|pendulum|equilibri|small oscillation|constants? of motion|runge|routh|cyclic coordinate|effective potential",
     "ode": "differential equation|\\bode\\b|\\bodes\\b|dy/dx|y'|\\\\dot\\s*(?:\\{[^{}]*\\}|[A-Za-z])\\s*=|\\\\ddot|initial[- ]value|boundary[- ]value|phase plane|phase portrait|stability of|linearis|linearize",
     "variation": "functional|variation|action\\b|least action|stationary (path|action)|extremi[sz]|brachistochrone|geodesic path|maximi[sz]|minimi[sz]|boundary term",
     "matrix": "matri(x|ces)|noncommut|non-commut|commutator|jacobian|hessian|\\bdet\\b|determinant|\\btrace\\b|eigen|duhamel|\\\\exp\\s*\\(\\s*t|gradient of .*(trace|det|log)",

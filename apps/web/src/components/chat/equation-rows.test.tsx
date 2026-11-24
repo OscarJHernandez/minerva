@@ -108,6 +108,7 @@ const NEW_ENTRIES: Record<
   | "dimensional"
   | "ode_analysis"
   | "matrix"
+  | "routh"
 > = {
   variation: "variation",
   variation_second: "variation",
@@ -127,6 +128,7 @@ const NEW_ENTRIES: Record<
   ode_equilibria: "ode_analysis",
   matrix_gradient: "matrix",
   matrix_integral: "matrix",
+  routh: "routh",
 };
 
 function rowCard(name: string, numbers: Record<string, number>) {

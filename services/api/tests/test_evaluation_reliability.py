@@ -58,6 +58,14 @@ SCHWARZSCHILD_L = (
     "1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)"
 )
 
+ROUTH_CALL = {
+    "lagrangian": SCHWARZSCHILD_L,
+    "coordinates": ["t", "r", "theta", "phi"],
+    "time": "s",
+    "format": "text",
+    "cyclic": ["t"],
+}
+
 # (case id) -> {"ideal": script, "adversarial": {failure class: script}}
 SCRIPTS: dict[str, dict[str, Any]] = {
     "pole-cancelled-by-simplification-is-reported": {
@@ -787,6 +795,29 @@ EXTRA_SCRIPTS: dict[str, dict[str, Any]] = {
                     {"latex": r"\exp(x) \cos x", "variable": "t", "point": "0", "order": 4},
                 ),
                 say("The expansion is given up to order 4."),
+            ],
+        },
+    },
+    "schwarzschild-routh-reduction-by-time": {
+        "ideal": [
+            call("routh_reduce", ROUTH_CALL),
+            say(
+                r"With $p_{t}$ held fixed the Routhian is $R = \frac{1}{2}\left(\frac{\dot{r}^2}{1 - 2M/r} + "
+                r"r^2 \dot{\theta}^2 + r^2 \sin^2\theta\, \dot{\phi}^2 + \frac{p_t^2}{1 - 2M/r}\right)$, "
+                r"valid where $r \neq 2M$ (the momentum is solved for $\dot{t}$ there)."
+            ),
+        ],
+        "adversarial": {
+            FailureClass.MISREPORTED_RESTRICTION: [
+                call("routh_reduce", ROUTH_CALL),
+                say(r"The Routhian is the card's $R$, with $p_{t}$ held fixed."),
+            ],
+            FailureClass.INVENTED_ASSUMPTION: [
+                call(
+                    "routh_reduce",
+                    {**ROUTH_CALL, "assumptions": {"M": ["positive"], "r": ["positive"]}},
+                ),
+                say(r"The Routhian is the card's $R$, valid where $r \neq 2M$."),
             ],
         },
     },

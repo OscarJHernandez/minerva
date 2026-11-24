@@ -54,6 +54,9 @@ class InputCode(StrEnum):
     # `check_units` was given a quantity kind that is not in the table of kinds. Nothing is guessed: the two ways
     # out are a unit, or the name listed under `unknown` (to have its dimension found).
     UNKNOWN_QUANTITY_KIND = "unknown_quantity_kind"
+    # Routh reduction holds the momentum of a cyclic coordinate `c` fixed as the symbol `p_{c}`; a Lagrangian
+    # that already uses that name for something else is refused, never renamed (`routh.py`).
+    MOMENTUM_SYMBOL_CLASH = "momentum_symbol_clash"
 
 
 class NormalizationKind(StrEnum):

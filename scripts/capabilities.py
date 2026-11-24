@@ -586,6 +586,58 @@ def run_lagrangian(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     )
 
 
+def run_routh(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    r = engine.routh_reduce(
+        spec["input"],
+        spec["coordinates"],
+        spec["cyclic"],
+        spec.get("time", "t"),
+        spec.get("assumptions") or {},
+        format=_syntax(spec),  # type: ignore[arg-type]
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        outputs.append({"label": "Routhian", "latex": f"R = {r.result_latex}"})
+        for held in r.held_fixed:
+            outputs.append({"label": "Held fixed", "latex": held.latex, "text": held.reason})
+        for rebuilt in r.reconstruction:
+            outputs.append({"label": "Velocity of the removed coordinate", "latex": rebuilt.latex})
+        if r.restrictions_latex:
+            outputs.append({"label": "Valid where", "latex": r", \\; ".join(r.restrictions_latex)})
+        checks.append(
+            "Euler-Lagrange residual of R on motions of L: "
+            + ", ".join(
+                f"{v.numeric_points_agreed} of {v.numeric_points_checked} points"
+                for v in r.checks.euler_lagrange
+            )
+        )
+        checks.append(
+            "velocities rebuilt from -dR/dp and from the formula: "
+            + ", ".join(
+                f"{v.numeric_points_agreed} of {v.numeric_points_checked} points"
+                for v in r.checks.reconstruction
+            )
+        )
+        checks.append(f"symbolic leg (reported, never decides): {r.checks.symbolic_note}")
+        notes.append(r.convention)
+    if r.message:
+        notes.append(r.message)
+    return _example(
+        spec,
+        r.status.value,
+        [
+            _source_line(spec, "Lagrangian", reading=r.lagrangian_latex),
+            {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
+            {"label": "Removed", "text": ", ".join(spec["cyclic"])},
+        ],
+        outputs,
+        checks,
+        notes,
+    )
+
+
 def run_variation(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     request = VariationInput(
         action=spec.get("action", "first"),
@@ -1972,6 +2024,7 @@ RUNNERS = {
     "solve": run_solve,
     "units": run_units,
     "lagrangian": run_lagrangian,
+    "routh": run_routh,
     "variation": run_variation,
     "invariants": run_invariants,
     "discovery": run_discovery,

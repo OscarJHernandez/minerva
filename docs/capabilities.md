@@ -2927,6 +2927,61 @@ The derivative with respect to time of a momentum, an energy or any candidate co
 - **Status:** `unsupported`
 - This expression contains velocities (theta_dot). Differentiating by t here would hold them fixed (a partial derivative), not give the total time derivative along a motion; use `time_derivative` for that.
 
+### Routh reduction of cyclic coordinates
+
+*Available in:* chat.
+
+Name the cyclic coordinates of a Lagrangian to remove (the time of a static metric, an angle) and Minerva holds their momenta fixed as the symbols p_c, the names the Lagrangian card prints, and gives the Routhian R = L − Σ p_c ċ: a Lagrangian for the remaining coordinates, what was held fixed, the velocities of the removed coordinates, and where it holds. Each momentum is first shown to be conserved on the equations of motion; R is shown only if, on motions of the original Lagrangian with momenta taken as numerical derivatives of L, the Euler–Lagrange residual of R vanishes and −∂R/∂p_c returns the sampled velocity. The symbolic comparison of the accelerations is reported separately and is the only thing called proved.
+
+**Limits**
+
+- A coordinate the Lagrangian depends on is refused (not cyclic), and so is a momentum that is not linear in the cyclic velocities or a block of them that is singular.
+- The momentum stays a symbol; a value or another name (E = −p_t) is your own substitution step.
+- Goldstein §8.3 and Landau–Lifshitz §41 call the negative of this R the Routhian; the card states the convention.
+- The zeros of the block determinant (where the momenta are solved for the velocities) are reported as restrictions, and travel with R when it is reused.
+
+#### Schwarzschild geodesics without t
+
+- **Lagrangian:** `\frac{1}{2}\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2+\frac{\dot{r}^2}{1-\frac{2M}{r}}+r^2\dot{\theta}^2+r^2\sin^2(\theta)\dot{\phi}^2\right)` (LaTeX)
+- **Coordinates:** t, r, theta, phi
+- **Removed:** t
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Routhian:** $R = \frac{p_{t}^{2} r}{2 \left(- 2 M + r\right)} + \frac{\dot{\phi}^{2} r^{2} \sin^{2}{\left(\theta \right)}}{2} + \frac{r^{2} \dot{\theta}^{2}}{2} + \frac{r \dot{r}^{2}}{2 \left(- 2 M + r\right)}$
+- **Held fixed:** $p_{t} = - \dot{t} \left(- \frac{2 M}{r} + 1\right)$ — conserved because t is cyclic (L does not depend on it); verified on the equations of motion
+- **Velocity of the removed coordinate:** $\dot{t} = \frac{p_{t} r}{2 M - r}$
+- **Valid where:** $- 2 M + r \neq 0$
+- **Check:** Euler-Lagrange residual of R on motions of L: 6 of 6 points, 6 of 6 points, 6 of 6 points
+- **Check:** velocities rebuilt from -dR/dp and from the formula: 6 of 6 points
+- **Check:** symbolic leg (reported, never decides): the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced
+- R = L - Σ p_c ċ with each cyclic velocity ċ written in terms of its momentum p_c: the remaining coordinates obey the Euler-Lagrange equations of R, and ċ = -∂R/∂p_c. Goldstein §8.3 and Landau-Lifshitz §41 call the negative of this the Routhian.
+- Reduced by t: the Routhian R governs r, theta, phi with the momentum of t held fixed. Proved: the accelerations from R equal those of L symbolically, and checked numerically.
+
+#### The Kepler problem by its angle (the centrifugal term)
+
+- **Lagrangian:** `\frac{1}{2} m \left(\dot{r}^2 + r^2\dot{\theta}^2\right) + \frac{k}{r}` (LaTeX)
+- **Coordinates:** r, theta
+- **Removed:** theta
+- **Assumptions:** m positive; k positive; r positive
+- **Status:** `ok`
+- **Routhian:** $R = \frac{k}{r} + \frac{m \dot{r}^{2}}{2} - \frac{p_{\theta}^{2}}{2 m r^{2}}$
+- **Held fixed:** $p_{\theta} = m r^{2} \dot{\theta}$ — conserved because theta is cyclic (L does not depend on it); verified on the equations of motion
+- **Velocity of the removed coordinate:** $\dot{\theta} = \frac{p_{\theta}}{m r^{2}}$
+- **Check:** Euler-Lagrange residual of R on motions of L: 6 of 6 points
+- **Check:** velocities rebuilt from -dR/dp and from the formula: 6 of 6 points
+- **Check:** symbolic leg (reported, never decides): the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced
+- R = L - Σ p_c ċ with each cyclic velocity ċ written in terms of its momentum p_c: the remaining coordinates obey the Euler-Lagrange equations of R, and ċ = -∂R/∂p_c. Goldstein §8.3 and Landau-Lifshitz §41 call the negative of this the Routhian.
+- Reduced by theta: the Routhian R governs r with the momentum of theta held fixed. Proved: the accelerations from R equal those of L symbolically, and checked numerically.
+
+#### A coordinate the Lagrangian depends on is refused
+
+- **Lagrangian:** `\frac{1}{2} m \left(\dot{r}^2 + r^2\dot{\theta}^2\right) + \frac{k}{r}` (LaTeX)
+- **Coordinates:** r, theta
+- **Removed:** r
+- **Assumptions:** m positive; k positive; r positive
+- **Status:** `unsupported`
+- r is not cyclic: the Lagrangian depends on it, so its momentum is not conserved and cannot be held fixed.
+
 ### Variational calculus
 
 *Available in:* workbench, chat, HTTP API.

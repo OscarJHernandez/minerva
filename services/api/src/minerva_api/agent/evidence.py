@@ -25,6 +25,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "statistical_model": "numeric",  # quadrature / direct log-likelihood / prior x likelihood
     "solve_polynomial": "symbolic_zero",
     "analyze_lagrangian": "numeric",
+    "routh_reduce": "numeric",  # Euler-Lagrange residual of R on motions of L; a symbolic zero is reported apart
     "expand_motion": "series_checks",
     "perturbation_solve": "numeric",
     "search_invariants": "numeric",

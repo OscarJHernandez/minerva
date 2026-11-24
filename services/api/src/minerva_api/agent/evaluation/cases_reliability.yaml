@@ -380,6 +380,29 @@
       format: text
   source: "Schwarzschild geodesics: t and phi are cyclic (p_t = -E, p_phi = L_z) and L has no explicit parameter dependence (energy function); analyze_lagrangian's own checks decide, and it states the symmetries it tested (cyclic, time translation, coordinate-pair rotations); total angular momentum J^2 is not searched there (issue 151), so the reply may not say the list is complete"
 
+# Issue 153: Routh reduction of the Schwarzschild geodesic Lagrangian by the cyclic coordinate t. The held momentum is the
+# symbol p_t (the name the Lagrangian card prints), never a value or a renamed E the model picks; the reply must state
+# where R holds (the block d^2L/dt_dot^2 = -(1 - 2M/r) is divided by: r = 2M is excluded). No assumption was stated.
+- id: schwarzschild-routh-reduction-by-time
+  category: physics
+  prompt: 'Reduce the Schwarzschild geodesic Lagrangian $L = \frac{1}{2}\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2 + \frac{\dot{r}^2}{1-2M/r} + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2\right)$ by the cyclic coordinate t (Routh reduction). The coordinates are t, r, theta, phi and the curve parameter is s.'
+  expected_tool: routh_reduce
+  args: {includes: {coordinates: [t, r, theta, phi], cyclic: [t]}, absent: [assumptions]}
+  forbid_assumptions: true
+  max_calls: 3
+  expect_card: {status: ok}
+  restrictions_reported: '2\s*M|1\s*-\s*\\frac\{2\s*M\}\{r\}|horizon'
+  reply_forbids: '(?i)\bE\s*=\s*-\s*p_\{?t\}?'
+  reference:
+    tool: routh_reduce
+    arguments:
+      lagrangian: '1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)'
+      coordinates: [t, r, theta, phi]
+      time: s
+      format: text
+      cyclic: [t]
+  source: "Routh's procedure (Landau and Lifshitz, Mechanics, section 41; Goldstein, Classical Mechanics, section 8.3): with p_t held fixed R = (r_dot^2/f + r^2 theta_dot^2 + r^2 sin^2(theta) phi_dot^2 + p_t^2/f)/2, f = 1 - 2M/r (issue 153, with E = -p_t)"
+
 - id: answer-without-thinking-aloud
   category: ambiguous
   prompt: 'Whats the tautochrone problem, in two sentences?'

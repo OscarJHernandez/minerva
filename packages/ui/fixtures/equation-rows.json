@@ -4054,5 +4054,145 @@
     "rows": {
       "quantity:mean_E": "\\langle E \\rangle = \\frac{\\epsilon}{\\mathrm{e}^{\\beta \\epsilon} + 1}"
     }
+  },
+  "routh": {
+    "data": {
+      "diagnostic": null,
+      "reading": {
+        "format": "latex",
+        "normalizations": []
+      },
+      "status": "ok",
+      "reason": null,
+      "lagrangian_latex": "\\frac{\\dot{\\phi}^{2} r^{2} \\sin^{2}{\\left(\\theta \\right)}}{2} + \\frac{r^{2} \\dot{\\theta}^{2}}{2} + \\frac{\\dot{r}^{2}}{2 \\left(- \\frac{2 M}{r} + 1\\right)} - \\frac{\\dot{t}^{2} \\left(- \\frac{2 M}{r} + 1\\right)}{2}",
+      "coordinates": ["t", "r", "theta", "phi"],
+      "cyclic": ["t"],
+      "remaining": ["r", "theta", "phi"],
+      "time": "s",
+      "result_latex": "\\frac{p_{t}^{2} r}{2 \\left(- 2 M + r\\right)} + \\frac{\\dot{\\phi}^{2} r^{2} \\sin^{2}{\\left(\\theta \\right)}}{2} + \\frac{r^{2} \\dot{\\theta}^{2}}{2} + \\frac{r \\dot{r}^{2}}{2 \\left(- 2 M + r\\right)}",
+      "held_fixed": [
+        {
+          "coordinate": "t",
+          "symbol_latex": "p_{t}",
+          "latex": "p_{t} = - \\dot{t} \\left(- \\frac{2 M}{r} + 1\\right)",
+          "reason": "conserved because t is cyclic (L does not depend on it); verified on the equations of motion",
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "d/dt of the quantity, evaluated on the equations of motion, is zero"
+          }
+        }
+      ],
+      "reconstruction": [
+        {
+          "coordinate": "t",
+          "latex": "\\dot{t} = \\frac{p_{t} r}{2 M - r}"
+        }
+      ],
+      "restrictions_latex": ["- 2 M + r \\neq 0"],
+      "restrictions_complete": true,
+      "verification": {
+        "symbolic_zero": true,
+        "numeric_points_checked": 24,
+        "numeric_points_agreed": 24,
+        "numeric_points_skipped": 0,
+        "numeric_points_probed": 0,
+        "probe_kind": null,
+        "probes_cut_short": false,
+        "probe_outcome": "not_run",
+        "passed": true,
+        "note": "Euler-Lagrange residual of R on motions of L, and the reconstruction of the velocities"
+      },
+      "checks": {
+        "euler_lagrange": [
+          {
+            "symbolic_zero": false,
+            "numeric_points_checked": 6,
+            "numeric_points_agreed": 6,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "the Euler-Lagrange residual of R, by numerical differentiation along motions of L, vanishes"
+          },
+          {
+            "symbolic_zero": false,
+            "numeric_points_checked": 6,
+            "numeric_points_agreed": 6,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "the Euler-Lagrange residual of R, by numerical differentiation along motions of L, vanishes"
+          },
+          {
+            "symbolic_zero": false,
+            "numeric_points_checked": 6,
+            "numeric_points_agreed": 6,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "the Euler-Lagrange residual of R, by numerical differentiation along motions of L, vanishes"
+          }
+        ],
+        "reconstruction": [
+          {
+            "symbolic_zero": false,
+            "numeric_points_checked": 6,
+            "numeric_points_agreed": 6,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "-dR/dp (central difference) and the velocity formula return the sampled velocity"
+          }
+        ],
+        "symbolic": true,
+        "symbolic_note": "the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced"
+      },
+      "convention": "R = L - Σ p_c ċ with each cyclic velocity ċ written in terms of its momentum p_c: the remaining coordinates obey the Euler-Lagrange equations of R, and ċ = -∂R/∂p_c. Goldstein §8.3 and Landau-Lifshitz §41 call the negative of this the Routhian.",
+      "stages": {
+        "parse": 2,
+        "derive": 327,
+        "solve": 12,
+        "check": 29,
+        "conserved": 21,
+        "verify": 18,
+        "symbolic": 51
+      },
+      "message": "Reduced by t: the Routhian R governs r, theta, phi with the momentum of t held fixed. Proved: the accelerations from R equal those of L symbolically, and checked numerically.",
+      "duration_ms": 1416,
+      "request": {
+        "lagrangian": "\\frac{1}{2}\\left(-\\left(1-\\frac{2M}{r}\\right)\\dot{t}^2+\\frac{\\dot{r}^2}{1-\\frac{2M}{r}}+r^2\\dot{\\theta}^2+r^2\\sin^2(\\theta)\\dot{\\phi}^2\\right)",
+        "coordinates": ["t", "r", "theta", "phi"],
+        "cyclic": ["t"],
+        "time": "s",
+        "assumptions": {
+          "M": ["positive"],
+          "r": ["positive"]
+        }
+      }
+    },
+    "keys": ["held:t", "velocity:t"],
+    "rows": {
+      "held:t": "p_{t} = - \\dot{t} \\left(- \\frac{2 M}{r} + 1\\right)",
+      "velocity:t": "\\dot{t} = \\frac{p_{t} r}{2 M - r}"
+    }
   }
 }

@@ -40,6 +40,7 @@ CLASH: dict[str, dict[str, Any]] = {
         "assumptions": {"m": ["positive"], "k": ["positive"], "lambda": ["positive"]},
     },
     "time_derivative": {"latex": r"m \dot{t}", "coordinates": ["t"]},
+    "routh_reduce": {"lagrangian": TWO, "coordinates": ["t", "r"], "cyclic": ["t"]},
     "integrate_motion": {
         "lagrangian": TWO,
         "coordinates": ["t", "r"],
