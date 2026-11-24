@@ -298,9 +298,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   it; `quantity:<name>:<k>` for the k-th repeat of a name) for an exact base quantity (Z, lnZ, F, U, S, Var_E: the panel's
   own table, read from the TSX by a test) of an `ok` result with no failed check, never a representation, a numerical value,
   an asymptotic result, a quantity named outside that table (Xi, Omega, occupations, means, the user's own partial-derivative
-  labels), the user's `levels` step, the table or the error tables; perturbation: `omega0`, `omega` and `ratio` only for an
-  `ok` report whose verification passed, never the solution (two relations joined by `,\quad` with an `O()` remainder: one number
-  would name both, deferred) or the orders; dimensional: `group:<i>` (`label = formula`, by position) for a group rebuilt
+  labels), the user's `levels` step, the table or the error tables; perturbation: `omega0`, `omega`, `ratio` and `solution` only for an
+  `ok` report whose verification passed; `solution` is the first relation of `solution_latex` only (`u(t) = ... + O(...)`, split
+  at its one top-level `,\quad` by `split_solution`, repeated by `apps/web/src/lib/perturbation-solution.ts`, both pinned by
+  `perturbation-solution-split.json`: the second relation, `\omega t = \tau`, is notation no check covers and stays unnumbered, and a
+  text that does not split exactly gets no `solution` number); `omega` is a truncated series without its remainder and was
+  numbered before the solution was, so it keeps its number (a name, not a verification); never the orders; dimensional: `group:<i>` (`label = formula`, by position) for a group rebuilt
   and found dimensionless in an `ok` report, never the quantities, the relation (it holds only up to an undetermined function
   of the groups, which a number would not carry) or the suggestions) numbers each listed equation with the next whole number of the same
   counter, in display order (`Card.numbers`, by row key; no sub-numbers such as 4.1). A card that was not accepted lists
@@ -311,7 +314,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   through `result_latex`), `ode_numeric` and `motion` are excluded with a written reason (a numerical trajectory shows no
   equation; the only formula of a motion card is the user's own Lagrangian), and `LIST_NOT_YET_NUMBERED` names cards that still
   list formulas without numbers (vector; also deferred inside cards that are otherwise numbered:
-  the statistics posterior, step lists, the perturbation solution and
+  the statistics posterior, step lists and
   the dimensional relation): move one to `LIST_READERS` with a reader and a test. A card that has both a list and a primary `result_formula` is numbered
   as a whole first and then row by row (`number_blocks`, `number_stored`). The panels mark exactly the server's keys with
   `<Numbered k=...>`, pinned by `packages/ui/fixtures/equation-rows.json` (`test_equation_rows_contract.py`,

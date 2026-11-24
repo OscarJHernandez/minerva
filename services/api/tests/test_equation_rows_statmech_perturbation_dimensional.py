@@ -2,7 +2,7 @@
 
 Only formulas the card really displays, only for a card that was accepted, and only when the row itself was
 checked. Numerical values, unevaluated representations, asymptotic results, the user's own input and the
-compound or conditional formulas (the perturbation solution, the dimensional relation) get no number. A number
+conditional formulas (the dimensional relation) get no number; the perturbation solution is numbered by its first relation only. A number
 is a name, never a verification: `@eN` of a row substitutes its LaTeX exactly and the result says it came from
 one component of an earlier result.
 
@@ -28,6 +28,7 @@ from minerva_api.agent.card_equations import (
     dimensional,
     listed_equations,
     perturbation,
+    split_solution,
     statmech,
     statmech_key,
 )
@@ -90,7 +91,7 @@ EXPECTED_KEYS = {
         "quantity:F",
         "quantity:lnZ",
     ],
-    "perturbation": ["omega0", "omega", "ratio"],
+    "perturbation": ["omega0", "omega", "ratio", "solution"],
     "dimensional": ["group:0"],
 }
 
@@ -264,19 +265,23 @@ def test_a_statmech_row_over_500_characters_is_not_numbered(fixture: dict[str, A
 
 
 # --- perturbation -------------------------------------------------------------------------------------------
-def test_the_frequencies_and_the_period_ratio_are_numbered_and_the_solution_is_not(
+def test_the_frequencies_the_period_ratio_and_the_first_relation_of_the_solution_are_numbered(
     fixture: dict[str, Any],
 ) -> None:
     data = fixture["perturbation"]["data"]
     report = data["report"]
     assert report["solution_latex"] and report["orders"]
     rows = dict(perturbation(data))
+    head, tail = report["solution_latex"].split(r",\quad ")
     assert rows == {
         "omega0": report["linear_frequency_latex"],
         "omega": report["frequency_latex"],
         "ratio": report["period_ratio_latex"],
+        "solution": head,
     }
-    assert report["solution_latex"] not in rows.values()
+    # one number never names both relations, and the notation `\omega t = \tau` is not numbered
+    assert report["solution_latex"] not in rows.values() and tail not in rows.values()
+    assert rows["solution"].endswith(r"O\left(b^{3}\right)")
     card = card_from("perturbation", data)
     table = number(card)
     assert list(card.numbers) == EXPECTED_KEYS["perturbation"] and card.number is None
@@ -298,7 +303,45 @@ def test_a_perturbation_that_was_not_accepted_or_not_verified_lists_nothing(
     assert perturbation(data) == []
     absent = copy.deepcopy(base)
     absent["report"]["frequency_latex"] = None
-    assert [k for k, _ in perturbation(absent)] == ["omega0", "ratio"]
+    assert [k for k, _ in perturbation(absent)] == ["omega0", "ratio", "solution"]
+
+
+SPLIT = json.loads(
+    (FIXTURE.parent / "perturbation-solution-split.json").read_text(encoding="utf-8")
+)["cases"]
+
+
+@pytest.mark.parametrize("case", SPLIT, ids=[c["name"] for c in SPLIT])
+def test_the_solution_split_is_closed_and_shared_with_the_panel(case: dict[str, Any]) -> None:
+    got = split_solution(case["latex"])
+    expected = None if case["relation"] is None else (case["relation"], case["definition"])
+    assert got == expected
+
+
+def test_a_solution_that_does_not_split_is_not_numbered(fixture: dict[str, Any]) -> None:
+    for bad in (
+        r"u(t) = A + O\left(b^{3}\right)",  # one relation only
+        r"u(t) = A + O\left(b^{3}\right),\quad \omega t = \sigma",  # another second relation
+        r"u(t) = A,\quad \omega t = \tau",  # no remainder
+    ):
+        data = copy.deepcopy(fixture["perturbation"]["data"])
+        data["report"]["solution_latex"] = bad
+        assert "solution" not in dict(perturbation(data)), bad
+    data = copy.deepcopy(fixture["perturbation"]["data"])
+    data["report"]["solution_latex"] = None
+    assert [k for k, _ in perturbation(data)] == ["omega0", "omega", "ratio"]
+    data["report"]["status"] = "not_verified"
+    assert perturbation(data) == []
+
+
+def test_a_solution_over_500_characters_is_not_numbered(fixture: dict[str, Any]) -> None:
+    data = copy.deepcopy(fixture["perturbation"]["data"])
+    data["report"]["solution_latex"] = (
+        "u(t) = " + "x + " * 200 + r"1 + O\left(b^{3}\right),\quad \omega t = \tau"
+    )
+    card = card_from("perturbation", data)
+    number(card)
+    assert "solution" not in card.numbers and "omega" in card.numbers
 
 
 def test_a_perturbation_row_over_500_characters_is_not_numbered(fixture: dict[str, Any]) -> None:

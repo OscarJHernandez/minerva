@@ -529,11 +529,67 @@ def statmech(data: dict[str, Any]) -> Listed:
     return out
 
 
-def perturbation(data: dict[str, Any]) -> Listed:
-    """`omega0`, `omega` and `ratio` of an accepted `perturbation_solve` card, once its checks passed.
+_SOLUTION_HEAD = "u(t) = "
+_SOLUTION_TAIL = r"\omega t = \tau"
+_SOLUTION_SEPARATOR = r",\quad "
 
-    Not numbered: the solution (two relations joined by `,\\quad` with an `O()` remainder: one number would
-    name both, so it is deferred), each order's shape and frequency, and the comparison with the numerical run.
+
+def split_solution(latex: str) -> tuple[str, str] | None:
+    """`(relation, definition)` of a perturbation `solution_latex`, or None when it is not exactly that shape.
+
+    The engine writes `u(t) = <series> + O\\left(eps^{n}\\right),\\quad \\omega t = \\tau`: two relations. The split
+    is closed: one `,\\quad ` outside every brace and `\\left ... \\right` pair, a first part that starts with
+    `u(t) = ` and ends with an `O\\left(...\\right)` remainder, and a second part that is exactly `\\omega t = \\tau`.
+    Anything else is not split (and so not numbered). The panel repeats this rule
+    (`apps/web/src/lib/perturbation-solution.ts`); both are pinned by `perturbation-solution-split.json`.
+    """
+    depth = 0
+    cuts: list[int] = []
+    i = 0
+    while i < len(latex):
+        if latex.startswith("\\left", i):
+            depth += 1
+            i += len("\\left")
+            continue
+        if latex.startswith("\\right", i):
+            depth -= 1
+            i += len("\\right")
+            continue
+        ch = latex[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+        elif depth == 0 and latex.startswith(_SOLUTION_SEPARATOR, i):
+            cuts.append(i)
+        if depth < 0:
+            return None
+        i += 1
+    if depth != 0 or len(cuts) != 1:
+        return None
+    head = latex[: cuts[0]]
+    tail = latex[cuts[0] + len(_SOLUTION_SEPARATOR) :]
+    if (
+        tail != _SOLUTION_TAIL
+        or not head.startswith(_SOLUTION_HEAD)
+        or not head.endswith(r"\right)")
+        or " + O\\left(" not in head
+        or head.count(" + O\\left(") != 1
+        or len(head) == len(_SOLUTION_HEAD)
+    ):
+        return None
+    return head, tail
+
+
+def perturbation(data: dict[str, Any]) -> Listed:
+    """`omega0`, `omega`, `ratio` and `solution` of an accepted `perturbation_solve` card, once its checks passed.
+
+    `solution` is the first relation of `solution_latex` only (`u(t) = ... + O(...)`, see `split_solution`): the
+    residual and `check_series` checks cover it. The second, `\\omega t = \\tau`, is the card's notation for the
+    strained time and no check covers it, so it is shown unnumbered. A `solution_latex` that does not split
+    exactly is not numbered. Not numbered either: each order's shape and frequency, and the comparison with the
+    numerical run. `omega` is a truncated series without its remainder and was numbered before this reader
+    knew the solution; it keeps its number (a name, not a verification).
     """
     report = data.get("report") or {}
     if report.get("status") != "ok" or (report.get("verification") or {}).get("passed") is not True:
@@ -546,6 +602,9 @@ def perturbation(data: dict[str, Any]) -> Listed:
     ):
         if (latex := _text(report.get(field))) is not None:
             out.append((key, latex))
+    solution = _text(report.get("solution_latex"))
+    if solution is not None and (parts := split_solution(solution)) is not None:
+        out.append(("solution", parts[0]))
     return out
 
 
