@@ -36,6 +36,8 @@ export const QUANTITY_OPTIONS: QuantityOption[] = [
   { id: "antisymmetric_divergence", label: "Divergence of F (J = ∇F)", tensor: true },
   { id: "field_invariant", label: "Invariant F_{μν}F^{μν}", tensor: true },
   { id: "hodge_dual", label: "Hodge dual of F (4D)", tensor: true },
+  { id: "killing_vectors", label: "Killing vectors" },
+  { id: "geodesic_constants", label: "Conserved charges of geodesics" },
 ];
 
 /** The editable state of the geometry form: text exactly as the user typed it. */

@@ -22,7 +22,7 @@ from ..errors import LimitError
 from ..lagrangian import DerivationError, derive_expr
 from ..vector.algebra import exact_zero
 from ..verify import MIN_VALID_POINTS, euler_lagrange_check
-from .compute import Workspace
+from .compute import Workspace, geodesic_lagrangian
 from .models import Check, GeometryVerification
 from .numeric import (
     DPS,
@@ -660,7 +660,7 @@ class Verifier:
         g = geo.g
         parameter = sp.Symbol("affine_parameter", real=True)
         qdd = [sp.Symbol(f"{c.name}_ddot", real=True) for c in geo.coords]
-        lagrangian = sum((g[i, j] * v[i] * v[j] for i in range(n) for j in range(n)), sp.S.Zero) / 2
+        lagrangian = geodesic_lagrangian(geo)
 
         # Euler-Lagrange equations in the form g_{im}(x''^m - a^m) = 0, checked against the nested
         # numerical derivatives of L (no SymPy differentiation, no derive()).
