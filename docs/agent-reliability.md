@@ -48,6 +48,19 @@ confirmed at 60 and 120 digits), the claim stays `unchecked` and its note names 
 (`evidence_rule: "mismatch"`). Still not "contradicted": the mark says the equation was not backed, and why it
 should be compared. A different name on the left, or evidence from a result that set no role, never mismatches.
 
+A discovered constant is a scalar, whatever the reply calls the set it belongs to (issue #146). A reply that says "the
+Laplace-Runge-Lenz vector ($C_3$)" used to make `C_3` a vector for the claim check, which tests "is a vector" before
+it looks for evidence, so the correct relation among the constants got the vector note. Now the names a *verified* tool
+result typed (the left sides of `conserved` and `momentum` rows, the system's variables and their velocities) are removed
+from what the model's own prose declared (`declarations.typed_scalar_names`, applied in `loop.check_model_claims` and
+`turn_context.declarations_of`); a user's declaration, a `vector_calculus` field and a `noncommutative` assumption are never
+removed. The generous reading itself is narrower: only a formula that is a bare name, a list of names or an equation with
+a bare name on the left declares anything, function and layout commands are never names, and a sentence about the
+components of a vector declares nothing. The cost, stated: "for vectors, $(u+v)^2 = u^2 + 2uv + v^2$" with `u`, `v` never
+declared is now tested as scalars; declared, it stays unchecked. The bare right side of a verified `name = expression`
+row (`analyze_lagrangian`, `find_conserved_quantities`, `search_invariants`) is known to the reply check by text, as in
+`geometry`; a reordered expression is not matched.
+
 Coverage is narrower than "every correct statement": any form that is neither a restatement of the same left
 side nor proportional by a constant factor is not linked, and the evaluation reports exactly that.
 

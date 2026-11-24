@@ -7,7 +7,13 @@ import type {
   TraceStep,
   TurnDebug,
 } from "./chat-types";
-import { buildTimeline, stageTimings, STOP_EXPLANATION } from "./trace-timeline";
+import {
+  buildTimeline,
+  CLAIM_CHECK_EXPLANATION,
+  stageTimings,
+  STOP_EXPLANATION,
+  verifiedToolResults,
+} from "./trace-timeline";
 
 /**
  * Bump when the JSON block changes shape, so `scripts/replay_trace.py` can tell.
@@ -338,8 +344,12 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
     }
     if (d.evidence_pct != null) {
       lines.push(
-        `formulas with engine evidence: ${d.formulas_with_evidence}/${d.formulas} (${d.evidence_pct}%)`,
+        `formulas in the reply with engine evidence: ${d.formulas_with_evidence}/${d.formulas} (${d.evidence_pct}%)`,
       );
+    }
+    if ((c.trace ?? []).length > 0) {
+      const r = verifiedToolResults(c.trace);
+      lines.push(`tool results verified: ${r.verified}/${r.total}`);
     }
     if (d.removed_labels && d.removed_labels.length > 0) {
       lines.push(`equation labels removed from the reply: ${d.removed_labels.join(" ")}`);
@@ -348,6 +358,9 @@ function turnMarkdown(m: StoredMessage, n: number): string[] {
       const cs = d.claim_check_site;
       lines.push(
         `claim check: ${d.claim_check}` +
+          (CLAIM_CHECK_EXPLANATION[d.claim_check]
+            ? ` (${CLAIM_CHECK_EXPLANATION[d.claim_check]})`
+            : "") +
           (cs?.error_type
             ? ` (raised ${cs.error_type}${cs.error_module ? ` at ${cs.error_module}:${cs.error_line ?? "?"}` : ""})`
             : ""),

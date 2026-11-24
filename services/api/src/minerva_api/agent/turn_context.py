@@ -28,7 +28,7 @@ from typing import Any, NamedTuple, Protocol
 from .budget import fit_history
 from .card_equations import result_formula, result_restrictions
 from .constants import KnownConstant, constants_of_blocks
-from .declarations import scan
+from .declarations import scan, typed_scalar_names
 from .equations import (
     EquationTable,
     build_table,
@@ -294,8 +294,17 @@ def declarations_of(steps: list[dict[str, Any]], entries: list[tuple[str, str]])
     generous = scan(entries, strict=False)
     tool_matrices, tool_vectors = matrix_names(steps), vector_names(steps)
     said_vector = {n for n, d in generous.found.items() if d.kind == "vector"}
+    # A name a verified tool result typed as a scalar (a discovered constant, a momentum, a coordinate) is not made
+    # a vector by the model's own sentence ("the Laplace-Runge-Lenz vector ($C_3$)", #146). What the USER declared,
+    # a `vector_calculus` field and a `noncommutative` assumption stay.
+    dropped: set[str] = set()
+    typed = typed_scalar_names(steps)
+    if typed & said_vector:
+        user_said = scan([(r, t) for r, t in entries if r == "user"], strict=False).found
+        dropped = {n for n in typed & said_vector if user_said.get(n) is None}
+        said_vector -= dropped
     prior_vectors = ((tool_vectors - generous.cleared) | said_vector) - tool_matrices
-    prior = ((tool_matrices - generous.cleared) | set(generous.found)) - prior_vectors
+    prior = ((tool_matrices - generous.cleared) | (set(generous.found) - dropped)) - prior_vectors
     strict = scan(entries, strict=True)
     found, cleared = strict.found, strict.cleared
     sources = {
