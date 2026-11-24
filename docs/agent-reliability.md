@@ -61,6 +61,24 @@ declared is now tested as scalars; declared, it stays unchecked. The bare right 
 row (`analyze_lagrangian`, `find_conserved_quantities`, `search_invariants`) is known to the reply check by text, as in
 `geometry`; a reordered expression is not matched.
 
+A component restated by its index label is the fifth link (issue #146 part 4, the Schwarzschild reply of #131). A
+`geometry` row is printed `\Gamma^{r}{}_{t t} = \frac{M (r - 2M)}{r^{3}}`; its left side is not an expression (the parser
+refuses `\Gamma^{r}{}_{tt}`, and reads `T^{ab}` as the power `T^{(ab)}`, which made `T^{ab}` and `T^{ba}` one
+statement). `claim_evidence.read_index_label` reads a closed shape instead: a kernel (one Latin letter or a Greek command)
+and index groups (`^` or `_`, one index or a braced run of letters and Greek commands, `{}` spacers, consecutive groups
+of one position merged). A claim with the same label, kernel and indices in order, and an equivalent right side under the
+conversation's assumptions (rule 1's check) is `supported` with `evidence_rule: "same_indexed_label"`, called proved
+only with a symbolic zero, and the result's restrictions travel with it. No index symmetry is used:
+`\Gamma^{\theta}_{\theta r}` against the row `r \theta` stays unchecked although the connection is symmetric. A label
+that no verified row lists is `unverified` with a plain reason (it used to be `unparsed`); a label with a row and a
+value not shown equivalent names that row and is never called false; two labels on both sides are not compared. A
+label without a spacer and without an upper index followed by a lower one could be a power (`e^{i\pi}`, `x_i^n`): it is
+read as a label only when the parser cannot read it or a verified row has the same kernel; digits are never indices
+(`x^{2}`), and a label the parser reads as one name (`R_{t t}`, `C_{4}`) keeps rules 1 and 3. Tests: the Schwarzschild
+rows with reordered algebra and wrong twins (a wrong or swapped index, a sign, another kernel letter, a 1e-6 factor, a
+dropped term) in `test_claim_evidence.py`; a geometry card and a reply restating Γ rows in
+`test_geometry_indexed_rows_agent.py`.
+
 Coverage is narrower than "every correct statement": any form that is neither a restatement of the same left
 side nor proportional by a constant factor is not linked, and the evaluation reports exactly that.
 

@@ -219,3 +219,137 @@ def test_the_models_own_name_for_a_verified_constant_still_needs_the_right_expre
         right.replace("G M ", ""),
     ):
         assert kepler([wrong])[0].status != "supported"
+
+
+# --- Rule 5: a component restated by its index label (#146 part 4) --------------------------------------------
+#
+# Christoffel symbols of Schwarzschild in (t, r, theta, phi), exactly as the geometry tool prints its rows (issue #131's
+# reply restated them). The label is compared as a kernel and its indices in order; no index symmetry is used.
+
+SCHWARZSCHILD = [
+    r"\Gamma^{t}{}_{t r} = \frac{M}{r \left(- 2 M + r\right)}",
+    r"\Gamma^{r}{}_{t t} = \frac{M \left(- 2 M + r\right)}{r^{3}}",
+    r"\Gamma^{r}{}_{r r} = - \frac{M}{r \left(- 2 M + r\right)}",
+    r"\Gamma^{r}{}_{\theta \theta} = 2 M - r",
+    r"\Gamma^{r}{}_{\phi \phi} = \left(2 M - r\right) \sin^{2}{\left(\theta \right)}",
+    r"\Gamma^{\theta}{}_{r \theta} = \frac{1}{r}",
+    r"\Gamma^{\theta}{}_{\phi \phi} = - \sin{\left(\theta \right)} \cos{\left(\theta \right)}",
+    r"\Gamma^{\phi}{}_{r \phi} = \frac{1}{r}",
+    r"\Gamma^{\phi}{}_{\theta \phi} = \cot{\left(\theta \right)}",
+]
+GEOMETRY_RESTRICTIONS = [r"- 2 M + r \neq 0", r"\sin{\left(\theta \right)} \neq 0"]
+GAMMA_EVIDENCE = [
+    ClaimEvidence(latex=row, source="r1", restrictions=GEOMETRY_RESTRICTIONS)
+    for row in SCHWARZSCHILD
+]
+POSITIVE = {"M": ["positive"], "r": ["positive"]}
+
+
+def gamma(claims: list[str], evidence: list[ClaimEvidence] = GAMMA_EVIDENCE):  # type: ignore[no-untyped-def]
+    return check_claims(claims, POSITIVE, [], budget_limits(), evidence=evidence)
+
+
+@pytest.mark.parametrize(
+    "claim",
+    [
+        r"\Gamma^r_{tt} = \frac{M}{r^2}\left(1 - \frac{2M}{r}\right)",
+        r"\Gamma^{r}_{tt} = \frac{M(r-2M)}{r^3}",
+        r"\Gamma^t_{tr} = \frac{M}{r^2 (1 - 2M/r)}",
+        r"\Gamma^{r}{}_{rr} = \frac{-M}{r(r-2M)}",
+        r"\Gamma^r_{\theta\theta} = -(r - 2M)",
+        r"\Gamma^r_{\phi\phi} = -r\left(1-\frac{2M}{r}\right)\sin^2\theta",
+        r"\Gamma^\theta_{r\theta} = 1/r",
+        r"\Gamma^{\theta}_{\phi\phi} = -\frac{1}{2}\sin(2\theta)",
+        r"\Gamma^{\phi}{}_{\theta\,\phi} = \frac{\cos\theta}{\sin\theta}",
+        r"\Gamma^{\phi}_{r}{}_{\phi} = \frac{1}{r}",
+        r"\frac{1}{r} = \Gamma^{\phi}_{r\phi}",
+    ],
+)
+def test_a_restated_christoffel_row_with_reordered_algebra_is_supported(claim: str) -> None:
+    (result,) = gamma([claim])
+    assert result.status == "supported", result
+    assert result.evidence_rule == "same_indexed_label"
+    assert result.evidence_source == "r1"
+    assert result.restrictions == GEOMETRY_RESTRICTIONS
+
+
+@pytest.mark.parametrize(
+    "wrong",
+    [
+        # a wrong index: the same value under another component, and the symmetric partner (no symmetry is used)
+        r"\Gamma^t_{tt} = \frac{M(r-2M)}{r^3}",
+        r"\Gamma^{\theta}_{\theta r} = \frac{1}{r}",
+        r"\Gamma_{r}^{\theta}{}_{\theta} = \frac{1}{r}",
+        # a wrong sign
+        r"\Gamma^r_{tt} = -\frac{M(r-2M)}{r^3}",
+        # a different kernel letter
+        r"\gamma^r_{tt} = \frac{M(r-2M)}{r^3}",
+        r"G^r_{tt} = \frac{M(r-2M)}{r^3}",
+        # a 1e-6 factor
+        r"\Gamma^\theta_{r\theta} = \frac{1.000001}{r}",
+        # a dropped term
+        r"\Gamma^r_{tt} = \frac{M}{r^2}",
+    ],
+)
+def test_a_wrong_indexed_row_stays_unchecked_never_contradicted(wrong: str) -> None:
+    (result,) = gamma([wrong])
+    assert result.status == "unverified", result
+    assert result.evidence_rule is None
+    assert result.kind == "relation"
+
+
+def test_a_wrong_value_names_the_verified_row_and_is_not_called_false() -> None:
+    (result,) = gamma([r"\Gamma^r_{tt} = \frac{M}{r^2}"])
+    assert "lists $" + SCHWARZSCHILD[1] + "$" in result.detail
+    assert "not shown to be equivalent" in result.detail
+    assert "false" not in result.detail and "contradict" not in result.detail
+
+
+def test_a_label_with_no_verified_row_is_unchecked_with_a_plain_reason_not_unparsed() -> None:
+    for evidence in (GAMMA_EVIDENCE, []):
+        (result,) = gamma([r"\Gamma^{t}{}_{\theta\theta} = 0"], evidence)
+        assert result.status == "unverified", result
+        assert "no verified result in this conversation lists a component" in result.detail
+
+
+def test_two_labels_are_never_compared() -> None:
+    (result,) = gamma([r"\Gamma^\theta_{r\theta} = \Gamma^\phi_{r\phi}"])
+    assert result.status == "unverified"
+    assert "relates indexed components" in result.detail
+
+
+def test_the_basis_of_an_indexed_link_is_symbolic_only_when_the_row_is() -> None:
+    claim = r"\Gamma^r_{\theta\theta} = -(r - 2M)"
+    (numeric,) = gamma([claim])
+    assert numeric.evidence_basis == "numeric"
+    symbolic = [e.model_copy(update={"basis": "symbolic"}) for e in GAMMA_EVIDENCE]
+    (proved,) = gamma([claim], symbolic)
+    assert proved.evidence_basis == "symbolic"
+
+
+def test_an_upper_only_label_is_a_label_when_a_row_has_its_kernel() -> None:
+    # Read as a power, T^{tr} and T^{rt} are both T**(t*r): the antisymmetric partner used to "match" its row.
+    evidence = [ClaimEvidence(latex=r"T^{t r} = \frac{q}{r^{2}}", source="r3")]
+    (same,) = gamma([r"T^{tr} = q/r^2"], evidence)
+    assert same.status == "supported" and same.evidence_rule == "same_indexed_label"
+    (swapped,) = gamma([r"T^{rt} = q/r^2"], evidence)
+    assert swapped.status == "unverified", swapped
+
+
+@pytest.mark.parametrize(
+    ("claim", "status"),
+    [
+        (r"e^{i\pi} = -1", "holds"),  # a power, never a label without a row of that kernel
+        (r"x^{2} = x \cdot x", "holds"),  # digits are not indices
+    ],
+)
+def test_powers_are_still_checked_as_before(claim: str, status: str) -> None:
+    (result,) = gamma([claim])
+    assert result.status == status, result
+
+
+def test_a_plain_subscripted_name_keeps_the_existing_rules() -> None:
+    # `R_{t t}` is read as the symbol R_tt: rule 1 compares it, as it did before the indexed labels.
+    evidence = [ClaimEvidence(latex=r"R_{t t} = 0", source="r4"), *GAMMA_EVIDENCE]
+    (result,) = gamma([r"R_{tt} = 0"], evidence)
+    assert result.status == "supported" and result.evidence_rule == "same_left_side"

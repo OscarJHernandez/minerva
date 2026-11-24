@@ -161,6 +161,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   remainder stay unchecked, never contradicted. It is worded as the tool's series result (numerical evidence; the remainder
   order a measurement), never proved and never a bound; `known_latex` only gains the `P + O(...)` form the tool itself
   printed.
+  A fifth kind is an indexed row (`claim_evidence.read_index_label`, `EvidenceIndex.indexed`, issue #146 part 4): a verified
+  row whose left side is an index label (`\\Gamma^{r}{}_{t t} = ...` of a `geometry` card: a kernel letter or Greek command,
+  `^`/`_` index groups of letters and Greek commands, `{}` spacers; not a label the parser reads as one name, such as `R_{t t}`
+  or `C_{4}`) links a claim with the same label (kernel and indices in order, never an index symmetry) and an equivalent
+  right side (`evidence_rule: "same_indexed_label"`, proved only with a symbolic zero, restrictions carried). A label no row
+  lists is `unverified` with a plain reason, never `unparsed`; a wrong value stays unchecked (never contradicted). A label
+  that could be a power (`e^{i\\pi}`, `x_i^n`: no spacer, no upper index followed by a lower one) is read as one only if the
+  parser cannot read it or a verified row has its kernel; digits are never indices. Wrong twins in `test_claim_evidence.py`.
   Because discovery constants now carry the `conserved` role, rule (3) also links `K = <the C_4 expression>`; its wrong
   twins (a sign, a 1e-6 factor, a dropped term) are in `test_claim_evidence.py`. The evaluation harness hands the claim
   check the earlier turns' verified results (`prior_evidence`) as the chat route does.

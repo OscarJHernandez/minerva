@@ -35,9 +35,12 @@ from pydantic import BaseModel
 from .claim_evidence import (
     ClaimEvidence,
     EvidenceIndex,
+    IndexLabel,
     SeriesEvidence,
     SeriesIndex,
     function_label,
+    is_index_label,
+    read_index_label,
 )
 from .distributions.guard import contains_distribution
 from .errors import MinervaMathError
@@ -278,6 +281,16 @@ _RESERVED_DETAIL = (
     "imaginary unit, so it is not tested (a name such as E_0 or W would be)"
 )
 _SPACES = re.compile(r"\s+")
+# A component of a tensor or connection written by its label (`\Gamma^{r}{}_{t t} = ...`, `claim_evidence`): it is
+# linked to a verified row with the same label, or not tested at all; never read as powers or products.
+_LABEL_NO_ROW_DETAIL = (
+    "an indexed component (a tensor or connection component, read as a label, not as powers or products); "
+    "no verified result in this conversation lists a component with this label, so it is not tested"
+)
+_LABEL_RELATION_DETAIL = (
+    "relates indexed components (read as labels, not as powers or products); not tested"
+)
+_LABEL_VALUE_DETAIL = "an indexed component; this value could not be read, so it is not compared with the verified component"
 _INDEXED_DETAIL = (
     "could not check: sums, indexed data and expectations cannot be tested by sampling numbers "
     "(use the sums or expectation operation)"
@@ -436,6 +449,8 @@ class ClaimChecker:
             return  # read as a product, it would define a symbol by a statement about something else
         if self.series is not None and self.series.location(split_equation(latex) or []):
             return  # the centre or a measurement point of a series result: a parameter, not a definition
+        if any(self._labels(split_equation(latex) or [])):
+            return  # a component of a tensor or connection, written by its label: not a scalar definition
         if mentions_name(_text(latex), self.matrices) or _TRANSPOSE.search(latex):
             self._learn_alias(latex)
             return  # a definition of or by a matrix is not a scalar substitution
@@ -550,6 +565,10 @@ class ClaimChecker:
                 return linked_series
         if _BIG_O.search(latex):
             return ClaimCheck(status="unverified", kind="relation", detail=_BIG_O_DETAIL)
+        if not _DISTRIBUTION_NOTATION.search(latex):
+            indexed = self._indexed_claim(sides)
+            if indexed is not None:
+                return indexed
         if self.evidence is not None and not _DISTRIBUTION_NOTATION.search(latex):
             linked = self._match_evidence(sides)
             if linked is not None:
@@ -642,6 +661,68 @@ class ClaimChecker:
                     evidence_basis=found.basis,
                 )
         return None
+
+    def _labels(self, sides: list[str]) -> list[IndexLabel | None]:
+        """The index label of each side, or None for a side that is not read as one (`claim_evidence`)."""
+        kernels = self.evidence.kernels if self.evidence is not None else frozenset()
+        out: list[IndexLabel | None] = []
+        for side in sides:
+            label = read_index_label(side)
+            if label is not None and not is_index_label(
+                label, side, self.assumptions, self.limits, kernels
+            ):
+                label = None
+            out.append(label)
+        return out
+
+    def _indexed_claim(self, sides: list[str]) -> ClaimCheck | None:
+        """`label = value`: `supported` if a verified row has exactly this label and an equivalent value, else
+        unchecked with the reason. None when no side is an index label (the claim is checked as before)."""
+        labels = self._labels(sides)
+        if not any(labels):
+            return None
+        if len(sides) != 2 or all(labels):
+            return ClaimCheck(status="unverified", kind="relation", detail=_LABEL_RELATION_DETAIL)
+        label, text = labels[0], sides[1]
+        if label is None:
+            label, text = labels[1], sides[0]
+        if label is None:
+            return None
+        rows = self.evidence.indexed_rows(label) if self.evidence is not None else []
+        if self.evidence is None or not rows:
+            return ClaimCheck(status="unverified", kind="relation", detail=_LABEL_NO_ROW_DETAIL)
+        try:
+            value = parse_latex(text, self.assumptions, self.limits)
+        except MinervaMathError:
+            return ClaimCheck(status="unverified", kind="relation", detail=_LABEL_VALUE_DETAIL)
+        if (
+            self._mentions_matrix([value])
+            or contains_distribution(value)
+            or contains_indexed(value)
+        ):
+            return ClaimCheck(status="unverified", kind="relation", detail=_LABEL_VALUE_DETAIL)
+        found = self.evidence.match_indexed(label, value)
+        if found is None:
+            row = rows[0]
+            where = f" ({row.source})" if row.source else ""
+            # Not shown equivalent is not "false": the claim stays unchecked and names the verified row.
+            return ClaimCheck(
+                status="unverified",
+                kind="relation",
+                detail=f"an indexed component; the verified result{where} lists ${row.latex}$ for this label, "
+                "and this value was not shown to be equivalent to it (index symmetries are not used), so it "
+                "is not tested further",
+            )
+        where = f" ({found.source})" if found.source else ""
+        return ClaimCheck(
+            status="supported",
+            detail=f"{found.detail}{where}",
+            kind="relation",
+            evidence_source=found.source or None,
+            evidence_rule=found.rule,
+            evidence_basis=found.basis,
+            restrictions=list(found.restrictions),
+        )
 
     def _match_evidence(self, sides: list[str]) -> ClaimCheck | None:
         """`supported` if the claim is the same statement as a result a tool verified (never otherwise)."""
