@@ -134,6 +134,8 @@ ALLOWED_FIELDS = frozenset(
         "repeated",
         "references",
         "engine_ms",
+        "queue_ms",
+        "routed_calls",
         "sandbox_calls",
         "error_category",
         "result_id",

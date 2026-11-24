@@ -23,12 +23,16 @@ class SandboxCall:
 
     operation: str  # the operation's name, e.g. "simplify"
     outcome: str  # ok | timeout | killed | error | busy (the sandbox's own words)
-    ms: int  # wall clock including the wait for a free sandbox slot
+    ms: int  # wall clock including the wait for a free sandbox slot: always `wait_ms + run_ms`
     trace_id: str | None
     # An `error` outcome: the exception's class and where our code raised it. Never its message.
     error_type: str | None = None
     error_module: str | None = None
     error_line: int | None = None
+    # `ms` split: the time spent waiting for a free slot and the time the child ran (for `busy`, the whole
+    # wait and 0). Measured by the sandbox; never a reason to compute anything.
+    wait_ms: int = 0
+    run_ms: int = 0
 
 
 Observer = Callable[[SandboxCall], None]

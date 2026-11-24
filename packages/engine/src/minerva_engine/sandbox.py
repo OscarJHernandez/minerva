@@ -73,6 +73,15 @@ class SandboxResult:
     error_type: str | None = None
     error_module: str | None = None
     error_line: int | None = None
+    # Where the time went (milliseconds, measured by the sandbox itself, no extra work): waiting for a
+    # free slot, then running the child. `ms` is their sum. Set for every outcome, `busy` and a call the
+    # caller cancelled included.
+    wait_ms: int = 0
+    run_ms: int = 0
+
+    @property
+    def ms(self) -> int:
+        return self.wait_ms + self.run_ms
 
 
 # Classes whose names are fixed by code we ship or depend on; any other name is reported as `other`.
@@ -135,26 +144,44 @@ class Sandbox:
         self._slots = threading.BoundedSemaphore(self.limits.max_concurrency)
 
     def run(self, op: str, payload: dict[str, Any], timeout: float | None = None) -> SandboxResult:
-        """`timeout` replaces the default wall-clock limit for this call (long, bounded searches)."""
+        """`timeout` replaces the default wall-clock limit for this call (long, bounded searches).
+
+        The result says how long the call waited for a slot (`wait_ms`) and how long its child ran
+        (`run_ms`)."""
         seconds = timeout if timeout is not None else self.limits.timeout_seconds
         if _cancelled():
             return SandboxResult(Outcome.KILLED)  # the caller has left: start nothing
-        if not self._acquire():
-            return SandboxResult(Outcome.BUSY if not _cancelled() else Outcome.KILLED)
+        acquired, wait_ms = self._acquire()
+        if not acquired:
+            outcome = Outcome.BUSY if not _cancelled() else Outcome.KILLED
+            return SandboxResult(outcome, wait_ms=wait_ms)
         try:
-            return self._run(op, payload, seconds)
+            started = time.monotonic()
+            result = self._run(op, payload, seconds)
+            result.wait_ms = wait_ms
+            result.run_ms = int((time.monotonic() - started) * 1000)
+            return result
         finally:
             self._slots.release()
 
-    def _acquire(self) -> bool:
-        deadline = time.monotonic() + self.limits.timeout_seconds
+    def _acquire(self) -> tuple[bool, int]:
+        """Wait for a slot; returns whether it was taken and how long the wait took (ms).
+
+        The wait is bounded by the sandbox's default timeout, not the per-call one: a call with a longer
+        limit is not queued longer."""
+        started = time.monotonic()
+        deadline = started + self.limits.timeout_seconds
+
+        def waited() -> int:
+            return int((time.monotonic() - started) * 1000)
+
         while not _cancelled():
             left = deadline - time.monotonic()
             if self._slots.acquire(timeout=max(0.0, min(_SLICE, left))):
-                return True
+                return True, waited()
             if left <= 0:
-                return False
-        return False
+                return False, waited()
+        return False, waited()
 
     def _run(self, op: str, payload: dict[str, Any], seconds: float) -> SandboxResult:
         ctx = _context()

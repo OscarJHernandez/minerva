@@ -284,4 +284,55 @@ describe("failed and declined tool calls", () => {
     expect(rows[0]!.detail).toContain("parse_error · syntax");
     expect(JSON.stringify(rows)).not.toContain("SECRET");
   });
+
+  it("numbers model calls by count: a routed call takes a step but makes no model call", () => {
+    const rows = buildTimeline(
+      debug([
+        ev("agent.routed", 1, { decision: "routed", tool: "simplify" }),
+        ev("llm.response", 9, { step: 2, finish_reason: "stop", latency_ms: 5 }),
+        ev("agent.stopped", 10, { reason: "completed", steps: 1, tool_calls: 1, routed_calls: 1 }),
+      ]),
+      [],
+    );
+    expect(rows.find((r) => r.kind === "model")!.title).toMatch(/^Model call 1:/);
+    expect(rows.find((r) => r.kind === "stop")!.detail).toContain(
+      "1 model call(s), 1 tool call(s) (1 routed: no model call before it)",
+    );
+  });
+
+  it("says when a verification time was not reported and shows queue time and the claim-check site", () => {
+    const rows = buildTimeline(
+      debug([
+        ev("tool.completed", 5, {
+          tool: "simplify",
+          call_id: "c",
+          status: "ok",
+          duration_ms: 9,
+          engine_ms: 8,
+          queue_ms: 3,
+          sandbox_calls: 1,
+        }),
+        ev("verification.completed", 6, {
+          scope: "tool",
+          tool: "simplify",
+          check: "numeric",
+          accepted: true,
+          reason: "verified",
+        }),
+        ev("verification.completed", 7, {
+          scope: "claims",
+          accepted: false,
+          reason: "error",
+          claims: 1,
+          error_type: "other",
+          error_module: "minerva_api.agent.claims",
+          error_line: 12,
+        }),
+      ]),
+      [],
+    );
+    expect(rows[0]!.detail).toContain("8 ms in the sandbox, 3 ms of it waiting for a slot");
+    expect(rows[1]!.detail).toContain("verification time not reported");
+    expect(rows[2]!.detail).toContain("other at minerva_api.agent.claims:12");
+  });
 });

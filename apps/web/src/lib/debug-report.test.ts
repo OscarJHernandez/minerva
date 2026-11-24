@@ -397,6 +397,7 @@ const events: TraceEvent[] = [
     reason: "repeated_calls",
     steps: 2,
     tool_calls: 1,
+    routed_calls: 1,
   },
   {
     event: "agent.completed",
@@ -409,6 +410,7 @@ const events: TraceEvent[] = [
     llm_ms: 50,
     tool_ms: 30,
     engine_ms: 25,
+    queue_ms: 4,
     verify_ms: 5,
   },
 ];
@@ -453,6 +455,7 @@ const traced: StoredMessage = {
       formulas: 2,
       formulas_with_evidence: 1,
       claim_check: "timeout",
+      routed_calls: 1,
       removed_labels: ["(1)", "\\tag{3}"],
       llm_calls: [
         {
@@ -510,6 +513,12 @@ describe("buildDebugReport, format 4", () => {
     expect(report).toContain("| model calls | 50 |");
     expect(report).toContain("| of which in the sandbox | 25 |");
     expect(report).toContain("| claim check | 5 |");
+    expect(report).toContain("| of which waiting for a sandbox slot | 4 |");
+    // the counts say what they count: model calls, tool calls, and the part of them no model call preceded
+    expect(report).toContain(
+      "1 model call(s) · 1 tool call(s) (1 routed: no model call before it)",
+    );
+    expect(report).toContain("25 ms in the sandbox");
     expect(report).toContain("tokens: 120 in, 9 out (as reported by the model host)");
     expect(report).toContain("formulas with engine evidence: 1/2 (50%)");
     expect(report).toContain("claim check: timeout");

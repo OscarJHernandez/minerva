@@ -103,6 +103,7 @@ EvidenceReason = Literal[
     "internal_error",
     "no_results",
     "error",
+    "timeout",  # the check of the model's own formulas ran out of time
 ]
 
 
@@ -268,6 +269,13 @@ class TurnDebug(BaseModel):
     claim_check: str | None = (
         None  # ok | none | timeout | error: why claims were or were not checked
     )
+    # `claim_check == "error"` only: where the exception was raised (error_type, error_module, error_line:
+    # class and a line of our own code, never the message, which can hold the user's formula).
+    claim_check_site: dict[str, Any] = Field(default_factory=dict)
+    # Tool calls the router made without asking the model (a tool call with no model call before it).
+    # `AgentStopped.steps` counts model calls (`len(llm_calls)`); this is the part of the tool calls that
+    # needed none.
+    routed_calls: int = 0
     formulas: int = 0  # formulas the model wrote in this turn
     formulas_with_evidence: int = 0  # ... that are backed by engine evidence
     evidence_pct: float | None = None

@@ -31,12 +31,12 @@ turn started, from a monotonic clock) and `step` (the model call it belongs to).
 | `llm.request` | message count, number of tools offered |
 | `llm.response` | latency, time to first output, finish reason, tokens in and out (when the host reports them), number of tool calls, the first proposed tool (a registry name or `unknown`) |
 | `tool.started` | tool, whether the arguments validated, whether it is a repeat, how many `@rN` references were replaced |
-| `tool.completed` | status, duration, time in the sandbox and number of sandbox calls, error category, result id |
+| `tool.completed` | status, duration, time in the sandbox (`engine_ms`, slot wait included) of which `queue_ms` waiting for a free slot, number of sandbox calls, error category, result id |
 | `tool.failed` / `tool.declined` | one per tool call that did not deliver a verified result (see "Tool outcomes in the log"): tool, status, error category, `outcome_kind`, a fixed `reason_code`, `arg_fields`, `invalid_fields`, and for an unexpected exception its class and where our code raised it |
-| `verification.completed` | for a tool: the kind of check (`symbolic_zero`, `numeric`, `quadrature`, `series_checks`, `structural`, `dimensional`, `lookup`), sample points agreed, restrictions, whether the result was accepted and why. For the model's own formulas: how many hold, are conditional, contradicted or unchecked |
+| `verification.completed` | for a tool: the kind of check (`symbolic_zero`, `numeric`, `quadrature`, `series_checks`, `structural`, `dimensional`, `lookup`), sample points agreed, restrictions, whether the result was accepted and why, and `verify_ms`: the time the engine measured for its own verification step (`StepDiagnostics.verify_ms`, reported by the transformation tools) or `null` where the operation reports none, never the whole operation's time. For the model's own formulas: how many hold, are conditional, contradicted or unchecked; when the check could not run, `reason` is `timeout` or `error` and, for an error, `error_type`/`error_module`/`error_line` say where our code raised it (never the message) |
 | `agent.routed` | a rule chose the first tool without asking the model (`routed`) or its result was not verified so the model plans (`declined`): decision, tool, and a fixed reason (see `docs/agent-reliability.md`) |
 | `agent.retry` | reason, attempt number |
-| `agent.stopped` | stop reason, steps, tool calls |
+| `agent.stopped` | stop reason, `steps` (model calls made, wrap-up and retried calls included), `tool_calls` (all, routed ones included), `routed_calls` (tool calls with no model call before them) |
 | `agent.completed` | total latency, model, tool, sandbox and claim-check time, tokens, tool calls and errors, repeated calls, formulas with engine evidence, equation numbering counts (`equation_labels_removed`, `equations_reused`, `equation_aliases_resolved`; counts only: the removed labels themselves are `debug.removed_labels`, stored with the message, shown in debug mode, never logged) |
 
 Stop reasons: `completed`, `step_limit`, `tool_call_limit`, `time_limit`, `repeated_calls`, `output_limit`
@@ -355,8 +355,15 @@ report shows both.
   numbers; `jq` over the log gives distributions without any content.
 - Across models: the benchmark's JSON has per-run `seconds`, `llm_ms` and `tool_ms`; the report gives
   median, p95 and max. Token counts are shown only when the host reports them; nothing is estimated.
-- Sandbox time includes the wait for a free slot, and parsing and verification are inside the sandbox
-  operation: they are not separated.
+- Sandbox time (`engine_ms`) is the wait for a free slot (`queue_ms`) plus the time the child ran; the
+  sandbox measures both for every outcome (ok, busy, timeout, killed, a call cancelled while it waited), and
+  `ms = wait_ms + run_ms` always. A slow computation and a full queue are told apart by `queue_ms`.
+  Parsing and verification are inside the sandbox operation: a tool's `verify_ms` is the engine's own
+  measurement where it makes one and `null` otherwise; it is never filled in from `engine_ms`. The wait for
+  a slot is bounded by the sandbox's default timeout, not by a longer per-call one.
+- Counts: `steps` is the number of model calls (`len(debug.llm_calls)`); a call the router made without
+  asking the model is a tool call with no model call, counted in `routed_calls` and marked "routed" in
+  the timeline and the report. The debug report says "N model call(s), M tool call(s) (K routed)".
 
 ## Limits
 
