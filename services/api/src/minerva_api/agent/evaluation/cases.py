@@ -102,6 +102,20 @@ class Reference(BaseModel):
     arguments: dict[str, Any]
 
 
+class ClaimMark(BaseModel):
+    """The mark one displayed formula of the reply must carry (issue 172, A-011).
+
+    `formula` is compared with the formula segments of the reply the way `wrong_formulas` are (spacing- and
+    alias-insensitive, equality). `status` is the segment's mark (`from_tool`, `unchecked`, `contradicted`...);
+    `evidence_rule` is, when given, the rule recorded for that claim in `debug.claims` (`same_left_side`,
+    `mismatch`...). Nothing here computes anything: it only pins what the claim checker did on a conversation.
+    """
+
+    formula: str
+    status: str
+    evidence_rule: str | None = None
+
+
 class Alternative(BaseModel):
     """Another accepted way to answer: a different tool with its own argument and result expectations.
 
@@ -143,6 +157,7 @@ class Followup(BaseModel):
     restrictions_reported: str | None = None
     stops_after_failure: bool = False
     forbid_assumptions: bool = False
+    claim_marks: list[ClaimMark] = Field(default_factory=list)
 
     def as_case(self, parent: EvalCase, number: int) -> EvalCase:
         return EvalCase(
@@ -194,6 +209,8 @@ class EvalCase(BaseModel):
     stops_after_failure: bool = False
     # The user stated no assumptions, so none may be passed to a tool (no invented positivity, realness, ...).
     forbid_assumptions: bool = False
+    # The marks the formulas of the reply must carry, and the evidence rule behind them (see ClaimMark).
+    claim_marks: list[ClaimMark] = Field(default_factory=list)
     followups: list[Followup] = Field(default_factory=list)  # later turns, answered live
 
     @field_validator("reply_matches", "reply_forbids", "restrictions_reported")
@@ -292,6 +309,7 @@ _RELIABILITY_FIELDS = (
     "restrictions_reported",
     "stops_after_failure",
     "forbid_assumptions",
+    "claim_marks",
     "followups",
 )
 
@@ -304,7 +322,12 @@ def _digest_view(case: EvalCase) -> str:
         for name in _RELIABILITY_FIELDS
         if getattr(case, name) == EvalCase.model_fields[name].get_default(call_default_factory=True)
     }
-    return case.model_dump_json(exclude=unused)
+    # A follow-up carries `claim_marks` too; while no turn of the case uses it, it is left out of the turns' view
+    # as well, so the digest of every earlier case with follow-ups is unchanged.
+    exclude: Any = dict.fromkeys(unused, True)
+    if case.followups and not any(t.claim_marks for t in case.followups):
+        exclude["followups"] = {"__all__": {"claim_marks"}}
+    return case.model_dump_json(exclude=exclude)
 
 
 def cases_digest(cases: list[EvalCase]) -> str:

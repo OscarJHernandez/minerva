@@ -39,6 +39,13 @@ checked like the expected tool, and a run passes if any accepted tool met its ow
 an accepted alternative is no longer a tool-selection failure. A case without `accept` scores exactly as before, and
 the field is left out of the case digest while empty.
 
+`claim_marks:` (a case or a follow-up; issue #172) pins the mark a displayed formula of the reply must carry and,
+optionally, the `evidence_rule` the claim checker recorded for it (`debug.claims`): `[{formula, status,
+evidence_rule}]`, the formula compared as `wrong_formulas` are. A verified mark where another is pinned is a
+`verification` failure, any other difference a `claim_checker_false_positive`. It is for deterministic
+conversations (`test_conserved_quantity_multiturn.py`); no live case needs a model to produce a particular
+mistake. Like `accept`, it is left out of the case digest while empty, in a follow-up too.
+
 `--compare` states, for every change in passes, whether it is within the run-to-run noise: the spread (population
 standard deviation) of the passes per repeat on each side, a limit of twice the larger spread and at least one case. With
 one repeat on a side the noise cannot be measured and nothing is called larger than it. Cases that are unstable across
@@ -66,11 +73,11 @@ engine. "Oracle" is the independent check named in `AGENTS.md`.
 | `get_entry` | core | 1 / 1 | the same | `stated` entries are never applied | handbook `verify` |
 | `load_tools` | core | none (offline suite) | not mathematical | loads groups only | offline trajectories |
 | `analyze_lagrangian` | mechanics | 6 / 4 | numerical differentiation of L, confirmed equations | at most the stated coordinate count | reference case, corruption sweep |
-| `time_derivative` | mechanics | 1 / 1 | central difference along random motions | no accelerations in the input | wrong-candidate test |
+| `time_derivative` | mechanics | 2 / 2 | central difference along random motions | no accelerations in the input | wrong-candidate test; multi-turn case `kepler-discovery-then-derivative-of-a-relation-among-the-constants` and `test_conserved_quantity_multiturn.py` |
 | `expand_motion` | mechanics | 2 / 2 | `check_series` on every expansion | no stability claims | reference case |
 | `perturbation_solve` | mechanics | 1 / 1 | residual decay at the claimed order | one coordinate, no damping | wrong-frequency test |
 | `integrate_motion` | mechanics | 1 / 1 | second integrator, time reversal, conserved quantities | numbers are the user's | reference case |
-| `find_conserved_quantities` | mechanics | 1 / 1 | `Flow.verify` on the equations of motion | within the explored families only | discovery benchmark |
+| `find_conserved_quantities` | mechanics | 2 / 2 | `Flow.verify` on the equations of motion | within the explored families only | discovery benchmark; first turn of `kepler-discovery-then-derivative-of-a-relation-among-the-constants` |
 | `search_invariants` | mechanics | none | the same verification, fixed ansatz | no reference call (`corruption.EXEMPT`) | invariant benchmark |
 | `ode_analyze` | ode | 2 / 2 | independent method checks | local, from the linearisation | `reference_benchmark` problem |
 | `ode_solve_symbolic` | ode | 3 / 3 | residual with numerical derivatives | "no closed form found" is not "none" | `reference_benchmark` problem |

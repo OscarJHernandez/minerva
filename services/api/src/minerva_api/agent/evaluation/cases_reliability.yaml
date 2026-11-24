@@ -179,6 +179,39 @@
       expect_card: {status: ok, result_text: "mu*(2*r*r_dot*theta_dot + r**2*theta_ddot)"}
       reference: {tool: time_derivative, arguments: {latex: '\mu r^2 \dot{\theta}', coordinates: [r, theta]}}
 
+# Issue #172 (A-011 follow-up): the conversation-level case for the constants of an earlier discovery. The first
+# turn really runs `find_conserved_quantities`; the follow-up names a relation among the constants it returned and
+# asks for its total time derivative. The server inserts the verified definitions (agent/constants.py), so the
+# right tool is `time_derivative` (never `differentiate`, which holds the velocities fixed) and the conclusion is
+# "zero on the equations of motion", not "zero". The case does not depend on a model mistyping anything: the
+# mismatch of a re-typed constant is owned by tests/test_conserved_quantity_multiturn.py.
+- id: kepler-discovery-then-derivative-of-a-relation-among-the-constants
+  category: followup
+  prompt: 'Find the hidden conserved quantities of the Kepler system $L = \frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}$ with coordinates r and theta. List them as C_1, C_2, C_3, C_4.'
+  expected_tool: find_conserved_quantities
+  args: {includes: {coordinates: [r, theta]}}
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: find_conserved_quantities
+    arguments:
+      lagrangian: '\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
+      coordinates: [r, theta]
+  source: "Kepler: energy, angular momentum and two components of the Laplace-Runge-Lenz vector (Goldstein, Classical Mechanics, ch. 3); the engine's own search returns them as C_1..C_4 (tests/test_conserved_quantity_multiturn.py reads the names from the card)"
+  followups:
+    - prompt: 'Now take the total time derivative of the relation $C_3^2 + C_4^2 - k^2 - 2 C_1^2 C_2 / \mu$ among those constants.'
+      expected_tool: time_derivative
+      forbid: [differentiate]
+      args: {present: [latex, coordinates]}
+      expect_card: {status: ok}
+      reply_matches: 'equations of motion'
+      reference:
+        tool: time_derivative
+        arguments:
+          latex: '(- k \cos{\theta} + \mu r^{3} \dot{\theta}^{2} \cos{\theta} + \mu r^{2} \dot{r} \dot{\theta} \sin{\theta})^2 + (k \sin{\theta} - \mu r^{3} \dot{\theta}^{2} \sin{\theta} + \mu r^{2} \dot{r} \dot{\theta} \cos{\theta})^2 - k^2 - \frac{2 (\mu r^{2} \dot{\theta})^2 (- \frac{k}{r} + \frac{\mu r^{2} \dot{\theta}^{2}}{2} + \frac{\mu \dot{r}^{2}}{2})}{\mu}'
+          coordinates: [r, theta]
+          lagrangian: '\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
+
 - id: ode-bare-equation-asks-which-method
   category: ambiguous
   prompt: "$y''(x) = y(x)$."
