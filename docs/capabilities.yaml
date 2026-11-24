@@ -2626,7 +2626,8 @@ capabilities:
         explored families, never that the system has none.
       - Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial
         time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos
-        and sin. At most 3 coordinates.
+        and sin. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap,
+        otherwise the smallest family and its size are reported as a resource limit.
       - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
       - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found
         only when those values are given.
@@ -2667,6 +2668,16 @@ capabilities:
         op: discovery
         input: '\frac12(\dot{x}^2 + \dot{y}^2) - \frac12(x^2 + y^2) - x^2 y + \frac13 y^3'
         coordinates: [x, y]
+      - id: discovery-oscillator-4d
+        title: Four coordinates, the isotropic oscillator
+        note: >-
+          The quick budget searches the first family (80 unknown coefficients) and finds nothing beyond the energy and
+          the six rotations; it lists the larger families it did not search. Their rank is 6, not 7: one exact relation
+          ties the six rotations together.
+        op: discovery
+        budget: quick
+        input: '\frac12(\dot{a}^2 + \dot{b}^2 + \dot{c}^2 + \dot{d}^2) - \frac12(a^2 + b^2 + c^2 + d^2)'
+        coordinates: [a, b, c, d]
       - id: discovery-kepler-spherical
         title: Kepler in spherical coordinates, with tan(theta) in the equations
         note: >-

@@ -134,7 +134,7 @@ BASE: dict[str, dict[str, Any]] = {
     "series": {"variable": "x", "order": 3, "point": "0"},
     "integrate": {"variable": "x"},
     "distribution": {},
-    "time_derivative": {"coordinates": ["x"]},
+    "time_derivative": {"coordinates": ["x"], "latex": "x"},
     "find_identities": {},
     "sums": {},
     "expectation": {"random": ["X"]},
@@ -147,54 +147,126 @@ BASE: dict[str, dict[str, Any]] = {
     "isolate_variable": {"variable": "x"},
     "check_identity": {},
     "check_units": {"quantities": [{"name": "x", "unit": "m"}, {"name": "y", "unit": "m^2"}]},
+    "expand_motion": {"coordinates": ["x"]},
+    "perturbation_solve": {"coordinates": ["x"]},
+    "integrate_motion": {
+        "coordinates": ["x"],
+        "initial_positions": [1],
+        "initial_velocities": [0],
+        "t_end": 1,
+    },
+    "tensor_canonicalize": {
+        "tensors": {
+            "S": {"rank": 2, "symmetry": "symmetric"},
+            "A": {"rank": 2, "symmetry": "none"},
+        }
+    },
 }
 FIELD_OF = {
     "variation": "integrand",
     "solve_polynomial": "equation",
     "isolate_variable": "equation",
+    "check_units": "equation",
+    "tensor_canonicalize": "expression",
 }
-FIELD_OF["check_units"] = "equation"
+# Tools with a formula field that is not the one `FIELD_OF` names, and the text each one reads for it.
+OTHER_FIELDS: dict[tuple[str, str], tuple[str, str]] = {
+    # (tool, field) -> (an expression the field accepts, a relation of the field's own syntax)
+    ("time_derivative", "lagrangian"): (r"\dot{x}^2", r"y = \dot{x}^2"),
+    ("expand_motion", "lagrangian"): (r"\dot{x}^2 - x^2", r"y = \dot{x}^2 - x^2"),
+    ("perturbation_solve", "lagrangian"): (
+        r"\frac{1}{2}\dot{x}^2 - \frac{1}{2}x^2",
+        r"y = \dot{x}^2",
+    ),
+    ("integrate_motion", "lagrangian"): (
+        r"\frac{1}{2}\dot{x}^2 - \frac{1}{2}x^2",
+        r"y = \dot{x}^2",
+    ),
+    ("tensor_canonicalize", "expression"): ("S(a,b)*A(-a,-b)", "S(a,b) = A(a,b)"),
+}
 
 
 def _field(tool: str) -> str:
     return FIELD_OF.get(tool, "latex")
 
 
-def _expression_only() -> list[str]:
-    return [
-        t for (t, f), (p, _) in FIELD_POLICY.items() if p == "expression_only" and f == _field(t)
-    ]
+def _keys(policy: str) -> list[tuple[str, str]]:
+    return sorted(k for k, (p, _) in FIELD_POLICY.items() if p == policy)
 
 
-def _equation_required() -> list[str]:
-    return [
-        t for (t, f), (p, _) in FIELD_POLICY.items() if p == "equation_required" and f == _field(t)
-    ]
+def _kinds(tool: str, field: str) -> tuple[str, str]:
+    """(an expression, a relation) in the syntax this field reads."""
+    return OTHER_FIELDS.get((tool, field), ("x^2", "y = x^2"))
 
 
 def test_the_classified_tools_are_all_covered_by_the_runs_below() -> None:
     classified = {t for (t, _), (p, _) in FIELD_POLICY.items() if p != "unclassified"}
     assert classified == set(BASE)
+    # every classified field is either the tool's main one or listed with its own examples
+    for (tool, field), (policy, _) in FIELD_POLICY.items():
+        assert policy == "unclassified" or field == _field(tool) or (tool, field) in OTHER_FIELDS
+
+
+@pytest.mark.parametrize(("tool", "field"), _keys("expression_only"))
+def test_a_field_marked_expression_only_really_refuses_a_relation(
+    tool: str, field: str, ctx: ToolContext
+) -> None:
+    expression, relation = _kinds(tool, field)
+    out = execute(tool, {**BASE[tool], field: relation}, ctx)
+    assert out.status == "parse_error", (tool, field, out.status, out.for_model[:200])
+    if (
+        tool,
+        field,
+    ) in OTHER_FIELDS:  # the accepting twin of the fields classified with their own examples
+        ok = execute(tool, {**BASE[tool], field: expression}, ctx)
+        assert ok.status in ("ok", "unchanged"), (tool, field, ok.status, ok.for_model[:200])
+
+
+@pytest.mark.parametrize(("tool", "field"), _keys("equation_required"))
+def test_a_field_marked_equation_required_really_refuses_an_expression(
+    tool: str, field: str, ctx: ToolContext
+) -> None:
+    out = execute(tool, {**BASE[tool], field: "x^2"}, ctx)
+    assert out.status == "parse_error", (tool, field, out.status, out.for_model[:200])
 
 
 @pytest.mark.parametrize(
-    "tool", sorted(t for (t, _), (p, _) in FIELD_POLICY.items() if p == "expression_only")
+    ("tool", "field"),
+    [
+        ("time_derivative", "lagrangian"),
+        ("expand_motion", "lagrangian"),
+        ("perturbation_solve", "lagrangian"),
+        ("integrate_motion", "lagrangian"),
+        ("tensor_canonicalize", "expression"),
+    ],
 )
-def test_a_tool_marked_expression_only_really_refuses_a_relation(
-    tool: str, ctx: ToolContext
+def test_a_relation_reference_is_refused_in_the_newly_classified_fields(
+    tool: str, field: str
 ) -> None:
-    out = execute(tool, {_field(tool): "y = x^2", **BASE[tool]}, ctx)
-    assert out.status == "parse_error", (tool, out.status, out.for_model[:200])
+    store = _store(("y = x^2", "from_tool"), ("x^2", "from_tool"))
+    refused = store.resolve({field: "@e1"}, tool)
+    assert refused.diagnostic is not None
+    assert refused.diagnostic.code is InputCode.EQUATION_REFERENCE_NOT_EXPRESSION
+    assert refused.diagnostic.field == field and refused.diagnostic.symbols == ["@e1"]
+    assert refused.arguments == {field: "@e1"}  # nothing was rewritten
+    assert store.resolve({field: "@e2"}, tool).error is None  # an expression is passed on
 
 
-@pytest.mark.parametrize(
-    "tool", sorted(t for (t, _), (p, _) in FIELD_POLICY.items() if p == "equation_required")
-)
-def test_a_tool_marked_equation_required_really_refuses_an_expression(
-    tool: str, ctx: ToolContext
+def test_fields_that_accept_a_leading_name_or_several_actions_stay_unclassified(
+    ctx: ToolContext,
 ) -> None:
-    out = execute(tool, {_field(tool): "x^2", **BASE[tool]}, ctx)
-    assert out.status == "parse_error", (tool, out.status, out.for_model[:200])
+    # `L = ...` / `H = ...` is read off by these tools, so refusing every relation would refuse a working call.
+    for tool, field in (
+        ("analyze_lagrangian", "lagrangian"),
+        ("search_invariants", "lagrangian"),
+        ("find_conserved_quantities", "lagrangian"),
+        ("find_conserved_quantities", "hamiltonian"),
+        ("matrix_calculus", "latex"),
+        ("vector_calculus", "expression"),
+    ):
+        assert policy_of(tool, field) == "unclassified"
+    out = execute("analyze_lagrangian", {"lagrangian": r"L = \dot{x}^2", "coordinates": ["x"]}, ctx)
+    assert out.status == "ok"
 
 
 def test_the_two_new_codes_can_be_logged_and_are_in_the_closed_vocabulary() -> None:

@@ -352,9 +352,10 @@
 # -> conserved quantities; the radial effective potential needs mathematics that is not built yet). The earlier turns are
 # plain history written for this case (no tool calls). The last one asks for the conserved quantities of Equation (1) with
 # all four coordinates: the answer is `analyze_lagrangian` (cyclic momenta and the energy, each verified), and the reply must
-# say which symmetries were tested, never that these are all of them. `find_conserved_quantities` searches at most three
-# coordinates and refuses four with a typed reason (it is not a way to the answer here); the time symbol is `s` because `t`
-# is a coordinate.
+# say which symmetries were tested, never that these are all of them. `find_conserved_quantities` takes four coordinates
+# since issue 152, but it is still not a way to the answer here: the smallest family of this Lagrangian has 405 unknown
+# coefficients, so at the default budget it answers `resource_limit` and searches nothing; the time symbol is `s` because
+# `t` is a coordinate.
 - id: schwarzschild-chat-conserved-quantities-are-scoped
   category: physics
   prompt: 'Which quantities are conserved along the geodesics of Equation (1)? The curve parameter is s and the coordinates are t, r, theta, phi.'

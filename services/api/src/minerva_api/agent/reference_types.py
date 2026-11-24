@@ -45,6 +45,17 @@ FIELD_POLICY: dict[tuple[str, str], tuple[Policy, str]] = {
         "this operation takes an expression, not an equation",
     ),
     ("variation", "integrand"): ("expression_only", "the integrand parser refuses a relation"),
+    # These Lagrangian readers do not read off a leading `L =` (unlike `analyze_lagrangian`): any `=` is refused
+    # with "Send only the Lagrangian as an expression, not an equation".
+    ("time_derivative", "lagrangian"): ("expression_only", "refuses an equation, `L = ...` too"),
+    ("expand_motion", "lagrangian"): ("expression_only", "refuses an equation, `L = ...` too"),
+    ("perturbation_solve", "lagrangian"): ("expression_only", "refuses an equation, `L = ...` too"),
+    ("integrate_motion", "lagrangian"): ("expression_only", "refuses an equation, `L = ...` too"),
+    # The tensor text is read by `ast.parse(mode="eval")`, which has no assignment: any `=` is a syntax error.
+    ("tensor_canonicalize", "expression"): (
+        "expression_only",
+        "the text is parsed as one Python expression, so an `=` is a syntax error",
+    ),
     # Equation required: the tool reads `left = right` and refuses a bare expression.
     ("solve_polynomial", "equation"): ("equation_required", "needs `left = right`"),
     ("isolate_variable", "equation"): ("equation_required", "needs `left = right`"),
@@ -59,7 +70,6 @@ FIELD_POLICY: dict[tuple[str, str], tuple[Policy, str]] = {
         "unclassified",
         "the derive, apply and substitute actions read field equations in this argument",
     ),
-    ("tensor_canonicalize", "expression"): ("unclassified", "not established for tensor input"),
     **{
         (tool, name): (
             "unclassified",
@@ -68,13 +78,9 @@ FIELD_POLICY: dict[tuple[str, str], tuple[Policy, str]] = {
         for tool, name in (
             ("analyze_lagrangian", "lagrangian"),
             ("routh_reduce", "lagrangian"),
-            ("time_derivative", "lagrangian"),
-            ("expand_motion", "lagrangian"),
-            ("perturbation_solve", "lagrangian"),
             ("find_conserved_quantities", "lagrangian"),
             ("find_conserved_quantities", "hamiltonian"),
             ("search_invariants", "lagrangian"),
-            ("integrate_motion", "lagrangian"),
         )
     },
 }

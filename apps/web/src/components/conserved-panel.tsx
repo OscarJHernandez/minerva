@@ -7,6 +7,8 @@ import type { DiscoveryReport } from "@/lib/chat-types";
 import { DiscoveryCard } from "./chat/discovery-card";
 import { MathInput } from "./math-input";
 
+// The search takes at most four coordinates (the engine's `flow.MAX_COORDINATES`, issue #152).
+const MAX_COORDINATES = 4;
 const NAME = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
 const FIELD =
   "w-full min-w-0 rounded border border-rule bg-raised px-2 py-1.5 text-sm text-ink disabled:opacity-50";
@@ -36,8 +38,8 @@ export function buildConservedRequest(form: {
 }): ConservedInput | string {
   if (!form.fn.trim()) return "Enter the Lagrangian or Hamiltonian.";
   const coordinates = names(form.coordinates);
-  if (coordinates.length < 1 || coordinates.length > 3)
-    return "Give between 1 and 3 coordinates, separated by commas.";
+  if (coordinates.length < 1 || coordinates.length > MAX_COORDINATES)
+    return `Give between 1 and ${MAX_COORDINATES} coordinates, separated by commas.`;
   if (!coordinates.every((c) => NAME.test(c))) return "Coordinate names are letters and digits.";
   let momenta: string[] | null = null;
   if (form.system === "hamiltonian") {
@@ -156,7 +158,7 @@ export function ConservedPanel() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
-          Coordinates (1 to 3, comma separated)
+          Coordinates (1 to {MAX_COORDINATES}, comma separated)
           <input
             className={FIELD}
             value={coordinates}

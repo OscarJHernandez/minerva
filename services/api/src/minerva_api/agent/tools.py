@@ -961,7 +961,7 @@ class DiscoveryArgs(BaseModel):
     coordinates: list[str] = Field(
         min_length=1,
         max_length=8,
-        description="Names of the generalised coordinates (the search supports at most 3; more is refused "
+        description="Names of the generalised coordinates (the search supports at most 4; more is refused "
         "with the reason and nothing is searched), e.g. ['r', 'theta']",
     )
     momenta: list[str] | None = Field(

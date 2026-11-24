@@ -3094,7 +3094,7 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 **Limits**
 
 - Complete within each family searched and nothing more. No additional constant always means within the explored families, never that the system has none.
-- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos and sin. At most 3 coordinates.
+- Only rational equations of motion are searched. Square roots (Cartesian Kepler), logarithms and non-polynomial time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos and sin. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap, otherwise the smallest family and its size are reported as a resource limit.
 - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
 - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found only when those values are given.
 - Functional independence is a proved lower bound (exact rank at rational points); it is called exact only when an upper bound from the relations meets it. Numerical sampling is never used as proof.
@@ -3162,6 +3162,25 @@ Give a Lagrangian or a Hamiltonian and ask for its conserved quantities. Minerva
 - 7 families searched, from d1p1h1t0 to d4p3h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
 - Not searched: raising the momentum degree to 4 needs 375 unknown coefficients (limit 350)
 - Only the energy is known; nothing else is found. This says nothing about families that were not searched.
+
+#### Four coordinates, the isotropic oscillator
+
+- **Lagrangian:** `\frac12(\dot{a}^2 + \dot{b}^2 + \dot{c}^2 + \dot{d}^2) - \frac12(a^2 + b^2 + c^2 + d^2)`
+- **Coordinates:** a, b, c, d
+- **Status:** `ok`
+- **C1, energy function:** $C_{1} = \frac{a^{2}}{2} + \frac{\dot{a}^{2}}{2} + \frac{b^{2}}{2} + \frac{\dot{b}^{2}}{2} + \frac{c^{2}}{2} + \frac{\dot{c}^{2}}{2} + \frac{d^{2}}{2} + \frac{\dot{d}^{2}}{2}$
+- **C2, rotation symmetry in the (a, b) plane:** $C_{2} = a \dot{b} - \dot{a} b$
+- **C3, rotation symmetry in the (a, c) plane:** $C_{3} = a \dot{c} - \dot{a} c$
+- **C4, rotation symmetry in the (a, d) plane:** $C_{4} = a \dot{d} - \dot{a} d$
+- **C5, rotation symmetry in the (b, c) plane:** $C_{5} = b \dot{c} - \dot{b} c$
+- **C6, rotation symmetry in the (b, d) plane:** $C_{6} = b \dot{d} - \dot{b} d$
+- **C7, rotation symmetry in the (c, d) plane:** $C_{7} = c \dot{d} - \dot{c} d$
+- **Result:** no additional constant within the explored families
+- **Exact relation:** $C_{2} C_{7} - C_{3} C_{6} + C_{4} C_{5} = 0$
+- Functionally independent: 6 (proved).
+- 1 families searched, from d1p1h1t0 to d1p1h1t0 (d: degree in the velocities or momenta, p: power bound, h: harmonics, t: powers of t, c: powers of a cyclic coordinate).
+- Not searched: raising the momentum degree to 2 needs 240 unknown coefficients (limit 150)
+- The quick budget searches the first family (80 unknown coefficients) and finds nothing beyond the energy and the six rotations; it lists the larger families it did not search. Their rank is 6, not 7: one exact relation ties the six rotations together.
 
 #### Kepler in spherical coordinates, with tan(theta) in the equations
 
