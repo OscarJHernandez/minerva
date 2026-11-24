@@ -1955,11 +1955,12 @@
         "order": 2
       }
     },
-    "keys": ["omega0", "omega", "ratio"],
+    "keys": ["omega0", "omega", "ratio", "solution"],
     "rows": {
       "omega0": "\\omega_0 = 1",
       "omega": "\\omega = 1 + \\frac{3 b A^{2}}{8} - \\frac{21 A^{4} b^{2}}{256}",
-      "ratio": "\\frac{T}{T_0} = 1 - \\frac{3 A^{2} b}{8} + \\frac{57 A^{4} b^{2}}{256} + O\\left(b^{3}\\right)"
+      "ratio": "\\frac{T}{T_0} = 1 - \\frac{3 A^{2} b}{8} + \\frac{57 A^{4} b^{2}}{256} + O\\left(b^{3}\\right)",
+      "solution": "u(t) = A \\cos{\\left(\\omega t \\right)} + b \\left(- \\frac{A^{3} \\cos{\\left(\\omega t \\right)}}{32} + \\frac{A^{3} \\cos{\\left(3 \\omega t \\right)}}{32}\\right) + b^{2} \\left(\\frac{23 A^{5} \\cos{\\left(\\omega t \\right)}}{1024} - \\frac{3 A^{5} \\cos{\\left(3 \\omega t \\right)}}{128} + \\frac{A^{5} \\cos{\\left(5 \\omega t \\right)}}{1024}\\right) + O\\left(b^{3}\\right)"
     }
   },
   "dimensional": {

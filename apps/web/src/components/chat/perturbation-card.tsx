@@ -1,4 +1,5 @@
 import { CopyMath as Math } from "@/components/copyable-math";
+import { splitSolution } from "@/lib/perturbation-solution";
 import type { PerturbationReport, PerturbationRequest } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
 import { Numbered } from "./equation-number";
@@ -20,6 +21,7 @@ export function PerturbationCard({
   const shown = report.status === "ok";
   const v = report.verification;
   const c = report.comparison;
+  const solution = report.solution_latex ? splitSolution(report.solution_latex) : null;
   return (
     <section
       className="rounded-lg border border-rule bg-raised p-5"
@@ -59,7 +61,16 @@ export function PerturbationCard({
           {report.solution_latex && (
             <div className="mt-2 overflow-x-auto">
               <h4 className="text-sm font-medium">Solution</h4>
-              <Math latex={report.solution_latex} display label="Solution" />
+              {solution ? (
+                <>
+                  <Numbered k="solution">
+                    <Math latex={solution.relation} display label="Solution" />
+                  </Numbered>
+                  <Math latex={solution.definition} display />
+                </>
+              ) : (
+                <Math latex={report.solution_latex} display label="Solution" />
+              )}
             </div>
           )}
           <details className="mt-3 text-sm">
