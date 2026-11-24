@@ -254,8 +254,9 @@ tells), and it is not a measure of the model.
   with the fix). `find_conserved_quantities` takes `format` since issue 131 and refuses more than four coordinates
   (three before issue 152) with the typed code `too_many_coordinates` (the limit, what a user may do by hand, and that a
   larger search is not available); the coordinate cap of its schema is 8 so that this reason, not a generic length error,
-  is shown. The `lagrangian_followup` route carries the earlier `analyze_lagrangian` call's `time` and `format`, so a
-  Schwarzschild follow-up (coordinate `t`, time `s`) does not clash with the default time symbol.
+  is shown. The `lagrangian_followup` route carries the earlier `analyze_lagrangian` call's `time`, so a Schwarzschild
+  follow-up (coordinate `t`, time `s`) does not clash with the default time symbol (not its `format`: the stored value
+  is the model's raw choice, which recovery may have switched; the default `auto` reads the formula).
 * A coordinate named `t` clashes with the default time symbol `t` (Schwarzschild in `(t, r, theta, phi)`). Every tool
   with both `coordinates` and `time` (`analyze_lagrangian`, `find_conserved_quantities`, `search_invariants`,
   `expand_motion`, `perturbation_solve`, `integrate_motion`, `time_derivative`) refuses it with `parse_error` and the typed,

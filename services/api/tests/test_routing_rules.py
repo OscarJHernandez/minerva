@@ -271,9 +271,10 @@ SCHWARZSCHILD = (
 )
 
 
-def test_lagrangian_followup_carries_the_time_symbol_and_the_syntax_of_the_earlier_call() -> None:
+def test_lagrangian_followup_carries_the_time_symbol_of_the_earlier_call() -> None:
     """Issue #152: with a coordinate `t` the earlier call named the time `s`; the follow-up search must use
-    the same time symbol (the default `t` would clash with the coordinate) and the same syntax."""
+    the same time symbol (the default `t` would clash with the coordinate). The syntax is not copied: the
+    stored `format` is the model's raw choice, which recovery may have switched; `auto` reads the formula."""
     earlier = (
         "analyze_lagrangian",
         {
@@ -290,11 +291,10 @@ def test_lagrangian_followup_carries_the_time_symbol_and_the_syntax_of_the_earli
         "lagrangian": SCHWARZSCHILD,
         "coordinates": ["t", "r", "theta", "phi"],
         "time": "s",
-        "format": "latex",
     }
-    # Nothing is invented when the earlier call did not name them.
+    # Nothing is invented when the earlier call did not name one.
     plain = lagrangian_followup("What is conserved?", analysed(EOM))
-    assert plain is not None and "time" not in plain.arguments and "format" not in plain.arguments
+    assert plain is not None and "time" not in plain.arguments
 
 
 @pytest.mark.parametrize(

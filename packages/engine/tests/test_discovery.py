@@ -437,6 +437,19 @@ def test_four_coordinates_at_the_standard_budget_find_the_products_and_not_the_s
     assert report.independence is not None and report.independence.rank_lower == 7
 
 
+def test_four_coordinates_as_a_hamiltonian_are_searched_and_five_are_refused() -> None:
+    hamiltonian = "(p_a^2+p_b^2+p_c^2+p_d^2)/2 + (a^2+b^2+c^2+d^2)/2"
+    args = ([], "quick", None, "t", {}, budget_limits(), "text")
+    four = discover_invariants("hamiltonian", hamiltonian, ["a", "b", "c", "d"], None, *args)
+    assert four.status is Status.OK and len(four.constants) == 7
+    assert all(c.verification and c.verification.passed for c in four.constants)
+    five = discover_invariants(
+        "hamiltonian", hamiltonian + " + p_e^2/2", ["a", "b", "c", "d", "e"], None, *args
+    )
+    assert five.status is Status.UNSUPPORTED and five.diagnostic is not None
+    assert five.diagnostic.code.value == "too_many_coordinates"
+
+
 def test_a_four_coordinate_system_whose_smallest_family_is_too_large_is_a_resource_limit() -> None:
     """Must still fail: every coordinate in a denominator gives 5 * 3^4 = 405 unknowns in the smallest
     family, above the standard cap of 350. Nothing is searched and the family and its size are the reason."""

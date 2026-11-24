@@ -56,8 +56,9 @@ unknowns at `standard`) is `resource_limit`, with that family and its size as th
 Measured on a shared workstation (load ~7): the fixed cost before the ladder (derive, numerical check of the
 equations, Noether constants) is 0.1 s for the oscillator and 2.5 s for Schwarzschild; the oscillator at `standard`
 takes 10 s, 5.8 s of it in the relation search of the independence analysis (rank 7, proved), peak 223 MB. The
-independence analysis has its own deadline: when it ends first, every constant is still shown (each verified) and the
-rank is reported as a lower bound, never estimated from a smaller system.
+relation search of the independence analysis has its own deadline (the exact Jacobian rank does not): when it ends
+first, every constant is still shown (each verified) and the rank is the proved lower bound, never estimated from a
+smaller system.
 
 ## Not supported (reported, never guessed)
 

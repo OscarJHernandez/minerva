@@ -500,7 +500,7 @@ def lagrangian_followup(text: str, context: RouteContext = NO_CONTEXT) -> Route 
 
     Signals: the user asks what is conserved, in words, with no formula of their own (words), and the previous
     assistant turn analysed exactly one Lagrangian (conversation). The Lagrangian and the coordinates are the
-    ones in that earlier call, unchanged; a Lagrangian that is itself a reference, or a message that names a
+    ones in that earlier call, unchanged, and so is its time symbol (issue #152); a Lagrangian that is itself a reference, or a message that names a
     deeper search, is left to the model.
     """
     if _DELIMITED.search(text) or not _CONSERVED_ASKS.search(text) or _CONSERVED_OTHER.search(text):
@@ -518,12 +518,13 @@ def lagrangian_followup(text: str, context: RouteContext = NO_CONTEXT) -> Route 
     ):
         return None
     arguments: dict[str, object] = {"lagrangian": lagrangian, "coordinates": list(coordinates)}
-    # The time symbol and the syntax are part of the system as the earlier call read it: without them a
-    # Lagrangian with a coordinate `t` (Schwarzschild, time `s`) clashes with the default time symbol.
-    for name in ("time", "format"):
-        value = analysed[0].get(name)
-        if isinstance(value, str) and value:
-            arguments[name] = value
+    # The time symbol is part of the system the earlier call analysed: without it a Lagrangian with a
+    # coordinate `t` (Schwarzschild, time `s`) clashes with the default time symbol. The syntax is not
+    # copied: the stored arguments are the model's raw ones, and a call that parsed only after recovery
+    # switched the syntax would carry the wrong one; the default `auto` reads the formula itself.
+    time_symbol = analysed[0].get("time")
+    if isinstance(time_symbol, str) and time_symbol:
+        arguments["time"] = time_symbol
     return Route("find_conserved_quantities", arguments, reason="lagrangian_followup")
 
 
