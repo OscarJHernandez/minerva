@@ -10,6 +10,7 @@ import type {
   StatQuantity,
   StatStep,
 } from "@/lib/statmech-types";
+import symbols from "../../../../packages/ui/fixtures/statmech-symbols.json";
 import { Numbered } from "./chat/equation-number";
 import { LinePlot, type PlotSeries } from "./chat/line-plot";
 import { StatusPill } from "./result-panel";
@@ -37,15 +38,17 @@ const REASON_TEXT: Record<string, string> = {
   parse_error: "could not read the input",
 };
 
-/** How a base quantity is written; a quantity named by the user (a partial derivative) is shown as named. */
-const SYMBOL: Record<string, string> = {
-  Z: "Z",
-  lnZ: "\\ln Z",
-  F: "F",
-  U: "U",
-  S: "S",
-  Var_E: "\\operatorname{Var}(E)",
-};
+/**
+ * How a base quantity is written: the one closed table shared with the server
+ * (`packages/ui/fixtures/statmech-symbols.json`, `card_equations.STATMECH_SYMBOL`). A name not in it is shown as
+ * the engine named it.
+ */
+const SYMBOL: Record<string, string> = symbols.symbols;
+
+/** A quantity the user labelled (a partial derivative) is never drawn with a table symbol, whatever its label. */
+export function quantitySymbol(q: { name: string; variable: string | null }): string {
+  return q.variable === null ? (SYMBOL[q.name] ?? q.name) : q.name;
+}
 
 /**
  * The key the server numbers a quantity under (`card_equations.statmech_key`): `quantity:<name>`, and
@@ -106,7 +109,7 @@ function Quantity({ q, k }: { q: StatQuantity; k: string }) {
       </div>
       <Numbered k={k}>
         <div className="overflow-x-auto">
-          <Math latex={`${SYMBOL[q.name] ?? q.name} = ${q.latex}`} display label={q.title} />
+          <Math latex={`${quantitySymbol(q)} = ${q.latex}`} display label={q.title} />
         </div>
       </Numbered>
       {q.held_fixed.length > 0 && (

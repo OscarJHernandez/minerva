@@ -47,8 +47,20 @@ from minerva_knowledge import KnowledgeBase
 from .test_equation_rows_contract import FIXTURE, card_from, number
 from .test_total_derivative_handles import Row
 
-NEW = ("statmech", "perturbation", "dimensional")
-CARD_TYPE = {"statmech": "statmech", "perturbation": "perturbation", "dimensional": "dimensional"}
+STATMECH_MORE = ("statmech_grand", "statmech_micro", "statmech_variance_N", "statmech_mean_E")
+NEW = ("statmech", "perturbation", "dimensional", *STATMECH_MORE)
+CARD_TYPE = {
+    "statmech": "statmech",
+    "perturbation": "perturbation",
+    "dimensional": "dimensional",
+    **dict.fromkeys(STATMECH_MORE, "statmech"),
+}
+# classical counting and two levels keep every row under the 500-character limit, so each quantity is numbered
+GAS = {
+    "kind": "occupation",
+    "statistics": "boltzmann",
+    "levels": [{"energy": "0"}, {"energy": "eps"}],
+}
 REQUESTS: dict[str, tuple[str, dict[str, Any]]] = {
     "statmech": (
         "statistical_mechanics",
@@ -57,6 +69,49 @@ REQUESTS: dict[str, tuple[str, dict[str, Any]]] = {
             "system": {"kind": "levels", "levels": [{"energy": "0"}, {"energy": "epsilon"}]},
             "assumptions": {"epsilon": ["positive"]},
             "quantities": ["Z", "U", "S", "Var_E", "F", "lnZ"],
+        },
+    ),
+    "statmech_grand": (
+        "statistical_mechanics",
+        {
+            "action": "derive",
+            "ensemble": "grand_canonical",
+            "system": GAS,
+            "assumptions": {"eps": ["positive"]},
+            "quantities": ["Xi", "lnXi", "Omega", "N", "Var_N", "U"],
+            # the user's own label is the name of a table symbol: it must stay unnumbered
+            "partials": [{"of": "U", "variable": "beta", "held_fixed": ["mu"], "label": "S"}],
+        },
+    ),
+    "statmech_micro": (
+        "statistical_mechanics",
+        {
+            "action": "partition",
+            "ensemble": "microcanonical",
+            "system": {"kind": "levels", "levels": [{"energy": "0"}, {"energy": "1"}]},
+            "copies_count": "10",
+            "total_energy": "4",
+        },
+    ),
+    "statmech_variance_N": (
+        "statistical_mechanics",
+        {
+            "action": "expectation",
+            "ensemble": "grand_canonical",
+            "system": GAS,
+            "assumptions": {"eps": ["positive"]},
+            "observable": "N",
+            "statistic": "variance",
+        },
+    ),
+    "statmech_mean_E": (
+        "statistical_mechanics",
+        {
+            "action": "expectation",
+            "system": {"kind": "levels", "levels": [{"energy": "0"}, {"energy": "epsilon"}]},
+            "assumptions": {"epsilon": ["positive"]},
+            "observable": "E",
+            "statistic": "mean",
         },
     ),
     "perturbation": (
@@ -91,6 +146,17 @@ EXPECTED_KEYS = {
         "quantity:F",
         "quantity:lnZ",
     ],
+    "statmech_grand": [
+        "quantity:Xi",
+        "quantity:lnXi",
+        "quantity:Omega",
+        "quantity:N",
+        "quantity:Var_N",
+        "quantity:U",
+    ],
+    "statmech_micro": ["quantity:Omega", "quantity:S"],
+    "statmech_variance_N": ["quantity:variance_N"],
+    "statmech_mean_E": ["quantity:mean_E"],
     "perturbation": ["omega0", "omega", "ratio", "solution"],
     "dimensional": ["group:0"],
 }
@@ -98,7 +164,11 @@ EXPECTED_KEYS = {
 
 @pytest.fixture(scope="module")
 def ctx() -> ToolContext:
-    return ToolContext(engine=Engine(budget_limits(max_concurrency=2)), kb=KnowledgeBase.load())
+    return ToolContext(
+        engine=Engine(budget_limits(max_concurrency=2)),
+        kb=KnowledgeBase.load(),
+        statmech_answers={"identical": False},  # the user's answer a microcanonical request needs
+    )
 
 
 @pytest.fixture(scope="module")
@@ -144,21 +214,34 @@ def test_a_live_engine_card_is_read_like_the_fixture(
 
 
 def test_the_three_types_are_list_readers_and_each_remaining_type_is_in_exactly_one_set() -> None:
-    for kind in NEW:
+    for kind in set(CARD_TYPE.values()):
         assert kind in LIST_READERS and kind not in LIST_NOT_YET_NUMBERED
     assert {"vector"} == LIST_NOT_YET_NUMBERED
 
 
 # --- statmech -----------------------------------------------------------------------------------------------
-def test_the_statmech_symbol_table_is_the_one_of_the_panel() -> None:
-    source = Path(FIXTURE.parents[3], "apps/web/src/components/statmech-panel.tsx").read_text()
-    block = re.search(r"const SYMBOL: Record<string, string> = \{(.*?)\};", source, re.S)
-    assert block is not None
-    found = dict(re.findall(r'(\w+): "((?:[^"\\]|\\.)*)"', block.group(1)))
-    assert {k: v.replace("\\\\", "\\") for k, v in found.items()} == STATMECH_SYMBOL
-    # the panel builds the row text and the key the same way
-    assert "`${SYMBOL[q.name] ?? q.name} = ${q.latex}`" in source
+def test_the_statmech_symbol_table_is_the_one_shared_with_the_panel() -> None:
+    root = Path(FIXTURE.parents[3])
+    shared = json.loads((root / "packages/ui/fixtures/statmech-symbols.json").read_text())[
+        "symbols"
+    ]
+    assert shared == STATMECH_SYMBOL
+    source = (root / "apps/web/src/components/statmech-panel.tsx").read_text()
+    # the panel reads the table from the shared file (it has no table of its own) ...
+    assert (
+        "statmech-symbols.json" in source
+        and "const SYMBOL: Record<string, string> = {" not in source
+    )
+    # ... and builds the row text and the key the same way as the server
+    assert "`${quantitySymbol(q)} = ${q.latex}`" in source
     assert "`quantity:${name}:${k}`" in source
+
+
+def test_every_symbol_is_a_closed_plain_latex_name_and_none_is_a_product_of_letters() -> None:
+    for name, latex in STATMECH_SYMBOL.items():
+        assert latex and "=" not in latex and latex.count("{") == latex.count("}"), name
+        # a bare multi-letter word would be read as a product of letters
+        assert not re.fullmatch(r"[A-Za-z]{2,}", latex), name
 
 
 def test_a_quantity_row_is_the_symbol_equals_the_formula_the_panel_draws(
@@ -202,7 +285,7 @@ def test_a_quantity_with_a_name_outside_the_panels_table_or_a_failed_check_gets_
     fixture: dict[str, Any],
 ) -> None:
     data = copy.deepcopy(fixture["statmech"]["data"])
-    for name in ("Xi", "Omega", "occupations", "mean_E", "dU/dbeta"):
+    for name in ("occupations", "cumulant_N", "lnZ_series", "xi", "dU/dbeta"):
         extra = {**data["result"]["quantities"][0], "name": name}
         data["result"]["quantities"].append(extra)
     assert [k for k, _ in statmech(data)] == EXPECTED_KEYS["statmech"]
@@ -506,3 +589,94 @@ def test_the_rows_come_in_the_same_order_whatever_the_hash_seed() -> None:
         outputs.add(done.stdout.strip().splitlines()[-1])
     assert len(outputs) == 1
     assert len(json.loads(next(iter(outputs)))) >= 1
+
+
+# --- the quantities outside the old table (#166) -------------------------------------------------------------
+@pytest.mark.parametrize("name", STATMECH_MORE)
+def test_a_new_quantity_row_is_the_symbol_equals_the_formula_the_panel_draws(
+    fixture: dict[str, Any], name: str
+) -> None:
+    data = fixture[name]["data"]
+    rows = dict(statmech(data))
+    base = [q for q in data["result"]["quantities"] if f"quantity:{q['name']}" in rows]
+    assert [k for k in rows] == EXPECTED_KEYS[name]
+    for q in base:
+        assert rows[f"quantity:{q['name']}"] == f"{STATMECH_SYMBOL[q['name']]} = {q['latex']}"
+        assert (
+            q["checks"] or q["name"] == "S"
+        )  # S of the microcanonical card is k_B ln(Omega), unchanged
+    card = card_from("statmech", data)
+    table = number(card)
+    assert list(card.numbers) == EXPECTED_KEYS[name]
+    assert all(table.items[n].part_of == "statmech" for n in card.numbers.values())
+
+
+def test_a_label_the_user_chose_is_never_a_table_symbol(fixture: dict[str, Any]) -> None:
+    """The fixture's partial derivative is labelled `S`, a table name: it is the user's name, not entropy."""
+    data = fixture["statmech_grand"]["data"]
+    partial = [q for q in data["result"]["quantities"] if q["variable"] is not None]
+    assert [q["name"] for q in partial] == ["S"]
+    keys = [k for k, _ in statmech(data)]
+    assert "quantity:S" not in keys
+    # the same quantity without a `variable` (a base quantity) would be numbered under its table symbol
+    twin = copy.deepcopy(data)
+    twin["result"]["quantities"][-1]["variable"] = None
+    assert "quantity:S" in [k for k, _ in statmech(twin)]
+
+
+@pytest.mark.parametrize("name", ["Xi", "Omega", "N", "Var_N"])
+def test_a_grand_quantity_with_a_failed_check_or_not_exact_gets_no_row(
+    fixture: dict[str, Any], name: str
+) -> None:
+    data = copy.deepcopy(fixture["statmech_grand"]["data"])
+    q = next(q for q in data["result"]["quantities"] if q["name"] == name)
+    q["checks"] = [
+        {"name": "enumeration", "subject": name, "passed": False, "points": 3, "agreed": 2}
+    ]
+    keys = [k for k, _ in statmech(data)]
+    assert f"quantity:{name}" not in keys and len(keys) == len(EXPECTED_KEYS["statmech_grand"]) - 1
+    other = copy.deepcopy(fixture["statmech_grand"]["data"])
+    next(q for q in other["result"]["quantities"] if q["name"] == name)["result_kind"] = "numeric"
+    assert f"quantity:{name}" not in [k for k, _ in statmech(other)]
+
+
+def test_occupations_and_cumulants_of_unstated_order_stay_unnumbered(
+    fixture: dict[str, Any],
+) -> None:
+    """The occupation list is one joined formula; `cumulant_N` does not say which order it is."""
+    data = copy.deepcopy(fixture["statmech_variance_N"]["data"])
+    base = data["result"]["quantities"][0]
+    data["result"]["quantities"] = [
+        {**base, "name": "occupations", "latex": r"n_{1} = a,\quad n_{2} = b"},
+        {**base, "name": "cumulant_N"},
+    ]
+    assert statmech(data) == []
+
+
+def test_new_rows_survive_a_rebuild_and_are_never_reused(fixture: dict[str, Any]) -> None:
+    card = card_from("statmech", fixture["statmech_grand"]["data"])
+    table = number(card)
+    assert "quantity:Xi" in card.numbers and "quantity:S" not in card.numbers
+    stored = Row("assistant", {"blocks": [{"kind": "card", "card": card.model_dump(mode="json")}]})
+    rebuilt = build_table([stored], counter=table.counter + 3)
+    assert {n: e.latex for n, e in rebuilt.items.items()} == {
+        n: e.latex for n, e in table.items.items()
+    }
+    assert all(e.part_of == "statmech" for e in rebuilt.items.values())
+    again = card_from("statmech", fixture["statmech_micro"]["data"], "c2")
+    number(again, rebuilt)
+    assert min(again.numbers.values()) == table.counter + 4
+
+
+def test_a_new_row_reused_by_number_is_exact_latex_and_a_quoted_component(
+    fixture: dict[str, Any],
+) -> None:
+    data = fixture["statmech_grand"]["data"]
+    card = card_from("statmech", data)
+    table = number(card)
+    n = card.numbers["quantity:Omega"]
+    store = ResultStore.from_prior({}, {}, table.items, unverified={})
+    resolved = store.resolve({"latex": f"@e{n}"})
+    assert resolved.error is None
+    assert resolved.arguments["latex"] == dict(statmech(data))["quantity:Omega"]
+    assert resolved.unverified == [f"equation ({n}){COMPONENT_SUFFIX}"]

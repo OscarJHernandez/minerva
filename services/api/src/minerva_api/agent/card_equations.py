@@ -496,17 +496,27 @@ def expansion(data: dict[str, Any]) -> Listed:
 # ----------------------------------------------------------------------------------------------------------
 # statmech, perturbation, dimensional (#133, part 2 and 3, PR 3 of 3)
 
-# How the statistical-mechanics panel writes a base quantity (`statmech-panel.tsx`, `SYMBOL`): a test reads the
-# table from the TSX source. A quantity whose name is not here (a grand-canonical `Xi`, an occupation, a mean or a
-# partial derivative with the user's own label) is drawn with its raw name, which the LaTeX reader would take
-# for a product of letters, so it is not numbered.
-STATMECH_SYMBOL = {
+# How the statistical-mechanics panel writes a base quantity: ONE closed table, `packages/ui/fixtures/statmech-symbols.json`,
+# read by the panel (`statmech-panel.tsx`, `quantitySymbol`) and pinned here by a test. A name not in it (an
+# occupation list, a cumulant of unstated order, a quantity of the approximation or numeric kinds, anything the user
+# labelled) is drawn as the engine named it and is not numbered; so is any quantity with `variable` set, which is a
+# user-labelled partial derivative whose label may equal a table name.
+STATMECH_SYMBOL: dict[str, str] = {
     "Z": "Z",
     "lnZ": r"\ln Z",
     "F": "F",
     "U": "U",
     "S": "S",
     "Var_E": r"\operatorname{Var}(E)",
+    "Xi": r"\Xi",
+    "lnXi": r"\ln \Xi",
+    "Omega": r"\Omega",
+    "N": r"\langle N \rangle",
+    "Var_N": r"\operatorname{Var}(N)",
+    "mean_E": r"\langle E \rangle",
+    "variance_E": r"\operatorname{Var}(E)",
+    "mean_N": r"\langle N \rangle",
+    "variance_N": r"\operatorname{Var}(N)",
 }
 
 
@@ -524,7 +534,8 @@ def statmech_key(names: list[str], i: int) -> str:
 def statmech(data: dict[str, Any]) -> Listed:
     """`quantity:<name>` of an accepted `statistical_mechanics` card: `SYMBOL = formula`, exact results only.
 
-    Not numbered: unevaluated representations, numerical values and asymptotic results (`result_kind`), a
+    Only a quantity of the closed symbol table with no `variable` (a user-labelled partial derivative never is
+    one). Not numbered: unevaluated representations, numerical values and asymptotic results (`result_kind`), a
     quantity one of whose independent checks disagreed, the `levels` step (the user's own input, quoted), the
     other steps, the table, the error tables, the methods and the notes. A result that is not `ok` (a
     convention still to be confirmed, a refusal) lists nothing.
@@ -536,7 +547,7 @@ def statmech(data: dict[str, Any]) -> Listed:
     names = [str(q.get("name")) for q in quantities]
     out: Listed = []
     for i, q in enumerate(quantities):
-        symbol = STATMECH_SYMBOL.get(names[i])
+        symbol = STATMECH_SYMBOL.get(names[i]) if q.get("variable") is None else None
         latex = _text(q.get("latex"))
         checks = [c for c in q.get("checks") or [] if isinstance(c, dict)]
         if (
