@@ -7958,6 +7958,7 @@
           "checks": [
             "Euler-Lagrange residual of R on motions of L: 6 of 6 points, 6 of 6 points, 6 of 6 points",
             "velocities rebuilt from -dR/dp and from the formula: 6 of 6 points",
+            "R equals L - sum p c_dot at the samples: 6 of 6 points",
             "symbolic leg (reported, never decides): the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced"
           ],
           "notes": [
@@ -8004,6 +8005,7 @@
           "checks": [
             "Euler-Lagrange residual of R on motions of L: 6 of 6 points",
             "velocities rebuilt from -dR/dp and from the formula: 6 of 6 points",
+            "R equals L - sum p c_dot at the samples: 6 of 6 points",
             "symbolic leg (reported, never decides): the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced"
           ],
           "notes": [

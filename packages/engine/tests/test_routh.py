@@ -74,6 +74,7 @@ def test_schwarzschild_reduced_by_time_is_the_textbook_routhian() -> None:
     )
     assert report.verification is not None and report.verification.passed
     assert report.checks.symbolic is True and report.verification.symbolic_zero
+    assert report.checks.definition is not None and report.checks.definition.passed
     assert all(v.passed and v.numeric_points_checked >= 4 for v in report.checks.euler_lagrange)
     assert all(v.passed for v in report.checks.reconstruction)
     assert "Proved" in report.message
@@ -236,6 +237,12 @@ WRONG_TWINS: dict[str, Callable[[sp.Expr, dict[str, sp.Symbol]], sp.Expr]] = {
     "momentum_term_off_by_1e-6": lambda R, n: R + sp.Rational(1, 10**6) * _p_term(R, n),
     # the whole Routhian scaled by 1 + 1e-6: same Euler-Lagrange equations, wrong reconstruction
     "whole_routhian_scaled_by_1e-6": lambda R, n: R * (1 + sp.Rational(1, 10**6)),
+    # the same equations of motion and the same -dR/dp: only the value of R against L - p t_dot sees these
+    "plus_a_constant": lambda R, n: R + sp.Rational(1, 1000),
+    "plus_a_function_of_the_time": lambda R, n: (
+        R + sp.sin(n["s"]) if "s" in n else R + sp.sin(sp.Symbol("s"))
+    ),
+    "plus_a_total_derivative": lambda R, n: R + n["r_dot"],
 }
 
 
@@ -246,7 +253,9 @@ def test_wrong_twins_are_not_verified(monkeypatch: pytest.MonkeyPatch, twin: str
     assert report.status == Status.NOT_VERIFIED, (twin, report.result_latex)
     assert report.reason == "reduction_not_confirmed"
     assert report.result_latex is None and not report.held_fixed
-    legs = [*report.checks.euler_lagrange, *report.checks.reconstruction]
+    definition = report.checks.definition
+    assert definition is not None
+    legs = [*report.checks.euler_lagrange, *report.checks.reconstruction, definition]
     assert legs and not all(v.passed for v in legs)  # caught by the numerical legs, not the reader
 
 
@@ -256,6 +265,7 @@ def test_the_twins_differ_from_the_correct_routhian(monkeypatch: pytest.MonkeyPa
     assert good.result_latex is not None
     correct = read(good.result_latex)
     names = {s.name: s for s in correct.free_symbols}
+    names.setdefault("s", sp.Symbol("s"))
     for twin, change in WRONG_TWINS.items():
         assert sp.simplify(change(correct, names) - correct) != 0, twin
 
@@ -276,3 +286,15 @@ def test_restrictions_follow_the_declared_assumptions() -> None:
     assert not any(x.replace(" ", "") == r"r\neq0" for x in declared.restrictions_latex)
     assert any(x.replace(" ", "") == r"r\neq0" for x in bare.restrictions_latex)
     assert sp.simplify(read(declared.result_latex) - read(bare.result_latex)) == 0
+
+
+def test_a_removed_velocity_left_in_r_fails_every_leg_and_does_not_crash() -> None:
+    """Called directly (the reader would already refuse the printed form): no NameError from the evaluation."""
+    from minerva_engine.lagrangian import derive
+
+    d = derive(SCHWARZSCHILD, SCHWARZSCHILD_COORDS, "s", SCHWARZSCHILD_ASSUME, LIMITS)
+    momenta = [routh_module.momentum_symbol(d.q[0])]
+    good = routh_module.solve_reduction(d, [0], momenta)
+    wrong = good.routhian + d.qd[0] / 10**9
+    el, rec, definition = routh_module.check_reduction(d, [0], momenta, wrong, good.velocities)
+    assert not any(v.passed for v in [*el, *rec, definition])

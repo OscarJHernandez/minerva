@@ -625,7 +625,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   is the user's own `substitute`. R is shown only if its printed form, read back, passes the numeric legs that share no
   code with the solve (`check_reduction`): momenta as central differences of the original L, accelerations from the
   confirmed derivation, a vanishing Euler-Lagrange residual of R by nested numerical differentiation, and `-dR/dp_c` and
-  the printed velocity formula returning the sampled velocity (wrong twins: a sign, a dropped `1/f`, a 1e-6 factor). The
+  the printed velocity formula returning the sampled velocity, and the value of R equal to `L - sum p_c c_dot` at the
+  sample (the other legs cannot see `R + C` or `R + dF/dt`); wrong twins: a sign, a dropped `1/f`, a 1e-6 factor, those
+  shifts. The
   symbolic leg (R's Euler-Lagrange expressions on L's accelerations) is reported apart and is the only "proved". The
   block determinant's zeros are `restrictions_latex`. R is the single result (number and `@rN`, with the restrictions);
   `held:<c>` and `velocity:<c>` are numbered list rows (names). `routh.reduce(derivation, cyclic)` is the reusable entry.

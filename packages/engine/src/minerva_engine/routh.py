@@ -21,8 +21,10 @@ What is established, in order (any failure is a refusal, never a partial result)
 4. the Routhian, *as printed and read back*, is checked at random points by a route that shares no code
    with the solve: the momenta are central differences of the original L, the accelerations come from
    the confirmed derivation, the Euler-Lagrange residual of R along that motion (nested numerical
-   differentiation of R) must vanish, and `-dR/dp_c` (a central difference) and the printed
-   reconstruction formula must return the sampled cyclic velocity.
+   differentiation of R) must vanish, `-dR/dp_c` (a central difference) and the printed
+   reconstruction formula must return the sampled cyclic velocity, and the value of R must equal
+   `L - sum p_c c_dot` at the sample (without it R + C, R + f(t) or R + dF(q, t)/dt would pass: they
+   have the same equations and the same `-dR/dp_c`). A removed coordinate or velocity left in R fails.
 
 The symbolic leg (the accelerations from R minus those of L with `c_dot` replaced) is reported separately
 and never decides; "proved" is said only when it is a symbolic zero. The held-fixed symbol is `p_{c}`, the
@@ -102,6 +104,8 @@ class RouthChecks(BaseModel):
 
     euler_lagrange: list[Verification] = Field(default_factory=list)  # one per remaining coordinate
     reconstruction: list[Verification] = Field(default_factory=list)  # one per cyclic coordinate
+    # R itself equals L - sum p_c c_dot at the sample (the two other legs cannot see R + C or R + dF/dt)
+    definition: Verification | None = None
     symbolic: bool | None = None  # accelerations agree symbolically; None: not run or undecided
     symbolic_note: str = ""
 
@@ -232,11 +236,13 @@ def check_reduction(
     velocities: dict[sp.Symbol, sp.Expr],
     *,
     seed: int = 20261124,
-) -> tuple[list[Verification], list[Verification]]:
+) -> tuple[list[Verification], list[Verification], Verification]:
     """The deciding numerical legs (see the module docstring). Shares no code with `solve_reduction`.
 
-    Returns one `Verification` per remaining coordinate (Euler-Lagrange residual of R on the motion of L)
-    and one per cyclic coordinate (`-dR/dp_c` and the printed velocity formula against the sample)."""
+    Returns one `Verification` per remaining coordinate (Euler-Lagrange residual of R on the motion of L),
+    one per cyclic coordinate (`-dR/dp_c` and the printed velocity formula against the sample), and one for
+    the value of R against its definition `L - sum p_c c_dot` at the sample: the first two cannot tell R
+    from R + C, R + f(t) or R + dF(q, t)/dt, which have the same equations and the same `-dR/dp`."""
     remaining = [i for i in range(d.n) if i not in cyclic]
     q_rem = [d.q[i] for i in remaining]
     qd_rem = [d.qd[i] for i in remaining]
@@ -244,10 +250,18 @@ def check_reduction(
     params = sorted(symbols_in - {*d.q, *d.qd, d.t, *momenta}, key=lambda s: s.name)
     el_note = "the Euler-Lagrange residual of R, by numerical differentiation along motions of L, vanishes"
     rec_note = "-dR/dp (central difference) and the velocity formula return the sampled velocity"
+    unreadable = "R could not be evaluated numerically"
     failed = (
-        [Verification(note="R could not be evaluated numerically") for _ in remaining],
-        [Verification(note="R could not be evaluated numerically") for _ in cyclic],
+        [Verification(note=unreadable) for _ in remaining],
+        [Verification(note=unreadable) for _ in cyclic],
+        Verification(note=unreadable),
     )
+    removed = {*(d.q[i] for i in cyclic), *(d.qd[i] for i in cyclic)}
+    if not removed.isdisjoint(routhian.free_symbols) or any(
+        not removed.isdisjoint(velocities[d.qd[i]].free_symbols) for i in cyclic
+    ):
+        # A removed coordinate or velocity left in R (or in a velocity formula) is not a reduction.
+        return failed
     try:
         f_l = sp.lambdify([*d.q, *d.qd, d.t, *params], d.lagrangian, "mpmath")
         f_r = sp.lambdify([*q_rem, *qd_rem, *momenta, d.t, *params], routhian, "mpmath")
@@ -266,9 +280,10 @@ def check_reduction(
     el_agreed = [0] * len(remaining)
     rec_checked = [0] * len(cyclic)
     rec_agreed = [0] * len(cyclic)
+    def_checked = def_agreed = 0
     with mpmath.workdps(EL_DPS):
         for _ in range(SAMPLE_ATTEMPTS):
-            if min([*el_checked, *rec_checked]) >= ROUTH_POINTS:
+            if min([*el_checked, *rec_checked, def_checked]) >= ROUTH_POINTS:
                 break
             a = [mpmath.mpf(_real_sample(s, rng)) for s in d.q]
             b = [mpmath.mpf(rng.uniform(-2.0, 2.0)) for _ in d.q]
@@ -288,6 +303,12 @@ def check_reduction(
                 el_checked[k] += 1
                 if abs(value) <= EL_REL_TOL * max(1.0, scale):
                     el_agreed[k] += 1
+            value_check = _definition(f_l, f_r, cyclic, a, b, a_rem, b_rem, p_values, t0, pmp)
+            if value_check is not None:
+                def_checked += 1
+                gap, size = value_check
+                if gap <= EL_REL_TOL * max(1.0, size):
+                    def_agreed += 1
             for k, i in enumerate(cyclic):
                 expected = b[i]
                 got = _reconstructed(f_r, formulas[k], k, a_rem, b_rem, p_values, t0, pmp)
@@ -313,7 +334,37 @@ def check_reduction(
     return (
         [verdict(c, g, el_note) for c, g in zip(el_checked, el_agreed, strict=True)],
         [verdict(c, g, rec_note) for c, g in zip(rec_checked, rec_agreed, strict=True)],
+        verdict(
+            def_checked,
+            def_agreed,
+            "R equals L - sum p_c c_dot at the sample (p_c: dL/dc_dot numerically)",
+        ),
     )
+
+
+def _definition(
+    f_l: Callable[..., Any],
+    f_r: Callable[..., Any],
+    cyclic: Sequence[int],
+    a: list[Any],
+    b: list[Any],
+    a_rem: list[Any],
+    b_rem: list[Any],
+    p_values: list[Any],
+    t0: Any,
+    pmp: list[Any],
+) -> tuple[float, float] | None:
+    """|R - (L - sum p_c c_dot)| at the sample and the size of the terms it is measured against."""
+    try:
+        lagrangian = complex(f_l(*a, *b, t0, *pmp))
+        held = [complex(p * b[i]) for p, i in zip(p_values, cyclic, strict=True)]
+        routhian = complex(f_r(*a_rem, *b_rem, *p_values, t0, *pmp))
+    except (ArithmeticError, ValueError, TypeError, NameError):
+        return None
+    gap = abs(routhian - (lagrangian - sum(held)))
+    if gap != gap or gap == float("inf"):
+        return None
+    return gap, max(abs(lagrangian), abs(routhian), *(abs(h) for h in held))
 
 
 def _reconstructed(
@@ -333,7 +384,7 @@ def _reconstructed(
         )
         from_formula = formula(*a, *b, *p_values, t0, *pmp)
         return [complex(from_r), complex(from_formula)]
-    except (ArithmeticError, ValueError, TypeError):
+    except (ArithmeticError, ValueError, TypeError, NameError):
         return None
 
 
@@ -360,7 +411,7 @@ def _sample_point(
             p_values.append(mpmath.diff(lambda x, i=i: f_l(*a, *_replace(b, i, x), t0, *pmp), b[i]))
         acc = [g(*a, *b, t0, *pmp) for g in accelerations]
         values = [complex(v) for v in [*p_values, *acc]]
-    except (ArithmeticError, ValueError, TypeError):
+    except (ArithmeticError, ValueError, TypeError, NameError):
         return None
     if any(v != v or abs(v) == float("inf") for v in values):
         return None
@@ -393,7 +444,7 @@ def _el_residual(
         force = complex(
             mpmath.diff(lambda x: f_r(*_replace(a, k, x), *b, *p_values, t0, *pmp), a[k])
         )
-    except (ArithmeticError, ValueError, TypeError):
+    except (ArithmeticError, ValueError, TypeError, NameError):
         return None
     value = rate - force
     if value != value or abs(value) == float("inf"):
@@ -420,9 +471,11 @@ def _symbolic_leg(
             sp.Integer(0),
         )
         residual = (total - sp.diff(routhian, d.q[i])).xreplace(on_motion)
+        if sp.count_ops(residual) > SYMBOLIC_MAX_OPS:
+            return None, "not run: the symbolic residual is too large"
         if sp.cancel(sp.together(residual)) == 0:
             continue
-        if sp.count_ops(residual) > SYMBOLIC_MAX_OPS or sp.simplify(residual) != 0:
+        if sp.simplify(residual) != 0:
             return None, "undecided: the symbolic residual was not reduced to 0"
     return True, (
         "the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the "
@@ -616,7 +669,9 @@ def reduce(
     ]
 
     started = time_module.perf_counter()
-    el_checks, rec_checks = check_reduction(d, index, momenta, shown, reduction.velocities)
+    el_checks, rec_checks, definition = check_reduction(
+        d, index, momenta, shown, reduction.velocities
+    )
     stages["verify"] = round((time_module.perf_counter() - started) * 1000)
     started = time_module.perf_counter()
     symbolic, symbolic_note = _symbolic_leg(d, index, shown, reduction.velocities)
@@ -624,12 +679,14 @@ def reduce(
     route = RouthChecks(
         euler_lagrange=el_checks,
         reconstruction=rec_checks,
+        definition=definition,
         symbolic=symbolic,
         symbolic_note=symbolic_note,
     )
-    passed = all(c.passed for c in [*el_checks, *rec_checks])
-    checked = sum(c.numeric_points_checked for c in [*el_checks, *rec_checks])
-    agreed = sum(c.numeric_points_agreed for c in [*el_checks, *rec_checks])
+    legs = [*el_checks, *rec_checks, definition]
+    passed = all(c.passed for c in legs)
+    checked = sum(c.numeric_points_checked for c in legs)
+    agreed = sum(c.numeric_points_agreed for c in legs)
     if not passed:
         return _fail(
             Status.NOT_VERIFIED,

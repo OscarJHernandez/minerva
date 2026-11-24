@@ -2720,6 +2720,12 @@ def run_routh_reduce(args: RouthReduceArgs, ctx: ToolContext) -> ToolOutput:
                 f"{v.numeric_points_agreed}/{v.numeric_points_checked}"
                 for v in checks.reconstruction
             )
+            + (
+                f", R = L - sum p c_dot at {checks.definition.numeric_points_agreed}/"
+                f"{checks.definition.numeric_points_checked}"
+                if checks.definition
+                else ""
+            )
             + f"; symbolic leg: {checks.symbolic_note or 'not run'}"
         )
         lines.append(f"convention: {report.convention}")

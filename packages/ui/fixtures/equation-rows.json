@@ -4100,8 +4100,8 @@
       "restrictions_complete": true,
       "verification": {
         "symbolic_zero": true,
-        "numeric_points_checked": 24,
-        "numeric_points_agreed": 24,
+        "numeric_points_checked": 30,
+        "numeric_points_agreed": 30,
         "numeric_points_skipped": 0,
         "numeric_points_probed": 0,
         "probe_kind": null,
@@ -4163,21 +4163,33 @@
             "note": "-dR/dp (central difference) and the velocity formula return the sampled velocity"
           }
         ],
+        "definition": {
+          "symbolic_zero": false,
+          "numeric_points_checked": 6,
+          "numeric_points_agreed": 6,
+          "numeric_points_skipped": 0,
+          "numeric_points_probed": 0,
+          "probe_kind": null,
+          "probes_cut_short": false,
+          "probe_outcome": "not_run",
+          "passed": true,
+          "note": "R equals L - sum p_c c_dot at the sample (p_c: dL/dc_dot numerically)"
+        },
         "symbolic": true,
         "symbolic_note": "the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced"
       },
       "convention": "R = L - Σ p_c ċ with each cyclic velocity ċ written in terms of its momentum p_c: the remaining coordinates obey the Euler-Lagrange equations of R, and ċ = -∂R/∂p_c. Goldstein §8.3 and Landau-Lifshitz §41 call the negative of this the Routhian.",
       "stages": {
-        "parse": 2,
-        "derive": 327,
-        "solve": 12,
-        "check": 29,
-        "conserved": 21,
-        "verify": 18,
-        "symbolic": 51
+        "parse": 59,
+        "derive": 1304,
+        "solve": 146,
+        "check": 33,
+        "conserved": 22,
+        "verify": 19,
+        "symbolic": 248
       },
       "message": "Reduced by t: the Routhian R governs r, theta, phi with the momentum of t held fixed. Proved: the accelerations from R equal those of L symbolically, and checked numerically.",
-      "duration_ms": 1416,
+      "duration_ms": 5669,
       "request": {
         "lagrangian": "\\frac{1}{2}\\left(-\\left(1-\\frac{2M}{r}\\right)\\dot{t}^2+\\frac{\\dot{r}^2}{1-\\frac{2M}{r}}+r^2\\dot{\\theta}^2+r^2\\sin^2(\\theta)\\dot{\\phi}^2\\right)",
         "coordinates": ["t", "r", "theta", "phi"],

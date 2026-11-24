@@ -133,6 +133,8 @@ export interface RouthReport {
   checks: {
     euler_lagrange: Verification[];
     reconstruction: Verification[];
+    /** Absent on cards stored before the leg existed. */
+    definition?: Verification | null;
     symbolic: boolean | null;
     symbolic_note: string;
   };

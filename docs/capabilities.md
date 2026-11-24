@@ -2953,6 +2953,7 @@ Name the cyclic coordinates of a Lagrangian to remove (the time of a static metr
 - **Valid where:** $- 2 M + r \neq 0$
 - **Check:** Euler-Lagrange residual of R on motions of L: 6 of 6 points, 6 of 6 points, 6 of 6 points
 - **Check:** velocities rebuilt from -dR/dp and from the formula: 6 of 6 points
+- **Check:** R equals L - sum p c_dot at the samples: 6 of 6 points
 - **Check:** symbolic leg (reported, never decides): the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced
 - R = L - Σ p_c ċ with each cyclic velocity ċ written in terms of its momentum p_c: the remaining coordinates obey the Euler-Lagrange equations of R, and ċ = -∂R/∂p_c. Goldstein §8.3 and Landau-Lifshitz §41 call the negative of this the Routhian.
 - Reduced by t: the Routhian R governs r, theta, phi with the momentum of t held fixed. Proved: the accelerations from R equal those of L symbolically, and checked numerically.
@@ -2969,6 +2970,7 @@ Name the cyclic coordinates of a Lagrangian to remove (the time of a static metr
 - **Velocity of the removed coordinate:** $\dot{\theta} = \frac{p_{\theta}}{m r^{2}}$
 - **Check:** Euler-Lagrange residual of R on motions of L: 6 of 6 points
 - **Check:** velocities rebuilt from -dR/dp and from the formula: 6 of 6 points
+- **Check:** R equals L - sum p c_dot at the samples: 6 of 6 points
 - **Check:** symbolic leg (reported, never decides): the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced
 - R = L - Σ p_c ċ with each cyclic velocity ċ written in terms of its momentum p_c: the remaining coordinates obey the Euler-Lagrange equations of R, and ċ = -∂R/∂p_c. Goldstein §8.3 and Landau-Lifshitz §41 call the negative of this the Routhian.
 - Reduced by theta: the Routhian R governs r with the momentum of theta held fixed. Proved: the accelerations from R equal those of L symbolically, and checked numerically.

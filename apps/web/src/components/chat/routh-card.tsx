@@ -44,7 +44,10 @@ export function RouthCard({ report }: { report: RouthReport }) {
               Routhian: a Lagrangian for {report.remaining.join(", ")}
             </h4>
             <Formula latex={`R = ${report.result_latex}`} display />
-            <Restrictions latex={report.restrictions_latex} complete={report.restrictions_complete} />
+            <Restrictions
+              latex={report.restrictions_latex}
+              complete={report.restrictions_complete}
+            />
           </div>
 
           <div className="mt-4">
@@ -73,7 +76,11 @@ export function RouthCard({ report }: { report: RouthReport }) {
               Checked numerically on motions of the original Lagrangian: the Euler–Lagrange residual
               of R vanished at {points(report.checks.euler_lagrange)} sample points, and −∂R/∂p and
               the velocity formula returned the sampled velocity at{" "}
-              {points(report.checks.reconstruction)}.
+              {points(report.checks.reconstruction)}
+              {report.checks.definition && (
+                <>; R equalled L − Σ p ċ at {points([report.checks.definition])}</>
+              )}
+              .
             </p>
             <p className="mt-1">
               Symbolic check{report.checks.symbolic ? " (proof)" : ""}:{" "}

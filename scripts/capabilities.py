@@ -620,6 +620,12 @@ def run_routh(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[s
                 for v in r.checks.reconstruction
             )
         )
+        if r.checks.definition:
+            v = r.checks.definition
+            checks.append(
+                f"R equals L - sum p c_dot at the samples: {v.numeric_points_agreed} of "
+                f"{v.numeric_points_checked} points"
+            )
         checks.append(f"symbolic leg (reported, never decides): {r.checks.symbolic_note}")
         notes.append(r.convention)
     if r.message:
