@@ -56,6 +56,10 @@ BOUNDARY_ROOTS_PER_ARGUMENT = 6
 EXTREMUM_NODES = 4  # exp(...) nodes inspected per formula
 EXTREMUM_DRAWS = 2  # draws of the other symbols per (node, symbol)
 EXTREMUM_OFFSETS = 2  # points beside the centre, after the centre itself
+EXTREMUM_POINTS = 24  # total points the family may yield, whatever the number of symbols
+EXTREMUM_SEED = (
+    170  # its own stream: the other families draw exactly what they drew before it existed
+)
 
 
 @dataclass(frozen=True)
@@ -482,7 +486,7 @@ def _scale_points(
 
 
 def _extremum_points(
-    a: sp.Expr, b: sp.Expr, symbols: list[sp.Symbol], rng: random.Random
+    a: sp.Expr, b: sp.Expr, symbols: list[sp.Symbol], _shared: random.Random
 ) -> Iterator[dict[sp.Symbol, sp.Expr]]:
     """Centres of `exp(g)` with `g` a polynomial of degree 2 in one symbol (the others drawn).
 
@@ -490,6 +494,8 @@ def _extremum_points(
     is the exact root of `dg/dx`; the point is only a candidate: it can add a confirmed disagreement, never
     count as agreement. Other shapes (degree 1 or 3+, nested, non-polynomial) are skipped.
     """
+    rng = random.Random(EXTREMUM_SEED)  # noqa: S311 - deterministic probing; never the shared stream
+    yielded = 0
     nodes: list[sp.Expr] = []
     for node in itertools.chain(sp.preorder_traversal(a), sp.preorder_traversal(b)):
         if isinstance(node, sp.exp) and node.args[0].free_symbols and node.args[0] not in nodes:
@@ -505,7 +511,12 @@ def _extremum_points(
                     continue
                 try:
                     poly = sp.Poly(reduced, symbol)
-                except sp.PolynomialError:
+                except (
+                    sp.PolynomialError,
+                    sp.polys.polyerrors.BasePolynomialError,
+                    ValueError,
+                    TypeError,
+                ):
                     continue
                 if poly.degree() != 2:
                     continue
@@ -513,13 +524,18 @@ def _extremum_points(
                 centre = sp.sympify(-c1 / (2 * c2))
                 if not _admits(symbol, centre):
                     continue
-                yield {**base, symbol: centre}
                 try:
-                    around = _around(symbol, float(sp.re(centre)))
-                except TypeError:
+                    centre_real = float(sp.re(centre))
+                    if not math.isfinite(centre_real):
+                        continue
+                    around = _around(symbol, centre_real)
+                except (TypeError, ValueError, OverflowError):
                     continue
-                for candidate in around[:EXTREMUM_OFFSETS]:
-                    yield {**base, symbol: candidate}
+                for point in [centre, *around[:EXTREMUM_OFFSETS]]:
+                    if yielded >= EXTREMUM_POINTS:
+                        return
+                    yielded += 1
+                    yield {**base, symbol: point}
 
 
 def _streams(

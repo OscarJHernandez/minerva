@@ -52,4 +52,4 @@ Counterexamples found by probe family: boundary 8, branch 2, extremum 5, scale 3
 
 ## Measurements (not gated)
 
-Adversarial corpus: 1.35 s in total, median 12.2 ms and maximum 108.7 ms per case. Report wall time 2.14 s; peak memory 193.0 MB.
+Adversarial corpus: 1.33 s in total, median 11.9 ms and maximum 108.4 ms per case. Report wall time 2.13 s; peak memory 188.9 MB.
