@@ -407,15 +407,37 @@ def statistics(data: dict[str, Any]) -> Listed:
     return out
 
 
+def canonical_modes(items: object) -> list[dict[str, Any]]:
+    """The normal modes of an expansion in one canonical order, whatever order the solver found them in.
+
+    `sympy.roots` returns the roots of the frequency polynomial in a dictionary order that depends on the
+    version and the input, so a position in that list is not a name. Sorted by the text of omega^2, then of
+    the eigenvector and of omega (plain code-point comparison, which the panel repeats exactly in
+    `expansion-modes.ts`); the sort is stable, so equal modes keep their order.
+    """
+    found = [m for m in items if isinstance(m, dict)] if isinstance(items, list) else []
+    return sorted(
+        found,
+        key=lambda m: (
+            str(m.get("omega_squared_latex") or ""),
+            str(m.get("eigenvector_latex") or ""),
+            str(m.get("omega_latex") or ""),
+        ),
+    )
+
+
 def expansion(data: dict[str, Any]) -> Listed:
     """The verified rows of an accepted `expand_motion` card.
 
     `equil:<name>` (`name = value`, once the equilibrium was shown to be one), `eq:<coordinate>` (an expansion
     that passed its own series check; the equation carries `+ O(...)`, a truncation), `char` (the characteristic
-    polynomial of the verified linear part) and `mode:<i>:omega2` / `mode:<i>:omega` (a root that was checked by
-    substitution; `omega` only when omega^2 is provably positive). Not numbered: the individual terms, the
-    matrices `A` and `B` (drawn inside one combined formula), the eigenvectors (the order of the modes is the
-    solver's, not a canonical one, so a vector row is deferred), unverified equations or modes, and notes.
+    polynomial of the verified linear part), `mode:<i>:omega2` / `mode:<i>:omega` (a root that was checked by
+    substitution; `omega` only when omega^2 is provably positive) and `mode:<i>:vector` (`v = ...`, only when the
+    engine's own residual check `(A + omega^2 I) v = 0` passed, which is the only case in which it sends one). `i`
+    is the position in the canonical order of the modes (`canonical_modes`), because the solver's order
+    (`sympy.roots`) is not canonical. A vector is determined only up to a scale: the number names the formula as
+    drawn, not a normalisation. Not numbered: the individual terms, the matrices `A` and `B` (drawn inside one
+    combined formula), unverified equations or modes, and notes.
     """
     report = data.get("report") or {}
     if report.get("status") != "ok":
@@ -438,13 +460,15 @@ def expansion(data: dict[str, Any]) -> Listed:
         equations
     ):
         out.append(("char", char))
-    for i, m in enumerate(report.get("modes") or []):
-        if not isinstance(m, dict) or m.get("verified") is not True:
+    for i, m in enumerate(canonical_modes(report.get("modes"))):
+        if m.get("verified") is not True:
             continue
         if (omega2 := _text(m.get("omega_squared_latex"))) is not None:
             out.append((f"mode:{i}:omega2", omega2))
         if (omega := _text(m.get("omega_latex"))) is not None:
             out.append((f"mode:{i}:omega", omega))
+        if (vector := _text(m.get("eigenvector_latex"))) is not None:
+            out.append((f"mode:{i}:vector", f"v = {vector}"))
     return out
 
 

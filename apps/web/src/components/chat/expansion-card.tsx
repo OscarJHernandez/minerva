@@ -1,5 +1,6 @@
 import { CopyMath as Math } from "@/components/copyable-math";
 import type { ExpansionReport } from "@/lib/chat-types";
+import { canonicalModes } from "@/lib/expansion-modes";
 import { StatusPill } from "../result-panel";
 import { Numbered } from "./equation-number";
 
@@ -91,7 +92,7 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
         <div className="mt-4">
           <h4 className="text-sm font-medium">Normal modes</h4>
           <ul className="mt-2 space-y-2">
-            {report.modes.map((m, i) => (
+            {canonicalModes(report.modes).map((m, i) => (
               <li key={i} className="rounded border border-rule p-3">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <Numbered k={`mode:${i}:omega2`}>
@@ -102,7 +103,11 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
                       <Math latex={m.omega_latex} />
                     </Numbered>
                   )}
-                  {m.eigenvector_latex && <Math latex={`v = ${m.eigenvector_latex}`} />}
+                  {m.eigenvector_latex && (
+                    <Numbered k={`mode:${i}:vector`}>
+                      <Math latex={`v = ${m.eigenvector_latex}`} />
+                    </Numbered>
+                  )}
                 </div>
                 <span
                   className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${SIGN[m.sign].tone}`}

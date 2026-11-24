@@ -122,4 +122,24 @@ describe("ExpansionCard", () => {
       unmount();
     }
   });
+
+  it("lists the modes in the canonical order whatever order they arrive in", () => {
+    const mode = (omega2: string, v: string) => ({
+      ...base.modes[0]!,
+      omega_squared_latex: omega2,
+      omega_latex: null,
+      eigenvector_latex: v,
+    });
+    const { container } = render(
+      <ExpansionCard
+        report={{ ...base, modes: [mode("\\omega^2 = 4", "b"), mode("\\omega^2 = 2", "a")] }}
+      />,
+    );
+    const tex = [...container.querySelectorAll('annotation[encoding="application/x-tex"]')].map(
+      (e) => e.textContent,
+    );
+    const at = (t: string) => tex.findIndex((x) => x?.includes(t));
+    expect(at("\\omega^2 = 2")).toBeLessThan(at("\\omega^2 = 4"));
+    expect(at("v = a")).toBeLessThan(at("v = b"));
+  });
 });

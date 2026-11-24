@@ -30,6 +30,7 @@ from minerva_api.agent.card_equations import (
     LIST_READERS,
     NESTED_RESULT_CARDS,
     SINGLE_RESULT,
+    canonical_modes,
     expansion,
     listed_equations,
     name_latex,
@@ -55,7 +56,7 @@ from .test_equation_rows_contract import FIXTURE, card_from, number
 from .test_total_derivative_handles import Row, card_of, play
 
 NEW = ("variation", "variation_second", "statistics_moments", "statistics_estimate",
-       "statistics_expressions", "expansion")  # fmt: skip
+       "statistics_expressions", "expansion", "expansion_two_modes")  # fmt: skip
 CARD_TYPE = {
     "variation": "variation",
     "variation_second": "variation",
@@ -63,6 +64,7 @@ CARD_TYPE = {
     "statistics_estimate": "statistics",
     "statistics_expressions": "statistics",
     "expansion": "expansion",
+    "expansion_two_modes": "expansion",
 }
 NORMAL = {
     "family": "normal",
@@ -102,6 +104,17 @@ REQUESTS: dict[str, tuple[str, dict[str, Any]]] = {
             "equilibrium": {},
         },
     ),
+    "expansion_two_modes": (
+        "expand_motion",
+        {
+            "lagrangian": r"\frac12 (\dot{x}^2 + \dot{y}^2) - \frac12 (3 x^2 + 3 y^2 - 2 x y)",
+            "coordinates": ["x", "y"],
+            "time": "t",
+            "assumptions": {},
+            "order": 2,
+            "equilibrium": {},
+        },
+    ),
 }
 EXPECTED_KEYS = {
     "variation": ["el:x", "first", "stationarity:0", "natural:lower:x:0", "natural:upper:x:0"],
@@ -109,7 +122,20 @@ EXPECTED_KEYS = {
     "statistics_moments": ["moment:mean", "moment:variance", "moment:second"],
     "statistics_estimate": ["estimate:mu"],
     "statistics_expressions": ["expr:loglik", "expr:score:mu"],
-    "expansion": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega"],
+    "expansion": ["equil:x", "eq:x", "char", "mode:0:omega2", "mode:0:omega", "mode:0:vector"],
+    "expansion_two_modes": [
+        "equil:x",
+        "equil:y",
+        "eq:x",
+        "eq:y",
+        "char",
+        "mode:0:omega2",
+        "mode:0:omega",
+        "mode:0:vector",
+        "mode:1:omega2",
+        "mode:1:omega",
+        "mode:1:vector",
+    ],
 }
 COMMENT = (
     "Real engine output of the cards below and the row keys the server numbers, with the LaTeX of each numbered "
@@ -360,7 +386,10 @@ def test_an_expansion_numbers_its_verified_rows_and_not_its_terms_or_matrices(
     texts = {latex for _, latex in expansion(data)}
     assert not texts & {t["latex"] for e in report["equations"] for t in e["terms"]}
     assert report["stiffness_latex"] not in texts
-    assert not any(k.endswith("vector") for k in card.numbers)  # eigenvectors: deferred
+    assert card.numbers.keys() >= {"mode:0:vector"}
+    assert (
+        dict(expansion(data))["mode:0:vector"] == "v = " + report["modes"][0]["eigenvector_latex"]
+    )
     assert expansion(data)[1][1].endswith(
         r"O\left(\delta^{4}\right)"
     )  # a truncation, still an equality
@@ -376,7 +405,10 @@ def test_an_unverified_expansion_or_mode_and_a_failed_equilibrium_are_not_number
     assert "eq:x" not in keys and "char" not in keys and "mode:0:omega2" in keys
     mode = copy.deepcopy(base)
     mode["report"]["modes"][0]["verified"] = False
-    assert [k for k, _ in expansion(mode)] == ["equil:x", "eq:x", "char"]
+    assert [k for k, _ in expansion(mode)] == ["equil:x", "eq:x", "char"]  # no mode row at all
+    no_vector = copy.deepcopy(base)
+    no_vector["report"]["modes"][0]["eigenvector_latex"] = None  # the residual check did not pass
+    assert "mode:0:vector" not in [k for k, _ in expansion(no_vector)]
     equilibrium = copy.deepcopy(base)
     equilibrium["report"]["equilibrium_verification"]["passed"] = False
     assert "equil:x" not in [k for k, _ in expansion(equilibrium)]
@@ -387,6 +419,55 @@ def test_an_unverified_expansion_or_mode_and_a_failed_equilibrium_are_not_number
         data = copy.deepcopy(base)
         data["report"]["status"] = status
         assert expansion(data) == [], status
+
+
+def test_the_modes_are_numbered_in_a_canonical_order_whatever_the_solver_found(
+    fixture: dict[str, Any],
+) -> None:
+    entry = fixture["expansion_two_modes"]
+    data = entry["data"]
+    assert dict(expansion(data)) == entry["rows"]
+    assert [k for k, _ in expansion(data)] == entry["keys"]
+    modes = data["report"]["modes"]
+    # the solver's own order is the reverse of the canonical one here: the fixture would not catch an unsorted reader
+    assert [m["omega_squared_latex"] for m in modes] == [r"\omega^2 = 4", r"\omega^2 = 2"]
+    rows = dict(expansion(data))
+    assert rows["mode:0:omega2"] == r"\omega^2 = 2" and rows["mode:1:omega2"] == r"\omega^2 = 4"
+    for i, m in enumerate(canonical_modes(modes)):
+        assert rows[f"mode:{i}:vector"] == "v = " + m["eigenvector_latex"]
+    for _ in range(2):
+        shuffled = copy.deepcopy(data)
+        shuffled["report"]["modes"].reverse()
+        assert expansion(shuffled) == expansion(data)
+
+
+def test_an_unverified_mode_loses_its_own_rows_and_the_other_keeps_its_canonical_position(
+    fixture: dict[str, Any],
+) -> None:
+    base = fixture["expansion_two_modes"]["data"]
+    rows = dict(expansion(base))
+    assert rows["mode:0:vector"] != rows["mode:1:vector"]
+    data = copy.deepcopy(base)
+    data["report"]["modes"][0]["verified"] = (
+        False  # the solver's first mode is omega^2 = 4: canonical 1
+    )
+    modes = [k for k, _ in expansion(data) if k.startswith("mode:")]
+    assert modes == ["mode:0:omega2", "mode:0:omega", "mode:0:vector"]
+    assert dict(expansion(data))["mode:0:vector"] == rows["mode:0:vector"]
+    data["report"]["modes"][0]["verified"] = True
+    data["report"]["modes"][0]["eigenvector_latex"] = (
+        None  # residual check did not pass: no vector row
+    )
+    keys = [k for k, _ in expansion(data)]
+    assert "mode:1:vector" not in keys and "mode:0:vector" in keys
+
+
+def test_the_canonical_mode_sort_is_by_text_and_stable() -> None:
+    a = {"omega_squared_latex": "b", "eigenvector_latex": "2"}
+    b = {"omega_squared_latex": "a", "eigenvector_latex": "9"}
+    twin = {"omega_squared_latex": "a", "eigenvector_latex": "1"}
+    assert canonical_modes([a, b, twin]) == [twin, b, a]
+    assert canonical_modes("nothing") == [] and canonical_modes([1, a]) == [a]
 
 
 def test_the_modes_of_a_two_coordinate_system_come_in_the_same_order_whatever_the_hash_seed() -> (
