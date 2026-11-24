@@ -33,6 +33,8 @@ export const STOP_EXPLANATION: Record<string, string> = {
   model_error: "the model host failed (a failed call is retried once before this)",
   malformed_output: "the model's tool calls could not be used, even after one correction",
   internal_error: "an internal error; the server log has the trace id and counters only",
+  stopped:
+    "the client left (Stop, a closed tab) before the reply was finished; only the tool steps that had finished are kept, and the prose that arrived was not checked",
 };
 
 /** Why a tool result was or was not accepted as an engine result. */

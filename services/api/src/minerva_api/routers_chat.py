@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from .agent.equations import (
     EquationTable,
+    number_blocks,
     number_stored,
     strip_equation_tags,
 )
@@ -40,7 +41,7 @@ from .agent.identity import (
     stamped,
 )
 from .agent.llm import LLMClient, LLMError
-from .agent.loop import AgentLimits, TurnInfo, prompt_sha, run_agent
+from .agent.loop import AgentLimits, TurnInfo, TurnSnapshot, prompt_sha, run_agent
 from .agent.openrouter import check_connection
 from .agent.params import ParamError, ParamOverrides, describe, resolve
 from .agent.segments import normalize, split_segments
@@ -60,6 +61,7 @@ from .agent.tools import (
 from .agent.tracing import (
     AgentCompleted,
     Sink,
+    StopReason,
     ToolCompleted,
     Tracer,
     activate,
@@ -963,12 +965,20 @@ def _store_stopped(
     order: list[str | Card],
     model: ModelInfo | None = None,
     equations: EquationTable | None = None,
+    snapshot: TurnSnapshot | None = None,
+    trace_id: str = "",
 ) -> None:
     """Keep what had arrived when the client went away, so the conversation shows it as stopped.
 
     Without this the user's message would sit with no reply, or a reply they saw would be gone after a
     reload. Nothing arrived: nothing is stored. The partial prose is not checked (the turn ended), so its
     formulas carry no mark but also no claim of verification.
+
+    The tool steps that had FINISHED (`TurnSnapshot`, A-006) are stored with it: their trace steps, joined to
+    the cards that arrived by id, are all `turn_context` needs to give a later turn `@rN`, restrictions,
+    unverified inputs and evidence. A step whose card never arrived is left out, and so is anything still
+    running. The cards are numbered like any card (a name, never a verification) and the conversation's
+    counter moves on, so a number is not given out twice after a retry or an edit.
     """
     if not order:
         return
@@ -982,12 +992,24 @@ def _store_stopped(
         else Block(kind="text", segments=split_segments(item, set(), {}))
         for item in order
     ]
+    snap = snapshot or TurnSnapshot()
+    arrived_ids = {i.id for i in order if isinstance(i, Card)}
+    trace = [t for t in snap.trace if t.result_id is None or t.id in arrived_ids]
+    result_ids = {k: v for k, v in snap.result_ids.items() if k in arrived_ids}
+    if equations is not None:  # the cards only: the prose stays as it arrived, with no numbers
+        number_blocks([b for b in blocks if b.kind == "card"], equations, result_ids)
+    debug = snap.debug.model_copy() if snap.debug is not None else TurnDebug(trace_id=trace_id)
+    debug.trace_id = trace_id or debug.trace_id
+    debug.stop_reason = StopReason.STOPPED.value
+    debug.events = snap.events
+    debug.events_dropped = snap.events_dropped
     message = AssistantMessage(
         text="\n\n".join(i for i in order if isinstance(i, str)),
         blocks=blocks,
-        trace=[],
+        trace=trace,
         truncated=True,
-        stop_reason="stopped",
+        debug=debug,
+        stop_reason=StopReason.STOPPED.value,
         model_info=model,
     )
     with session_factory() as session:
@@ -999,6 +1021,8 @@ def _store_stopped(
         conv = session.get(Conversation, conv_id)
         if conv is not None:
             conv.updated_at = utcnow()
+            if equations is not None:
+                conv.equation_counter = max(conv.equation_counter, equations.counter)
         session.commit()
 
 
@@ -1238,7 +1262,6 @@ async def send_message(
                 elif event["event"] == "card":
                     arrived.append(Card.model_validate(event["data"]))
                 if event["event"] == "message":
-                    replied = True
                     stop_reason = str(event["data"].get("stop_reason") or "completed")
                     outcome = "error" if stop_reason in ("model_error", "internal_error") else "ok"
                     trace = event["data"]["trace"]
@@ -1300,13 +1323,24 @@ async def send_message(
                             conv.updated_at = utcnow()
                             conv.equation_counter = max(conv.equation_counter, equations.counter)
                         session.commit()
+                    # Only now is the reply stored: a client that leaves while it is being stamped or written
+                    # is a stopped reply (`_store_stopped`), never a turn with no stored answer.
+                    replied = True
                 yield _sse(event["event"], {**event["data"], "trace_id": trace_id})
             yield _sse("done", {"trace_id": trace_id})
         except (asyncio.CancelledError, GeneratorExit):
             # The browser went away (Stop, a closed tab, a dropped connection) before the reply was stored.
-            stop_reason = "stopped"
+            stop_reason = StopReason.STOPPED.value
             if not replied:
-                _store_stopped(session_factory, conv_id, arrived, reply_model, equations)
+                _store_stopped(
+                    session_factory,
+                    conv_id,
+                    arrived,
+                    reply_model,
+                    equations,
+                    info.snapshot,
+                    trace_id,
+                )
             raise
         except Exception as exc:
             site = error_fields(exc)  # the class and where our code raised it, never the message

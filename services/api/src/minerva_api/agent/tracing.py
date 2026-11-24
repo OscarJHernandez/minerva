@@ -65,6 +65,9 @@ class StopReason(StrEnum):
     MODEL_ERROR = "model_error"  # the model host failed
     MALFORMED_OUTPUT = "malformed_output"  # the model kept producing unusable tool calls
     INTERNAL_ERROR = "internal_error"
+    # The client left (Stop, a closed tab, a dropped connection) before the reply was finished. Only ever
+    # stored by the chat route (`_store_stopped`): the loop itself is cancelled and never ends a turn with it.
+    STOPPED = "stopped"
 
 
 class RouteReason(StrEnum):
