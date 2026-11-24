@@ -34,6 +34,7 @@ from minerva_engine import (
     VectorInput,
 )
 from minerva_engine.differentiate import DiffVariable
+from minerva_engine.discovery import Pins
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
 from minerva_engine.ode import OdeAnalyzeInput, OdeNumericInput, OdeSolveInput
@@ -765,11 +766,26 @@ def run_discovery(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> di
         spec.get("momenta"),
         spec.get("angles", []),
         spec.get("budget", "standard"),
+        # A pinned family keeps a long search off the clock, so the page never depends on runner speed.
+        pins=Pins(**spec["pins"]) if "pins" in spec else None,
+        time=spec.get("time", "t"),
+        assumptions=spec.get("assumptions"),
     )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     notes: list[str] = []
     if r.status.value == "ok":
+        if r.reduction is not None:
+            outputs.append(
+                {
+                    "label": "Searched after reducing " + ", ".join(r.reduction.cyclic),
+                    "latex": f"R = {r.reduction.routhian_latex}",
+                }
+            )
+            notes.append(
+                "The families searched are families of the reduced system; every constant was mapped back "
+                "and verified on the whole system."
+            )
         for c in r.constants:
             outputs.append(
                 {

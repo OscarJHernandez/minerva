@@ -726,7 +726,16 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   and cos/sin-only coordinates are treated as angles because conservation does not depend on periodicity. Parameters
   are generic; the report says so and lists the factors assumed nonzero. At most 4 coordinates (issue #152; the budgets,
   unknown caps and sandbox seconds are unchanged, so a four-coordinate family is searched only if it fits the cap, and a
-  system whose smallest family does not is `resource_limit` naming that family and its size). Functional independence
+  system whose smallest family does not is `resource_limit` naming that family and its size). Above three coordinates a
+  Lagrangian with a cyclic coordinate is searched after a Routh reduction (`discovery._discover_reduced`, issue #152 with
+  #153): `routh.reduce` reduces every cyclic coordinate with its own verification (failed: `not_verified`, nothing is
+  searched; not applicable: the whole system is searched as before, with a note); the ladder runs on the Routhian with
+  the held momenta `p_c` as parameters, so **the families are families of the reduced system** and the report says so;
+  each constant found is mapped back (`p_c` -> `dL/dċ`, `_held_values`) and shown only if `Flow.verify` passes on the
+  whole system (a failure is dropped and counted, `reduction.rejected_on_full_system`); the known constants and the
+  functional independence are the whole system's, never estimated from the reduced one; the report carries the
+  reduction (`reduction`: Routhian, held momenta, restrictions). A wrong-sign back-substitution must fail (test). Three
+  or fewer coordinates, Hamiltonians and four coordinates with no cyclic one are unchanged. Functional independence
   (`independence.py`) is the exact Jacobian rank at rational points, a **proved lower bound**; it is called exact
   only when an upper bound from exact polynomial relations (implicit function theorem) meets it, and sampling never
   proves independence or dependence. Do not add physics-specific shortcuts or hardcoded invariants: the benchmarks

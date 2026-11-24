@@ -353,9 +353,9 @@
 # plain history written for this case (no tool calls). The last one asks for the conserved quantities of Equation (1) with
 # all four coordinates: the answer is `analyze_lagrangian` (cyclic momenta and the energy, each verified), and the reply must
 # say which symmetries were tested, never that these are all of them. `find_conserved_quantities` takes four coordinates
-# since issue 152, but it is still not a way to the answer here: the smallest family of this Lagrangian has 405 unknown
-# coefficients, so at the default budget it answers `resource_limit` and searches nothing; the time symbol is `s` because
-# `t` is a coordinate.
+# since issue 152 and, t and phi being cyclic, searches the Routh-reduced system of (r, theta) at the default budget
+# (the whole system's smallest family has 405 unknown coefficients); it reports the same three constants, so this case
+# still expects `analyze_lagrangian` and was not changed. The time symbol is `s` because `t` is a coordinate.
 - id: schwarzschild-chat-conserved-quantities-are-scoped
   category: physics
   prompt: 'Which quantities are conserved along the geodesics of Equation (1)? The curve parameter is s and the coordinates are t, r, theta, phi.'

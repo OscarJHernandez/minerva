@@ -2924,6 +2924,24 @@ def run_discovery(args: DiscoveryArgs, ctx: ToolContext) -> ToolOutput:
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = [report.function_latex] if report.function_latex else []
+    if report.reduction is not None:
+        # Issue #152: the search ran on the Routh-reduced system (the reduction verified by its own check).
+        red = report.reduction
+        lines.append(
+            f"reduced first by the cyclic coordinates {', '.join(red.cyclic)}: the families below are "
+            f"families of the reduced system of {', '.join(red.remaining)}, with the held momenta as "
+            f"parameters; Routhian $R = {red.routhian_latex}$"
+        )
+        known.append(red.routhian_latex)
+        for held in red.held_fixed:
+            lines.append(f"held fixed: ${held.latex}$")
+            known.append(held.latex)
+        if red.restrictions_latex:
+            lines.append(
+                "the reduction holds only where "
+                + ", ".join(f"${r}$" for r in red.restrictions_latex)
+            )
+            known.extend(red.restrictions_latex)
     if report.angles:
         lines.append("treated as angles (cos and sin): " + ", ".join(report.angles))
     searched = [t for t in report.tiers if t.outcome == "searched"]

@@ -293,9 +293,21 @@ export interface DiscoveryReport {
   parameter_conditions: string[];
   limitations: string[];
   notes: string[];
+  /** Issue #152: the Routh reduction the search ran on (absent on cards stored before it). */
+  reduction?: DiscoveryReduction | null;
   message: string;
   peak_memory_mb: number;
   duration_ms: number;
+}
+
+export interface DiscoveryReduction {
+  cyclic: string[];
+  remaining: string[];
+  routhian_latex: string;
+  held_fixed: { coordinate: string; symbol_latex: string; latex: string; reason: string }[];
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  rejected_on_full_system: number;
 }
 
 /** What the Lagrangian card sends to the numerical-solution endpoint (the engine's request model). */

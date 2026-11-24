@@ -27,6 +27,7 @@ import sympy as sp
 from .errors import MinervaMathError, ParseError
 from .lagrangian import (
     ConservedQuantity,
+    Derivation,
     DerivationError,
     check_equations,
     derive,
@@ -64,6 +65,9 @@ class Flow:
     known: list[tuple[ConservedQuantity, sp.Expr]] = field(default_factory=list)
     tested: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    derivation: Derivation | None = (
+        None  # a Lagrangian's; the discovery search reduces it (issue #152)
+    )
     _verify: Callable[[sp.Expr], tuple[bool, Verification | None]] | None = None
 
     @property
@@ -126,6 +130,13 @@ def lagrangian_flow(
     if len(coordinates) > MAX_COORDINATES:
         raise coordinate_limit_error(len(coordinates), coordinates)
     d = derive(latex, coordinates, time, assumptions, limits, format)
+    return derivation_flow(d)
+
+
+def derivation_flow(d: Derivation, function_latex: str | None = None) -> Flow:
+    """The flow of an already derived Lagrangian: its accelerations solved for and its equations confirmed
+    by numerical differentiation of L, with the known constants each verified on it. The discovery search
+    also builds the flow of a Routhian this way (issue #152); `function_latex` is then its printed form."""
     if not d.solution:
         raise DerivationError(
             Status.UNSUPPORTED,
@@ -141,8 +152,8 @@ def lagrangian_flow(
     search = find_conserved(d)
     return Flow(
         system="lagrangian",
-        function_latex=d.show(d.lagrangian),
-        coordinates=coordinates,
+        function_latex=function_latex if function_latex is not None else d.show(d.lagrangian),
+        coordinates=list(d.coordinates),
         q=d.q,
         v=d.qd,
         t=d.t,
@@ -153,6 +164,7 @@ def lagrangian_flow(
         names=d.names,
         known=[(item, expr) for item, expr in search.items if item.verified],
         tested=search.tested,
+        derivation=d,
         _verify=lambda quantity: verify_constant(d, quantity),
     )
 

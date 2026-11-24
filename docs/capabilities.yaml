@@ -2628,6 +2628,10 @@ capabilities:
         time dependence are reported as unsupported; tan, cot, sec and csc of an angle are read as ratios of its cos
         and sin. At most 4 coordinates; a four-coordinate family is searched only if it fits the unknown cap,
         otherwise the smallest family and its size are reported as a resource limit.
+      - With four coordinates and a cyclic one, the cyclic coordinates are first removed by a verified Routh
+        reduction and the reduced system is searched. The families are then those of the reduced system, with the
+        held momenta as parameters, and each constant is verified again on the whole system. A reduction that
+        fails its own check means nothing is searched.
       - Families are capped (350 unknown coefficients by default); larger ones are listed as not searched.
       - Parameters are generic. Constants that exist only at special values (resonant frequency ratios) are found
         only when those values are given.
@@ -2688,6 +2692,20 @@ capabilities:
         budget: quick
         input: '\frac12(\dot{r}^2 + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2) + \frac{k}{r}'
         coordinates: [r, theta, phi]
+      - id: discovery-schwarzschild-routh
+        title: Schwarzschild geodesics in four coordinates, after a Routh reduction
+        note: >-
+          t and phi are cyclic, so their momenta are held fixed and the Routhian of r and theta is searched. The
+          momenta of t and phi and the energy function are reported, each verified on the whole four-coordinate
+          system. The square of the total angular momentum needs sin(theta) in a denominator once the momentum of
+          phi is a parameter, so it is outside the searched families.
+        op: discovery
+        budget: standard
+        pins: { degree: 2, power_bound: 2, harmonics: 1, time_degree: 0 }
+        time: s
+        assumptions: { M: [positive] }
+        input: '\frac12\left(-\left(1-\frac{2M}{r}\right)\dot{t}^2 + \frac{\dot{r}^2}{1-\frac{2M}{r}} + r^2\dot{\theta}^2 + r^2\sin^2\theta\,\dot{\phi}^2\right)'
+        coordinates: [t, r, theta, phi]
       - id: discovery-cartesian-kepler
         title: A square root is refused
         op: discovery

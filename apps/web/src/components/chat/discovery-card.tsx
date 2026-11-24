@@ -1,7 +1,42 @@
 import { CopyMath as Formula } from "@/components/copyable-math";
-import type { DiscoveredConstant, DiscoveryReport } from "@/lib/chat-types";
+import type { DiscoveredConstant, DiscoveryReduction, DiscoveryReport } from "@/lib/chat-types";
 import { StatusPill } from "../result-panel";
 import { Numbered } from "./equation-number";
+
+/**
+ * The Routh reduction a four-coordinate search ran on: the families are those of the reduced system, and
+ * every constant listed below was mapped back and verified on the whole system.
+ */
+function ReductionSection({ reduction }: { reduction: DiscoveryReduction }) {
+  return (
+    <div className="mt-3 rounded border border-rule p-3" aria-label="Routh reduction">
+      <h4 className="text-sm font-medium">
+        Searched after a Routh reduction of {reduction.cyclic.join(", ")}
+      </h4>
+      <p className="text-xs text-muted">
+        The momenta below were held fixed and the reduced system of {reduction.remaining.join(", ")}{" "}
+        was searched: the families listed are families of the reduced system. Every constant was
+        mapped back and verified on the whole system.
+      </p>
+      <Formula latex={`R = ${reduction.routhian_latex}`} display />
+      {reduction.held_fixed.map((h) => (
+        <Formula key={h.coordinate} latex={h.latex} display />
+      ))}
+      {reduction.restrictions_latex.length > 0 && (
+        <p className="text-xs text-muted">
+          Holds only where{" "}
+          {reduction.restrictions_latex.map((r, i) => (
+            <span key={i}>
+              {i > 0 && ", "}
+              <Formula latex={r} />
+            </span>
+          ))}
+          {reduction.restrictions_complete ? "." : "; not every restriction could be analysed."}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const KIND: Record<DiscoveredConstant["kind"], { label: string; tone: string }> = {
   known: { label: "Already known", tone: "bg-raised text-muted border border-rule" },
@@ -35,6 +70,7 @@ export function DiscoveryCard({ report }: { report: DiscoveryReport }) {
       </div>
       {report.function_latex && <Formula latex={`${symbol} = ${report.function_latex}`} display />}
       <p className="text-sm text-muted">{report.message}</p>
+      {report.reduction && <ReductionSection reduction={report.reduction} />}
       {report.status === "ok" && fresh.length === 0 && (
         <p className="mt-2 text-sm">
           No additional constant was found <strong>within the explored families</strong>. That does

@@ -550,23 +550,215 @@ def test_a_wrong_sign_in_the_tan_rewrite_gives_a_quantity_that_fails_the_flow_ch
     assert not ok
 
 
-def test_schwarzschild_in_four_coordinates_is_a_resource_limit_at_the_standard_budget() -> None:
-    """Issue #152 with #191: t and phi cyclic, r in a denominator, theta an angle (tan read through cos and
-    sin) give 5 * 3^4 = 405 unknowns in the smallest family, above the standard cap of 350. Nothing is searched
-    and the family and its size are the reason; nothing is dropped to make it fit."""
-    report = discover_invariants(
+SCHWARZSCHILD = (
+    "(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)/2"
+)
+# x is coupled to the velocity of the cyclic z (p_z = z_dot + x), w is a free cyclic coordinate. With p_z held
+# fixed the reduced system is two unit oscillators about (p_z, 0), whose angular momentum and mixed product are
+# odd in p_z: a wrong sign in the back-substitution changes them.
+GYROSCOPIC = "(x_dot^2 + y_dot^2 + z_dot^2 + w_dot^2)/2 + x*z_dot - y^2/2"
+
+
+def text_run(
+    function: str,
+    coordinates: list[str],
+    budget: str,
+    *,
+    time: str = "t",
+    pins: Pins | None = None,
+    **assumed: list[str],
+) -> DiscoveryReport:
+    return discover_invariants(
         "lagrangian",
-        "(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)/2",
-        ["t", "r", "theta", "phi"],
+        function,
+        coordinates,
         None,
         [],
-        "standard",
-        None,
-        "s",
-        {"M": ["positive"]},
+        budget,
+        pins,
+        time,
+        dict(assumed),
         budget_limits(),
         "text",
     )
-    assert report.status is Status.RESOURCE_LIMIT and report.cause == "resource_limit"
+
+
+def _proportional(found: sp.Expr, expected: sp.Expr) -> bool:
+    ratio = sp.simplify(found / expected)
+    return bool(ratio.is_number and ratio != 0)
+
+
+def test_schwarzschild_in_four_coordinates_is_searched_after_reducing_t_and_phi() -> None:
+    """Issue #152 with #153: t and phi are cyclic, so p_t and p_phi are held fixed and the Routhian of (r, theta)
+    is searched (the whole system's smallest family, 405 unknowns, is above the standard cap of 350). Expected,
+    by hand (Wald §6.3; Carroll §5.4): E = (1 - 2M/r) t_dot, L_z = r^2 sin^2(theta) phi_dot and the energy
+    function, which for this L (homogeneous of degree 2 in the velocities) is L itself. J^2 = r^4 theta_dot^2 +
+    L_z^2 / sin^2(theta) is conserved too, but in the reduced variables it needs sin(theta) in a denominator, so
+    it is outside every family searched and must not be reported.
+
+    One family of the reduced system is pinned (degree 2, powers of r to 2, first harmonic: 90 unknowns) so
+    that the test does not depend on runner speed: the whole standard ladder takes about 10.5 s on a workstation,
+    a third of its deadline, and a tier the deadline cuts would fail the "every family searched" assertion."""
+    report = text_run(
+        SCHWARZSCHILD,
+        ["t", "r", "theta", "phi"],
+        "standard",
+        time="s",
+        pins=Pins(degree=2, power_bound=2, harmonics=1, time_degree=0),
+        M=["positive"],
+    )
+    assert report.status is Status.OK, report.message
+    M, r, theta = sp.symbols("M r theta")
+    t_dot, r_dot, theta_dot, phi_dot = sp.symbols("t_dot r_dot theta_dot phi_dot")
+    f = 1 - 2 * M / r
+    energy = f * t_dot
+    l_z = r**2 * sp.sin(theta) ** 2 * phi_dot
+    lagrangian = (-f * t_dot**2 + r_dot**2 / f + r**2 * theta_dot**2 + l_z * phi_dot) / 2
+    j_squared = r**4 * theta_dot**2 + l_z**2 / sp.sin(theta) ** 2
+    found = [parsed_constant(c.expression_latex) for c in report.constants]
+    assert len(found) == 3
+    for expected in (energy, l_z, lagrangian):
+        assert sum(_proportional(c, expected) for c in found) == 1
+    assert not any(_proportional(c, j_squared) for c in found)
+
+    # Each one verified on the whole four-coordinate system, and so is J^2: its absence is the family's.
+    flow = lagrangian_flow(
+        SCHWARZSCHILD, ["t", "r", "theta", "phi"], "s", {"M": ["positive"]}, budget_limits(), "text"
+    )
+    for constant in report.constants:
+        assert constant.verification is not None and constant.verification.passed
+    for expected in (energy, l_z, lagrangian, j_squared):
+        assert flow.verify(_on(flow, expected))[0]
+
+    reduction = report.reduction
+    assert reduction is not None
+    assert reduction.cyclic == ["t", "phi"] and reduction.remaining == ["r", "theta"]
+    assert [h.symbol_latex for h in reduction.held_fixed] == ["p_{t}", r"p_{\phi}"]
+    assert reduction.verification is not None and reduction.verification.passed
+    assert any(r"\sin" in x for x in reduction.restrictions_latex)
+    assert any("M" in x for x in reduction.restrictions_latex)
+    assert reduction.rejected_on_full_system == 0
+    assert [t.code for t in report.tiers] == ["d2p2h1t0"] and report.tiers[0].unknowns == 90
+    assert all(t.outcome == "searched" for t in report.tiers)
+    assert all("theta" in t.description and " t," not in t.description for t in report.tiers)
+    notes = " ".join(report.notes)
+    assert "families of the reduced system" in notes
+    assert "verified again on the equations of motion of the whole system" in notes
+    assert "cos or sin of an angle in a denominator" in notes
+    assert report.independence is not None
+    assert report.independence.rank_proved and report.independence.rank_lower == 3
+    assert report.independence.max_possible == 7  # the whole system's 2n - 1, not the reduced one's
+
+
+def parsed_constant(latex: str) -> sp.Expr:
+    expr = parse_latex(latex.split("=", 1)[1])
+    return expr.xreplace({s: sp.Symbol(s.name) for s in expr.free_symbols})
+
+
+def _on(flow: object, expr: sp.Expr) -> sp.Expr:
+    """`expr` (plain symbols) in the symbols of `flow` (which carry the declared assumptions)."""
+    by_name = {s.name: s for s in [*flow.q, *flow.v, *flow.params]}  # type: ignore[attr-defined]
+    return expr.xreplace({s: by_name.get(s.name, s) for s in expr.free_symbols})
+
+
+def test_reduced_constants_odd_in_a_held_momentum_are_mapped_back_and_verified() -> None:
+    """Reduced by z and w (p_z = z_dot + x, p_w = w_dot), the search finds constants of (x, y) that contain p_z;
+    with p_z replaced by z_dot + x each is a constant of the whole system (written by hand here: the reduced
+    oscillators have centre (p_z, 0))."""
+    report = text_run(GYROSCOPIC, ["x", "y", "z", "w"], "quick")
+    assert report.status is Status.OK, report.message
+    assert report.reduction is not None and report.reduction.cyclic == ["z", "w"]
+    x, y, z_dot, x_dot, y_dot = sp.symbols("x y z_dot x_dot y_dot")
+    p_z = z_dot + x
+    angular = (x - p_z) * y_dot - y * x_dot  # = -(z_dot y_dot + y x_dot)
+    mixed = x_dot * y_dot + (x - p_z) * y  # = x_dot y_dot - z_dot y
+    new = [parsed_constant(c.expression_latex) for c in report.new_constants]
+    assert len(new) == 2
+    for expected in (angular, mixed):
+        assert sum(_proportional(c, sp.expand(expected)) for c in new) == 1
+    assert all(c.verification and c.verification.symbolic_zero for c in report.new_constants)
+    assert report.independence is not None and report.independence.rank_lower == 5
+    assert "of the reduced system was reached" in report.message
+
+
+def test_a_wrong_sign_in_the_back_substitution_fails_on_the_whole_system_and_is_dropped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The wrong twin of the lift: p_z -> -(z_dot + x). The reduced search finds the same candidates, but mapped
+    back with the wrong sign they are not constant on the whole system, so the check drops and counts them."""
+    from minerva_engine import discovery
+
+    honest = discovery._held_values
+    monkeypatch.setattr(
+        discovery,
+        "_held_values",
+        lambda d, index, momenta: {p: -v for p, v in honest(d, index, momenta).items()},
+    )
+    report = text_run(GYROSCOPIC, ["x", "y", "z", "w"], "quick")
+    assert report.status is Status.OK
+    assert report.reduction is not None and report.reduction.rejected_on_full_system >= 2
+    assert not report.new_constants
+    assert report.cause == "verification_failed"
+    assert sum(t.rejected for t in report.tiers) >= 2
+    assert any("failed the check on the whole system" in n for n in report.notes)
+    assert [e for e in report.events if e.name.endswith("lift_verified")]
+    assert not any(e.data.get("passed") for e in report.events if e.name.endswith("lift_verified"))
+
+    # The twin itself, written by hand: the reduced angular momentum with p_z -> -(z_dot + x).
+    flow = lagrangian_flow(GYROSCOPIC, ["x", "y", "z", "w"], "t", {}, budget_limits(), "text")
+    x, y, z_dot, x_dot, y_dot = sp.symbols("x y z_dot x_dot y_dot")
+    honest_lift = (x - (z_dot + x)) * y_dot - y * x_dot
+    wrong_lift = (x + (z_dot + x)) * y_dot - y * x_dot
+    assert flow.verify(_on(flow, honest_lift))[0]
+    assert not flow.verify(_on(flow, wrong_lift))[0]
+
+
+def test_a_reduction_that_fails_its_own_check_searches_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A wrong Routhian (one term with the wrong sign) injected at the solve: `routh.reduce` refuses it as
+    not verified, and the search does not run on it or on the whole system."""
+    from minerva_engine import routh
+
+    honest = routh.solve_reduction
+
+    def wrong(*args: object, **kwargs: object) -> routh.Reduction:
+        reduction = honest(*args, **kwargs)  # type: ignore[arg-type]
+        x = sp.Symbol("x")
+        return routh.Reduction(
+            routhian=reduction.routhian + 2 * sp.Symbol("p_z") * x,
+            velocities=reduction.velocities,
+            determinant=reduction.determinant,
+        )
+
+    monkeypatch.setattr(routh, "solve_reduction", wrong)
+    report = text_run(GYROSCOPIC, ["x", "y", "z", "w"], "quick")
+    assert report.status is Status.NOT_VERIFIED
+    assert report.stop_reason == "reduction_not_verified" and report.cause == "verification_failed"
     assert not report.tiers and not report.constants
+
+
+def test_four_coordinates_without_a_cyclic_one_are_still_a_resource_limit() -> None:
+    """Must still fail: the reduction needs a cyclic coordinate, and this system has none (every coordinate is
+    in a denominator: 5 * 3^4 = 405 unknowns in the smallest family, above the standard cap of 350)."""
+    report = text_run(
+        "(a_dot^2+b_dot^2+c_dot^2+d_dot^2)/2 - 1/a - 1/b - 1/c - 1/d",
+        ["a", "b", "c", "d"],
+        "standard",
+    )
+    assert report.status is Status.RESOURCE_LIMIT and report.reduction is None
     assert "405 unknown coefficients (limit 350)" in report.message
+
+
+def test_a_cyclic_coordinate_the_reduction_refuses_leaves_a_resource_limit() -> None:
+    """Must still fail: w is cyclic but p_w = w_dot^3 is not linear in w_dot, so `routh.reduce` refuses
+    (`nonlinear_momentum`) and the whole system is searched as before: 5 * 3^4 = 405 unknowns > 350. The note
+    says why nothing was reduced; no coordinate is dropped to make it fit."""
+    report = text_run(
+        "(a_dot^2+b_dot^2+c_dot^2)/2 + w_dot^4/4 - 1/a - 1/b - 1/c",
+        ["a", "b", "c", "w"],
+        "standard",
+    )
+    assert report.status is Status.RESOURCE_LIMIT and report.reduction is None
+    assert "405 unknown coefficients (limit 350)" in report.message
+    assert any("were not reduced" in n and "linear" in n for n in report.notes)
