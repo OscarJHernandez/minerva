@@ -58,6 +58,7 @@ class Card(BaseModel):
         "lagrangian",
         "expansion",
         "perturbation",
+        "routh",
         "invariants",
         "discovery",
         "motion",

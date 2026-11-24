@@ -631,6 +631,24 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   remainder. Poles, branch points, logarithms and `|x|` are `unsupported`; there are no Laurent, Puiseux or
   asymptotic fallbacks. The error table is a measurement, never a bound. Do not loosen `check_series` (its
   tests include wrong candidates that differ by 1e-9).
+- Routh reduction (`routh.py`, tool `routh_reduce`, card `routh`, issue #153): the caller names the cyclic coordinates;
+  the arguments are the Lagrangian, coordinates, time, format, assumptions and `cyclic`, and there is **no field for a
+  constant, a value or a name** (a test pins the schema). The constant held fixed is the momentum the tool itself shows
+  conserved (`derive`, `check_equations`, `dL/dc` a symbolic zero, `verify_constant`), as the symbol `p_{c}` the Lagrangian
+  card prints; a symbol of L with that name is `momentum_symbol_clash` (never renamed), a coordinate L depends on is
+  `unsupported`/`not_cyclic`, a momentum not linear in the cyclic velocities or a singular block is `unsupported`. R is
+  `L - sum p_c c_dot` (Goldstein §8.3 and Landau-Lifshitz §41 define its negative; the card says so); renaming `E = -p_t`
+  is the user's own `substitute`. R is shown only if its printed form, read back, passes the numeric legs that share no
+  code with the solve (`check_reduction`): momenta as central differences of the original L, accelerations from the
+  confirmed derivation, a vanishing Euler-Lagrange residual of R by nested numerical differentiation, and `-dR/dp_c` and
+  the printed velocity formula returning the sampled velocity, and the value of R equal to `L - sum p_c c_dot` at the
+  sample (the other legs cannot see `R + C` or `R + dF/dt`); wrong twins: a sign, a dropped `1/f`, a 1e-6 factor, those
+  shifts. The
+  symbolic leg (R's Euler-Lagrange expressions on L's accelerations) is reported apart and is the only "proved". The
+  block determinant's zeros are `restrictions_latex`. R is the single result (number and `@rN`, with the restrictions);
+  `held:<c>` and `velocity:<c>` are numbered list rows (names). `routh.reduce(derivation, cyclic)` is the reusable entry.
+  The tool is alone in the group `reduction` (keywords `routh`, `cyclic coordinate(s)`, or `load_tools`), not in
+  `mechanics`: the maintainer's choice, so the mechanics group and the turn-context pin stay unchanged.
 - Expansion about an equilibrium (`expansion.py`, tool `expand_motion`) shows a formula only if the EL equations
   and the solved accelerations were confirmed, the point was shown to be an equilibrium, and every expansion
   passed `check_series`. A point that is not an equilibrium is `unsupported`, not expanded. The sign of ω² is

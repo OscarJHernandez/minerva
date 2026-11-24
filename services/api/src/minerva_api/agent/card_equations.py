@@ -170,6 +170,27 @@ def lagrangian(data: dict[str, Any]) -> Listed:
     ]
 
 
+def routh(data: dict[str, Any]) -> Listed:
+    """`held:<coordinate>` (`p_{c} = ...`, a momentum held fixed) and `velocity:<coordinate>` (`\\dot{c} = ...`)
+    of an accepted Routh reduction, in the order the card shows them. The Routhian itself is the card's single
+    result (`result_latex`, numbered as a whole and named by the result id). A row is a name only: `@eN` of it
+    carries no verification. A card that was not accepted lists nothing."""
+    if data.get("status") != "ok":
+        return []
+    out: Listed = []
+    for prefix, items in (
+        ("held", data.get("held_fixed")),
+        ("velocity", data.get("reconstruction")),
+    ):
+        for item in items if isinstance(items, list) else []:
+            if not isinstance(item, dict):
+                continue
+            coordinate, latex = _text(item.get("coordinate")), _text(item.get("latex"))
+            if coordinate and latex:
+                out.append((f"{prefix}:{coordinate}", latex))
+    return out
+
+
 def invariants(data: dict[str, Any]) -> Listed:
     return _rows((data.get("report") or {}).get("found"), "expression_latex", "found")
 
@@ -814,6 +835,7 @@ def vector(data: dict[str, Any]) -> Listed:
 LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
     "lagrangian": lagrangian,
+    "routh": routh,
     "invariants": invariants,
     "discovery": discovery,
     "solve": solve,

@@ -179,6 +179,39 @@ def _double_pendulum_small_oscillations(engine: Engine) -> tuple[str, str]:
     )
 
 
+def _kepler_routhian(engine: Engine) -> tuple[str, str]:
+    """Routh reduction of the planar Kepler problem by the angle.
+
+    Landau and Lifshitz, Mechanics, section 14: with the angular momentum M fixed the radial motion is that
+    of a particle in U_eff = U + M^2 / (2 m r^2); section 41 defines the Routhian. With R = L - p c_dot (the
+    sign in which R acts as a Lagrangian) that is R = m r_dot^2 / 2 + k / r - p^2 / (2 m r^2), written here
+    by hand, with the velocity theta_dot = p / (m r^2).
+    """
+    report = engine.routh_reduce(
+        r"\frac{1}{2} m \left(\dot{r}^2 + r^2\dot{\theta}^2\right) + \frac{k}{r}",
+        ["r", "theta"],
+        ["theta"],
+        assumptions={"m": ["positive"], "k": ["positive"], "r": ["positive"]},
+    )
+    if report.status.value != "ok" or not report.result_latex or not report.reconstruction:
+        return verdict("correct", False, None, f"status {report.status.value}")
+    m, k, r, rd, p = sp.symbols("m k r r_dot p_theta")
+
+    def plain(latex: str) -> sp.Expr:
+        value = parse_latex(latex)
+        return value.xreplace({s: sp.Symbol(s.name) for s in value.free_symbols})
+
+    routhian = plain(report.result_latex)
+    velocity = plain(report.reconstruction[0].latex.split("=", 1)[1])
+    expected = m * rd**2 / 2 + k / r - p**2 / (2 * m * r**2)
+    return verdict(
+        "correct",
+        True,
+        sp.simplify(routhian - expected) == 0 and sp.simplify(velocity - p / (m * r**2)) == 0,
+        "Routhian and angular velocity vs the hand-written effective-potential form",
+    )
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "duffing-frequency-shift",
@@ -214,6 +247,16 @@ PROBLEMS: list[Problem] = [
         _double_pendulum_small_oscillations,
         oracle="mpmath_polyroots",
         evidence="numeric_agreement",
+    ),
+    Problem(
+        "routh-kepler-reduced-by-the-angle",
+        "mechanics",
+        "Landau and Lifshitz, Mechanics, sections 14 and 41 (effective potential; the Routhian); Goldstein, "
+        "Classical Mechanics, section 8.3",
+        "correct",
+        _kepler_routhian,
+        oracle="closed_form",
+        evidence="symbolic_proof",
     ),
     Problem(
         "discovery-isotropic-oscillator",

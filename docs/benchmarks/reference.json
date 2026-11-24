@@ -222,6 +222,16 @@
       "outcome": "correct"
     },
     {
+      "id": "routh-kepler-reduced-by-the-angle",
+      "category": "mechanics",
+      "source": "Landau and Lifshitz, Mechanics, sections 14 and 41 (effective potential; the Routhian); Goldstein, Classical Mechanics, section 8.3",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "symbolic_proof",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
       "id": "discovery-isotropic-oscillator",
       "category": "mechanics",
       "source": "Landau and Lifshitz, Mechanics, section 15 (the isotropic oscillator has 2n - 1 independent constants)",

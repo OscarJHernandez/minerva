@@ -108,6 +108,41 @@ export interface PerturbationReport {
   duration_ms: number;
 }
 
+/** Routh reduction of cyclic coordinates (`routh_reduce`): R is the single result; the rows are names only. */
+export interface RouthReport {
+  status: Status;
+  reason: string | null;
+  reading?: InputReading | null;
+  lagrangian_latex: string | null;
+  coordinates: string[];
+  cyclic: string[];
+  remaining: string[];
+  time: string;
+  result_latex: string | null;
+  held_fixed: {
+    coordinate: string;
+    symbol_latex: string;
+    latex: string;
+    reason: string;
+    verification: Verification | null;
+  }[];
+  reconstruction: { coordinate: string; latex: string }[];
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  verification: Verification | null;
+  checks: {
+    euler_lagrange: Verification[];
+    reconstruction: Verification[];
+    /** Absent on cards stored before the leg existed. */
+    definition?: Verification | null;
+    symbolic: boolean | null;
+    symbolic_note: string;
+  };
+  convention: string;
+  message: string;
+  duration_ms: number;
+}
+
 /** What a perturbation solution was computed from, and what the comparison form sends back. */
 export interface PerturbationRequest {
   lagrangian: string;
@@ -632,6 +667,17 @@ type CardBody =
       type: "perturbation";
       title: string;
       data: { report: PerturbationReport; request?: PerturbationRequest };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "routh";
+      title: string;
+      data: RouthReport & {
+        request?: Pick<MotionRequest, "lagrangian" | "coordinates" | "time" | "assumptions"> & {
+          cyclic: string[];
+        };
+      };
     }
   | {
       id: string;

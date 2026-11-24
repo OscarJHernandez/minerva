@@ -415,6 +415,21 @@ def op_lagrangian(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+def op_routh_reduce(payload: dict[str, Any]) -> dict[str, Any]:
+    from .routh import routh_reduce
+
+    report = routh_reduce(
+        str(payload["lagrangian"]),
+        [str(c) for c in payload["coordinates"]],
+        str(payload.get("time", "t")),
+        payload.get("assumptions", {}),
+        [str(c) for c in payload["cyclic"]],
+        Limits(**payload["limits"]),
+        _syntax(payload),
+    )
+    return report.model_dump(mode="json")
+
+
 # --- expansion about an equilibrium -------------------------------------------------------
 def op_expand_motion(payload: dict[str, Any]) -> dict[str, Any]:
     from .expansion import expand_motion
@@ -963,6 +978,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "solve": op_solve,
     "differentiate": op_differentiate,
     "time_derivative": op_time_derivative,
+    "routh_reduce": op_routh_reduce,
     "series": op_series,
     "integrate": op_integrate,
     "creative_telescoping": op_creative_telescoping,
