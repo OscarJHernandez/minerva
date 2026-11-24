@@ -90,7 +90,7 @@ class SearchResult:
     domain_differences: int = 0  # defined on one side only: reported, not a counterexample
     exhausted: bool = False  # the budget ended the search before every probe was tried
     # The wall-clock stop ended the search before the point cap did: how many points were tried then depends on
-    # how loaded the machine was, so a search that found nothing is weaker than its point count says (V-017).
+    # how loaded the machine was, so a search that found nothing is incomplete, and `verify` does not pass it (V-017).
     clock_cut: bool = False
     unsupported: str | None = None  # "distribution" or "noncommutative": nothing was searched
 

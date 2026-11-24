@@ -159,7 +159,12 @@ def verify_moments(
             agreed += result.passed
             exact += bool(result.symbolic_zero)
             if not result.passed:
-                notes.append(f"differs on a joint distribution at {assignment or 'this instance'}")
+                where = assignment or "this instance"
+                notes.append(  # V-017: a check the clock cut short is incomplete, not a disagreement
+                    f"check incomplete on a joint distribution at {where}"
+                    if result.probes_cut_short
+                    else f"differs on a joint distribution at {where}"
+                )
         sizes.append({s.name: v for s, v in assignment.items()})
     return PmfVerification(
         sizes=sizes,

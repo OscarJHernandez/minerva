@@ -73,17 +73,20 @@ def _cut_case_verification(seconds: float):  # type: ignore[no-untyped-def]
         verify_module.PROBE_SECONDS = saved
 
 
-def test_a_search_the_clock_cut_short_says_so_and_leaves_the_verdict_alone() -> None:
+def test_a_search_the_clock_cut_short_is_incomplete_and_does_not_pass() -> None:
     """V-017. On a loaded machine the probes' wall-clock stop ended the search before the negative real axis and
-    `log(1/z) = -log(z)` passed with nothing to show that probes were skipped. The pass is still "no disagreement
-    found" (changing the verdict would make a slow server decide differently), but it now says so."""
+    `log(1/z) = -log(z)` passed. A search the clock ends is now incomplete: it does not pass, it says why, and it
+    is not reported as a disagreement (load may turn an answer into a refusal, never a refusal into an answer)."""
     cut = _cut_case_verification(0.0)  # the clock ends the search before its first point
-    assert cut.passed is True  # the verdict is unchanged
-    assert cut.probes_cut_short is True
-    assert "cut short by the time limit" in cut.note and "no disagreement was found" in cut.note
+    assert cut.passed is False  # the false identity is no longer accepted
+    assert cut.probes_cut_short is True and cut.probe_outcome == "cut_short"
+    assert cut.probe_kind is None  # no counterexample was found: incomplete, not different
+    assert cut.numeric_points_agreed == cut.numeric_points_checked
+    assert "cut short by the time limit" in cut.note and "incomplete" in cut.note
+    assert "not a disagreement" in cut.note
 
 
-def test_a_search_that_ran_to_its_point_cap_is_not_reported_as_cut_short() -> None:
+def test_a_search_allowed_to_finish_finds_the_counterexample_and_is_not_cut_short() -> None:
     whole = _cut_case_verification(60.0)
-    assert whole.probes_cut_short is False
+    assert whole.probes_cut_short is False and whole.probe_outcome == "found"
     assert whole.passed is False and whole.probe_kind is not None  # the false identity is found

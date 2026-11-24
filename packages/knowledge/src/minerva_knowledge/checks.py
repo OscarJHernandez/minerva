@@ -75,7 +75,7 @@ def _check_rule(entry: Entry) -> CheckReport:
     v = verify_rule(entry.rule)
     detail = (
         f"numeric {v.numeric_points_agreed}/{v.numeric_points_checked}; "
-        f"symbolic zero: {v.symbolic_zero}"
+        f"symbolic zero: {v.symbolic_zero}" + (f"; {v.note}" if v.probes_cut_short else "")
     )
     return CheckReport(entry.id, "rule", v.passed, detail, symbolic_proof=v.symbolic_zero)
 

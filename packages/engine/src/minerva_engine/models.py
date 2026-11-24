@@ -69,6 +69,9 @@ class ExpressionInput(BaseModel):
         return value
 
 
+ProbeOutcome = Literal["not_run", "completed", "cap", "cut_short", "unsupported", "found"]
+
+
 class Verification(BaseModel):
     """How a transformation was checked. `passed` is only true if a check actually ran."""
 
@@ -80,10 +83,15 @@ class Verification(BaseModel):
     # only add a disagreement; a probe never counts as agreement. `probe_kind` is a fixed label, never content.
     numeric_points_probed: int = 0
     probe_kind: str | None = None  # set when a probe found a point where the two sides differ
-    # The probes' wall-clock stop ended the search before their point cap: the machine was loaded, fewer probes
-    # ran than usual, and a pass means "no disagreement found in the points that were tried" (V-017). The verdict
-    # is unchanged; this only says so.
+    # The probes' wall-clock stop ended the search before their point cap (V-017). The check is then incomplete,
+    # not a disagreement, and it does not pass: load may turn an answer into a refusal, never a refusal into an
+    # answer.
     probes_cut_short: bool = False
+    # How the targeted probe search ended, read off `counterexample.SearchResult` (a fixed label, never content):
+    # not_run (no search: the random points did not agree, or a screen), completed (every probe tried), cap (the
+    # point cap ended it), cut_short (the clock ended it: incomplete), unsupported (nothing could be searched),
+    # found (a confirmed counterexample).
+    probe_outcome: ProbeOutcome = "not_run"
     passed: bool = False
     note: str = ""
 

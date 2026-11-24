@@ -17,10 +17,10 @@ import sympy as sp
 
 from .distributions.guard import contains_distribution
 from .indexed.guard import contains_indexed
-from .models import Verification
+from .models import ProbeOutcome, Verification
 
 if TYPE_CHECKING:
-    from .counterexample import Counterexample
+    from .counterexample import Counterexample, SearchResult
 
 MIN_VALID_POINTS = 4
 SAMPLE_ATTEMPTS = 40
@@ -210,7 +210,28 @@ def numeric_check(
 
 
 PROBE_POINTS = 24  # targeted probes after the random points agree; see counterexample.py
-PROBE_SECONDS = 0.5
+# A safety stop only: the point cap decides the search. It is fixed (half the default sandbox limit), never a
+# share of the time left, so the stop does not bring the load dependence back in another form. Measured on
+# idle and loaded machines, a whole search takes 0.24 s at most (docs/verification-testing.md); a search the
+# clock still ends is incomplete and does not pass (V-017).
+PROBE_SECONDS = 5.0
+INCOMPLETE_NOTE = (
+    "the check is incomplete: the targeted probes were cut short by the time limit after {probed} of "
+    "{cap} points (this is not a disagreement), so the result is not verified"
+)
+
+
+def _probe_outcome(found: SearchResult) -> ProbeOutcome:
+    """How the search ended. Clock, cap, natural end, unsupported and found are separate in `SearchResult`."""
+    if found.counterexample is not None:
+        return "found"
+    if found.unsupported is not None:
+        return "unsupported"
+    if found.clock_cut:
+        return "cut_short"
+    if found.exhausted:
+        return "cap"
+    return "completed"
 
 
 def verify_with_witness(
@@ -272,6 +293,7 @@ def verify_with_witness(
         note = "numeric check agreed at all sampled points"
     probed = 0
     probes_cut_short = False
+    probe_outcome: ProbeOutcome = "not_run"
     probe_kind: str | None = None
     witness: Counterexample | None = None
     # Only a candidate that passed is probed, and only on a full check (not a rule-search screen). Probes
@@ -289,12 +311,14 @@ def verify_with_witness(
             kinds=TARGETED,
         )
         probed = found.probes_tried
-        probes_cut_short = found.clock_cut and found.counterexample is None
+        probe_outcome = _probe_outcome(found)
+        probes_cut_short = probe_outcome == "cut_short"
         if probes_cut_short:
-            note = (
-                f"{note}; the targeted probes were cut short by the time limit after {probed} of "
-                f"{PROBE_POINTS} points, so this means no disagreement was found in the points tried"
-            )
+            # Incomplete, not agreement: a loaded machine must not accept what an idle one would reject
+            # (`log(1/z) = -log(z)` before the probes reach the negative real axis). The points counted stay as
+            # they were: nothing disagreed.
+            passed = False
+            note = INCOMPLETE_NOTE.format(probed=probed, cap=PROBE_POINTS)
         if found.counterexample is not None:
             witness = found.counterexample
             probe_kind = witness.probe
@@ -310,6 +334,7 @@ def verify_with_witness(
             numeric_points_probed=probed,
             probe_kind=probe_kind,
             probes_cut_short=probes_cut_short,
+            probe_outcome=probe_outcome,
             passed=passed,
             note=note,
         ),

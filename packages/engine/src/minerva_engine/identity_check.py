@@ -16,8 +16,9 @@ equation holds as an identity. That changes what an honest answer is, not how it
 
 What it never does: call a *relation* false (a symbol alone on one side, a time derivative, a definition), test
 matrices, vectors, distributions or sums by sampling numbers (they are `unsupported` with the reason from the claim
-checker), or accept a disagreement it could not confirm (`not_verified`). The statuses are the ordinary ones; the
-verdict only says what an `ok` result established. A `Counterexample` holds the user's expressions: it is returned to the
+checker), or accept a disagreement it could not confirm (`not_verified`). A check whose targeted probes the clock cut
+short is `not_verified` and says it is incomplete (V-017): never `numerically_equal`, never `not_identity`. The statuses
+are the ordinary ones; the verdict only says what an `ok` result established. A `Counterexample` holds the user's expressions: it is returned to the
 caller and never logged (`test_counterexample_privacy.py`).
 """
 
@@ -28,13 +29,19 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel
 
-from .claims import ClaimChecker, clean_assumptions, split_equation
+from .claims import INCOMPLETE_DETAIL, ClaimChecker, clean_assumptions, split_equation
 from .counterexample import Budget, Counterexample, find_counterexample
 from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import Limits, Status, Verification
 from .verify import verify_with_witness
+
+INCOMPLETE_MESSAGE = (
+    "Not decided: the check is incomplete. The targeted probes were cut short by the time limit (a busy "
+    "server), which is not a disagreement, so the equation is called neither equal nor different. Asking "
+    "again may complete it."
+)
 
 Verdict = Literal["proved_equal", "numerically_equal", "conditional", "not_identity"]
 
@@ -100,6 +107,20 @@ def check_identity(
         )
     if claim.status == "unparsed":
         return IdentityResult(status=Status.PARSE_ERROR, input_latex=latex, message=claim.detail)
+    if claim.status == "unverified" and claim.detail == INCOMPLETE_DETAIL:
+        # The claim checker's own sampling was cut short by the clock (V-017): incomplete, not "unsupported". Its
+        # point counts are not returned by the claim checker, so none are stated; the flag is what the card shows.
+        return IdentityResult(
+            status=Status.NOT_VERIFIED,
+            input_latex=latex,
+            verification=Verification(
+                probes_cut_short=True,
+                probe_outcome="cut_short",
+                passed=False,
+                note=INCOMPLETE_DETAIL,
+            ),
+            message=INCOMPLETE_MESSAGE,
+        )
     if claim.status == "unverified":
         # A relation, a matrix or vector statement, a distribution, a sum, a reserved symbol: not decided by
         # sampling numbers, and never called false. The reason is the claim checker's own.
@@ -134,6 +155,16 @@ def check_identity(
                     verification=verification,
                     counterexample=_witness(found, parsed[0], other),
                     message=_not_identity_message(),
+                    **base,
+                )
+            if verification.probes_cut_short:
+                # Incomplete, not a disagreement (V-017): never `numerically_equal`, and never on to the
+                # counterexample search below, whose message would say the sides disagree.
+                return IdentityResult(
+                    status=Status.NOT_VERIFIED,
+                    verification=verification,
+                    points_probed=verification.numeric_points_probed,
+                    message=INCOMPLETE_MESSAGE,
                     **base,
                 )
             if not verification.passed:

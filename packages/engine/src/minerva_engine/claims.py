@@ -735,17 +735,26 @@ class ClaimChecker:
         return unchecked
 
 
+INCOMPLETE_DETAIL = (
+    "check incomplete: the targeted probes were cut short by the time limit (not a disagreement)"
+)
+
+
 def _compare(parsed: list[sp.Expr]) -> tuple[str, str]:
     checked = agreed = 0
+    incomplete = False
     for other in parsed[1:]:
         verification = verify_equal(parsed[0], other, symbolic=False)
         checked += verification.numeric_points_checked
         agreed += verification.numeric_points_agreed
         if verification.numeric_points_checked < 4:
             return "unverified", "too few valid sample points"
-    if agreed == checked:
-        return "holds", f"{agreed}/{checked} sample points agree"
-    return "fails", f"{checked - agreed} of {checked} sample points disagree"
+        incomplete = incomplete or verification.probes_cut_short
+    if agreed != checked:  # a disagreement found is one whatever the clock did
+        return "fails", f"{checked - agreed} of {checked} sample points disagree"
+    if incomplete:  # V-017: points that agree before the probes were cut short are not `holds`
+        return "unverified", INCOMPLETE_DETAIL
+    return "holds", f"{agreed}/{checked} sample points agree"
 
 
 def _nonzero_constant(difference: sp.Expr) -> bool:

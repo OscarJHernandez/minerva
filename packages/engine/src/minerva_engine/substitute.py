@@ -381,7 +381,9 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
                 )
             )
 
-        # Does the result also hold without the relations?
+        # Does the result also hold without the relations? A check the clock cut short (V-017) did not pass, so
+        # the result rests on the per-relation checks above, each of which passed completely: `conditional`, the
+        # weaker claim, never `identity`.
         unconditional = _verify(expr, current, diag)
         diag.verification_method = "congruence"
         passed_steps = [s.verification for s in steps if s.verification is not None]
@@ -429,6 +431,12 @@ def op_substitute(payload: dict[str, Any]) -> dict[str, Any]:
                         f"Holds given {given}. Those are your premises: Minerva did not check that "
                         "they are true, only that the replacement reproduces the original expression."
                         if evidence == "conditional"
+                        else ""
+                    )
+                    + (
+                        " Whether it also holds without them is not decided: that check was incomplete "
+                        "(the targeted probes were cut short by the time limit), not failed."
+                        if unconditional.probes_cut_short
                         else ""
                     )
                     + _restriction_note(restrictions, complete)

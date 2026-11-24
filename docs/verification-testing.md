@@ -37,6 +37,44 @@ never reported. A point where exactly one side is undefined is **not** a counter
 singularity). Probes can only turn a pass into a failure; a probe is never agreement. `REL_TOL` is unchanged: an error of
 10⁻¹¹ is found because the search compares against a noise floor of 10⁻²⁰, not because the tolerance was tightened.
 
+#### When the clock cuts the probes short (V-017)
+
+The point cap (`PROBE_POINTS`, 24) decides the search. The clock (`verify.PROBE_SECONDS`) is only a safety stop against
+an expression that is slow to evaluate, checked between points, and fixed at 5 s (half the default sandbox limit; a
+share of the time left would bring the load dependence back in another form). A search the clock still ends is
+**incomplete**: the verification does not pass (`passed=False`, `probes_cut_short=True`), the points counted stay as they
+were (nothing disagreed), and the note says the check is incomplete and not a disagreement. Load may turn an answer
+into a refusal, never a refusal into an answer. `Verification.probe_outcome` says how the search ended, with the
+cases `SearchResult` already keeps apart: `not_run` (the random points did not agree, or a screen), `completed` (every
+probe tried), `cap`, `cut_short`, `unsupported` and `found`.
+
+Callers that read `.passed` refuse an incomplete check (simplify, rule application, chains, steps, substitution back
+checks, the derivative tidy-up, ODE solved forms, integration strategies, instance and joint-distribution checks,
+handbook checks, claim evidence links). Three did not read it and now handle it: a prose claim is `unverified`
+(`claims.INCOMPLETE_DETAIL`), `check_identity` is `not_verified` with the incomplete wording (never `numerically_equal`,
+never `not_identity`), and a substitution whose unconditional check was cut is `conditional`, never `identity`.
+`test_probe_cutoff_callers.py` forces the stop to zero for each of them, with a twin that completes.
+
+Measured before this change (main, 0.5 s stop) and after it (5 s), on an idle 12-core machine and under
+`pytest -n 8` (load average about 11), over every probed verification of the adversarial corpus, `minerva_knowledge
+verify`, `benchmark`, `step-benchmark`, the transform-chain tests and `apply_rules` with all 69 handbook rules on each of
+the 45 identity-benchmark inputs (a sandbox operation is one row of the per-operation columns):
+
+| Run | Searches | Max search (ms) | p99 (ms) | Operations | Max probed per op | Max probe time per op (ms) | p99 (ms) | Max share of op time | Max share of 10 s | Clock cuts |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| main 0.5 s, idle | 504 | 141 | 108 | 165 | 8 | 338 | 303 | 59% | 3.4% | 0 |
+| main 0.5 s, load | 504 | 234 | 157 | 165 | 8 | 414 | 380 | 60% | 4.1% | 0 |
+| 5 s, idle | 504 | 158 | 122 | 165 | 8 | 345 | 288 | 59% | 3.4% | 0 |
+| 5 s, load | 504 | 174 | 129 | 165 | 8 | 405 | 328 | 58% | 4.1% | 0 |
+| forced 0.05 s, idle | 500 | 74 | 55 | 165 | 9 | 375 | 272 | 55% | 3.7% | 41 |
+
+No corpus verdict, benchmark or step-benchmark line, or `apply_rules` result changed between main and 5 s, idle or
+loaded (95 applicable rule applications before and after; no `resource_limit`). A forced 0.05 s stop shows what a
+starved clock does: 41 searches cut, the identity benchmark at 36/45, step-benchmark at 56/65 (8 `not_verified`; one
+"wrong result" is the benchmark's own scorer, which calls `verify_equal` in the same starved process: the engine's answer
+was unchanged), `apply_rules` at 90 of 95 applicable, 5 handbook checks failing, and every one of them a refusal, never a
+different answer. The handbook check runs one process for all entries (81 searches, 2.2 s in total), not one operation.
+
 `counterexample.find_counterexample(a, b)` is available directly; it returns a `Counterexample` (expressions,
 assumptions, the exact substitution, both values, the residual, the probe family, the precision, the seed, whether
 it was minimised) or `None`, which means *none was found*, never *none exists*. The record holds the user's
@@ -103,7 +141,8 @@ Documented, not hidden:
   polynomial identity, not a proof, and the counterexample search does not search them.
 - **Branch cuts** are probed on the real axis and at large imaginary parts; identities that fail only on a cut that
   none of these touches are not found.
-- **A probe budget is finite**: `exhausted` says the search stopped before trying everything.
+- **A probe budget is finite**: `exhausted` says the search stopped before trying everything; a search the clock
+  stopped (`probe_outcome: cut_short`) does not pass (V-017), one the point cap stopped (`cap`) does.
 - **Equation solving, series and integrals** keep their own independent checks (see `AGENTS.md`); the probes add to
   `verify_equal` only.
 - **Statistics** (sums, expectations, likelihoods, Fisher information) is implemented on the unmerged branch

@@ -12,6 +12,30 @@ describe("ResultPanel", () => {
     expect(screen.getByLabelText("Result")).toBeInTheDocument();
   });
 
+  it("says in the whole-result block when the check was incomplete (V-017)", () => {
+    const cut = {
+      ...okSimplify,
+      status: "not_verified" as const,
+      result_latex: null,
+      verification: {
+        ...okSimplify.verification!,
+        symbolic_zero: false,
+        passed: false,
+        probes_cut_short: true,
+        probe_outcome: "cut_short" as const,
+      },
+    };
+    render(<ResultPanel result={cut} />);
+    expect(screen.getByText("Targeted probes")).toBeInTheDocument();
+    expect(screen.getByTestId("probes-cut-short")).toHaveTextContent(/check incomplete/);
+    expect(screen.queryByLabelText("Result")).not.toBeInTheDocument();
+  });
+
+  it("adds no probe line when the probes ran in full", () => {
+    render(<ResultPanel result={okSimplify} />);
+    expect(screen.queryByTestId("probes-cut-short")).not.toBeInTheDocument();
+  });
+
   it("does not call numeric-only agreement a proof", () => {
     const numeric = {
       ...okSimplify,
@@ -160,8 +184,11 @@ describe("Evidence", () => {
     note: "",
   };
   it("says when the targeted probes were cut short by the time limit", () => {
-    render(<Evidence v={{ ...v, probes_cut_short: true }} />);
-    expect(screen.getByTestId("probes-cut-short")).toHaveTextContent(/cut short by the time limit/);
+    render(<Evidence v={{ ...v, probes_cut_short: true, passed: false }} />);
+    const line = screen.getByTestId("probes-cut-short");
+    expect(line).toHaveTextContent(/cut short by the time limit/);
+    expect(line).toHaveTextContent(/check incomplete/);
+    expect(line).toHaveTextContent(/not a disagreement/);
   });
   it("says nothing extra when they ran in full", () => {
     render(<Evidence v={v} />);

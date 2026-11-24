@@ -18,14 +18,13 @@ Outcome = Literal["correct", "false_accept", "false_reject"]
 
 @contextlib.contextmanager
 def patient_probes() -> Iterator[None]:
-    """The probes' wall-clock safety stop (`PROBE_SECONDS`, 0.5 s) raised to the shared test budget.
+    """The probes' wall-clock safety stop (`PROBE_SECONDS`, 5 s) raised to the shared test budget.
 
-    The probes' deterministic cap is their number of points. The seconds only protect a server from an
-    expression that is slow to evaluate, so on an overloaded runner (a shard whose setup alone took 336 s) it
-    cut the search before it reached the negative real axis and `log(1/z) = -log(z)` was accepted: an outcome
-    that depended on the load, and a correct answer that arrives late is not a failure (docs/verification-defects.md
-    V-017). The production constant is not changed here; whether an exhausted search may pass silently is the
-    open part of V-017.
+    The probes' deterministic cap is their number of points; the seconds only protect a server from an expression
+    that is slow to evaluate. A search the clock ends is incomplete and does not pass (V-017), so on an overloaded
+    runner (a shard whose setup alone took 336 s) a true identity could be rejected for the load, not for the
+    mathematics. The corpus measures the verifier's verdicts, so its probes are given the time to finish; a correct
+    answer that arrives late is not a failure (docs/verification-defects.md V-017).
     """
     saved = verify_module.PROBE_SECONDS
     verify_module.PROBE_SECONDS = max(saved, shared_timeout_seconds())

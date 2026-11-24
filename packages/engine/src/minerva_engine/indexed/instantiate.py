@@ -132,7 +132,11 @@ def verify_equal_indexed(original: sp.Expr, candidate: sp.Expr) -> InstanceVerif
         agreed += result.passed
         exact += bool(result.symbolic_zero)
         if not result.passed:
-            notes.append(f"differs at {sizes[-1] or 'the instance'}")
+            where = sizes[-1] or "the instance"
+            # V-017: a check the clock cut short is incomplete there, not a disagreement
+            notes.append(
+                f"check incomplete at {where}" if result.probes_cut_short else f"differs at {where}"
+            )
     return InstanceVerification(
         sizes=sizes,
         instances_checked=len(built),

@@ -70,6 +70,10 @@ export function Restrictions({
   );
 }
 
+/** V-017: the clock ended the targeted probes before their point cap. Incomplete, not a disagreement, not a pass. */
+export const PROBES_CUT_SHORT =
+  "check incomplete: the targeted probes were cut short by the time limit (not a disagreement), so this is not verified";
+
 export function Evidence({ v }: { v: Verification }) {
   return (
     <span
@@ -82,9 +86,7 @@ export function Evidence({ v }: { v: Verification }) {
       {v.probes_cut_short && (
         <>
           {" · "}
-          <span data-testid="probes-cut-short">
-            targeted probes cut short by the time limit: no disagreement found in the points tried
-          </span>
+          <span data-testid="probes-cut-short">{PROBES_CUT_SHORT}</span>
         </>
       )}
     </span>
@@ -281,6 +283,14 @@ export function ResultPanel({ result }: { result: SimplifyResult }) {
           </dd>
           <dt className="text-muted">Symbolic check</dt>
           <dd>{v.symbolic_zero ? "Difference simplifies to 0" : "No symbolic proof found"}</dd>
+          {v.probes_cut_short && (
+            <>
+              <dt className="text-muted">Targeted probes</dt>
+              <dd className="text-warn" data-testid="probes-cut-short">
+                {PROBES_CUT_SHORT}
+              </dd>
+            </>
+          )}
           <dt className="text-muted">Computed in</dt>
           <dd>{result.duration_ms} ms</dd>
         </dl>

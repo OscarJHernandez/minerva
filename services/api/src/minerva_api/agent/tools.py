@@ -1180,7 +1180,8 @@ def run_simplify(args: SimplifyToolArgs, ctx: ToolContext) -> ToolOutput:
         + (
             f"end to end: numeric {v.numeric_points_agreed}/{v.numeric_points_checked}, "
             f"symbolic_zero={v.symbolic_zero} "
-            f"({'symbolic and numeric evidence' if v.symbolic_zero else 'numeric evidence only, not a proof'}); "
+            f"({'symbolic and numeric evidence' if v.symbolic_zero else 'numeric evidence only, not a proof'})"
+            f"{_probe_cut_note(v)}; "
             + (
                 "valid only where " + ", ".join(f"${r}$" for r in result.restrictions_latex) + "; "
                 if result.restrictions_latex
@@ -1230,6 +1231,8 @@ def run_check_identity(args: CheckIdentityArgs, ctx: ToolContext) -> ToolOutput:
                 f"symbolic_zero={v.symbolic_zero} "
                 f"({'symbolic and numeric evidence' if v.symbolic_zero else 'numeric evidence only, not a proof'})"
             )
+    if v is not None and v.probes_cut_short:
+        parts.append(_probe_cut_note(v).removeprefix("; "))
     if result.condition:
         parts.append(f"condition: {result.condition}")
     cx = result.counterexample
@@ -3539,13 +3542,13 @@ def _step_known(result: Any) -> list[str]:
 
 
 def _probe_cut_note(v: Any) -> str:
-    """Said when the targeted probes were stopped by the clock before their point cap (V-017): the machine was
-    loaded, fewer probes ran than usual, and a pass only means no disagreement was found in those points."""
+    """Said when the targeted probes were stopped by the clock before their point cap (V-017): the check is
+    incomplete, which is not a disagreement, and it did not pass."""
     if not getattr(v, "probes_cut_short", False):
         return ""
     return (
-        "; the targeted probes were cut short by the time limit, so this is no disagreement found "
-        "in the points tried"
+        "; check incomplete: the targeted probes were cut short by the time limit (not a disagreement), "
+        "so this is not verified"
     )
 
 
