@@ -35,6 +35,7 @@ from typing import Any
 import sympy as sp
 
 from ..models import Limits, Status
+from . import killing
 from .compute import Workspace
 from .geometry import geometry
 from .models import GeometryInput, GeometryResult
@@ -43,6 +44,7 @@ from .tensors import Index, Tensor
 
 FORMAT = 1
 CASE_LIMITS = Limits(timeout_seconds=300)
+KILLING = ["killing_vectors", "geodesic_constants"]
 CURVATURE = ["christoffel", "riemann", "ricci", "ricci_scalar", "einstein", "kretschmann"]
 
 
@@ -194,6 +196,110 @@ def _static_f(ws: Workspace) -> Expected:
 
 def _skew_flat(ws: Workspace) -> Expected:
     return _flat(ws)
+
+
+# --- Killing vectors and geodesic charges ------------------------------------------------------------
+# Hand-written bases of the Killing vectors (raised components xi^mu), compared with the engine's up to a change
+# of basis (equal spans, by a numerical rank at sample points that shares nothing with the engine's exact algebra),
+# never regenerated from the code. The charges are compared the same way; the normalisation must be g(v, v).
+def _rotations(th: sp.Expr, ph: sp.Expr, prefix: list[sp.Expr]) -> list[list[sp.Expr]]:
+    """The three rotations of a round sphere in (theta, phi), after `prefix` components (Wald, Appendix C.3)."""
+    zero = [sp.S.Zero] * len(prefix)
+    return [
+        [*zero, sp.S.Zero, sp.S.One],
+        [*zero, sp.sin(ph), sp.cos(ph) * sp.cos(th) / sp.sin(th)],
+        [*zero, sp.cos(ph), -sp.sin(ph) * sp.cos(th) / sp.sin(th)],
+    ]
+
+
+def _killing_schwarzschild(ws: Workspace) -> Expected:
+    r, th, ph, M = _sym(ws, "r"), _sym(ws, "theta"), _sym(ws, "phi"), _sym(ws, "M")
+    v = {c.name: s for c, s in zip(ws.geo.coords, ws.geo.velocities, strict=True)}
+    td, thd, phd = v["t"], v["theta"], v["phi"]
+    vectors = [[sp.S.One, sp.S.Zero, sp.S.Zero, sp.S.Zero], *_rotations(th, ph, [sp.S.Zero] * 2)]
+    return {
+        "killing_vectors": vectors,
+        "geodesic_constants": {
+            "linear": [
+                (1 - 2 * M / r) * td,
+                r**2 * sp.sin(th) ** 2 * phd,
+                r**2 * (sp.sin(ph) * thd + sp.sin(th) * sp.cos(th) * sp.cos(ph) * phd),
+                r**2 * (sp.cos(ph) * thd - sp.sin(th) * sp.cos(th) * sp.sin(ph) * phd),
+            ],
+            "quadratic": [r**4 * (thd**2 + sp.sin(th) ** 2 * phd**2)],
+        },
+    }
+
+
+def _killing_flat_spherical(ws: Workspace) -> Expected:
+    r, th, ph = _sym(ws, "r"), _sym(ws, "theta"), _sym(ws, "phi")
+    s, c = sp.sin(th), sp.cos(th)
+    translations = [
+        [c, -s / r, sp.S.Zero],  # d/dz
+        [s * sp.cos(ph), c * sp.cos(ph) / r, -sp.sin(ph) / (r * s)],  # d/dx
+        [s * sp.sin(ph), c * sp.sin(ph) / r, sp.cos(ph) / (r * s)],  # d/dy
+    ]
+    vectors = [*translations, *_rotations(th, ph, [sp.S.Zero])]
+    return {
+        "killing_vectors": vectors,
+        "geodesic_constants": {"linear": _charges_of(ws, vectors), "quadratic": []},
+    }
+
+
+def _killing_sphere2(ws: Workspace) -> Expected:
+    th, ph = _sym(ws, "theta"), _sym(ws, "phi")
+    vectors = _rotations(th, ph, [])
+    return {
+        "killing_vectors": vectors,
+        "geodesic_constants": {"linear": _charges_of(ws, vectors), "quadratic": []},
+    }
+
+
+def _killing_minkowski(ws: Workspace) -> Expected:
+    t, x, y, z = (_sym(ws, n) for n in ("t", "x", "y", "z"))
+    one, zero = sp.S.One, sp.S.Zero
+    vectors = [
+        [one, zero, zero, zero],
+        [zero, one, zero, zero],
+        [zero, zero, one, zero],
+        [zero, zero, zero, one],
+        [zero, -y, x, zero],  # rotations
+        [zero, -z, zero, x],
+        [zero, zero, -z, y],
+        [x, t, zero, zero],  # boosts
+        [y, zero, t, zero],
+        [z, zero, zero, t],
+    ]
+    return {
+        "killing_vectors": vectors,
+        "geodesic_constants": {"linear": _charges_of(ws, vectors), "quadratic": []},
+    }
+
+
+def _killing_polar(ws: Workspace) -> Expected:
+    r, ph = _sym(ws, "r"), _sym(ws, "phi")
+    vectors = [
+        [sp.S.Zero, sp.S.One],
+        [sp.cos(ph), -sp.sin(ph) / r],  # d/dx
+        [sp.sin(ph), sp.cos(ph) / r],  # d/dy
+    ]
+    return {
+        "killing_vectors": vectors,
+        "geodesic_constants": {"linear": _charges_of(ws, vectors), "quadratic": []},
+    }
+
+
+def _killing_none(ws: Workspace) -> Expected:
+    return {"killing_vectors": [], "geodesic_constants": {"linear": [], "quadratic": []}}
+
+
+def _charges_of(ws: Workspace, vectors: list[list[sp.Expr]]) -> list[sp.Expr]:
+    """`xi^mu g_(mu nu) v^nu` of the reference vectors (the definition, applied to the hand-written basis)."""
+    g, v, n = ws.geo.g, ws.geo.velocities, ws.geo.n
+    return [
+        sum((xi[m] * g[m, k] * v[k] for m in range(n) for k in range(n)), sp.S.Zero)
+        for xi in vectors
+    ]
 
 
 SPHERE2 = [["a^2", "0"], ["0", r"a^2 \sin^2\theta"]]
@@ -358,6 +464,66 @@ CASES: list[Case] = [
         assumptions={"r": ["positive"]},
         functions=[{"name": "a", "args": ["t"]}],
     ),
+    Case(
+        "killing_schwarzschild",
+        "Schwarzschild: Killing vectors and geodesic charges",
+        ["t", "r", r"\theta", r"\phi"],
+        _static("1-2M/r"),
+        KILLING,
+        _killing_schwarzschild,
+        "d/dt and the three rotations (Carroll, Spacetime and Geometry, §3.8 and §5.4; Wald, Appendix C.3); charges "
+        "(1 - 2M/r) t', r^2 sin^2(theta) phi' and the squared total angular momentum r^4 (theta'^2 + sin^2 theta phi'^2)",
+        assumptions={"M": ["positive"], "r": ["positive"]},
+    ),
+    Case(
+        "killing_flat_spherical",
+        "Euclidean 3-space in spherical coordinates: Killing vectors",
+        ["r", r"\theta", r"\phi"],
+        [["1", "0", "0"], ["0", "r^2", "0"], ["0", "0", r"r^2 \sin^2\theta"]],
+        KILLING,
+        _killing_flat_spherical,
+        "three translations and three rotations, n(n+1)/2 = 6 (Wald, Appendix C.3: a maximally symmetric space)",
+        assumptions={"r": ["positive"]},
+    ),
+    Case(
+        "killing_sphere2",
+        "2-sphere of radius a: Killing vectors",
+        [r"\theta", r"\phi"],
+        SPHERE2,
+        KILLING,
+        _killing_sphere2,
+        "the three rotations (Carroll, Spacetime and Geometry, §3.8)",
+        assumptions=POSITIVE_A,
+    ),
+    Case(
+        "killing_minkowski",
+        "Minkowski space, Cartesian: Killing vectors",
+        ["t", "x", "y", "z"],
+        ETA,
+        KILLING,
+        _killing_minkowski,
+        "four translations, three rotations, three boosts: the Poincare algebra, 10 = n(n+1)/2 (Carroll, §3.8)",
+    ),
+    Case(
+        "killing_polar",
+        "Euclidean plane, polar coordinates: Killing vectors",
+        ["r", r"\phi"],
+        [["1", "0"], ["0", "r^2"]],
+        KILLING,
+        _killing_polar,
+        "two translations and the rotation, 3 = n(n+1)/2",
+        assumptions={"r": ["positive"]},
+    ),
+    Case(
+        "killing_none",
+        "A metric with no symmetry within the searched family",
+        ["x", "y"],
+        [["1 + x^2*y", "0"], ["0", "1 + x*y^2 + y^3"]],
+        KILLING,
+        _killing_none,
+        "no Killing vector within the searched family; worded as that, never as 'none exists'",
+        format="text",
+    ),
 ]
 
 
@@ -430,6 +596,54 @@ REFUSALS: list[Refusal] = [
         Status.PARSE_ERROR,
         "needs a tensor",
     ),
+    Refusal(
+        "killing_declared_function",
+        "Killing search on a metric with a declared function f(r)",
+        {
+            "coordinates": ["t", "r"],
+            "metric": [["-f(r)", "0"], ["0", "1/f(r)"]],
+            "functions": [{"name": "f", "args": ["r"]}],
+            "quantities": ["killing_vectors"],
+        },
+        Status.UNSUPPORTED,
+        "declared function",
+    ),
+    Refusal(
+        "killing_non_rational",
+        "Killing search on a metric with an exponential",
+        {
+            "coordinates": ["t", "x"],
+            "metric": [["-1", "0"], ["0", "exp(2*t)"]],
+            "format": "text",
+            "quantities": ["killing_vectors"],
+        },
+        Status.UNSUPPORTED,
+        "root, a logarithm, an exponential",
+    ),
+    Refusal(
+        "killing_mixed_angle",
+        "Killing search with a coordinate both inside and outside a sine",
+        {
+            "coordinates": ["x", "y"],
+            "metric": [["1", "0"], ["0", "x^2*sin(x)^2 + 1"]],
+            "format": "text",
+            "quantities": ["geodesic_constants"],
+        },
+        Status.UNSUPPORTED,
+        "both through its sine or cosine",
+    ),
+    Refusal(
+        "killing_irrational_constant",
+        "Killing search on a metric with pi",
+        {
+            "coordinates": ["x", "y"],
+            "metric": [["1", "0"], ["0", "pi*x^2 + 1"]],
+            "format": "text",
+            "quantities": ["killing_vectors"],
+        },
+        Status.UNSUPPORTED,
+        "constant such as pi",
+    ),
 ]
 
 
@@ -456,6 +670,74 @@ def _scalar_matches(value: Any, expected: Any) -> bool:
     return bool(sp.simplify(value - expected) == 0)
 
 
+def _sample_values(ws: Workspace, seed: int) -> dict[sp.Symbol, Any]:
+    """A generic point: coordinates away from 0 and from multiples of pi/2, velocities, parameters."""
+    import random
+
+    import mpmath as mp
+
+    rng = random.Random(seed)  # noqa: S311 - deterministic sampling
+    fixed = random.Random(7)  # noqa: S311 - the parameters are constants: one value for every point
+    out = {s: mp.mpf(fixed.uniform(0.3, 1.3)) for s in ws.geo.params}
+    out.update({s: mp.mpf(rng.uniform(0.3, 1.3)) for s in [*ws.geo.coords, *ws.geo.velocities]})
+    return out
+
+
+def _span_rank(ws: Workspace, vectors: list[list[sp.Expr]]) -> int:
+    """Rank of a set of vector fields (or functions, as one-component vectors) over the constants: the vectors
+    evaluated at several generic points, side by side, and the singular values counted at 40 digits. Shares nothing
+    with the engine's exact linear algebra."""
+    import mpmath as mp
+
+    if not vectors:
+        return 0
+    with mp.workdps(40):
+        # more columns than vectors, so that a full rank can show
+        points = [_sample_values(ws, 1000 + k) for k in range(2 * len(vectors) + 4)]
+        rows = []
+        for vec in vectors:
+            row = []
+            for pt in points:
+                for comp in vec:
+                    row.append(mp.mpf(sp.N(sp.sympify(comp).subs(pt), 45)))
+            rows.append(row)
+        matrix = mp.matrix(rows)
+        values = mp.svd_r(matrix, compute_uv=False)
+        largest = max(abs(x) for x in values)
+        return sum(1 for x in values if abs(x) > largest * mp.mpf(10) ** -25)
+
+
+def _same_span(ws: Workspace, found: list[list[sp.Expr]], reference: list[list[sp.Expr]]) -> bool:
+    if len(found) != len(reference):
+        return False
+    if not found:
+        return True
+    n = len(found)
+    return (
+        _span_rank(ws, found)
+        == n
+        == _span_rank(ws, reference)
+        == _span_rank(ws, [*found, *reference])
+    )
+
+
+def _killing_matches(ws: Workspace, kind: str, value: Any, expected: Any) -> bool:
+    if kind == "killing_vectors":
+        return _same_span(ws, value, expected)
+    items = value.items
+    linear = [[c.expr] for c in items if c.origin in ("cyclic coordinate", "Killing vector")]
+    quadratic = [[c.expr] for c in items if c.origin == "quadratic combination of Killing charges"]
+    norm = [[c.expr] for c in items if c.origin == "normalisation"]
+    g, v, n = ws.geo.g, ws.geo.velocities, ws.geo.n
+    reference_norm = sum((g[i, j] * v[i] * v[j] for i in range(n) for j in range(n)), sp.S.Zero)
+    return (
+        _same_span(ws, linear, [[e] for e in expected["linear"]])
+        and _same_span(ws, quadratic, [[e] for e in expected["quadratic"]])
+        and len(norm) == 1
+        and sp.simplify(norm[0][0] - reference_norm) == 0
+    )
+
+
 def _correct(case: Case) -> dict[str, bool]:
     """Compare every expected quantity with the symbolic result, in the workspace the engine uses."""
     import time as _time
@@ -469,10 +751,15 @@ def _correct(case: Case) -> dict[str, bool]:
         "ricci_scalar": ws.ricci_scalar,
         "einstein": ws.einstein,
         "kretschmann": ws.kretschmann,
+        "killing_vectors": lambda: killing.found(ws).raised,
+        "geodesic_constants": lambda: killing.charges(ws),
     }
     out: dict[str, bool] = {}
     for kind, expected in case.expect(ws).items():
         value = getters[kind]()
+        if kind in KILLING:
+            out[kind] = _killing_matches(ws, kind, value, expected)
+            continue
         out[kind] = (
             _tensor_matches(value, expected)
             if isinstance(value, Tensor)
@@ -598,6 +885,40 @@ def _traced_peak_mb(case: Case) -> float:
         tracemalloc.stop()
 
 
+def _killing_summary(result: GeometryResult) -> dict[str, Any] | None:
+    """Counts and the wording of the Killing search (no expression): what the report and `--check` compare."""
+    by_kind = {q.kind: q for q in result.quantities}
+    vectors, charges = by_kind.get("killing_vectors"), by_kind.get("geodesic_constants")
+    found = next((q.killing for q in (vectors, charges) if q is not None and q.killing), None)
+    if found is None:
+        return None
+    notes = " ".join(n for q in (vectors, charges) if q is not None for n in q.notes)
+    origins = [c.origin for c in charges.components] if charges is not None else []
+    if found.complete:
+        worded = "the list is complete" in notes
+    else:
+        within = (
+            "No Killing vector within the searched family" in notes
+            if found.count == 0
+            else "no further Killing vector within it" in notes
+        )
+        worded = within and "none exists" not in notes
+    return {
+        "vectors": found.count,
+        "bound": found.bound,
+        "complete": found.complete,
+        "families_searched": len(found.searched),
+        "families_not_searched": len(found.not_searched),
+        "largest_system": found.largest_system,
+        "linear_charges": sum(o in ("cyclic coordinate", "Killing vector") for o in origins),
+        "quadratic_charges": origins.count("quadratic combination of Killing charges"),
+        "normalisation": origins.count("normalisation"),
+        "killing_tensors_stated_not_searched": "Killing tensors" in notes
+        and "not searched" in notes,
+        "worded_within_family": worded,
+    }
+
+
 def _quantity_summary(result: GeometryResult) -> dict[str, Any]:
     out: dict[str, Any] = {}
     stage_ops = {d.stage: d.ops for d in result.diagnostics}
@@ -636,6 +957,9 @@ def run(
             "restrictions": len(result.restrictions_latex),
             "quantities": _quantity_summary(result),
         }
+        summary = _killing_summary(result)
+        if summary is not None:
+            entry["killing"] = summary
         if case.use_diffgeom:
             agrees, ref_ms = _diffgeom_reference(case)
             entry["diffgeom_agrees"] = agrees
@@ -784,6 +1108,34 @@ def render_report(data: dict[str, Any]) -> str:
             f"{'agrees' if diff else ('DISAGREES' if diff is False else 'n/a')} | {len(qs)} | "
             f"{passed}/{len(qs)} | {proved}/{len(qs)} |"
         )
+    killing_rows = [
+        (cid, e["killing"]) for cid, e in _in_order(det["cases"], case_ids) if "killing" in e
+    ]
+    if killing_rows:
+        lines += [
+            "",
+            "### Killing vectors and geodesic charges",
+            "",
+            "Vectors found against the bound n(n+1)/2, whether the count reached it (only then is the list called",
+            "complete), the families searched and not searched (above 300 unknowns per linear system), the largest",
+            "linear system solved, and the charges shown after `Flow.verify` on the geodesic equations. The",
+            "reference bases are hand-written and compared up to a change of basis.",
+            "",
+            "| Case | Vectors / bound | Complete | Families searched / not | Largest system | Linear charges | "
+            "Quadratic | Normalisation | Wording |",
+            "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+        ]
+        for cid, k in killing_rows:
+            wording = (
+                "ok"
+                if k["worded_within_family"] and k["killing_tensors_stated_not_searched"]
+                else "WRONG"
+            )
+            lines.append(
+                f"| {cid} | {k['vectors']} / {k['bound']} | {'yes' if k['complete'] else 'no'} | "
+                f"{k['families_searched']} / {k['families_not_searched']} | {k['largest_system']} | "
+                f"{k['linear_charges']} | {k['quadratic_charges']} | {k['normalisation']} | {wording} |"
+            )
     lines += [
         "",
         "Refusals: "

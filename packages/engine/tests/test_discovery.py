@@ -9,6 +9,7 @@ from minerva_engine.discovery import DiscoveryReport, Pins, discover_invariants
 from minerva_engine.flow import lagrangian_flow
 from minerva_engine.latexparse import parse_latex
 from minerva_engine.models import Limits, Status
+from minerva_engine.testing import budget_limits
 
 LIMITS = Limits(timeout_seconds=120)
 KEPLER = r"\frac{1}{2}m(\dot{r}^2+r^2\dot{\theta}^2)+\frac{k}{r}"
@@ -353,3 +354,76 @@ def test_more_than_three_coordinates_is_a_typed_refusal_that_names_the_limit() -
     assert "at most 3 coordinates" in report.message and "4 were given" in report.message
     assert "not available yet" in report.message
     assert not report.constants  # nothing was searched and nothing was dropped
+
+
+# -- tan, cot, sec and csc of an angle (issue #191) --------------------------------------------------------
+# Kepler in spherical coordinates: `derive` writes tan(theta) in the phi equation. The search reads it as
+# sin/cos; the equations every candidate is verified on are the original ones.
+KEPLER_SPHERICAL = "(r_dot^2 + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)/2 + k/r"
+
+
+def test_reciprocal_trig_functions_are_written_through_cos_and_sin() -> None:
+    from minerva_engine.discovery import _reciprocal_trig
+
+    x = sp.Symbol("x")
+    assert _reciprocal_trig(sp.tan(x)) == sp.sin(x) / sp.cos(x)
+    assert _reciprocal_trig(sp.cot(x)) == sp.cos(x) / sp.sin(x)
+    assert _reciprocal_trig(sp.sec(x)) == 1 / sp.cos(x)
+    assert _reciprocal_trig(sp.csc(x)) == 1 / sp.sin(x)
+    assert _reciprocal_trig(sp.cosh(x) + sp.sin(x)) == sp.cosh(x) + sp.sin(
+        x
+    )  # closed: nothing else
+
+
+def test_kepler_in_spherical_coordinates_is_searched_and_its_constants_pass_the_flow_check() -> (
+    None
+):
+    report = discover_invariants(
+        "lagrangian",
+        KEPLER_SPHERICAL,
+        ["r", "theta", "phi"],
+        None,
+        [],
+        "quick",
+        None,
+        "t",
+        {"k": ["positive"]},
+        budget_limits(),
+        "text",
+    )
+    assert report.status is Status.OK  # was `unsupported` before issue #191
+    assert report.tiers and all(t.outcome == "searched" for t in report.tiers)
+    assert "theta" in report.angles
+    flow = lagrangian_flow(
+        KEPLER_SPHERICAL, ["r", "theta", "phi"], "t", {"k": ["positive"]}, budget_limits(), "text"
+    )
+    by_name = {s.name: s for s in [*flow.q, *flow.v, *flow.params]}
+    assert report.constants
+    for constant in report.constants:
+        expr = parse_latex(constant.expression_latex.split("=", 1)[1], {}, LIMITS)
+        expr = expr.xreplace({s: by_name.get(s.name, s) for s in expr.free_symbols})
+        ok, ver = flow.verify(expr)
+        assert ok and ver is not None and ver.passed
+
+
+def test_a_wrong_sign_in_the_tan_rewrite_gives_a_quantity_that_fails_the_flow_check() -> None:
+    """Wrong twin: with tan(theta) read as -sin/cos, the phi equation would conserve r^2 phi_dot / sin^2
+    instead of r^2 sin^2 phi_dot. The flow check, on the original equations, must reject it."""
+    flow = lagrangian_flow(
+        KEPLER_SPHERICAL, ["r", "theta", "phi"], "t", {"k": ["positive"]}, budget_limits(), "text"
+    )
+    r, theta, _ = flow.q
+    _, _, phi_dot = flow.v
+    true = r**2 * sp.sin(theta) ** 2 * phi_dot
+    twin = r**2 * phi_dot / sp.sin(theta) ** 2
+    # The twin is exactly what the sign-flipped rewrite of the same equations conserves.
+    flipped = [
+        e.xreplace({a: -sp.sin(a.args[0]) / sp.cos(a.args[0]) for a in e.atoms(sp.tan)})
+        for e in flow.v_rate
+    ]
+    drift = sp.diff(twin, theta) * flow.q_rate[1] + sp.diff(twin, r) * flow.q_rate[0]
+    drift += sp.diff(twin, phi_dot) * flipped[2]
+    assert sp.simplify(drift) == 0
+    assert flow.verify(true)[0]
+    ok, _ = flow.verify(twin)
+    assert not ok

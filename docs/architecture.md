@@ -95,7 +95,10 @@ one most likely to be wrong.
     `lagrangian.derive_expr`), while symbolic legs (for example `R_{abcd}` from second derivatives of the metric)
     are reported separately. Conventions, assumptions, signature (only if decided), restrictions (`domain.py`)
     and per-stage diagnostics are part of the result. The geometry travels with each request; nothing is stored
-    server-side, so tool calls stay replayable. `geometry/benchmark.py` is the reproducible benchmark
+    server-side, so tool calls stay replayable. `killing.py` adds `killing_vectors` (an exact nullspace search of
+    the Killing equation within a stated family of lowered components, each vector shown only if the Lie
+    derivative of the metric by central differences vanishes) and `geodesic_constants` (the charges built from
+    them, each checked by `Flow.verify` on the geodesic Lagrangian). `geometry/benchmark.py` is the reproducible benchmark
     (`docs/geometry-benchmark.md`, `docs/benchmarks/geometry.json`).
   - `ode` (`ode/`, `Engine.ode_analyze`, `ode_solve_symbolic`, `ode_solve_numerical`, `POST /v1/compute/ode/*`, chat tools of the
     same names): reading of derivative notation (`reading.py`, the only place it is interpreted), exact classification and
