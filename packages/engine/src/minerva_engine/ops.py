@@ -511,6 +511,7 @@ def op_check_units(payload: dict[str, Any]) -> dict[str, Any]:
         str(payload["equation"]),
         [QuantitySpec(**q) for q in payload["quantities"]],
         Limits(**payload["limits"]),
+        [str(u) for u in payload.get("unknown", [])],
     )
     return report.model_dump(mode="json")
 

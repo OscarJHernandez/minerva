@@ -372,11 +372,13 @@ class ScriptedLLM:
             quantities = [
                 {"name": n, "unit": u.strip()} for n, u in re.findall(r"(\w+)\s*\[([^\]]+)\]", user)
             ]
+            unit_args: dict[str, Any] = {"equation": latex, "quantities": quantities}
+            asked = re.findall(r"unknown\s+(\w+)", user)  # "unknown C_3": the unit to be found
+            if asked:
+                unit_args["unknown"] = asked
             async for c in self._say("I will check the dimensions of that equation. "):
                 yield c
-            yield Chunk(
-                tool_calls=[ToolCall("check_units", {"equation": latex, "quantities": quantities})]
-            )
+            yield Chunk(tool_calls=[ToolCall("check_units", unit_args)])
         elif "numerically" in lower and latex:
             # Development stand-in: fixed numbers for a unit-mass oscillator, optionally swept in k.
             args: dict[str, Any] = {

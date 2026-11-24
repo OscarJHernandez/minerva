@@ -30,6 +30,7 @@ import sympy as sp
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .claims import split_equation
+from .dimension_solver import Condition, affine_latex, affine_text, solve_unknown_dimensions
 from .dimensions import (
     BASE_UNITS,
     ZERO,
@@ -39,6 +40,7 @@ from .dimensions import (
     dim_latex,
     dim_text,
     dimension_of,
+    is_quantity_kind,
     read_kind,
     read_unit,
 )
@@ -46,8 +48,10 @@ from .errors import MinervaMathError
 from .latexparse import parse_latex
 from .latexprint import to_latex
 from .models import SYMBOL_NAME_MAX, Limits, Status
+from .notation.models import InputAware, InputCode, InputDiagnostic
 
 MAX_QUANTITIES = 16
+MAX_UNKNOWNS = 4
 MAX_CANDIDATES = 32
 MAX_SUGGESTIONS = 6
 _NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
@@ -78,7 +82,10 @@ class QuantitySpec(BaseModel):
     @model_validator(mode="after")
     def _one_of_unit_or_kind(self) -> QuantitySpec:
         if (self.unit is None) == (self.kind is None):
-            raise ValueError(f"give exactly one of unit or kind for {self.name!r}")
+            raise ValueError(
+                f"give exactly one of unit or kind for {self.name!r} (a quantity whose unit is being "
+                "asked for is listed under `unknown` instead, and has no entry here)"
+            )
         return self
 
 
@@ -99,6 +106,8 @@ class QuantityReading(BaseModel):
     given: str
     dimension_text: str
     dimension_latex: str
+    # `given`: the unit or kind the caller sent; `time_derivative`: `x_dot` / `x_ddot` read from the entry of `x`.
+    origin: Literal["given", "time_derivative"] = "given"
 
 
 class PiGroup(BaseModel):
@@ -153,9 +162,25 @@ class SideReading(BaseModel):
     dimension_latex: str
 
 
-class UnitsCheckReport(BaseModel):
+class DerivedDimension(BaseModel):
+    """The dimension of a quantity that was listed as `unknown`, found from the equation (given the others)."""
+
+    name: str
+    latex: str
+    dimension_text: str
+    dimension_latex: str
+
+
+class UnitsCheckReport(InputAware):
     status: Status
     equation_latex: str | None = None
+    # What was asked for: the names whose dimension to find, and how that ended. `determined`: one dimension each
+    # (`derived`); `inconsistent`: none can make the equation consistent (`consistent` is False);
+    # `underdetermined`: the names in `undetermined` stay free and nothing is guessed.
+    unknown: list[str] = Field(default_factory=list)
+    outcome: Literal["determined", "inconsistent", "underdetermined"] | None = None
+    derived: list[DerivedDimension] = Field(default_factory=list)
+    undetermined: list[str] = Field(default_factory=list)
     consistent: bool | None = None
     sides: list[SideReading] = Field(default_factory=list)
     missing_factor_text: str | None = None
@@ -616,19 +641,84 @@ def _side(expr: sp.Expr, d: Dim) -> SideReading:
     )
 
 
+_VELOCITY = re.compile(r"^(?P<base>.+)_(?P<kind>dot|ddot)$")
+_TIME = read_unit("s")
+
+
+def _time_derivatives(
+    symbols: set[str],
+    units: dict[str, Dim],
+    readings: list[QuantityReading],
+    unknown: list[str],
+) -> None:
+    """An undeclared `x_dot` / `x_ddot` whose `x` has a dimension is `dim(x)/s` / `dim(x)/s^2`; a name the
+    caller declared is never touched. Added to `units` and listed in `readings`."""
+    for name in sorted(symbols - units.keys() - set(unknown)):
+        match = _VELOCITY.match(name)
+        if match is None or match["base"] not in units:
+            continue
+        order = 1 if match["kind"] == "dot" else 2
+        base = units[match["base"]]
+        d = tuple(b - order * t for b, t in zip(base, _TIME, strict=True))
+        units[name] = d
+        readings.append(
+            QuantityReading(
+                name=name,
+                latex=_symbol_latex(name),
+                given=f"time derivative of {match['base']} (order {order})",
+                dimension_text=dim_text(d),
+                dimension_latex=dim_latex(d),
+                origin="time_derivative",
+            )
+        )
+
+
+def _refusal(code: InputCode, field_name: str, symbols: list[str]) -> InputDiagnostic:
+    return InputDiagnostic(code=code, field=field_name, symbols=symbols, recoverable=True)
+
+
 def check_units(
     equation_latex: str,
     quantities: list[QuantitySpec],
     limits: Limits,
+    unknown: list[str] | None = None,
 ) -> UnitsCheckReport:
-    def fail(status: Status, message: str) -> UnitsCheckReport:
-        return UnitsCheckReport(status=status, message=message)
+    """Dimensional consistency of an equation; with `unknown`, also the dimension of those names.
+
+    A name in `unknown` has no entry in `quantities`. Its dimension is found by `dimension_solver` and is
+    shown only if the ordinary check below, which shares no code with the solver, accepts the equation with
+    it put in.
+    """
+    unknown = list(unknown or [])
+
+    def fail(
+        status: Status, message: str, diagnostic: InputDiagnostic | None = None
+    ) -> UnitsCheckReport:
+        return UnitsCheckReport(status=status, message=message, diagnostic=diagnostic)
 
     if not quantities or len(quantities) > MAX_QUANTITIES:
         return fail(Status.UNSUPPORTED, f"Give between 1 and {MAX_QUANTITIES} quantities.")
     names = [q.name for q in quantities]
     if len(set(names)) != len(names):
         return fail(Status.PARSE_ERROR, "Quantity names must be distinct.")
+    if len(unknown) > MAX_UNKNOWNS:
+        return fail(Status.UNSUPPORTED, f"Ask for at most {MAX_UNKNOWNS} unknown quantities.")
+    bad = [u for u in unknown if not _NAME.match(u) or len(u) > SYMBOL_NAME_MAX]
+    if bad or len(set(unknown)) != len(unknown) or set(unknown) & set(names):
+        return fail(
+            Status.PARSE_ERROR,
+            "Each unknown must be a distinct name (letters, digits, underscores) with no entry in "
+            "quantities.",
+        )
+    for q in quantities:
+        if q.kind is not None and not is_quantity_kind(q.kind):
+            return fail(
+                Status.PARSE_ERROR,
+                f"{q.name}: {q.kind!r} is not a quantity kind Minerva knows. Give the unit instead "
+                f'(unit: "kg m/s^2"), or, if the unit of {q.name} is what you want to find, list '
+                f"{q.name} under `unknown` and give it no entry in quantities.",
+                _refusal(InputCode.UNKNOWN_QUANTITY_KIND, "quantities", [q.name]),
+            )
     sides = split_equation(equation_latex)
     if sides is None:
         return fail(Status.PARSE_ERROR, "Write an equation with an = sign.")
@@ -638,21 +728,85 @@ def check_units(
     except MinervaMathError as exc:
         return fail(Status.PARSE_ERROR, str(exc))
     units = {n: d for n, d in zip(names, dims, strict=True)}
+    symbols = {s.name for p in parsed for s in p.free_symbols}
+    _time_derivatives(symbols, units, readings, unknown)
+    lacking = sorted(symbols - units.keys() - set(unknown))
+    if lacking:
+        return fail(
+            Status.PARSE_ERROR,
+            f"No unit or kind was given for {', '.join(lacking)}. Give each one a unit (or a kind), "
+            "or list under `unknown` the quantity whose dimension you want found; nothing is assumed "
+            "about a symbol that was not described.",
+        )
+    absent = [u for u in unknown if u not in symbols]
+    if absent:
+        return fail(
+            Status.PARSE_ERROR, f"{', '.join(absent)} does not appear in the equation as written."
+        )
 
     report = UnitsCheckReport(
         status=Status.OK,
         equation_latex=" = ".join(to_latex(p) for p in parsed),
         quantities=readings,
+        unknown=unknown,
         notes=[
             "A matching dimension does not prove an equation is correct; a mismatch proves it is "
             "wrong as written."
         ],
     )
+    if unknown:
+        if len(parsed) != 2:
+            return fail(Status.UNSUPPORTED, "Finding an unknown needs an equation with two sides.")
+        try:
+            solution = solve_unknown_dimensions(parsed[0], parsed[1], units, unknown)
+        except UnsupportedDimensionConstruct as exc:
+            return fail(Status.UNSUPPORTED, str(exc))
+        except MinervaMathError as exc:
+            return fail(Status.PARSE_ERROR, str(exc))
+        report.outcome = solution.outcome
+        if solution.outcome == "inconsistent" and solution.conflict is not None:
+            c = solution.conflict
+            report.consistent = False
+            about_unknowns = bool(c.difference().coefficients)
+            if not about_unknowns and not _conflict_confirmed(c, units):
+                return _not_verified(report)
+            report.problem = (
+                "no dimensions for the unknowns make this equation consistent; the conditions "
+                "up to this one cannot all hold"
+                if about_unknowns
+                else "these terms have different dimensions whatever the unknowns are"
+            ) + f" ({_CONDITION_TEXT[c.kind]})"
+            terms = [(c.left_expr, c.left)]
+            if c.right_expr is not None and c.kind != "function":
+                terms.append((c.right_expr, c.right))
+            report.problem_terms = [
+                SideReading(
+                    latex=to_latex(e),
+                    dimension_text=affine_text(a),
+                    dimension_latex=affine_latex(a),
+                )
+                for e, a in terms
+            ]
+            report.message = f"Not dimensionally consistent: {report.problem}."
+            return report
+        if solution.outcome == "underdetermined":
+            report.undetermined = solution.free
+            report.message = (
+                f"The dimensions of {', '.join(solution.free)} are not determined by this equation "
+                "and the others given: more than one assignment makes it consistent. Nothing is "
+                "guessed; give a unit for one of them."
+            )
+            return report
+        units = {**units, **solution.dimensions}
+    solved = bool(unknown)
+
     side_dims: list[Dim] = []
     try:
         for expr in parsed:
             side_dims.append(dimension_of(expr, units))
     except DimensionError as exc:
+        if solved:
+            return _not_verified(report)
         report.consistent = False
         report.problem = str(exc)
         report.problem_terms = [_side(e, d) for e, d in exc.parts]
@@ -666,6 +820,8 @@ def check_units(
     report.sides = [_side(e, d) for e, d in zip(parsed, side_dims, strict=True)]
     for k in range(1, len(side_dims)):
         if side_dims[k] != side_dims[0]:
+            if solved:
+                return _not_verified(report)
             factor = tuple(a - b for a, b in zip(side_dims[0], side_dims[k], strict=True))
             report.consistent = False
             report.missing_factor_text = dim_text(factor)
@@ -677,4 +833,52 @@ def check_units(
             return report
     report.consistent = True
     report.message = f"Both sides have dimension {dim_text(side_dims[0])}."
+    if solved:
+        report.derived = [
+            DerivedDimension(
+                name=u,
+                latex=_symbol_latex(u),
+                dimension_text=dim_text(units[u]),
+                dimension_latex=dim_latex(units[u]),
+            )
+            for u in unknown
+        ]
+        report.message += (
+            " "
+            + "; ".join(f"{u} has dimension {dim_text(units[u])}" for u in unknown)
+            + ", given the dimensions of the other quantities."
+        )
     return report
+
+
+_CONDITION_TEXT = {
+    "sum": "the terms of a sum must have one dimension",
+    "function": "the argument of a function, and an exponent, must be dimensionless",
+    "sides": "both sides must have one dimension",
+}
+
+
+def _conflict_confirmed(c: Condition, units: dict[str, Dim]) -> bool:
+    """A conflict that involves no unknown is re-checked by the ordinary checker, which shares no code with
+    the solver: the terms must really differ (or a part of them already be inconsistent)."""
+    try:
+        left = dimension_of(c.left_expr, units)
+        if c.kind == "function" or c.right_expr is None:
+            return left != ZERO
+        return left != dimension_of(c.right_expr, units)
+    except DimensionError:
+        return True
+    except MinervaMathError:
+        return False
+
+
+def _not_verified(report: UnitsCheckReport) -> UnitsCheckReport:
+    """The solver's dimensions did not pass the independent check: nothing is shown."""
+    return UnitsCheckReport(
+        status=Status.NOT_VERIFIED,
+        equation_latex=report.equation_latex,
+        unknown=report.unknown,
+        quantities=report.quantities,
+        message="The dimensions found for the unknowns did not pass the independent check of the "
+        "equation, so they are not shown.",
+    )

@@ -206,10 +206,19 @@ def read_unit(text: str) -> Dim:
     return _expr_dim(parse_text(source))
 
 
+def kind_key(kind: str) -> str:
+    """The table key a quantity kind is looked up by (case, spacing and aliases folded)."""
+    key = " ".join(kind.lower().replace("-", " ").replace("_", " ").split())
+    return _KIND_ALIASES.get(key, key)
+
+
+def is_quantity_kind(kind: str) -> bool:
+    return kind_key(kind) in QUANTITY_KINDS
+
+
 def read_kind(kind: str) -> Dim:
     """Dimension vector of a named quantity kind such as `dynamic viscosity`."""
-    key = " ".join(kind.lower().replace("-", " ").replace("_", " ").split())
-    key = _KIND_ALIASES.get(key, key)
+    key = kind_key(kind)
     if key not in QUANTITY_KINDS:
         raise ParseError(
             f"unknown quantity kind {kind!r}; give the unit instead, or use one of: "

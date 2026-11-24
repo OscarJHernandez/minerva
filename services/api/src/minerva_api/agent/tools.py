@@ -42,6 +42,7 @@ from minerva_engine import (
     SeriesTermEvidence,
     TensorInput,
     TensorSpec,
+    UnitsCheckReport,
     VariationInput,
     VectorInput,
     VectorResult,
@@ -91,6 +92,7 @@ from .prompts import GROUP_SUMMARY, GROUP_TOOLS
 from .segments import normalize
 from .toolsets import GROUPS, requested_groups
 from .tracing import category_for
+from .unit_statements import assumed_quantities
 
 MAX_INPUT = 2000
 
@@ -1031,7 +1033,19 @@ class UnitsCheckArgs(BaseModel):
         "(Greek letters by name: \\theta is `theta`). E is reserved: rename it (W, E_n).",
     )
     quantities: list[QuantitySpec] = Field(
-        min_length=1, max_length=16, description="Unit or kind of every symbol in the equation."
+        min_length=1,
+        max_length=16,
+        description="Unit or kind of every symbol in the equation, except the ones in `unknown`. "
+        "Never give a quantity the user is asking about an entry here. A unit or kind you were not "
+        "told is an assumption: the card says so. `x_dot` and `x_ddot` need no entry when `x` has one.",
+    )
+    unknown: list[str] = Field(
+        default_factory=list,
+        max_length=4,
+        description='Names whose unit or dimension is wanted ("what are the units of C_3?"): put the '
+        "equation that defines it in `equation` and its name here, with no entry in `quantities`. The "
+        "dimension is found from the equation and the other symbols' units; if it is not fixed, the "
+        "result says which stay free.",
     )
 
 
@@ -3366,8 +3380,19 @@ def run_dimensional(args: DimensionalArgs, ctx: ToolContext) -> ToolOutput:
     return ToolOutput(card, "\n".join(lines), known, report.status.value)
 
 
+def _assumed_units(report: UnitsCheckReport, ctx: ToolContext) -> list[str]:
+    """The quantities of the call whose unit the user did not state (`unit_statements`): a label on the card
+    and in the tool text, never a refusal and never an input to the computation. `ctx.user_messages` is None
+    outside a chat turn, where the numbers are the user's own."""
+    if ctx.user_messages is None:
+        return []
+    pairs = [(q.name, q.dimension_text) for q in report.quantities if q.origin == "given"]
+    return assumed_quantities(pairs, list(ctx.user_messages))
+
+
 def run_units_check(args: UnitsCheckArgs, ctx: ToolContext) -> ToolOutput:
-    report = ctx.engine.check_units(args.equation, args.quantities)
+    report = ctx.engine.check_units(args.equation, args.quantities, args.unknown)
+    assumed = _assumed_units(report, ctx)
     methods = ctx.kb.search(
         SearchQuery(features=["dimensional:units-check"], chapter="physics.methods", limit=3)
     )
@@ -3377,7 +3402,11 @@ def run_units_check(args: UnitsCheckArgs, ctx: ToolContext) -> ToolOutput:
         tool="check_units",
         type="units",
         title="Unit check",
-        data={"report": report.model_dump(mode="json"), "methods": method_data},
+        data={
+            "report": report.model_dump(mode="json"),
+            "methods": method_data,
+            "assumed_units": assumed,
+        },
     )
     lines = [f"status={report.status.value}; {report.message}"]
     known: list[str] = []
@@ -3388,6 +3417,22 @@ def run_units_check(args: UnitsCheckArgs, ctx: ToolContext) -> ToolOutput:
         lines.append(f"part {i}: ${side.latex}$ has dimension [{side.dimension_text}]")
     if report.consistent is not None:
         lines.append(f"consistent={report.consistent}")
+    for d in report.derived:
+        lines.append(f"dimension of {d.name}, given these inputs: [{d.dimension_text}]")
+    if report.undetermined:
+        lines.append(
+            f"not determined: {', '.join(report.undetermined)} stay free (the equation fixes only "
+            "combinations of them); say so and ask for a unit, never pick one"
+        )
+    for r in report.quantities:
+        if r.origin == "time_derivative":
+            lines.append(f"read {r.name} as {r.given}: [{r.dimension_text}]")
+    if assumed:
+        lines.append(
+            "units not stated by the user (assumed by the assistant): "
+            f"{', '.join(assumed)}. The card says so. Tell the user these were assumed, that the "
+            "result holds given them, and ask them to confirm or correct them."
+        )
     if report.missing_factor_text:
         lines.append(f"missing factor dimension: [{report.missing_factor_text}]")
     if report.problem:
@@ -4064,7 +4109,9 @@ TOOLS: dict[str, Tool] = {
         Tool(
             "check_units",
             "Check an equation for dimensional consistency given the unit of each symbol: reports whether "
-            "all terms and both sides agree, and the dimension of the factor missing when they do not.",
+            "all terms and both sides agree, and the dimension of the factor missing when they do not. To find "
+            'the unit of a quantity ("what are the units of C_3?"), give its equation and put the name in '
+            "`unknown`; its dimension is derived from the other symbols' units, never worked out in prose.",
             UnitsCheckArgs,
             run_units_check,
         ),

@@ -146,6 +146,7 @@ def repair_arguments(
     _kind_wrapper(fields, out, notes)
     _theorem_expression(fields, out, notes)
     _item_keys(fields, out, notes)
+    _unit_null_is_unknown(fields, out, notes)
     _default_assumption(fields, out, notes)
     _nested_numbers(fields, out, notes)
 
@@ -327,6 +328,47 @@ def _item_keys(fields: Mapping[str, Any], out: dict[str, Any], notes: list[Norma
                 "the one listed unknown is the one every condition is about",
             )
         )
+
+
+def _unit_null_is_unknown(
+    fields: Mapping[str, Any], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    """`quantities: [{"name": "C_3", "unit": null}]` with no kind is how a model says "I do not know the unit of
+    C_3, and that is what I want": the name moves to `unknown`. An entry that gives a kind, or a unit, is left
+    alone, and an entry with neither key is still refused."""
+    items = out.get("quantities")
+    unknown = fields.get("unknown")
+    if (
+        "quantities" not in fields
+        or unknown is None
+        or not _is_list_of_str(unknown.annotation)
+        or not isinstance(items, list)
+    ):
+        return
+    asked = [
+        i
+        for i in items
+        if isinstance(i, dict)
+        and isinstance(i.get("name"), str)
+        and "unit" in i
+        and i["unit"] is None
+        and i.get("kind") is None
+    ]
+    if not asked:
+        return
+    current = out.get("unknown")
+    listed = [u for u in current if isinstance(u, str)] if isinstance(current, list) else []
+    names = [i["name"] for i in asked if i["name"] not in listed]
+    out["quantities"] = [i for i in items if not any(i is a for a in asked)]
+    out["unknown"] = [*listed, *names]
+    notes.append(
+        _note(
+            "quantities",
+            ", ".join(f"{i['name']} (unit: null)" for i in asked),
+            "unknown: " + ", ".join(i["name"] for i in asked),
+            "a quantity with no unit and no kind is the one whose unit is asked for",
+        )
+    )
 
 
 def _default_assumption(

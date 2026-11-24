@@ -507,6 +507,49 @@ def run_solve(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[s
     )
 
 
+def run_units(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    from minerva_engine.pi_groups import QuantitySpec
+
+    quantities = [QuantitySpec(**q) for q in spec["quantities"]]
+    r = engine.check_units(spec["equation"], quantities, spec.get("unknown", []))
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    for d in r.derived:
+        outputs.append(
+            {
+                "label": f"Dimension of {d.name}",
+                "latex": d.dimension_latex,
+                "text": "given these inputs",
+            }
+        )
+    if r.undetermined:
+        outputs.append({"label": "Not determined", "text": ", ".join(r.undetermined)})
+    if r.consistent is not None:
+        checks.append(
+            "dimensionally consistent" if r.consistent else "not dimensionally consistent"
+        )
+    read = "; ".join(f"{q.name}: {q.given}" for q in r.quantities if q.origin == "given") + (
+        "; "
+        + ", ".join(
+            f"{q.name} read from its coordinate" for q in r.quantities if q.origin != "given"
+        )
+        if any(q.origin != "given" for q in r.quantities)
+        else ""
+    )
+    return _example(
+        spec,
+        r.status.value,
+        [
+            {"label": "Equation", "source": spec["equation"]},
+            {"label": "Given", "text": read},
+            {"label": "Unknown", "text": ", ".join(spec.get("unknown", [])) or "none"},
+        ],
+        outputs,
+        checks,
+        [r.message] if r.message else [],
+    )
+
+
 def run_lagrangian(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     r = engine.analyze_lagrangian(spec["input"], spec["coordinates"], format=_syntax(spec))  # type: ignore[arg-type]
     outputs: list[dict[str, str]] = []
@@ -1927,6 +1970,7 @@ RUNNERS = {
     "identities": run_identities,
     "tensor": run_tensor,
     "solve": run_solve,
+    "units": run_units,
     "lagrangian": run_lagrangian,
     "variation": run_variation,
     "invariants": run_invariants,

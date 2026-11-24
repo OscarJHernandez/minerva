@@ -296,3 +296,31 @@ spelling; a `\delta^{(3)}(...)` is never sampled by the claim checker. Vector an
 linked by mathematics (an equation about a delta is marked verified only by an exact match with what the tool printed).
 The offline trajectory `vector-distributional-divergence` and the eight `distributional-*` cases cover this; the first
 real-model measurement is recorded in the homepage evaluation.
+
+## Units of a quantity (issue #184)
+
+A conversation asked "What are the units of C_3? in Equation (3)" after a conserved-quantity search. `check_units` could
+only check an equation whose every symbol already had a unit, so the model sent the asked-for quantity as
+`{"name": "C_3", "unit": null}` and the kind `"Kepler parameter"` (not in the table). `QuantitySpec` refused both, the
+model repeated the call twice, and the turn ended at `repeated_calls` with no answer.
+
+What changed, each part closed and visible:
+
+- `check_units` has `unknown` (at most 4 names). The engine finds the dimension of those names (`dimension_solver.py`: exact
+  linear equations over the rationals) and answers `determined`, `inconsistent` or `underdetermined`, never a guess. It shows a
+  dimension only if the unchanged checker (`dimension_of`) accepts the equation with it put in.
+- `{"name": X, "unit": null}` with no kind is repaired to "X is unknown" (a normalization in the trace). A kind outside the
+  table is refused with `unknown_quantity_kind`, whose text names both ways out, so a second identical refusal has something to
+  change.
+- `x_dot` / `x_ddot` of a declared `x` are read as `dim(x)/s`, `dim(x)/s^2` and listed.
+- Units the user never stated are labelled "assumed by the assistant" (card and tool text), the model is told to say so, and the
+  result is worded "given these inputs". The rule errs towards "assumed": tests cover a stated unit marked assumed (acceptable)
+  and an assumed unit marked stated (a failure). The label never reaches the computation.
+- Evaluation: the two-turn case `kepler-constant-then-its-units` in `cases_reliability.yaml` (reference call checked by
+  `--check-cases`, ideal and adversarial scripts in `test_evaluation_reliability.py`, corruption reference in
+  `docs/benchmarks/corruption.json`). The reliability case-set digest moved from `c174b4db4fad` (25 cases) to `8db17f046b66`
+  (26 cases); the core, probe, heldout and heldout2 digests did not change.
+
+Not done: no live-model measurement of the new case yet (it needs the model host); the unit reader still accepts coherent SI
+only, so a user's "grams" or "km" stays an assumption the model must convert, as before.
+

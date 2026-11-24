@@ -961,11 +961,18 @@ class Engine:
         report.duration_ms = ms
         return report
 
-    def check_units(self, equation: str, quantities: list[QuantitySpec]) -> UnitsCheckReport:
-        """Dimensional consistency of an equation (LaTeX) given units of its symbols, sandboxed."""
+    def check_units(
+        self, equation: str, quantities: list[QuantitySpec], unknown: list[str] | None = None
+    ) -> UnitsCheckReport:
+        """Dimensional consistency of an equation (LaTeX) given units of its symbols, sandboxed. The
+        names in `unknown` have their dimension found from the equation (and checked)."""
         outcome, ms = self._run(
             "check_units",
-            {"equation": equation, "quantities": [q.model_dump() for q in quantities]},
+            {
+                "equation": equation,
+                "quantities": [q.model_dump() for q in quantities],
+                "unknown": list(unknown or []),
+            },
         )
         if outcome.outcome is not Outcome.OK or outcome.value is None:
             status, message = self._failure_status(outcome.outcome)

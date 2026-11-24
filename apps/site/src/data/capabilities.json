@@ -7155,6 +7155,122 @@
       ]
     },
     {
+      "id": "unit-finding",
+      "title": "Units of a quantity",
+      "status": "available",
+      "group": "physics",
+      "where": [
+        "chat"
+      ],
+      "needs_model": false,
+      "summary": "Finds the dimension of a quantity from the equation it is in and the units of the other symbols, or checks an equation for dimensional consistency. Dimensions are exponent vectors; products, rational powers, sums, function arguments and the two sides give linear equations that are solved exactly. The answer is a unique dimension, inconsistent, or not determined, and it is shown only if the ordinary dimension check accepts the equation with it put in.",
+      "limits": [
+        "A dimension is \"given these inputs\". A unit the user did not state is the assistant's, and the card says so.",
+        "A matching dimension does not prove an equation correct. Coherent SI units only, and an unknown in an exponent or a symbolic power is refused.",
+        "`x_dot` and `x_ddot` are read as the dimension of `x` over s and s^2 unless a unit is given for them."
+      ],
+      "examples": [
+        {
+          "id": "units-of-a-conserved-quantity",
+          "title": "The units of a constant of the Kepler problem",
+          "op": "units",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "C_{3} = - k \\cos{\\theta} + m r^{3} \\dot{\\theta}^{2} \\cos{\\theta} + m r^{2} \\dot{r} \\dot{\\theta} \\sin{\\theta}"
+            },
+            {
+              "label": "Given",
+              "text": "m: kg; r: m; theta: rad; r_dot read from its coordinate, theta_dot read from its coordinate"
+            },
+            {
+              "label": "Unknown",
+              "text": "C_3, k"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Dimension of C_3",
+              "latex": "\\mathrm{kg\\,m^{3}\\,s^{-2}}",
+              "text": "given these inputs"
+            },
+            {
+              "label": "Dimension of k",
+              "latex": "\\mathrm{kg\\,m^{3}\\,s^{-2}}",
+              "text": "given these inputs"
+            }
+          ],
+          "checks": [
+            "dimensionally consistent"
+          ],
+          "notes": [
+            "Both sides have dimension kg m^3 s^-2. C_3 has dimension kg m^3 s^-2; k has dimension kg m^3 s^-2, given the dimensions of the other quantities."
+          ]
+        },
+        {
+          "id": "units-underdetermined",
+          "title": "A product fixes only a combination of its factors",
+          "op": "units",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "F = a b"
+            },
+            {
+              "label": "Given",
+              "text": "F: N"
+            },
+            {
+              "label": "Unknown",
+              "text": "a, b"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Not determined",
+              "text": "a, b"
+            }
+          ],
+          "checks": [],
+          "notes": [
+            "The dimensions of a, b are not determined by this equation and the others given: more than one assignment makes it consistent. Nothing is guessed; give a unit for one of them."
+          ]
+        },
+        {
+          "id": "units-inconsistent",
+          "title": "A sum of unlike terms",
+          "op": "units",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Equation",
+              "source": "F = a + m"
+            },
+            {
+              "label": "Given",
+              "text": "F: N; m: kg"
+            },
+            {
+              "label": "Unknown",
+              "text": "a"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [
+            "not dimensionally consistent"
+          ],
+          "notes": [
+            "Not dimensionally consistent: no dimensions for the unknowns make this equation consistent; the conditions up to this one cannot all hold (both sides must have one dimension)."
+          ]
+        }
+      ]
+    },
+    {
       "id": "lagrangian",
       "title": "Lagrangian mechanics",
       "status": "available",
