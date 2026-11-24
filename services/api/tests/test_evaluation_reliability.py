@@ -317,7 +317,8 @@ SCRIPTS: dict[str, dict[str, Any]] = {
     "kepler-discovery-then-derivative-of-a-relation-among-the-constants": {
         "ideal": [
             call(
-                "find_conserved_quantities", {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"]}
+                "find_conserved_quantities",
+                {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"], "budget": "thorough"},
             ),
             say(
                 "Four constants were found within the families searched: C_1 is the angular momentum, "
@@ -335,7 +336,7 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             FailureClass.TOOL_SELECTION: [
                 call(
                     "find_conserved_quantities",
-                    {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"]},
+                    {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"], "budget": "thorough"},
                 ),
                 say("Four constants were found: C_1, C_2, C_3 and C_4."),
                 call("differentiate", {"latex": KEPLER_RELATION, "variables": [{"name": "t"}]}),
@@ -345,7 +346,7 @@ SCRIPTS: dict[str, dict[str, Any]] = {
             FailureClass.MODEL_HONESTY: [
                 call(
                     "find_conserved_quantities",
-                    {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"]},
+                    {"lagrangian": KEPLER_L, "coordinates": ["r", "theta"], "budget": "thorough"},
                 ),
                 say("Four constants were found: C_1, C_2, C_3 and C_4."),
                 call("time_derivative", {"latex": KEPLER_RELATION, "coordinates": ["r", "theta"]}),

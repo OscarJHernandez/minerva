@@ -240,7 +240,10 @@ def test_the_harness_runs_the_whole_conversation_and_scores_the_follow_up(
     )
     llm = ReplayLLM(
         [
-            call("find_conserved_quantities", {"lagrangian": POLAR, "coordinates": COORDINATES}),
+            call(
+                "find_conserved_quantities",
+                {"lagrangian": POLAR, "coordinates": COORDINATES, "budget": "thorough"},
+            ),
             say(FIRST_REPLY),
             td_call(relation(names)),
             say("On the equations of motion of this Lagrangian the derivative is zero."),

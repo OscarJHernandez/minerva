@@ -197,6 +197,7 @@
     arguments:
       lagrangian: '\frac12 \mu (\dot{r}^2 + r^2 \dot{\theta}^2) + \frac{k}{r}'
       coordinates: [r, theta]
+      budget: thorough
   source: "Kepler: energy, angular momentum and two components of the Laplace-Runge-Lenz vector (Goldstein, Classical Mechanics, ch. 3); the engine's own search returns them as C_1..C_4 (tests/test_conserved_quantity_multiturn.py reads the names from the card)"
   followups:
     - prompt: 'Now take the total time derivative of the relation $C_3^2 + C_4^2 - k^2 - 2 C_1^2 C_2 / \mu$ among those constants.'
