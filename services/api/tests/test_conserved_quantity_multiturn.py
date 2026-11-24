@@ -428,3 +428,25 @@ def test_claim_marks_change_the_digest_only_where_a_case_uses_them() -> None:
     assert cases_digest(marked) != plain
     target.followups[0].claim_marks = []
     assert cases_digest(marked) == plain
+
+
+def test_the_relation_of_the_live_case_is_an_identity_in_its_own_definitions(
+    ctx: ToolContext,
+) -> None:
+    """`kepler-discovery-then-derivative-of-a-relation-among-the-constants` asks about
+    C_3^2 + C_4^2 - k^2 - 2 C_1^2 C_2 / mu. A relation that was not an identity would still be 'zero on the
+    motion' for any function of conserved quantities, so the identity is checked here, apart from the tool,
+    on the case's own reference definitions (velocities as plain symbols u, w)."""
+    from minerva_api.agent.evaluation.cases import load_suite
+
+    case = next(c for c in load_suite("reliability") if c.id.startswith("kepler-discovery-then"))
+    assert case.followups[0].reference is not None
+    expanded = case.followups[0].reference.arguments["latex"]
+    left, right = expanded.split(" - k^2 - ", 1)  # A^2 + B^2  |  \frac{2 C_1^2 C_2}{\mu}
+    sides = [left, "k^2 + " + right]
+    for index, text in enumerate(sides):
+        for old, new in ((r"\dot{r}", "u"), (r"\dot{\theta}", "w")):
+            text = text.replace(old, new)
+        assert "dot" not in text, text
+        sides[index] = text
+    assert proved_equal(ctx, sides[0], sides[1]), sides
