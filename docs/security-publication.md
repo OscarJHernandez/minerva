@@ -28,6 +28,8 @@ Mitigations to apply before going public:
   credentials, a restricted network policy and no mounted host paths.
 - Alternative: run fork pull requests on GitHub-hosted runners only and keep self-hosted runners for `main`.
 - Workflows grant `contents: read` by default and nothing else unless a job needs it.
+- The uv download cache (setup-uv, keyed on `uv.lock`) is saved only by runs of trusted code (branches of this
+  repository and `main`); a fork pull request may restore it but never saves one.
 
 ## Secret handling
 

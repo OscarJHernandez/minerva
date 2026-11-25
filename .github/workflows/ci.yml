@@ -79,9 +79,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The uv cache (downloaded wheels, and the CPython build) is the GitHub Actions cache, keyed on uv.lock by setup-uv;
+      # `auto` would leave it off on self-hosted runners, and every pod downloaded every package (31 s to 20 min).
+      # Only this job saves it (e2e saves its own, on GitHub-hosted runners), and only for trusted code; the other Python
+      # jobs restore what main saved. A changed uv.lock has a new key, so its first run downloads once.
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
+          enable-cache: true
+          cache-python: true
+          cache-dependency-glob: uv.lock
+          save-cache: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       - run: uv sync --frozen
       - name: The handbook data is tracked (a .gitignore rule once hid it)
         run: git ls-files --error-unmatch packages/knowledge/src/minerva_knowledge/data/chapters.yaml
@@ -134,6 +142,10 @@ jobs:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
+          enable-cache: true
+          cache-python: true
+          cache-dependency-glob: uv.lock
+          save-cache: false
       - run: uv sync --frozen
       # 3 workers: pods have no CPU limit, so this uses idle cores. `loadfile`: one worker owns each file, so a
       # benchmark module's corpus fixture runs once instead of once per worker (root `conftest.py`).
@@ -158,6 +170,10 @@ jobs:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
+          enable-cache: true
+          cache-python: true
+          cache-dependency-glob: uv.lock
+          save-cache: false
       - run: uv sync --frozen
       # 3 workers, one PostgreSQL database each (`database_url_for_tests` in services/api/tests/conftest.py, created
       # on first use); `loadfile` keeps every test file on one worker. Serial, the suite took two pods and 6 to 8 minutes each.
@@ -207,6 +223,10 @@ jobs:
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
+          enable-cache: true
+          cache-python: true
+          cache-dependency-glob: uv.lock
+          save-cache: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       - run: uv sync --frozen
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
