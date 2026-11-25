@@ -45,6 +45,7 @@ REFERENCEABLE_TOOLS = frozenset(
         "substitute",
         "rewrite_part",
         "routh_reduce",
+        "effective_potential",
     }
 )
 # `substitute` and `rewrite_part` keep their result under `data["result"]` (`card_equations.result_formula`); the id
@@ -56,6 +57,8 @@ REFERENCEABLE_TOOLS = frozenset(
 # and never gets an id: a plain `0` would drop the system it was decided on.
 # `routh_reduce`: the id names the Routhian R (`result_latex`) with the block-determinant restrictions. The rows of
 # what was held fixed and of the rebuilt velocities are numbered list rows (names, no id).
+# `effective_potential`: the id names the radial equation `r_dot^2 + V_eff(r) = alpha p^2` (`result_latex`) with its
+# restrictions; `V_eff(r) = ...` is a numbered list row (a name, no id).
 # Arguments that may contain references (the ones that hold a mathematical expression).
 EXPRESSION_ARGUMENTS = MATH_FIELDS
 

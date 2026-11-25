@@ -241,7 +241,7 @@ def test_routh_reduce_is_in_its_own_group_and_not_in_mechanics() -> None:
     from minerva_api.agent.toolsets import group_of
 
     assert group_of("routh_reduce") == "reduction"
-    assert GROUP_TOOLS["reduction"] == ("routh_reduce",)
+    assert GROUP_TOOLS["reduction"] == ("routh_reduce", "effective_potential")
     assert "routh_reduce" not in GROUP_TOOLS["mechanics"]
 
 
