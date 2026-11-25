@@ -621,6 +621,7 @@ def expectation_grand(
         route="cumulants of N as derivatives of ln Xi with respect to mu at fixed beta",
         held_fixed=sorted(s.name for s in problem.params if s != mu),
         checks=checks,
+        order=request.order if request.statistic == "cumulant" else None,
     )
     steps = [
         *_setup_steps(problem, canon),

@@ -67,6 +67,7 @@ export const twoLevel: StatMechResult = {
       result_kind: "exact",
       held_fixed: [],
       variable: null,
+      order: null,
       route: "U = -d ln Z / d beta",
       checks: [
         { name: "enumeration", subject: "U", passed: true, points: 8, agreed: 8, detail: "" },
@@ -152,6 +153,7 @@ export const approximated: StatMechResult = {
       result_kind: "asymptotic",
       held_fixed: [],
       variable: null,
+      order: null,
       route: "Taylor series about beta = 0",
       checks: [
         { name: "series_check", subject: "lnZ", passed: true, points: 4, agreed: 4, detail: "" },

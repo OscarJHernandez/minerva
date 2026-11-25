@@ -147,6 +147,8 @@ export interface StatQuantity {
   result_kind: ResultKind;
   held_fixed: string[];
   variable: string | null;
+  /** The order of a cumulant (`cumulant_E`, `cumulant_N`); null for every other quantity. */
+  order: number | null;
   route: string;
   checks: StatCheck[];
 }

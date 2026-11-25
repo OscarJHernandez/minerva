@@ -1,5 +1,5 @@
 {
-  "comment": "The one closed table of how the statistical-mechanics panel writes a base quantity and how the server numbers its row (`card_equations.STATMECH_SYMBOL`, `statmech-panel.tsx`). A name not here is drawn as the engine named it and is never numbered. Keys are the engine's `StatQuantity.name`; a quantity the user labelled (a partial derivative, `variable` set) never uses this table, whatever its label. Each value is plain LaTeX for the quantity named in the engine, never a different quantity: `Omega` is Omega in both the microcanonical card (number of microstates) and the grand canonical card (grand potential), as those cards title it; `N` is the mean particle number of the grand canonical card.",
+  "comment": "The one closed table of how the statistical-mechanics panel writes a base quantity and how the server numbers its row (`card_equations.STATMECH_SYMBOL`, `statmech-panel.tsx`). A name not here is drawn as the engine named it and is never numbered. Keys are the engine's `StatQuantity.name`; a quantity the user labelled (a partial derivative, `variable` set) never uses this table, whatever its label. Each value is plain LaTeX for the quantity named in the engine, never a different quantity: `Omega` is Omega in both the microcanonical card (number of microstates) and the grand canonical card (grand potential), as those cards title it; `N` is the mean particle number of the grand canonical card. A cumulant entry holds the placeholder `<order>`, replaced by the structured `StatQuantity.order` the engine returned (never read from a name or a check's text); a cumulant without an integer order from 1 to 4 has no symbol and is not numbered.",
   "symbols": {
     "Z": "Z",
     "lnZ": "\\ln Z",
@@ -15,6 +15,8 @@
     "mean_E": "\\langle E \\rangle",
     "variance_E": "\\operatorname{Var}(E)",
     "mean_N": "\\langle N \\rangle",
-    "variance_N": "\\operatorname{Var}(N)"
+    "variance_N": "\\operatorname{Var}(N)",
+    "cumulant_E": "\\kappa_{<order>}(E)",
+    "cumulant_N": "\\kappa_{<order>}(N)"
   }
 }

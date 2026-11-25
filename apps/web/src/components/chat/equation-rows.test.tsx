@@ -127,6 +127,8 @@ const NEW_ENTRIES: Record<
   statmech_micro: "statmech",
   statmech_variance_N: "statmech",
   statmech_mean_E: "statmech",
+  statmech_cumulant_E: "statmech",
+  statmech_cumulant_N: "statmech",
   perturbation: "perturbation",
   dimensional: "dimensional",
   ode_equilibria: "ode_analysis",
@@ -277,6 +279,49 @@ describe("row numbers of the variation, statistics and expansion cards", () => {
     render(panel(String.raw`n_{1} = a,\quad n_{2} = b`));
     expect(screen.queryByTestId("equation-number")).not.toBeInTheDocument();
   });
+
+  it("a cumulant is drawn as kappa of its order and numbered under a key that holds the order", () => {
+    const base = { variable: null };
+    expect(quantitySymbol({ name: "cumulant_E", order: 3, ...base })).toBe("\\kappa_{3}(E)");
+    expect(quantitySymbol({ name: "cumulant_N", order: 4, ...base })).toBe("\\kappa_{4}(N)");
+    // no order, an order outside 1..4 and a user label: the name as the engine gave it
+    expect(quantitySymbol({ name: "cumulant_E", order: null, ...base })).toBe("cumulant_E");
+    expect(quantitySymbol({ name: "cumulant_E", ...base })).toBe("cumulant_E");
+    expect(quantitySymbol({ name: "cumulant_E", order: 5, ...base })).toBe("cumulant_E");
+    expect(quantitySymbol({ name: "cumulant_E", order: 3, variable: "beta" })).toBe("cumulant_E");
+    const qs = [
+      { name: "cumulant_E", order: 2 },
+      { name: "cumulant_E", order: 3 },
+      { name: "cumulant_E", order: 3 },
+      { name: "cumulant_N", order: 3 },
+      { name: "Z", order: null },
+    ];
+    expect(qs.map((_, i) => quantityKey(qs, i))).toEqual([
+      "cumulant_E:2",
+      "cumulant_E:3",
+      "cumulant_E:3:2",
+      "cumulant_N:3",
+      "quantity:Z",
+    ]);
+  });
+
+  it.each(["statmech_cumulant_E", "statmech_cumulant_N"])(
+    "the %s card marks its row with the key the server numbers it by",
+    (name) => {
+      const entry = rowEntries[name] as RowEntry;
+      const result = entry.data.result as Parameters<typeof StatMechPanel>[0]["result"];
+      const [key] = entry.keys;
+      render(
+        <RowNumbersProvider value={{ [key!]: 9 }}>
+          <StatMechPanel result={result} needs={{ cell: false, identical: false }} />
+        </RowNumbersProvider>,
+      );
+      expect(screen.getAllByTestId("equation-number").map((e) => e.textContent)).toEqual(["(9)"]);
+      // the shown symbol is the one the server wrote on the left of the row
+      const left = entry.rows[key!]!.split(" = ")[0];
+      expect(left).toBe(quantitySymbol(result.quantities[0]!));
+    },
+  );
 
   it("a repeated quantity name gets a distinct key, as on the server", () => {
     const names = ["Z", "U", "Z", "Z"].map((name) => ({ name }));

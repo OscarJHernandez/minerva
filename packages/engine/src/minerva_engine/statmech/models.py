@@ -278,6 +278,9 @@ class StatQuantity(BaseModel):
     result_kind: ResultKind = "exact"
     held_fixed: list[str] = Field(default_factory=list)
     variable: str | None = None
+    # The order n of a cumulant kappa_n of the observable named after `cumulant_`; None for every other quantity.
+    # A structured field: nothing reads the order out of the name or of a check's subject text.
+    order: int | None = None
     route: str = ""  # how it was produced, in words
     checks: list[StatCheck] = Field(default_factory=list)
 

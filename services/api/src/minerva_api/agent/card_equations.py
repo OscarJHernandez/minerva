@@ -520,7 +520,7 @@ def expansion(data: dict[str, Any]) -> Listed:
 
 # How the statistical-mechanics panel writes a base quantity: ONE closed table, `packages/ui/fixtures/statmech-symbols.json`,
 # read by the panel (`statmech-panel.tsx`, `quantitySymbol`) and pinned here by a test. A name not in it (a
-# cumulant of unstated order, a quantity of the approximation or numeric kinds, anything the user
+# cumulant without a stated order, a quantity of the approximation or numeric kinds, anything the user
 # labelled) is drawn as the engine named it and is not numbered; so is any quantity with `variable` set, which is a
 # user-labelled partial derivative whose label may equal a table name.
 STATMECH_SYMBOL: dict[str, str] = {
@@ -539,16 +539,47 @@ STATMECH_SYMBOL: dict[str, str] = {
     "variance_E": r"\operatorname{Var}(E)",
     "mean_N": r"\langle N \rangle",
     "variance_N": r"\operatorname{Var}(N)",
+    "cumulant_E": r"\kappa_{<order>}(E)",
+    "cumulant_N": r"\kappa_{<order>}(N)",
 }
+CUMULANT_ORDER_PLACEHOLDER = "<order>"
+MAX_CUMULANT_ORDER = 4
 
 
-def statmech_key(names: list[str], i: int) -> str:
+def statmech_symbol(q: dict[str, Any]) -> str | None:
+    """How the panel draws quantity `q` on the left of its row, or None when it has no symbol.
+
+    A user-labelled quantity (`variable` set) has none. A cumulant symbol needs the structured `order` the engine
+    returned (an integer 1..4, never read from the name or from a check's text): without it there is no symbol.
+    """
+    if q.get("variable") is not None:
+        return None
+    symbol = STATMECH_SYMBOL.get(str(q.get("name")))
+    if symbol is None or CUMULANT_ORDER_PLACEHOLDER not in symbol:
+        return symbol
+    order = q.get("order")
+    if (
+        isinstance(order, bool)
+        or not isinstance(order, int)
+        or not 1 <= order <= MAX_CUMULANT_ORDER
+    ):
+        return None
+    return symbol.replace(CUMULANT_ORDER_PLACEHOLDER, str(order))
+
+
+def statmech_key(names: list[str], i: int, orders: list[int | None] | None = None) -> str:
     """The key of quantity i: `quantity:<name>`, and `quantity:<name>:<k>` for its k-th occurrence (k >= 2).
 
     A request may ask for the same base quantity twice; the key stays unique and stable, and the panel computes
-    it the same way (`quantityKey` in `statmech-panel.tsx`).
+    it the same way (`quantityKey` in `statmech-panel.tsx`). A cumulant row carries its order, which belongs to its
+    name: `cumulant_E:3`, and `cumulant_E:3:2` for the second request of the same cumulant.
     """
     name = names[i]
+    held = orders or []
+    order = held[i] if i < len(held) else None
+    if order is not None and name.startswith("cumulant_"):
+        k = sum(1 for j in range(i + 1) if names[j] == name and held[j] == order)
+        return f"{name}:{order}" if k == 1 else f"{name}:{order}:{k}"
     k = names[: i + 1].count(name)
     return f"quantity:{name}" if k == 1 else f"quantity:{name}:{k}"
 
@@ -612,8 +643,9 @@ def statmech(data: dict[str, Any]) -> Listed:
     one). Not numbered: unevaluated representations, numerical values and asymptotic results (`result_kind`), a
     quantity one of whose independent checks disagreed, the `levels` step (the user's own input, quoted), the
     other steps, the table, the error tables, the methods and the notes. The `occupations` quantity is numbered
-    row by row (`occupation:<k>`, `split_occupations`) under the same gate. `cumulant_<X>` is not numbered: the
-    result states no order for it. A result that is not `ok` (a
+    row by row (`occupation:<k>`, `split_occupations`) under the same gate. `cumulant_E` / `cumulant_N` are
+    numbered as `cumulant_<X>:<order>` only with the structured `order` the engine returned (`statmech_symbol`);
+    another cumulant (an observable of the levels) or one without an order is not. A result that is not `ok` (a
     convention still to be confirmed, a refusal) lists nothing.
     """
     result = data.get("result") or {}
@@ -621,9 +653,10 @@ def statmech(data: dict[str, Any]) -> Listed:
         return []
     quantities = [q for q in result.get("quantities") or [] if isinstance(q, dict)]
     names = [str(q.get("name")) for q in quantities]
+    orders = [q.get("order") if isinstance(q.get("order"), int) else None for q in quantities]
     out: Listed = []
     for i, q in enumerate(quantities):
-        symbol = STATMECH_SYMBOL.get(names[i]) if q.get("variable") is None else None
+        symbol = statmech_symbol(q)
         latex = _text(q.get("latex"))
         checks = [c for c in q.get("checks") or [] if isinstance(c, dict)]
         if names[i] == "occupations" and q.get("variable") is None and latex is not None:
@@ -644,7 +677,7 @@ def statmech(data: dict[str, Any]) -> Listed:
             or any(c.get("passed") is False for c in checks)
         ):
             continue
-        out.append((statmech_key(names, i), f"{symbol} = {latex}"))
+        out.append((statmech_key(names, i, orders), f"{symbol} = {latex}"))
     return out
 
 
